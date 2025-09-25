@@ -1,0 +1,253 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+/// -------------------------------------------------------
+/// Models
+/// -------------------------------------------------------
+
+model User {
+  id               String        @id @default(uuid())
+  email            String        @unique
+  name             String?
+  passwordHash     String?       // si usas credenciales. Con Supabase Auth puedes omitir.
+  role             UserRole
+  organization     Organization? @relation(fields: [organizationId], references: [id])
+  organizationId   String?
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+
+  // Guarda el id del user en Supabase Auth (recomendado)
+  authId           String?       @unique
+
+  // Invites creados por este user
+  invitesSent      Invite[]      @relation("InvitesFromUser")
+
+  // Relación opcional con Patient (cuando un user también representa a un paciente)
+  patientProfile   Patient?      @relation("UserPatient", fields: [patientProfileId], references: [id])
+  patientProfileId String?       @unique
+}
+
+
+
+model Plan {
+  id              String    @id @default(uuid())
+  slug            String    @unique
+  name            String
+  minSpecialists  Int       @default(0)
+  maxSpecialists  Int       @default(0)
+  monthlyPrice    Float
+  quarterlyPrice  Float?
+  annualPrice     Float?
+  description     String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  organizations   Organization[]
+  subscriptions   Subscription[]
+}
+
+model Subscription {
+  id                    String        @id @default(uuid())
+  organization          Organization? @relation(fields: [organizationId], references: [id])
+  organizationId        String?
+
+  patient               Patient?      @relation(fields: [patientId], references: [id])
+  patientId             String?
+
+  plan                  Plan?         @relation(fields: [planId], references: [id])
+  planId                String?
+
+  stripeSubscriptionId  String?       @unique
+  status                SubscriptionStatus
+  startDate             DateTime
+  endDate               DateTime?
+  planSnapshot          Json
+  createdAt             DateTime      @default(now())
+  updatedAt             DateTime      @updatedAt
+
+  @@index([organizationId])
+  @@index([patientId])
+  @@index([planId])
+}
+
+model Invite {
+  id             String       @id @default(uuid())
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  organizationId String
+  email          String
+  token          String       @unique
+  role           UserRole     @default(MEDICO)
+  invitedById    String?
+  invitedBy      User?        @relation("InvitesFromUser", fields: [invitedById], references: [id])
+  used           Boolean      @default(false)
+  expiresAt      DateTime
+  createdAt      DateTime     @default(now())
+
+  @@index([organizationId])
+  @@index([email])
+}
+
+model Patient {
+  id                   String               @id @default(uuid())
+  firstName            String
+  lastName             String
+  identifier           String?              // cedula; considera cifrar en la capa app
+  dob                  DateTime?
+  gender               String?
+  phone                String?
+  address              String?
+  records              MedicalRecord[]
+  createdAt            DateTime             @default(now())
+  updatedAt            DateTime             @updatedAt
+
+  // Relación inversa con User (si un user es el perfil del paciente)
+  user                 User?                @relation("UserPatient")
+
+  // Familia
+  familyGroupsOwned    FamilyGroup[]        @relation("OwnedFamilyGroups")
+  familyMemberships    FamilyGroupMember[]
+
+  // Opcional: si el paciente tiene una suscripción (individual)
+  subscriptions        Subscription[]
+}
+
+model MedicalRecord {
+  id         String    @id @default(uuid())
+  patient    Patient   @relation(fields: [patientId], references: [id])
+  patientId  String
+  authorId   String?   // user id (medico) que creó
+  content    Json
+  attachments String[]  // urls a PDFs, imágenes
+  createdAt  DateTime  @default(now())
+}
+
+model FamilyGroup {
+  id             String               @id @default(uuid())
+  name           String?
+  owner          Patient              @relation("OwnedFamilyGroups", fields: [ownerId], references: [id])
+  ownerId        String
+  members        FamilyGroupMember[]
+  maxMembers     Int                  @default(5)
+  createdAt      DateTime             @default(now())
+  updatedAt      DateTime             @updatedAt
+}
+
+model FamilyGroupMember {
+  id            String      @id @default(uuid())
+  familyGroup   FamilyGroup @relation(fields: [familyGroupId], references: [id])
+  familyGroupId String
+  patient       Patient     @relation(fields: [patientId], references: [id])
+  patientId     String
+  roleInGroup   String?     
+  addedAt       DateTime    @default(now())
+
+  @@unique([familyGroupId, patientId])
+  @@index([familyGroupId])
+  @@index([patientId])
+}
+
+model Organization {
+  id              String         @id @default(uuid())
+  name            String
+  type            OrgType
+  address         String?
+  contactEmail    String
+  phone           String?
+  specialistCount Int            @default(0)
+  plan            Plan?          @relation(fields: [planId], references: [id])
+  planId          String?
+  subscriptions   Subscription[] 
+  users           User[]         // médicos/administradores ligados a esta organización
+  invites         Invite[]       // invites creados para esta org (tokens a enviar a especialistas)
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  inviteBaseUrl   String?        @db.VarChar(1024)
+
+  // relación inversa one-to-one con ClinicProfile
+  clinicProfile   ClinicProfile? 
+
+  @@map("Organization")
+}
+
+model ClinicProfile {
+  id                        String   @id @default(uuid()) @map("id")
+  organizationId            String   @unique @map("organization_id")
+  legalRif                  String?  @map("legal_rif")
+  legalName                 String   @map("legal_name")
+  tradeName                 String?  @map("trade_name")
+  entityType                String?  @map("entity_type")
+  addressFiscal             String?  @map("address_fiscal")
+  addressOperational        String?  @map("address_operational")
+  stateProvince             String?  @map("state_province")
+  cityMunicipality          String?  @map("city_municipality")
+  postalCode                String?  @map("postal_code")
+  phoneFixed                String?  @map("phone_fixed")
+  phoneMobile               String?  @map("phone_mobile")
+  contactEmail              String?  @map("contact_email")
+  website                   String?  
+  socialFacebook            String?  @map("social_facebook")
+  socialInstagram           String?  @map("social_instagram")
+  socialLinkedin            String?  @map("social_linkedin")
+  officesCount              Int?     @default(0) @map("offices_count")
+  specialties               Json     @default("[]") @map("specialties")      // jsonb
+  openingHours              Json     @default("[]") @map("opening_hours")    // jsonb
+  capacityPerDay            Int?     @map("capacity_per_day")
+  employeesCount            Int?     @map("employees_count")
+  directorName              String?  @map("director_name")
+  adminName                 String?  @map("admin_name")
+  directorIdNumber          String?  @map("director_id_number")
+  sanitaryLicense           String?  @map("sanitary_license")
+  liabilityInsuranceNumber  String?  @map("liability_insurance_number")
+  bankName                  String?  @map("bank_name")
+  bankAccountType           String?  @map("bank_account_type")
+  bankAccountNumber         String?  @map("bank_account_number")
+  bankAccountOwner          String?  @map("bank_account_owner")
+  currency                  String?  
+  paymentMethods            Json     @default("[]") @map("payment_methods")   // jsonb
+  billingSeries             String?  @map("billing_series")
+  taxRegime                 String?  @map("tax_regime")
+  billingAddress            String?  @map("billing_address")
+  createdAt                 DateTime @default(now()) @map("created_at")
+  updatedAt                 DateTime @default(now()) @map("updated_at")
+
+  // relación con Organization (foreign key organization_id)
+  organization Organization @relation(fields: [organizationId], references: [id])
+
+  @@map("clinic_profile")
+}
+
+
+/// -------------------------------------------------------
+/// Enums
+/// -------------------------------------------------------
+
+enum UserRole {
+  ADMIN
+  MEDICO
+  ENFERMERA
+  RECEPCION
+  FARMACIA
+  PACIENTE
+}
+
+enum OrgType {
+  CLINICA
+  HOSPITAL
+  CONSULTORIO
+  FARMACIA
+  LABORATORIO
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  PAST_DUE
+  CANCELLED
+  TRIALING
+}
