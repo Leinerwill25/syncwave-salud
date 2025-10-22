@@ -1,84 +1,70 @@
-// src/adapters/server.ts
+// src/app/adapters/server.ts
 import { cookies as nextCookies } from 'next/headers';
-import { createServerClient } from '@supabase/ssr';
-import type { SerializeOptions } from 'cookie';
+import { createClient as createSupabaseClient, type SupabaseClient } from '@supabase/supabase-js';
+
+type NextCookieGet = { value?: string } | undefined;
+type NextCookieStoreLike = {
+	get?: (name: string) => NextCookieGet;
+	set?: (opts: { name: string; value: string; path?: string; httpOnly?: boolean; sameSite?: 'lax' | 'strict' | 'none'; secure?: boolean }) => void;
+	delete?: (name: string) => void;
+};
+
+type CookieStoreLike = ReturnType<typeof nextCookies> | NextCookieStoreLike;
 
 /**
- * Crea un cliente Supabase para Server Components / Route Handlers (App Router).
- *
- * - Es ASYNC: internamente hace `await nextCookies()` para evitar el runtime error
- *   "cookies() should be awaited before using its value".
- * - `customCookieStore` es opcional y puede ser la store ya resuelta o una promesa.
- *
- * Devuelve: { supabase, cookies }.
+ * Crea un cliente Supabase para uso en Server Components / routes.
+ * Acepta un store de cookies custom para testing.
  */
-export async function createSupabaseServerClient(customCookieStore?: any) {
-	// Normalizamos: aceptamos una promesa o el objeto resuelto; si no hay custom store,
-	// resolvemos nextCookies() de forma segura (await).
-	const cookieStore = customCookieStore ? await customCookieStore : await nextCookies();
+export function createSupabaseServerClient(customCookieStore?: CookieStoreLike): { supabase: SupabaseClient; cookies: CookieStoreLike } {
+	const cookieStore: CookieStoreLike = customCookieStore ?? nextCookies();
 
-	// adaptador de métodos que espera @supabase/ssr
-	const cookieMethods = {
-		get(name?: string) {
-			if (!name) return null;
-			const c = (cookieStore as any).get?.(name);
-			if (!c) return null;
-			return { name: c.name, value: c.value };
-		},
-
-		getAll() {
-			const all: Array<any> = (cookieStore as any).getAll?.() ?? [];
-			return all.map((c) => ({ name: c.name, value: c.value }));
-		},
-
-		set(name: string, value: string, options?: SerializeOptions) {
+	// Adapter mínimo que Supabase espera: getItem / setItem / removeItem
+	const storage = {
+		getItem: (key: string): string | null => {
 			try {
-				// Algunas versiones de next/headers aceptan cookieStore.set(name, value, opts)
-				// mientras que otras aceptan un objeto; aquí intentamos con la forma objeto.
-				const setFn = (cookieStore as any).set;
-				if (!setFn) return;
-
-				// Intentar primero con objeto (compatible con next@13+/edge)
-				try {
-					setFn({
-						name,
-						value,
-						path: options?.path ?? '/',
-						httpOnly: options?.httpOnly ?? true,
-						sameSite: (options?.sameSite as any) ?? 'lax',
-						secure: options?.secure ?? process.env.NODE_ENV === 'production',
-						maxAge: options?.maxAge ?? undefined,
-					});
-				} catch {
-					// fallback: intentar forma (name, value, options)
-					try {
-						setFn(name, value, options);
-					} catch {
-						// noop
-					}
-				}
+				const maybe = (cookieStore as NextCookieStoreLike).get?.(key);
+				return maybe?.value ?? null;
 			} catch {
-				// noop
+				return null;
 			}
 		},
-
-		delete(name: string, _options?: SerializeOptions) {
+		setItem: (key: string, value: string): void => {
 			try {
-				(cookieStore as any).delete?.(name);
+				(cookieStore as NextCookieStoreLike).set?.({
+					name: key,
+					value,
+					path: '/',
+					httpOnly: true,
+					sameSite: 'lax',
+					secure: process.env.NODE_ENV === 'production',
+				});
 			} catch {
-				// noop
+				// Algunos runtimes (o tests) no permiten set() — ignoramos silenciosamente.
 			}
 		},
-	} as unknown as any;
+		removeItem: (key: string): void => {
+			try {
+				(cookieStore as NextCookieStoreLike).delete?.(key);
+			} catch {
+				// ignore
+			}
+		},
+	};
 
 	const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
 	const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-
 	if (!url || !key) {
 		throw new Error('Faltan env vars NEXT_PUBLIC_SUPABASE_URL o NEXT_PUBLIC_SUPABASE_ANON_KEY');
 	}
 
-	const supabase = createServerClient(url, key, { cookies: cookieMethods });
+	const supabase = createSupabaseClient(url, key, {
+		// pasamos el storage para que supabase pueda leer las cookies en Server Components
+		auth: {
+			persistSession: false,
+			storage,
+		},
+		global: { fetch },
+	});
 
 	return { supabase, cookies: cookieStore };
 }

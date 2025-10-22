@@ -11,7 +11,7 @@ datasource db {
 /// Models
 /// -------------------------------------------------------
 
-model User {
+model user {
   id               String        @id @default(uuid())
   email            String        @unique
   name             String?
@@ -80,7 +80,7 @@ model Invite {
   id             String       @id @default(uuid())
   organization   Organization @relation(fields: [organizationId], references: [id])
   organizationId String
-  email          String
+  email       String?   
   token          String       @unique
   role           UserRole     @default(MEDICO)
   invitedById    String?

@@ -19,7 +19,7 @@ function parseRoleOrDefault(roleCandidate?: string): UserRole {
 export async function POST(req: Request) {
 	try {
 		// createSupabaseServerClient es async y hace await(nextCookies()) internamente
-		const { supabase } = await createSupabaseServerClient();
+		const { supabase } = createSupabaseServerClient();
 
 		const {
 			data: { user },
@@ -85,7 +85,7 @@ export async function POST(req: Request) {
 
 export async function DELETE(req: Request) {
 	try {
-		const { supabase } = await createSupabaseServerClient();
+		const { supabase } = createSupabaseServerClient();
 
 		const {
 			data: { user },

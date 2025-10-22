@@ -1,4 +1,3 @@
-// src/app/register/page.tsx
 'use client';
 
 import React, { useEffect, useRef, useState } from 'react';
@@ -78,7 +77,7 @@ export default function RegisterPage() {
 				</div>
 
 				{/* overlay sutil */}
-				<div className="absolute inset-0 pointer-events-none bg-gradient-to-b from-transparent to-black/5" />
+				{/* <div className="absolute inset-0 pointer-events-none bg-gradient-to-b from-transparent to-black/5" /> */}
 			</div>
 
 			{/* --- Formulario --- */}

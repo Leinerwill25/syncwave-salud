@@ -1,23 +1,59 @@
 // app/api/invites/resend/route.ts
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
+import { cookies } from 'next/headers';
 import createSupabaseServerClient from '@/app/adapters/server'; // AJUSTA si tu helper está en otra ruta
 
 async function getAuthenticatedUser(request: Request) {
-	const { supabase } = await createSupabaseServerClient();
+	const { supabase } = createSupabaseServerClient();
 
-	const { data: userData, error: userErr } = await supabase.auth.getUser();
-	if (userData?.user) return { supabaseUser: userData.user, dbUser: await findDbUser(userData.user) };
-
-	const authHeader = request.headers.get('authorization') ?? '';
-	if (authHeader.startsWith('Bearer ')) {
-		const jwt = authHeader.split(' ')[1];
-		try {
-			const { data: userData2 } = await supabase.auth.getUser(jwt);
-			if (userData2?.user) return { supabaseUser: userData2.user, dbUser: await findDbUser(userData2.user) };
-		} catch (e) {
-			console.warn('[getAuthenticatedUser resend] fallback jwt error', e);
+	// 1) Intento estándar: supabase.auth.getUser()
+	try {
+		const userResp = await supabase.auth.getUser();
+		if (userResp?.data?.user) {
+			const dbUser = await findDbUser(userResp.data.user);
+			return { supabaseUser: userResp.data.user, dbUser };
 		}
+	} catch (e) {
+		console.warn('[getAuthenticatedUser] auth.getUser() inicial falló', e);
+	}
+
+	// 2) Fallback: leer cookie sb-access-token del request (server-side)
+	try {
+		const cookieStore = await cookies(); // <-- await para evitar Promise<...>
+		const accessToken = cookieStore.get('sb-access-token')?.value ?? null;
+		if (accessToken) {
+			try {
+				const userResp2 = await supabase.auth.getUser(accessToken);
+				if (userResp2?.data?.user) {
+					const dbUser = await findDbUser(userResp2.data.user);
+					return { supabaseUser: userResp2.data.user, dbUser };
+				}
+			} catch (e) {
+				console.warn('[getAuthenticatedUser] getUser from cookie failed', e);
+			}
+		}
+	} catch (e) {
+		console.warn('[getAuthenticatedUser] reading cookie failed', e);
+	}
+
+	// 3) Fallback: Authorization Bearer header
+	try {
+		const authHeader = request.headers.get('authorization') ?? '';
+		if (authHeader.startsWith('Bearer ')) {
+			const jwt = authHeader.split(' ')[1];
+			try {
+				const userResp3 = await supabase.auth.getUser(jwt);
+				if (userResp3?.data?.user) {
+					const dbUser = await findDbUser(userResp3.data.user);
+					return { supabaseUser: userResp3.data.user, dbUser };
+				}
+			} catch (e) {
+				console.warn('[getAuthenticatedUser] getUser from bearer token failed', e);
+			}
+		}
+	} catch (e) {
+		// ignore
 	}
 
 	return { supabaseUser: null, dbUser: null };

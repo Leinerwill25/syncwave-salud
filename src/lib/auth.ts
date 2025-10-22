@@ -33,7 +33,7 @@ export async function getCurrentOrganizationId(options?: { verbose?: boolean }):
 		}
 
 		// crea cliente supabase server que leerá cookies de next/headers() internamente
-		const { supabase } = await createSupabaseServerClient();
+		const { supabase } = createSupabaseServerClient();
 
 		// la API de supabase (ssr) devuelve { data: { user }, error }
 		const resp = await supabase.auth.getUser();

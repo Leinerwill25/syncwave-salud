@@ -49,7 +49,7 @@ export default function LoginFormAdvanced(): React.ReactElement {
 		}
 	}
 
-	async function postSessionToServer(session: { access_token?: string; refresh_token?: string; expires_in?: number } | null) {
+	async function postSessionToServer(session: { access_token?: string; refresh_token?: string; expires_in?: number; session?: any }) {
 		if (!session?.access_token) return false;
 		try {
 			const resp = await fetch('/api/auth/set-session', {
@@ -64,7 +64,6 @@ export default function LoginFormAdvanced(): React.ReactElement {
 			return false;
 		}
 	}
-
 	async function handleSubmit(e: React.FormEvent) {
 		e.preventDefault();
 		setErrorMsg(null);
@@ -87,13 +86,12 @@ export default function LoginFormAdvanced(): React.ReactElement {
 				setLoading(false);
 				return;
 			}
+			const access_token = session?.access_token;
+			const refresh_token = session?.refresh_token;
+			const expires_in = session?.expires_in;
 
-			if (session?.access_token) {
-				await postSessionToServer({
-					access_token: session.access_token,
-					refresh_token: session.refresh_token,
-					expires_in: session.expires_in,
-				});
+			if (access_token) {
+				await postSessionToServer({ access_token, refresh_token, expires_in, session });
 			}
 
 			const metadataRole = (user.user_metadata as any)?.role as Role | undefined;

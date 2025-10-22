@@ -1,7 +1,8 @@
+// app/dashboard/page.tsx (o donde tengas el ClinicDashboardPage)
 import React from 'react';
 import prisma from '@/lib/prisma';
 import ClinicStats from '@/components/ClinicStats';
-import InviteList from '@/components/InviteList';
+// import InviteList from '@/components/InviteList';
 import SpecialistsTable from '@/components/SpecialistsTable';
 import PatientsList from '@/components/PatientsList';
 
@@ -25,28 +26,24 @@ function safeJsonParse<T = any>(v: string | null | undefined): T | null {
 }
 
 /**
- * IMPORTANTE: en tu entorno headers() y cookies() devuelven Promises,
- * por eso esta función es async y hace `await headers()` y `await cookies()`.
- *
- * Esta versión es más robusta: revisa Authorization header, varios nombres de cookie,
- * y como fallback parsea la cabecera 'cookie'.
+ * Obtiene token/headers desde next/headers (server environment)
  */
 async function getAccessTokenFromRequest(): Promise<string | null> {
 	try {
 		const hdrs = await headers();
 
-		// 1) Authorization header (Bearer)
+		// Authorization: Bearer ...
 		const authHeader = hdrs.get('authorization') || hdrs.get('Authorization');
 		if (authHeader && authHeader.startsWith('Bearer ')) {
 			const t = authHeader.split(' ')[1].trim();
 			if (t) return t;
 		}
 
-		// 2) x-auth-token or x-access-token
+		// x-auth-token / x-access-token
 		const xAuth = hdrs.get('x-auth-token') || hdrs.get('x-access-token');
 		if (xAuth) return xAuth;
 
-		// 3) Cookies via next/headers()
+		// cookies via next/headers()
 		const ck = await cookies();
 		const knownKeys = ['sb-access-token', 'sb:token', 'supabase-auth-token', 'sb-session', 'supabase-session', 'sb'];
 
@@ -54,13 +51,8 @@ async function getAccessTokenFromRequest(): Promise<string | null> {
 			const c = ck.get(k);
 			const val = c?.value ?? null;
 			if (!val) continue;
-			// puede ser token crudo o JSON con estructuras
 			const parsed = safeJsonParse<any>(val);
-			if (!parsed) {
-				// token crudo
-				return val;
-			}
-			// parsed could be several shapes
+			if (!parsed) return val;
 			if (typeof parsed === 'string') return parsed;
 			if (parsed?.access_token && typeof parsed.access_token === 'string') return parsed.access_token;
 			if (parsed?.currentSession?.access_token) return parsed.currentSession.access_token;
@@ -69,7 +61,7 @@ async function getAccessTokenFromRequest(): Promise<string | null> {
 			if (parsed?.accessToken && typeof parsed.accessToken === 'string') return parsed.accessToken;
 		}
 
-		// 4) Raw cookie header fallback (parse raw string)
+		// raw cookie header fallback
 		const cookieHeader = hdrs.get('cookie') || '';
 		if (cookieHeader) {
 			const tokensToMatch = ['sb-access-token', 'sb:token', 'supabase-auth-token', 'sb-session', 'supabase-session', 'sb'];
@@ -99,21 +91,19 @@ function decodeJwtSub(token: string | null): string | null {
 		const parts = token.split('.');
 		if (parts.length < 2) return null;
 		const payload = parts[1];
-		// base64url -> base64
 		const b64 = payload.replace(/-/g, '+').replace(/_/g, '/');
-		// pad
 		const pad = b64.length % 4;
 		const padded = pad ? b64 + '='.repeat(4 - pad) : b64;
 		const decoded = Buffer.from(padded, 'base64').toString('utf8');
 		const obj = JSON.parse(decoded);
 		return (obj?.sub as string) ?? (obj?.user_id as string) ?? null;
-	} catch (err) {
-		// no crítico
+	} catch {
+		// ignore
 	}
 	return null;
 }
 
-/** resuelve authId usando supabaseAdmin y el token (más robusto y con fallback para dev) */
+/** Obtiene authId (supabase user id) desde supabaseAdmin using token */
 async function getSupabaseAuthIdFromRequest(): Promise<string | null> {
 	if (!supabaseAdmin) {
 		if (process.env.NODE_ENV !== 'production') {
@@ -131,7 +121,7 @@ async function getSupabaseAuthIdFromRequest(): Promise<string | null> {
 			}
 			return directAuthId;
 		}
-	} catch (err) {
+	} catch {
 		// ignore
 	}
 
@@ -144,42 +134,21 @@ async function getSupabaseAuthIdFromRequest(): Promise<string | null> {
 	}
 
 	try {
-		if (process.env.NODE_ENV !== 'production') {
-			console.log('DEBUG: token (truncated):', token?.slice ? token.slice(0, 12) + '...' : token);
-		}
-
-		// supabaseAdmin.auth.getUser espera el access token; en algunos setups puede devolver error si token expiró
 		const userResp = await supabaseAdmin.auth.getUser(token);
 		if ((userResp as any)?.data?.user?.id) {
 			return (userResp as any).data.user.id;
-		}
-
-		if ((userResp as any)?.error) {
-			if (process.env.NODE_ENV !== 'production') {
-				console.warn('supabaseAdmin.auth.getUser returned error:', (userResp as any).error);
-			}
-		} else {
-			if (process.env.NODE_ENV !== 'production') {
-				console.warn('supabaseAdmin.auth.getUser did not return user, resp:', userResp);
-			}
 		}
 	} catch (err) {
 		console.error('getSupabaseAuthIdFromRequest supabase error:', err);
 	}
 
-	// fallback: intentar extraer 'sub' del JWT sin verificar (útil para debugging/dev)
-	const maybeSub = decodeJwtSub(token);
-	if (maybeSub) {
-		if (process.env.NODE_ENV !== 'production') {
-			console.log('DEBUG: extracted sub from token payload (fallback):', maybeSub);
-		}
-		return maybeSub;
-	}
-
-	return null;
+	// fallback JWT decode
+	return decodeJwtSub(token);
 }
 
-/** Principal: devuelve organizationId (o TEST_ORG_ID si está seteado) */
+/** Principal: devuelve organizationId (o TEST_ORG_ID si está seteado)
+ *  Resuelto desde Supabase table "User" usando authId.
+ */
 export async function getCurrentOrganizationId(): Promise<string | null> {
 	if (TEST_ORG_ID) {
 		if (process.env.NODE_ENV !== 'production') {
@@ -196,25 +165,125 @@ export async function getCurrentOrganizationId(): Promise<string | null> {
 		return null;
 	}
 
-	if (process.env.NODE_ENV !== 'production') {
-		console.log('DEBUG: getCurrentOrganizationId - resolved authId:', authId);
+	if (!supabaseAdmin) {
+		if (process.env.NODE_ENV !== 'production') {
+			console.warn('supabaseAdmin not configured; cannot resolve organization via Supabase.');
+		}
+		return null;
 	}
 
-	// IMPORTANT: añadimos un log temporario para debug, para ver qué retorna prisma
-	const user = await prisma.user.findFirst({
-		where: { authId },
-		select: { organizationId: true },
-	});
+	try {
+		// Usamos tabla "User" y buscamos organizationId por authId
+		const { data, error } = await supabaseAdmin.from('User').select('organizationId').eq('authId', authId).limit(1).maybeSingle();
 
-	if (!user) {
-		console.warn(`No app user linked for authId=${authId}.`);
+		if (error) {
+			if (process.env.NODE_ENV !== 'production') console.warn('Supabase: error fetching user organizationId:', error);
+		} else if (data) {
+			return data.organizationId ?? null;
+		}
+	} catch (err) {
+		console.error('getCurrentOrganizationId supabase error:', err);
 	}
 
-	if (process.env.NODE_ENV !== 'production') {
-		console.log('DEBUG: organizationId found in DB:', user?.organizationId ?? null);
+	// fallback: intentar extraer organizationId desde token payload
+	const token = await getAccessTokenFromRequest();
+	if (token) {
+		try {
+			const parts = token.split('.');
+			if (parts.length >= 2) {
+				const payload = parts[1].replace(/-/g, '+').replace(/_/g, '/');
+				const pad = payload.length % 4;
+				const padded = pad ? payload + '='.repeat(4 - pad) : payload;
+				const decoded = Buffer.from(padded, 'base64').toString('utf8');
+				const obj = JSON.parse(decoded);
+				if (obj?.organizationId) return obj.organizationId;
+			}
+		} catch {
+			// ignore
+		}
 	}
 
-	return user?.organizationId ?? null;
+	return null;
+}
+
+/**
+ * fetchRecentPatientsForOrgViaSupabase (CORREGIDO para tu schema):
+ *
+ * - Trae todos los Patient
+ * - Trae todos los User con role='PACIENTE' y organizationId = organizationId
+ * - Usa user.patientProfileId para mapear a Patient.id (esa es la relación en tu schema)
+ * - Devuelve los pacientes asociados a los usuarios que pertenezcan a la org en sesión.
+ */
+async function fetchRecentPatientsForOrgViaSupabase(organizationId: string, take = 8) {
+	if (!supabaseAdmin) {
+		if (process.env.NODE_ENV !== 'production') {
+			console.warn('Supabase admin client not configured; cannot fetch patients via Supabase.');
+		}
+		return [];
+	}
+
+	try {
+		// 1) Obtener todos los pacientes
+		const { data: allPatientsRaw, error: patientsErr } = await supabaseAdmin.from('Patient').select('*');
+		if (patientsErr) {
+			console.error('Supabase: error fetching Patient table:', patientsErr);
+			return [];
+		}
+		const allPatients: any[] = Array.isArray(allPatientsRaw) ? allPatientsRaw : [];
+
+		// 2) Obtener users con role = 'PACIENTE' y organizationId = organizationId
+		const { data: patientUsersRaw, error: usersErr } = await supabaseAdmin.from('User').select('id, email, organizationId, role, patientProfileId').eq('role', 'PACIENTE').eq('organizationId', organizationId);
+
+		if (usersErr) {
+			console.error('Supabase: error fetching Users (role=PACIENTE):', usersErr);
+			return [];
+		}
+		const patientUsers: any[] = Array.isArray(patientUsersRaw) ? patientUsersRaw : [];
+
+		// Construir mapa patientProfileId -> user
+		const patientToUserMap = new Map<string, any>();
+		for (const u of patientUsers) {
+			if (u?.patientProfileId) {
+				patientToUserMap.set(String(u.patientProfileId), u);
+			}
+		}
+
+		// Filtrar pacientes cuyos id aparezcan en patientToUserMap
+		const matched = allPatients.filter((p) => {
+			if (!p?.id) return false;
+			return patientToUserMap.has(String(p.id));
+		});
+
+		// Ordenar por createdAt desc y tomar los primeros `take`
+		const sorted = matched.sort((a, b) => {
+			const da = a?.createdAt ? new Date(a.createdAt).getTime() : 0;
+			const db = b?.createdAt ? new Date(b.createdAt).getTime() : 0;
+			return db - da;
+		});
+
+		// Mapear a forma esperada por PatientsList, y adjuntar organizationId tomado del user relacionado
+		const result = sorted.slice(0, take).map((p) => {
+			const user = patientToUserMap.get(String(p.id));
+			return {
+				id: p.id,
+				firstName: p.firstName ?? p.firstname ?? null,
+				lastName: p.lastName ?? p.lastname ?? null,
+				createdAt: p.createdAt ?? null,
+				organizationId: user?.organizationId ?? null,
+				userId: user?.id ?? null,
+				email: p.email ?? user?.email ?? null,
+			};
+		});
+
+		if (process.env.NODE_ENV !== 'production') {
+			console.log(`DEBUG: fetchRecentPatientsForOrgViaSupabase matched ${result.length} patients for org ${organizationId}`);
+		}
+
+		return result;
+	} catch (err) {
+		console.error('fetchRecentPatientsForOrgViaSupabase error:', err);
+		return [];
+	}
 }
 
 export default async function ClinicDashboardPage() {
@@ -250,11 +319,8 @@ export default async function ClinicDashboardPage() {
 			take: 8,
 			orderBy: { createdAt: 'desc' },
 		}),
-		prisma.patient.findMany({
-			select: { id: true, firstName: true, lastName: true, createdAt: true },
-			take: 8,
-			orderBy: { createdAt: 'desc' },
-		}),
+		// Ahora obtenemos pacientes usando exclusivamente Supabase y filtrando por User.role='PACIENTE' + organizationId
+		fetchRecentPatientsForOrgViaSupabase(organizationId, 8),
 		prisma.invite.findMany({
 			where: { organizationId },
 			select: { id: true, email: true, token: true, role: true, used: true, expiresAt: true, createdAt: true },
@@ -286,44 +352,51 @@ export default async function ClinicDashboardPage() {
 
 			<section className="grid grid-cols-1 lg:grid-cols-3 gap-6">
 				<div className="lg:col-span-2 space-y-6">
-					<div className="bg-white rounded-2xl p-6 border shadow-sm">
-						<h2 className="text-lg font-semibold text-slate-800 mb-4">Especialistas recientes</h2>
-						<SpecialistsTable users={recentSpecialists} />
-					</div>
+					<SpecialistsTable users={recentSpecialists} />
 
-					<div className="bg-white rounded-2xl p-6 border shadow-sm">
-						<h2 className="text-lg font-semibold text-slate-800 mb-4">Pacientes recientes</h2>
-						<PatientsList patients={recentPatients} />
-					</div>
-					<div className="bg-white rounded-2xl p-6 border shadow-sm">
-						<h3 className="text-lg font-semibold text-slate-800 mb-3">Invitaciones</h3>
-						<InviteList initialInvites={invites} organizationId={organizationId} totalSlots={org?.specialistCount ?? invites.length} />
-					</div>
+					{/* Pasamos clinicOrganizationId para que el componente UI use el mismo filtro (aunque ya se filtró en servidor) */}
+					<PatientsList patients={recentPatients} clinicOrganizationId={organizationId} />
+					{/* <InviteList initialInvites={invites} organizationId={organizationId} totalSlots={org?.specialistCount ?? invites.length} /> */}
 				</div>
 
-				<aside className="space-y-6">
-					<div className="bg-white rounded-2xl p-6 border shadow-sm">
-						<h3 className="text-lg font-semibold text-slate-800 mb-2">Detalles</h3>
-						<div className="text-sm text-slate-600 space-y-3">
-							<div>
-								<span className="text-slate-500 block">Dirección</span>
-								<div className="font-medium text-slate-800">{org?.address ?? '—'}</div>
+				<aside aria-labelledby="org-details-title" className="space-y-6">
+					<div className="relative bg-white/95 border border-slate-200 rounded-2xl p-6 shadow-md max-w-sm">
+						<div className="absolute -top-3 left-6 w-20 h-1 rounded-full bg-gradient-to-r from-sky-600 to-indigo-600 shadow-sm" aria-hidden />
+
+						<h3 id="org-details-title" className="text-lg font-semibold text-slate-800 mb-1">
+							Detalles
+						</h3>
+						<p className="text-sm text-slate-500 mb-4">Información de contacto y plazas planificadas</p>
+
+						<dl className="grid gap-4 text-sm text-slate-600">
+							<div className="flex flex-col">
+								<dt className="text-xs text-slate-500">Dirección</dt>
+								<dd className="mt-1 font-medium text-slate-800 break-words">{org?.address ?? '—'}</dd>
 							</div>
-							<div>
-								<span className="text-slate-500 block">Teléfono</span>
-								<div className="font-medium text-slate-800">{org?.phone ?? '—'}</div>
+
+							<div className="flex flex-col">
+								<dt className="text-xs text-slate-500">Teléfono</dt>
+								<dd className="mt-1 font-medium text-slate-800">{org?.phone ?? '—'}</dd>
 							</div>
-							<div>
-								<span className="text-slate-500 block">Especialistas planeados</span>
-								<div className="font-medium text-slate-800">{org?.specialistCount ?? 0}</div>
+
+							<div className="flex flex-col">
+								<dt className="text-xs text-slate-500">Especialistas planeados</dt>
+								<dd className="mt-1 font-medium text-slate-800">{org?.specialistCount ?? 0}</dd>
 							</div>
+
 							{org?.inviteBaseUrl && (
-								<div>
-									<span className="text-slate-500 block">Link de invitación</span>
-									<div className="font-medium text-slate-800 break-words">{org.inviteBaseUrl}</div>
+								<div className="flex flex-col">
+									<dt className="text-xs text-slate-500">Link de invitación</dt>
+									<dd className="mt-1 font-medium text-slate-800 break-words">
+										<a href={org.inviteBaseUrl} target="_blank" rel="noopener noreferrer" className="inline-block truncate max-w-full text-sm hover:underline" title={org.inviteBaseUrl}>
+											{org.inviteBaseUrl}
+										</a>
+									</dd>
 								</div>
 							)}
-						</div>
+						</dl>
+
+						<div className="mt-4 text-xs text-slate-400">Puedes copiar o abrir el enlace desde la configuración.</div>
 					</div>
 				</aside>
 			</section>

@@ -8,6 +8,8 @@ type Role = 'ADMIN' | 'MEDICO' | 'FARMACIA' | 'PACIENTE';
 type PatientPlan = 'individual' | 'family';
 type BillingPeriod = 'monthly' | 'quarterly' | 'annual';
 
+type OrgItem = { id: string; name: string; inviteBaseUrl?: string | null; contactEmail?: string | null };
+
 export default function RegisterForm(): React.ReactElement {
 	const router = useRouter();
 
@@ -20,7 +22,7 @@ export default function RegisterForm(): React.ReactElement {
 	const [email, setEmail] = useState('');
 	const [password, setPassword] = useState('');
 
-	// Organización
+	// Organización (para creación)
 	const [orgName, setOrgName] = useState('');
 	const [orgType, setOrgType] = useState<OrgType>('CLINICA');
 	const [specialistCount, setSpecialistCount] = useState<number>(1);
@@ -44,9 +46,16 @@ export default function RegisterForm(): React.ReactElement {
 	const [insuranceProvider, setInsuranceProvider] = useState('');
 	const [insuranceNumber, setInsuranceNumber] = useState('');
 
+	// NUEVO: organizations list + selection
+	const [organizations, setOrganizations] = useState<OrgItem[]>([]);
+	const [orgsLoading, setOrgsLoading] = useState(false);
+	const [orgsError, setOrgsError] = useState<string | null>(null);
+	// organizationId selected by patient (nullable - patient may choose "Ninguna")
+	const [selectedOrganizationId, setSelectedOrganizationId] = useState<string | null>(null);
+
 	// Plan / Billing (nuevo)
 	const [patientPlan, setPatientPlan] = useState<PatientPlan>('individual'); // para pacientes: individual o family
-	const [billingPeriod, setBillingPeriod] = useState<BillingPeriod>('monthly'); // monthly | quarterly | annual
+	const [billingPeriod, setBillingPeriod] = useState<BillingPeriod>('annual'); // default to annual (patients use annual)
 
 	// UI
 	const [loading, setLoading] = useState(false);
@@ -63,9 +72,12 @@ export default function RegisterForm(): React.ReactElement {
 		// además, al cambiar role reiniciamos plan/billing a valores por defecto razonables
 		if (role !== 'PACIENTE') {
 			setPatientPlan('individual');
+			// para organizaciones dejamos monthly por defecto (si así lo quieres)
+			setBillingPeriod('monthly');
 		}
 		if (role === 'PACIENTE') {
-			setBillingPeriod('monthly');
+			// para pacientes trabajamos con pago anual por defecto
+			setBillingPeriod('annual');
 		}
 	}, [role]);
 
@@ -74,19 +86,23 @@ export default function RegisterForm(): React.ReactElement {
 		setDisplaySpecialistCount(String(specialistCount));
 	}, [specialistCount]);
 
-	// Base prices
-	const PRICE_MEDICO = 14.99; // medico individual
-	const PRICE_PACIENTE_INDIVIDUAL = 4.99;
-	const PRICE_PACIENTE_FAMILY = 14.99;
+	// -------------------------
+	// Base prices (actualizados)
+	// -------------------------
+	const PRICE_MEDICO = 14.99; // medico individual (sin cambios)
+	// --- Aquí actualizamos SOLO los precios de paciente: ahora son ANUALES ---
+	const PRICE_PACIENTE_INDIVIDUAL = 12.99; // ahora representa precio ANUAL por 1 persona
+	const PRICE_PACIENTE_FAMILY = 29.99; // ahora representa precio ANUAL por grupo fam. hasta 5 personas
 
 	// Plan recomendado (ahora considera role MEDICO / PACIENTE)
 	const recommendedPlan = useMemo(() => {
 		if (role === 'MEDICO') return { slug: 'medico', label: 'Plan Médico (1) — Usuario individual', price: PRICE_MEDICO };
 		if (role === 'PACIENTE') {
+			// NOTE: price here for paciente is ANNUAL (not monthly)
 			return patientPlan === 'individual' ? { slug: 'paciente-individual', label: 'Paciente — Individual', price: PRICE_PACIENTE_INDIVIDUAL } : { slug: 'paciente-family', label: 'Paciente — Plan Familiar (hasta 5)', price: PRICE_PACIENTE_FAMILY };
 		}
 
-		// Organizaciónes normales: reglas por rangos
+		// Organizaciónes normales: reglas por rangos (sin cambios)
 		if (specialistCount >= 10 && specialistCount <= 20) return { slug: '10-20', label: '10–20 especialistas', price: 69.99 };
 		if (specialistCount >= 21 && specialistCount <= 50) return { slug: '21-50', label: '21–50 especialistas', price: 99.99 };
 		if (specialistCount >= 51 && specialistCount <= 100) return { slug: '51-100', label: '51–100 especialistas', price: 149.99 };
@@ -94,20 +110,59 @@ export default function RegisterForm(): React.ReactElement {
 		return { slug: 'custom', label: 'Sobredimensionado — contáctanos', price: 0 };
 	}, [specialistCount, role, patientPlan]);
 
-	// Cálculo de precio según periodicidad y descuentos (trimestral: 5% off; anual: 15% off)
-	function computeBilling(priceMonthly: number, period: BillingPeriod) {
+	/**
+	 * computeBilling:
+	 * - Si isPatient === true: interpretamos `price` como ANNUAL_PRICE.
+	 *   -> annual total = price
+	 *   -> monthlyEquivalent = price / 12
+	 *   -> label indica pago anual.
+	 *
+	 * - Si isPatient === false: interpretamos `price` como monthly base (como antes).
+	 */
+	function computeBilling(price: number, period: BillingPeriod, isPatient = false) {
+		if (isPatient) {
+			// price = annual price
+			if (period === 'annual') {
+				const months = 12;
+				const total = price;
+				const monthlyEquivalent = total / months;
+				return {
+					months,
+					discount: 0,
+					total,
+					monthlyEquivalent,
+					label: 'Anual (pago único)',
+				};
+			}
+			// If user selects monthly/quarterly anyway, we show derived values (rare for patient UI)
+			if (period === 'quarterly') {
+				// treat annual price -> compute monthlyEquivalent, then subtotal for 3 months
+				const monthlyEq = price / 12;
+				const months = 3;
+				const subtotal = monthlyEq * months;
+				const discount = 0.05;
+				const total = subtotal * (1 - discount);
+				return { months, discount, total, monthlyEquivalent: monthlyEq, label: 'Trimestral (5% sobre equivalente mensual)' };
+			}
+			// monthly case derived from annual
+			const months = 1;
+			const monthlyEquivalent = price / 12;
+			return { months, discount: 0, total: monthlyEquivalent, monthlyEquivalent, label: 'Mensual (equivalente del plan anual)' };
+		}
+
+		// Non-patient (orgs / médicos): original behavior (price = monthly base)
 		if (period === 'monthly') {
 			return {
 				months: 1,
 				discount: 0,
-				total: priceMonthly,
-				monthlyEquivalent: priceMonthly,
+				total: price,
+				monthlyEquivalent: price,
 				label: 'Mensual (sin descuento)',
 			};
 		}
 		if (period === 'quarterly') {
 			const months = 3;
-			const subtotal = priceMonthly * months;
+			const subtotal = price * months;
 			const discount = 0.05;
 			const total = subtotal * (1 - discount);
 			return {
@@ -120,7 +175,7 @@ export default function RegisterForm(): React.ReactElement {
 		}
 		// annual
 		const months = 12;
-		const subtotal = priceMonthly * months;
+		const subtotal = price * months;
 		const discount = 0.15;
 		const total = subtotal * (1 - discount);
 		return {
@@ -164,6 +219,39 @@ export default function RegisterForm(): React.ReactElement {
 		setStep((s) => Math.max(s - 1, 1));
 	}
 
+	// Fetch organizations on mount so patient can choose referring clinic
+	useEffect(() => {
+		let mounted = true;
+		async function loadOrgs() {
+			setOrgsLoading(true);
+			setOrgsError(null);
+			try {
+				// Ajusta la ruta si tu backend expone otro endpoint
+				const res = await fetch('/api/organizations');
+				if (!res.ok) {
+					const txt = await res.text().catch(() => '');
+					throw new Error(`HTTP ${res.status} ${txt}`);
+				}
+				const data = (await res.json()) as OrgItem[];
+				if (!mounted) return;
+				// Esperamos que el backend devuelva [{ id, name, ... }, ...]
+				setOrganizations(Array.isArray(data) ? data : []);
+			} catch (err: any) {
+				console.error('load organizations error', err);
+				if (!mounted) return;
+				setOrgsError('No se pudieron cargar las clínicas. Intenta más tarde.');
+				setOrganizations([]);
+			} finally {
+				if (!mounted) return;
+				setOrgsLoading(false);
+			}
+		}
+		loadOrgs();
+		return () => {
+			mounted = false;
+		};
+	}, []);
+
 	// Submit final
 	async function handleSubmit(e: React.FormEvent) {
 		e.preventDefault();
@@ -175,8 +263,8 @@ export default function RegisterForm(): React.ReactElement {
 		setLoading(true);
 		try {
 			// Calculamos el precio final que enviaremos al backend
-			const priceMonthly = recommendedPlan.price;
-			const billing = computeBilling(priceMonthly, billingPeriod);
+			const priceBase = recommendedPlan.price; // could be monthly (orgs) or ANNUAL (patients)
+			const billing = computeBilling(priceBase, billingPeriod, role === 'PACIENTE');
 
 			const payload: any = {
 				account: { fullName, email, password, role },
@@ -205,6 +293,8 @@ export default function RegisterForm(): React.ReactElement {
 					currentMedications,
 					insuranceProvider,
 					insuranceNumber,
+					// si el paciente eligió una clínica, la asociamos
+					organizationId: selectedOrganizationId ?? undefined,
 				};
 			} else {
 				payload.organization = {
@@ -263,7 +353,7 @@ export default function RegisterForm(): React.ReactElement {
 	const inputClass = 'mt-1 w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50 text-slate-900 focus:outline-none focus:ring-2 focus:ring-sky-300';
 
 	// Compute billing preview for the recommendedPlan price
-	const billingPreview = useMemo(() => computeBilling(recommendedPlan.price, billingPeriod), [recommendedPlan, billingPeriod]);
+	const billingPreview = useMemo(() => computeBilling(recommendedPlan.price, billingPeriod, role === 'PACIENTE'), [recommendedPlan, billingPeriod, role]);
 
 	return (
 		<form onSubmit={handleSubmit} className="max-w-3xl mx-auto p-6 md:p-8 bg-white rounded-2xl shadow-lg border border-slate-100" aria-labelledby="register-heading">
@@ -295,7 +385,19 @@ export default function RegisterForm(): React.ReactElement {
 
 						<label className="block">
 							<span className="text-sm font-medium text-slate-700">¿Eres?</span>
-							<select value={role} onChange={(e) => setRole(e.target.value as Role)} className={inputClass} aria-label="Tipo de cuenta" onBlur={() => setStep(1)}>
+							<select
+								value={role}
+								onChange={(e) => {
+									const newRole = e.target.value as Role;
+									setRole(newRole);
+									// Si el rol deja de ser PACIENTE, limpiamos el campo de clínica referida
+									if (newRole !== 'PACIENTE') {
+										setSelectedOrganizationId(null);
+									}
+								}}
+								className={inputClass}
+								aria-label="Tipo de cuenta"
+								onBlur={() => setStep(1)}>
 								<option value="ADMIN">Administrador / Clínica</option>
 								<option value="MEDICO">Médico</option>
 								<option value="FARMACIA">Farmacia</option>
@@ -303,6 +405,29 @@ export default function RegisterForm(): React.ReactElement {
 							</select>
 						</label>
 					</div>
+
+					{/* --- NUEVO: Selección de clínica que lo recomendó (solo para PACIENTE) --- */}
+					{role === 'PACIENTE' && (
+						<div className="mt-2">
+							<label className="block text-sm font-medium text-slate-700">¿Qué clínica te recomendó? (opcional)</label>
+							{orgsLoading ? (
+								<div className="mt-2 text-sm text-slate-500">Cargando clínicas...</div>
+							) : orgsError ? (
+								<div className="mt-2 text-sm text-rose-600">{orgsError}</div>
+							) : (
+								<select value={selectedOrganizationId ?? ''} onChange={(e) => setSelectedOrganizationId(e.target.value === '' ? null : e.target.value)} className={inputClass} aria-label="Clínica que te recomendó (opcional)">
+									<option value="">No fui referido / Ninguna</option>
+									{/* mostrarlas con nombre */}
+									{Array.isArray(organizations) &&
+										organizations.map((o) => (
+											<option key={o.id} value={o.id}>
+												{o.name}
+											</option>
+										))}
+								</select>
+							)}
+						</div>
+					)}
 
 					<div className="flex justify-end gap-3 mt-4">
 						<button type="button" onClick={next} disabled={!step1Valid} className={`px-5 py-2 rounded-lg ${step1Valid ? 'bg-sky-600 text-white hover:bg-sky-700' : 'bg-slate-200 text-slate-500 cursor-not-allowed'}`}>
@@ -458,26 +583,27 @@ export default function RegisterForm(): React.ReactElement {
 						<div className="grid grid-cols-1 md:grid-cols-2 gap-3">
 							<label className="p-3 text-slate-700 border rounded-lg cursor-pointer">
 								<input type="radio" name="patientPlan" checked={patientPlan === 'individual'} onChange={() => setPatientPlan('individual')} className="mr-2 text-slate-700" />
-								<strong className="text-slate-700">Individual</strong> — ${PRICE_PACIENTE_INDIVIDUAL.toFixed(2)} / mes (1 persona)
+								<strong className="text-slate-700">Individual</strong> — ${PRICE_PACIENTE_INDIVIDUAL.toFixed(2)} / año (1 persona)
 							</label>
 							<label className="p-3 text-slate-700 border rounded-lg cursor-pointer">
 								<input type="radio" name="patientPlan" checked={patientPlan === 'family'} onChange={() => setPatientPlan('family')} className="mr-2 text-slate-700" />
-								<strong className="text-slate-700">Familiar</strong> — ${PRICE_PACIENTE_FAMILY.toFixed(2)} / mes (hasta 5 personas)
+								<strong className="text-slate-700">Familiar</strong> — ${PRICE_PACIENTE_FAMILY.toFixed(2)} / año (hasta 5 personas)
 							</label>
 						</div>
 
 						<div className="mt-4">
-							<div className="text-sm font-medium mb-1 text-slate-700">Periodicidad (elige y verás el cálculo)</div>
+							<div className="text-sm font-medium mb-1 text-slate-700">Periodicidad</div>
+							{/* For patients the default/expected is annual (payment único). We still show a selector for parity but computeBilling treats patient price as annual. */}
 							<select value={billingPeriod} onChange={(e) => setBillingPeriod(e.target.value as BillingPeriod)} className={inputClass} aria-label="Periodicidad">
-								<option value="monthly">Mensual — pagar mes a mes</option>
-								<option value="quarterly">Trimestral — 3 meses (5% descuento)</option>
-								<option value="annual">Anual — 12 meses (15% descuento)</option>
+								<option value="annual">Anual — pago único</option>
+								<option value="quarterly">Trimestral — (calculado sobre equivalente mensual)</option>
+								<option value="monthly">Mensual — (equivalente mensual del plan anual)</option>
 							</select>
 
 							<div className="mt-3 p-3 bg-slate-50 rounded-md border border-slate-100 text-slate-700">
 								<div className="text-sm">Resumen de cobro:</div>
 								<div className="mt-1 text-sm">
-									<strong>{recommendedPlan.label}</strong> — Precio base mensual: ${recommendedPlan.price.toFixed(2)}
+									<strong>{recommendedPlan.label}</strong> — Precio base: ${recommendedPlan.price.toFixed(2)} {role === 'PACIENTE' ? '/ año' : '/ mes'}
 								</div>
 								<div className="text-sm">
 									Periodo: {billingPreview.label} — {billingPreview.months} {billingPreview.months > 1 ? 'meses' : 'mes'}
@@ -670,6 +796,11 @@ export default function RegisterForm(): React.ReactElement {
 							</div>
 							<div className="text-sm text-slate-600">Alergias: {allergies || '—'}</div>
 							<div className="text-sm text-slate-600">Medicaciones: {currentMedications || '—'}</div>
+							{selectedOrganizationId && (
+								<div className="mt-2 text-sm text-slate-600">
+									Asociado a clínica: <strong>{organizations.find((o) => o.id === selectedOrganizationId)?.name ?? selectedOrganizationId}</strong>
+								</div>
+							)}
 						</div>
 					) : (
 						<div className="bg-slate-50 p-4 rounded-lg border border-slate-100">

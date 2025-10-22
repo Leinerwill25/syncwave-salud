@@ -2,6 +2,7 @@
 'use client';
 
 import React from 'react';
+import { CreditCard, Users, Activity, Phone } from 'lucide-react';
 
 type Org = {
 	id?: string;
@@ -19,8 +20,6 @@ type Props = {
 	recentPatientsCount: number;
 };
 
-const clamp = (n: number, min = 0, max = 100) => Math.max(min, Math.min(max, Math.round(n)));
-
 function StatCard({ title, value, subtitle, accent, progress, icon }: { title: string; value: React.ReactNode; subtitle?: string; accent?: string; progress?: number; icon?: React.ReactNode }) {
 	return (
 		<div className="bg-white rounded-2xl ring-1 ring-slate-100 shadow-sm p-4 flex flex-col justify-between min-h-[150px]">
@@ -35,6 +34,23 @@ function StatCard({ title, value, subtitle, accent, progress, icon }: { title: s
 					{subtitle && <div className="mt-1 text-xs text-slate-400 truncate">{subtitle}</div>}
 				</div>
 			</div>
+
+			{/* progress bar (opcional) */}
+			{typeof progress === 'number' && (
+				<div className="mt-4">
+					<div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden">
+						<div
+							className="h-full rounded-full"
+							style={{
+								width: `${Math.max(0, Math.min(100, progress))}%`,
+								background: 'linear-gradient(90deg, rgba(56,189,248,1) 0%, rgba(99,102,241,1) 100%)',
+							}}
+							aria-hidden
+						/>
+					</div>
+					<div className="mt-1 text-xs text-slate-400">{`${Math.round(Math.max(0, Math.min(100, progress)))}%`}</div>
+				</div>
+			)}
 		</div>
 	);
 }
@@ -71,45 +87,13 @@ export default function ClinicStats({ organization, specialistsCount, recentPati
 			{/* GRID 2x2: en móvil 1 col, en sm y superiores 2 columnas => 2x2 */}
 			<div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
 				{/* Card 1: Plan activo */}
-				<StatCard
-					title="Plan activo"
-					value={<span className="capitalize">{organization?.planId ?? 'Sin plan'}</span>}
-					subtitle="Administración de suscripción y límites"
-					accent="bg-gradient-to-br from-sky-600 to-indigo-600"
-					icon={
-						<svg className="w-full h-full" viewBox="0 0 24 24" fill="none" aria-hidden>
-							<path d="M3 13h8V3H3v10zM13 21h8V11h-8v10zM13 3v6h8V3h-8zM3 21h8v-6H3v6z" fill="currentColor" />
-						</svg>
-					}
-				/>
+				<StatCard title="Plan activo" value={<span className="capitalize">{organization?.planId ?? 'Sin plan'}</span>} subtitle="Administración de suscripción y límites" accent="bg-gradient-to-br from-sky-600 to-indigo-600" icon={<CreditCard className="w-5 h-5" />} />
 
 				{/* Card 2: Especialistas */}
-				<StatCard
-					title="Especialistas"
-					value={<span className="text-xl sm:text-2xl">{specialistsCount}</span>}
-					subtitle={`${specialistsPct}% de la capacidad (${organization?.specialistCount ?? '—'} max.)`}
-					accent="bg-gradient-to-br from-emerald-500 to-emerald-600"
-					icon={
-						<svg className="w-full h-full" viewBox="0 0 24 24" fill="none" aria-hidden>
-							<path d="M16 11a4 4 0 10-8 0 4 4 0 008 0zM2 20a6 6 0 0112 0v1H2v-1z" fill="currentColor" />
-						</svg>
-					}
-					progress={specialistsPct}
-				/>
+				<StatCard title="Especialistas" value={<span className="text-xl sm:text-2xl">{specialistsCount}</span>} subtitle={`${specialistsPct}% de la capacidad (${organization?.specialistCount ?? '—'} max.)`} accent="bg-gradient-to-br from-emerald-500 to-emerald-600" icon={<Users className="w-5 h-5" />} progress={specialistsPct} />
 
 				{/* Card 3: Pacientes recientes */}
-				<StatCard
-					title="Pacientes recientes"
-					value={<span className="text-xl sm:text-2xl">{recentPatientsCount}</span>}
-					subtitle="Interacciones recientes"
-					accent="bg-gradient-to-br from-indigo-600 to-violet-600"
-					icon={
-						<svg className="w-full h-full" viewBox="0 0 24 24" fill="none" aria-hidden>
-							<path d="M21 11.5V6a2 2 0 00-2-2H5a2 2 0 00-2 2v13l4-2 4 2 4-2 6 2v-7.5" stroke="currentColor" strokeWidth="1.2" fill="none" strokeLinecap="round" strokeLinejoin="round" />
-						</svg>
-					}
-					progress={patientsTrendScore}
-				/>
+				<StatCard title="Pacientes recientes" value={<span className="text-xl sm:text-2xl">{recentPatientsCount}</span>} subtitle="Interacciones recientes" accent="bg-gradient-to-br from-indigo-600 to-violet-600" icon={<Activity className="w-5 h-5" />} progress={patientsTrendScore} />
 
 				{/* Card 4: Resumen / contacto */}
 				<div className="bg-white rounded-2xl ring-1 ring-slate-100 shadow-sm p-4 min-h-[150px] flex flex-col justify-between">
@@ -140,6 +124,12 @@ export default function ClinicStats({ organization, specialistsCount, recentPati
 							<div className="text-xs text-slate-500">Pacientes (registrado reciente)</div>
 							<div className="text-sm font-medium text-slate-800">{recentPatientsCount}</div>
 						</div>
+					</div>
+
+					{/* phone icon row */}
+					<div className="mt-3 flex items-center gap-3 text-sm text-slate-600">
+						<Phone className="w-4 h-4 text-slate-500" />
+						<div className="truncate">{organization?.phone ?? 'No registrado'}</div>
 					</div>
 				</div>
 			</div>

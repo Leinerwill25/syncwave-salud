@@ -12,6 +12,8 @@ type Patient = {
 	gender?: string | null;
 	phone?: string | null;
 	createdAt?: string | Date | null;
+	// <-- clave: el campo que viene desde la tabla User (OrganizationId)
+	organizationId?: string | null;
 };
 
 function initials(name?: string | null) {
@@ -38,16 +40,25 @@ function fmtDate(d?: string | Date | null) {
  * - elegante, corporativo y minimalista
  * - tarjeta con encabezado, contador y lista compacta
  * - cada elemento muestra avatar, nombre, id y fecha de registro
+ *
+ * Props:
+ * - patients: lista de pacientes (idealmente ya con organizationId desde la consulta JOIN con User)
+ * - clinicOrganizationId: OrganizationId de la clínica que ha iniciado sesión.
+ *     Si se proporciona, se mostrará sólo pacientes cuya organizationId coincida.
+ *     Si NO se proporciona, se mostrará la lista completa (comportamiento "admin").
  */
-export default function PatientsList({ patients }: { patients: Patient[] }) {
+export default function PatientsList({ patients, clinicOrganizationId }: { patients: Patient[]; clinicOrganizationId?: string | null }) {
 	// safe fallback
 	const list = Array.isArray(patients) ? patients : [];
 
-	if (list.length === 0) {
+	// Si clinicOrganizationId fue pasado, filtrar por patients con organizationId igual
+	const filteredList = typeof clinicOrganizationId === 'string' && clinicOrganizationId.trim() !== '' ? list.filter((p) => !!p.organizationId && p.organizationId === clinicOrganizationId) : list;
+
+	if (filteredList.length === 0) {
 		return (
 			<div className="rounded-2xl bg-white ring-1 ring-slate-100 shadow-sm p-5 text-center">
 				<div className="text-sm font-semibold text-slate-900">Pacientes recientes</div>
-				<p className="mt-2 text-xs text-slate-500">No hay pacientes recientes.</p>
+				<p className="mt-2 text-xs text-slate-500">{typeof clinicOrganizationId === 'string' && clinicOrganizationId.trim() !== '' ? 'No hay pacientes asignados a esta clínica.' : 'No hay pacientes recientes.'}</p>
 				<div className="mt-4 flex justify-center">
 					<Link href="/dashboard/patients/new" className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-gradient-to-r from-sky-600 to-indigo-600 text-white text-sm font-medium shadow-sm hover:scale-[1.01] transition">
 						Agregar paciente
@@ -65,12 +76,12 @@ export default function PatientsList({ patients }: { patients: Patient[] }) {
 					<p className="text-xs text-slate-500 mt-1">Últimos pacientes añadidos o con actividad reciente</p>
 				</div>
 				<div className="text-xs text-slate-500">
-					{list.length} {list.length === 1 ? 'paciente' : 'pacientes'}
+					{filteredList.length} {filteredList.length === 1 ? 'paciente' : 'pacientes'}
 				</div>
 			</div>
 
 			<ul className="divide-y divide-slate-100">
-				{list.map((p) => {
+				{filteredList.map((p) => {
 					const name = `${p.firstName ?? ''}${p.lastName ? ' ' + p.lastName : ''}`.trim() || 'Nombre no disponible';
 					return (
 						<li key={p.id} className="flex items-center justify-between gap-4 p-4 hover:bg-slate-50 transition-colors" role="listitem">

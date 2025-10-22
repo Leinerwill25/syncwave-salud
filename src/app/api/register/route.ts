@@ -3,15 +3,15 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import prisma from '@/lib/prisma';
 import { randomUUID } from 'crypto';
-import { createClient } from '@supabase/supabase-js';
-import { Prisma } from '@prisma/client';
+import { createClient, type SupabaseClient } from '@supabase/supabase-js';
+import type { Prisma, OrgType, UserRole } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 
 const SUPABASE_URL = process.env.SUPABASE_URL ?? process.env.NEXT_PUBLIC_SUPABASE_URL ?? '';
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY ?? '';
 const APP_URL = process.env.APP_URL?.replace(/\/$/, '') ?? '';
 
-const supabaseAdmin = SUPABASE_URL && SUPABASE_SERVICE_ROLE_KEY ? createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY) : null;
+const supabaseAdmin: SupabaseClient | null = SUPABASE_URL && SUPABASE_SERVICE_ROLE_KEY ? createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY) : null;
 
 function genToken(): string {
 	return randomUUID();
@@ -29,17 +29,99 @@ function addOneMonth(date = new Date()): Date {
 	return d;
 }
 
-export async function POST(req: NextRequest) {
-	try {
-		const body = await req.json();
+/* ---------- Tipos ---------- */
+type AccountInput = {
+	email: string;
+	fullName: string;
+	password: string;
+	role?: string;
+};
 
-		// Basic validation
-		if (!body?.account || !body.account.email || !body.account.fullName || !body.account.password) {
+type OrganizationInput = {
+	orgName: string;
+	orgType?: string;
+	orgAddress?: string | null;
+	orgPhone?: string | null;
+	specialistCount?: number | string;
+};
+
+type PatientInput = {
+	firstName: string;
+	lastName: string;
+	identifier?: string | null;
+	dob?: string | null; // ISO date string expected
+	gender?: string | null;
+	phone?: string | null;
+	address?: string | null;
+	organizationId?: string | null; // coming from the form (not stored on Patient table)
+};
+
+type PlanInput = {
+	selectedPlan?: string;
+	billingPeriod?: string;
+	billingMonths?: number;
+	billingDiscount?: number;
+	billingTotal?: number;
+};
+
+type RegisterBody = {
+	account: AccountInput;
+	organization?: OrganizationInput | null;
+	patient?: PatientInput | null;
+	plan?: PlanInput | null;
+	selectedOrganizationId?: string | null;
+};
+
+/* ---------- Utilidades de tipo ---------- */
+function isObject(v: unknown): v is Record<string, unknown> {
+	return typeof v === 'object' && v !== null;
+}
+
+function safeString(v: unknown): string | undefined {
+	return typeof v === 'string' ? v : undefined;
+}
+
+function safeNumber(v: unknown): number | undefined {
+	if (typeof v === 'number') return v;
+	if (typeof v === 'string' && v.trim() !== '' && !Number.isNaN(Number(v))) return Number(v);
+	return undefined;
+}
+
+function parseSupabaseCreateResp(resp: unknown): { id?: string; email?: string } | null {
+	if (!isObject(resp)) return null;
+	const r = resp as Record<string, unknown>;
+	if (isObject(r.data) && isObject(r.data.user)) {
+		const u = r.data.user as Record<string, unknown>;
+		return { id: safeString(u.id), email: safeString(u.email) };
+	}
+	if (isObject(r.user)) {
+		const u = r.user as Record<string, unknown>;
+		return { id: safeString(u.id), email: safeString(u.email) };
+	}
+	if (isObject(r.data) && (typeof r.data.id === 'string' || typeof r.data.email === 'string')) {
+		const d = r.data as Record<string, unknown>;
+		return { id: safeString(d.id), email: safeString(d.email) };
+	}
+	return null;
+}
+
+/* ---------- Handler ---------- */
+export async function POST(req: NextRequest): Promise<NextResponse> {
+	try {
+		const parsed = await req.json().catch(() => null);
+		if (!isObject(parsed) || !isObject(parsed.account)) {
 			return NextResponse.json({ ok: false, message: 'Payload inválido: falta account info' }, { status: 400 });
 		}
 
-		const { account, organization, patient, plan } = body as any;
-		const role = (account.role || 'ADMIN') as string;
+		const body = parsed as RegisterBody;
+		const { account, organization, patient, plan } = body;
+		if (!account.email || !account.fullName || !account.password) {
+			return NextResponse.json({ ok: false, message: 'Payload inválido: falta email/fullName/password' }, { status: 400 });
+		}
+
+		const roleRaw = account.role ? String(account.role) : 'ADMIN';
+		// casteo a UserRole — asumimos que el valor enviado coincide con el enum en tu schema.
+		const role = roleRaw as unknown as UserRole;
 
 		// Prevent duplicates
 		const existing = await prisma.user.findUnique({ where: { email: account.email } });
@@ -47,83 +129,73 @@ export async function POST(req: NextRequest) {
 			return NextResponse.json({ ok: false, message: 'Ya existe un usuario con ese email' }, { status: 409 });
 		}
 
-		// Try to create user in Supabase Auth (server-side) if admin client available
+		// Intentar crear usuario en Supabase (admin) si está disponible
 		let supabaseUserId: string | null = null;
 		let supabaseUserEmail: string | null = null;
 		let supabaseCreated = false;
 
 		if (supabaseAdmin) {
 			try {
-				// supabaseAdmin.auth.admin.createUser returns { data, error } where data may contain 'user'
-				const createResp = await supabaseAdmin.auth.admin.createUser({
+				const payload = {
 					email: account.email,
 					password: account.password,
-					user_metadata: { fullName: account.fullName, role: account.role },
+					user_metadata: { fullName: account.fullName, role: roleRaw },
 					email_confirm: true,
-				});
-
-				if (createResp.error) {
-					// Log and continue to fallback (we do not abort immediately so admin can still register locally)
-					console.error('Supabase create user error:', createResp.error);
-					// fallback will store passwordHash locally below
+				};
+				const createResp = await supabaseAdmin.auth.admin.createUser(payload as unknown as Record<string, unknown>);
+				const parsedResp = parseSupabaseCreateResp(createResp);
+				if (parsedResp && parsedResp.id) {
+					supabaseUserId = parsedResp.id;
+					supabaseUserEmail = parsedResp.email ?? account.email;
+					supabaseCreated = true;
 				} else {
-					// try multiple shapes to obtain the user id safely
-					const maybeUser = (createResp.data as any)?.user ?? (createResp as any)?.data ?? null;
-					// createResp.data may be { user } or might be user directly in older versions
-					let userObj: any = null;
-					if (maybeUser?.id) {
-						userObj = maybeUser; // has .id
-					} else if ((createResp as any)?.data?.id) {
-						userObj = (createResp as any).data;
-					} else if ((createResp as any)?.user?.id) {
-						userObj = (createResp as any).user;
-					}
-					if (userObj && userObj.id) {
-						supabaseUserId = userObj.id;
-						supabaseUserEmail = userObj.email ?? account.email;
-						supabaseCreated = true;
-					} else {
-						// if can't parse user id, log for debugging and allow fallback
-						console.warn('Supabase create user: could not parse returned user id, falling back to local auth. createResp:', createResp);
-					}
+					console.warn('Supabase create user: could not parse returned user id. Response:', createResp);
 				}
-			} catch (err) {
-				console.error('Error calling supabaseAdmin.createUser:', err);
-				// We'll fallback to local password hash below
+			} catch (err: unknown) {
+				if (err instanceof Error) {
+					console.error('Error calling supabaseAdmin.createUser:', err.message);
+				} else {
+					console.error('Unknown error calling supabaseAdmin.createUser:', err);
+				}
 			}
 		} else {
 			console.warn('supabaseAdmin no disponible; se usará fallback local (passwordHash).');
 		}
 
-		// Create DB records inside transaction (kept short)
+		const referredOrgIdFromForm = (patient && isObject(patient) && patient.organizationId ? String(patient.organizationId) : body.selectedOrganizationId ?? null) ?? null;
+
+		// Transaction: crear registros
 		const txResult = await prisma.$transaction(
 			async (tx: Prisma.TransactionClient) => {
-				let orgRecord: any = null;
-				let patientRecord: any = null;
-
+				// Org
+				let orgRecord: Awaited<ReturnType<typeof tx.organization.create>> | null = null;
 				if (organization) {
+					// Convertimos orgType al enum OrgType
+					const orgTypeCast = organization.orgType ? (organization.orgType as unknown as OrgType) : ('CLINICA' as OrgType);
 					orgRecord = await tx.organization.create({
 						data: {
 							name: organization.orgName,
-							type: organization.orgType || 'CLINICA',
-							address: organization.orgAddress || null,
+							type: orgTypeCast,
+							address: organization.orgAddress ?? null,
 							contactEmail: account.email,
-							phone: organization.orgPhone || null,
-							specialistCount: organization.specialistCount ? Number(organization.specialistCount) : 0,
+							phone: organization.orgPhone ?? null,
+							specialistCount: safeNumber(organization.specialistCount) ?? 0,
 						},
 					});
 				}
 
+				// Patient
+				let patientRecord: Awaited<ReturnType<typeof tx.patient.create>> | null = null;
 				if (patient) {
 					patientRecord = await tx.patient.create({
 						data: {
 							firstName: patient.firstName,
 							lastName: patient.lastName,
-							identifier: patient.identifier || null,
+							identifier: patient.identifier ?? null,
 							dob: patient.dob ? new Date(patient.dob) : null,
-							gender: patient.gender || null,
-							phone: patient.phone || null,
-							address: patient.address || null,
+							gender: patient.gender ?? null,
+							phone: patient.phone ?? null,
+							address: patient.address ?? null,
 						},
 					});
 
@@ -138,30 +210,69 @@ export async function POST(req: NextRequest) {
 					}
 				}
 
-				// Prepare user data: if supabase user created -> store authId and DO NOT store passwordHash.
-				// If supabase not available or failed, hash password and store passwordHash for local auth fallback.
-				const userData: any = {
+				// Preparar user payload
+				const userCreateData: {
+					email: string;
+					name: string | null;
+					role: UserRole;
+					organizationId?: string | undefined;
+					patientProfileId?: string | null | undefined;
+					authId?: string | undefined;
+					passwordHash?: string | undefined;
+				} = {
 					email: account.email,
-					name: account.fullName,
-					role: account.role,
-					organizationId: orgRecord ? orgRecord.id : undefined,
-					patientProfileId: patientRecord ? patientRecord.id : undefined,
+					name: account.fullName ?? null,
+					role,
 				};
 
+				// PRIORIDAD para organizationId
+				if (String(role).toUpperCase() === 'PACIENTE' && referredOrgIdFromForm) {
+					try {
+						const maybeOrg = await tx.organization.findUnique({ where: { id: referredOrgIdFromForm } });
+						if (maybeOrg) {
+							userCreateData.organizationId = referredOrgIdFromForm;
+						}
+					} catch (err: unknown) {
+						if (err instanceof Error) {
+							console.error('Error validando organizationId en tx:', err.message);
+						} else {
+							console.error('Unknown error validando organizationId en tx:', err);
+						}
+					}
+				}
+
+				if (!userCreateData.organizationId && orgRecord) {
+					userCreateData.organizationId = orgRecord.id;
+				}
+
+				if (patientRecord) {
+					// Convertimos id a string (tu schema usa string UUID)
+					userCreateData.patientProfileId = String(patientRecord.id);
+				}
+
+				// Auth / password
 				if (supabaseCreated && supabaseUserId) {
-					userData.authId = supabaseUserId;
+					userCreateData.authId = supabaseUserId;
 				} else {
-					// fallback: hash password and store passwordHash
 					const saltRounds = 10;
-					const pwdHash = await bcrypt.hash(account.password, saltRounds);
-					userData.passwordHash = pwdHash;
+					const hashed = await bcrypt.hash(account.password, saltRounds);
+					userCreateData.passwordHash = hashed;
 				}
 
 				const userRecord = await tx.user.create({
-					data: userData,
+					data: {
+						email: userCreateData.email,
+						name: userCreateData.name,
+						role: userCreateData.role,
+						organizationId: userCreateData.organizationId,
+						patientProfileId: userCreateData.patientProfileId,
+						authId: userCreateData.authId,
+						passwordHash: userCreateData.passwordHash,
+					},
 				});
 
-				let subscriptionRecord: any = null;
+				// Subscription
+				let subscriptionRecord: Awaited<ReturnType<typeof tx.subscription.create>> | null = null;
 				if (plan) {
 					const planSnapshot = {
 						selectedPlan: plan.selectedPlan,
@@ -175,7 +286,8 @@ export async function POST(req: NextRequest) {
 					subscriptionRecord = await tx.subscription.create({
 						data: {
 							organizationId: orgRecord ? orgRecord.id : undefined,
-							patientId: patientRecord ? patientRecord.id : undefined,
+							// Convertimos patientRecord.id a string si existe (Prisma espera string)
+							patientId: patientRecord ? String(patientRecord.id) : undefined,
 							planId: null,
 							stripeSubscriptionId: null,
 							status: 'TRIALING',
@@ -192,6 +304,7 @@ export async function POST(req: NextRequest) {
 						email: userRecord.email,
 						role: userRecord.role,
 						authId: userRecord.authId ?? null,
+						organizationId: userRecord.organizationId ?? null,
 					},
 					organizationId: orgRecord ? orgRecord.id : null,
 					organizationName: orgRecord ? orgRecord.name : null,
@@ -202,46 +315,46 @@ export async function POST(req: NextRequest) {
 			{ timeout: 10000 }
 		);
 
-		// Outside tx: create invites (fast)
+		// Outside transaction: invites
 		const invitesReturned: Array<{ token: string; url?: string }> = [];
-		if (txResult.organizationId) {
-			const specialists = Number(organization.specialistCount) || 0;
+		if (txResult.organizationId && organization) {
+			const specialists = safeNumber(organization.specialistCount) ?? 0;
 			if (specialists > 0) {
 				const expiresAt = expiryDays(14);
-				const invitesData: any[] = [];
+				// Usamos el tipo de Prisma para createMany
+				const invitesData: Prisma.InviteCreateManyInput[] = [];
+
 				const now = new Date();
-				for (let i = 0; i < specialists; i++) {
+				for (let i = 0; i < specialists; i += 1) {
 					const token = genToken();
+					// Garantizamos que invitedById sea string (tu schema espera string UUID)
+					const invitedById = String(txResult.userRecord.id);
+
 					invitesData.push({
 						organizationId: txResult.organizationId,
 						email: '',
 						token,
-						role: 'MEDICO',
-						invitedById: txResult.userRecord.id,
+						role: 'MEDICO' as unknown as UserRole,
+						invitedById,
 						used: false,
 						expiresAt,
 						createdAt: now,
 					});
-					invitesReturned.push({ token, url: APP_URL ? `${APP_URL}/register/accept?token=${token}` : undefined });
+
+					invitesReturned.push({
+						token,
+						url: APP_URL ? `${APP_URL}/register/accept?token=${token}` : undefined,
+					});
 				}
 
 				await prisma.invite.createMany({
-					data: invitesData.map((d) => ({
-						organizationId: d.organizationId,
-						email: d.email,
-						token: d.token,
-						role: d.role as any,
-						invitedById: d.invitedById,
-						used: d.used,
-						expiresAt: d.expiresAt,
-						createdAt: d.createdAt,
-					})),
+					data: invitesData,
 					skipDuplicates: true,
 				});
 			}
 		}
 
-		const response = {
+		const responsePayload = {
 			user: txResult.userRecord,
 			organization: txResult.organizationId ? { id: txResult.organizationId, name: txResult.organizationName } : null,
 			patient: txResult.patientRecord,
@@ -250,9 +363,13 @@ export async function POST(req: NextRequest) {
 			supabaseUser: supabaseCreated ? { id: supabaseUserId, email: supabaseUserEmail } : null,
 		};
 
-		return NextResponse.json({ ok: true, data: response, nextUrl: null });
-	} catch (err: any) {
-		console.error('Register error:', err);
-		return NextResponse.json({ ok: false, message: err?.message || 'Error interno' }, { status: 500 });
+		return NextResponse.json({ ok: true, data: responsePayload, nextUrl: null });
+	} catch (err: unknown) {
+		if (err instanceof Error) {
+			console.error('Register error:', err.message);
+			return NextResponse.json({ ok: false, message: err.message || 'Error interno' }, { status: 500 });
+		}
+		console.error('Register error (unknown):', err);
+		return NextResponse.json({ ok: false, message: 'Error interno' }, { status: 500 });
 	}
 }

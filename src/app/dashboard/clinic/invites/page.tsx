@@ -2,6 +2,7 @@
 import React from 'react';
 import prisma from '@/lib/prisma';
 import InviteListPage from '@/components/InviteListPage';
+import { cookies } from 'next/headers';
 import createSupabaseServerClient from '@/app/adapters/server'; // no pasamos cookies aquí
 
 type SerializedInvite = {
@@ -16,23 +17,34 @@ type SerializedInvite = {
 
 export async function getCurrentOrganizationId(): Promise<string | null> {
 	try {
-		// AWAIT al adapter (ahora async)
-		const { supabase } = await createSupabaseServerClient();
+		// crea el cliente supabase (tu helper usa nextCookies() internamente también)
+		const { supabase } = createSupabaseServerClient();
 
-		// DEBUG: comprobar sesión/usuario en el servidor
+		// Intento normal de obtener sesión / user vía supabase
 		const sessionResp = await supabase.auth.getSession();
 		console.log('DEBUG supabase.auth.getSession ->', sessionResp);
 
-		const userResp = await supabase.auth.getUser();
-		console.log('DEBUG supabase.auth.getUser ->', userResp);
+		let userResp = await supabase.auth.getUser();
+		console.log('DEBUG supabase.auth.getUser (initial) ->', userResp);
 
-		const error = (userResp as any)?.error ?? null;
-		const user = (userResp as any)?.data?.user ?? null;
+		// Si no hay user, extraemos cookies del request y reintentamos con sb-access-token
+		if (!userResp?.data?.user) {
+			try {
+				const cookieStore = await cookies(); // <-- await aquí evita el error de Promise<...>
+				const accessToken = cookieStore.get('sb-access-token')?.value ?? null;
 
-		if (error) {
-			if (process.env.NODE_ENV !== 'production') console.warn('supabase.auth.getUser error:', error);
-			return null;
+				if (accessToken) {
+					console.log('DEBUG: reintentando getUser con sb-access-token desde cookies');
+					// Pasamos el JWT directamente a getUser como fallback
+					userResp = await supabase.auth.getUser(accessToken);
+					console.log('DEBUG supabase.auth.getUser (from cookie) ->', userResp);
+				}
+			} catch (e) {
+				console.warn('DEBUG: error leyendo cookies para supabase token', e);
+			}
 		}
+
+		const user = (userResp as any)?.data?.user ?? null;
 
 		if (!user?.id) {
 			if (process.env.NODE_ENV !== 'production') console.log('No supabase session user found.');
@@ -101,13 +113,8 @@ export default async function InvitesPage() {
 
 	return (
 		<div className="max-w-7xl mx-auto p-6">
-			<div className="bg-white rounded-2xl p-6 border shadow-sm">
-				<h1 className="text-2xl font-bold text-slate-900 mb-2">Invitaciones</h1>
-				<p className="text-sm text-slate-600 mb-4">Gestiona las invitaciones enviadas a especialistas.</p>
-
-				{/* InviteListPage es client component — le pasamos initialInvites + organizationId */}
-				<InviteListPage initialInvites={invites} organizationId={organizationId} />
-			</div>
+			{/* InviteListPage es client component — le pasamos initialInvites + organizationId */}
+			<InviteListPage initialInvites={invites} organizationId={organizationId} />
 		</div>
 	);
 }

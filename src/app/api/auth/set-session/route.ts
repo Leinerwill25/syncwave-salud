@@ -5,19 +5,30 @@ import { serialize } from 'cookie';
 type Body = {
 	access_token?: string;
 	refresh_token?: string;
-	expires_in?: number; // seconds
-	// opcional: session object completo si lo tienes
+	expires_in?: number; // segundos
 	session?: any;
 };
 
-function cookieOpts(maxAge?: number) {
-	return {
-		httpOnly: true,
-		secure: process.env.NODE_ENV === 'production',
-		sameSite: 'lax' as const,
-		path: '/',
-		maxAge,
-	};
+// Opciones genéricas para cookies
+const cookieOpts = (maxAge?: number) => ({
+	httpOnly: true,
+	secure: process.env.NODE_ENV === 'production', // false en localhost
+	sameSite: 'lax' as const,
+	path: '/',
+	maxAge,
+});
+
+// Crea payload que Supabase SSR espera en la cookie sb:token
+function makeSbTokenPayload(access_token: string, refresh_token: string | null, expiresAtSeconds: number) {
+	return JSON.stringify({
+		currentSession: {
+			access_token,
+			expires_at: expiresAtSeconds,
+			refresh_token: refresh_token ?? null,
+			provider_token: null,
+		},
+		persistSession: true,
+	});
 }
 
 export async function POST(req: Request) {
@@ -29,63 +40,39 @@ export async function POST(req: Request) {
 			return NextResponse.json({ ok: false, message: 'access_token missing' }, { status: 400 });
 		}
 
-		const maxAge = typeof expires_in === 'number' && expires_in > 0 ? Math.floor(expires_in) : 60 * 60; // 1h por defecto
-		const expiresAt = Date.now() + maxAge * 1000;
+		const maxAge = typeof expires_in === 'number' && expires_in > 0 ? Math.floor(expires_in) : 60 * 60;
+		const expiresAtSeconds = Math.floor(Date.now() / 1000) + maxAge;
 
-		// Formato "sb:token" suele ser JSON con tokens/expiración (imitamos lo que algunos helpers esperan)
-		const sbTokenPayload = JSON.stringify({
-			access_token,
-			token_type: 'bearer',
-			expires_at: Math.floor(expiresAt / 1000), // segundos
-			refresh_token: refresh_token ?? null,
-		});
-
-		// Forma compacta para algunos helpers / debug
-		const supabaseAuthToken = JSON.stringify({
-			currentSession: {
-				access_token,
-				refresh_token: refresh_token ?? null,
-				expires_at: Math.floor(expiresAt / 1000),
-			},
-			// opcional: provider token / other fields if you have them
-		});
-
-		// Preparamos cookies (añadimos varios nombres para compatibilidad)
 		const cookiesToSet: string[] = [];
 
-		// acceso y refresh como cookies individuales (tu código anterior)
+		// Cookie simple de access token
 		cookiesToSet.push(serialize('sb-access-token', access_token, cookieOpts(maxAge)));
+
+		// Cookie de refresh token
 		if (refresh_token) {
-			cookiesToSet.push(
-				serialize('sb-refresh-token', refresh_token, cookieOpts(60 * 60 * 24 * 30)) // 30 días
-			);
+			cookiesToSet.push(serialize('sb-refresh-token', refresh_token, cookieOpts(60 * 60 * 24 * 30))); // 30 días
 		}
 
-		// cookie con payload JSON que algunos helpers esperan
+		// Cookie sb:token que Supabase SSR utiliza
+		const sbTokenPayload = makeSbTokenPayload(access_token, refresh_token ?? null, expiresAtSeconds);
 		cookiesToSet.push(serialize('sb:token', sbTokenPayload, cookieOpts(maxAge)));
 
-		// cookie alternativa que algunos proyectos usan (stringified session)
-		cookiesToSet.push(serialize('supabase-auth-token', supabaseAuthToken, cookieOpts(maxAge)));
+		// Cookie alternativa para compatibilidad
+		cookiesToSet.push(serialize('supabase-auth-token', sbTokenPayload, cookieOpts(maxAge)));
 
-		// Si el cliente te envía un objeto session completo, lo guardamos también como 'sb.session' (opcional)
+		// Cookie opcional con la sesión completa (solo si la envían)
 		if (session) {
-			try {
-				const s = typeof session === 'string' ? session : JSON.stringify(session);
-				cookiesToSet.push(serialize('sb-session', s, cookieOpts(maxAge)));
-			} catch {
-				// ignore
-			}
+			const s = typeof session === 'string' ? session : JSON.stringify(session);
+			cookiesToSet.push(serialize('sb-session', s, cookieOpts(maxAge)));
 		}
 
+		// Enviar todas las cookies en la respuesta
 		const res = NextResponse.json({ ok: true }, { status: 200 });
-		// Append each Set-Cookie
-		for (const c of cookiesToSet) {
-			res.headers.append('Set-Cookie', c);
-		}
+		cookiesToSet.forEach((c) => res.headers.append('Set-Cookie', c));
 
 		return res;
 	} catch (err: any) {
-		console.error('set-session error', err);
-		return NextResponse.json({ ok: false, message: err?.message ?? 'error' }, { status: 500 });
+		console.error('[Auth] set-session error', err);
+		return NextResponse.json({ ok: false, message: err?.message ?? 'Unknown error' }, { status: 500 });
 	}
 }
