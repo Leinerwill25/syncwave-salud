@@ -2,7 +2,6 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import createSupabaseServerClient from '@/app/adapters/server';
-import { UserRole } from '@prisma/client';
 
 type CreateInviteBody = {
 	email: string;
@@ -10,16 +9,23 @@ type CreateInviteBody = {
 	expiresAt?: string;
 };
 
+/**
+ * Lista canónica de roles (manténla sincronizada con tu schema.prisma)
+ * La definimos localmente para no depender de cómo prisma exporte enums.
+ */
+const USER_ROLES = ['ADMIN', 'MEDICO', 'ENFERMERA', 'RECEPCION', 'FARMACIA', 'PACIENTE'] as const;
+type UserRole = (typeof USER_ROLES)[number];
+
 function parseRoleOrDefault(roleCandidate?: string): UserRole {
-	if (!roleCandidate) return UserRole.MEDICO;
-	const allowed = Object.values(UserRole) as string[];
-	return allowed.includes(roleCandidate) ? (roleCandidate as UserRole) : UserRole.MEDICO;
+	if (!roleCandidate) return 'MEDICO';
+	const allowed = USER_ROLES as readonly string[];
+	return allowed.includes(roleCandidate) ? (roleCandidate as UserRole) : 'MEDICO';
 }
 
 export async function POST(req: Request) {
 	try {
-		// createSupabaseServerClient es async y hace await(nextCookies()) internamente
-		const { supabase } = createSupabaseServerClient();
+		// createSupabaseServerClient puede ser async (lo awaitamos por seguridad)
+		const { supabase } = await createSupabaseServerClient();
 
 		const {
 			data: { user },
@@ -34,6 +40,7 @@ export async function POST(req: Request) {
 			where: { authId: user.id },
 			select: { organizationId: true, id: true },
 		});
+
 		if (!appUser?.organizationId) {
 			return NextResponse.json({ error: 'Organization not found for user' }, { status: 403 });
 		}
@@ -58,7 +65,8 @@ export async function POST(req: Request) {
 				organizationId: appUser.organizationId,
 				email,
 				token,
-				role,
+				// casteamos a any para evitar dependencia con el tipo generado por prisma en tiempo de compilación
+				role: role as any,
 				invitedById: appUser.id,
 				used: false,
 				expiresAt,
@@ -72,7 +80,7 @@ export async function POST(req: Request) {
 				token: invite.token,
 				role: invite.role,
 				used: invite.used,
-				expiresAt: invite.expiresAt.toISOString(),
+				expiresAt: invite.expiresAt ? invite.expiresAt.toISOString() : null,
 				createdAt: invite.createdAt.toISOString(),
 			},
 			{ status: 201 }
@@ -85,7 +93,7 @@ export async function POST(req: Request) {
 
 export async function DELETE(req: Request) {
 	try {
-		const { supabase } = createSupabaseServerClient();
+		const { supabase } = await createSupabaseServerClient();
 
 		const {
 			data: { user },
