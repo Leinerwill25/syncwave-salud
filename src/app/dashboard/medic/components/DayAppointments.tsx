@@ -40,13 +40,13 @@ export default function DayAppointments({ selectedDate }: { selectedDate: Date }
 		<motion.div whileHover={{ y: -2 }} transition={{ type: 'spring', stiffness: 250, damping: 22 }} className="h-full w-full">
 			<Card className="relative h-full w-full flex flex-col bg-white/95 backdrop-blur-md border border-gray-100 shadow-sm hover:shadow-lg transition-all rounded-2xl overflow-hidden">
 				{/* Línea superior decorativa */}
-				<div className="absolute inset-x-0 top-0 h-[3px] bg-gradient-to-r from-violet-500 to-indigo-600" />
+				<div className="absolute inset-x-0 top-0 h-[3px] bg-linear-to-r from-violet-500 to-indigo-600" />
 
 				<CardContent className="flex flex-col p-5 relative z-10 grow">
 					{/* Encabezado */}
 					<div className="flex items-center justify-between mb-5">
 						<div className="flex items-center gap-2">
-							<div className="bg-gradient-to-br from-violet-500 to-indigo-600 p-1.5 rounded-md text-white shadow-md">
+							<div className="bg-linear-to-br from-violet-500 to-indigo-600 p-1.5 rounded-md text-white shadow-md">
 								<User className="w-4 h-4" />
 							</div>
 							<h3 className="text-base font-semibold text-gray-800 tracking-tight">Citas del Día</h3>
@@ -71,9 +71,9 @@ export default function DayAppointments({ selectedDate }: { selectedDate: Date }
 							</div>
 						) : (
 							appointments.map((a) => (
-								<motion.div key={a.id} whileHover={{ scale: 1.01 }} className="group flex flex-col gap-1 p-3 bg-gray-50 hover:bg-gradient-to-r hover:from-violet-50 hover:to-indigo-50 border border-gray-100 hover:border-violet-100 rounded-xl transition-all duration-300 shadow-sm">
+								<motion.div key={a.id} whileHover={{ scale: 1.01 }} className="group flex flex-col gap-1 p-3 bg-gray-50 hover:bg-linear-to-r hover:from-violet-50 hover:to-indigo-50 border border-gray-100 hover:border-violet-100 rounded-xl transition-all duration-300 shadow-sm">
 									<div className="flex items-center gap-3">
-										<div className="bg-gradient-to-br from-violet-500 to-indigo-600 p-1.5 rounded-full text-white flex-shrink-0 shadow-sm">
+										<div className="bg-linear-to-br from-violet-500 to-indigo-600 p-1.5 rounded-full text-white shrink-0 shadow-sm">
 											<User className="w-4 h-4" />
 										</div>
 										<p className="font-medium text-gray-800 text-sm leading-tight group-hover:text-violet-700 transition">{a.patient}</p>
@@ -89,7 +89,7 @@ export default function DayAppointments({ selectedDate }: { selectedDate: Date }
 				</CardContent>
 
 				{/* Overlay decorativo */}
-				<div className="absolute inset-0 bg-gradient-to-br from-violet-500/5 to-indigo-600/5 opacity-40 pointer-events-none" />
+				<div className="absolute inset-0 bg-linear-to-br from-violet-500/5 to-indigo-600/5 opacity-40 pointer-events-none" />
 			</Card>
 		</motion.div>
 	);

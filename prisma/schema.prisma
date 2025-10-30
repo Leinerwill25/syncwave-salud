@@ -11,7 +11,7 @@ datasource db {
 /// Models
 /// -------------------------------------------------------
 
-model user {
+model User {
   id               String        @id @default(uuid())
   email            String        @unique
   name             String?
@@ -19,8 +19,8 @@ model user {
   role             UserRole
   organization     Organization? @relation(fields: [organizationId], references: [id])
   organizationId   String?
-  createdAt        DateTime      @default(now())
-  updatedAt        DateTime      @updatedAt
+  createdAt        DateTime      @default(now()) @map("createdAt")
+  updatedAt        DateTime      @updatedAt @map("updatedAt")
 
   // Guarda el id del user en Supabase Auth (recomendado)
   authId           String?       @unique
@@ -31,9 +31,12 @@ model user {
   // Relación opcional con Patient (cuando un user también representa a un paciente)
   patientProfile   Patient?      @relation("UserPatient", fields: [patientProfileId], references: [id])
   patientProfileId String?       @unique
+
+  // Campo adicional que existe en el dump
+  used             Boolean       @default(true)
+
+  @@map("User")
 }
-
-
 
 model Plan {
   id              String    @id @default(uuid())
@@ -45,11 +48,13 @@ model Plan {
   quarterlyPrice  Float?
   annualPrice     Float?
   description     String?
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
+  createdAt       DateTime  @default(now()) @map("createdAt")
+  updatedAt       DateTime  @updatedAt @map("updatedAt")
 
   organizations   Organization[]
   subscriptions   Subscription[]
+
+  @@map("Plan")
 }
 
 model Subscription {
@@ -65,32 +70,38 @@ model Subscription {
 
   stripeSubscriptionId  String?       @unique
   status                SubscriptionStatus
-  startDate             DateTime
-  endDate               DateTime?
+  startDate             DateTime      @map("startDate")
+  endDate               DateTime?     @map("endDate")
   planSnapshot          Json
-  createdAt             DateTime      @default(now())
-  updatedAt             DateTime      @updatedAt
+  createdAt             DateTime      @default(now()) @map("createdAt")
+  updatedAt             DateTime      @updatedAt @map("updatedAt")
 
   @@index([organizationId])
   @@index([patientId])
   @@index([planId])
+  @@map("Subscription")
 }
 
 model Invite {
   id             String       @id @default(uuid())
   organization   Organization @relation(fields: [organizationId], references: [id])
   organizationId String
-  email       String?   
+  email          String?      // existe en el dump
   token          String       @unique
   role           UserRole     @default(MEDICO)
   invitedById    String?
   invitedBy      User?        @relation("InvitesFromUser", fields: [invitedById], references: [id])
   used           Boolean      @default(false)
   expiresAt      DateTime
-  createdAt      DateTime     @default(now())
+  createdAt      DateTime     @default(now()) @map("createdAt")
+
+  // Campos que aparecen en el dump pero no tenían relation definida
+  cancelledAt    DateTime?    @map("cancelledat")
+  cancelledById  String?      @map("cancelledbyid")
 
   @@index([organizationId])
   @@index([email])
+  @@map("Invite")
 }
 
 model Patient {
@@ -103,8 +114,8 @@ model Patient {
   phone                String?
   address              String?
   records              MedicalRecord[]
-  createdAt            DateTime             @default(now())
-  updatedAt            DateTime             @updatedAt
+  createdAt            DateTime             @default(now()) @map("createdAt")
+  updatedAt            DateTime             @updatedAt @map("updatedAt")
 
   // Relación inversa con User (si un user es el perfil del paciente)
   user                 User?                @relation("UserPatient")
@@ -115,6 +126,8 @@ model Patient {
 
   // Opcional: si el paciente tiene una suscripción (individual)
   subscriptions        Subscription[]
+
+  @@map("Patient")
 }
 
 model MedicalRecord {
@@ -123,8 +136,10 @@ model MedicalRecord {
   patientId  String
   authorId   String?   // user id (medico) que creó
   content    Json
-  attachments String[]  // urls a PDFs, imágenes
-  createdAt  DateTime  @default(now())
+  attachments String[]  @default([]) // urls a PDFs, imágenes
+  createdAt  DateTime  @default(now()) @map("createdAt")
+
+  @@map("MedicalRecord")
 }
 
 model FamilyGroup {
@@ -134,8 +149,10 @@ model FamilyGroup {
   ownerId        String
   members        FamilyGroupMember[]
   maxMembers     Int                  @default(5)
-  createdAt      DateTime             @default(now())
-  updatedAt      DateTime             @updatedAt
+  createdAt      DateTime             @default(now()) @map("createdAt")
+  updatedAt      DateTime             @updatedAt @map("updatedAt")
+
+  @@map("FamilyGroup")
 }
 
 model FamilyGroupMember {
@@ -144,12 +161,13 @@ model FamilyGroupMember {
   familyGroupId String
   patient       Patient     @relation(fields: [patientId], references: [id])
   patientId     String
-  roleInGroup   String?     
+  roleInGroup   String?
   addedAt       DateTime    @default(now())
 
   @@unique([familyGroupId, patientId])
   @@index([familyGroupId])
   @@index([patientId])
+  @@map("FamilyGroupMember")
 }
 
 model Organization {
@@ -162,16 +180,16 @@ model Organization {
   specialistCount Int            @default(0)
   plan            Plan?          @relation(fields: [planId], references: [id])
   planId          String?
-  subscriptions   Subscription[] 
+  subscriptions   Subscription[]
   users           User[]         // médicos/administradores ligados a esta organización
   invites         Invite[]       // invites creados para esta org (tokens a enviar a especialistas)
-  createdAt       DateTime       @default(now())
-  updatedAt       DateTime       @updatedAt
+  createdAt       DateTime       @default(now()) @map("createdAt")
+  updatedAt       DateTime       @updatedAt @map("updatedAt")
 
   inviteBaseUrl   String?        @db.VarChar(1024)
 
   // relación inversa one-to-one con ClinicProfile
-  clinicProfile   ClinicProfile? 
+  clinicProfile   ClinicProfile?
 
   @@map("Organization")
 }
@@ -191,7 +209,7 @@ model ClinicProfile {
   phoneFixed                String?  @map("phone_fixed")
   phoneMobile               String?  @map("phone_mobile")
   contactEmail              String?  @map("contact_email")
-  website                   String?  
+  website                   String?
   socialFacebook            String?  @map("social_facebook")
   socialInstagram           String?  @map("social_instagram")
   socialLinkedin            String?  @map("social_linkedin")
@@ -209,7 +227,7 @@ model ClinicProfile {
   bankAccountType           String?  @map("bank_account_type")
   bankAccountNumber         String?  @map("bank_account_number")
   bankAccountOwner          String?  @map("bank_account_owner")
-  currency                  String?  
+  currency                  String?
   paymentMethods            Json     @default("[]") @map("payment_methods")   // jsonb
   billingSeries             String?  @map("billing_series")
   taxRegime                 String?  @map("tax_regime")
@@ -223,6 +241,283 @@ model ClinicProfile {
   @@map("clinic_profile")
 }
 
+/// -------------------------------------------------------
+/// Additional models present in DB dump (mapeados)
+/// -------------------------------------------------------
+
+model MedicalRecord_alt {
+  /// kept for compatibility if needed — but main MedicalRecord model above maps your table
+  id         String    @id @default(uuid())
+  patientId  String
+  content    Json
+  createdAt  DateTime  @default(now())
+
+  @@map("MedicalRecord")
+}
+
+/// Appointment table (named `appointment` en la BD)
+model Appointment {
+  id               String    @id @default(uuid())
+  patientId        String    @map("patient_id")
+  patient          Patient   @relation(fields: [patientId], references: [id])
+  doctorId         String?   @map("doctor_id")
+  doctor           User?     @relation(fields: [doctorId], references: [id])
+  organizationId   String?   @map("organization_id")
+  organization     Organization? @relation(fields: [organizationId], references: [id])
+  scheduledAt      DateTime  @map("scheduled_at")
+  durationMinutes  Int?      @map("duration_minutes")
+  status           String    @default("SCHEDULED")
+  reason           String?
+  location         String?
+  createdAt        DateTime  @default(now()) @map("created_at")
+  updatedAt        DateTime  @default(now()) @map("updated_at")
+
+  @@map("appointment")
+}
+
+model Consultation {
+  id               String    @id @default(uuid())
+  appointmentId    String?   @map("appointment_id")
+  appointment      Appointment? @relation(fields: [appointmentId], references: [id])
+  patientId        String    @map("patient_id")
+  patient          Patient   @relation(fields: [patientId], references: [id])
+  doctorId         String    @map("doctor_id")
+  doctor           User      @relation(fields: [doctorId], references: [id])
+  organizationId   String?   @map("organization_id")
+  organization     Organization? @relation(fields: [organizationId], references: [id])
+  startedAt        DateTime? @map("started_at")
+  endedAt          DateTime? @map("ended_at")
+  chiefComplaint   String?   @map("chief_complaint")
+  diagnosis        String?
+  notes            String?
+  vitals           Json?
+  createdAt        DateTime  @default(now()) @map("created_at")
+  updatedAt        DateTime  @default(now()) @map("updated_at")
+
+  medicalRecordId  String?   @map("medical_record_id")
+  medicalRecord    MedicalRecord? @relation(fields: [medicalRecordId], references: [id])
+
+  @@map("consultation")
+}
+
+model Conversation {
+  id            String    @id @default(uuid())
+  title         String?
+  organizationId String?  @map("organization_id")
+  organization  Organization? @relation(fields: [organizationId], references: [id])
+  createdAt     DateTime  @default(now()) @map("created_at")
+
+  @@map("conversation")
+}
+
+model Notification {
+  id             String        @id @default(uuid())
+  userId         String?       @map("userId")
+  user           User?         @relation(fields: [userId], references: [id])
+  organizationId String?       @map("organizationId")
+  organization   Organization? @relation(fields: [organizationId], references: [id])
+  type           String
+  title          String?
+  message        String
+  payload        Json?
+  read           Boolean       @default(false)
+  createdAt      DateTime      @default(now()) @map("createdAt")
+
+  @@map("Notification")
+}
+
+model Facturacion {
+  id              String    @id @default(uuid())
+  appointmentId   String    @map("appointment_id")
+  appointment     Appointment @relation(fields: [appointmentId], references: [id])
+  patientId       String    @map("patient_id")
+  patient         Patient   @relation(fields: [patientId], references: [id])
+  doctorId        String?   @map("doctor_id")
+  doctor          User?     @relation(fields: [doctorId], references: [id])
+  organizationId  String?   @map("organization_id")
+  organization    Organization? @relation(fields: [organizationId], references: [id])
+  subtotal        Decimal   @default(0)
+  impuestos       Decimal   @default(0)
+  total           Decimal   @default(0)
+  currency        String    @default("USD")
+  tipoCambio      Decimal?  @map("tipo_cambio")
+  billingSeries   String?   @map("billing_series")
+  numeroFactura   String?   @unique @map("numero_factura")
+  estadoFactura   String    @map("estado_factura") @default("emitida")
+  estadoPago      String    @map("estado_pago") @default("pendiente")
+  metodoPago      String?   @map("metodo_pago")
+  fechaEmision    DateTime  @map("fecha_emision") @default(now())
+  fechaPago       DateTime? @map("fecha_pago")
+  notas           String?
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @default(now()) @map("updated_at")
+
+  @@map("facturacion")
+}
+
+model LabResult {
+  id               String    @id @default(uuid())
+  patientId        String    @map("patient_id")
+  patient          Patient   @relation(fields: [patientId], references: [id])
+  consultationId   String?   @map("consultation_id")
+  consultation     Consultation? @relation(fields: [consultationId], references: [id])
+  orderingProviderId String? @map("ordering_provider_id")
+  resultType       String?   @map("result_type")
+  result           Json
+  attachments      String[]  @default([])
+  isCritical       Boolean   @default(false) @map("is_critical")
+  reportedAt       DateTime  @default(now()) @map("reported_at")
+  createdAt        DateTime  @default(now()) @map("created_at")
+
+  @@map("lab_result")
+}
+
+model Medication {
+  id         String   @id @default(uuid())
+  code       String?  @unique
+  name       String
+  brand      String?
+  form       String?
+  strength   String?
+  unit       String?
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @default(now()) @map("updated_at")
+
+  @@map("medication")
+}
+
+model Message {
+  id              String    @id @default(uuid())
+  conversationId  String?   @map("conversation_id")
+  conversation    Conversation? @relation(fields: [conversationId], references: [id])
+  senderId        String?   @map("sender_id")
+  sender          User?     @relation(fields: [senderId], references: [id])
+  recipientUserId String?   @map("recipient_user_id")
+  recipientUser   User?     @relation(fields: [recipientUserId], references: [id])
+  patientId       String?   @map("patient_id")
+  patient         Patient?  @relation(fields: [patientId], references: [id])
+  body            String?
+  attachments     String[]  @default([])
+  read            Boolean   @default(false)
+  createdAt       DateTime  @default(now()) @map("created_at")
+
+  @@map("message")
+}
+
+model PharmacyInventory {
+  id           String    @id @default(uuid())
+  organizationId String  @map("organization_id")
+  organization Organization @relation(fields: [organizationId], references: [id])
+  medicationId String    @map("medication_id")
+  medication   Medication @relation(fields: [medicationId], references: [id])
+  lot          String?
+  expiryDate   DateTime? @map("expiry_date")
+  quantity     Int       @default(0)
+  unitCost     Decimal?  @map("unit_cost")
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @default(now()) @map("updated_at")
+
+  @@map("pharmacy_inventory")
+}
+
+model PharmacyOrder {
+  id            String    @id @default(uuid())
+  organizationId String   @map("organization_id")
+  organization  Organization @relation(fields: [organizationId], references: [id])
+  supplierId    String?   @map("supplier_id")
+  createdBy     String?   @map("created_by")
+  createdByUser User?     @relation("PharmacyOrderCreator", fields: [createdBy], references: [id])
+  status        String    @default("PENDING")
+  placedAt      DateTime  @map("placed_at") @default(now())
+  expectedDelivery DateTime? @map("expected_delivery")
+  totalAmount   Decimal?  @map("total_amount")
+  notes         String?
+
+  @@map("pharmacy_order")
+}
+
+model PharmacyOrderItem {
+  id           String    @id @default(uuid())
+  orderId      String    @map("order_id")
+  order        PharmacyOrder @relation(fields: [orderId], references: [id])
+  medicationId String    @map("medication_id")
+  medication   Medication @relation(fields: [medicationId], references: [id])
+  quantity     Int
+  unitCost     Decimal?  @map("unit_cost")
+  totalCost    Decimal?  @map("total_cost")
+
+  @@map("pharmacy_order_item")
+}
+
+model Prescription {
+  id           String   @id @default(uuid())
+  patientId    String   @map("patient_id")
+  patient      Patient  @relation(fields: [patientId], references: [id])
+  doctorId     String   @map("doctor_id")
+  doctor       User     @relation(fields: [doctorId], references: [id])
+  consultationId String? @map("consultation_id")
+  consultation Consultation? @relation(fields: [consultationId], references: [id])
+  issuedAt     DateTime @map("issued_at") @default(now())
+  validUntil   DateTime? @map("valid_until")
+  notes        String?
+  status       String   @default("ACTIVE")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  @@map("prescription")
+}
+
+model PrescriptionDispense {
+  id             String  @id @default(uuid())
+  prescriptionId String  @map("prescription_id")
+  prescription   Prescription @relation(fields: [prescriptionId], references: [id])
+  pharmacyId     String? @map("pharmacy_id")
+  pharmacy       Organization? @relation(fields: [pharmacyId], references: [id])
+  dispensedBy    String? @map("dispensed_by")
+  dispensedByUser User?  @relation("PrescriptionDispensedBy", fields: [dispensedBy], references: [id])
+  dispensedAt    DateTime? @map("dispensed_at")
+  status         String   @default("PENDING")
+  notes          String?
+
+  @@map("prescription_dispense")
+}
+
+model PrescriptionItem {
+  id             String  @id @default(uuid())
+  prescriptionId String  @map("prescription_id")
+  prescription   Prescription @relation(fields: [prescriptionId], references: [id])
+  medicationId   String? @map("medication_id")
+  medication     Medication? @relation(fields: [medicationId], references: [id])
+  name           String
+  dosage         String?
+  form           String?
+  frequency      String?
+  duration       String?
+  quantity       Int?
+  instructions   String?
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  @@map("prescription_item")
+}
+
+model Task {
+  id                String   @id @default(uuid())
+  title             String
+  description       String?
+  assignedTo        String?  @map("assigned_to")
+  assignedToUser    User?    @relation("TaskAssignedTo", fields: [assignedTo], references: [id])
+  patientId         String?  @map("patient_id")
+  patient           Patient? @relation(fields: [patientId], references: [id])
+  relatedConsultationId String? @map("related_consultation_id")
+  relatedConsultation Consultation? @relation(fields: [relatedConsultationId], references: [id])
+  dueAt             DateTime? @map("due_at")
+  completed         Boolean  @default(false)
+  createdBy         String?  @map("created_by")
+  createdByUser     User?    @relation("TaskCreator", fields: [createdBy], references: [id])
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @default(now()) @map("updated_at")
+
+  @@map("task")
+}
 
 /// -------------------------------------------------------
 /// Enums

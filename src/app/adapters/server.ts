@@ -12,13 +12,12 @@ type NextCookieStoreLike = {
 type CookieStoreLike = ReturnType<typeof nextCookies> | NextCookieStoreLike;
 
 /**
- * Crea un cliente Supabase para uso en Server Components / routes.
- * Acepta un store de cookies custom para testing.
+ * Crea un cliente Supabase configurado para el entorno del servidor (Server Components o API routes).
+ * Permite pasar un store de cookies personalizado para testing.
  */
 export function createSupabaseServerClient(customCookieStore?: CookieStoreLike): { supabase: SupabaseClient; cookies: CookieStoreLike } {
 	const cookieStore: CookieStoreLike = customCookieStore ?? nextCookies();
 
-	// Adapter mínimo que Supabase espera: getItem / setItem / removeItem
 	const storage = {
 		getItem: (key: string): string | null => {
 			try {
@@ -39,26 +38,26 @@ export function createSupabaseServerClient(customCookieStore?: CookieStoreLike):
 					secure: process.env.NODE_ENV === 'production',
 				});
 			} catch {
-				// Algunos runtimes (o tests) no permiten set() — ignoramos silenciosamente.
+				// algunos entornos no permiten escribir cookies, ignoramos
 			}
 		},
 		removeItem: (key: string): void => {
 			try {
 				(cookieStore as NextCookieStoreLike).delete?.(key);
 			} catch {
-				// ignore
+				// ignoramos
 			}
 		},
 	};
 
 	const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
 	const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
 	if (!url || !key) {
-		throw new Error('Faltan env vars NEXT_PUBLIC_SUPABASE_URL o NEXT_PUBLIC_SUPABASE_ANON_KEY');
+		throw new Error('Faltan variables de entorno NEXT_PUBLIC_SUPABASE_URL o NEXT_PUBLIC_SUPABASE_ANON_KEY');
 	}
 
 	const supabase = createSupabaseClient(url, key, {
-		// pasamos el storage para que supabase pueda leer las cookies en Server Components
 		auth: {
 			persistSession: false,
 			storage,

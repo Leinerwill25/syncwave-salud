@@ -24,17 +24,14 @@ const LINKS: LinkItem[] = [
 	{
 		label: 'Pacientes',
 		icon: User,
-		submenu: [
-			{ href: '/dashboard/medic/pacientes', label: 'Listado de pacientes' },
-			{ href: '/dashboard/medic/pacientes/nuevo', label: 'Registrar paciente' },
-		],
+		submenu: [{ href: '/dashboard/medic/pacientes', label: 'Listado de pacientes' }],
 	},
 	{
 		label: 'Consultas',
 		icon: ClipboardList,
 		submenu: [
 			{ href: '/dashboard/medic/consultas', label: 'Todas las consultas' },
-			{ href: '/dashboard/medic/consultas/nueva', label: 'Nueva consulta', comingSoon: true },
+			{ href: '/dashboard/medic/consultas/nueva', label: 'Nueva consulta' },
 		],
 	},
 	{
@@ -81,36 +78,48 @@ const LINKS: LinkItem[] = [
 ];
 
 export default function MedicSidebar() {
-	const pathname = usePathname() ?? '/dashboard/medic';
+	const pathname = usePathname() ?? '/';
 	const [openMenus, setOpenMenus] = useState<string[]>([]);
 
 	const toggleMenu = (label: string) => {
 		setOpenMenus((prev) => (prev.includes(label) ? prev.filter((m) => m !== label) : [...prev, label]));
 	};
 
+	// Helper seguro para comprobar si href está "activo" respecto a pathname.
+	// Considera activo solo si pathname === href OR pathname startsWith(href + '/')
+	const isPathActive = (href?: string | null) => {
+		if (!href) return false;
+		if (pathname === href) return true;
+		// asegúrate de que sea un segment boundary (ej. '/a' no debe coincidir con '/ab')
+		return pathname.startsWith(href.endsWith('/') ? href : href + '/');
+	};
+
 	const renderLink = (link: LinkItem) => {
-		const isActive = link.href && (pathname === link.href || pathname.startsWith(link.href));
+		const isActive = !!link.href && isPathActive(link.href);
 		const isComing = !!link.comingSoon;
 
 		// Submenu
 		if (link.submenu) {
-			const isOpen = openMenus.includes(link.label) || link.submenu.some((l) => pathname.startsWith(l.href || ''));
+			// Abrir si está en openMenus o si alguno de los hijos es la ruta actual
+			const childActive = link.submenu.some((l) => isPathActive(l.href));
+			const isOpen = openMenus.includes(link.label) || childActive;
 
 			return (
 				<li key={link.label}>
 					<button
 						onClick={() => toggleMenu(link.label)}
 						className={`group flex items-center justify-between w-full px-3 py-2 rounded-lg text-sm font-medium transition
-						${isOpen ? 'bg-gradient-to-r from-violet-600 to-indigo-600 text-white shadow-md' : 'text-slate-700 hover:bg-slate-50'}`}>
+						${isOpen ? 'bg-linear-to-r from-violet-600 to-indigo-600 text-white shadow-md' : 'text-slate-700 hover:bg-slate-50'}`}>
 						<span className="flex items-center gap-3">
 							{link.icon && <link.icon className={`w-5 h-5 ${isOpen ? 'text-white' : 'text-violet-600'}`} />}
 							{link.label}
 						</span>
 						<ChevronDown className={`w-4 h-4 transition-transform ${isOpen ? 'rotate-180 text-white' : 'text-slate-400 group-hover:text-violet-600'}`} />
 					</button>
-					<ul className={`pl-8 mt-1 flex flex-col gap-1 transition-all overflow-hidden ${isOpen ? 'max-h-60' : 'max-h-0'}`}>
+
+					<ul className={`pl-8 mt-1 flex flex-col gap-1 transition-[max-height] duration-200 overflow-hidden ${isOpen ? 'max-h-60' : 'max-h-0'}`}>
 						{link.submenu.map((sub) => {
-							const subActive = sub.href && pathname.startsWith(sub.href);
+							const subActive = isPathActive(sub.href);
 							const subComing = !!sub.comingSoon;
 
 							if (subComing) {
@@ -133,7 +142,7 @@ export default function MedicSidebar() {
 										href={sub.href!}
 										aria-current={subActive ? 'page' : undefined}
 										className={`group block px-3 py-2 rounded-lg text-sm transition
-										${subActive ? 'bg-violet-100 text-violet-700 font-semibold' : 'text-slate-700 hover:bg-slate-50'}`}>
+											${subActive ? 'bg-violet-100 text-violet-700 font-semibold' : 'text-slate-700 hover:bg-slate-50'}`}>
 										{sub.label}
 									</Link>
 								</li>
@@ -144,7 +153,7 @@ export default function MedicSidebar() {
 			);
 		}
 
-		// Link normal
+		// Link normal (no submenu)
 		if (isComing) {
 			return (
 				<li key={link.label}>
@@ -166,7 +175,7 @@ export default function MedicSidebar() {
 					href={link.href!}
 					aria-current={isActive ? 'page' : undefined}
 					className={`group flex items-center gap-3 w-full px-3 py-2 rounded-lg text-sm font-medium transition
-					${isActive ? 'bg-gradient-to-r from-violet-600 to-indigo-600 text-white shadow-md' : 'text-slate-700 hover:bg-slate-50'}`}>
+					${isActive ? 'bg-linear-to-r from-violet-600 to-indigo-600 text-white shadow-md' : 'text-slate-700 hover:bg-slate-50'}`}>
 					{link.icon && <link.icon className={`w-5 h-5 ${isActive ? 'text-white' : 'text-violet-600'}`} />}
 					{link.label}
 				</Link>
@@ -180,7 +189,7 @@ export default function MedicSidebar() {
 				<div className="flex flex-col gap-4 bg-white/70 backdrop-blur-md rounded-2xl p-4 shadow-lg ring-1 ring-slate-100 border border-slate-50">
 					{/* Brand */}
 					<div className="flex items-center gap-3">
-						<div className="w-12 h-12 rounded-xl bg-gradient-to-br from-violet-600 to-indigo-600 flex items-center justify-center text-white font-bold text-lg shadow-md ring-1 ring-white/20">MD</div>
+						<div className="w-12 h-12 rounded-xl bg-linear-to-br from-violet-600 to-indigo-600 flex items-center justify-center text-white font-bold text-lg shadow-md ring-1 ring-white/20">MD</div>
 						<div>
 							<div className="text-sm font-semibold text-slate-900">Syncwave Salud</div>
 							<div className="text-[12px] text-slate-500">Panel médico — Profesional</div>

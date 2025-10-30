@@ -22,12 +22,12 @@ export default function DayAgenda({ onDateSelect }: DayAgendaProps) {
 	return (
 		<motion.div whileHover={{ y: -4 }} transition={{ type: 'spring', stiffness: 250, damping: 20 }} className="h-full w-full">
 			<Card className="relative bg-white/95 backdrop-blur-md border border-gray-100 shadow-sm hover:shadow-xl transition-all rounded-2xl overflow-hidden">
-				<div className="absolute inset-x-0 top-0 h-[4px] bg-gradient-to-r from-violet-500 to-indigo-600" />
+				<div className="absolute inset-x-0 top-0 h-1 bg-linear-to-r from-violet-500 to-indigo-600" />
 
 				<CardContent className="p-6 relative z-10 flex flex-col gap-6">
 					<div className="flex items-center justify-between">
 						<div className="flex items-center gap-2">
-							<div className="bg-gradient-to-br from-violet-500 to-indigo-600 p-2 rounded-lg text-white shadow-md">
+							<div className="bg-linear-to-br from-violet-500 to-indigo-600 p-2 rounded-lg text-white shadow-md">
 								<CalendarDays className="w-5 h-5" />
 							</div>
 							<h3 className="text-lg font-semibold text-gray-800 tracking-tight">Agenda del Día</h3>
@@ -41,7 +41,7 @@ export default function DayAgenda({ onDateSelect }: DayAgendaProps) {
 						</p>
 					</div>
 
-					<div className="flex justify-center items-center bg-gradient-to-b from-white to-gray-50 border border-gray-100 rounded-2xl shadow-inner p-4">
+					<div className="flex justify-center items-center bg-linear-to-b from-white to-gray-50 border border-gray-100 rounded-2xl shadow-inner p-4">
 						<DayPicker
 							mode="single"
 							selected={selected}
@@ -60,7 +60,7 @@ export default function DayAgenda({ onDateSelect }: DayAgendaProps) {
 					</div>
 				</CardContent>
 
-				<div className="absolute inset-0 bg-gradient-to-br from-violet-500/5 to-indigo-600/5 opacity-40 pointer-events-none" />
+				<div className="absolute inset-0 bg-linear-to-br from-violet-500/5 to-indigo-600/5 opacity-40 pointer-events-none" />
 			</Card>
 		</motion.div>
 	);

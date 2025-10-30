@@ -1,7 +1,7 @@
 // components/PublicNavBar.tsx
 'use client';
 
-import React, { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 
@@ -50,7 +50,7 @@ export default function PublicNavBar() {
 					<div className="flex h-20 items-center justify-between">
 						{/* Logo */}
 						<Link href="/" className="flex items-center gap-4 no-underline" aria-label="Inicio - Syncwave">
-							<div className="relative w-12 h-12 rounded-xl overflow-hidden flex-shrink-0">
+							<div className="relative w-12 h-12 rounded-xl overflow-hidden shrink-0">
 								<Image src="/3.png" alt="Syncwave" fill sizes="48px" className="object-contain" />
 							</div>
 
@@ -66,7 +66,7 @@ export default function PublicNavBar() {
 								<Link key={l.href} href={l.href} className="relative px-3 py-2 text-sm font-medium text-[#2C3E50]/88 hover:text-[#2C3E50] focus:outline-none focus:ring-2 focus:ring-[#4A90E2]/30 rounded">
 									<span className="group relative inline-block">
 										{l.label}
-										<span className="absolute left-0 -bottom-1 h-0.5 w-0 bg-gradient-to-r from-[#4A90E2] via-[#7BAEE8] to-[#8E7CC3] transition-all group-hover:w-full rounded" />
+										<span className="absolute left-0 -bottom-1 h-0.5 w-0 bg-linear-to-r from-[#4A90E2] via-[#7BAEE8] to-[#8E7CC3] transition-all group-hover:w-full rounded" />
 									</span>
 								</Link>
 							))}

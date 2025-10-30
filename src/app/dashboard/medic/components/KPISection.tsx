@@ -92,9 +92,9 @@ export default function KPISection() {
 					<motion.div key={i} whileHover={{ y: -6 }} transition={{ type: 'spring', stiffness: 300, damping: 18 }}>
 						<Card className="relative bg-white/90 backdrop-blur-sm border border-gray-100 shadow-sm hover:shadow-xl hover:border-gray-200 transition-all rounded-2xl overflow-hidden">
 							<CardContent className="p-6 flex items-center gap-5 relative z-10">
-								<div className={`relative flex items-center justify-center bg-gradient-to-br ${gradient} p-4 rounded-2xl text-white`}>
+								<div className={`relative flex items-center justify-center bg-linear-to-br ${gradient} p-4 rounded-2xl text-white`}>
 									<Icon className="w-6 h-6" />
-									<div className={`absolute inset-0 rounded-2xl opacity-30 blur-md bg-gradient-to-br ${gradient}`} />
+									<div className={`absolute inset-0 rounded-2xl opacity-30 blur-md bg-linear-to-br ${gradient}`} />
 								</div>
 
 								<div className="flex flex-col justify-center">
@@ -104,8 +104,8 @@ export default function KPISection() {
 								</div>
 							</CardContent>
 
-							<div className={`absolute inset-0 bg-gradient-to-br ${gradient} opacity-[0.06]`} />
-							<div className={`absolute bottom-0 left-0 w-full h-[3px] bg-gradient-to-r ${gradient}`} />
+							<div className={`absolute inset-0 bg-linear-to-br ${gradient} opacity-[0.06]`} />
+							<div className={`absolute bottom-0 left-0 w-full h-[3px] bg-linear-to-r ${gradient}`} />
 						</Card>
 					</motion.div>
 				);

@@ -1,5 +1,4 @@
 // src/app/dashboard/clinic/specialists/page.tsx
-import React from 'react';
 import { Buffer } from 'buffer';
 import createSupabaseServerClient from '@/app/adapters/server';
 import SpecialistsInvitesList from '@/components/SpecialistsInvitesList';

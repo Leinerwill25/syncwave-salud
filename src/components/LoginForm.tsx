@@ -4,6 +4,7 @@
 import React, { useState } from 'react';
 import { createClient } from '@supabase/supabase-js';
 import { useRouter } from 'next/navigation';
+import { FiMail, FiEye, FiEyeOff, FiShield, FiBriefcase, FiCheckCircle, FiLogIn, FiRefreshCw } from 'react-icons/fi';
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
@@ -64,6 +65,7 @@ export default function LoginFormAdvanced(): React.ReactElement {
 			return false;
 		}
 	}
+
 	async function handleSubmit(e: React.FormEvent) {
 		e.preventDefault();
 		setErrorMsg(null);
@@ -156,16 +158,15 @@ export default function LoginFormAdvanced(): React.ReactElement {
 								background: 'linear-gradient(180deg, rgba(74,144,226,0.08) 0%, rgba(142,124,195,0.06) 100%)',
 							}}>
 							<div className="w-full max-w-sm text-center">
+								{/* Primary graphic: stylized shield + cross (health) */}
 								<div
 									className="mx-auto mb-6 flex h-24 w-24 items-center justify-center rounded-xl"
 									style={{
 										background: 'linear-gradient(135deg, #4A90E2 0%, #8E7CC3 100%)',
 										boxShadow: '0 8px 20px rgba(72,88,120,0.12)',
 									}}>
-									<svg width="48" height="48" viewBox="0 0 24 24" fill="none" className="text-white">
-										<path d="M3 12a9 9 0 1 0 18 0 9 9 0 0 0-18 0Z" stroke="white" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" opacity="0.95" />
-										<path d="M8 12h8" stroke="white" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
-									</svg>
+									{/* Icon from library */}
+									<FiShield className="h-10 w-10 text-white" aria-hidden />
 								</div>
 
 								<h2 className="text-3xl font-semibold text-[#2C3E50] mb-2">Bienvenido de nuevo</h2>
@@ -173,16 +174,13 @@ export default function LoginFormAdvanced(): React.ReactElement {
 
 								<div className="mt-8 flex justify-center gap-3">
 									<span className="inline-flex items-center gap-2 rounded-full bg-[rgba(44,62,80,0.04)] px-4 py-2 text-sm text-[#2C3E50]/80 ring-1 ring-[rgba(44,62,80,0.04)]">
-										<svg width="14" height="14" viewBox="0 0 24 24" fill="none" className="opacity-80">
-											<path d="M20 6L9 17l-5-5" stroke="#2C3E50" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
-										</svg>
+										{/* Shield check icon */}
+										<FiCheckCircle className="h-4 w-4 text-[#2C3E50]" aria-hidden />
 										Acceso seguro
 									</span>
 									<span className="inline-flex items-center gap-2 rounded-full bg-[rgba(44,62,80,0.04)] px-4 py-2 text-sm text-[#2C3E50]/80 ring-1 ring-[rgba(44,62,80,0.04)]">
-										<svg width="14" height="14" viewBox="0 0 24 24" fill="none" className="opacity-80">
-											<path d="M12 2v4" stroke="#2C3E50" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
-											<path d="M20 12H4" stroke="#2C3E50" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
-										</svg>
+										{/* Corporate icon */}
+										<FiBriefcase className="h-4 w-4 text-[#2C3E50]" aria-hidden />
 										Corporativo
 									</span>
 								</div>
@@ -198,28 +196,30 @@ export default function LoginFormAdvanced(): React.ReactElement {
 									</div>
 
 									<div className="space-y-5">
+										{/* Email with icon */}
 										<label htmlFor="email" className="block">
 											<span className="text-sm text-[#2C3E50]/80">Correo electrónico</span>
-											<input id="email" name="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required className="mt-3 w-full rounded-md border border-[rgba(44,62,80,0.08)] bg-[#FFFFFF] px-4 py-3 text-[#2C3E50] placeholder-[#2C3E50]/40 focus:outline-none focus:ring-2 focus:ring-[#4A90E2] transition" placeholder="tu@ejemplo.com" />
+											<div className="relative mt-3">
+												{/* Mail icon (left) */}
+												<div className="absolute inset-y-0 left-3 flex items-center pointer-events-none">
+													<FiMail className="h-4 w-4 text-[#2C3E50]/70" aria-hidden />
+												</div>
+
+												<input id="email" name="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required className="mt-0 w-full rounded-md border border-[rgba(44,62,80,0.08)] bg-[#FFFFFF] px-4 py-3 pl-11 text-[#2C3E50] placeholder-[#2C3E50]/40 focus:outline-none focus:ring-2 focus:ring-[#4A90E2] transition" placeholder="tu@ejemplo.com" />
+											</div>
 										</label>
 
+										{/* Password with interactive eye icon */}
 										<label htmlFor="password" className="block">
-											<div className="flex items-center justify-between">
-												<span className="text-sm text-[#2C3E50]/80">Contraseña</span>
-												<button type="button" onClick={() => setShowPassword((s) => !s)} className="text-sm text-[#4A90E2] hover:underline transition">
-													{showPassword ? 'Ocultar' : 'Mostrar'}
-												</button>
-											</div>
+											<span className="text-sm text-[#2C3E50]/80">Contraseña</span>
 
 											<div className="relative mt-3">
 												<input id="password" name="password" type={showPassword ? 'text' : 'password'} value={password} onChange={(e) => setPassword(e.target.value)} required className="w-full rounded-md border border-[rgba(44,62,80,0.08)] bg-[#FFFFFF] px-4 py-3 text-[#2C3E50] placeholder-[#2C3E50]/40 focus:outline-none focus:ring-2 focus:ring-[#4A90E2] transition pr-12" placeholder="••••••••" />
 
-												<div className="absolute inset-y-0 right-3 flex items-center text-[#2C3E50]/60 pointer-events-none">
-													<svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-														<path d="M2.8 12s3.6-6 9.2-6 9.2 6 9.2 6-3.6 6-9.2 6S2.8 12 2.8 12z" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
-														<circle cx="12" cy="12" r="2.4" stroke="currentColor" strokeWidth="1.2" />
-													</svg>
-												</div>
+												{/* Eye button (interactive) */}
+												<button type="button" onClick={() => setShowPassword((s) => !s)} aria-label={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'} className="absolute inset-y-0 right-3 flex items-center justify-center p-1 rounded focus:outline-none focus:ring-2 focus:ring-[#4A90E2]">
+													{showPassword ? <FiEyeOff className="h-5 w-5 text-[#2C3E50]" aria-hidden /> : <FiEye className="h-5 w-5 text-[#2C3E50]" aria-hidden />}
+												</button>
 											</div>
 										</label>
 
@@ -247,18 +247,12 @@ export default function LoginFormAdvanced(): React.ReactElement {
 												}}>
 												{loading ? (
 													<>
-														<svg className="h-5 w-5 animate-spin" viewBox="0 0 24 24" fill="none">
-															<circle cx="12" cy="12" r="10" stroke="rgba(255,255,255,0.25)" strokeWidth="3" />
-															<path d="M22 12a10 10 0 0 1-10 10" stroke="white" strokeWidth="3" strokeLinecap="round" />
-														</svg>
+														<FiRefreshCw className="h-5 w-5 animate-spin" aria-hidden />
 														Iniciando...
 													</>
 												) : (
 													<>
-														<svg width="18" height="18" viewBox="0 0 24 24" fill="none" className="opacity-90">
-															<path d="M5 12h14" stroke="white" strokeWidth="1.6" strokeLinecap="round" />
-															<path d="M12 5v14" stroke="white" strokeWidth="1.6" strokeLinecap="round" />
-														</svg>
+														<FiLogIn className="h-4 w-4 opacity-90" aria-hidden />
 														Iniciar sesión
 													</>
 												)}
@@ -279,7 +273,7 @@ export default function LoginFormAdvanced(): React.ReactElement {
 
 									{/* Role badge + error */}
 									<div className="mt-4 flex items-center justify-between">
-										<div className="min-h-[1.25rem] w-2/3" aria-live="polite">
+										<div className="min-h-5 w-2/3" aria-live="polite">
 											{errorMsg && (
 												<div
 													role="alert"

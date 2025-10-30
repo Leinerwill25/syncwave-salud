@@ -459,7 +459,7 @@ export default function AppointmentForm() {
 					</div>
 
 					<div>
-						<button type="submit" disabled={submitting || loadingSession || !!sessionError} className="w-full py-2 bg-gradient-to-r from-violet-600 to-indigo-600 text-white rounded-md text-sm font-semibold shadow-sm disabled:opacity-60">
+						<button type="submit" disabled={submitting || loadingSession || !!sessionError} className="w-full py-2 bg-linear-to-r from-violet-600 to-indigo-600 text-white rounded-md text-sm font-semibold shadow-sm disabled:opacity-60">
 							{submitting ? 'Registrando...' : 'Registrar cita'}
 						</button>
 					</div>

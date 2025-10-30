@@ -46,7 +46,7 @@ export default function ClinicSidebar() {
 				<div className="flex flex-col gap-4 bg-white/70 backdrop-blur-md rounded-2xl p-4 shadow-lg ring-1 ring-slate-100 border border-slate-50">
 					{/* Brand */}
 					<div className="flex items-center gap-3">
-						<div className="w-12 h-12 rounded-xl bg-gradient-to-br from-sky-600 to-indigo-600 flex items-center justify-center text-white font-bold text-lg shadow-md ring-1 ring-white/20">SW</div>
+						<div className="w-12 h-12 rounded-xl bg-linear-to-br from-sky-600 to-indigo-600 flex items-center justify-center text-white font-bold text-lg shadow-md ring-1 ring-white/20">SW</div>
 						<div>
 							<div className="text-sm font-semibold text-slate-900">Syncwave Salud</div>
 							<div className="text-[12px] text-slate-500">Panel clínico — Gestión</div>
@@ -74,7 +74,7 @@ export default function ClinicSidebar() {
 											<div
 												aria-disabled="true"
 												className={`group flex items-center gap-3 w-full px-3 py-2 rounded-lg transition-colors text-sm font-medium
-												${active ? 'bg-gradient-to-r from-sky-600 to-indigo-600 text-white shadow-md' : 'text-slate-500 bg-transparent'}
+												${active ? 'bg-linear-to-r from-sky-600 to-indigo-600 text-white shadow-md' : 'text-slate-500 bg-transparent'}
 												cursor-not-allowed opacity-80`}>
 												<span className={`flex items-center justify-center w-9 h-9 rounded-md transition ${active ? 'bg-white/10 text-white' : 'bg-slate-100 text-slate-400'}`} aria-hidden>
 													{IconComp ? <IconComp className={`w-5 h-5 ${active ? 'text-white' : 'text-slate-400'}`} /> : null}
@@ -100,7 +100,7 @@ export default function ClinicSidebar() {
 											href={l.href}
 											aria-current={active ? 'page' : undefined}
 											className={`group flex items-center gap-3 w-full px-3 py-2 rounded-lg transition-colors text-sm font-medium
-                        ${active ? 'bg-gradient-to-r from-sky-600 to-indigo-600 text-white shadow-md' : 'text-slate-700 hover:bg-slate-50'}`}>
+                        ${active ? 'bg-linear-to-r from-sky-600 to-indigo-600 text-white shadow-md' : 'text-slate-700 hover:bg-slate-50'}`}>
 											<span className={`flex items-center justify-center w-9 h-9 rounded-md transition ${active ? 'bg-white/10 text-white' : 'bg-slate-100 text-sky-600 group-hover:bg-sky-50'}`} aria-hidden>
 												{IconComp ? <IconComp className={`w-5 h-5 ${active ? 'text-white' : 'text-sky-600'}`} /> : null}
 											</span>
@@ -120,7 +120,7 @@ export default function ClinicSidebar() {
 					<div className="pt-3 mt-2 border-t border-slate-100">
 						<div className="text-xs text-slate-500 mb-2">Atajos</div>
 						<div className="flex flex-col gap-2">
-							<Link href="/dashboard/clinic/specialists/new" className="inline-flex items-center gap-2 px-3 py-2 rounded-md bg-gradient-to-r from-emerald-600 to-sky-600 text-white text-sm font-medium shadow hover:scale-[1.01] transition">
+							<Link href="/dashboard/clinic/specialists/new" className="inline-flex items-center gap-2 px-3 py-2 rounded-md bg-linear-to-r from-emerald-600 to-sky-600 text-white text-sm font-medium shadow hover:scale-[1.01] transition">
 								<UserPlus className="w-4 h-4" aria-hidden />+ Invitar especialista
 							</Link>
 

@@ -1,68 +1,74 @@
-// src/app/api/notifications/route.ts
+// app/api/notifications/route.ts
 import { NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
-
-const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY!;
-
-if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
-	throw new Error('Faltan variables de entorno SUPABASE_URL o SUPABASE_SERVICE_ROLE_KEY');
-}
-
-const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
-	auth: { persistSession: false },
-});
+import { createSupabaseServerClient } from '@/app/adapters/server';
 
 export async function GET(req: Request) {
 	try {
-		// Esperamos Authorization: Bearer <access_token>
 		const authHeader = req.headers.get('authorization') || '';
 		const token = authHeader.replace('Bearer ', '').trim();
-		if (!token) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+		console.debug('[API/notifications] token present?', !!token);
 
-		// Obtener usuario desde token
-		const { data: userData, error: userErr } = await supabaseAdmin.auth.getUser(token);
+		// Crea el cliente server-side. Si tu helper acepta { req }, pásalo.
+		const { supabase } = createSupabaseServerClient();
+
+		// 1) Obtener usuario auth (desde token o cookies)
+		let userDataResp;
+		if (token) {
+			userDataResp = await supabase.auth.getUser(token);
+		} else {
+			userDataResp = await supabase.auth.getUser();
+		}
+		const { data: userData, error: userErr } = userDataResp ?? {};
 		if (userErr || !userData?.user) {
+			console.warn('[API/notifications] user invalid', userErr);
 			return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
 		}
-		const user = userData.user;
 
-		// Extraer organizationId (puede estar en custom claims / metadata o en tabla User)
-		// Preferimos metadata si tu auth almacena organizationId ahí; si no, hacemos lookup en la tabla User
-		let orgId = (user.user_metadata as any)?.organizationId ?? null;
+		const authUser = userData.user; // este es el user del Auth (authUser.id = auth uid)
+		const authUserId = authUser.id;
+		const role = (authUser.user_metadata as any)?.role ?? 'PATIENT';
+		let orgId = (authUser.user_metadata as any)?.organizationId ?? null;
 
-		if (!orgId) {
-			// lookup in DB Users table by auth id or email
-			const authId = user.id;
-			const { data: urow, error: uerr } = await supabaseAdmin.from('User').select('organizationId').eq('authId', authId).limit(1).maybeSingle();
-			if (uerr) {
-				// fallback: try by email if authId not present
-				const { data: urow2, error: uerr2 } = await supabaseAdmin.from('User').select('organizationId').eq('email', user.email).limit(1).maybeSingle();
-				if (uerr2) {
-					console.error('Error fetching user org', uerr2);
-				} else {
-					orgId = urow2?.organizationId ?? orgId;
-				}
-			} else {
-				orgId = urow?.organizationId ?? orgId;
-			}
+		// 2) Obtener fila en tabla public."User" para mapear authId -> app user id
+		const { data: appUserRow, error: appUserErr } = await supabase.from('User').select('id, "organizationId"').eq('authId', authUserId).limit(1).maybeSingle();
+
+		if (appUserErr) {
+			console.error('[API/notifications] error fetching app user row:', appUserErr);
+			// podemos continuar si no existe (pero entonces no hay appUserId para filtrar)
 		}
 
-		if (!orgId) {
-			return NextResponse.json({ notifications: [] });
+		const appUserId = appUserRow?.id ?? null;
+		// usar organizationId de la tabla User si no viene en metadata
+		orgId = orgId ?? appUserRow?.organizationId ?? null;
+
+		console.debug('[API/notifications] authUserId, appUserId, role, orgId:', authUserId, appUserId, role, orgId);
+
+		if (!orgId) return NextResponse.json({ notifications: [], appUserId: null });
+
+		// 3) Filtrar NOTIFICACIONES por appUserId (userId de la tabla Notification)
+		// Si deseas únicamente notificaciones del usuario en específico:
+		if (!appUserId) {
+			// no hay usuario en la tabla User: devolver vacío (o manejar según tu lógica)
+			return NextResponse.json({ notifications: [], appUserId: null });
 		}
 
-		// Fetch notifications for this organization (most recent first)
-		const { data, error } = await supabaseAdmin.from('Notification').select('*').eq('organizationId', orgId).order('createdAt', { ascending: false }).limit(200);
+		const { data, error } = await supabase
+			.from('Notification')
+			.select('*')
+			.eq('organizationId', orgId)
+			.eq('userId', appUserId) // <-- aquí comparamos con el id de la tabla User
+			.order('createdAt', { ascending: false })
+			.limit(200);
 
 		if (error) {
-			console.error('Error fetching notifications', error);
+			console.error('[API/notifications] DB error:', error);
 			return NextResponse.json({ error: 'DB error' }, { status: 500 });
 		}
 
-		return NextResponse.json({ notifications: data ?? [] });
+		// 4) Devolvemos también appUserId para que el cliente pueda suscribirse correctamente
+		return NextResponse.json({ notifications: data ?? [], appUserId });
 	} catch (err) {
-		console.error(err);
+		console.error('[API/notifications] Internal error:', err);
 		return NextResponse.json({ error: 'Internal error' }, { status: 500 });
 	}
 }

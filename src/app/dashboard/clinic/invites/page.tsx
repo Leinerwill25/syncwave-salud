@@ -101,7 +101,7 @@ export default async function InvitesPage() {
 		orderBy: { createdAt: 'desc' },
 	});
 
-	const invites: SerializedInvite[] = invitesRaw.map((i) => ({
+	const invites: SerializedInvite[] = invitesRaw.map((i: (typeof invitesRaw)[number]) => ({
 		id: i.id,
 		email: i.email,
 		token: i.token,

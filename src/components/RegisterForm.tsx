@@ -4,7 +4,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 
 type OrgType = 'CLINICA' | 'HOSPITAL' | 'CONSULTORIO' | 'FARMACIA' | 'LABORATORIO';
-type Role = 'ADMIN' | 'MEDICO' | 'FARMACIA' | 'PACIENTE';
+type Role = 'ADMIN' | 'MEDICO' | 'FARMACIA' | 'PACIENTE' | 'LABORATORIO';
 type PatientPlan = 'individual' | 'family';
 type BillingPeriod = 'monthly' | 'quarterly' | 'annual';
 
@@ -21,6 +21,7 @@ export default function RegisterForm(): React.ReactElement {
 	const [fullName, setFullName] = useState('');
 	const [email, setEmail] = useState('');
 	const [password, setPassword] = useState('');
+	const [showPassword, setShowPassword] = useState(false);
 
 	// Organización (para creación)
 	const [orgName, setOrgName] = useState('');
@@ -67,6 +68,8 @@ export default function RegisterForm(): React.ReactElement {
 		if (role === 'MEDICO') {
 			setSpecialistCount(1);
 			setDisplaySpecialistCount('1');
+			// NUEVO: si es MEDICO forzamos el tipo de organización a CONSULTORIO
+			setOrgType('CONSULTORIO');
 		}
 		// si cambia a otro role, no forzamos nada (el usuario puede editar el número)
 		// además, al cambiar role reiniciamos plan/billing a valores por defecto razonables
@@ -339,10 +342,10 @@ export default function RegisterForm(): React.ReactElement {
 					const done = idx < current;
 					return (
 						<div key={label} className="flex items-center gap-3">
-							<div aria-current={active ? 'step' : undefined} className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold ${done ? 'bg-sky-600 text-white' : active ? 'bg-white border-2 border-sky-600 text-sky-700' : 'bg-white border border-slate-200 text-slate-500'}`}>
+							<div aria-current={active ? 'step' : undefined} className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold ${done ? 'bg-emerald-600 text-white' : active ? 'bg-white border-2 border-emerald-500 text-emerald-700' : 'bg-white border border-slate-200 text-slate-400'}`}>
 								{done ? '✓' : idx}
 							</div>
-							<span className={`text-sm ${active ? 'text-sky-700 font-medium' : 'text-slate-500'}`}>{label}</span>
+							<span className={`text-sm ${active ? 'text-emerald-700 font-medium' : 'text-slate-500'}`}>{label}</span>
 						</div>
 					);
 				})}
@@ -350,14 +353,75 @@ export default function RegisterForm(): React.ReactElement {
 		);
 	};
 
-	const inputClass = 'mt-1 w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50 text-slate-900 focus:outline-none focus:ring-2 focus:ring-sky-300';
+	// Updated input class (lighter, health-oriented palette)
+	const inputClass = 'mt-1 w-full px-3 py-2 border border-slate-200 rounded-xl bg-white text-slate-900 shadow-sm focus:outline-none focus:ring-2 focus:ring-emerald-200';
+
+	// Password strength calculation (returns score 0..4 and which criteria pass)
+	function evaluatePassword(pw: string) {
+		const lengthScore = pw.length >= 8;
+		const lower = /[a-z]/.test(pw);
+		const upper = /[A-Z]/.test(pw);
+		const number = /[0-9]/.test(pw);
+		const special = /[^A-Za-z0-9]/.test(pw);
+
+		const passed = [lengthScore, lower, upper, number, special].filter(Boolean).length;
+		// Map passed count to 0..4 scale (we consider 0..5 -> clamp to 0..4 visually)
+		const score = Math.max(0, Math.min(4, passed === 0 ? 0 : passed - 1));
+		return {
+			score,
+			passed,
+			lengthScore,
+			lower,
+			upper,
+			number,
+			special,
+		};
+	}
+
+	const pwEval = useMemo(() => evaluatePassword(password), [password]);
+
+	// Map score to label + bar color
+	const pwLabel = useMemo(() => {
+		switch (pwEval.score) {
+			case 0:
+				return 'Muy débil';
+			case 1:
+				return 'Débil';
+			case 2:
+				return 'Media';
+			case 3:
+				return 'Buena';
+			case 4:
+				return 'Excelente';
+			default:
+				return '';
+		}
+	}, [pwEval]);
+
+	// Map score to tailwind color classes for bar segments
+	const pwColorClass = useMemo(() => {
+		switch (pwEval.score) {
+			case 0:
+				return 'bg-rose-400';
+			case 1:
+				return 'bg-amber-400';
+			case 2:
+				return 'bg-sky-400';
+			case 3:
+				return 'bg-emerald-400';
+			case 4:
+				return 'bg-emerald-600';
+			default:
+				return 'bg-slate-200';
+		}
+	}, [pwEval]);
 
 	// Compute billing preview for the recommendedPlan price
 	const billingPreview = useMemo(() => computeBilling(recommendedPlan.price, billingPeriod, role === 'PACIENTE'), [recommendedPlan, billingPeriod, role]);
 
 	return (
 		<form onSubmit={handleSubmit} className="max-w-3xl mx-auto p-6 md:p-8 bg-white rounded-2xl shadow-lg border border-slate-100" aria-labelledby="register-heading">
-			<h2 id="register-heading" className="text-2xl md:text-3xl font-bold text-sky-700 mb-2">
+			<h2 id="register-heading" className="text-2xl md:text-3xl font-bold text-emerald-700 mb-2">
 				Registro — Syncwave Salud
 			</h2>
 			<p className="text-sm text-slate-500 mb-6">Completa los pasos. Los datos médicos son confidenciales y se almacenan con seguridad.</p>
@@ -378,31 +442,101 @@ export default function RegisterForm(): React.ReactElement {
 							<input aria-label="Email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} className={inputClass} placeholder="tu@ejemplo.com" required />
 						</label>
 
-						<label className="block">
-							<span className="text-sm font-medium text-slate-700">Contraseña</span>
-							<input aria-label="Contraseña" type="password" value={password} onChange={(e) => setPassword(e.target.value)} className={inputClass} placeholder="Mínimo 6 caracteres" required />
-						</label>
+						{/* Contraseña mejorada: ojo + barra de fortaleza + checklist */}
+						<div className="md:col-span-2">
+							<label className="block">
+								<span className="text-sm font-medium text-slate-700">Contraseña</span>
+								<div className="relative mt-1">
+									<input aria-label="Contraseña" type={showPassword ? 'text' : 'password'} value={password} onChange={(e) => setPassword(e.target.value)} className={`${inputClass} pr-12`} placeholder="Mínimo 8 caracteres, incluye mayúsculas y números" required minLength={6} />
+									<button type="button" onClick={() => setShowPassword((s) => !s)} aria-label={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'} className="absolute right-2 top-1/2 -translate-y-1/2 p-2 rounded-md focus:outline-none focus:ring-2 focus:ring-emerald-200">
+										{showPassword ? (
+											<svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-slate-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+												<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-5.523 0-10-4.477-10-10 0-1.02.153-2.006.44-2.941M3 3l18 18M9.88 9.88a3 3 0 004.24 4.24" />
+											</svg>
+										) : (
+											<svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-slate-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+												<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+												<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.477 0 8.268 2.943 9.542 7-1.274 4.057-5.065 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+											</svg>
+										)}
+									</button>
+								</div>
 
+								{/* Strength bar */}
+								<div className="mt-3">
+									<div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden">
+										<div
+											className={`${pwColorClass} h-2 rounded-full transition-all duration-300`}
+											style={{
+												width: `${(pwEval.score / 4) * 100}%`,
+												minWidth: pwEval.score === 0 ? '6px' : undefined,
+											}}
+											aria-hidden
+										/>
+									</div>
+									<div className="mt-2 flex items-center justify-between">
+										<div className="text-xs font-medium text-slate-600">{pwLabel}</div>
+										<div className="text-xs text-slate-400">{password.length} caracteres</div>
+									</div>
+								</div>
+
+								{/* Checklist of criteria */}
+								<ul className="mt-3 grid grid-cols-2 gap-2 text-xs text-slate-600">
+									<li className="flex items-center gap-2">
+										<span className={`inline-flex items-center justify-center w-4 h-4 rounded-full ${pwEval.lengthScore ? 'bg-emerald-500 text-white' : 'bg-slate-200 text-slate-400'}`}>{pwEval.lengthScore ? '✓' : '•'}</span>
+										<span>8+ caracteres</span>
+									</li>
+									<li className="flex items-center gap-2">
+										<span className={`inline-flex items-center justify-center w-4 h-4 rounded-full ${pwEval.upper ? 'bg-emerald-500 text-white' : 'bg-slate-200 text-slate-400'}`}>{pwEval.upper ? '✓' : '•'}</span>
+										<span>Mayúscula</span>
+									</li>
+									<li className="flex items-center gap-2">
+										<span className={`inline-flex items-center justify-center w-4 h-4 rounded-full ${pwEval.lower ? 'bg-emerald-500 text-white' : 'bg-slate-200 text-slate-400'}`}>{pwEval.lower ? '✓' : '•'}</span>
+										<span>Minúscula</span>
+									</li>
+									<li className="flex items-center gap-2">
+										<span className={`inline-flex items-center justify-center w-4 h-4 rounded-full ${pwEval.number ? 'bg-emerald-500 text-white' : 'bg-slate-200 text-slate-400'}`}>{pwEval.number ? '✓' : '•'}</span>
+										<span>Número</span>
+									</li>
+									<li className="flex items-center gap-2 col-span-2">
+										<span className={`inline-flex items-center justify-center w-4 h-4 rounded-full ${pwEval.special ? 'bg-emerald-500 text-white' : 'bg-slate-200 text-slate-400'}`}>{pwEval.special ? '✓' : '•'}</span>
+										<span>Caracter especial (p. ej. !@#)</span>
+									</li>
+								</ul>
+							</label>
+						</div>
+
+						{/* Select mejorado para "¿Eres?" */}
 						<label className="block">
 							<span className="text-sm font-medium text-slate-700">¿Eres?</span>
-							<select
-								value={role}
-								onChange={(e) => {
-									const newRole = e.target.value as Role;
-									setRole(newRole);
-									// Si el rol deja de ser PACIENTE, limpiamos el campo de clínica referida
-									if (newRole !== 'PACIENTE') {
-										setSelectedOrganizationId(null);
-									}
-								}}
-								className={inputClass}
-								aria-label="Tipo de cuenta"
-								onBlur={() => setStep(1)}>
-								<option value="ADMIN">Administrador / Clínica</option>
-								<option value="MEDICO">Médico</option>
-								<option value="FARMACIA">Farmacia</option>
-								<option value="PACIENTE">Paciente</option>
-							</select>
+							<div className="relative mt-1">
+								<select
+									value={role}
+									onChange={(e) => {
+										const newRole = e.target.value as Role;
+										setRole(newRole);
+										// Si el rol deja de ser PACIENTE, limpiamos el campo de clínica referida
+										if (newRole !== 'PACIENTE') {
+											setSelectedOrganizationId(null);
+										}
+									}}
+									className={`${inputClass} appearance-none pr-10`}
+									aria-label="Tipo de cuenta"
+									onBlur={() => setStep(1)}>
+									<option value="ADMIN">Administrador / Clínica</option>
+									<option value="MEDICO">Médico/Especialista Independiente</option>
+									<option value="FARMACIA">Farmacia</option>
+									<option value="LABORATORIO">Laboratorio</option>
+									<option value="PACIENTE">Paciente</option>
+								</select>
+
+								{/* Custom chevron */}
+								<div className="pointer-events-none absolute inset-y-0 right-2 flex items-center">
+									<svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-slate-400" viewBox="0 0 20 20" fill="currentColor">
+										<path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.584l3.71-4.353a.75.75 0 111.14.976l-4.25 5a.75.75 0 01-1.14 0l-4.25-5a.75.75 0 01.02-1.06z" clipRule="evenodd" />
+									</svg>
+								</div>
+							</div>
 						</label>
 					</div>
 
@@ -430,7 +564,7 @@ export default function RegisterForm(): React.ReactElement {
 					)}
 
 					<div className="flex justify-end gap-3 mt-4">
-						<button type="button" onClick={next} disabled={!step1Valid} className={`px-5 py-2 rounded-lg ${step1Valid ? 'bg-sky-600 text-white hover:bg-sky-700' : 'bg-slate-200 text-slate-500 cursor-not-allowed'}`}>
+						<button type="button" onClick={next} disabled={!step1Valid} className={`px-5 py-2 rounded-lg ${step1Valid ? 'bg-emerald-600 text-white hover:bg-emerald-700' : 'bg-slate-200 text-slate-500 cursor-not-allowed'}`}>
 							Siguiente
 						</button>
 					</div>
@@ -448,7 +582,8 @@ export default function RegisterForm(): React.ReactElement {
 
 						<label>
 							<span className="text-sm font-medium text-slate-700">Tipo de organización</span>
-							<select value={orgType} onChange={(e) => setOrgType(e.target.value as OrgType)} className={inputClass}>
+							{/* Si role === 'MEDICO' este select queda deshabilitado y orgType ya estará forzado a 'CONSULTORIO' */}
+							<select value={orgType} onChange={(e) => setOrgType(e.target.value as OrgType)} className={inputClass} disabled={role === 'MEDICO'}>
 								<option>CLINICA</option>
 								<option>HOSPITAL</option>
 								<option>CONSULTORIO</option>
@@ -488,7 +623,7 @@ export default function RegisterForm(): React.ReactElement {
 											setDisplaySpecialistCount(String(n));
 										}
 									}}
-									className="mt-1 px-3 py-2 w-full border rounded-lg focus:outline-none text-slate-700 focus:ring-2 focus:ring-sky-300"
+									className="mt-1 px-3 py-2 w-full border rounded-lg focus:outline-none text-slate-700 focus:ring-2 focus:ring-emerald-200"
 								/>
 							</label>
 						)}
@@ -504,7 +639,7 @@ export default function RegisterForm(): React.ReactElement {
 						</label>
 					</div>
 
-					<div className="mt-4 p-4 rounded-lg bg-sky-50 border border-sky-100 text-slate-800">
+					<div className="mt-4 p-4 rounded-lg bg-emerald-50 border border-emerald-100 text-slate-800">
 						Plan recomendado: <strong>{recommendedPlan.label}</strong> — <strong>${recommendedPlan.price.toFixed(2)}</strong> / mes
 					</div>
 
@@ -512,7 +647,7 @@ export default function RegisterForm(): React.ReactElement {
 						<button type="button" onClick={back} className="px-5 py-2 rounded-lg border border-slate-200 bg-white text-slate-700">
 							Atrás
 						</button>
-						<button type="button" onClick={next} disabled={!step2OrgValid} className={`px-5 py-2 rounded-lg ${step2OrgValid ? 'bg-sky-600 text-white' : 'bg-slate-200 text-slate-500 cursor-not-allowed'}`}>
+						<button type="button" onClick={next} disabled={!step2OrgValid} className={`px-5 py-2 rounded-lg ${step2OrgValid ? 'bg-emerald-600 text-white' : 'bg-slate-200 text-slate-500 cursor-not-allowed'}`}>
 							Siguiente
 						</button>
 					</div>
@@ -609,7 +744,7 @@ export default function RegisterForm(): React.ReactElement {
 									Periodo: {billingPreview.label} — {billingPreview.months} {billingPreview.months > 1 ? 'meses' : 'mes'}
 								</div>
 								{billingPreview.discount > 0 && <div className="text-sm">Descuento aplicado: {(billingPreview.discount * 100).toFixed(0)}%</div>}
-								<div className="mt-2 text-lg font-semibold text-sky-600">Total a pagar: ${billingPreview.total.toFixed(2)}</div>
+								<div className="mt-2 text-lg font-semibold text-emerald-600">Total a pagar: ${billingPreview.total.toFixed(2)}</div>
 								<div className="text-xs text-slate-500">Equivalente mensual: ${billingPreview.monthlyEquivalent.toFixed(2)} / mes</div>
 							</div>
 						</div>
@@ -619,14 +754,14 @@ export default function RegisterForm(): React.ReactElement {
 						<button type="button" onClick={back} className="px-5 py-2 rounded-lg border border-slate-200 bg-white text-slate-700">
 							Atrás
 						</button>
-						<button type="button" onClick={next} disabled={!step2PatientValid} className={`px-5 py-2 rounded-lg ${step2PatientValid ? 'bg-sky-600 text-white' : 'bg-slate-200 text-slate-500 cursor-not-allowed'}`}>
+						<button type="button" onClick={next} disabled={!step2PatientValid} className={`px-5 py-2 rounded-lg ${step2PatientValid ? 'bg-emerald-600 text-white' : 'bg-slate-200 text-slate-500 cursor-not-allowed'}`}>
 							Siguiente
 						</button>
 					</div>
 				</section>
 			)}
 
-			{/* Paso 3: Historia (Paciente) */}
+			{/* Paso 3 y Paso 4 sin cambios funcionales — se mantienen igual que antes */}
 			{step === 3 && role === 'PACIENTE' && (
 				<section aria-label="Historia clínica" className="space-y-4">
 					<h3 className="text-lg font-semibold text-slate-700">Historia clínica (resumen)</h3>
@@ -659,27 +794,25 @@ export default function RegisterForm(): React.ReactElement {
 						<button type="button" onClick={back} className="px-5 py-2 rounded-lg border border-slate-200 bg-white text-slate-700">
 							Atrás
 						</button>
-						<button type="button" onClick={() => setStep(4)} className="px-5 py-2 rounded-lg bg-sky-600 text-white">
+						<button type="button" onClick={() => setStep(4)} className="px-5 py-2 rounded-lg bg-emerald-600 text-white">
 							Siguiente
 						</button>
 					</div>
 				</section>
 			)}
 
-			{/* Paso 3: Plan (Organización) - si role !== PACIENTE */}
 			{step === 3 && role !== 'PACIENTE' && (
 				<section aria-label="Plan" className="space-y-4">
 					<h3 className="text-lg font-semibold text-slate-700">Plan recomendado</h3>
 
-					{/* Si es MEDICO, mostramos la tarjeta individual; si es organización normal, mostramos las 3 opciones */}
 					{role === 'MEDICO' ? (
-						<div className="p-4 rounded-lg border border-sky-600 bg-white shadow-lg flex items-center justify-between">
+						<div className="p-4 rounded-lg border border-emerald-600 bg-white shadow-lg flex items-center justify-between">
 							<div>
 								<div className="text-sm font-semibold text-slate-900">Plan Médico — Usuario individual</div>
 								<div className="text-xs text-slate-500">1 usuario — ideal para médicos independientes</div>
 							</div>
 							<div className="text-right">
-								<div className="text-2xl font-extrabold text-sky-600">${recommendedPlan.price.toFixed(2)}</div>
+								<div className="text-2xl font-extrabold text-emerald-600">${recommendedPlan.price.toFixed(2)}</div>
 								<div className="text-xs text-slate-400">/ mes</div>
 							</div>
 						</div>
@@ -692,8 +825,8 @@ export default function RegisterForm(): React.ReactElement {
 							].map((p) => {
 								const recommended = p.slug === recommendedPlan.slug;
 								return (
-									<div key={p.slug} aria-labelledby={`plan-${p.slug}`} tabIndex={0} className={`relative pt-6 pb-4 px-4 rounded-2xl border bg-white transition-transform transform hover:-translate-y-0.5 focus:outline-none focus:ring-2 ${recommended ? 'border-sky-600 shadow-lg ring-sky-100' : 'border-slate-200 shadow-sm'} min-h-[128px] flex flex-col justify-between`}>
-										{recommended && <span className="absolute -top-3 left-1/2 -translate-x-1/2 bg-sky-600 text-white text-xs font-semibold px-3 py-0.5 rounded-full shadow">Recomendado</span>}
+									<div key={p.slug} aria-labelledby={`plan-${p.slug}`} tabIndex={0} className={`relative pt-6 pb-4 px-4 rounded-2xl border bg-white transition-transform transform hover:-translate-y-0.5 focus:outline-none focus:ring-2 ${recommended ? 'border-emerald-600 shadow-lg ring-emerald-100' : 'border-slate-200 shadow-sm'} min-h-32 flex flex-col justify-between`}>
+										{recommended && <span className="absolute -top-3 left-1/2 -translate-x-1/2 bg-emerald-600 text-white text-xs font-semibold px-3 py-0.5 rounded-full shadow">Recomendado</span>}
 
 										<div className="flex items-start justify-between gap-3">
 											<div className="min-w-0">
@@ -718,7 +851,7 @@ export default function RegisterForm(): React.ReactElement {
 											</div>
 										)}
 										<div className="text-right flex flex-col items-end">
-											<div className="text-lg md:text-2xl font-extrabold leading-none text-sky-600">${p.price.toFixed(2)}</div>
+											<div className="text-lg md:text-2xl font-extrabold leading-none text-emerald-600">${p.price.toFixed(2)}</div>
 											<div className="text-[11px] text-slate-400">/ mes</div>
 										</div>
 									</div>
@@ -727,7 +860,6 @@ export default function RegisterForm(): React.ReactElement {
 						</div>
 					)}
 
-					{/* Periodicidad para organizaciones/medico */}
 					<div className="mt-4">
 						<div className="text-sm font-medium mb-2">Periodicidad</div>
 						<select value={billingPeriod} onChange={(e) => setBillingPeriod(e.target.value as BillingPeriod)} className={inputClass}>
@@ -745,7 +877,7 @@ export default function RegisterForm(): React.ReactElement {
 								Periodo: {billingPreview.label} — {billingPreview.months} {billingPreview.months > 1 ? 'meses' : 'mes'}
 							</div>
 							{billingPreview.discount > 0 && <div className="text-sm">Descuento aplicado: {(billingPreview.discount * 100).toFixed(0)}%</div>}
-							<div className="mt-2 text-lg font-semibold text-sky-600">Total a pagar: ${billingPreview.total.toFixed(2)}</div>
+							<div className="mt-2 text-lg font-semibold text-emerald-600">Total a pagar: ${billingPreview.total.toFixed(2)}</div>
 							<div className="text-xs text-slate-500">Equivalente mensual: ${billingPreview.monthlyEquivalent.toFixed(2)} / mes</div>
 						</div>
 					</div>
@@ -758,7 +890,7 @@ export default function RegisterForm(): React.ReactElement {
 						<button type="button" onClick={back} className="px-5 py-2 rounded-lg border border-slate-200 bg-white text-slate-700">
 							Atrás
 						</button>
-						<button type="button" onClick={() => setStep(4)} className="px-5 py-2 rounded-lg bg-sky-600 text-white">
+						<button type="button" onClick={() => setStep(4)} className="px-5 py-2 rounded-lg bg-emerald-600 text-white">
 							Continuar al registro
 						</button>
 					</div>

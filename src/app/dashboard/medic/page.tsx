@@ -75,9 +75,6 @@ export default function MedicDashboardPage() {
 				<Button className="bg-violet-600 hover:bg-violet-700 text-white px-6 py-2 rounded-xl shadow-md transition disabled:opacity-50" onClick={() => setIsModalOpen(true)} disabled={loadingSession || !userId || !organizationId}>
 					{loadingSession ? 'Cargando sesión...' : 'Nueva Cita'}
 				</Button>
-				<Button variant="outline" className="border-violet-600 text-violet-700 hover:bg-violet-50 px-6 py-2 rounded-xl">
-					Nuevo Paciente
-				</Button>
 			</div>
 
 			{/* Modal */}
