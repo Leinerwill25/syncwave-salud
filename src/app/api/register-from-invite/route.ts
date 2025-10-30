@@ -2,6 +2,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import prisma from '@/lib/prisma';
+import { Prisma } from '@prisma/client';
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -48,16 +49,15 @@ export async function POST(request: Request) {
 		const authId = (createdUser.user as any).id;
 
 		// 3) Crear user en Prisma y marcar invite usado dentro de transacción
-		await prisma.$transaction(async (tx) => {
+		await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
 			await tx.user.create({
 				data: {
 					email,
 					name: `${firstName} ${lastName}`,
+					// casteo a any para evitar dependencia por enums generados; si tienes el enum disponible, remuévelo
 					role: invite.role as any,
 					organizationId: invite.organizationId,
 					authId,
-					createdAt: new Date(),
-					updatedAt: new Date(),
 				},
 			});
 
