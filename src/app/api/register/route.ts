@@ -4,7 +4,7 @@ import type { NextRequest } from 'next/server';
 import prisma from '@/lib/prisma';
 import { randomUUID } from 'crypto';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
-import type { Prisma, OrgType, UserRole } from '@prisma/client';
+import type { Prisma } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 
 const SUPABASE_URL = process.env.SUPABASE_URL ?? process.env.NEXT_PUBLIC_SUPABASE_URL ?? '';
@@ -29,7 +29,14 @@ function addOneMonth(date = new Date()): Date {
 	return d;
 }
 
-/* ---------- Tipos ---------- */
+/* ---------- Tipos locales (mantener sincronizados con schema.prisma) ---------- */
+const USER_ROLES = ['ADMIN', 'MEDICO', 'ENFERMERA', 'RECEPCION', 'FARMACIA', 'PACIENTE'] as const;
+type UserRoleLocal = (typeof USER_ROLES)[number];
+
+const ORG_TYPES = ['CLINICA', 'HOSPITAL', 'CONSULTORIO', 'FARMACIA', 'LABORATORIO'] as const;
+type OrgTypeLocal = (typeof ORG_TYPES)[number];
+
+/* ---------- Tipos del body ---------- */
 type AccountInput = {
 	email: string;
 	fullName: string;
@@ -49,11 +56,11 @@ type PatientInput = {
 	firstName: string;
 	lastName: string;
 	identifier?: string | null;
-	dob?: string | null; // ISO date string expected
+	dob?: string | null;
 	gender?: string | null;
 	phone?: string | null;
 	address?: string | null;
-	organizationId?: string | null; // coming from the form (not stored on Patient table)
+	organizationId?: string | null;
 };
 
 type PlanInput = {
@@ -72,7 +79,7 @@ type RegisterBody = {
 	selectedOrganizationId?: string | null;
 };
 
-/* ---------- Utilidades de tipo ---------- */
+/* ---------- Utilidades ---------- */
 function isObject(v: unknown): v is Record<string, unknown> {
 	return typeof v === 'object' && v !== null;
 }
@@ -105,6 +112,13 @@ function parseSupabaseCreateResp(resp: unknown): { id?: string; email?: string }
 	return null;
 }
 
+/* ---------- Tipo local para createMany invites ---------- */
+/**
+ * En algunos setups Prisma no exporta InviteCreateManyInput. Usamos un tipo local
+ * compatible en tiempo de compilación (Record<string, unknown>) y lo pasamos a Prisma.
+ */
+type LocalInviteCreateManyInput = Record<string, unknown>;
+
 /* ---------- Handler ---------- */
 export async function POST(req: NextRequest): Promise<NextResponse> {
 	try {
@@ -120,8 +134,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 		}
 
 		const roleRaw = account.role ? String(account.role) : 'ADMIN';
-		// casteo a UserRole — asumimos que el valor enviado coincide con el enum en tu schema.
-		const role = roleRaw as unknown as UserRole;
+		const role: UserRoleLocal = (USER_ROLES.includes(roleRaw as UserRoleLocal) ? (roleRaw as UserRoleLocal) : 'ADMIN') as UserRoleLocal;
 
 		// Prevent duplicates
 		const existing = await prisma.user.findUnique({ where: { email: account.email } });
@@ -170,12 +183,12 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 				// Org
 				let orgRecord: Awaited<ReturnType<typeof tx.organization.create>> | null = null;
 				if (organization) {
-					// Convertimos orgType al enum OrgType
-					const orgTypeCast = organization.orgType ? (organization.orgType as unknown as OrgType) : ('CLINICA' as OrgType);
+					const orgTypeCast: OrgTypeLocal = organization.orgType && ORG_TYPES.includes(organization.orgType as OrgTypeLocal) ? (organization.orgType as OrgTypeLocal) : 'CLINICA';
 					orgRecord = await tx.organization.create({
 						data: {
 							name: organization.orgName,
-							type: orgTypeCast,
+							// casteamos a any para evitar dependencia del enum generado por Prisma
+							type: orgTypeCast as unknown as any,
 							address: organization.orgAddress ?? null,
 							contactEmail: account.email,
 							phone: organization.orgPhone ?? null,
@@ -214,7 +227,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 				const userCreateData: {
 					email: string;
 					name: string | null;
-					role: UserRole;
+					role: UserRoleLocal;
 					organizationId?: string | undefined;
 					patientProfileId?: string | null | undefined;
 					authId?: string | undefined;
@@ -246,7 +259,6 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 				}
 
 				if (patientRecord) {
-					// Convertimos id a string (tu schema usa string UUID)
 					userCreateData.patientProfileId = String(patientRecord.id);
 				}
 
@@ -263,7 +275,8 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 					data: {
 						email: userCreateData.email,
 						name: userCreateData.name,
-						role: userCreateData.role,
+						// casteo a any para evitar bloqueo si Prisma no exporta el enum
+						role: userCreateData.role as unknown as any,
 						organizationId: userCreateData.organizationId,
 						patientProfileId: userCreateData.patientProfileId,
 						authId: userCreateData.authId,
@@ -286,7 +299,6 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 					subscriptionRecord = await tx.subscription.create({
 						data: {
 							organizationId: orgRecord ? orgRecord.id : undefined,
-							// Convertimos patientRecord.id a string si existe (Prisma espera string)
 							patientId: patientRecord ? String(patientRecord.id) : undefined,
 							planId: null,
 							stripeSubscriptionId: null,
@@ -321,20 +333,20 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 			const specialists = safeNumber(organization.specialistCount) ?? 0;
 			if (specialists > 0) {
 				const expiresAt = expiryDays(14);
-				// Usamos el tipo de Prisma para createMany
-				const invitesData: Prisma.InviteCreateManyInput[] = [];
+				// Usamos un tipo local en lugar de Prisma.InviteCreateManyInput
+				const invitesData: LocalInviteCreateManyInput[] = [];
 
 				const now = new Date();
 				for (let i = 0; i < specialists; i += 1) {
 					const token = genToken();
-					// Garantizamos que invitedById sea string (tu schema espera string UUID)
 					const invitedById = String(txResult.userRecord.id);
 
 					invitesData.push({
 						organizationId: txResult.organizationId,
 						email: '',
 						token,
-						role: 'MEDICO' as unknown as UserRole,
+						// casteo a any / UserRoleLocal para evitar dependencia del enum exportado
+						role: 'MEDICO' as unknown as any,
 						invitedById,
 						used: false,
 						expiresAt,
@@ -347,6 +359,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 					});
 				}
 
+				// Pasamos el array tal cual a prisma.createMany (Prisma aceptará los objetos en runtime)
 				await prisma.invite.createMany({
 					data: invitesData,
 					skipDuplicates: true,
