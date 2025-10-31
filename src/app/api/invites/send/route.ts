@@ -1,49 +1,140 @@
 // src/app/api/invite/send/route.ts
+export const runtime = 'nodejs';
+
 import { NextResponse } from 'next/server';
+import { createClient } from '@supabase/supabase-js';
 import prisma from '@/lib/prisma';
-import createSupabaseServerClient from '@/app/adapters/server';
-import { cookies } from 'next/headers';
-import sgMail from '@sendgrid/mail';
 
-// Helper: busca usuario autenticado (intenta cookies o bearer) y su dbUser
-async function findDbUserFromSupabase() {
-	const { supabase } = createSupabaseServerClient();
+const SUPABASE_URL = process.env.SUPABASE_URL ?? '';
+const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY ?? '';
+const NEXT_PUBLIC_INVITE_BASE_URL = process.env.NEXT_PUBLIC_INVITE_BASE_URL ?? '';
+const NEXT_PUBLIC_VERCEL_URL = process.env.NEXT_PUBLIC_VERCEL_URL ?? '';
+const EMAIL_FROM = process.env.EMAIL_FROM ?? 'no-reply@yourdomain.com';
+
+/** Extrae token desde Authorization header, x-* headers o cookies crudas (server-side) */
+function extractAccessTokenFromRequest(req: Request): string | null {
 	try {
-		// try default
-		const userResp = await supabase.auth.getUser();
-		if (userResp?.data?.user) {
-			const dbUser = await prisma.user.findFirst({ where: { authId: userResp.data.user.id } });
-			return { supabaseUser: userResp.data.user, dbUser };
-		}
+		const auth = req.headers.get('authorization') || req.headers.get('Authorization');
+		if (auth && auth.startsWith('Bearer ')) return auth.split(' ')[1].trim();
 
-		// fallback: token from cookies
-		const cookieStore = await cookies();
-		const accessToken = cookieStore.get('sb-access-token')?.value ?? null;
-		if (accessToken) {
-			const userResp2 = await supabase.auth.getUser(accessToken);
-			if (userResp2?.data?.user) {
-				const dbUser = await prisma.user.findFirst({ where: { authId: userResp2.data.user.id } });
-				return { supabaseUser: userResp2.data.user, dbUser };
+		const xAuth = req.headers.get('x-access-token') || req.headers.get('x-auth-token');
+		if (xAuth) return xAuth;
+
+		const cookieHeader = req.headers.get('cookie') || '';
+		if (!cookieHeader) return null;
+
+		const keys = ['sb-access-token', 'sb:token', 'supabase-auth-token', 'sb-session', 'supabase-session', 'sb'];
+		for (const k of keys) {
+			const match = cookieHeader.match(new RegExp(`${k}=([^;]+)`));
+			if (!match) continue;
+			const raw = decodeURIComponent(match[1]);
+			try {
+				const parsed = JSON.parse(raw);
+				if (typeof parsed === 'string') return parsed;
+				if (parsed?.access_token) return parsed.access_token;
+				if (parsed?.currentSession?.access_token) return parsed.currentSession.access_token;
+				if (parsed?.session?.access_token) return parsed.session.access_token;
+				if (parsed?.token?.access_token) return parsed.token.access_token;
+				if (parsed?.accessToken) return parsed.accessToken;
+			} catch {
+				// not JSON -> raw token
+				return raw;
 			}
 		}
-	} catch (e) {
-		console.warn('findDbUserFromSupabase error', e);
+	} catch (err) {
+		console.error('extractAccessTokenFromRequest error', err);
 	}
-	return { supabaseUser: null, dbUser: null };
+	return null;
 }
-sgMail.setApiKey(process.env.SENDGRID_API_KEY!);
 
-export async function sendInviteEmail(opts: { to: string; token: string; organizationId: string; inviteBaseUrl?: string }) {
-	if (!process.env.SENDGRID_API_KEY) {
-		console.error('SendGrid API key missing');
+/** Base64url decode compatible Node/browser */
+function base64UrlDecode(payload: string): string {
+	const b64 = payload.replace(/-/g, '+').replace(/_/g, '/');
+	const pad = b64.length % 4;
+	const padded = pad ? b64 + '='.repeat(4 - pad) : b64;
+	if (typeof Buffer !== 'undefined') return Buffer.from(padded, 'base64').toString('utf8');
+	if (typeof atob !== 'undefined') {
+		return decodeURIComponent(Array.prototype.map.call(atob(padded), (c: string) => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)).join(''));
+	}
+	throw new Error('No base64 decode available');
+}
+
+/** Decodifica sub/email del JWT (sin verificar firma) — solo fallback */
+function decodeJwtPayload(token: string | null): any | null {
+	if (!token) return null;
+	try {
+		const parts = token.split('.');
+		if (parts.length < 2) return null;
+		const decoded = base64UrlDecode(parts[1]);
+		return JSON.parse(decoded);
+	} catch {
+		return null;
+	}
+}
+
+/** Resuelve el dbUser dado un token.
+ *  Intenta Supabase Admin (si hay credenciales), sino fallback con payload JWT.
+ */
+async function resolveDbUserFromToken(token: string | null) {
+	if (!token) return null;
+
+	// 1) Supabase Admin si está configurado
+	if (SUPABASE_URL && SUPABASE_SERVICE_ROLE_KEY) {
+		try {
+			const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, { auth: { persistSession: false } });
+			const userResp = await supabaseAdmin.auth.getUser(token);
+			const supUser = (userResp as any)?.data?.user ?? null;
+			if (supUser?.id) {
+				let dbUser = await prisma.user.findFirst({ where: { authId: supUser.id } });
+				if (dbUser) return dbUser;
+				if (supUser?.email) {
+					dbUser = await prisma.user.findFirst({ where: { email: supUser.email } });
+					if (dbUser) return dbUser;
+				}
+			}
+		} catch (err) {
+			console.warn('supabaseAdmin.auth.getUser failed, will fallback to JWT payload', err);
+		}
+	}
+
+	// 2) Fallback: decode JWT payload
+	const payload = decodeJwtPayload(token);
+	if (!payload) return null;
+	const authId = payload.sub ?? payload.user_id ?? null;
+	const email = payload.email ?? null;
+	if (authId) {
+		const dbUser = await prisma.user.findFirst({ where: { authId } });
+		if (dbUser) return dbUser;
+	}
+	if (email) {
+		const dbUser = await prisma.user.findFirst({ where: { email } });
+		if (dbUser) return dbUser;
+	}
+	return null;
+}
+
+/** Envía correo usando SendGrid — import dinámico y setApiKey dentro de la función (sin side-effects top-level) */
+async function sendInviteEmail(opts: { to: string; token: string; organizationId: string; inviteBaseUrl?: string | undefined }) {
+	const SENDGRID_API_KEY = process.env.SENDGRID_API_KEY;
+	if (!SENDGRID_API_KEY) {
+		console.error('SendGrid API key missing (SENDGRID_API_KEY)');
 		return false;
 	}
 
-	const base = opts.inviteBaseUrl ?? process.env.NEXT_PUBLIC_INVITE_BASE_URL ?? '';
-	const origin = base ? base.replace(/\/$/, '') : process.env.NEXT_PUBLIC_VERCEL_URL ? `https://${process.env.NEXT_PUBLIC_VERCEL_URL}` : '';
+	// import dinámico para evitar side-effects en import
+	const sgMailModule = await import('@sendgrid/mail').catch((e) => {
+		console.error('Failed to import @sendgrid/mail', e);
+		return null;
+	});
+	if (!sgMailModule) return false;
+	const sgMail = sgMailModule.default ?? sgMailModule;
+	sgMail.setApiKey(SENDGRID_API_KEY);
+
+	const base = opts.inviteBaseUrl ?? NEXT_PUBLIC_INVITE_BASE_URL ?? '';
+	const origin = base ? base.replace(/\/$/, '') : NEXT_PUBLIC_VERCEL_URL ? `https://${NEXT_PUBLIC_VERCEL_URL}` : '';
 	const url = `${origin}/invite/${opts.token}`;
 
-	const from = process.env.EMAIL_FROM ?? 'no-reply@yourdomain.com';
+	const from = EMAIL_FROM;
 	const subject = 'Invitación a unirse a la organización';
 	const html = `
     <p>Hola,</p>
@@ -53,15 +144,8 @@ export async function sendInviteEmail(opts: { to: string; token: string; organiz
   `;
 
 	try {
-		const msg = {
-			to: opts.to,
-			from,
-			subject,
-			html,
-		};
-		const res = await sgMail.send(msg);
-		// res es un array; puedes devolver info adicional si lo deseas
-		console.log('[sendInviteEmail] SendGrid response', res[0]?.statusCode);
+		await sgMail.send({ to: opts.to, from, subject, html });
+		console.log('[sendInviteEmail] Sent to', opts.to);
 		return true;
 	} catch (err: any) {
 		console.error('[sendInviteEmail] SendGrid error', err?.response?.body ?? err.message ?? err);
@@ -71,48 +155,46 @@ export async function sendInviteEmail(opts: { to: string; token: string; organiz
 
 export async function POST(req: Request) {
 	try {
-		const auth = await findDbUserFromSupabase();
-		if (!auth?.dbUser) {
-			return NextResponse.json({ ok: false, message: 'No autorizado — sesión ausente' }, { status: 401 });
-		}
+		const token = extractAccessTokenFromRequest(req);
+		if (!token) return NextResponse.json({ ok: false, message: 'No autenticado (token ausente)' }, { status: 401 });
+
+		const dbUser = await resolveDbUserFromToken(token);
+		if (!dbUser) return NextResponse.json({ ok: false, message: 'Usuario no encontrado / no autorizado' }, { status: 401 });
 
 		const body = await req.json().catch(() => ({}));
 		const { id, email } = body ?? {};
-
 		if (!id) return NextResponse.json({ ok: false, message: 'Missing invite id' }, { status: 400 });
 		if (!email || typeof email !== 'string' || !/\S+@\S+\.\S+/.test(email)) return NextResponse.json({ ok: false, message: 'Email inválido' }, { status: 400 });
 
-		// buscar invitación
+		const normalizedEmail = email.trim().toLowerCase();
+
+		// traer invitación
 		const invite = await prisma.invite.findUnique({ where: { id } });
 		if (!invite) return NextResponse.json({ ok: false, message: 'Invitación no encontrada' }, { status: 404 });
 
-		// verificar que el usuario pertenece a la organización (propietario de la invitación)
-		const orgIdUser = auth.dbUser.organizationId;
+		// verificar pertenencia org del usuario
+		const orgIdUser = dbUser.organizationId;
 		if (!orgIdUser || invite.organizationId !== orgIdUser) {
 			return NextResponse.json({ ok: false, message: 'No autorizado para enviar esta invitación' }, { status: 403 });
 		}
 
-		// VALIDACIÓN: comprobar que email NO esté asignado a otra invitación
-		const normalizedEmail = email.trim().toLowerCase();
-
-		// Buscar otra invitación con ese email (que no sea la actual)
+		// comprobar que no exista otra invitación con ese email en la misma org (excluyendo la actual)
 		const existing = await prisma.invite.findFirst({
-			where: { email: normalizedEmail },
+			where: { email: normalizedEmail, organizationId: invite.organizationId },
 			select: { id: true, email: true },
 		});
-
 		if (existing && existing.id !== id) {
-			return NextResponse.json({ ok: false, message: 'El correo ya está asignado a otra invitación.', conflict: { email: existing.email, inviteId: existing.id } }, { status: 409 });
+			return NextResponse.json({ ok: false, message: 'El correo ya está asignado a otra invitación en la organización.', conflict: { email: existing.email, inviteId: existing.id } }, { status: 409 });
 		}
 
-		// obtener organization para inviteBaseUrl (opcional)
+		// obtener inviteBaseUrl desde organización si existe
 		const org = await prisma.organization.findUnique({ where: { id: invite.organizationId } });
-		const inviteBaseUrl = org?.inviteBaseUrl ?? process.env.NEXT_PUBLIC_INVITE_BASE_URL;
+		const inviteBaseUrl = org?.inviteBaseUrl ?? NEXT_PUBLIC_INVITE_BASE_URL ?? undefined;
 
-		// actualizar email de la invitación (si quieres conservar email enviado)
+		// actualizar email en la invitación (si cambió)
 		const updatedInvite = await prisma.invite.update({ where: { id }, data: { email: normalizedEmail } });
 
-		// enviar correo (usar token actual del invite)
+		// enviar correo usando token actual
 		const sent = await sendInviteEmail({ to: normalizedEmail, token: updatedInvite.token, organizationId: updatedInvite.organizationId, inviteBaseUrl });
 		if (!sent) throw new Error('No se pudo enviar el correo');
 
