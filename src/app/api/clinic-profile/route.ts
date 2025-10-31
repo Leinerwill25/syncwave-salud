@@ -1,29 +1,27 @@
 // app/api/clinic-profile/route.ts
+// Forzamos runtime node — importante si usas prisma/supabase admin y Buffer.
+export const runtime = 'nodejs';
+
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import prisma from '@/lib/prisma';
 
 const SUPABASE_URL = process.env.SUPABASE_URL ?? '';
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY ?? '';
-const TEST_ORG_ID = process.env.TEST_ORG_ID ?? null;
-
-const supabaseAdmin = SUPABASE_URL && SUPABASE_SERVICE_ROLE_KEY ? createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, { auth: { persistSession: false } }) : null;
+const TEST_ORG_ID = process.env.TEST_ORG ?? process.env.TEST_ORG_ID ?? null; // acepta ambas variantes
 
 /** Extrae access token desde Authorization header o cookies crudas (server-side) */
 function extractAccessTokenFromRequest(req: Request): string | null {
 	try {
-		// 1) Authorization header
 		const auth = req.headers.get('authorization') || req.headers.get('Authorization');
 		if (auth && auth.startsWith('Bearer ')) {
 			const t = auth.split(' ')[1].trim();
 			if (t) return t;
 		}
 
-		// 2) x-access-token / x-auth-token
 		const xAuth = req.headers.get('x-access-token') || req.headers.get('x-auth-token');
 		if (xAuth) return xAuth;
 
-		// 3) Cookies raw header
 		const cookieHeader = req.headers.get('cookie') || '';
 		if (!cookieHeader) return null;
 
@@ -33,7 +31,6 @@ function extractAccessTokenFromRequest(req: Request): string | null {
 			if (!match) continue;
 			const raw = decodeURIComponent(match[1]);
 
-			// Algunas cookies contienen JSON (session object)
 			try {
 				const parsed = JSON.parse(raw);
 				if (!parsed) continue;
@@ -54,6 +51,38 @@ function extractAccessTokenFromRequest(req: Request): string | null {
 	return null;
 }
 
+/** Decodificador base64url compatible con Node (Buffer) y entornos con atob */
+function base64UrlDecode(payload: string): string {
+	const b64 = payload.replace(/-/g, '+').replace(/_/g, '/');
+	const pad = b64.length % 4;
+	const padded = pad ? b64 + '='.repeat(4 - pad) : b64;
+
+	if (typeof Buffer !== 'undefined') {
+		return Buffer.from(padded, 'base64').toString('utf8');
+	}
+
+	if (typeof atob !== 'undefined') {
+		// atob devuelve una cadena binaria; la transformamos a UTF-8 de forma segura
+		const binary = atob(padded);
+		let bytes = [];
+		for (let i = 0; i < binary.length; i++) {
+			bytes.push(binary.charCodeAt(i));
+		}
+		// TextDecoder está disponible en runtimes modernos (Edge)
+		if (typeof TextDecoder !== 'undefined') {
+			return new TextDecoder().decode(new Uint8Array(bytes));
+		}
+		// fallback (menos eficiente)
+		let percentEncoded = '';
+		for (let i = 0; i < bytes.length; i++) {
+			percentEncoded += '%' + bytes[i].toString(16).padStart(2, '0');
+		}
+		return decodeURIComponent(percentEncoded);
+	}
+
+	throw new Error('No base64 decode available');
+}
+
 /** Decodifica sub del JWT sin verificar signature — solo fallback en dev */
 function decodeJwtSub(token: string | null): string | null {
 	if (!token) return null;
@@ -61,10 +90,7 @@ function decodeJwtSub(token: string | null): string | null {
 		const parts = token.split('.');
 		if (parts.length < 2) return null;
 		const payload = parts[1];
-		const b64 = payload.replace(/-/g, '+').replace(/_/g, '/');
-		const pad = b64.length % 4;
-		const padded = pad ? b64 + '='.repeat(4 - pad) : b64;
-		const decoded = Buffer.from(padded, 'base64').toString('utf8');
+		const decoded = base64UrlDecode(payload);
 		const obj = JSON.parse(decoded);
 		return (obj?.sub as string) ?? (obj?.user_id as string) ?? null;
 	} catch (err) {
@@ -81,11 +107,13 @@ export async function GET(req: Request) {
 			return NextResponse.json({ ok: true, profile: profileDev }, { status: 200 });
 		}
 
-		// 2) Asegurarnos que supabaseAdmin exista
-		if (!supabaseAdmin) {
-			console.error('Supabase service role client not configurado (SUPABASE_SERVICE_ROLE_KEY faltante).');
+		// 2) Creamos el cliente supabase ADMIN dentro del handler (evita side-effects al importar)
+		if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
+			console.error('Supabase service role client not configurado (SUPABASE_SERVICE_ROLE_KEY o SUPABASE_URL faltante).');
 			return NextResponse.json({ ok: false, message: 'server misconfiguration' }, { status: 500 });
 		}
+
+		const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, { auth: { persistSession: false } });
 
 		// 3) Extraer token (header o cookies)
 		const token = extractAccessTokenFromRequest(req);
@@ -131,9 +159,7 @@ export async function GET(req: Request) {
 
 		const organizationId = appUser.organizationId;
 
-		// 7) Traer clinic_profile por organizationId
-		// <-- Aquí usamos (prisma as any).clinicProfile para evitar el error de tipo.
-		// Una vez que hayas ejecutado `prisma generate` y recompilado, puedes cambiar a prisma.clinicProfile
+		// 7) Traer clinic_profile por organizationId (usamos any si tu client prisma no incluye clinicProfile por ahora)
 		const profile = await (prisma as any).clinicProfile.findUnique({
 			where: { organizationId },
 			select: {
