@@ -149,6 +149,13 @@ export async function POST(req: Request) {
 		const dbUser = await resolveDbUserFromToken(token);
 		if (!dbUser) return NextResponse.json({ error: 'User not found / unauthorized' }, { status: 401 });
 
+		// << FIX: validar organizationId existe y estrechar el tipo >>
+		const orgId = dbUser.organizationId;
+		if (!orgId) {
+			// Si esperas que TODOS los usuarios tengan org, esto es un 400/403 según tu lógica
+			return NextResponse.json({ error: 'User is not associated with an organization' }, { status: 403 });
+		}
+
 		const body = (await req.json().catch(() => ({}))) as CreateInviteBody;
 		if (!body?.email || !isValidEmail(body.email)) return NextResponse.json({ error: 'email is required and must be valid' }, { status: 400 });
 
@@ -162,7 +169,7 @@ export async function POST(req: Request) {
 		// crear invitación (castear role a any para evitar dependencia de enum generado)
 		const invite = await prisma.invite.create({
 			data: {
-				organizationId: dbUser.organizationId,
+				organizationId: orgId, // ahora TS sabe que es string
 				email,
 				token: tokenGenerated,
 				role: role as any,
