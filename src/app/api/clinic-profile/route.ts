@@ -1,23 +1,15 @@
 // app/api/clinic-profile/route.ts
-// Forzamos runtime node — importante si usas prisma/supabase admin y Buffer.
 export const runtime = 'nodejs';
 
 import { NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
-import prisma from '@/lib/prisma';
 
-const SUPABASE_URL = process.env.SUPABASE_URL ?? '';
-const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY ?? '';
-const TEST_ORG_ID = process.env.TEST_ORG ?? process.env.TEST_ORG_ID ?? null; // acepta ambas variantes
+const TEST_ORG_ID = process.env.TEST_ORG ?? process.env.TEST_ORG_ID ?? null;
 
 /** Extrae access token desde Authorization header o cookies crudas (server-side) */
 function extractAccessTokenFromRequest(req: Request): string | null {
 	try {
 		const auth = req.headers.get('authorization') || req.headers.get('Authorization');
-		if (auth && auth.startsWith('Bearer ')) {
-			const t = auth.split(' ')[1].trim();
-			if (t) return t;
-		}
+		if (auth && auth.startsWith('Bearer ')) return auth.split(' ')[1].trim();
 
 		const xAuth = req.headers.get('x-access-token') || req.headers.get('x-auth-token');
 		if (xAuth) return xAuth;
@@ -30,10 +22,8 @@ function extractAccessTokenFromRequest(req: Request): string | null {
 			const match = cookieHeader.match(new RegExp(`${k}=([^;]+)`));
 			if (!match) continue;
 			const raw = decodeURIComponent(match[1]);
-
 			try {
 				const parsed = JSON.parse(raw);
-				if (!parsed) continue;
 				if (typeof parsed === 'string') return parsed;
 				if (parsed?.access_token) return parsed.access_token;
 				if (parsed?.currentSession?.access_token) return parsed.currentSession.access_token;
@@ -41,7 +31,6 @@ function extractAccessTokenFromRequest(req: Request): string | null {
 				if (parsed?.token?.access_token) return parsed.token.access_token;
 				if (parsed?.accessToken) return parsed.accessToken;
 			} catch {
-				// no era JSON -> token crudo
 				return raw;
 			}
 		}
@@ -51,77 +40,62 @@ function extractAccessTokenFromRequest(req: Request): string | null {
 	return null;
 }
 
-/** Decodificador base64url compatible con Node (Buffer) y entornos con atob */
+/** base64url decode (Node/browser) */
 function base64UrlDecode(payload: string): string {
 	const b64 = payload.replace(/-/g, '+').replace(/_/g, '/');
 	const pad = b64.length % 4;
 	const padded = pad ? b64 + '='.repeat(4 - pad) : b64;
-
-	if (typeof Buffer !== 'undefined') {
-		return Buffer.from(padded, 'base64').toString('utf8');
-	}
-
+	if (typeof Buffer !== 'undefined') return Buffer.from(padded, 'base64').toString('utf8');
 	if (typeof atob !== 'undefined') {
-		// atob devuelve una cadena binaria; la transformamos a UTF-8 de forma segura
-		const binary = atob(padded);
-		let bytes = [];
-		for (let i = 0; i < binary.length; i++) {
-			bytes.push(binary.charCodeAt(i));
-		}
-		// TextDecoder está disponible en runtimes modernos (Edge)
-		if (typeof TextDecoder !== 'undefined') {
-			return new TextDecoder().decode(new Uint8Array(bytes));
-		}
-		// fallback (menos eficiente)
-		let percentEncoded = '';
-		for (let i = 0; i < bytes.length; i++) {
-			percentEncoded += '%' + bytes[i].toString(16).padStart(2, '0');
-		}
-		return decodeURIComponent(percentEncoded);
+		return decodeURIComponent(Array.prototype.map.call(atob(padded), (c: string) => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)).join(''));
 	}
-
 	throw new Error('No base64 decode available');
 }
 
-/** Decodifica sub del JWT sin verificar signature — solo fallback en dev */
+/** Decodifica sub del JWT sin verificar signature — sólo fallback */
 function decodeJwtSub(token: string | null): string | null {
 	if (!token) return null;
 	try {
 		const parts = token.split('.');
 		if (parts.length < 2) return null;
-		const payload = parts[1];
-		const decoded = base64UrlDecode(payload);
+		const decoded = base64UrlDecode(parts[1]);
 		const obj = JSON.parse(decoded);
 		return (obj?.sub as string) ?? (obj?.user_id as string) ?? null;
-	} catch (err) {
+	} catch {
 		return null;
 	}
 }
 
 export async function GET(req: Request) {
 	try {
-		// 1) Dev shortcut: si TEST_ORG_ID está seteado devolver datos de esa org
+		// DEV shortcut: si TEST_ORG_ID → devolver profile de esa org (import dinámico)
 		if (TEST_ORG_ID) {
+			const prismaModule = await import('@/lib/prisma');
+			const prisma = prismaModule.default ?? prismaModule;
 			const profileDev = await (prisma as any).clinicProfile.findUnique({ where: { organizationId: TEST_ORG_ID } });
 			if (!profileDev) return NextResponse.json({ ok: false, message: 'clinic profile not found (TEST_ORG_ID)' }, { status: 404 });
 			return NextResponse.json({ ok: true, profile: profileDev }, { status: 200 });
 		}
 
-		// 2) Creamos el cliente supabase ADMIN dentro del handler (evita side-effects al importar)
+		// Leemos vars DENTRO del handler (no top-level)
+		const SUPABASE_URL = process.env.SUPABASE_URL ?? '';
+		const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY ?? '';
+
 		if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
 			console.error('Supabase service role client not configurado (SUPABASE_SERVICE_ROLE_KEY o SUPABASE_URL faltante).');
 			return NextResponse.json({ ok: false, message: 'server misconfiguration' }, { status: 500 });
 		}
 
+		// import dinámico de supabase y prisma (evita side-effects en module evaluation)
+		const [{ createClient }, prismaModule] = await Promise.all([import('@supabase/supabase-js'), import('@/lib/prisma')]);
+		const prisma = prismaModule.default ?? prismaModule;
 		const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, { auth: { persistSession: false } });
 
-		// 3) Extraer token (header o cookies)
+		// Extraer token
 		const token = extractAccessTokenFromRequest(req);
-		if (!token) {
-			return NextResponse.json({ ok: false, message: 'not authenticated (no token found)' }, { status: 401 });
-		}
+		if (!token) return NextResponse.json({ ok: false, message: 'not authenticated (no token found)' }, { status: 401 });
 
-		// 4) Intentar resolver auth user via supabaseAdmin
+		// Intentar resolver usuario con supabaseAdmin
 		let authUserId: string | null = null;
 		try {
 			const userResp = await supabaseAdmin.auth.getUser(token);
@@ -132,22 +106,18 @@ export async function GET(req: Request) {
 			}
 		} catch (err) {
 			console.error('supabaseAdmin.auth.getUser error:', err);
-			// continue to fallback
+			// fallback abajo
 		}
 
-		// 5) Fallback: decodificar sub del JWT (solo fallback)
+		// Fallback por sub del JWT
 		if (!authUserId) {
 			authUserId = decodeJwtSub(token);
-			if (authUserId) {
-				console.warn('Using JWT-sub fallback to resolve authId. (No signature verification)');
-			}
+			if (authUserId) console.warn('Using JWT-sub fallback to resolve authId. (No signature verification)');
 		}
 
-		if (!authUserId) {
-			return NextResponse.json({ ok: false, message: 'not authenticated (could not resolve authId)' }, { status: 401 });
-		}
+		if (!authUserId) return NextResponse.json({ ok: false, message: 'not authenticated (could not resolve authId)' }, { status: 401 });
 
-		// 6) Buscar usuario en tabla User para obtener organizationId
+		// Buscar usuario en tabla User para obtener organizationId
 		const appUser = await prisma.user.findFirst({
 			where: { authId: authUserId },
 			select: { organizationId: true },
@@ -159,7 +129,7 @@ export async function GET(req: Request) {
 
 		const organizationId = appUser.organizationId;
 
-		// 7) Traer clinic_profile por organizationId (usamos any si tu client prisma no incluye clinicProfile por ahora)
+		// Traer clinic_profile por organizationId
 		const profile = await (prisma as any).clinicProfile.findUnique({
 			where: { organizationId },
 			select: {
@@ -205,9 +175,7 @@ export async function GET(req: Request) {
 			},
 		});
 
-		if (!profile) {
-			return NextResponse.json({ ok: false, message: 'clinic profile not found' }, { status: 404 });
-		}
+		if (!profile) return NextResponse.json({ ok: false, message: 'clinic profile not found' }, { status: 404 });
 
 		return NextResponse.json({ ok: true, profile }, { status: 200 });
 	} catch (err: any) {
