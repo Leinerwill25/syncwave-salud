@@ -4,8 +4,8 @@ import type { NextRequest } from 'next/server';
 import prisma from '@/lib/prisma';
 import { randomUUID } from 'crypto';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
-import type { Prisma } from '@prisma/client';
 import bcrypt from 'bcryptjs';
+import type { Prisma } from '@prisma/client'; // tipos Prisma
 
 const SUPABASE_URL = process.env.SUPABASE_URL ?? process.env.NEXT_PUBLIC_SUPABASE_URL ?? '';
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY ?? '';
@@ -29,9 +29,9 @@ function addOneMonth(date = new Date()): Date {
 	return d;
 }
 
-/* ---------- Tipos locales (mantener sincronizados con schema.prisma) ---------- */
-const USER_ROLES = ['ADMIN', 'MEDICO', 'ENFERMERA', 'RECEPCION', 'FARMACIA', 'PACIENTE'] as const;
-type UserRoleLocal = (typeof USER_ROLES)[number];
+/* ---------- Tipos locales ---------- */
+export const USER_ROLES = ['ADMIN', 'MEDICO', 'ENFERMERA', 'RECEPCION', 'FARMACIA', 'PACIENTE'] as const;
+export type UserRoleLocal = (typeof USER_ROLES)[number];
 
 const ORG_TYPES = ['CLINICA', 'HOSPITAL', 'CONSULTORIO', 'FARMACIA', 'LABORATORIO'] as const;
 type OrgTypeLocal = (typeof ORG_TYPES)[number];
@@ -46,7 +46,7 @@ type AccountInput = {
 
 type OrganizationInput = {
 	orgName: string;
-	orgType?: string;
+	orgType?: string | null;
 	orgAddress?: string | null;
 	orgPhone?: string | null;
 	specialistCount?: number | string;
@@ -112,12 +112,17 @@ function parseSupabaseCreateResp(resp: unknown): { id?: string; email?: string }
 	return null;
 }
 
-/* ---------- Tipo local para createMany invites ---------- */
-/**
- * En algunos setups Prisma no exporta InviteCreateManyInput. Usamos un tipo local
- * compatible en tiempo de compilación (Record<string, unknown>) y lo pasamos a Prisma.
- */
-type LocalInviteCreateManyInput = Record<string, unknown>;
+/* ---------- Tipo local para invites ---------- */
+type InviteCreateManyLocalInput = {
+	organizationId: string;
+	email: string;
+	token: string;
+	role: UserRoleLocal;
+	invitedById: string;
+	used: boolean;
+	expiresAt: Date;
+	createdAt: Date;
+};
 
 /* ---------- Handler ---------- */
 export async function POST(req: NextRequest): Promise<NextResponse> {
@@ -134,7 +139,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 		}
 
 		const roleRaw = account.role ? String(account.role) : 'ADMIN';
-		const role: UserRoleLocal = (USER_ROLES.includes(roleRaw as UserRoleLocal) ? (roleRaw as UserRoleLocal) : 'ADMIN') as UserRoleLocal;
+		const role: UserRoleLocal = USER_ROLES.includes(roleRaw as UserRoleLocal) ? (roleRaw as UserRoleLocal) : 'ADMIN';
 
 		// Prevent duplicates
 		const existing = await prisma.user.findUnique({ where: { email: account.email } });
@@ -142,7 +147,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 			return NextResponse.json({ ok: false, message: 'Ya existe un usuario con ese email' }, { status: 409 });
 		}
 
-		// Intentar crear usuario en Supabase (admin) si está disponible
+		// Supabase create user (opcional)
 		let supabaseUserId: string | null = null;
 		let supabaseUserEmail: string | null = null;
 		let supabaseCreated = false;
@@ -161,183 +166,143 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 					supabaseUserId = parsedResp.id;
 					supabaseUserEmail = parsedResp.email ?? account.email;
 					supabaseCreated = true;
-				} else {
-					console.warn('Supabase create user: could not parse returned user id. Response:', createResp);
 				}
 			} catch (err: unknown) {
-				if (err instanceof Error) {
-					console.error('Error calling supabaseAdmin.createUser:', err.message);
-				} else {
-					console.error('Unknown error calling supabaseAdmin.createUser:', err);
-				}
+				console.error('Error calling supabaseAdmin.createUser:', err);
 			}
-		} else {
-			console.warn('supabaseAdmin no disponible; se usará fallback local (passwordHash).');
 		}
 
 		const referredOrgIdFromForm = (patient && isObject(patient) && patient.organizationId ? String(patient.organizationId) : body.selectedOrganizationId ?? null) ?? null;
 
-		// Transaction: crear registros
-		const txResult = await prisma.$transaction(
-			async (tx: Prisma.TransactionClient) => {
-				// Org
-				let orgRecord: Awaited<ReturnType<typeof tx.organization.create>> | null = null;
-				if (organization) {
-					const orgTypeCast: OrgTypeLocal = organization.orgType && ORG_TYPES.includes(organization.orgType as OrgTypeLocal) ? (organization.orgType as OrgTypeLocal) : 'CLINICA';
-					orgRecord = await tx.organization.create({
-						data: {
-							name: organization.orgName,
-							// casteamos a any para evitar dependencia del enum generado por Prisma
-							type: orgTypeCast as unknown as any,
-							address: organization.orgAddress ?? null,
-							contactEmail: account.email,
-							phone: organization.orgPhone ?? null,
-							specialistCount: safeNumber(organization.specialistCount) ?? 0,
-						},
-					});
-				}
-
-				// Patient
-				let patientRecord: Awaited<ReturnType<typeof tx.patient.create>> | null = null;
-				if (patient) {
-					patientRecord = await tx.patient.create({
-						data: {
-							firstName: patient.firstName,
-							lastName: patient.lastName,
-							identifier: patient.identifier ?? null,
-							dob: patient.dob ? new Date(patient.dob) : null,
-							gender: patient.gender ?? null,
-							phone: patient.phone ?? null,
-							address: patient.address ?? null,
-						},
-					});
-
-					if (plan?.selectedPlan === 'paciente-family') {
-						await tx.familyGroup.create({
-							data: {
-								name: `${patient.firstName} ${patient.lastName} - Grupo familiar`,
-								ownerId: patientRecord.id,
-								maxMembers: 5,
-							},
-						});
-					}
-				}
-
-				// Preparar user payload
-				const userCreateData: {
-					email: string;
-					name: string | null;
-					role: UserRoleLocal;
-					organizationId?: string | undefined;
-					patientProfileId?: string | null | undefined;
-					authId?: string | undefined;
-					passwordHash?: string | undefined;
-				} = {
-					email: account.email,
-					name: account.fullName ?? null,
-					role,
-				};
-
-				// PRIORIDAD para organizationId
-				if (String(role).toUpperCase() === 'PACIENTE' && referredOrgIdFromForm) {
-					try {
-						const maybeOrg = await tx.organization.findUnique({ where: { id: referredOrgIdFromForm } });
-						if (maybeOrg) {
-							userCreateData.organizationId = referredOrgIdFromForm;
-						}
-					} catch (err: unknown) {
-						if (err instanceof Error) {
-							console.error('Error validando organizationId en tx:', err.message);
-						} else {
-							console.error('Unknown error validando organizationId en tx:', err);
-						}
-					}
-				}
-
-				if (!userCreateData.organizationId && orgRecord) {
-					userCreateData.organizationId = orgRecord.id;
-				}
-
-				if (patientRecord) {
-					userCreateData.patientProfileId = String(patientRecord.id);
-				}
-
-				// Auth / password
-				if (supabaseCreated && supabaseUserId) {
-					userCreateData.authId = supabaseUserId;
-				} else {
-					const saltRounds = 10;
-					const hashed = await bcrypt.hash(account.password, saltRounds);
-					userCreateData.passwordHash = hashed;
-				}
-
-				const userRecord = await tx.user.create({
+		// Tipamos correctamente tx para Prisma
+		const txResult = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+			let orgRecord: any = null;
+			if (organization) {
+				const orgTypeCast: OrgTypeLocal = organization.orgType && ORG_TYPES.includes(organization.orgType as OrgTypeLocal) ? (organization.orgType as OrgTypeLocal) : 'CLINICA';
+				orgRecord = await tx.organization.create({
 					data: {
-						email: userCreateData.email,
-						name: userCreateData.name,
-						// casteo a any para evitar bloqueo si Prisma no exporta el enum
-						role: userCreateData.role as unknown as any,
-						organizationId: userCreateData.organizationId,
-						patientProfileId: userCreateData.patientProfileId,
-						authId: userCreateData.authId,
-						passwordHash: userCreateData.passwordHash,
+						name: organization.orgName,
+						type: orgTypeCast as unknown as any,
+						address: organization.orgAddress ?? null,
+						contactEmail: account.email,
+						phone: organization.orgPhone ?? null,
+						specialistCount: safeNumber(organization.specialistCount) ?? 0,
+					},
+				});
+			}
+
+			let patientRecord: any = null;
+			if (patient) {
+				patientRecord = await tx.patient.create({
+					data: {
+						firstName: patient.firstName,
+						lastName: patient.lastName,
+						identifier: patient.identifier ?? null,
+						dob: patient.dob ? new Date(patient.dob) : null,
+						gender: patient.gender ?? null,
+						phone: patient.phone ?? null,
+						address: patient.address ?? null,
 					},
 				});
 
-				// Subscription
-				let subscriptionRecord: Awaited<ReturnType<typeof tx.subscription.create>> | null = null;
-				if (plan) {
-					const planSnapshot = {
-						selectedPlan: plan.selectedPlan,
-						billingPeriod: plan.billingPeriod,
-						months: plan.billingMonths,
-						discount: plan.billingDiscount,
-						total: plan.billingTotal,
-					};
-					const now = new Date();
-					const trialEnd = addOneMonth(now);
-					subscriptionRecord = await tx.subscription.create({
+				if (plan?.selectedPlan === 'paciente-family') {
+					await tx.familyGroup.create({
 						data: {
-							organizationId: orgRecord ? orgRecord.id : undefined,
-							patientId: patientRecord ? String(patientRecord.id) : undefined,
-							planId: null,
-							stripeSubscriptionId: null,
-							status: 'TRIALING',
-							startDate: now,
-							endDate: trialEnd,
-							planSnapshot,
+							name: `${patient.firstName} ${patient.lastName} - Grupo familiar`,
+							ownerId: patientRecord.id,
+							maxMembers: 5,
 						},
 					});
 				}
+			}
 
-				return {
-					userRecord: {
-						id: userRecord.id,
-						email: userRecord.email,
-						role: userRecord.role,
-						authId: userRecord.authId ?? null,
-						organizationId: userRecord.organizationId ?? null,
+			const userCreateData: {
+				email: string;
+				name: string | null;
+				role: UserRoleLocal;
+				organizationId?: string;
+				patientProfileId?: string | null;
+				authId?: string;
+				passwordHash?: string;
+			} = { email: account.email, name: account.fullName ?? null, role };
+
+			if (String(role).toUpperCase() === 'PACIENTE' && referredOrgIdFromForm) {
+				const maybeOrg = await tx.organization.findUnique({ where: { id: referredOrgIdFromForm } });
+				if (maybeOrg) userCreateData.organizationId = referredOrgIdFromForm;
+			}
+
+			if (!userCreateData.organizationId && orgRecord) userCreateData.organizationId = orgRecord.id;
+			if (patientRecord) userCreateData.patientProfileId = String(patientRecord.id);
+
+			if (supabaseCreated && supabaseUserId) {
+				userCreateData.authId = supabaseUserId;
+			} else {
+				const hashed = await bcrypt.hash(account.password, 10);
+				userCreateData.passwordHash = hashed;
+			}
+
+			// Al insertar en Prisma, casteamos role para evitar discrepancias de typing en distintos setups de prisma
+			const userRecord = await tx.user.create({
+				data: {
+					email: userCreateData.email,
+					name: userCreateData.name,
+					// cast seguro para satisfacer al typing de Prisma en diferentes setups
+					role: userCreateData.role as unknown as any,
+					organizationId: userCreateData.organizationId,
+					patientProfileId: userCreateData.patientProfileId,
+					authId: userCreateData.authId,
+					passwordHash: userCreateData.passwordHash,
+				},
+			});
+
+			let subscriptionRecord: any = null;
+			if (plan) {
+				const now = new Date();
+				subscriptionRecord = await tx.subscription.create({
+					data: {
+						organizationId: orgRecord?.id,
+						patientId: patientRecord?.id ? String(patientRecord.id) : undefined,
+						planId: null,
+						stripeSubscriptionId: null,
+						status: 'TRIALING',
+						startDate: now,
+						endDate: addOneMonth(now),
+						planSnapshot: {
+							selectedPlan: plan.selectedPlan,
+							billingPeriod: plan.billingPeriod,
+							months: plan.billingMonths,
+							discount: plan.billingDiscount,
+							total: plan.billingTotal,
+						},
 					},
-					organizationId: orgRecord ? orgRecord.id : null,
-					organizationName: orgRecord ? orgRecord.name : null,
-					patientRecord: patientRecord ? { id: patientRecord.id, firstName: patientRecord.firstName, lastName: patientRecord.lastName } : null,
-					subscriptionId: subscriptionRecord ? subscriptionRecord.id : null,
-				};
-			},
-			{ timeout: 10000 }
-		);
+				});
+			}
 
-		// Outside transaction: invites
+			return {
+				userRecord: {
+					id: userRecord.id,
+					email: userRecord.email,
+					role: userRecord.role,
+					authId: userRecord.authId ?? null,
+					organizationId: userRecord.organizationId ?? null,
+				},
+				organizationId: orgRecord?.id ?? null,
+				organizationName: orgRecord?.name ?? null,
+				patientRecord: patientRecord ? { id: patientRecord.id, firstName: patientRecord.firstName, lastName: patientRecord.lastName } : null,
+				subscriptionId: subscriptionRecord?.id ?? null,
+			};
+		});
+
+		// Invites (fuera de la transacción)
 		const invitesReturned: Array<{ token: string; url?: string }> = [];
 		if (txResult.organizationId && organization) {
 			const specialists = safeNumber(organization.specialistCount) ?? 0;
 			if (specialists > 0) {
 				const expiresAt = expiryDays(14);
-				// Usamos un tipo local en lugar de Prisma.InviteCreateManyInput
-				const invitesData: LocalInviteCreateManyInput[] = [];
-
 				const now = new Date();
-				for (let i = 0; i < specialists; i += 1) {
+				const invitesData: InviteCreateManyLocalInput[] = [];
+
+				for (let i = 0; i < specialists; i++) {
 					const token = genToken();
 					const invitedById = String(txResult.userRecord.id);
 
@@ -345,8 +310,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 						organizationId: txResult.organizationId,
 						email: '',
 						token,
-						// casteo a any / UserRoleLocal para evitar dependencia del enum exportado
-						role: 'MEDICO' as unknown as any,
+						role: 'MEDICO',
 						invitedById,
 						used: false,
 						expiresAt,
@@ -359,11 +323,8 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 					});
 				}
 
-				// Pasamos el array tal cual a prisma.createMany (Prisma aceptará los objetos en runtime)
-				await prisma.invite.createMany({
-					data: invitesData,
-					skipDuplicates: true,
-				});
+				// casteo al pasar a prisma.createMany para evitar problemas de typing en compilación
+				await prisma.invite.createMany({ data: invitesData as unknown as any, skipDuplicates: true });
 			}
 		}
 
@@ -378,11 +339,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
 		return NextResponse.json({ ok: true, data: responsePayload, nextUrl: null });
 	} catch (err: unknown) {
-		if (err instanceof Error) {
-			console.error('Register error:', err.message);
-			return NextResponse.json({ ok: false, message: err.message || 'Error interno' }, { status: 500 });
-		}
-		console.error('Register error (unknown):', err);
-		return NextResponse.json({ ok: false, message: 'Error interno' }, { status: 500 });
+		console.error('Register error:', err);
+		return NextResponse.json({ ok: false, message: err instanceof Error ? err.message : 'Error interno' }, { status: 500 });
 	}
 }

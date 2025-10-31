@@ -20,7 +20,7 @@ async function getAuthenticatedUser(request: Request) {
 
 	// 2) Fallback: leer cookie sb-access-token del request (server-side)
 	try {
-		const cookieStore = await cookies(); // <-- await para evitar Promise<...>
+		const cookieStore = await cookies();
 		const accessToken = cookieStore.get('sb-access-token')?.value ?? null;
 		if (accessToken) {
 			try {
@@ -90,6 +90,12 @@ export async function POST(request: Request) {
 		const invite = await prisma.invite.findUnique({ where: { id } });
 		if (!invite) return NextResponse.json({ ok: false, message: 'Invitación no encontrada' }, { status: 404 });
 
+		// validar que invite tenga email y token (evita pasar null)
+		if (!invite.email || !invite.token) {
+			console.error('Invite no tiene email o token:', invite);
+			return NextResponse.json({ ok: false, message: 'Invitación inválida (falta email o token)' }, { status: 400 });
+		}
+
 		const orgIdUser = auth.dbUser.organizationId;
 		const effectiveOrgId = orgIdUser ?? orgIdFromBody;
 		if (!effectiveOrgId || invite.organizationId !== effectiveOrgId) {
@@ -97,8 +103,16 @@ export async function POST(request: Request) {
 		}
 
 		const org = await prisma.organization.findUnique({ where: { id: invite.organizationId } });
-		const inviteBaseUrl = org?.inviteBaseUrl ?? process.env.NEXT_PUBLIC_INVITE_BASE_URL;
-		const sent = await sendInviteEmail({ to: invite.email, token: invite.token, organizationId: invite.organizationId, inviteBaseUrl });
+
+		// aseguramos que inviteBaseUrl es string | undefined (no null)
+		const inviteBaseUrl: string | undefined = org?.inviteBaseUrl ?? process.env.NEXT_PUBLIC_INVITE_BASE_URL ?? undefined;
+
+		const sent = await sendInviteEmail({
+			to: invite.email,
+			token: invite.token,
+			organizationId: invite.organizationId,
+			inviteBaseUrl,
+		});
 		if (!sent) throw new Error('No se pudo enviar el correo');
 
 		await prisma.invite.update({ where: { id }, data: { createdAt: new Date() } });

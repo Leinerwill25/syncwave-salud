@@ -1,5 +1,3 @@
-// src/app/invites/page.tsx
-import React from 'react';
 import prisma from '@/lib/prisma';
 import InviteListPage from '@/components/InviteListPage';
 import { cookies } from 'next/headers';
@@ -11,31 +9,27 @@ type SerializedInvite = {
 	token: string;
 	role: string;
 	used: boolean;
-	expiresAt: string; // ISO
-	createdAt: string; // ISO
+	expiresAt: string; // ISO string (vacío si null)
+	createdAt: string; // ISO string
 };
 
 export async function getCurrentOrganizationId(): Promise<string | null> {
 	try {
-		// crea el cliente supabase (tu helper usa nextCookies() internamente también)
 		const { supabase } = createSupabaseServerClient();
 
-		// Intento normal de obtener sesión / user vía supabase
 		const sessionResp = await supabase.auth.getSession();
 		console.log('DEBUG supabase.auth.getSession ->', sessionResp);
 
 		let userResp = await supabase.auth.getUser();
 		console.log('DEBUG supabase.auth.getUser (initial) ->', userResp);
 
-		// Si no hay user, extraemos cookies del request y reintentamos con sb-access-token
 		if (!userResp?.data?.user) {
 			try {
-				const cookieStore = await cookies(); // <-- await aquí evita el error de Promise<...>
+				const cookieStore = await cookies();
 				const accessToken = cookieStore.get('sb-access-token')?.value ?? null;
 
 				if (accessToken) {
 					console.log('DEBUG: reintentando getUser con sb-access-token desde cookies');
-					// Pasamos el JWT directamente a getUser como fallback
 					userResp = await supabase.auth.getUser(accessToken);
 					console.log('DEBUG supabase.auth.getUser (from cookie) ->', userResp);
 				}
@@ -67,6 +61,7 @@ export async function getCurrentOrganizationId(): Promise<string | null> {
 		return null;
 	}
 }
+
 export default async function InvitesPage() {
 	const organizationId = await getCurrentOrganizationId();
 
@@ -86,8 +81,18 @@ export default async function InvitesPage() {
 		);
 	}
 
-	// trae invitaciones asociadas y serializa fechas a ISO (InviteList espera strings)
-	const invitesRaw = await prisma.invite.findMany({
+	// Definimos localmente el tipo que corresponde a la selección hecha por prisma.findMany
+	type InviteSelect = {
+		id: string;
+		email: string | null;
+		token: string;
+		role: string;
+		used: boolean;
+		expiresAt: Date | null;
+		createdAt: Date;
+	};
+
+	const invitesRaw = (await prisma.invite.findMany({
 		where: { organizationId },
 		select: {
 			id: true,
@@ -99,21 +104,21 @@ export default async function InvitesPage() {
 			createdAt: true,
 		},
 		orderBy: { createdAt: 'desc' },
-	});
+	})) as InviteSelect[];
 
-	const invites: SerializedInvite[] = invitesRaw.map((i: (typeof invitesRaw)[number]) => ({
+	// Mapeamos y serializamos (asegurando no-break si hay nulls)
+	const invites: SerializedInvite[] = invitesRaw.map((i) => ({
 		id: i.id,
-		email: i.email,
+		email: i.email ?? '', // evita nulls en la UI
 		token: i.token,
 		role: i.role,
-		used: i.used,
-		expiresAt: i.expiresAt.toISOString(),
+		used: !!i.used,
+		expiresAt: i.expiresAt ? i.expiresAt.toISOString() : '',
 		createdAt: i.createdAt.toISOString(),
 	}));
 
 	return (
 		<div className="max-w-7xl mx-auto p-6">
-			{/* InviteListPage es client component — le pasamos initialInvites + organizationId */}
 			<InviteListPage initialInvites={invites} organizationId={organizationId} />
 		</div>
 	);

@@ -27,7 +27,12 @@ export async function POST(request: Request) {
 		if (!invite) return NextResponse.json({ ok: false, message: 'Invitación inválida' }, { status: 404 });
 		if (invite.used) return NextResponse.json({ ok: false, message: 'Invitación ya usada' }, { status: 400 });
 		if (invite.expiresAt < new Date()) return NextResponse.json({ ok: false, message: 'Invitación expirada' }, { status: 400 });
-		if (invite.email.toLowerCase() !== String(email).toLowerCase()) {
+		if (!invite.email) {
+			return NextResponse.json({ ok: false, message: 'Invitación inválida (falta email)' }, { status: 400 });
+		}
+
+		const inviteEmail = invite.email;
+		if (inviteEmail.toLowerCase() !== String(email).toLowerCase()) {
 			return NextResponse.json({ ok: false, message: 'El email no coincide con la invitación' }, { status: 400 });
 		}
 
