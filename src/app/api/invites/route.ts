@@ -1,7 +1,10 @@
 // src/app/api/invites/route.ts
+export const runtime = 'nodejs';
+
 import { NextResponse } from 'next/server';
+import { createClient } from '@supabase/supabase-js';
 import prisma from '@/lib/prisma';
-import createSupabaseServerClient from '@/app/adapters/server';
+import crypto from 'crypto';
 
 type CreateInviteBody = {
 	email: string;
@@ -9,10 +12,9 @@ type CreateInviteBody = {
 	expiresAt?: string;
 };
 
-/**
- * Lista canónica de roles (manténla sincronizada con tu schema.prisma)
- * La definimos localmente para no depender de cómo prisma exporte enums.
- */
+const SUPABASE_URL = process.env.SUPABASE_URL ?? '';
+const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY ?? '';
+
 const USER_ROLES = ['ADMIN', 'MEDICO', 'ENFERMERA', 'RECEPCION', 'FARMACIA', 'PACIENTE'] as const;
 type UserRole = (typeof USER_ROLES)[number];
 
@@ -22,52 +24,149 @@ function parseRoleOrDefault(roleCandidate?: string): UserRole {
 	return allowed.includes(roleCandidate) ? (roleCandidate as UserRole) : 'MEDICO';
 }
 
+/** Extrae token desde Authorization header, x-* headers o cookies crudas */
+function extractAccessTokenFromRequest(req: Request): string | null {
+	try {
+		const auth = req.headers.get('authorization') || req.headers.get('Authorization');
+		if (auth && auth.startsWith('Bearer ')) return auth.split(' ')[1].trim();
+
+		const xAuth = req.headers.get('x-access-token') || req.headers.get('x-auth-token');
+		if (xAuth) return xAuth;
+
+		const cookieHeader = req.headers.get('cookie') || '';
+		if (!cookieHeader) return null;
+
+		const keys = ['sb-access-token', 'sb:token', 'supabase-auth-token', 'sb-session', 'supabase-session', 'sb'];
+		for (const k of keys) {
+			const match = cookieHeader.match(new RegExp(`${k}=([^;]+)`));
+			if (!match) continue;
+			const raw = decodeURIComponent(match[1]);
+			try {
+				const parsed = JSON.parse(raw);
+				if (typeof parsed === 'string') return parsed;
+				if (parsed?.access_token) return parsed.access_token;
+				if (parsed?.currentSession?.access_token) return parsed.currentSession.access_token;
+				if (parsed?.session?.access_token) return parsed.session.access_token;
+				if (parsed?.token?.access_token) return parsed.token.access_token;
+				if (parsed?.accessToken) return parsed.accessToken;
+			} catch {
+				return raw;
+			}
+		}
+	} catch (err) {
+		console.error('extractAccessTokenFromRequest error', err);
+	}
+	return null;
+}
+
+/** Base64url decode (Node + navegador) */
+function base64UrlDecode(payload: string): string {
+	const b64 = payload.replace(/-/g, '+').replace(/_/g, '/');
+	const pad = b64.length % 4;
+	const padded = pad ? b64 + '='.repeat(4 - pad) : b64;
+	if (typeof Buffer !== 'undefined') return Buffer.from(padded, 'base64').toString('utf8');
+	if (typeof atob !== 'undefined') {
+		return decodeURIComponent(Array.prototype.map.call(atob(padded), (c: string) => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)).join(''));
+	}
+	throw new Error('No base64 decode available');
+}
+
+/** Decodifica payload del JWT — devuelve objeto parsed o null */
+function decodeJwtPayload(token: string | null): any | null {
+	if (!token) return null;
+	try {
+		const parts = token.split('.');
+		if (parts.length < 2) return null;
+		const decoded = base64UrlDecode(parts[1]);
+		return JSON.parse(decoded);
+	} catch {
+		return null;
+	}
+}
+
+/** Intenta resolver usuario: primero Supabase Admin (si config), luego fallback por sub/email en JWT */
+async function resolveDbUserFromToken(token: string | null) {
+	if (!token) return null;
+
+	// 1) Si hay SUPABASE admin creds, usarlo (creado dentro de la función — sin side effects en import)
+	if (SUPABASE_URL && SUPABASE_SERVICE_ROLE_KEY) {
+		try {
+			const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, { auth: { persistSession: false } });
+			const userResp = await supabaseAdmin.auth.getUser(token);
+			const supUser = (userResp as any)?.data?.user ?? null;
+			if (supUser?.id) {
+				// buscar en DB por authId
+				const dbUser = await prisma.user.findFirst({ where: { authId: supUser.id } });
+				if (dbUser) return dbUser;
+				// si no existe por authId, intentar por email si la respuesta lo tiene
+				if (supUser?.email) {
+					const dbByEmail = await prisma.user.findFirst({ where: { email: supUser.email } });
+					if (dbByEmail) return dbByEmail;
+				}
+			}
+		} catch (err) {
+			console.warn('supabaseAdmin.auth.getUser falló, continuando con fallback JWT', err);
+		}
+	}
+
+	// 2) Fallback: parsear payload del JWT para obtener sub o email
+	const payload = decodeJwtPayload(token);
+	if (!payload) return null;
+	const authId = payload.sub ?? payload.user_id ?? null;
+	const email = payload.email ?? null;
+	if (authId) {
+		const dbUser = await prisma.user.findFirst({ where: { authId } });
+		if (dbUser) return dbUser;
+	}
+	if (email) {
+		const dbByEmail = await prisma.user.findFirst({ where: { email } });
+		if (dbByEmail) return dbByEmail;
+	}
+	return null;
+}
+
+function isValidEmail(e?: string) {
+	if (!e) return false;
+	return /^\S+@\S+\.\S+$/.test(e.trim());
+}
+
+/** Genera token seguro */
+function generateToken() {
+	// preferimos randomUUID si está, sino hex
+	try {
+		if ((crypto as any).randomUUID) return (crypto as any).randomUUID();
+		return crypto.randomBytes(20).toString('hex');
+	} catch {
+		return Math.random().toString(36).slice(2, 12);
+	}
+}
+
 export async function POST(req: Request) {
 	try {
-		// createSupabaseServerClient puede ser async (lo awaitamos por seguridad)
-		const { supabase } = await createSupabaseServerClient();
+		const token = extractAccessTokenFromRequest(req);
+		if (!token) return NextResponse.json({ error: 'Not authenticated (no token)' }, { status: 401 });
 
-		const {
-			data: { user },
-			error: userErr,
-		} = await supabase.auth.getUser();
+		const dbUser = await resolveDbUserFromToken(token);
+		if (!dbUser) return NextResponse.json({ error: 'User not found / unauthorized' }, { status: 401 });
 
-		if (userErr || !user?.id) {
-			return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
-		}
-
-		const appUser = await prisma.user.findFirst({
-			where: { authId: user.id },
-			select: { organizationId: true, id: true },
-		});
-
-		if (!appUser?.organizationId) {
-			return NextResponse.json({ error: 'Organization not found for user' }, { status: 403 });
-		}
-
-		const body = (await req.json()) as CreateInviteBody;
-		if (!body?.email) return NextResponse.json({ error: 'email is required' }, { status: 400 });
+		const body = (await req.json().catch(() => ({}))) as CreateInviteBody;
+		if (!body?.email || !isValidEmail(body.email)) return NextResponse.json({ error: 'email is required and must be valid' }, { status: 400 });
 
 		const email = body.email.trim().toLowerCase();
-		if (!/^\S+@\S+\.\S+$/.test(email)) return NextResponse.json({ error: 'invalid email' }, { status: 400 });
-
 		const role = parseRoleOrDefault(body.role);
 		const expiresAt = body.expiresAt ? new Date(body.expiresAt) : new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
 
-		// generate token with fallback
-		const token =
-			(globalThis as any).crypto?.randomUUID?.() ??
-			// eslint-disable-next-line @typescript-eslint/no-var-requires
-			(typeof require !== 'undefined' ? require('crypto').randomUUID() : Math.random().toString(36).slice(2, 12));
+		// generar token seguro
+		const tokenGenerated = generateToken();
 
+		// crear invitación (castear role a any para evitar dependencia de enum generado)
 		const invite = await prisma.invite.create({
 			data: {
-				organizationId: appUser.organizationId,
+				organizationId: dbUser.organizationId,
 				email,
-				token,
-				// casteamos a any para evitar dependencia con el tipo generado por prisma en tiempo de compilación
+				token: tokenGenerated,
 				role: role as any,
-				invitedById: appUser.id,
+				invitedById: dbUser.id,
 				used: false,
 				expiresAt,
 			},
@@ -85,43 +184,31 @@ export async function POST(req: Request) {
 			},
 			{ status: 201 }
 		);
-	} catch (err) {
+	} catch (err: any) {
 		console.error('API POST /api/invites error:', err);
-		return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+		return NextResponse.json({ error: err?.message ?? 'Internal server error' }, { status: 500 });
 	}
 }
 
 export async function DELETE(req: Request) {
 	try {
-		const { supabase } = await createSupabaseServerClient();
+		const token = extractAccessTokenFromRequest(req);
+		if (!token) return NextResponse.json({ error: 'Not authenticated (no token)' }, { status: 401 });
 
-		const {
-			data: { user },
-			error: userErr,
-		} = await supabase.auth.getUser();
+		const dbUser = await resolveDbUserFromToken(token);
+		if (!dbUser) return NextResponse.json({ error: 'User not found / unauthorized' }, { status: 401 });
 
-		if (userErr || !user?.id) {
-			return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
-		}
-
-		const appUser = await prisma.user.findFirst({ where: { authId: user.id }, select: { organizationId: true } });
-		if (!appUser?.organizationId) {
-			return NextResponse.json({ error: 'Organization not found for user' }, { status: 403 });
-		}
-
-		const { id } = (await req.json()) as { id?: string };
+		const { id } = (await req.json().catch(() => ({}))) as { id?: string };
 		if (!id) return NextResponse.json({ error: 'id is required' }, { status: 400 });
 
 		const existing = await prisma.invite.findUnique({ where: { id }, select: { organizationId: true } });
 		if (!existing) return NextResponse.json({ error: 'Invite not found' }, { status: 404 });
-		if (existing.organizationId !== appUser.organizationId) {
-			return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
-		}
+		if (existing.organizationId !== dbUser.organizationId) return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
 
 		await prisma.invite.delete({ where: { id } });
 		return NextResponse.json({ ok: true });
-	} catch (err) {
+	} catch (err: any) {
 		console.error('API DELETE /api/invites error:', err);
-		return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+		return NextResponse.json({ error: err?.message ?? 'Internal server error' }, { status: 500 });
 	}
 }
