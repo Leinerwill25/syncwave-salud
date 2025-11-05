@@ -31,7 +31,7 @@ const LINKS: LinkItem[] = [
 		icon: ClipboardList,
 		submenu: [
 			{ href: '/dashboard/medic/consultas', label: 'Todas las consultas' },
-			{ href: '/dashboard/medic/consultas/nueva', label: 'Nueva consulta' },
+			{ href: '/dashboard/medic/consultas/new', label: 'Nueva consulta' },
 		],
 	},
 	{
@@ -85,13 +85,17 @@ export default function MedicSidebar() {
 		setOpenMenus((prev) => (prev.includes(label) ? prev.filter((m) => m !== label) : [...prev, label]));
 	};
 
-	// Helper seguro para comprobar si href está "activo" respecto a pathname.
-	// Considera activo solo si pathname === href OR pathname startsWith(href + '/')
+	// Normalize path: remove trailing slash (except for root '/')
+	const normalize = (p: string | undefined | null) => {
+		if (!p) return '';
+		if (p === '/') return '/';
+		return p.endsWith('/') ? p.slice(0, -1) : p;
+	};
+
+	// isPathActive: ahora compara de forma estricta (pathname === href normalizados)
 	const isPathActive = (href?: string | null) => {
 		if (!href) return false;
-		if (pathname === href) return true;
-		// asegúrate de que sea un segment boundary (ej. '/a' no debe coincidir con '/ab')
-		return pathname.startsWith(href.endsWith('/') ? href : href + '/');
+		return normalize(pathname) === normalize(href);
 	};
 
 	const renderLink = (link: LinkItem) => {
@@ -100,7 +104,7 @@ export default function MedicSidebar() {
 
 		// Submenu
 		if (link.submenu) {
-			// Abrir si está en openMenus o si alguno de los hijos es la ruta actual
+			// Abrir si está en openMenus o si alguno de los hijos es la ruta actual (exacta)
 			const childActive = link.submenu.some((l) => isPathActive(l.href));
 			const isOpen = openMenus.includes(link.label) || childActive;
 
