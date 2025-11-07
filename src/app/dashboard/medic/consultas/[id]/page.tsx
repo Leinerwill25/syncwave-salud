@@ -168,6 +168,81 @@ export default async function ConsultationDetail({ params }: Props) {
 									<pre className="whitespace-pre-wrap bg-slate-50 dark:bg-transparent p-3 rounded text-sm text-slate-700 dark:text-slate-200">{c.notes || '—'}</pre>
 								</div>
 							</CardShell>
+
+							{/* Signos / Vitals — tarjeta limpia, tipografía y layout por secciones */}
+							<div className="rounded-2xl bg-white dark:bg-[#042434] border border-slate-100 dark:border-slate-800 shadow-sm p-4">
+								<h3 className="text-sm font-medium text-slate-700 dark:text-slate-200 mb-3 flex items-center gap-2">Signos / Vitals</h3>
+
+								{c.vitals ? (
+									(() => {
+										// helpers localizados dentro del JSX (no crear componente nuevo)
+										const vitalsObj = typeof c.vitals === 'string' ? JSON.parse(c.vitals) : c.vitals || {};
+										const prettyLabel = (key: string) =>
+											key
+												.replace(/_/g, ' ')
+												.replace(/\b([a-z])/g, (m) => m.toUpperCase())
+												.replace(/\bBpm\b/i, 'BPM');
+
+										const formatValue = (val: any) => {
+											if (val === null || val === undefined || (typeof val === 'string' && val.trim() === '')) return '—';
+											if (typeof val === 'boolean') return val ? 'Sí' : 'No';
+											// numeric-like strings: show as-is
+											return String(val);
+										};
+
+										// custom order: ensure 'general' first, then cardiology, pulmonology, others alpha
+										const orderPriority: Record<string, number> = { general: 0, cardiology: 1, pulmonology: 2 };
+										const sections = Object.keys(vitalsObj).sort((a, b) => {
+											const pa = orderPriority[a] ?? 99;
+											const pb = orderPriority[b] ?? 99;
+											if (pa !== pb) return pa - pb;
+											return a.localeCompare(b);
+										});
+
+										return (
+											<div className="space-y-4">
+												{sections.map((section) => {
+													const sectionData = vitalsObj[section] || {};
+													const entries = Object.entries(sectionData);
+
+													return (
+														<div key={section} className="border border-slate-100 dark:border-slate-800 rounded-xl p-3 bg-white/60 dark:bg-[#042434]">
+															<div className="flex items-center justify-between mb-3">
+																<div className="flex items-center gap-3">
+																	<div className="w-10 h-10 rounded-lg bg-gradient-to-br from-teal-50 to-cyan-50 flex items-center justify-center text-teal-600 font-semibold">{String(section).charAt(0).toUpperCase()}</div>
+																	<div>
+																		<div className="text-sm font-semibold text-slate-800 dark:text-slate-100">{prettyLabel(section)}</div>
+																		<div className="text-xs text-slate-500 dark:text-slate-400">{entries.length} campo(s)</div>
+																	</div>
+																</div>
+															</div>
+
+															{entries.length === 0 ? (
+																<div className="text-sm text-slate-500">No hay datos en esta sección.</div>
+															) : (
+																<div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+																	{entries.map(([k, v]) => (
+																		<div key={k} className="flex flex-col gap-1 p-3 rounded-lg bg-white dark:bg-[#022b34] border border-slate-100 dark:border-slate-800">
+																			<div className="text-xs text-slate-500 dark:text-slate-400">{prettyLabel(k)}</div>
+																			<div className="flex items-center justify-between gap-2">
+																				<div className="text-sm font-medium text-slate-800 dark:text-slate-100 break-words">{formatValue(v)}</div>
+																				{/* pequeño chip para valores booleanos o numéricos destacables */}
+																				{typeof v === 'boolean' ? <div className={`text-xs px-2 py-0.5 rounded-full font-medium ${v ? 'bg-green-100 text-green-800' : 'bg-rose-100 text-rose-800'}`}>{v ? 'Sí' : 'No'}</div> : typeof v === 'string' && /^\d+(\.\d+)?$/.test(v) ? <div className="text-xs px-2 py-0.5 rounded-full bg-slate-100 text-slate-700">{v}</div> : null}
+																			</div>
+																		</div>
+																	))}
+																</div>
+															)}
+														</div>
+													);
+												})}
+											</div>
+										);
+									})()
+								) : (
+									<div className="text-sm text-slate-500">No hay signos registrados.</div>
+								)}
+							</div>
 						</div>
 
 						{/* Right: quick facts / actions — estilos mejorados, mismos subcomponentes */}
@@ -175,21 +250,6 @@ export default async function ConsultationDetail({ params }: Props) {
 							{/* QuickFacts — envuelto en tarjeta con estilo corporativo */}
 							<div className="rounded-2xl bg-white dark:bg-[#041f25] border border-slate-100 dark:border-slate-800 shadow-sm p-4">
 								<QuickFacts c={c} />
-							</div>
-
-							{/* Signos / Vitals — tarjeta limpia, tipografía y pre formateado más legible */}
-							<div className="rounded-2xl bg-white dark:bg-[#042434] border border-slate-100 dark:border-slate-800 shadow-sm p-4">
-								<h3 className="text-sm font-medium text-slate-700 dark:text-slate-200 mb-3 flex items-center gap-2">Signos / Vitals</h3>
-
-								{c.vitals ? (
-									<div className="text-sm text-slate-700 dark:text-slate-200">
-										<pre className="whitespace-pre-wrap bg-slate-50 dark:bg-transparent p-3 rounded-md text-sm leading-relaxed overflow-auto" style={{ maxHeight: 220 }}>
-											{JSON.stringify(c.vitals, null, 2)}
-										</pre>
-									</div>
-								) : (
-									<div className="text-sm text-slate-500">No hay signos registrados.</div>
-								)}
 							</div>
 
 							{/* Acciones — tarjeta con botones corporativos y accesibles */}

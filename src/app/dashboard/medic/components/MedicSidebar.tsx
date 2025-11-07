@@ -37,10 +37,7 @@ const LINKS: LinkItem[] = [
 	{
 		label: 'Recetas',
 		icon: ClipboardList,
-		submenu: [
-			{ href: '/dashboard/medic/recetas', label: 'Todas las recetas' },
-			{ href: '/dashboard/medic/recetas/nueva', label: 'Nueva receta' },
-		],
+		submenu: [{ href: '/dashboard/medic/recetas', label: 'Todas las recetas' }],
 	},
 	{
 		href: '/dashboard/medic/citas',
@@ -51,6 +48,7 @@ const LINKS: LinkItem[] = [
 		href: '/dashboard/medic/resultados',
 		label: 'Resultados',
 		icon: Folder,
+		comingSoon: true,
 	},
 	{
 		href: '/dashboard/medic/mensajes',

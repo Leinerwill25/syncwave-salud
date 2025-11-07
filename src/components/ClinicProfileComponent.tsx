@@ -1,3 +1,4 @@
+// components/ClinicProfileComponent.tsx
 'use client';
 
 import React, { useEffect, useState } from 'react';
@@ -26,8 +27,8 @@ type ClinicForm = {
 	officesCount: number;
 	specialties: string[];
 	openingHours: string;
-	capacityPerDay: number;
-	employeesCount: number;
+	capacityPerDay: number | null;
+	employeesCount: number | null;
 
 	directorName: string;
 	adminName: string;
@@ -59,9 +60,34 @@ function IconSection() {
 	);
 }
 
+/** safe parse arrays that may come as JSON, array or comma string */
+function safeParseArrayField(v: any): string[] {
+	if (v == null) return [];
+	if (Array.isArray(v)) return v.map(String);
+	if (typeof v === 'string') {
+		const t = v.trim();
+		if (!t) return [];
+		try {
+			const parsed = JSON.parse(t);
+			if (Array.isArray(parsed)) return parsed.map(String);
+		} catch {
+			// fallback to comma split
+			return t
+				.split(',')
+				.map((s) => s.trim())
+				.filter(Boolean);
+		}
+	}
+	// object or other: try to stringify sensible values
+	try {
+		return [String(v)];
+	} catch {
+		return [];
+	}
+}
+
 /**
- * InputBase declarado en el scope del módulo y memoizado para que
- * React NO lo remonte en cada render del padre (evita pérdida de foco).
+ * InputBase memoizado para evitar remounts/ pérdida de foco
  */
 const InputBase = React.memo(function InputBase({ label, name, value, onChange, type = 'text', extra, error }: { label: string; name: string; value: any; onChange: (v: any) => void; type?: string; extra?: React.ReactNode; error?: string | undefined }) {
 	return (
@@ -104,8 +130,8 @@ export default function ClinicProfileComponent() {
 		officesCount: 1,
 		specialties: [''],
 		openingHours: 'Lun-Vie 08:00-17:00',
-		capacityPerDay: 50,
-		employeesCount: 10,
+		capacityPerDay: null,
+		employeesCount: null,
 
 		directorName: '',
 		adminName: '',
@@ -128,26 +154,100 @@ export default function ClinicProfileComponent() {
 	const [errors, setErrors] = useState<Record<string, string>>({});
 	const [saving, setSaving] = useState(false);
 	const [success, setSuccess] = useState<string | null>(null);
+	const [loading, setLoading] = useState(true);
 
+	// Cargar datos existentes al montar
 	useEffect(() => {
-		// cargar datos existentes si aplica (fetch('/api/clinics/me') etc)
-		// Ejemplo (descomentar si tienes endpoint):
-		// (async () => {
-		//   try {
-		//     const res = await fetch('/api/clinics/me');
-		//     if (res.ok) {
-		//       const text = await res.text();
-		//       const parsed = text ? JSON.parse(text) : null;
-		//       if (parsed?.data) setForm((prev) => ({ ...prev, ...parsed.data }));
-		//     }
-		//   } catch (e) {
-		//     console.warn('No se pudo cargar datos iniciales', e);
-		//   }
-		// })();
+		let mounted = true;
+		(async () => {
+			try {
+				setLoading(true);
+				const res = await fetch('/api/clinic-profile', { credentials: 'include' });
+				const text = await res.text();
+				let parsed: any = null;
+				if (text) {
+					try {
+						parsed = JSON.parse(text);
+					} catch {
+						parsed = { raw: text };
+					}
+				}
+				if (!res.ok) {
+					console.warn('GET /api/clinic-profile failed', parsed);
+					return;
+				}
+				if (!parsed?.ok || !parsed?.profile) return;
+				const p = parsed.profile;
+
+				// Mapear profile -> form
+				const mapped: Partial<ClinicForm> = {
+					rif: (p.legalRif ?? p.rif ?? '') as string,
+					legalName: (p.legalName ?? '') as string,
+					tradeName: (p.tradeName ?? '') as string,
+					entityType: (p.entityType ?? 'Clínica') as string,
+
+					addressFiscal: (p.addressFiscal ?? '') as string,
+					addressOperational: (p.addressOperational ?? '') as string,
+					state: (p.stateProvince ?? p.state ?? '') as string,
+					city: (p.cityMunicipality ?? p.city ?? '') as string,
+					postalCode: (p.postalCode ?? '') as string,
+
+					phone: (p.phoneFixed ?? p.phone ?? '') as string,
+					whatsapp: (p.phoneMobile ?? p.whatsapp ?? '') as string,
+					email: (p.contactEmail ?? p.email ?? '') as string,
+					website: (p.website ?? '') as string,
+					social_facebook: (p.socialFacebook ?? p.social_facebook ?? '') as string,
+					social_instagram: (p.socialInstagram ?? p.social_instagram ?? '') as string,
+					social_linkedin: (p.socialLinkedin ?? p.social_linkedin ?? '') as string,
+
+					officesCount: (typeof p.officesCount === 'number' ? p.officesCount : Number(p.officesCount) || 0) as number,
+					specialties: safeParseArrayField(p.specialties).length ? safeParseArrayField(p.specialties) : [''],
+					openingHours: (typeof p.openingHours === 'string' ? p.openingHours : JSON.stringify(p.openingHours ?? '') || '') as string,
+					capacityPerDay: p.capacityPerDay === null || p.capacityPerDay === undefined ? null : Number(p.capacityPerDay),
+					employeesCount: p.employeesCount === null || p.employeesCount === undefined ? null : Number(p.employeesCount),
+
+					directorName: (p.directorName ?? '') as string,
+					adminName: (p.adminName ?? '') as string,
+					directorId: (p.directorIdNumber ?? p.directorId ?? '') as string,
+					sanitaryLicense: (p.sanitaryLicense ?? '') as string,
+					liabilityInsuranceNumber: (p.liabilityInsuranceNumber ?? '') as string,
+
+					bankName: (p.bankName ?? '') as string,
+					accountType: (p.bankAccountType ?? p.accountType ?? 'Corriente') as string,
+					accountNumber: (p.bankAccountNumber ?? p.accountNumber ?? '') as string,
+					accountOwner: (p.bankAccountOwner ?? p.accountOwner ?? '') as string,
+					currency: (p.currency ?? 'VES') as string,
+					paymentMethods: safeParseArrayField(p.paymentMethods).length ? safeParseArrayField(p.paymentMethods) : [],
+
+					billingSeries: (p.billingSeries ?? '') as string,
+					taxRegime: (p.taxRegime ?? '') as string,
+					billingAddress: (p.billingAddress ?? '') as string,
+				};
+				if (mounted) {
+					setForm((prev) => ({ ...prev, ...mapped }));
+				}
+			} catch (err) {
+				console.error('Error cargando perfil de clínica:', err);
+			} finally {
+				if (mounted) setLoading(false);
+			}
+		})();
+		return () => {
+			mounted = false;
+		};
 	}, []);
 
 	function updateField<K extends keyof ClinicForm>(key: K, value: ClinicForm[K]) {
 		setForm((prev) => ({ ...prev, [key]: value }));
+		setSuccess(null);
+		setErrors((e) => {
+			if (e[key as string]) {
+				const copy = { ...e };
+				delete copy[key as string];
+				return copy;
+			}
+			return e;
+		});
 	}
 
 	function validate() {
@@ -162,7 +262,6 @@ export default function ClinicProfileComponent() {
 		return Object.keys(e).length === 0;
 	}
 
-	// specialties handlers (usar setter funcional)
 	function setSpecialty(idx: number, value: string) {
 		setForm((prev) => {
 			const arr = [...prev.specialties];
@@ -194,7 +293,6 @@ export default function ClinicProfileComponent() {
 		setSuccess(null);
 	}
 
-	// función segura que arma un mensaje desde parsed/res
 	function buildErrorMessage(parsed: any | null, res?: Response) {
 		if (parsed) {
 			if (typeof parsed === 'string') return parsed;
@@ -205,9 +303,7 @@ export default function ClinicProfileComponent() {
 					return Object.entries(parsed.errors)
 						.map(([k, v]) => `${k}: ${v}`)
 						.join('; ');
-				} catch {
-					// fallback
-				}
+				} catch {}
 			}
 			if (parsed.message) return String(parsed.message);
 			if (parsed.raw) return String(parsed.raw);
@@ -219,68 +315,65 @@ export default function ClinicProfileComponent() {
 		return 'Error desconocido';
 	}
 
-	// handleSubmit (reemplaza el existente)
 	async function handleSubmit(e: React.FormEvent) {
 		e.preventDefault();
 		resetFeedback();
-
-		// validar en cliente antes de enviar
 		if (!validate()) return;
 
 		setSaving(true);
 		try {
-			// preparar payload (transformaciones necesarias)
-			const payloadToSend = {
-				rif: form.rif,
-				legalName: form.legalName,
+			// Mapear form -> payload esperado por API (/api/clinic-profile)
+			const payload: any = {
+				legalRif: form.rif || null,
+				legalName: form.legalName || null,
 				tradeName: form.tradeName || null,
 				entityType: form.entityType || null,
 
-				addressFiscal: form.addressFiscal,
+				addressFiscal: form.addressFiscal || null,
 				addressOperational: form.addressOperational || null,
-				state: form.state || null,
-				city: form.city || null,
+				stateProvince: form.state || null,
+				cityMunicipality: form.city || null,
 				postalCode: form.postalCode || null,
 
-				phone: form.phone || null,
-				whatsapp: form.whatsapp || null,
-				email: form.email,
+				phoneFixed: form.phone || null,
+				phoneMobile: form.whatsapp || null,
+				contactEmail: form.email || null,
 				website: form.website || null,
-				social_facebook: form.social_facebook || null,
-				social_instagram: form.social_instagram || null,
-				social_linkedin: form.social_linkedin || null,
+				socialFacebook: form.social_facebook || null,
+				socialInstagram: form.social_instagram || null,
+				socialLinkedin: form.social_linkedin || null,
 
 				officesCount: Number(form.officesCount) || 0,
-				specialties: Array.isArray(form.specialties) ? form.specialties.filter(Boolean) : [],
-				openingHours: form.openingHours || null,
-				capacityPerDay: form.capacityPerDay !== undefined ? Number(form.capacityPerDay) : null,
-				employeesCount: form.employeesCount !== undefined ? Number(form.employeesCount) : null,
+				specialties: form.specialties.filter(Boolean),
+				openingHours: tryParseOpeningHours(form.openingHours),
+				capacityPerDay: form.capacityPerDay === null ? null : Number(form.capacityPerDay),
+				employeesCount: form.employeesCount === null ? null : Number(form.employeesCount),
 
 				directorName: form.directorName || null,
 				adminName: form.adminName || null,
-				directorId: form.directorId || null,
+				directorIdNumber: form.directorId || null,
 				sanitaryLicense: form.sanitaryLicense || null,
 				liabilityInsuranceNumber: form.liabilityInsuranceNumber || null,
 
 				bankName: form.bankName || null,
-				accountType: form.accountType || null,
-				accountNumber: form.accountNumber || null,
-				accountOwner: form.accountOwner || null,
+				bankAccountType: form.accountType || null,
+				bankAccountNumber: form.accountNumber || null,
+				bankAccountOwner: form.accountOwner || null,
 				currency: form.currency || null,
-				paymentMethods: Array.isArray(form.paymentMethods) ? form.paymentMethods : [],
+				paymentMethods: form.paymentMethods.filter(Boolean),
 
 				billingSeries: form.billingSeries || null,
 				taxRegime: form.taxRegime || null,
 				billingAddress: form.billingAddress || null,
 			};
 
-			const res = await fetch('/api/clinic', {
-				method: 'POST',
+			const res = await fetch('/api/clinic-profile', {
+				method: 'PUT',
+				credentials: 'include',
 				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify(payloadToSend),
+				body: JSON.stringify(payload),
 			});
 
-			// Leer UNA vez como texto (res.text()), luego intentar JSON.parse (con fallback)
 			const text = await res.text();
 			let parsed: any = null;
 			if (text) {
@@ -291,56 +384,102 @@ export default function ClinicProfileComponent() {
 				}
 			}
 
-			// --- Manejo de error de la API SIN lanzar excepción ---
 			if (!res.ok) {
-				// parsed puede tener { errors: [...]} o { error: '...' } u otra forma
 				if (parsed) {
 					if (Array.isArray(parsed.errors)) {
-						// errores globales en array
 						setErrors((prev) => ({ ...prev, general: parsed.errors.join(', ') }));
 					} else if (typeof parsed.errors === 'object' && parsed.errors !== null) {
-						// errores por campo
 						setErrors((prev) => ({ ...prev, ...parsed.errors }));
 					} else if (parsed.error) {
 						setErrors((prev) => ({ ...prev, general: String(parsed.error) }));
-					} else if (parsed.raw) {
-						setErrors((prev) => ({ ...prev, general: String(parsed.raw) }));
 					} else if (parsed.message) {
 						setErrors((prev) => ({ ...prev, general: String(parsed.message) }));
 					} else {
-						// fallback con statusText o status
 						setErrors((prev) => ({ ...prev, general: buildErrorMessage(parsed, res) }));
 					}
 				} else {
 					setErrors((prev) => ({ ...prev, general: buildErrorMessage(parsed, res) }));
 				}
-				// Retornamos temprano: no continuamos con "éxito"
 				return;
 			}
 
-			// --- Éxito ---
+			// éxito
 			setSuccess('Perfil guardado correctamente');
 
-			// Si la API devuelve datos útiles, opcionalmente actualizamos el form
-			if (parsed && parsed.data && typeof parsed.data === 'object') {
-				const allowedKeys = Object.keys(form) as Array<keyof ClinicForm>;
-				const updated: Partial<ClinicForm> = {};
-				for (const k of allowedKeys) {
-					if (k in parsed.data) {
-						updated[k] = parsed.data[k];
-					}
-				}
-				if (Object.keys(updated).length) {
-					setForm((prev) => ({ ...prev, ...updated }));
-				}
+			// si la API devolvió profile, re-mapea y actualiza el form (garantiza datos sincronizados)
+			if (parsed?.profile) {
+				const p = parsed.profile;
+				const mapped: Partial<ClinicForm> = {
+					rif: (p.legalRif ?? '') as string,
+					legalName: (p.legalName ?? '') as string,
+					tradeName: (p.tradeName ?? '') as string,
+					entityType: (p.entityType ?? '') as string,
+
+					addressFiscal: (p.addressFiscal ?? '') as string,
+					addressOperational: (p.addressOperational ?? '') as string,
+					state: (p.stateProvince ?? '') as string,
+					city: (p.cityMunicipality ?? '') as string,
+					postalCode: (p.postalCode ?? '') as string,
+
+					phone: (p.phoneFixed ?? '') as string,
+					whatsapp: (p.phoneMobile ?? '') as string,
+					email: (p.contactEmail ?? '') as string,
+					website: (p.website ?? '') as string,
+					social_facebook: (p.socialFacebook ?? '') as string,
+					social_instagram: (p.socialInstagram ?? '') as string,
+					social_linkedin: (p.socialLinkedin ?? '') as string,
+
+					officesCount: (typeof p.officesCount === 'number' ? p.officesCount : Number(p.officesCount) || 0) as number,
+					specialties: safeParseArrayField(p.specialties).length ? safeParseArrayField(p.specialties) : [''],
+					openingHours: (typeof p.openingHours === 'string' ? p.openingHours : JSON.stringify(p.openingHours ?? '') || '') as string,
+					capacityPerDay: p.capacityPerDay == null ? null : Number(p.capacityPerDay),
+					employeesCount: p.employeesCount == null ? null : Number(p.employeesCount),
+
+					directorName: (p.directorName ?? '') as string,
+					adminName: (p.adminName ?? '') as string,
+					directorId: (p.directorIdNumber ?? '') as string,
+					sanitaryLicense: (p.sanitaryLicense ?? '') as string,
+					liabilityInsuranceNumber: (p.liabilityInsuranceNumber ?? '') as string,
+
+					bankName: (p.bankName ?? '') as string,
+					accountType: (p.bankAccountType ?? 'Corriente') as string,
+					accountNumber: (p.bankAccountNumber ?? '') as string,
+					accountOwner: (p.bankAccountOwner ?? '') as string,
+					currency: (p.currency ?? 'VES') as string,
+					paymentMethods: safeParseArrayField(p.paymentMethods),
+
+					billingSeries: (p.billingSeries ?? '') as string,
+					taxRegime: (p.taxRegime ?? '') as string,
+					billingAddress: (p.billingAddress ?? '') as string,
+				};
+				setForm((prev) => ({ ...prev, ...mapped }));
 			}
 		} catch (err: any) {
 			console.error('handleSubmit error ->', err);
-			// errores inesperados (network, JSON parse, etc.)
 			setErrors((prev) => ({ ...prev, general: err?.message || String(err) }));
 		} finally {
 			setSaving(false);
 		}
+	}
+
+	function tryParseOpeningHours(v: string) {
+		if (!v) return null;
+		const t = v.trim();
+		if (!t) return null;
+		try {
+			// si es JSON válido, devolver objeto/array
+			return JSON.parse(t);
+		} catch {
+			return t; // enviar texto libre si no es JSON
+		}
+	}
+
+	if (loading) {
+		return (
+			<div className="min-h-[200px] flex items-center justify-center">
+				<div className="text-sm text-slate-500">Cargando perfil...</div>
+			</div>
+		);
 	}
 
 	return (
@@ -381,18 +520,6 @@ export default function ClinicProfileComponent() {
 								<InputBase name="rif" label="RIF / NIT" value={form.rif} onChange={(v) => updateField('rif', v)} error={errors.rif} />
 								<InputBase name="legalName" label="Razón social" value={form.legalName} onChange={(v) => updateField('legalName', v)} error={errors.legalName} />
 								<InputBase name="tradeName" label="Nombre comercial" value={form.tradeName} onChange={(v) => updateField('tradeName', v)} />
-								<div className="sm:col-span-2 lg:col-span-3">
-									<label className="block text-sm font-medium text-slate-700" htmlFor="entityType">
-										Tipo de entidad
-									</label>
-									<select id="entityType" name="entityType" value={form.entityType} onChange={(e) => updateField('entityType', e.target.value)} className="mt-1 w-full rounded-lg border border-slate-200 px-4 py-2 shadow-sm focus:outline-none focus:ring-2 focus:ring-sky-400">
-										<option>Clínica</option>
-										<option>Centro Médico</option>
-										<option>Consultorio</option>
-										<option>Hospital</option>
-										<option>Laboratorio</option>
-									</select>
-								</div>
 							</div>
 						</section>
 
@@ -434,7 +561,7 @@ export default function ClinicProfileComponent() {
 							</div>
 							<div className="grid grid-cols-1 md:grid-cols-3 gap-4">
 								<InputBase name="phone" label="Teléfono fijo" value={form.phone} onChange={(v) => updateField('phone', v)} />
-								<InputBase name="whatsapp" label="Teléfono / WhatsApp" value={form.whatsapp} onChange={(v) => updateField('whatsapp', v)} />
+								<InputBase name="whatsapp" label="Teléfono movil" value={form.whatsapp} onChange={(v) => updateField('whatsapp', v)} />
 								<InputBase name="email" label="Correo electrónico" value={form.email} onChange={(v) => updateField('email', v)} error={errors.email} />
 								<div className="md:col-span-3">
 									<InputBase name="website" label="Página web" value={form.website} onChange={(v) => updateField('website', v)} />
@@ -462,8 +589,7 @@ export default function ClinicProfileComponent() {
 							</div>
 							<div className="grid grid-cols-1 md:grid-cols-3 gap-4">
 								<InputBase name="officesCount" label="Cantidad de consultorios" value={form.officesCount} onChange={(v) => updateField('officesCount', v as any)} type="number" />
-								<InputBase name="capacityPerDay" label="Capacidad diaria (pacientes)" value={form.capacityPerDay} onChange={(v) => updateField('capacityPerDay', v as any)} type="number" />
-								<InputBase name="employeesCount" label="Número de empleados / médicos" value={form.employeesCount} onChange={(v) => updateField('employeesCount', v as any)} type="number" />
+								<InputBase name="capacityPerDay" label="Capacidad diaria (pacientes)" value={form.capacityPerDay ?? ''} onChange={(v) => updateField('capacityPerDay', v as any)} type="number" />
 
 								<div className="md:col-span-3">
 									<label className="block text-sm font-medium text-slate-700">Especialidades</label>
@@ -485,7 +611,7 @@ export default function ClinicProfileComponent() {
 								</div>
 
 								<div className="md:col-span-3">
-									<InputBase name="openingHours" label="Horarios de atención (texto)" value={form.openingHours} onChange={(v) => updateField('openingHours', v)} />
+									<InputBase name="openingHours" label="Horarios de atención (texto o JSON)" value={form.openingHours} onChange={(v) => updateField('openingHours', v)} />
 								</div>
 							</div>
 						</section>
@@ -613,7 +739,7 @@ export default function ClinicProfileComponent() {
 								<button
 									type="button"
 									onClick={() => {
-										// cancelar sólo limpia feedback y deja el form como estaba
+										// cancelar sólo limpia feedback
 										resetFeedback();
 									}}
 									className="w-full sm:w-auto px-4 py-2 border border-slate-200 rounded-lg">

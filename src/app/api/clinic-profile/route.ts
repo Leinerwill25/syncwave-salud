@@ -3,6 +3,9 @@ export const runtime = 'nodejs';
 
 import { NextResponse } from 'next/server';
 
+/**
+ * DEV: permite forzar una org id desde env para desarrollo
+ */
 const TEST_ORG_ID = process.env.TEST_ORG ?? process.env.TEST_ORG_ID ?? null;
 
 /** Extrae access token desde Authorization header o cookies crudas (server-side) */
@@ -66,9 +69,54 @@ function decodeJwtSub(token: string | null): string | null {
 	}
 }
 
+/** Resuelve auth user id usando Supabase Admin + JWT sub fallback */
+async function resolveAuthUserId(token: string | null, supabaseAdmin: any): Promise<string | null> {
+	if (!token) return null;
+	// intentar con supabaseAdmin
+	try {
+		const userResp = await supabaseAdmin.auth.getUser(token);
+		if ((userResp as any)?.data?.user?.id) {
+			return (userResp as any).data.user.id;
+		}
+		// en algunos escenarios supabase devuelve data: { user: null } - we fallback below
+		console.warn('supabaseAdmin.auth.getUser returned no user, resp:', userResp);
+	} catch (err) {
+		console.warn('supabaseAdmin.auth.getUser error (fallthrough to jwt-sub):', err);
+	}
+	// fallback simple: decode sub without verification
+	const sub = decodeJwtSub(token);
+	if (sub) {
+		console.warn('Using JWT-sub fallback to resolve authId. (No signature verification)');
+		return sub;
+	}
+	return null;
+}
+
+/** safe parse helper: si recibe string intenta JSON.parse, si no deja como está */
+function safeParseMaybeJson(input: any) {
+	if (input == null) return input;
+	if (typeof input === 'string') {
+		const t = input.trim();
+		if (t === '') return null;
+		try {
+			return JSON.parse(t);
+		} catch {
+			// no es JSON: si contiene comas devolver array split, sino retornar string
+			if (t.includes(','))
+				return t
+					.split(',')
+					.map((s) => s.trim())
+					.filter(Boolean);
+			return t;
+		}
+	}
+	return input;
+}
+
+/** GET handler (trae profile por organizationId) */
 export async function GET(req: Request) {
 	try {
-		// DEV shortcut: si TEST_ORG_ID → devolver profile de esa org (import dinámico)
+		// Dev shortcut
 		if (TEST_ORG_ID) {
 			const prismaModule = await import('@/lib/prisma');
 			const prisma = prismaModule.default ?? prismaModule;
@@ -77,7 +125,6 @@ export async function GET(req: Request) {
 			return NextResponse.json({ ok: true, profile: profileDev }, { status: 200 });
 		}
 
-		// Leemos vars DENTRO del handler (no top-level)
 		const SUPABASE_URL = process.env.SUPABASE_URL ?? '';
 		const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY ?? '';
 
@@ -86,39 +133,18 @@ export async function GET(req: Request) {
 			return NextResponse.json({ ok: false, message: 'server misconfiguration' }, { status: 500 });
 		}
 
-		// import dinámico de supabase y prisma (evita side-effects en module evaluation)
 		const [{ createClient }, prismaModule] = await Promise.all([import('@supabase/supabase-js'), import('@/lib/prisma')]);
 		const prisma = prismaModule.default ?? prismaModule;
 		const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, { auth: { persistSession: false } });
 
-		// Extraer token
 		const token = extractAccessTokenFromRequest(req);
 		if (!token) return NextResponse.json({ ok: false, message: 'not authenticated (no token found)' }, { status: 401 });
 
-		// Intentar resolver usuario con supabaseAdmin
-		let authUserId: string | null = null;
-		try {
-			const userResp = await supabaseAdmin.auth.getUser(token);
-			if ((userResp as any)?.data?.user?.id) {
-				authUserId = (userResp as any).data.user.id;
-			} else {
-				console.warn('supabaseAdmin.auth.getUser did not return user, resp:', userResp);
-			}
-		} catch (err) {
-			console.error('supabaseAdmin.auth.getUser error:', err);
-			// fallback abajo
-		}
-
-		// Fallback por sub del JWT
-		if (!authUserId) {
-			authUserId = decodeJwtSub(token);
-			if (authUserId) console.warn('Using JWT-sub fallback to resolve authId. (No signature verification)');
-		}
-
+		const authUserId = await resolveAuthUserId(token, supabaseAdmin);
 		if (!authUserId) return NextResponse.json({ ok: false, message: 'not authenticated (could not resolve authId)' }, { status: 401 });
 
-		// Buscar usuario en tabla User para obtener organizationId
-		const appUser = await prisma.user.findFirst({
+		// obtener organizationId desde tabla User
+		const appUser = await (prisma as any).user.findFirst({
 			where: { authId: authUserId },
 			select: { organizationId: true },
 		});
@@ -129,7 +155,6 @@ export async function GET(req: Request) {
 
 		const organizationId = appUser.organizationId;
 
-		// Traer clinic_profile por organizationId
 		const profile = await (prisma as any).clinicProfile.findUnique({
 			where: { organizationId },
 			select: {
@@ -180,6 +205,97 @@ export async function GET(req: Request) {
 		return NextResponse.json({ ok: true, profile }, { status: 200 });
 	} catch (err: any) {
 		console.error('GET /api/clinic-profile error', err);
+		return NextResponse.json({ ok: false, message: err?.message ?? 'server error' }, { status: 500 });
+	}
+}
+
+/** PUT handler: actualiza (o crea) clinicProfile para la organization del usuario */
+export async function PUT(req: Request) {
+	try {
+		// Dev shortcut: si TEST_ORG_ID -> actualizar para esa org sin auth
+		if (TEST_ORG_ID) {
+			const body = await req.json().catch(() => ({}));
+			const prismaModule = await import('@/lib/prisma');
+			const prisma = prismaModule.default ?? prismaModule;
+
+			// normalizaciones basicas
+			const payload: any = { ...body };
+			payload.specialties = safeParseMaybeJson(payload.specialties) ?? [];
+			payload.openingHours = safeParseMaybeJson(payload.openingHours) ?? [];
+			payload.paymentMethods = safeParseMaybeJson(payload.paymentMethods) ?? [];
+
+			const upserted = await (prisma as any).clinicProfile.upsert({
+				where: { organizationId: TEST_ORG_ID },
+				update: { ...payload },
+				create: { organizationId: TEST_ORG_ID, ...payload },
+			});
+
+			return NextResponse.json({ ok: true, profile: upserted }, { status: 200 });
+		}
+
+		const SUPABASE_URL = process.env.SUPABASE_URL ?? '';
+		const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY ?? '';
+
+		if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
+			console.error('Supabase service role client not configurado (SUPABASE_SERVICE_ROLE_KEY o SUPABASE_URL faltante).');
+			return NextResponse.json({ ok: false, message: 'server misconfiguration' }, { status: 500 });
+		}
+
+		const [{ createClient }, prismaModule] = await Promise.all([import('@supabase/supabase-js'), import('@/lib/prisma')]);
+		const prisma = prismaModule.default ?? prismaModule;
+		const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, { auth: { persistSession: false } });
+
+		const token = extractAccessTokenFromRequest(req);
+		if (!token) return NextResponse.json({ ok: false, message: 'not authenticated (no token found)' }, { status: 401 });
+
+		const authUserId = await resolveAuthUserId(token, supabaseAdmin);
+		if (!authUserId) return NextResponse.json({ ok: false, message: 'not authenticated (could not resolve authId)' }, { status: 401 });
+
+		const appUser = await (prisma as any).user.findFirst({
+			where: { authId: authUserId },
+			select: { organizationId: true },
+		});
+
+		if (!appUser?.organizationId) {
+			return NextResponse.json({ ok: false, message: 'organization not found for user' }, { status: 401 });
+		}
+
+		const organizationId = appUser.organizationId;
+
+		// leer body y normalizar
+		const body = await req.json().catch(() => ({}));
+		const payload: any = { ...body };
+
+		// Intentar parsear campos que pueden venir como strings
+		payload.specialties = safeParseMaybeJson(payload.specialties) ?? [];
+		payload.openingHours = safeParseMaybeJson(payload.openingHours) ?? [];
+		payload.paymentMethods = safeParseMaybeJson(payload.paymentMethods) ?? [];
+
+		// Evitar que campos no permitidos rompan el upsert: seleccionar sólo keys relevantes
+		const allowedKeys = new Set(['legalRif', 'legalName', 'tradeName', 'entityType', 'addressFiscal', 'addressOperational', 'stateProvince', 'cityMunicipality', 'postalCode', 'phoneFixed', 'phoneMobile', 'contactEmail', 'website', 'socialFacebook', 'socialInstagram', 'socialLinkedin', 'officesCount', 'specialties', 'openingHours', 'capacityPerDay', 'employeesCount', 'directorName', 'adminName', 'directorIdNumber', 'sanitaryLicense', 'liabilityInsuranceNumber', 'bankName', 'bankAccountType', 'bankAccountNumber', 'bankAccountOwner', 'currency', 'paymentMethods', 'billingSeries', 'taxRegime', 'billingAddress']);
+
+		const dataToUpdate: any = {};
+		for (const k of Object.keys(payload)) {
+			if (allowedKeys.has(k)) dataToUpdate[k] = payload[k];
+		}
+
+		// Normalizaciones simples: empty string -> null for optional fields (if you prefer '')
+		for (const k of Object.keys(dataToUpdate)) {
+			if (typeof dataToUpdate[k] === 'string' && dataToUpdate[k].trim() === '') {
+				dataToUpdate[k] = null;
+			}
+		}
+
+		// Upsert (crea si no existe)
+		const upserted = await (prisma as any).clinicProfile.upsert({
+			where: { organizationId },
+			update: { ...dataToUpdate },
+			create: { organizationId, ...dataToUpdate },
+		});
+
+		return NextResponse.json({ ok: true, profile: upserted }, { status: 200 });
+	} catch (err: any) {
+		console.error('PUT /api/clinic-profile error', err);
 		return NextResponse.json({ ok: false, message: err?.message ?? 'server error' }, { status: 500 });
 	}
 }

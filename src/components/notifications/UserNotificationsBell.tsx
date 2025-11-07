@@ -1,6 +1,7 @@
+// components/UserNotificationsBell.tsx
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Bell } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { createSupabaseBrowserClient } from '@/app/adapters/client';
@@ -17,234 +18,26 @@ type NotificationItem = {
 	read?: boolean;
 };
 
-interface UserNotificationsBellProps {
-	user: any; // auth user (supabase.auth user)
-	role: string;
+interface Props {
+	user: any; // supabase auth user
+	role?: string;
 }
 
-export default function UserNotificationsBell({ user, role }: UserNotificationsBellProps) {
+export default function UserNotificationsBell({ user }: Props) {
 	const [notifications, setNotifications] = useState<NotificationItem[]>([]);
 	const [open, setOpen] = useState(false);
-
 	const supabase = createSupabaseBrowserClient();
-	const channelRef = useRef<any>(null);
+
+	const channelRef = useRef<any | null>(null);
+	const mountedRef = useRef(false);
 	const appUserIdRef = useRef<string | null>(null);
 	const orgIdRef = useRef<string | null>(null);
-	const mountedRef = useRef(false);
+	const seenIdsRef = useRef<Set<string>>(new Set());
+	const reconnectAttemptsRef = useRef(0);
+	const backoffTimerRef = useRef<any>(null);
 
-	// --- Init: silent initial load + subscribe to Realtime ---
-	useEffect(() => {
-		if (!user) return;
-
-		mountedRef.current = true;
-
-		// init sequence
-		(async () => {
-			try {
-				// obtener token/session de forma segura
-				const { data: sessionData } = await supabase.auth.getSession();
-				const token = sessionData?.session?.access_token ?? user?.access_token ?? user?.token;
-
-				// petición al endpoint que devuelve appUserId + notificaciones iniciales
-				// la petición es "silenciosa" (no spinner visible)
-				if (token) {
-					const res = await fetch('/api/notifications', {
-						method: 'GET',
-						headers: { Authorization: `Bearer ${token}` },
-					});
-
-					if (res.ok) {
-						const json = await res.json();
-						// json = { notifications: [...], appUserId: 'uuid' }
-						const initial = Array.isArray(json.notifications) ? json.notifications : [];
-						setNotifications((prev) => {
-							// dedupe safe: merge initial with prev (prefer initial order newest first)
-							const ids = new Set(prev.map((p) => p.id));
-							const merged = [...initial.filter((i: { id: string }) => !ids.has(i.id)), ...prev];
-							return merged;
-						});
-						appUserIdRef.current = json.appUserId ?? null;
-						// get orgId from user metadata or response (endpoint may include org)
-						orgIdRef.current = (user.user_metadata?.organizationId ?? null) || null;
-					} else {
-						// si falla, intentar fallback: obtener appUserId consultando tabla User directamente (una sola vez)
-						console.warn('[NOTIFS] /api/notifications returned non-ok:', res.status);
-						await fetchAppUserIdFallback();
-					}
-				} else {
-					// sin token: intentar fallback
-					await fetchAppUserIdFallback();
-				}
-			} catch (err) {
-				console.error('[NOTIFS] init error', err);
-				// intentar fallback si algo falla
-				await fetchAppUserIdFallback();
-			} finally {
-				// iniciar suscripción Realtime (si tenemos org/appUser)
-				subscribeRealtime();
-			}
-		})();
-
-		return () => {
-			mountedRef.current = false;
-			unsubscribeRealtime();
-		};
-		// eslint-disable-next-line react-hooks/exhaustive-deps
-	}, [user, role]);
-
-	// Fallback para obtener appUserId directamente desde Supabase client (una sola petición)
-	async function fetchAppUserIdFallback() {
-		try {
-			// obtener auth session para authUser id
-			const { data: sessionData } = await supabase.auth.getSession();
-			const authUserId = sessionData?.session?.user?.id ?? user?.id;
-
-			if (!authUserId) return;
-
-			// consulta "User" para mapear authId -> app user id (UNA sola vez)
-			const { data: appUserRow, error } = await supabase.from('User').select('id, "organizationId"').eq('authId', authUserId).limit(1).maybeSingle();
-
-			if (error) {
-				console.warn('[NOTIFS] fetchAppUserIdFallback error', error);
-				return;
-			}
-
-			if (appUserRow?.id) {
-				appUserIdRef.current = appUserRow.id;
-				orgIdRef.current = orgIdRef.current ?? appUserRow.organizationId ?? null;
-			}
-		} catch (err) {
-			console.error('[NOTIFS] fetchAppUserIdFallback unexpected error', err);
-		}
-	}
-
-	// Unsubscribe helper
-	function unsubscribeRealtime() {
-		try {
-			if (channelRef.current) {
-				channelRef.current.unsubscribe();
-			}
-		} catch (err) {
-			// noop
-		} finally {
-			channelRef.current = null;
-		}
-	}
-
-	// Subscribe to Realtime (WebSocket) — only once with filters on organizationId + userId (and global)
-	function subscribeRealtime() {
-		const orgId = orgIdRef.current ?? user.user_metadata?.organizationId;
-		const appUserId = appUserIdRef.current;
-
-		// If no orgId available yet, subscribe to organizationless or wait until it's available.
-		if (!orgId) {
-			console.warn('[NOTIFS] subscribeRealtime: orgId missing, retrying in background when available');
-			// we don't poll — but we still can re-run subscribe when appUserIdRef/orgIdRef gets set
-			// To keep it simple, we'll attempt to subscribe again after a short backoff only if mounted
-			setTimeout(() => {
-				if (mountedRef.current) subscribeRealtime();
-			}, 800);
-			return;
-		}
-
-		// cleanup any previous
-		unsubscribeRealtime();
-
-		// Use quoted column names because your table uses camelCase quoted identifiers ("userId", "organizationId")
-		// We'll subscribe to two filters:
-		// 1) notifications aimed to this app user (userId = appUserId)
-		// 2) notifications global to the organization (userId IS NULL)
-		const filters: { filter: string; description: string }[] = [];
-		if (appUserId) {
-			filters.push({
-				filter: `"organizationId"=eq.${orgId},"userId"=eq.${appUserId}`,
-				description: 'user-specific',
-			});
-		}
-		// always subscribe to global notifications (userId IS NULL)
-		filters.push({
-			filter: `"organizationId"=eq.${orgId},"userId".is.null`,
-			description: 'global',
-		});
-
-		// create a channel and attach handlers
-		const channel = supabase.channel(`notifications-org-${orgId}`);
-
-		filters.forEach((f) => {
-			channel.on(
-				'postgres_changes',
-				{
-					event: '*', // capture INSERT, UPDATE, DELETE
-					schema: 'public',
-					table: 'Notification',
-					filter: f.filter,
-				},
-				(payload: any) => {
-					// payload structure: { schema, table, commit_timestamp, eventType?, old, new } depending on event
-					try {
-						const newRow = payload?.new ?? null;
-						const oldRow = payload?.old ?? null;
-						const event = payload?.eventType ?? payload?.type ?? payload?.event ?? null;
-
-						// handle INSERT / UPDATE / DELETE generically
-						if (newRow && !oldRow) {
-							// INSERT
-							handleInsert(newRow);
-						} else if (newRow && oldRow) {
-							// UPDATE
-							handleUpdate(newRow);
-						} else if (!newRow && oldRow) {
-							// DELETE
-							handleDelete(oldRow);
-						} else {
-							// fallback: if newRow exists, treat as insert/update
-							if (newRow) handleUpdate(newRow);
-						}
-					} catch (err) {
-						console.error('[NOTIFS-RT] payload handler error', err, payload);
-					}
-				}
-			);
-		});
-
-		// subscribe
-		channel.subscribe((status: any) => {
-			console.debug('[NOTIFS-RT] channel status:', status);
-		});
-
-		channelRef.current = channel;
-	}
-
-	// Handlers for realtime events
-	function handleInsert(row: any) {
-		// double-check target: if row.userId exists and it's not this appUserId, ignore
-		const appUserId = appUserIdRef.current;
-		if (row.userId && appUserId && row.userId !== appUserId) return;
-
-		setNotifications((prev) => {
-			if (prev.find((p) => p.id === row.id)) return prev;
-			return [normalizeRow(row), ...prev];
-		});
-	}
-
-	function handleUpdate(row: any) {
-		setNotifications((prev) => {
-			const exists = prev.find((p) => p.id === row.id);
-			if (!exists) {
-				// insert updated row at top
-				return [normalizeRow(row), ...prev];
-			}
-			return prev.map((p) => (p.id === row.id ? { ...p, ...normalizeRow(row) } : p));
-		});
-	}
-
-	function handleDelete(oldRow: any) {
-		setNotifications((prev) => prev.filter((p) => p.id !== oldRow.id));
-	}
-
-	// Normalize DB row -> NotificationItem (handles camelCase quoted columns)
+	// ---------- Helpers ----------
 	function normalizeRow(row: any): NotificationItem {
-		// Some payloads might have columns exactly matching case ("userId"), so map both possibilities
 		return {
 			id: row.id,
 			userId: row.userId ?? row.userid ?? null,
@@ -254,17 +47,41 @@ export default function UserNotificationsBell({ user, role }: UserNotificationsB
 			message: row.message ?? '',
 			payload: row.payload ?? null,
 			createdAt: row.createdAt ?? row.created_at ?? new Date().toISOString(),
-			read: typeof row.read === 'boolean' ? row.read : row.read === 'true',
+			read: typeof row.read === 'boolean' ? row.read : row.read === 'true' || false,
 		};
 	}
 
-	// --- mark as read (optimistic + persist) ---
-	async function markAsRead(id: string) {
-		// optimistic UI update
-		setNotifications((prev) => prev.map((n) => (n.id === id ? { ...n, read: true } : n)));
+	const upsertNotification = useCallback((row: any) => {
+		const n = normalizeRow(row);
+		// ignore if not for this user
+		const appUserId = appUserIdRef.current;
+		if (n.userId && appUserId && n.userId !== appUserId) return;
 
+		setNotifications((prev) => {
+			// dedupe & update
+			const found = prev.find((p) => p.id === n.id);
+			if (!found) {
+				// new
+				if (!seenIdsRef.current.has(n.id)) {
+					seenIdsRef.current.add(n.id);
+					return [n, ...prev];
+				}
+				return prev;
+			}
+			// update existing
+			return prev.map((p) => (p.id === n.id ? { ...p, ...n } : p));
+		});
+	}, []);
+
+	const removeNotification = useCallback((row: any) => {
+		setNotifications((prev) => prev.filter((p) => p.id !== (row.id ?? row.ID)));
+		if (row?.id) seenIdsRef.current.delete(row.id);
+	}, []);
+
+	// ---------- mark read helpers ----------
+	async function markAsRead(id: string) {
+		setNotifications((prev) => prev.map((n) => (n.id === id ? { ...n, read: true } : n)));
 		try {
-			// persist using Supabase client (this triggers realtime UPDATE event too)
 			await supabase.from('Notification').update({ read: true }).eq('id', id);
 		} catch (err) {
 			console.error('[NOTIFS] markAsRead error', err);
@@ -274,10 +91,7 @@ export default function UserNotificationsBell({ user, role }: UserNotificationsB
 	async function markAllRead() {
 		const ids = notifications.filter((n) => !n.read).map((n) => n.id);
 		if (!ids.length) return;
-
-		// optimistic
 		setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
-
 		try {
 			await supabase.from('Notification').update({ read: true }).in('id', ids);
 		} catch (err) {
@@ -285,10 +99,231 @@ export default function UserNotificationsBell({ user, role }: UserNotificationsB
 		}
 	}
 
-	// unread count
+	// ---------- unsubscribe ----------
+	function unsubscribeRealtime() {
+		if (backoffTimerRef.current) {
+			clearTimeout(backoffTimerRef.current);
+			backoffTimerRef.current = null;
+		}
+		try {
+			const ch = channelRef.current;
+			if (ch) {
+				// supabase-js v2: unsubscribe by calling channel.unsubscribe()
+				ch.unsubscribe();
+			}
+		} catch (err) {
+			// noop
+		} finally {
+			channelRef.current = null;
+		}
+	}
+
+	// ---------- subscribe ----------
+	function subscribeRealtimeOnce(orgId: string, appUserId?: string | null) {
+		// cleanup first
+		unsubscribeRealtime();
+
+		// reset reconnect attempts after a successful subscribe attempt
+		reconnectAttemptsRef.current = 0;
+
+		// create channel name unique per org (so server can debug easily)
+		const channel = supabase.channel(`realtime:notifications:org:${orgId}`);
+
+		// two filters: user-specific (if appUserId) and org-global (userId IS NULL)
+		if (appUserId) {
+			channel.on(
+				'postgres_changes',
+				{
+					event: '*',
+					schema: 'public',
+					table: 'Notification',
+					filter: `"organizationId"=eq.${orgId},"userId"=eq.${appUserId}`,
+				},
+				(payload: any) => {
+					// events: INSERT => payload.new; UPDATE => new+old; DELETE => old
+					try {
+						const newRow = payload?.new ?? null;
+						const oldRow = payload?.old ?? null;
+						if (newRow && !oldRow) {
+							upsertNotification(newRow);
+						} else if (newRow && oldRow) {
+							upsertNotification(newRow);
+						} else if (!newRow && oldRow) {
+							removeNotification(oldRow);
+						}
+					} catch (err) {
+						console.error('[NOTIFS-RT user filter] handler error', err, payload);
+					}
+				}
+			);
+		}
+
+		// global notifications for this org (userId IS NULL)
+		channel.on(
+			'postgres_changes',
+			{
+				event: '*',
+				schema: 'public',
+				table: 'Notification',
+				filter: `"organizationId"=eq.${orgId},"userId".is.null`,
+			},
+			(payload: any) => {
+				try {
+					const newRow = payload?.new ?? null;
+					const oldRow = payload?.old ?? null;
+					if (newRow && !oldRow) {
+						upsertNotification(newRow);
+					} else if (newRow && oldRow) {
+						upsertNotification(newRow);
+					} else if (!newRow && oldRow) {
+						removeNotification(oldRow);
+					}
+				} catch (err) {
+					console.error('[NOTIFS-RT global] handler error', err, payload);
+				}
+			}
+		);
+
+		// subscribe
+		channel.subscribe((status: any) => {
+			// status could be { error } or 'SUBSCRIBED' depending on implementation; we log for debug
+			console.debug('[NOTIFS-RT] channel status:', status);
+			// if subscription failed, try reconnect with backoff
+			if (status?.error || status === 'TIMED_OUT' || status === 'REJECTED') {
+				attemptReconnect(orgId, appUserId);
+			}
+		});
+
+		channelRef.current = channel;
+	}
+
+	function attemptReconnect(orgId?: string | null, appUserId?: string | null) {
+		unsubscribeRealtime();
+		const attempts = reconnectAttemptsRef.current ?? 0;
+		reconnectAttemptsRef.current = attempts + 1;
+		const delay = Math.min(30000, 500 * Math.pow(2, attempts)); // exponential backoff capped to 30s
+		backoffTimerRef.current = setTimeout(() => {
+			if (!mountedRef.current) return;
+			if (orgId) subscribeRealtimeOnce(orgId, appUserId);
+		}, delay);
+	}
+
+	// ---------- initial load + subscription orchestration ----------
+	useEffect(() => {
+		if (!user) return;
+		mountedRef.current = true;
+
+		let initialFetched = false;
+
+		(async () => {
+			try {
+				// 1) ensure we have fresh session token
+				const { data: sessionData } = await supabase.auth.getSession();
+				const token = sessionData?.session?.access_token ?? (user?.access_token || user?.token);
+
+				// 2) initial fetch to your API (returns notifications + appUserId + (optional) orgId)
+				let resJson: any = null;
+				try {
+					if (token) {
+						const res = await fetch('/api/notifications', {
+							method: 'GET',
+							headers: { Authorization: `Bearer ${token}` },
+						});
+						if (res.ok) resJson = await res.json();
+						else console.warn('[NOTIFS] /api/notifications non-ok', res.status);
+					}
+				} catch (err) {
+					console.warn('[NOTIFS] /api/notifications fetch error', err);
+				}
+
+				// fallback: if endpoint didn't return appUserId, query User table once
+				if (resJson?.appUserId) {
+					appUserIdRef.current = resJson.appUserId;
+				} else {
+					// fallback query
+					try {
+						const authUserId = sessionData?.session?.user?.id ?? user?.id;
+						if (authUserId) {
+							const { data: appUserRow, error } = await supabase.from('User').select('id, "organizationId"').eq('authId', authUserId).limit(1).maybeSingle();
+
+							if (!error && appUserRow?.id) {
+								appUserIdRef.current = appUserRow.id;
+								if (!orgIdRef.current) orgIdRef.current = appUserRow.organizationId ?? null;
+							}
+						}
+					} catch (err) {
+						console.warn('[NOTIFS] fallback appUserId query failed', err);
+					}
+				}
+
+				// set notifications from API if present (dedupe carefully)
+				if (Array.isArray(resJson?.notifications)) {
+					const initial = resJson.notifications.map((r: any) => normalizeRow(r));
+					setNotifications((prev) => {
+						// merge but avoid duplicates
+						const existingIds = new Set(prev.map((p) => p.id));
+						const merged = [...initial.filter((i: NotificationItem) => !existingIds.has(i.id)), ...prev];
+						merged.forEach((m) => seenIdsRef.current.add(m.id));
+						return merged;
+					});
+					// derive orgId from response if provided
+					if (resJson?.orgId) orgIdRef.current = resJson.orgId;
+				}
+
+				// also if user metadata contains orgId, use it
+				if (!orgIdRef.current) {
+					const maybeOrg = user?.user_metadata?.organizationId ?? null;
+					if (maybeOrg) orgIdRef.current = maybeOrg;
+				}
+
+				initialFetched = true;
+			} catch (err) {
+				console.error('[NOTIFS] init error', err);
+			} finally {
+				// 3) start subscription only when orgId is available (subscribeRealtimeOnce will handle appUserId possibly null)
+				const org = orgIdRef.current;
+				if (!org) {
+					// try to derive org from user metadata and wait a bit (but avoid tight loops)
+					const maybeOrg = user?.user_metadata?.organizationId ?? null;
+					if (maybeOrg) orgIdRef.current = maybeOrg;
+					else {
+						// if still not available, schedule a single retry after short backoff
+						setTimeout(() => {
+							if (mountedRef.current) {
+								const orgAttempt = orgIdRef.current ?? user?.user_metadata?.organizationId ?? null;
+								if (orgAttempt) subscribeRealtimeOnce(orgAttempt, appUserIdRef.current);
+								else console.warn('[NOTIFS] cannot subscribe: organizationId missing');
+							}
+						}, 800);
+						return;
+					}
+				}
+				// final subscribe
+				subscribeRealtimeOnce(orgIdRef.current as string, appUserIdRef.current);
+			}
+		})();
+
+		// re-subscribe on auth/session change (token rotate)
+		const { data: listener } = supabase.auth.onAuthStateChange((_event: any, _session: any) => {
+			// re-init subscription if token changed
+			if (!mountedRef.current) return;
+			// force resubscribe using stored org/appUser
+			const org = orgIdRef.current ?? user?.user_metadata?.organizationId ?? null;
+			if (org) {
+				attemptReconnect(org, appUserIdRef.current);
+			}
+		});
+
+		return () => {
+			mountedRef.current = false;
+			unsubscribeRealtime();
+			listener?.subscription?.unsubscribe?.();
+		};
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [user]);
+
 	const unreadCount = notifications.filter((n) => !n.read).length;
 
-	// UI: no visible loading spinner for initial fetch (silent)
 	return (
 		<div className="relative">
 			<button onClick={() => setOpen((s) => !s)} className="relative inline-flex items-center justify-center h-10 w-10 rounded-xl bg-white border border-slate-100 shadow-sm hover:shadow-md transition" title="Notificaciones">
