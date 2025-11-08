@@ -147,16 +147,30 @@ model Patient {
   subscriptions Subscription[]
 
   // Opposite relation fields added to satisfy Prisma introspection
-  appointments  Appointment[]  @relation("PatientAppointments")
-  consultations Consultation[] @relation("PatientConsultations")
-  labResults    LabResult[]    @relation("PatientLabResults")
-  messages      Message[]      @relation("PatientMessages")
-  prescriptions Prescription[] @relation("PatientPrescriptions")
-  facturaciones Facturacion[]  @relation("PatientFacturacion")
-  tasks         Task[]         @relation("PatientTasks")
+  appointments     Appointment[]     @relation("PatientAppointments")
+  consultations    Consultation[]    @relation("PatientConsultations")
+  labResults       LabResult[]       @relation("PatientLabResults")
+  messages         Message[]         @relation("PatientMessages")
+  prescriptions    Prescription[]    @relation("PatientPrescriptions")
+  facturaciones    Facturacion[]     @relation("PatientFacturacion")
+  tasks            Task[]            @relation("PatientTasks")
+  aiConversations  AiConversation[]  @relation("PatientAiConversations")
 
   @@map("Patient")
 }
+
+model AiConversation {
+  id        String   @id @default(uuid())
+  patientId String
+  patient   Patient  @relation("PatientAiConversations", fields: [patientId], references: [id])
+  messages  Json     // Almacenará un array de objetos: { role: 'user' | 'assistant', content: string }
+  createdAt DateTime @default(now()) @map("createdAt")
+  updatedAt DateTime @updatedAt @map("updatedAt")
+
+  @@index([patientId])
+  @@map("ai_conversation")
+}
+
 
 model MedicalRecord {
   id          String   @id @default(uuid())
