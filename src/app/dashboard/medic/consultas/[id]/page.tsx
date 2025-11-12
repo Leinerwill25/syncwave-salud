@@ -2,7 +2,7 @@
 import { format } from 'date-fns';
 import createSupabaseServerClient from '@/app/adapters/server';
 import Link from 'next/link';
-import { User, Stethoscope, Calendar, Clock, FileText, ClipboardList } from 'lucide-react';
+import { User, Stethoscope, Calendar, Clock, FileText, ClipboardList, DollarSign } from 'lucide-react';
 import QuickFacts from '@/app/dashboard/medic/components/QuickFacts';
 
 type Props = { params: Promise<{ id?: string }> };
@@ -55,7 +55,7 @@ export default async function ConsultationDetail({ params }: Props) {
 		const { data, error } = await supabase
 			.from('consultation')
 			.select(
-				`id, appointment_id, patient_id, doctor_id, chief_complaint, diagnosis, notes, vitals, started_at, ended_at, created_at,
+				`id, appointment_id, patient_id, doctor_id, organization_id, chief_complaint, diagnosis, notes, vitals, started_at, ended_at, created_at,
          patient:patient_id(firstName,lastName,dob),
          doctor:doctor_id(id, name, email)`
 			)
@@ -263,6 +263,11 @@ export default async function ConsultationDetail({ params }: Props) {
 
 									<Link href={`/dashboard/medic/consultas/${c.id}/prescription`} className="inline-flex items-center justify-center px-3 py-2 rounded-lg bg-indigo-600 text-white text-sm hover:opacity-95 focus:outline-none focus:ring-2 focus:ring-offset-1 focus:ring-indigo-400" aria-label="Crear prescripción">
 										Crear Prescripción
+									</Link>
+
+									<Link href={`/dashboard/medic/consultas/${c.id}/pago`} className="inline-flex items-center justify-center gap-2 px-3 py-2 rounded-lg bg-green-600 text-white text-sm hover:opacity-95 focus:outline-none focus:ring-2 focus:ring-offset-1 focus:ring-green-400" aria-label="Registrar pago de consulta">
+										<DollarSign size={16} />
+										Registrar pago de consulta
 									</Link>
 								</div>
 							</div>

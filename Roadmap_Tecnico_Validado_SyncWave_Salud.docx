@@ -1,0 +1,159 @@
+Roadmap Técnico Validado — SyncWave Salud
+
+Fecha: 2025-11-11
+Autor: Generado automáticamente
+
+Resumen ejecutivo
+- Progreso global estimado: 76%
+- Fortalezas: Autenticación/RBAC, gestión de pacientes, agenda (médico), consultas, generación de recetas, notificaciones, onboarding/invites, dashboards (médico/clinica).
+- Principales pendientes: Integración y UI/API de Farmacia (pharmacy_order, dispensing), Módulo Laboratorio (orders/results/webhooks), Facturación/Invoices completos, reportes y QA E2E finales.
+- Estimación tiempo restante (3–5 devs fullstack, trabajo en paralelo): 6–10 semanas (recomendado objetivo: 8 semanas = 4 sprints de 2 semanas).
+
+1) Clínica / Organización
+| Funcionalidad | Estado | Archivo / Ruta (ejemplos) | Comentario |
+|---------------|--------|---------------------------|-----------|
+| Gestión de perfil clínica | ✅ | src/app/dashboard/clinic/profile/page.tsx, src/app/api/clinic-profile/route.ts | Profile y API implementados |
+| Gestión de especialistas / invitaciones | ✅ | src/app/dashboard/clinic/specialists/page.tsx, src/app/dashboard/clinic/invites/page.tsx, src/app/api/invites/* | Invites implementados |
+| Gestión de pacientes (nivel org) | ✅ | src/app/api/patients/route.ts, src/components/PatientsGrid.tsx | CRUD y componentes presentes |
+| Agenda general / citas por sede | 🟡 | src/app/api/appointments/route.ts, src/app/dashboard/clinic/page.tsx | Citas funcionan; falta agenda clinic-wide avanzada |
+| Configuración y settings | ✅ | src/app/dashboard/clinic/settings/page.tsx, src/app/api/clinic/route.ts | Implementado |
+| Control inventario / farmacia interna | ❌ | — | DB tiene tablas; no hay API/UI implementados |
+| Facturación & pagos (básico) | 🟡 | src/lib/stripe.ts, components/PlanCard.tsx | Stripe lib y planes; invoices API incompleta |
+| Reportes administrativos | 🟡 | src/app/api/dashboard/medic/kpis/route.ts | KPIs médicos; reportes clinic-wide limitados |
+
+2) Médico / Especialista
+| Funcionalidad | Estado | Archivo / Ruta | Comentario |
+|---------------|--------|----------------|-----------|
+| Dashboard personal | ✅ | src/app/dashboard/medic/page.tsx, src/app/dashboard/medic/layout.tsx | Implementado |
+| Agenda (ver/gestionar citas) | ✅ | src/app/dashboard/medic/citas/page.tsx, AppointmentList.tsx | Funcional |
+| Registro de consultas / notas | ✅ | src/app/api/consultations/route.ts, src/app/dashboard/medic/consultas/* | Crear/editar notas implementado |
+| Generación de recetas electrónicas | ✅ | src/app/dashboard/medic/consultas/[id]/prescription/*, src/app/api/medic/prescriptions/route.ts | Implementado |
+| Solicitar/visualizar resultados de laboratorio | ❌ | — | DB tiene lab_result; falta API/UI laboratorios |
+| Comunicación interna / mensajes | ✅ | src/components/patient/Chat.tsx, src/app/api/notifications/route.ts | Chat y notificaciones presentes |
+| Reportes de productividad (médico) | ✅ | src/app/api/dashboard/medic/kpis/route.ts | KPIs disponibles |
+
+3) Paciente
+| Funcionalidad | Estado | Archivo / Ruta | Comentario |
+|---------------|--------|----------------|-----------|
+| Portal paciente (vista) | ✅ | src/app/dashboard/patient/page.tsx | Implementado |
+| CRUD / historial (paciente) | ✅ | src/app/api/patients/route.ts, src/app/dashboard/medic/pacientes/[id]/page.tsx | Historial accesible |
+| Solicitar / cancelar citas (API) | 🟡 | src/app/api/appointments/route.ts | API existe; UI de solicitud parcial |
+| Recepción de notificaciones / recordatorios | ✅ | src/app/api/notifications/route.ts, lib/mailer.ts | Implementado |
+| Descarga de recetas / informes | 🟡 | src/app/dashboard/medic/consultas/[id]/page.tsx | Descarga parcial; endpoints de archivos requieren confirmación |
+| Comunicación (chat) | ✅ | src/components/patient/Chat.tsx | Implementado |
+
+4) Farmacia
+| Funcionalidad | Estado | Archivo / Ruta | Comentario |
+|---------------|--------|----------------|-----------|
+| Recepción de recetas electrónicas | 🟡 | src/app/api/prescriptions/route.ts | Endpoint de prescripciones existe; falta flujo PharmacyOrder |
+| Validación y confirmación de recetas | ❌ | — | No hay webhooks ni UI farmacia |
+| Inventario y control de stock | ❌ | — | DB: pharmacy_inventory; no hay API/UI |
+| Registro de dispensación | ❌ | — | prescription_dispense no expuesto en API |
+| Reportes farmacia | ❌ | — | No implementado |
+
+5) Laboratorio
+| Funcionalidad | Estado | Archivo / Ruta | Comentario |
+|---------------|--------|----------------|-----------|
+| Generación de órdenes desde consulta | ❌ | — | No se detectó endpoint lab orders |
+| Carga de resultados / attachments | ❌ | — | lab_result table existe; falta API |
+| Notificación automática de resultados | 🟡 | src/app/api/notifications/route.ts | Notifications existen; falta integración lab→notif |
+| Control de muestras / reactivos | ❌ | — | No implementado |
+
+Mapeo de archivos relevantes (selección)
+- Auth: src/app/api/auth/me/route.ts, src/app/api/auth/profile/route.ts, src/lib/auth.ts, middleware.ts
+- Pacientes: src/app/api/patients/route.ts, src/app/dashboard/medic/pacientes/*
+- Citas: src/app/api/appointments/route.ts, src/app/dashboard/medic/citas/*
+- Consultas: src/app/api/consultations/route.ts, src/app/dashboard/medic/consultas/*
+- Recetas: src/app/api/prescriptions/route.ts, src/app/dashboard/medic/consultas/[id]/prescription/*
+- Notificaciones: src/app/api/notifications/route.ts, src/lib/mailer.ts
+- Clinic admin: src/app/dashboard/clinic/*, src/app/api/clinic-profile/route.ts
+- Pagos: src/lib/stripe.ts, components/PlanCard.tsx
+- DB/ORM: prisma/schema.prisma, src/lib/prisma.ts
+- Integraciones/adapter: src/app/adapters/*, src/lib/supabaseClient.ts
+
+Flujos paso a paso (resumen)
+
+Médico
+1. Inicia sesión.
+2. Accede a /dashboard/medic.
+3. Revisa agenda → /dashboard/medic/citas.
+4. Abre cita → crea/edita consulta → /api/consultations.
+5. Genera receta → /api/medic/prescriptions.
+6. Notifica paciente → /api/notifications.
+7. (Pendiente) Enviar orden laboratorio → /api/lab/orders.
+
+Paciente
+1. Registra cuenta / acepta invitación.
+2. Accede a /dashboard/patient.
+3. Solicita cita (API parcial).
+4. Asiste a consulta; recibe receta y notificaciones.
+5. Descarga receta/informe (descarga parcial).
+
+Clínica / Admin
+1. Configura profile y settings.
+2. Invita especialistas (invites).
+3. Administra pacientes y revisa KPIs.
+4. (Pendiente) Gestiona inventario y facturación completa.
+
+Farmacia (objetivo deseado)
+1. Recibe receta (webhook/API).
+2. Valida y confirma o reporta faltantes.
+3. Dispensa y registra prescription_dispense.
+4. Actualiza pharmacy_inventory.
+
+Laboratorio (objetivo deseado)
+1. Recibe orden desde consulta.
+2. Registra muestra y procesa.
+3. Sube resultado a lab_result y notifica.
+
+Porcentajes estimados de completitud (por rol)
+- Médico: 88%
+- Clínica / Organización: 72%
+- Paciente: 70%
+- Farmacia: 5%
+- Laboratorio: 5%
+- Infra / soporte: 90%
+Progreso global ponderado: ~76%
+
+Dependencias cruzadas críticas
+- Prescripciones ↔ Farmacia: PharmacyOrder + webhooks.
+- Consultas ↔ Laboratorio: LabOrders + LabResults + webhooks.
+- Citas/Consultas ↔ Facturación: invoices endpoint y relación con facturacion table.
+- Notificaciones central: triggers desde lab/pharmacy modules.
+- Storage de archivos: prescripción y adjuntos de laboratorio (signed URLs).
+
+Estimación de tiempo y plan de sprints (recomendado)
+Asunción: equipo 3–5 devs fullstack. Sprints de 2 semanas.
+
+Sprint A (2w)
+- Pharmacy API (pharmacy_order, prescription_dispense) + UI básica farmacia.
+Sprint B (2w)
+- LabOrders API + lab_result upload + UI laboratorio + notif triggers.
+Sprint C (2w)
+- Invoices API ligado a appointment/facturacion + Stripe flow.
+Sprint D (2w)
+- QA E2E, fixes, seguridad, docs OpenAPI + webhooks sandbox.
+
+Total estimado: 8 semanas (rango 6–10 semanas con margen).
+
+Prioridades
+1. Pharmacy API + UI
+2. Lab Orders + Results + notif triggers
+3. Facturación/Invoices + pagos
+4. Patient booking UI polish
+5. QA E2E y documentación (OpenAPI/webhooks)
+
+Recomendaciones técnicas
+- Añadir endpoints: /api/pharmacy/orders, /api/pharmacy/orders/{id}/confirm, /api/lab/orders, /api/lab/results.
+- Workers/colas: Redis + BullMQ para procesar notificaciones asíncronas.
+- Storage: S3/MinIO con signed URLs.
+- Publicar OpenAPI y crear sandbox para integraciones.
+- Suite E2E (Cypress/Playwright) con tests críticos (receta→farmacia, orden→lab).
+
+Próximos pasos sugeridos
+- Ejecutar sprints planificados y abrir issues por historia.
+- Implementar y documentar contratos webhook para farmacias/labs.
+- Ejecutar pruebas de integración con 1 farmacia y 1 laboratorio piloto.
+- Completar cobertura de tests y despliegue a staging.
+
+Fin del documento.

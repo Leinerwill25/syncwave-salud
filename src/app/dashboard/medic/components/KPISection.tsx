@@ -2,10 +2,12 @@
 
 import { useEffect, useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
-import { Users, CalendarDays, DollarSign } from 'lucide-react';
+import { Users, CalendarDays, DollarSign, Calendar as CalendarIcon } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { Button } from '@/components/ui/button';
 
 type KpiTitle = 'Pacientes Atendidos' | 'Citas Programadas' | 'Ingresos Generados';
+type PeriodType = 'day' | 'week' | 'month';
 
 interface KPI {
 	title: KpiTitle;
@@ -17,12 +19,15 @@ interface KPI {
 export default function KPISection() {
 	const [kpis, setKpis] = useState<KPI[]>([]);
 	const [loading, setLoading] = useState(true);
+	const [period, setPeriod] = useState<PeriodType>('week');
 
 	useEffect(() => {
 		const fetchData = async () => {
+			setLoading(true);
 			try {
-				// 🔑 Incluimos cookies de sesión con la solicitud
-				const res = await fetch('/api/dashboard/medic/kpis', {
+				// 🔑 Incluimos cookies de sesión con la solicitud y parámetro de período
+				const url = `/api/dashboard/medic/kpis?period=${period}`;
+				const res = await fetch(url, {
 					cache: 'no-store',
 					credentials: 'include', // ✅ Esto es clave
 				});
@@ -50,7 +55,7 @@ export default function KPISection() {
 		};
 
 		fetchData();
-	}, []);
+	}, [period]);
 
 	const iconMap: Record<KpiTitle, any> = {
 		'Pacientes Atendidos': Users,
@@ -64,26 +69,77 @@ export default function KPISection() {
 		'Ingresos Generados': 'from-emerald-500/90 to-teal-600/90',
 	};
 
+	const periodLabels: Record<PeriodType, string> = {
+		day: 'Día',
+		week: 'Semana',
+		month: 'Mes',
+	};
+
 	if (loading) {
 		return (
-			<div className="grid grid-cols-1 md:grid-cols-3 gap-6 animate-pulse">
-				{[1, 2, 3].map((i) => (
-					<Card key={i} className="bg-white/70 border border-gray-100 shadow-sm rounded-2xl">
-						<CardContent className="p-6 flex items-center gap-5">
-							<div className="w-12 h-12 bg-gray-200 rounded-2xl" />
-							<div className="space-y-2 w-full">
-								<div className="h-3 bg-gray-200 rounded w-1/2"></div>
-								<div className="h-5 bg-gray-300 rounded w-2/3"></div>
-							</div>
-						</CardContent>
-					</Card>
-				))}
+			<div className="space-y-4">
+				{/* Filtros de período */}
+				<div className="flex items-center gap-2 mb-4">
+					<CalendarIcon size={18} className="text-gray-500" />
+					<span className="text-sm font-medium text-gray-700">Período:</span>
+					<div className="flex gap-2">
+						{(['day', 'week', 'month'] as PeriodType[]).map((p) => (
+							<Button
+								key={p}
+								variant={period === p ? 'default' : 'outline'}
+								size="sm"
+								onClick={() => setPeriod(p)}
+								className={period === p ? 'bg-blue-600 hover:bg-blue-700 text-white' : ''}>
+								{periodLabels[p]}
+							</Button>
+						))}
+					</div>
+				</div>
+				<div className="grid grid-cols-1 md:grid-cols-3 gap-6 animate-pulse">
+					{[1, 2, 3].map((i) => (
+						<Card key={i} className="bg-white/70 border border-gray-100 shadow-sm rounded-2xl">
+							<CardContent className="p-6 flex items-center gap-5">
+								<div className="w-12 h-12 bg-gray-200 rounded-2xl" />
+								<div className="space-y-2 w-full">
+									<div className="h-3 bg-gray-200 rounded w-1/2"></div>
+									<div className="h-5 bg-gray-300 rounded w-2/3"></div>
+								</div>
+							</CardContent>
+						</Card>
+					))}
+				</div>
 			</div>
 		);
 	}
 
 	return (
-		<div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+		<div className="space-y-4">
+			{/* Filtros de período */}
+			<div className="flex items-center gap-3 mb-4">
+				<div className="flex items-center gap-2">
+					<CalendarIcon size={18} className="text-gray-500" />
+					<span className="text-sm font-medium text-gray-700 dark:text-gray-300">Filtrar por período:</span>
+				</div>
+				<div className="flex gap-2">
+					{(['day', 'week', 'month'] as PeriodType[]).map((p) => (
+						<Button
+							key={p}
+							variant={period === p ? 'default' : 'outline'}
+							size="sm"
+							onClick={() => setPeriod(p)}
+							className={
+								period === p
+									? 'bg-blue-600 hover:bg-blue-700 text-white shadow-md'
+									: 'bg-white hover:bg-gray-50 text-gray-700 border-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-700'
+							}>
+							{periodLabels[p]}
+						</Button>
+					))}
+				</div>
+			</div>
+
+			{/* KPIs */}
+			<div className="grid grid-cols-1 md:grid-cols-3 gap-6">
 			{kpis.map((kpi, i) => {
 				const Icon = iconMap[kpi.title];
 				const gradient = gradientMap[kpi.title];
@@ -110,6 +166,7 @@ export default function KPISection() {
 					</motion.div>
 				);
 			})}
+			</div>
 		</div>
 	);
 }

@@ -1,9 +1,24 @@
 // src/app/api/dashboard/medic/kpis/route.ts
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import createSupabaseServerClient from '@/app/adapters/server';
 import { cookies } from 'next/headers';
 
-// 🧠 Calcular inicio y fin de semana (lunes–sábado)
+type PeriodType = 'day' | 'week' | 'month';
+
+// 🗓️ Calcular rango de día
+function getDayRange(offset = 0) {
+	const now = new Date();
+	const day = new Date(now);
+	day.setDate(now.getDate() + offset);
+	day.setHours(0, 0, 0, 0);
+
+	const end = new Date(day);
+	end.setHours(23, 59, 59, 999);
+
+	return { start: day, end };
+}
+
+// 🧠 Calcular inicio y fin de semana (lunes–domingo)
 function getWeekRange(offset = 0) {
 	const now = new Date();
 	const day = now.getDay(); // 0 = domingo
@@ -12,11 +27,37 @@ function getWeekRange(offset = 0) {
 	monday.setDate(now.getDate() + diffToMonday + offset * 7);
 	monday.setHours(0, 0, 0, 0);
 
-	const saturday = new Date(monday);
-	saturday.setDate(monday.getDate() + 5);
-	saturday.setHours(23, 59, 59, 999);
+	const sunday = new Date(monday);
+	sunday.setDate(monday.getDate() + 6);
+	sunday.setHours(23, 59, 59, 999);
 
-	return { start: monday, end: saturday };
+	return { start: monday, end: sunday };
+}
+
+// 📅 Calcular inicio y fin de mes
+function getMonthRange(offset = 0) {
+	const now = new Date();
+	const month = new Date(now.getFullYear(), now.getMonth() + offset, 1);
+	month.setHours(0, 0, 0, 0);
+
+	const lastDay = new Date(now.getFullYear(), now.getMonth() + offset + 1, 0);
+	lastDay.setHours(23, 59, 59, 999);
+
+	return { start: month, end: lastDay };
+}
+
+// 📊 Obtener rango de fecha según período
+function getDateRange(period: PeriodType, offset = 0) {
+	switch (period) {
+		case 'day':
+			return getDayRange(offset);
+		case 'week':
+			return getWeekRange(offset);
+		case 'month':
+			return getMonthRange(offset);
+		default:
+			return getWeekRange(offset);
+	}
 }
 
 // 📈 Calcular cambio porcentual
@@ -135,9 +176,19 @@ async function tryRestoreSessionFromCookies(supabase: any, cookieStore: any): Pr
 	return false;
 }
 
-export async function GET() {
+export async function GET(req: NextRequest) {
 	try {
-		// 1️⃣ Obtener cookie store request-scoped (await por compatibilidad con tu versión de Next)
+		// 1️⃣ Obtener parámetros de query
+		const url = new URL(req.url);
+		const period = (url.searchParams.get('period') || 'week') as PeriodType;
+		const periodOffset = parseInt(url.searchParams.get('offset') || '0', 10);
+
+		// Validar período
+		if (!['day', 'week', 'month'].includes(period)) {
+			return NextResponse.json({ error: 'Invalid period. Must be day, week, or month' }, { status: 400 });
+		}
+
+		// 2️⃣ Obtener cookie store request-scoped (await por compatibilidad con tu versión de Next)
 		const cookieStore = await cookies();
 
 		// Logging básico de cookies (no explotamos si getAll no existe)
@@ -192,39 +243,127 @@ export async function GET() {
 		}
 
 		const doctorId = userData.id;
-		console.log(`[KPI] Doctor encontrado (${usedTable}): ${doctorId}`);
+		console.log(`[KPI] Doctor encontrado (${usedTable}): ${doctorId}, período: ${period}`);
 
-		// 6️⃣ Calcular semanas
-		const currentWeek = getWeekRange(0);
-		const previousWeek = getWeekRange(-1);
+		// 6️⃣ Calcular rangos de fecha según período
+		const currentRange = getDateRange(period, periodOffset);
+		const previousRange = getDateRange(period, periodOffset - 1);
 
 		// ────────────────────────────────
 		// 🩺 1️⃣ PACIENTES ATENDIDOS (consultation)
+		// Usar started_at si existe, sino created_at
 		// ────────────────────────────────
-		const { count: currentConsults } = await supabase.from('consultation').select('*', { count: 'exact', head: true }).eq('doctor_id', doctorId).gte('started_at', currentWeek.start.toISOString()).lte('started_at', currentWeek.end.toISOString());
+		// Consulta para consultas con started_at en el rango actual
+		const { count: currentConsultsWithStarted } = await supabase
+			.from('consultation')
+			.select('*', { count: 'exact', head: true })
+			.eq('doctor_id', doctorId)
+			.not('started_at', 'is', null)
+			.gte('started_at', currentRange.start.toISOString())
+			.lte('started_at', currentRange.end.toISOString());
 
-		const { count: prevConsults } = await supabase.from('consultation').select('*', { count: 'exact', head: true }).eq('doctor_id', doctorId).gte('started_at', previousWeek.start.toISOString()).lte('started_at', previousWeek.end.toISOString());
+		// Consultas sin started_at pero con created_at en el rango
+		const { count: currentConsultsWithCreated } = await supabase
+			.from('consultation')
+			.select('*', { count: 'exact', head: true })
+			.eq('doctor_id', doctorId)
+			.is('started_at', null)
+			.gte('created_at', currentRange.start.toISOString())
+			.lte('created_at', currentRange.end.toISOString());
 
-		const consultChange = calcChange(currentConsults ?? 0, prevConsults ?? 0);
+		const currentConsultsFiltered = (currentConsultsWithStarted ?? 0) + (currentConsultsWithCreated ?? 0);
+
+		// Período anterior
+		const { count: prevConsultsWithStarted } = await supabase
+			.from('consultation')
+			.select('*', { count: 'exact', head: true })
+			.eq('doctor_id', doctorId)
+			.not('started_at', 'is', null)
+			.gte('started_at', previousRange.start.toISOString())
+			.lte('started_at', previousRange.end.toISOString());
+
+		const { count: prevConsultsWithCreated } = await supabase
+			.from('consultation')
+			.select('*', { count: 'exact', head: true })
+			.eq('doctor_id', doctorId)
+			.is('started_at', null)
+			.gte('created_at', previousRange.start.toISOString())
+			.lte('created_at', previousRange.end.toISOString());
+
+		const prevConsultsFiltered = (prevConsultsWithStarted ?? 0) + (prevConsultsWithCreated ?? 0);
+
+		const consultChange = calcChange(currentConsultsFiltered, prevConsultsFiltered);
 
 		// ────────────────────────────────
 		// 📅 2️⃣ CITAS PROGRAMADAS (appointment)
 		// ────────────────────────────────
-		const { count: currentAppt } = await supabase.from('appointment').select('*', { count: 'exact', head: true }).eq('doctor_id', doctorId).eq('status', 'SCHEDULED').gte('scheduled_at', currentWeek.start.toISOString()).lte('scheduled_at', currentWeek.end.toISOString());
+		const { count: currentAppt } = await supabase
+			.from('appointment')
+			.select('*', { count: 'exact', head: true })
+			.eq('doctor_id', doctorId)
+			.eq('status', 'SCHEDULED')
+			.gte('scheduled_at', currentRange.start.toISOString())
+			.lte('scheduled_at', currentRange.end.toISOString());
 
-		const { count: prevAppt } = await supabase.from('appointment').select('*', { count: 'exact', head: true }).eq('doctor_id', doctorId).eq('status', 'SCHEDULED').gte('scheduled_at', previousWeek.start.toISOString()).lte('scheduled_at', previousWeek.end.toISOString());
+		const { count: prevAppt } = await supabase
+			.from('appointment')
+			.select('*', { count: 'exact', head: true })
+			.eq('doctor_id', doctorId)
+			.eq('status', 'SCHEDULED')
+			.gte('scheduled_at', previousRange.start.toISOString())
+			.lte('scheduled_at', previousRange.end.toISOString());
 
 		const apptChange = calcChange(currentAppt ?? 0, prevAppt ?? 0);
 
 		// ────────────────────────────────
 		// 💰 3️⃣ INGRESOS (facturacion)
+		// Usar fecha_pago si existe y está pagado, sino fecha_emision
 		// ────────────────────────────────
-		const { data: factNow } = await supabase.from('facturacion').select('total').eq('doctor_id', doctorId).eq('estado_pago', 'pagado').gte('fecha_emision', currentWeek.start.toISOString()).lte('fecha_emision', currentWeek.end.toISOString());
+		// Consulta para facturaciones con fecha_pago en el rango actual
+		const { data: factNowWithFechaPago } = await supabase
+			.from('facturacion')
+			.select('total')
+			.eq('doctor_id', doctorId)
+			.eq('estado_pago', 'pagado')
+			.not('fecha_pago', 'is', null)
+			.gte('fecha_pago', currentRange.start.toISOString())
+			.lte('fecha_pago', currentRange.end.toISOString());
 
-		const { data: factPrev } = await supabase.from('facturacion').select('total').eq('doctor_id', doctorId).eq('estado_pago', 'pagado').gte('fecha_emision', previousWeek.start.toISOString()).lte('fecha_emision', previousWeek.end.toISOString());
+		// Consulta para facturaciones sin fecha_pago pero con fecha_emision en el rango actual
+		const { data: factNowWithFechaEmision } = await supabase
+			.from('facturacion')
+			.select('total')
+			.eq('doctor_id', doctorId)
+			.eq('estado_pago', 'pagado')
+			.is('fecha_pago', null)
+			.gte('fecha_emision', currentRange.start.toISOString())
+			.lte('fecha_emision', currentRange.end.toISOString());
 
-		const ingresosActual = factNow?.reduce((sum, f) => sum + Number(f.total || 0), 0) || 0;
-		const ingresosPrev = factPrev?.reduce((sum, f) => sum + Number(f.total || 0), 0) || 0;
+		const ingresosActual =
+			(factNowWithFechaPago || []).reduce((sum, f) => sum + Number(f.total || 0), 0) + (factNowWithFechaEmision || []).reduce((sum, f) => sum + Number(f.total || 0), 0);
+
+		// Período anterior
+		const { data: factPrevWithFechaPago } = await supabase
+			.from('facturacion')
+			.select('total')
+			.eq('doctor_id', doctorId)
+			.eq('estado_pago', 'pagado')
+			.not('fecha_pago', 'is', null)
+			.gte('fecha_pago', previousRange.start.toISOString())
+			.lte('fecha_pago', previousRange.end.toISOString());
+
+		const { data: factPrevWithFechaEmision } = await supabase
+			.from('facturacion')
+			.select('total')
+			.eq('doctor_id', doctorId)
+			.eq('estado_pago', 'pagado')
+			.is('fecha_pago', null)
+			.gte('fecha_emision', previousRange.start.toISOString())
+			.lte('fecha_emision', previousRange.end.toISOString());
+
+		const ingresosPrev =
+			(factPrevWithFechaPago || []).reduce((sum, f) => sum + Number(f.total || 0), 0) + (factPrevWithFechaEmision || []).reduce((sum, f) => sum + Number(f.total || 0), 0);
+
 		const ingresosChange = calcChange(ingresosActual, ingresosPrev);
 
 		// ────────────────────────────────
@@ -233,7 +372,7 @@ export async function GET() {
 		const data = [
 			{
 				title: 'Pacientes Atendidos',
-				value: currentConsults ?? 0,
+				value: currentConsultsFiltered,
 				change: consultChange.trend === 'neutral' ? '0%' : `${consultChange.percent > 0 ? '+' : ''}${consultChange.percent}%`,
 				trend: consultChange.trend,
 			},
@@ -247,6 +386,7 @@ export async function GET() {
 				title: 'Ingresos Generados',
 				value: `$${ingresosActual.toLocaleString('es-ES', {
 					minimumFractionDigits: 2,
+					maximumFractionDigits: 2,
 				})}`,
 				change: ingresosChange.trend === 'neutral' ? '0%' : `${ingresosChange.percent > 0 ? '+' : ''}${ingresosChange.percent}%`,
 				trend: ingresosChange.trend,
