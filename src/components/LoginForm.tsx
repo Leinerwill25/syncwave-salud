@@ -15,12 +15,25 @@ type Role = 'ADMIN' | 'MEDICO' | 'FARMACIA' | 'PACIENTE' | string;
 export default function LoginFormAdvanced(): React.ReactElement {
 	const router = useRouter();
 
-	const [email, setEmail] = useState('');
+	// Cargar preferencia de "recuérdame" y email desde localStorage
+	const [email, setEmail] = useState(() => {
+		if (typeof window !== 'undefined') {
+			const remembered = localStorage.getItem('rememberMe') === 'true';
+			return remembered ? localStorage.getItem('userEmail') || '' : '';
+		}
+		return '';
+	});
 	const [password, setPassword] = useState('');
 	const [showPassword, setShowPassword] = useState(false);
 	const [loading, setLoading] = useState(false);
 	const [errorMsg, setErrorMsg] = useState<string | null>(null);
 	const [detectedRole, setDetectedRole] = useState<Role | null>(null);
+	const [rememberMe, setRememberMe] = useState(() => {
+		if (typeof window !== 'undefined') {
+			return localStorage.getItem('rememberMe') === 'true';
+		}
+		return false;
+	});
 
 	function routeForRole(role?: Role) {
 		switch ((role || '').toString().toUpperCase()) {
@@ -50,14 +63,14 @@ export default function LoginFormAdvanced(): React.ReactElement {
 		}
 	}
 
-	async function postSessionToServer(session: { access_token?: string; refresh_token?: string; expires_in?: number; session?: any }) {
+	async function postSessionToServer(session: { access_token?: string; refresh_token?: string; expires_in?: number; session?: any }, remember: boolean = false) {
 		if (!session?.access_token) return false;
 		try {
 			const resp = await fetch('/api/auth/set-session', {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
 				credentials: 'include',
-				body: JSON.stringify(session),
+				body: JSON.stringify({ ...session, rememberMe: remember }),
 			});
 			return resp.ok;
 		} catch (err) {
@@ -93,7 +106,15 @@ export default function LoginFormAdvanced(): React.ReactElement {
 			const expires_in = session?.expires_in;
 
 			if (access_token) {
-				await postSessionToServer({ access_token, refresh_token, expires_in, session });
+				await postSessionToServer({ access_token, refresh_token, expires_in, session }, rememberMe);
+				// Guardar preferencia de "recuérdame" en localStorage
+				if (rememberMe) {
+					localStorage.setItem('rememberMe', 'true');
+					localStorage.setItem('userEmail', email);
+				} else {
+					localStorage.removeItem('rememberMe');
+					localStorage.removeItem('userEmail');
+				}
 			}
 
 			const metadataRole = (user.user_metadata as any)?.role as Role | undefined;
@@ -225,7 +246,12 @@ export default function LoginFormAdvanced(): React.ReactElement {
 
 										<div className="flex items-center justify-between">
 											<label className="inline-flex items-center gap-3 cursor-pointer select-none text-sm text-[#2C3E50]/80">
-												<input type="checkbox" className="h-4 w-4 rounded border-[rgba(44,62,80,0.08)] bg-white text-[#4A90E2]" />
+												<input 
+													type="checkbox" 
+													checked={rememberMe}
+													onChange={(e) => setRememberMe(e.target.checked)}
+													className="h-4 w-4 rounded border-[rgba(44,62,80,0.08)] bg-white text-[#4A90E2] focus:ring-2 focus:ring-[#4A90E2]" 
+												/>
 												<span>Recordarme</span>
 											</label>
 

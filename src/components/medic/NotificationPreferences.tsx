@@ -2,20 +2,7 @@
 
 import { useState } from 'react';
 import { Bell, MessageSquare, Mail, Smartphone, Check, X } from 'lucide-react';
-
-type MedicConfig = {
-	user: any;
-	isAffiliated: boolean;
-	clinicProfile: any;
-	config: {
-		notifications: {
-			whatsapp: boolean;
-			email: boolean;
-			push: boolean;
-		};
-		[key: string]: any;
-	};
-};
+import type { MedicConfig } from '@/types/medic-config';
 
 export default function NotificationPreferences({ 
 	config, 
@@ -73,8 +60,9 @@ export default function NotificationPreferences({
 			setSuccess('Preferencias guardadas correctamente');
 			onUpdate();
 			setTimeout(() => setSuccess(null), 3000);
-		} catch (err: any) {
-			setError(err.message || 'Error al guardar las preferencias');
+		} catch (err) {
+			const errorMessage = err instanceof Error ? err.message : 'Error al guardar las preferencias';
+			setError(errorMessage);
 		} finally {
 			setLoading(false);
 		}

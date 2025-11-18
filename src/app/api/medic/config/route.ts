@@ -3,7 +3,11 @@ import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { createSupabaseServerClient } from '@/app/adapters/server';
 
-async function tryRestoreSessionFromCookies(supabase: any, cookieStore: any): Promise<boolean> {
+interface CookieStore {
+	get?: (name: string) => { value?: string } | undefined;
+}
+
+async function tryRestoreSessionFromCookies(supabase: ReturnType<typeof createSupabaseServerClient>['supabase'], cookieStore: CookieStore): Promise<boolean> {
 	if (!cookieStore) return false;
 
 	const cookieCandidates = ['sb-session', 'sb:token', 'supabase-auth-token', 'sb-access-token', 'sb-refresh-token'];
@@ -14,9 +18,9 @@ async function tryRestoreSessionFromCookies(supabase: any, cookieStore: any): Pr
 			const raw = c?.value ?? null;
 			if (!raw) continue;
 
-			let parsed: any = null;
+			let parsed: Record<string, unknown> | null = null;
 			try {
-				parsed = JSON.parse(raw);
+				parsed = JSON.parse(raw) as Record<string, unknown>;
 			} catch {
 				parsed = null;
 			}
@@ -25,19 +29,36 @@ async function tryRestoreSessionFromCookies(supabase: any, cookieStore: any): Pr
 			let refresh_token: string | null = null;
 
 			if (parsed) {
+				const getNestedValue = (obj: Record<string, unknown>, ...paths: string[]): unknown => {
+					for (const path of paths) {
+						const keys = path.split('.');
+						let current: unknown = obj;
+						for (const key of keys) {
+							if (current && typeof current === 'object' && key in current) {
+								current = (current as Record<string, unknown>)[key];
+							} else {
+								return null;
+							}
+						}
+						if (current) return current;
+					}
+					return null;
+				};
+
 				if (name === 'sb-session') {
-					access_token = parsed?.access_token ?? parsed?.session?.access_token ?? parsed?.currentSession?.access_token ?? null;
-					refresh_token = parsed?.refresh_token ?? parsed?.session?.refresh_token ?? parsed?.currentSession?.refresh_token ?? null;
-					if (!access_token && parsed?.user) {
-						access_token = parsed.access_token ?? null;
-						refresh_token = parsed.refresh_token ?? null;
+					access_token = (getNestedValue(parsed, 'access_token', 'session.access_token', 'currentSession.access_token') as string | null) ?? null;
+					refresh_token = (getNestedValue(parsed, 'refresh_token', 'session.refresh_token', 'currentSession.refresh_token') as string | null) ?? null;
+					if (!access_token && parsed.user) {
+						access_token = (parsed.access_token as string | null) ?? null;
+						refresh_token = (parsed.refresh_token as string | null) ?? null;
 					}
 				} else {
-					access_token = parsed?.access_token ?? parsed?.currentSession?.access_token ?? parsed?.current_session?.access_token ?? null;
-					refresh_token = parsed?.refresh_token ?? parsed?.currentSession?.refresh_token ?? parsed?.current_session?.refresh_token ?? null;
-					if (!access_token && parsed?.currentSession && typeof parsed.currentSession === 'object') {
-						access_token = parsed.currentSession.access_token ?? null;
-						refresh_token = parsed.currentSession.refresh_token ?? null;
+					access_token = (getNestedValue(parsed, 'access_token', 'currentSession.access_token', 'current_session.access_token') as string | null) ?? null;
+					refresh_token = (getNestedValue(parsed, 'refresh_token', 'currentSession.refresh_token', 'current_session.refresh_token') as string | null) ?? null;
+					if (!access_token && parsed.currentSession && typeof parsed.currentSession === 'object') {
+						const currentSession = parsed.currentSession as Record<string, unknown>;
+						access_token = (currentSession.access_token as string | null) ?? null;
+						refresh_token = (currentSession.refresh_token as string | null) ?? null;
 					}
 				}
 			} else {
@@ -50,29 +71,44 @@ async function tryRestoreSessionFromCookies(supabase: any, cookieStore: any): Pr
 
 			if (!access_token && !refresh_token) continue;
 
-			const payload: any = {};
-			if (access_token) payload.access_token = access_token;
-			if (refresh_token) payload.refresh_token = refresh_token;
+			// Solo intentar setSession si tenemos al menos access_token
+			if (access_token) {
+				const payload: { access_token: string; refresh_token: string } = {
+					access_token,
+					refresh_token: refresh_token || '',
+				};
 
-			const { data, error } = await supabase.auth.setSession(payload);
-			if (error) {
-				if (refresh_token && !access_token && error.message.includes('session')) {
-					try {
-						const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession({ refresh_token });
-						if (!refreshError && refreshData?.session) {
-							return true;
+				const { data, error } = await supabase.auth.setSession(payload);
+				if (error) {
+					// Si falla y tenemos refresh_token, intentar refresh
+					if (refresh_token) {
+						try {
+							const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession({ refresh_token });
+							if (!refreshError && refreshData?.session) {
+								return true;
+							}
+						} catch {
+							// ignore
 						}
-					} catch {
-						// ignore
 					}
+					continue;
 				}
-				continue;
+
+				if (data?.session) return true;
+
+				const { data: sessionAfter } = await supabase.auth.getSession();
+				if (sessionAfter?.session) return true;
+			} else if (refresh_token) {
+				// Si solo tenemos refresh_token, intentar refresh
+				try {
+					const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession({ refresh_token });
+					if (!refreshError && refreshData?.session) {
+						return true;
+					}
+				} catch {
+					// ignore
+				}
 			}
-
-			if (data?.session) return true;
-
-			const { data: sessionAfter } = await supabase.auth.getSession();
-			if (sessionAfter?.session) return true;
 		} catch {
 			continue;
 		}
@@ -136,8 +172,8 @@ export async function GET(request: Request) {
 		}
 
 		// Obtener perfil de clínica si está afiliado
-		let clinicProfile = null;
-		let clinicSpecialties: any[] = [];
+		let clinicProfile: { legal_name: string | null; trade_name: string | null; specialties: unknown } | null = null;
+		let clinicSpecialties: string[] = [];
 		
 		if (appUser.organizationId) {
 			const { data: clinic, error: clinicError } = await supabase
@@ -149,11 +185,14 @@ export async function GET(request: Request) {
 			if (!clinicError && clinic) {
 				clinicProfile = clinic;
 				try {
-					clinicSpecialties = Array.isArray(clinic.specialties) 
+					const parsed = Array.isArray(clinic.specialties) 
 						? clinic.specialties 
 						: typeof clinic.specialties === 'string' 
 							? JSON.parse(clinic.specialties) 
 							: [];
+					clinicSpecialties = Array.isArray(parsed) 
+						? parsed.map((s) => typeof s === 'string' ? s : String(s))
+						: [];
 				} catch {
 					clinicSpecialties = [];
 				}
@@ -188,28 +227,27 @@ export async function GET(request: Request) {
 			}
 		}
 
-		// Parsear campos JSON
-		const services = Array.isArray(profile?.services) 
-			? profile.services 
-			: typeof profile?.services === 'string' 
-				? JSON.parse(profile.services) 
-				: [];
+		// Parsear campos JSON con tipos seguros
+		const parseJsonField = <T>(field: unknown, defaultValue: T): T => {
+			if (!field) return defaultValue;
+			if (typeof field === 'string') {
+				try {
+					return JSON.parse(field) as T;
+				} catch {
+					return defaultValue;
+				}
+			}
+			return field as T;
+		};
 
-		const credentials = profile?.credentials 
-			? (typeof profile.credentials === 'string' ? JSON.parse(profile.credentials) : profile.credentials)
-			: {};
-
-		const creditHistory = profile?.credit_history
-			? (typeof profile.credit_history === 'string' ? JSON.parse(profile.credit_history) : profile.credit_history)
-			: {};
-
-		const availability = profile?.availability
-			? (typeof profile.availability === 'string' ? JSON.parse(profile.availability) : profile.availability)
-			: {};
-
-		const notifications = profile?.notifications
-			? (typeof profile.notifications === 'string' ? JSON.parse(profile.notifications) : profile.notifications)
-			: { email: true, whatsapp: false, push: false };
+		const services = parseJsonField<Array<Record<string, unknown>>>(profile?.services, []);
+		const credentials = parseJsonField<Record<string, unknown>>(profile?.credentials, {});
+		const creditHistory = parseJsonField<Record<string, unknown>>(profile?.credit_history, {});
+		const availability = parseJsonField<Record<string, unknown>>(profile?.availability, {});
+		const notifications = parseJsonField<{ email: boolean; whatsapp: boolean; push: boolean }>(
+			profile?.notifications,
+			{ email: true, whatsapp: false, push: false }
+		);
 
 		return NextResponse.json({
 			user: {
@@ -233,11 +271,17 @@ export async function GET(request: Request) {
 				availability: availability,
 				notifications: notifications,
 				services: services,
+				privateSpecialties: Array.isArray(profile?.private_specialty) 
+					? profile.private_specialty 
+					: profile?.private_specialty 
+						? [profile.private_specialty] 
+						: [],
 			},
 		});
-	} catch (err: any) {
+	} catch (err) {
 		console.error('[Medic Config API] Error:', err);
-		return NextResponse.json({ error: 'Error interno', detail: err.message }, { status: 500 });
+		const errorMessage = err instanceof Error ? err.message : 'Error interno';
+		return NextResponse.json({ error: 'Error interno', detail: errorMessage }, { status: 500 });
 	}
 }
 
@@ -305,20 +349,21 @@ export async function PATCH(request: Request) {
 				.maybeSingle();
 
 			if (clinic) {
-				let clinicSpecialties: any[] = [];
+				let clinicSpecialties: string[] = [];
 				try {
-					clinicSpecialties = Array.isArray(clinic.specialties) 
+					const parsed = Array.isArray(clinic.specialties) 
 						? clinic.specialties 
 						: typeof clinic.specialties === 'string' 
 							? JSON.parse(clinic.specialties) 
 							: [];
+					clinicSpecialties = Array.isArray(parsed) 
+						? parsed.map((s) => typeof s === 'string' ? s : String(s))
+						: [];
 				} catch {
 					clinicSpecialties = [];
 				}
 
-				const specialtyNames = clinicSpecialties.map((s: any) => 
-					typeof s === 'string' ? s : s?.name || s?.specialty || ''
-				);
+				const specialtyNames = clinicSpecialties;
 
 				if (!specialtyNames.includes(body.specialty)) {
 					return NextResponse.json({ 
@@ -341,7 +386,7 @@ export async function PATCH(request: Request) {
 		}
 
 		// Preparar datos para medic_profile
-		const profileData: any = {};
+		const profileData: Record<string, unknown> = {};
 
 		if (body.specialty !== undefined) {
 			profileData.specialty = body.specialty;
@@ -422,9 +467,10 @@ export async function PATCH(request: Request) {
 			success: true,
 			message: 'Configuración actualizada correctamente'
 		});
-	} catch (err: any) {
+	} catch (err) {
 		console.error('[Medic Config API PATCH] Error:', err);
-		return NextResponse.json({ error: 'Error interno', detail: err.message }, { status: 500 });
+		const errorMessage = err instanceof Error ? err.message : 'Error interno';
+		return NextResponse.json({ error: 'Error interno', detail: errorMessage }, { status: 500 });
 	}
 }
 

@@ -2,30 +2,7 @@
 
 import { useState, useRef } from 'react';
 import { Upload, Camera, FileText, Award, Building2, Stethoscope, X, Check, User } from 'lucide-react';
-
-type MedicConfig = {
-	user: {
-		id: string;
-		name: string | null;
-		email: string | null;
-		organizationId: string | null;
-	};
-	isAffiliated: boolean;
-	clinicProfile: {
-		name: string;
-		specialties: any[];
-	} | null;
-	config: {
-		specialty: string | null;
-		signature: string | null;
-		photo: string | null;
-		credentials: any;
-		availability: any;
-		notifications: any;
-		services: any[];
-		privateSpecialties: any[];
-	};
-};
+import type { MedicConfig, MedicCredentials, MedicService, CreditHistory } from '@/types/medic-config';
 
 export default function ProfessionalProfile({ 
 	config, 
@@ -50,13 +27,13 @@ export default function ProfessionalProfile({
 			licenseNumber: '',
 			issuedBy: '',
 			expirationDate: '',
-			credentialFiles: [] as string[],
+			credentialFiles: [],
 		},
-		creditHistory: {
+		creditHistory: config.config.creditHistory || {
 			university: '',
 			degree: '',
 			graduationYear: '',
-			certifications: [] as any[],
+			certifications: [],
 		},
 	});
 
@@ -190,8 +167,9 @@ export default function ProfessionalProfile({
 			setSuccess('Configuración guardada correctamente');
 			onUpdate();
 			setTimeout(() => setSuccess(null), 3000);
-		} catch (err: any) {
-			setError(err.message || 'Error al guardar la configuración');
+		} catch (err) {
+			const errorMessage = err instanceof Error ? err.message : 'Error al guardar la configuración';
+			setError(errorMessage);
 		} finally {
 			setLoading(false);
 		}
@@ -276,8 +254,8 @@ export default function ProfessionalProfile({
 	};
 
 	const clinicSpecialties = config.clinicProfile?.specialties || [];
-	const specialtyOptions = clinicSpecialties.map((s: any) => 
-		typeof s === 'string' ? s : s?.name || s?.specialty || ''
+	const specialtyOptions = clinicSpecialties.map((s) => 
+		typeof s === 'string' ? s : String(s)
 	);
 
 	return (

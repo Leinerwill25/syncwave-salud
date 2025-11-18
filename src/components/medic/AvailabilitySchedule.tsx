@@ -2,16 +2,7 @@
 
 import { useState } from 'react';
 import { Clock, Calendar, Plus, X, Check } from 'lucide-react';
-
-type MedicConfig = {
-	user: any;
-	isAffiliated: boolean;
-	clinicProfile: any;
-	config: {
-		availability: any;
-		[key: string]: any;
-	};
-};
+import type { MedicConfig } from '@/types/medic-config';
 
 type TimeSlot = {
 	day: string;
@@ -45,8 +36,20 @@ export default function AvailabilitySchedule({
 	const [schedule, setSchedule] = useState<Record<string, TimeSlot[]>>(() => {
 		const defaultSchedule: Record<string, TimeSlot[]> = {};
 		DAYS.forEach(day => {
-			if (initialAvailability[day.value] && Array.isArray(initialAvailability[day.value])) {
-				defaultSchedule[day.value] = initialAvailability[day.value];
+			const dayValue = initialAvailability[day.value];
+			if (dayValue && Array.isArray(dayValue)) {
+				// Validar que los elementos sean TimeSlot válidos
+				const validSlots = dayValue.filter((slot): slot is TimeSlot => 
+					typeof slot === 'object' &&
+					slot !== null &&
+					'day' in slot &&
+					'startTime' in slot &&
+					'endTime' in slot &&
+					'enabled' in slot
+				);
+				defaultSchedule[day.value] = validSlots.length > 0 
+					? validSlots 
+					: [{ day: day.value, startTime: '09:00', endTime: '17:00', enabled: false }];
 			} else {
 				defaultSchedule[day.value] = [{ day: day.value, startTime: '09:00', endTime: '17:00', enabled: false }];
 			}
@@ -54,10 +57,14 @@ export default function AvailabilitySchedule({
 		return defaultSchedule;
 	});
 
-	const [appointmentDuration, setAppointmentDuration] = useState(
-		initialAvailability.appointmentDuration || 30
-	);
-	const [breakTime, setBreakTime] = useState(initialAvailability.breakTime || 15);
+	const [appointmentDuration, setAppointmentDuration] = useState(() => {
+		const duration = initialAvailability.appointmentDuration;
+		return typeof duration === 'number' ? duration : 30;
+	});
+	const [breakTime, setBreakTime] = useState(() => {
+		const breakVal = initialAvailability.breakTime;
+		return typeof breakVal === 'number' ? breakVal : 15;
+	});
 
 	const addTimeSlot = (day: string) => {
 		setSchedule(prev => ({
@@ -73,7 +80,7 @@ export default function AvailabilitySchedule({
 		}));
 	};
 
-	const updateTimeSlot = (day: string, index: number, field: keyof TimeSlot, value: any) => {
+	const updateTimeSlot = (day: string, index: number, field: keyof TimeSlot, value: string | boolean) => {
 		setSchedule(prev => ({
 			...prev,
 			[day]: prev[day].map((slot, i) =>
@@ -110,8 +117,9 @@ export default function AvailabilitySchedule({
 			setSuccess('Horarios guardados correctamente');
 			onUpdate();
 			setTimeout(() => setSuccess(null), 3000);
-		} catch (err: any) {
-			setError(err.message || 'Error al guardar los horarios');
+		} catch (err) {
+			const errorMessage = err instanceof Error ? err.message : 'Error al guardar los horarios';
+			setError(errorMessage);
 		} finally {
 			setLoading(false);
 		}

@@ -7,6 +7,7 @@ type Body = {
 	refresh_token?: string;
 	expires_in?: number; // segundos
 	session?: any;
+	rememberMe?: boolean; // Si es true, extender duración de cookies
 };
 
 // Opciones genéricas para cookies
@@ -34,13 +35,21 @@ function makeSbTokenPayload(access_token: string, refresh_token: string | null, 
 export async function POST(req: Request) {
 	try {
 		const body = (await req.json()) as Body;
-		const { access_token, refresh_token, expires_in, session } = body;
+		const { access_token, refresh_token, expires_in, session, rememberMe } = body;
 
 		if (!access_token) {
 			return NextResponse.json({ ok: false, message: 'access_token missing' }, { status: 400 });
 		}
 
-		const maxAge = typeof expires_in === 'number' && expires_in > 0 ? Math.floor(expires_in) : 60 * 60;
+		// Si "recuérdame" está activo, extender la duración de las cookies
+		// Por defecto: 1 hora, con "recuérdame": 30 días
+		const defaultMaxAge = 60 * 60; // 1 hora
+		const rememberMeMaxAge = 60 * 60 * 24 * 30; // 30 días
+		
+		const maxAge = rememberMe 
+			? rememberMeMaxAge 
+			: (typeof expires_in === 'number' && expires_in > 0 ? Math.floor(expires_in) : defaultMaxAge);
+		
 		const expiresAtSeconds = Math.floor(Date.now() / 1000) + maxAge;
 
 		const cookiesToSet: string[] = [];
@@ -48,7 +57,7 @@ export async function POST(req: Request) {
 		// Cookie simple de access token
 		cookiesToSet.push(serialize('sb-access-token', access_token, cookieOpts(maxAge)));
 
-		// Cookie de refresh token
+		// Cookie de refresh token - siempre 30 días si existe
 		if (refresh_token) {
 			cookiesToSet.push(serialize('sb-refresh-token', refresh_token, cookieOpts(60 * 60 * 24 * 30))); // 30 días
 		}

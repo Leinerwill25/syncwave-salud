@@ -2,13 +2,7 @@
 
 import { useState } from 'react';
 import { Lock, Key, Shield, Eye, EyeOff, Check, X } from 'lucide-react';
-
-type MedicConfig = {
-	user: any;
-	isAffiliated: boolean;
-	clinicProfile: any;
-	config: any;
-};
+import type { MedicConfig } from '@/types/medic-config';
 
 export default function SecuritySettings({ 
 	config, 
@@ -79,8 +73,9 @@ export default function SecuritySettings({
 				confirmPassword: '',
 			});
 			setTimeout(() => setSuccess(null), 3000);
-		} catch (err: any) {
-			setError(err.message || 'Error al cambiar la contraseña');
+		} catch (err) {
+			const errorMessage = err instanceof Error ? err.message : 'Error al cambiar la contraseña';
+			setError(errorMessage);
 		} finally {
 			setLoading(false);
 		}
@@ -105,8 +100,9 @@ export default function SecuritySettings({
 				setShowTwoFactorSetup(false);
 				setSuccess('Autenticación de dos factores deshabilitada');
 				setTimeout(() => setSuccess(null), 3000);
-			} catch (err: any) {
-				setError(err.message || 'Error al deshabilitar 2FA');
+			} catch (err) {
+				const errorMessage = err instanceof Error ? err.message : 'Error al deshabilitar 2FA';
+				setError(errorMessage);
 			} finally {
 				setLoading(false);
 			}
@@ -139,8 +135,9 @@ export default function SecuritySettings({
 			setTwoFactorCode('');
 			setSuccess('Autenticación de dos factores habilitada correctamente');
 			setTimeout(() => setSuccess(null), 3000);
-		} catch (err: any) {
-			setError(err.message || 'Error al configurar 2FA');
+		} catch (err) {
+			const errorMessage = err instanceof Error ? err.message : 'Error al configurar 2FA';
+			setError(errorMessage);
 		} finally {
 			setLoading(false);
 		}

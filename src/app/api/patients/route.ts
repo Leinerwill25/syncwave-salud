@@ -2,6 +2,7 @@
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { createSupabaseServerClient } from '@/app/adapters/server';
+import { apiRequireRole } from '@/lib/auth-guards';
 
 /* ---------------------- Helpers ---------------------- */
 function parseIntOrDefault(v: string | null, d = 1) {
@@ -153,47 +154,18 @@ function normalizeDate(row: any, ...names: string[]) {
 /* ---------------------- GET ---------------------- */
 export async function GET(request: Request) {
 	try {
-		// Obtener cookie store explícitamente
+		// Validar autenticación y rol (solo médicos pueden acceder)
+		const authResult = await apiRequireRole(['MEDICO']);
+		if (authResult.response) {
+			return authResult.response;
+		}
+
+		const user = authResult.user;
 		const cookieStore = await cookies();
 		const { supabase } = createSupabaseServerClient(cookieStore);
 
-		// Intentar obtener access_token directamente de cookies primero
-		let accessTokenFromCookie: string | null = null;
-		try {
-			const sbAccessToken = cookieStore.get('sb-access-token');
-			if (sbAccessToken?.value) {
-				accessTokenFromCookie = sbAccessToken.value;
-				console.debug('[Patients API] Encontrado sb-access-token en cookies');
-			}
-		} catch (err) {
-			console.debug('[Patients API] Error leyendo sb-access-token:', err);
-		}
-
-		// Intentar obtener usuario con access_token directo si está disponible
-		let {
-			data: { user },
-			error: authError,
-		} = accessTokenFromCookie ? await supabase.auth.getUser(accessTokenFromCookie) : await supabase.auth.getUser();
-
-		if (authError) {
-			console.error('[Patients API] Auth error:', authError);
-		}
-
-		// Si getUser falla, intentar restaurar sesión desde cookies
-		if (!user) {
-			const restored = await tryRestoreSessionFromCookies(supabase, cookieStore);
-			if (restored) {
-				const after = await supabase.auth.getUser();
-				user = after.data?.user ?? null;
-				if (user) {
-					console.log('[Patients API] Sesión restaurada exitosamente');
-				}
-			}
-		}
-
-		if (!user) {
-			return NextResponse.json({ error: 'No autenticado' }, { status: 401 });
-		}
+		// Obtener authId del usuario autenticado
+		const authId = user.authId;
 
 		const url = new URL(request.url);
 		const qp = url.searchParams;
@@ -202,7 +174,7 @@ export async function GET(request: Request) {
 		const historyFor = qp.get('historyFor');
 		if (historyFor) {
 			// Obtener el app user ID (necesario para doctor_id en consultation)
-			const { data: appUserData, error: appUserError } = await supabase.from('User').select('id').eq('authId', user.id).maybeSingle();
+			const { data: appUserData, error: appUserError } = await supabase.from('User').select('id').eq('authId', authId).maybeSingle();
 
 			if (appUserError || !appUserData) {
 				console.error('Error fetching app user for history', appUserError);
@@ -354,8 +326,8 @@ export async function GET(request: Request) {
 		const gender = qp.get('gender');
 		const includeSummary = qp.get('include_summary') === 'true';
 
-		// Buscar el usuario en la tabla User usando authId (el user.id es el auth user ID)
-		const { data: userData, error: userError } = await supabase.from('User').select('id, role').eq('authId', user.id).maybeSingle();
+		// Buscar el usuario en la tabla User usando authId
+		const { data: userData, error: userError } = await supabase.from('User').select('id, role').eq('authId', authId).maybeSingle();
 
 		if (userError || !userData) {
 			console.error('Error fetching user role', userError);

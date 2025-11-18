@@ -6,35 +6,7 @@ import ProfessionalProfile from '@/components/medic/ProfessionalProfile';
 import AvailabilitySchedule from '@/components/medic/AvailabilitySchedule';
 import NotificationPreferences from '@/components/medic/NotificationPreferences';
 import SecuritySettings from '@/components/medic/SecuritySettings';
-
-type MedicConfig = {
-	user: {
-		id: string;
-		name: string | null;
-		email: string | null;
-		organizationId: string | null;
-	};
-	isAffiliated: boolean;
-	clinicProfile: {
-		name: string;
-		specialties: any[];
-	} | null;
-	config: {
-		specialty: string | null;
-		privateSpecialty: string | null;
-		signature: string | null;
-		photo: string | null;
-		credentials: any;
-		creditHistory: any;
-		availability: any;
-		notifications: {
-			whatsapp: boolean;
-			email: boolean;
-			push: boolean;
-		};
-		services: any[];
-	};
-};
+import type { MedicConfig } from '@/types/medic-config';
 
 type TabType = 'profile' | 'availability' | 'notifications' | 'security';
 
@@ -63,9 +35,10 @@ export default function MedicConfigurationPage() {
 
 			const data = await res.json();
 			setConfig(data);
-		} catch (err: any) {
+		} catch (err) {
 			console.error('Error cargando configuración:', err);
-			setError(err.message || 'Error al cargar la configuración');
+			const errorMessage = err instanceof Error ? err.message : 'Error al cargar la configuración';
+			setError(errorMessage);
 		} finally {
 			setLoading(false);
 		}
