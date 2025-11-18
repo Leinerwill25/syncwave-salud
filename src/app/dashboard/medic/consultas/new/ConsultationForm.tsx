@@ -9,14 +9,14 @@ import { createSupabaseBrowserClient } from '@/app/adapters/client'; // lo dejé
 
 function Label({ children, htmlFor }: { children: React.ReactNode; htmlFor?: string }) {
 	return (
-		<label htmlFor={htmlFor} className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-2">
+		<label htmlFor={htmlFor} className="block text-sm font-medium text-slate-800 mb-2">
 			{children}
 		</label>
 	);
 }
 
 function Card({ children, className = '' }: { children: React.ReactNode; className?: string }) {
-	return <div className={`rounded-2xl bg-white dark:bg-[#041f25] border border-slate-100 dark:border-slate-800 shadow-sm p-5 ${className}`}>{children}</div>;
+	return <div className={`rounded-2xl bg-white border border-blue-100 shadow-sm p-5 ${className}`}>{children}</div>;
 }
 
 function FieldShell({ children }: { children: React.ReactNode }) {
@@ -25,8 +25,8 @@ function FieldShell({ children }: { children: React.ReactNode }) {
 
 function IconInputWrapper({ icon, children }: { icon?: React.ReactNode; children: React.ReactNode }) {
 	return (
-		<div className="relative rounded-lg bg-white/90 dark:bg-transparent shadow-sm border border-gray-200 dark:border-gray-700">
-			{icon ? <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">{icon}</div> : null}
+		<div className="relative rounded-lg bg-white shadow-sm border border-blue-200">
+			{icon ? <div className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500">{icon}</div> : null}
 			{children}
 		</div>
 	);
@@ -37,9 +37,9 @@ function TextInput({ id, label, value, onChange, placeholder, icon, error, type 
 		<FieldShell>
 			<Label htmlFor={id}>{label}</Label>
 			<IconInputWrapper icon={icon}>
-				<input id={id} type={type} value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} className={`w-full block rounded-lg px-4 py-3 ${icon ? 'pl-12' : 'pl-4'} pr-4 bg-transparent text-gray-900 dark:text-gray-100 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-400 transition`} />
+				<input id={id} type={type} value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} className={`w-full block rounded-lg px-4 py-3 ${icon ? 'pl-12' : 'pl-4'} pr-4 bg-transparent text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-400 transition`} />
 			</IconInputWrapper>
-			{hint && !error && <p className="mt-2 text-xs text-slate-500">{hint}</p>}
+			{hint && !error && <p className="mt-2 text-xs text-slate-700">{hint}</p>}
 			{error && <p className="mt-2 text-xs text-rose-600">{error}</p>}
 		</FieldShell>
 	);
@@ -49,10 +49,10 @@ function TextareaInput({ id, label, value, onChange, placeholder, rows = 4, erro
 	return (
 		<FieldShell>
 			<Label htmlFor={id}>{label}</Label>
-			<div className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white/90 dark:bg-transparent shadow-sm">
-				<textarea id={id} value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} rows={rows} className="w-full rounded-lg px-4 py-3 bg-transparent text-gray-900 dark:text-gray-100 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-400 transition" />
+			<div className="rounded-lg border border-blue-200 bg-white shadow-sm">
+				<textarea id={id} value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} rows={rows} className="w-full rounded-lg px-4 py-3 bg-transparent text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-400 transition" />
 			</div>
-			{hint && !error && <p className="mt-2 text-xs text-slate-500">{hint}</p>}
+			{hint && !error && <p className="mt-2 text-xs text-slate-700">{hint}</p>}
 			{error && <p className="mt-2 text-xs text-rose-600">{error}</p>}
 		</FieldShell>
 	);
@@ -99,14 +99,14 @@ function PatientSearcher({ onSelect }: { onSelect: (p: Patient) => void }) {
 			<div className="relative">
 				<div className="flex items-center gap-2">
 					<div className="flex-1">
-						<input value={term} onChange={(e) => setTerm(e.target.value)} placeholder="Cédula, nombre o apellido..." aria-label="Buscar paciente" className="w-full rounded-lg border border-gray-200 dark:border-gray-700 px-4 py-3 bg-white/95 dark:bg-transparent text-gray-900 dark:text-gray-100 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-400 transition" />
+						<input value={term} onChange={(e) => setTerm(e.target.value)} placeholder="Cédula, nombre o apellido..." aria-label="Buscar paciente" className="w-full rounded-lg border border-blue-200 px-4 py-3 bg-white text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-400 transition" />
 					</div>
-					<div className="w-10 h-10 flex items-center justify-center rounded-lg bg-indigo-50 dark:bg-indigo-900/30">{loading ? <Loader2 className="animate-spin text-indigo-600" size={18} /> : <Stethoscope size={16} className="text-indigo-600" />}</div>
+					<div className="w-10 h-10 flex items-center justify-center rounded-lg bg-teal-50">{loading ? <Loader2 className="animate-spin text-teal-600" size={18} /> : <Stethoscope size={16} className="text-teal-600" />}</div>
 				</div>
 
 				{open && suggestions.length > 0 && (
-					<div className="absolute z-40 left-0 right-0 mt-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-white/95 dark:bg-[#042434] shadow-xl overflow-hidden">
-						<ul className="divide-y divide-gray-100 dark:divide-slate-800">
+					<div className="absolute z-40 left-0 right-0 mt-2 rounded-xl border border-blue-200 bg-white shadow-xl overflow-hidden">
+						<ul className="divide-y divide-blue-100">
 							{suggestions.map((p) => (
 								<li
 									key={p.id}
@@ -124,14 +124,14 @@ function PatientSearcher({ onSelect }: { onSelect: (p: Patient) => void }) {
 											setOpen(false);
 										}
 									}}
-									className="px-4 py-3 hover:bg-indigo-50 dark:hover:bg-[#06323a] cursor-pointer transition flex items-center justify-between">
+									className="px-4 py-3 hover:bg-blue-50 cursor-pointer transition flex items-center justify-between">
 									<div>
-										<div className="font-medium text-slate-800 dark:text-slate-100">
+										<div className="font-medium text-slate-900">
 											{p.firstName} {p.lastName}
 										</div>
-										{p.identifier && <div className="text-xs text-slate-500 mt-0.5">{p.identifier}</div>}
+										{p.identifier && <div className="text-xs text-slate-700 mt-0.5">{p.identifier}</div>}
 									</div>
-									<div className="text-xs text-slate-400">Seleccionar</div>
+									<div className="text-xs text-slate-600">Seleccionar</div>
 								</li>
 							))}
 						</ul>
@@ -230,15 +230,15 @@ export default function ConsultationForm() {
 	}
 
 	return (
-		<form onSubmit={handleSubmit} className="w-full max-w-3xl mx-auto grid gap-6 p-8 rounded-3xl bg-gradient-to-b from-white/80 to-white/60 dark:from-[#071322] dark:to-[#04101a] border border-slate-100 dark:border-slate-800 shadow-2xl">
+		<form onSubmit={handleSubmit} className="w-full max-w-3xl mx-auto grid gap-6 p-8 rounded-3xl bg-gradient-to-b from-white to-blue-50/50 border border-blue-100 shadow-2xl">
 			{/* Header */}
 			<div className="flex items-start justify-between gap-4">
 				<div>
-					<h2 className="text-2xl font-semibold text-slate-900 dark:text-white">Nueva Consulta Médica</h2>
-					<p className="text-sm text-slate-500 dark:text-slate-400 mt-1">Registra la atención clínica del paciente de forma segura y rápida.</p>
+					<h2 className="text-2xl font-semibold text-slate-900">Nueva Consulta Médica</h2>
+					<p className="text-sm text-slate-700 mt-1">Registra la atención clínica del paciente de forma segura y rápida.</p>
 				</div>
 				<div className="text-right">
-					<div className="text-xs text-slate-400">Estado</div>
+					<div className="text-xs text-slate-700">Estado</div>
 					<div className="text-sm font-medium text-emerald-600">{fetchingSession ? 'Comprobando sesión...' : doctorId ? 'Sesión detectada' : 'Sesión no detectada'}</div>
 				</div>
 			</div>
@@ -252,12 +252,12 @@ export default function ConsultationForm() {
 
 					<div className="flex flex-col gap-2">
 						<Label>Paciente seleccionado</Label>
-						<div className="min-h-[56px] flex items-center justify-center rounded-lg border border-dashed border-gray-200 dark:border-gray-700 bg-white/70 dark:bg-transparent text-sm text-slate-600 dark:text-slate-200">{patientId ? <span className="font-medium">{patientId}</span> : <span className="text-xs text-slate-400">Ninguno</span>}</div>
+						<div className="min-h-[56px] flex items-center justify-center rounded-lg border border-dashed border-blue-200 bg-blue-50/50 text-sm text-slate-800">{patientId ? <span className="font-medium">{patientId}</span> : <span className="text-xs text-slate-600">Ninguno</span>}</div>
 						{doctorId && (
-							<div className="mt-2 text-xs text-slate-500">
-								Médico: <span className="font-medium text-slate-800 dark:text-white">{doctorId}</span>
+							<div className="mt-2 text-xs text-slate-700">
+								Médico: <span className="font-medium text-slate-900">{doctorId}</span>
 								{organizationName && (
-									<span className="block text-xs text-slate-500 mt-1">
+									<span className="block text-xs text-slate-700 mt-1">
 										Clínica: <span className="font-medium">{organizationName}</span>
 									</span>
 								)}
@@ -279,17 +279,17 @@ export default function ConsultationForm() {
 			{/* Actions */}
 			<div className="flex items-center justify-between gap-4">
 				<div className="flex items-center gap-3">
-					<button type="submit" disabled={loading || !doctorId} className="inline-flex items-center gap-3 px-6 py-3 bg-gradient-to-r from-indigo-600 to-teal-500 hover:from-indigo-700 hover:to-teal-600 text-white rounded-2xl shadow-md transition-all duration-200 disabled:opacity-60 disabled:cursor-not-allowed" aria-disabled={loading || !doctorId}>
+					<button type="submit" disabled={loading || !doctorId} className="inline-flex items-center gap-3 px-6 py-3 bg-gradient-to-r from-teal-600 to-cyan-600 hover:from-teal-700 hover:to-cyan-700 text-white rounded-2xl shadow-md transition-all duration-200 disabled:opacity-60 disabled:cursor-not-allowed" aria-disabled={loading || !doctorId}>
 						{loading ? <Loader2 className="animate-spin" size={18} /> : <FileText size={16} />}
 						<span>{loading ? 'Guardando...' : 'Crear Consulta'}</span>
 					</button>
 
-					<button type="button" onClick={() => router.push('/dashboard/medic/consultas')} className="px-5 py-3 border rounded-2xl text-slate-700 dark:text-slate-200 border-gray-200 dark:border-gray-700 bg-white/80 hover:bg-gray-50 transition">
+					<button type="button" onClick={() => router.push('/dashboard/medic/consultas')} className="px-5 py-3 border border-blue-200 rounded-2xl text-slate-800 bg-white hover:bg-blue-50 transition">
 						Cancelar
 					</button>
 				</div>
 
-				<div className="text-sm text-slate-500">
+				<div className="text-sm text-slate-700">
 					<div className="hidden sm:block">Tu información se guarda en el historial del paciente.</div>
 				</div>
 			</div>

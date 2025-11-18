@@ -3,7 +3,7 @@
 
 import React, { useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
-import { ClipboardList, FileText } from 'lucide-react';
+import { ClipboardList, FileText, X, Calendar, User, Building2, Pill, FlaskConical, Stethoscope, Receipt, ChevronRight, Clock, AlertCircle, CheckCircle2 } from 'lucide-react';
 
 /* ---------------------- Types ---------------------- */
 
@@ -63,6 +63,7 @@ export type LabResult = {
 	referenceRange?: string;
 	comment?: string;
 	status?: string;
+	is_critical?: boolean;
 };
 
 export type Consultation = {
@@ -229,24 +230,51 @@ function PatientCard({ patient, onLoadReports, onViewHistory }: { patient: Patie
 
 function Tab({ label, id, active, onClick }: { label: string; id?: string; active: boolean; onClick: () => void }) {
 	return (
-		<button id={id} onClick={onClick} className={`px-3 py-1.5 rounded-xl text-sm font-medium ${active ? 'bg-linear-to-br from-sky-400 to-indigo-400 text-white shadow' : 'bg-white text-gray-600 border border-gray-200'}`} aria-pressed={active}>
+		<button id={id} onClick={onClick} className={`px-4 py-2.5 rounded-lg text-sm font-semibold transition-all duration-200 ${active ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-lg shadow-indigo-500/30' : 'bg-white text-gray-600 border border-gray-200 hover:border-gray-300 hover:bg-gray-50'}`} aria-pressed={active}>
 			{label}
 		</button>
 	);
 }
 
-function MetaCard({ title, value, color }: { title: string; value: string; color?: 'blue' | 'green' | 'yellow' | 'purple' }) {
+function MetaCard({ title, value, color, icon: Icon }: { title: string; value: string; color?: 'blue' | 'green' | 'yellow' | 'purple'; icon?: React.ComponentType<{ className?: string }> }) {
 	const colors = {
-		blue: 'bg-blue-100 text-blue-800 border-blue-200',
-		green: 'bg-green-100 text-green-800 border-green-200',
-		yellow: 'bg-yellow-100 text-yellow-800 border-yellow-200',
-		purple: 'bg-purple-100 text-purple-800 border-purple-200',
+		blue: {
+			bg: 'bg-gradient-to-br from-blue-50 to-blue-100/50',
+			border: 'border-blue-200',
+			text: 'text-blue-900',
+			iconBg: 'bg-blue-500',
+			icon: 'text-white',
+		},
+		green: {
+			bg: 'bg-gradient-to-br from-green-50 to-green-100/50',
+			border: 'border-green-200',
+			text: 'text-green-900',
+			iconBg: 'bg-green-500',
+			icon: 'text-white',
+		},
+		yellow: {
+			bg: 'bg-gradient-to-br from-yellow-50 to-yellow-100/50',
+			border: 'border-yellow-200',
+			text: 'text-yellow-900',
+			iconBg: 'bg-yellow-500',
+			icon: 'text-white',
+		},
+		purple: {
+			bg: 'bg-gradient-to-br from-purple-50 to-purple-100/50',
+			border: 'border-purple-200',
+			text: 'text-purple-900',
+			iconBg: 'bg-purple-500',
+			icon: 'text-white',
+		},
 	} as const;
 	const selected = colors[color ?? 'blue'];
 	return (
-		<div className={`p-3 rounded-lg border ${selected} bg-opacity-50`}>
-			<div className="text-xs font-medium">{title}</div>
-			<div className="text-2xl font-semibold">{value}</div>
+		<div className={`p-5 rounded-xl border ${selected.border} ${selected.bg} shadow-sm hover:shadow-md transition-shadow duration-200`}>
+			<div className="flex items-center justify-between mb-3">
+				<div className={`p-2 ${selected.iconBg} rounded-lg`}>{Icon ? <Icon className={`w-5 h-5 ${selected.icon}`} /> : null}</div>
+			</div>
+			<div className={`text-xs font-semibold ${selected.text} uppercase tracking-wide mb-1`}>{title}</div>
+			<div className={`text-3xl font-bold ${selected.text}`}>{value}</div>
 		</div>
 	);
 }
@@ -255,91 +283,247 @@ function MetaCard({ title, value, color }: { title: string; value: string; color
 
 function PrescriptionCard({ item }: { item: Prescription }) {
 	const meds = item.medications ?? item.meds ?? [];
+	const hasMeds = Array.isArray(meds) && meds.length > 0;
+	const status = (item as any).status;
+	const validUntil = (item as any).validUntil;
+	const issuedAt = (item as any).issuedAt ?? item.date ?? item.createdAt;
+
 	return (
-		<div className="p-4 rounded-lg bg-white border border-gray-200 shadow-sm">
-			<div className="flex items-start justify-between">
-				<div>
-					<div className="text-sm font-semibold text-gray-800">Receta • {item.id}</div>
-					<div className="text-xs text-gray-500">Emitida: {formatDateTime(item.createdAt ?? item.date)}</div>
-				</div>
-				<div className="text-xs text-gray-500">{item.doctor ?? 'Médico desconocido'}</div>
-			</div>
-
-			<div className="mt-3 grid grid-cols-1 md:grid-cols-2 gap-2 text-sm">
-				<div>
-					<div className="text-xs text-gray-400">Medicamentos</div>
-					<ul className="mt-1 list-disc list-inside text-gray-700">
-						{meds.length ? (
-							meds.map((m, i) => (
-								<li key={i}>
-									{m.name} {m.dose ? `— ${m.dose}` : ''}
-								</li>
-							))
-						) : (
-							<li className="text-gray-500">Sin medicamentos listados</li>
+		<div className="group relative bg-gradient-to-br from-white to-green-50/30 border border-green-200/60 rounded-xl p-5 shadow-sm hover:shadow-md transition-all duration-200 hover:border-green-300">
+			<div className="flex items-start justify-between mb-4">
+				<div className="flex items-center gap-3">
+					<div className="p-2 bg-green-100 rounded-lg">
+						<Pill className="w-5 h-5 text-green-600" />
+					</div>
+					<div>
+						<h4 className="font-semibold text-gray-900 text-base">Receta Médica</h4>
+						<div className="flex items-center gap-2 mt-1 text-xs text-gray-500">
+							<Calendar className="w-3 h-3" />
+							<span>Emitida: {formatDateTime(issuedAt)}</span>
+						</div>
+						{validUntil && (
+							<div className="flex items-center gap-2 mt-1 text-xs text-gray-500">
+								<Clock className="w-3 h-3" />
+								<span>Válida hasta: {formatDate(validUntil)}</span>
+							</div>
 						)}
-					</ul>
+					</div>
 				</div>
-
-				<div>
-					<div className="text-xs text-gray-400">Notas / Instrucciones</div>
-					<div className="mt-1 text-sm text-gray-700">{truncate(item.notes ?? item.instructions ?? '', 220)}</div>
+				<div className="flex flex-col items-end gap-2">
+					{item.doctor && (
+						<div className="flex items-center gap-1.5 text-xs text-gray-600 bg-gray-50 px-2.5 py-1 rounded-md">
+							<User className="w-3 h-3" />
+							<span className="font-medium">{item.doctor}</span>
+						</div>
+					)}
+					{status && <div className={`text-xs font-semibold px-2 py-1 rounded-md ${status === 'ACTIVE' ? 'bg-green-100 text-green-700' : status === 'EXPIRED' ? 'bg-red-100 text-red-700' : 'bg-gray-100 text-gray-700'}`}>{status}</div>}
 				</div>
 			</div>
+
+			{hasMeds && (
+				<div className="mb-4">
+					<div className="flex items-center gap-2 mb-3">
+						<Pill className="w-4 h-4 text-green-600" />
+						<span className="text-xs font-semibold text-gray-700 uppercase tracking-wide">Medicamentos Prescritos ({meds.length})</span>
+					</div>
+					<div className="space-y-2.5">
+						{meds.map((m, i) => (
+							<div key={i} className="bg-white/60 rounded-lg p-3.5 border border-green-100 hover:border-green-200 transition-colors">
+								<div className="flex items-start justify-between gap-2">
+									<div className="flex-1">
+										<div className="font-semibold text-gray-900 text-sm">{m.name}</div>
+										<div className="flex flex-wrap gap-2 mt-2">
+											{m.dose && (
+												<div className="text-xs text-gray-600 bg-gray-50 px-2 py-1 rounded">
+													<span className="font-medium">Dosis:</span> {m.dose}
+												</div>
+											)}
+											{(m as any).frequency && (
+												<div className="text-xs text-gray-600 bg-gray-50 px-2 py-1 rounded">
+													<span className="font-medium">Frecuencia:</span> {(m as any).frequency}
+												</div>
+											)}
+											{(m as any).duration && (
+												<div className="text-xs text-gray-600 bg-gray-50 px-2 py-1 rounded">
+													<span className="font-medium">Duración:</span> {(m as any).duration}
+												</div>
+											)}
+											{(m as any).quantity && (
+												<div className="text-xs text-gray-600 bg-gray-50 px-2 py-1 rounded">
+													<span className="font-medium">Cantidad:</span> {(m as any).quantity}
+												</div>
+											)}
+										</div>
+										{m.instructions && (
+											<div className="mt-2 text-xs text-gray-600 italic bg-green-50 px-2 py-1.5 rounded border border-green-100">
+												<span className="font-medium not-italic">Instrucciones:</span> {m.instructions}
+											</div>
+										)}
+									</div>
+								</div>
+							</div>
+						))}
+					</div>
+				</div>
+			)}
+
+			{!hasMeds && (
+				<div className="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+					<p className="text-xs text-yellow-800">No se encontraron medicamentos en esta receta.</p>
+				</div>
+			)}
+
+			{item.notes && (
+				<div className="pt-3 border-t border-green-100">
+					<div className="text-xs font-semibold text-gray-700 mb-1.5 uppercase tracking-wide">Notas Adicionales</div>
+					<div className="text-sm text-gray-700 leading-relaxed bg-white/60 rounded-lg p-3 border border-green-100">{item.notes}</div>
+				</div>
+			)}
 		</div>
 	);
 }
 
 function LabResultCard({ item }: { item: LabResult }) {
+	const testName = item.testName ?? item.name ?? 'Resultado de laboratorio';
+	const result = item.result;
+	const unit = item.unit;
+	const status = item.status;
+	const isCritical = item.is_critical ?? false;
+
 	return (
-		<div className="p-4 rounded-lg bg-white border border-gray-200 shadow-sm">
-			<div className="flex items-center justify-between">
-				<div>
-					<div className="text-sm font-semibold text-gray-800">{item.testName ?? item.name ?? 'Resultado de laboratorio'}</div>
-					<div className="text-xs text-gray-500">Fecha: {formatDateTime(item.date ?? item.collectedAt)}</div>
-				</div>
-				<div className="text-sm font-medium text-gray-800">
-					<div>
-						{item.result ?? '—'} {item.unit ?? ''}
+		<div className={`group relative bg-gradient-to-br from-white to-blue-50/30 border ${isCritical ? 'border-red-300' : 'border-blue-200/60'} rounded-xl p-5 shadow-sm hover:shadow-md transition-all duration-200 ${isCritical ? 'hover:border-red-400' : 'hover:border-blue-300'}`}>
+			<div className="flex items-start justify-between mb-4">
+				<div className="flex items-center gap-3">
+					<div className={`p-2 rounded-lg ${isCritical ? 'bg-red-100' : 'bg-blue-100'}`}>
+						<FlaskConical className={`w-5 h-5 ${isCritical ? 'text-red-600' : 'text-blue-600'}`} />
 					</div>
-					<div className="text-xs text-gray-400">{item.status ?? ''}</div>
+					<div>
+						<h4 className="font-semibold text-gray-900 text-base">{testName}</h4>
+						<div className="flex items-center gap-2 mt-1 text-xs text-gray-500">
+							<Calendar className="w-3 h-3" />
+							<span>{formatDateTime(item.date ?? item.collectedAt)}</span>
+						</div>
+					</div>
 				</div>
+				{isCritical && (
+					<div className="flex items-center gap-1 bg-red-50 text-red-700 px-2.5 py-1 rounded-md text-xs font-semibold">
+						<AlertCircle className="w-3.5 h-3.5" />
+						Crítico
+					</div>
+				)}
 			</div>
 
-			{item.comment && <div className="mt-3 text-sm text-gray-700">{truncate(item.comment, 200)}</div>}
+			{result !== undefined && result !== null && (
+				<div className="mb-4">
+					<div className="bg-white/60 rounded-lg p-4 border border-blue-100">
+						<div className="flex items-baseline gap-2">
+							<span className="text-2xl font-bold text-gray-900">{result}</span>
+							{unit && <span className="text-sm text-gray-600 font-medium">{unit}</span>}
+						</div>
+						{status && (
+							<div className="mt-2 flex items-center gap-1.5">
+								<CheckCircle2 className="w-4 h-4 text-green-600" />
+								<span className="text-xs text-gray-600 font-medium">{status}</span>
+							</div>
+						)}
+					</div>
+				</div>
+			)}
 
-			{item.referenceRange && <div className="mt-3 text-xs text-gray-500">Rango de referencia: {item.referenceRange}</div>}
+			{item.referenceRange && (
+				<div className="mb-3 p-3 bg-gray-50 rounded-lg border border-gray-200">
+					<div className="text-xs font-semibold text-gray-700 mb-1 uppercase tracking-wide">Rango de Referencia</div>
+					<div className="text-sm text-gray-800 font-mono">{item.referenceRange}</div>
+				</div>
+			)}
+
+			{item.comment && (
+				<div className="pt-3 border-t border-blue-100">
+					<div className="text-xs font-semibold text-gray-700 mb-1.5 uppercase tracking-wide">Comentarios</div>
+					<div className="text-sm text-gray-700 leading-relaxed bg-white/60 rounded-lg p-3 border border-blue-100">{item.comment}</div>
+				</div>
+			)}
 		</div>
 	);
 }
 
 function ConsultationCard({ item }: { item: Consultation }) {
+	const appointment = item as any;
+	const scheduledAt = appointment.scheduledAt ?? item.date ?? item.createdAt;
+	const status = appointment.status;
+	const durationMinutes = appointment.durationMinutes;
+	const location = appointment.location;
+	const reason = item.reason ?? item.presentingComplaint;
+
+	// Mapear estados de appointment
+	const getStatusColor = (status: string) => {
+		switch (status?.toUpperCase()) {
+			case 'SCHEDULED':
+			case 'PROGRAMADA':
+				return 'bg-blue-100 text-blue-700';
+			case 'COMPLETED':
+			case 'COMPLETADA':
+				return 'bg-green-100 text-green-700';
+			case 'CANCELLED':
+			case 'CANCELADA':
+				return 'bg-red-100 text-red-700';
+			case 'IN_PROGRESS':
+			case 'EN_PROGRESO':
+				return 'bg-yellow-100 text-yellow-700';
+			default:
+				return 'bg-gray-100 text-gray-700';
+		}
+	};
+
 	return (
-		<div className="p-4 rounded-lg bg-white border border-gray-200 shadow-sm">
-			<div className="flex items-start justify-between">
-				<div>
-					<div className="text-sm font-semibold text-gray-800">Consulta • {item.id}</div>
-					<div className="text-xs text-gray-500">Fecha: {formatDateTime(item.date ?? item.createdAt)}</div>
+		<div className="group relative bg-gradient-to-br from-white to-indigo-50/30 border border-indigo-200/60 rounded-xl p-5 shadow-sm hover:shadow-md transition-all duration-200 hover:border-indigo-300">
+			<div className="flex items-start justify-between mb-4">
+				<div className="flex items-center gap-3">
+					<div className="p-2 bg-indigo-100 rounded-lg">
+						<Calendar className="w-5 h-5 text-indigo-600" />
+					</div>
+					<div>
+						<h4 className="font-semibold text-gray-900 text-base">Cita Médica</h4>
+						<div className="flex items-center gap-2 mt-1 text-xs text-gray-500">
+							<Calendar className="w-3 h-3" />
+							<span>Programada: {formatDateTime(scheduledAt)}</span>
+						</div>
+						{durationMinutes && (
+							<div className="flex items-center gap-2 mt-1 text-xs text-gray-500">
+								<Clock className="w-3 h-3" />
+								<span>Duración: {durationMinutes} minutos</span>
+							</div>
+						)}
+					</div>
 				</div>
-				<div className="text-xs text-gray-500">{item.doctor ?? '—'}</div>
+				<div className="flex flex-col items-end gap-2">
+					{item.doctor && (
+						<div className="flex items-center gap-1.5 text-xs text-gray-600 bg-gray-50 px-2.5 py-1 rounded-md">
+							<User className="w-3 h-3" />
+							<span className="font-medium">{item.doctor}</span>
+						</div>
+					)}
+					{status && <div className={`text-xs font-semibold px-2 py-1 rounded-md ${getStatusColor(status)}`}>{status}</div>}
+				</div>
 			</div>
 
-			<div className="mt-3 text-sm text-gray-700">
-				<div className="text-xs text-gray-400">Motivo</div>
-				<div className="mt-1">{truncate(item.reason ?? item.presentingComplaint ?? '', 200)}</div>
-			</div>
-
-			{item.diagnosis && (
-				<div className="mt-3 text-sm text-gray-700">
-					<div className="text-xs text-gray-400">Diagnóstico</div>
-					<div className="mt-1">{item.diagnosis}</div>
+			{location && (
+				<div className="mb-4">
+					<div className="flex items-center gap-2 mb-2">
+						<Building2 className="w-4 h-4 text-indigo-600" />
+						<span className="text-xs font-semibold text-gray-700 uppercase tracking-wide">Ubicación</span>
+					</div>
+					<div className="bg-white/60 rounded-lg p-3 border border-indigo-100 text-sm text-gray-700 leading-relaxed">{location}</div>
 				</div>
 			)}
 
-			{item.notes && (
-				<div className="mt-3 text-sm text-gray-700">
-					<div className="text-xs text-gray-400">Notas</div>
-					<div className="mt-1">{truncate(item.notes, 220)}</div>
+			{reason && (
+				<div className="mb-4">
+					<div className="flex items-center gap-2 mb-2">
+						<AlertCircle className="w-4 h-4 text-indigo-600" />
+						<span className="text-xs font-semibold text-gray-700 uppercase tracking-wide">Motivo de la Cita</span>
+					</div>
+					<div className="bg-white/60 rounded-lg p-3 border border-indigo-100 text-sm text-gray-700 leading-relaxed">{reason}</div>
 				</div>
 			)}
 		</div>
@@ -347,33 +531,57 @@ function ConsultationCard({ item }: { item: Consultation }) {
 }
 
 function BillingCard({ item }: { item: Billing }) {
+	const total = item.total ?? item.amount ?? 0;
+	const status = item.status;
+	const items = item.items;
+	const hasItems = Array.isArray(items) && items.length > 0;
+
 	return (
-		<div className="p-4 rounded-lg bg-white border border-gray-200 shadow-sm">
-			<div className="flex items-start justify-between">
-				<div>
-					<div className="text-sm font-semibold text-gray-800">Factura • {item.id}</div>
-					<div className="text-xs text-gray-500">Fecha: {formatDateTime(item.date ?? item.createdAt)}</div>
+		<div className="group relative bg-gradient-to-br from-white to-purple-50/30 border border-purple-200/60 rounded-xl p-5 shadow-sm hover:shadow-md transition-all duration-200 hover:border-purple-300">
+			<div className="flex items-start justify-between mb-4">
+				<div className="flex items-center gap-3">
+					<div className="p-2 bg-purple-100 rounded-lg">
+						<Receipt className="w-5 h-5 text-purple-600" />
+					</div>
+					<div>
+						<h4 className="font-semibold text-gray-900 text-base">Factura</h4>
+						<div className="flex items-center gap-2 mt-1 text-xs text-gray-500">
+							<Calendar className="w-3 h-3" />
+							<span>{formatDateTime(item.date ?? item.createdAt)}</span>
+						</div>
+					</div>
 				</div>
 				<div className="text-right">
-					<div className="text-sm font-bold">{formatCurrency(item.total ?? item.amount)}</div>
-					<div className="text-xs text-gray-500">{item.status ?? '—'}</div>
+					<div className="text-xl font-bold text-gray-900">{formatCurrency(total)}</div>
+					{status && <div className="mt-1 inline-flex items-center gap-1 bg-gray-100 text-gray-700 px-2 py-0.5 rounded-md text-xs font-medium">{status}</div>}
 				</div>
 			</div>
 
-			{Array.isArray(item.items) && item.items.length > 0 && (
-				<div className="mt-3 text-sm text-gray-700">
-					<div className="text-xs text-gray-400">Detalles</div>
-					<ul className="mt-1 list-disc list-inside">
-						{item.items.map((it, idx) => (
-							<li key={idx}>
-								{it.name ?? it.desc} — {formatCurrency(it.price ?? it.amount)}
-							</li>
+			{hasItems && items && (
+				<div className="mb-4">
+					<div className="flex items-center gap-2 mb-2">
+						<Receipt className="w-4 h-4 text-purple-600" />
+						<span className="text-xs font-semibold text-gray-700 uppercase tracking-wide">Detalles de Facturación</span>
+					</div>
+					<div className="space-y-2">
+						{items.map((it, idx) => (
+							<div key={idx} className="bg-white/60 rounded-lg p-3 border border-purple-100 flex items-center justify-between">
+								<div className="flex-1">
+									<div className="font-medium text-gray-900">{it.name ?? it.desc ?? 'Item'}</div>
+								</div>
+								<div className="text-sm font-semibold text-gray-800 ml-3">{formatCurrency(it.price ?? it.amount ?? 0)}</div>
+							</div>
 						))}
-					</ul>
+					</div>
 				</div>
 			)}
 
-			{item.note && <div className="mt-3 text-sm text-gray-700">{truncate(item.note, 200)}</div>}
+			{item.note && (
+				<div className="pt-3 border-t border-purple-100">
+					<div className="text-xs font-semibold text-gray-700 mb-1.5 uppercase tracking-wide">Notas</div>
+					<div className="text-sm text-gray-700 leading-relaxed bg-white/60 rounded-lg p-3 border border-purple-100">{item.note}</div>
+				</div>
+			)}
 		</div>
 	);
 }
@@ -408,34 +616,105 @@ function GenericCard({ item }: { item: Record<string, unknown> }) {
 /* ---------------------- Type guards ---------------------- */
 
 function isPrescription(item: HistoryItem): item is Prescription {
-	return !!(item as Prescription).medications || !!(item as Prescription).meds || typeof (item as Prescription).doctor === 'string';
+	const p = item as Prescription;
+	const asAny = item as any;
+
+	// Prescription debe tener medications o meds (arrays) - esto es el indicador más fuerte
+	if (Array.isArray(p.medications) && p.medications.length > 0) return true;
+	if (Array.isArray(p.meds) && p.meds.length > 0) return true;
+
+	// Si tiene issuedAt o validUntil, es definitivamente una prescription
+	if (asAny.issuedAt || asAny.validUntil) return true;
+
+	// O tener campos específicos de prescription pero NO scheduledAt (que es de appointment)
+	if ((!!p.medications || !!p.meds) && !asAny.scheduledAt && !asAny.durationMinutes) return true;
+
+	return false;
 }
 
 function isLabResult(item: HistoryItem): item is LabResult {
-	return !!(item as LabResult).testName || (item as LabResult).result !== undefined || !!(item as LabResult).referenceRange;
+	const l = item as LabResult;
+	// LabResult debe tener testName, name, result, o referenceRange
+	// Y NO debe tener medications (para distinguirlo de prescription)
+	return (!!l.testName || !!l.name || l.result !== undefined || !!l.referenceRange) && !(item as Prescription).medications && !(item as Prescription).meds;
 }
 
 function isConsultation(item: HistoryItem): item is Consultation {
-	return !!(item as Consultation).reason || !!(item as Consultation).diagnosis;
+	const asAny = item as any;
+	const p = item as Prescription;
+	const l = item as LabResult;
+	const b = item as Billing;
+
+	// Consultation (appointment) debe tener scheduledAt (campo único de appointment)
+	// Este es el campo más distintivo de appointments
+	if (asAny.scheduledAt) {
+		// Y NO debe tener medications, meds, testName, result, total/amount, issuedAt, o validUntil
+		if (!p.medications && !p.meds && !l.testName && l.result === undefined && b.total === undefined && b.amount === undefined && !asAny.issuedAt && !asAny.validUntil) {
+			return true;
+		}
+	}
+
+	// O tener durationMinutes (campo único de appointment) Y scheduledAt
+	if (asAny.durationMinutes !== undefined && asAny.scheduledAt) {
+		if (!p.medications && !p.meds && !l.testName && l.result === undefined && b.total === undefined && b.amount === undefined && !asAny.issuedAt && !asAny.validUntil) {
+			return true;
+		}
+	}
+
+	// O tener status de appointment (sin scheduledAt pero con location o reason de appointment)
+	if (asAny.status && typeof asAny.status === 'string' && ['SCHEDULED', 'COMPLETED', 'CANCELLED', 'IN_PROGRESS'].includes(asAny.status.toUpperCase())) {
+		// Debe tener location o reason (campos de appointment) y NO tener campos de otros tipos
+		if ((asAny.location || asAny.reason) && !p.medications && !p.meds && !l.testName && l.result === undefined && b.total === undefined && b.amount === undefined && !asAny.issuedAt && !asAny.validUntil) {
+			return true;
+		}
+	}
+
+	return false;
 }
 
 function isBilling(item: HistoryItem): item is Billing {
-	return (item as Billing).total !== undefined || (item as Billing).items !== undefined || (item as Billing).status !== undefined;
+	const b = item as Billing;
+	const asAny = item as any;
+	const p = item as Prescription;
+	const l = item as LabResult;
+
+	// Billing debe tener total, amount, items, o status de factura
+	// Y NO debe tener medications, scheduledAt, o testName
+	const hasBillingFields: boolean = b.total !== undefined || b.amount !== undefined || (Array.isArray(b.items) && b.items.length > 0);
+
+	const hasBillingStatus: boolean = Boolean(b.status && typeof b.status === 'string' && !['SCHEDULED', 'COMPLETED', 'CANCELLED', 'IN_PROGRESS', 'ACTIVE', 'EXPIRED'].includes(b.status.toUpperCase()));
+
+	const isNotOtherType: boolean = Boolean(!p.medications && !p.meds && !asAny.scheduledAt && !l.testName);
+
+	return (hasBillingFields || hasBillingStatus) && isNotOtherType;
 }
 
 /* ---------------------- HistoryTab: decide renderer and layout ---------------------- */
 
-function HistoryTab({ data, emptyText }: { data: HistoryItem[]; emptyText: string }) {
-	if (!data || data.length === 0) return <div className="text-sm text-gray-500">{emptyText}</div>;
+function HistoryTab({ data, emptyText }: { data: HistoryItem[] | undefined; emptyText: string }) {
+	if (!data || !Array.isArray(data) || data.length === 0) {
+		return (
+			<div className="flex flex-col items-center justify-center py-12 px-4">
+				<div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-4">
+					<FileText className="w-8 h-8 text-gray-400" />
+				</div>
+				<p className="text-gray-500 font-medium">{emptyText}</p>
+			</div>
+		);
+	}
 
 	return (
-		<div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+		<div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
 			{data.map((raw, idx) => {
-				// Usar guards para renderizar
+				// IMPORTANTE: Verificar en orden específico para evitar conflictos
+				// 1. Prescription primero (tiene medications/meds)
 				if (isPrescription(raw)) return <PrescriptionCard key={(raw as Prescription).id ?? idx} item={raw} />;
+				// 2. LabResult (tiene testName/result)
 				if (isLabResult(raw)) return <LabResultCard key={(raw as LabResult).id ?? idx} item={raw} />;
-				if (isConsultation(raw)) return <ConsultationCard key={(raw as Consultation).id ?? idx} item={raw} />;
+				// 3. Billing (tiene total/amount/items)
 				if (isBilling(raw)) return <BillingCard key={(raw as Billing).id ?? idx} item={raw} />;
+				// 4. Consultation último (appointment - tiene scheduledAt/status)
+				if (isConsultation(raw)) return <ConsultationCard key={(raw as Consultation).id ?? idx} item={raw} />;
 				// fallback: mostrar campos principales
 				return <GenericCard key={(raw as any).id ?? idx} item={raw as Record<string, unknown>} />;
 			})}
@@ -445,65 +724,123 @@ function HistoryTab({ data, emptyText }: { data: HistoryItem[]; emptyText: strin
 
 /* ---------------------- Modal and helpers ---------------------- */
 
-function HistoryModal({ open, onClose, loading, history, activeTab, setActiveTab }: { open: boolean; onClose: () => void; loading: boolean; history?: PatientHistory | null; activeTab: 'overview' | 'prescriptions' | 'labs' | 'consultations' | 'billing'; setActiveTab: (t: 'overview' | 'prescriptions' | 'labs' | 'consultations' | 'billing') => void }) {
+function HistoryModal({ open, onClose, loading, history, activeTab, setActiveTab }: { open: boolean; onClose: () => void; loading: boolean; history?: PatientHistory | null; activeTab: 'overview' | 'prescriptions' | 'labs' | 'consultations'; setActiveTab: (t: 'overview' | 'prescriptions' | 'labs' | 'consultations') => void }) {
 	if (!open) return null;
+
+	const organizations = history?.organizations ?? [];
+	const hasOrganizations = Array.isArray(organizations) && organizations.length > 0;
+
 	return (
 		<div role="dialog" aria-modal="true" className="fixed inset-0 z-50 flex items-center justify-center p-4">
-			<div className="absolute inset-0 bg-black/20" onClick={onClose} />
-			<div className="relative max-w-5xl w-full bg-white rounded-2xl shadow-2xl border border-gray-200 overflow-hidden">
-				<div className="flex items-center justify-between p-4 border-b border-gray-200">
-					<h3 className="text-lg font-semibold text-gray-900">Historial del paciente</h3>
-					<button onClick={onClose} className="text-gray-600 px-2 py-1" aria-label="Cerrar historial">
-						Cerrar ✕
+			<div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
+			<div className="relative max-w-6xl w-full bg-white rounded-2xl shadow-2xl border border-gray-200/50 overflow-hidden max-h-[90vh] flex flex-col">
+				{/* Header mejorado */}
+				<div className="flex items-center justify-between px-6 py-5 bg-gradient-to-r from-indigo-600 to-purple-600 text-white">
+					<div className="flex items-center gap-3">
+						<div className="p-2 bg-white/20 rounded-lg">
+							<FileText className="w-6 h-6" />
+						</div>
+						<div>
+							<h3 className="text-xl font-bold">Historial Clínico del Paciente</h3>
+							<p className="text-sm text-indigo-100 mt-0.5">Registros médicos completos</p>
+						</div>
+					</div>
+					<button onClick={onClose} className="p-2 hover:bg-white/20 rounded-lg transition-colors duration-200" aria-label="Cerrar historial">
+						<X className="w-5 h-5" />
 					</button>
 				</div>
 
-				<div className="p-4">
-					<div className="flex gap-2 mb-4 flex-wrap">
-						<Tab label="Resumen" id="overview" active={activeTab === 'overview'} onClick={() => setActiveTab('overview')} />
-						<Tab label={`Recetas (${history?.summary?.prescriptionsCount ?? '—'})`} id="presc" active={activeTab === 'prescriptions'} onClick={() => setActiveTab('prescriptions')} />
-						<Tab label={`Labs (${history?.summary?.labResultsCount ?? '—'})`} id="labs" active={activeTab === 'labs'} onClick={() => setActiveTab('labs')} />
-						<Tab label={`Consultas (${history?.summary?.consultationsCount ?? '—'})`} id="consult" active={activeTab === 'consultations'} onClick={() => setActiveTab('consultations')} />
-						<Tab label={`Facturación (${history?.summary?.billingsCount ?? '—'})`} id="billing" active={activeTab === 'billing'} onClick={() => setActiveTab('billing')} />
+				{/* Tabs mejorados */}
+				<div className="px-6 pt-5 pb-4 bg-gray-50/50 border-b border-gray-200">
+					<div className="flex gap-3 flex-wrap">
+						<Tab label="Resumen General" id="overview" active={activeTab === 'overview'} onClick={() => setActiveTab('overview')} />
+						<Tab label={`Recetas (${history?.summary?.prescriptionsCount ?? 0})`} id="presc" active={activeTab === 'prescriptions'} onClick={() => setActiveTab('prescriptions')} />
+						<Tab label={`Laboratorios (${history?.summary?.labResultsCount ?? 0})`} id="labs" active={activeTab === 'labs'} onClick={() => setActiveTab('labs')} />
+						<Tab label={`Consultas (${history?.summary?.consultationsCount ?? 0})`} id="consult" active={activeTab === 'consultations'} onClick={() => setActiveTab('consultations')} />
 					</div>
+				</div>
 
-					<div className="max-h-[60vh] overflow-auto">
-						{loading && Array.from({ length: 3 }).map((_, i) => <SkeletonCard key={i} />)}
-						{!loading && !history && <div className="text-center py-20 text-gray-500">No se encontró historial para este paciente.</div>}
+				{/* Contenido con scroll */}
+				<div className="flex-1 overflow-y-auto bg-gradient-to-br from-gray-50 to-white">
+					<div className="p-6">
+						{loading && (
+							<div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+								{Array.from({ length: 4 }).map((_, i) => (
+									<SkeletonCard key={i} />
+								))}
+							</div>
+						)}
+
+						{!loading && !history && (
+							<div className="flex flex-col items-center justify-center py-16">
+								<div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mb-4">
+									<FileText className="w-10 h-10 text-gray-400" />
+								</div>
+								<p className="text-gray-500 font-medium text-lg">No se encontró historial para este paciente.</p>
+							</div>
+						)}
+
 						{!loading && history && (
 							<div>
 								{activeTab === 'overview' && (
-									<div className="space-y-3">
+									<div className="space-y-6">
+										{/* Cards de resumen mejorados */}
 										<div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-											<MetaCard title="Consultas" value={`${history.summary.consultationsCount}`} color="blue" />
-											<MetaCard title="Recetas" value={`${history.summary.prescriptionsCount}`} color="green" />
-											<MetaCard title="Lab Results" value={`${history.summary.labResultsCount}`} color="yellow" />
-											<MetaCard title="Facturas" value={`${history.summary.billingsCount}`} color="purple" />
+											<MetaCard title="Consultas" value={`${history.summary?.consultationsCount ?? 0}`} color="blue" icon={Stethoscope} />
+											<MetaCard title="Recetas" value={`${history.summary?.prescriptionsCount ?? 0}`} color="green" icon={Pill} />
+											<MetaCard title="Laboratorios" value={`${history.summary?.labResultsCount ?? 0}`} color="yellow" icon={FlaskConical} />
+											<MetaCard title="Facturas" value={`${history.summary?.billingsCount ?? 0}`} color="purple" icon={Receipt} />
 										</div>
 
-										<div className="mt-4">
-											<h4 className="text-sm font-semibold text-gray-700 mb-2">Clínicas visitadas</h4>
-											<div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-												{history.organizations.length ? (
-													history.organizations.map((org) => (
-														<div key={org.id} className="p-3 rounded-lg bg-gray-50 border border-gray-200">
-															<div className="text-sm text-gray-800 font-medium">Org ID: {org.id}</div>
-															<div className="text-xs text-gray-500">Última actividad: {formatDate(org.lastSeenAt)}</div>
-															<div className="text-xs text-gray-400 mt-1">Tipos: {org.types.join(', ')}</div>
+										{/* Clínicas visitadas mejorado */}
+										{hasOrganizations && (
+											<div className="mt-6">
+												<div className="flex items-center gap-2 mb-4">
+													<Building2 className="w-5 h-5 text-gray-700" />
+													<h4 className="text-lg font-bold text-gray-900">Clínicas Visitadas</h4>
+												</div>
+												<div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+													{organizations.map((org) => (
+														<div key={org.id} className="bg-white rounded-xl p-4 border border-gray-200 shadow-sm hover:shadow-md transition-shadow duration-200">
+															<div className="flex items-start justify-between">
+																<div className="flex-1">
+																	<div className="flex items-center gap-2 mb-2">
+																		<Building2 className="w-4 h-4 text-indigo-600" />
+																		<span className="text-sm font-semibold text-gray-900">Organización</span>
+																	</div>
+																	<div className="text-xs font-mono text-gray-600 mb-2 bg-gray-50 px-2 py-1 rounded inline-block">{org.id}</div>
+																	<div className="flex items-center gap-1.5 text-xs text-gray-500 mt-2">
+																		<Clock className="w-3 h-3" />
+																		<span>Última actividad: {formatDate(org.lastSeenAt)}</span>
+																	</div>
+																	{Array.isArray(org.types) && org.types.length > 0 && (
+																		<div className="mt-2 flex flex-wrap gap-1.5">
+																			{org.types.map((type, idx) => (
+																				<span key={idx} className="text-xs bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded-md font-medium">
+																					{type}
+																				</span>
+																			))}
+																		</div>
+																	)}
+																</div>
+															</div>
 														</div>
-													))
-												) : (
-													<div className="text-sm text-gray-500">Sin registros en otras clínicas.</div>
-												)}
+													))}
+												</div>
 											</div>
-										</div>
+										)}
+
+										{!hasOrganizations && (
+											<div className="mt-6 p-4 bg-gray-50 rounded-xl border border-gray-200">
+												<p className="text-sm text-gray-500 text-center">Sin registros en otras clínicas.</p>
+											</div>
+										)}
 									</div>
 								)}
 
-								{activeTab === 'prescriptions' && <HistoryTab data={history.prescriptions} emptyText="No hay recetas registradas." />}
-								{activeTab === 'labs' && <HistoryTab data={history.lab_results} emptyText="No hay resultados de laboratorio." />}
-								{activeTab === 'consultations' && <HistoryTab data={history.consultations} emptyText="No hay consultas registradas." />}
-								{activeTab === 'billing' && <HistoryTab data={history.facturacion} emptyText="No hay facturación registrada." />}
+								{activeTab === 'prescriptions' && <HistoryTab data={history.prescriptions} emptyText="No hay recetas médicas registradas para este paciente." />}
+								{activeTab === 'labs' && <HistoryTab data={history.lab_results} emptyText="No hay resultados de laboratorio registrados para este paciente." />}
+								{activeTab === 'consultations' && <HistoryTab data={history.consultations} emptyText="No hay consultas médicas registradas para este paciente." />}
 							</div>
 						)}
 					</div>
@@ -525,7 +862,7 @@ export default function PatientsGrid({ perPage = 18 }: { perPage?: number }) {
 
 	const [modalOpen, setModalOpen] = useState(false);
 	const [modalHistory, setModalHistory] = useState<PatientHistory | null>(null);
-	const [modalActiveTab, setModalActiveTab] = useState<'overview' | 'prescriptions' | 'labs' | 'consultations' | 'billing'>('overview');
+	const [modalActiveTab, setModalActiveTab] = useState<'overview' | 'prescriptions' | 'labs' | 'consultations'>('overview');
 	const [loadingHistory, setLoadingHistory] = useState(false);
 
 	const [debouncedQuery, setDebouncedQuery] = useState(query);
@@ -544,7 +881,7 @@ export default function PatientsGrid({ perPage = 18 }: { perPage?: number }) {
 			url.searchParams.set('per_page', String(perPage));
 			if (q) url.searchParams.set('q', q);
 
-			const res = await fetch(url.toString());
+			const res = await fetch(url.toString(), { credentials: 'include' });
 			if (!res.ok) {
 				const body = await res.json().catch(() => ({}));
 				throw new Error((body as any)?.error ?? `HTTP ${res.status}`);
@@ -585,7 +922,7 @@ export default function PatientsGrid({ perPage = 18 }: { perPage?: number }) {
 			const url = new URL('/api/patients', location.origin);
 			url.searchParams.set('historyFor', patientId);
 
-			const res = await fetch(url.toString());
+			const res = await fetch(url.toString(), { credentials: 'include' });
 			if (!res.ok) {
 				const body = await res.json().catch(() => ({}));
 				throw new Error((body as any)?.error ?? `HTTP ${res.status}`);

@@ -14,7 +14,7 @@ export default function CitasPage() {
 	const [isModalOpen, setIsModalOpen] = useState(false);
 
 	return (
-		<main className="min-h-screen bg-slate-50 dark:bg-[#0f172a] p-6">
+		<main className="min-h-screen bg-gradient-to-br from-blue-50 via-cyan-50 to-teal-50 p-6">
 			<motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="max-w-7xl mx-auto flex flex-col gap-6">
 				{/* Parte superior: Calendario (ahora full width y encima de la lista) */}
 				<div className="w-full">
@@ -23,7 +23,7 @@ export default function CitasPage() {
 				{/* Parte inferior: Header + Lista de citas (debajo del calendario) */}
 				<div className="w-full flex flex-col gap-4">
 					<div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-						<h1 className="text-2xl font-semibold text-gray-900 dark:text-white">
+						<h1 className="text-2xl font-semibold text-gray-900">
 							Citas —{' '}
 							<span className="text-indigo-600">
 								{selectedDate.toLocaleDateString('es-ES', {
@@ -34,7 +34,7 @@ export default function CitasPage() {
 							</span>
 						</h1>
 
-						<button onClick={() => setIsModalOpen(true)} className="inline-flex items-center gap-2 px-4 py-2 rounded-2xl font-medium text-white bg-linear-to-r from-violet-500 to-indigo-600 hover:shadow-lg transition-all">
+						<button onClick={() => setIsModalOpen(true)} className="inline-flex items-center gap-2 px-4 py-2 rounded-2xl font-medium text-white bg-gradient-to-r from-teal-600 to-cyan-600 hover:from-teal-700 hover:to-cyan-700 hover:shadow-lg transition-all">
 							<PlusCircle className="w-5 h-5" />
 							Nueva Cita
 						</button>

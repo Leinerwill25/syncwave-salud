@@ -51,10 +51,10 @@ export default function MedicDashboardPage() {
 	}, []);
 
 	return (
-		<div className="p-8 bg-gray-50 min-h-screen space-y-8">
+		<div className="p-8 bg-gradient-to-br from-blue-50 via-cyan-50 to-teal-50 min-h-screen space-y-8">
 			<div>
-				<h1 className="text-3xl font-bold text-gray-900">Panel de Control</h1>
-				<p className="text-gray-500 mt-1">Indicadores clave de rendimiento y agenda diaria</p>
+				<h1 className="text-3xl font-bold text-slate-900">Panel de Control</h1>
+				<p className="text-slate-600 mt-1">Indicadores clave de rendimiento y agenda diaria</p>
 			</div>
 
 			{/* KPIs */}
@@ -72,7 +72,7 @@ export default function MedicDashboardPage() {
 
 			{/* Atajos Rápidos */}
 			<div className="flex gap-4 pt-4">
-				<Button className="bg-violet-600 hover:bg-violet-700 text-white px-6 py-2 rounded-xl shadow-md transition disabled:opacity-50" onClick={() => setIsModalOpen(true)} disabled={loadingSession || !userId || !organizationId}>
+				<Button className="bg-gradient-to-r from-teal-600 to-cyan-600 hover:from-teal-700 hover:to-cyan-700 text-white px-6 py-2 rounded-xl shadow-md transition disabled:opacity-50" onClick={() => setIsModalOpen(true)} disabled={loadingSession || !userId || !organizationId}>
 					{loadingSession ? 'Cargando sesión...' : 'Nueva Cita'}
 				</Button>
 			</div>

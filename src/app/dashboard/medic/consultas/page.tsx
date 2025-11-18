@@ -230,13 +230,13 @@ export default function ConsultationsPage() {
 	}
 
 	return (
-		<main className="min-h-screen bg-slate-50 dark:bg-[#071027] p-8">
+		<main className="min-h-screen bg-gradient-to-br from-blue-50 via-cyan-50 to-teal-50 p-8">
 			<div className="max-w-6xl mx-auto">
 				{/* Header */}
 				<div className="mb-6 grid grid-cols-1 md:grid-cols-2 gap-4 items-center">
 					<div>
-						<h1 className="text-3xl font-semibold text-slate-900 dark:text-slate-100">Consultas Médicas</h1>
-						<p className="text-sm text-slate-500 dark:text-slate-400 mt-1">Historial de consultas del centro — filtra, exporta o crea una nueva consulta.</p>
+						<h1 className="text-3xl font-semibold text-slate-900">Consultas Médicas</h1>
+						<p className="text-sm text-slate-600 mt-1">Historial de consultas del centro — filtra, exporta o crea una nueva consulta.</p>
 						<div className="mt-3 text-xs text-slate-500">Datos mostrados: {consultations.length} consulta(s)</div>
 					</div>
 
@@ -289,7 +289,7 @@ export default function ConsultationsPage() {
 					</div>
 				</div>
 
-				<motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="bg-white/95 dark:bg-[#071828] rounded-2xl border border-slate-100 dark:border-slate-700 shadow-sm overflow-hidden">
+				<motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="bg-white/95 rounded-2xl border border-blue-100 shadow-sm overflow-hidden">
 					{loading ? (
 						<div className="p-6">
 							<div className="flex items-center gap-3 text-slate-500">
@@ -315,8 +315,8 @@ export default function ConsultationsPage() {
 							<div className="mx-auto mb-4 w-20 h-20 rounded-full bg-gradient-to-br from-teal-50 to-cyan-50 flex items-center justify-center text-teal-600">
 								<FileText size={28} />
 							</div>
-							<p className="text-lg font-medium text-slate-800 dark:text-slate-100">No hay consultas registradas</p>
-							<p className="text-sm text-slate-500 dark:text-slate-400 mt-2">
+							<p className="text-lg font-medium text-slate-800">No hay consultas registradas</p>
+							<p className="text-sm text-slate-600 mt-2">
 								Crea la primera consulta usando el botón <strong>“Nueva Consulta”</strong>.
 							</p>
 						</div>
@@ -336,20 +336,20 @@ export default function ConsultationsPage() {
 
 									<tbody className="bg-white">
 										{consultations.map((c) => (
-											<tr key={c.id} className="border-t border-slate-100 hover:bg-slate-50 dark:hover:bg-slate-900 transition">
-												<td className="p-3 align-middle text-slate-700 dark:text-slate-200">{format(new Date(c.created_at), 'dd/MM/yyyy HH:mm')}</td>
-												<td className="p-3 font-medium text-slate-800 dark:text-slate-100">
+											<tr key={c.id} className="border-t border-slate-100 hover:bg-blue-50 transition">
+												<td className="p-3 align-middle text-slate-700">{format(new Date(c.created_at), 'dd/MM/yyyy HH:mm')}</td>
+												<td className="p-3 font-medium text-slate-800">
 													{c.patient ? (
 														<div className="inline-flex items-center gap-2">
 															<div className="px-2 py-0.5 rounded-md bg-teal-100 text-teal-800 text-xs">{c.patient.firstName}</div>
-															<div className="text-sm text-slate-600 dark:text-slate-300">{c.patient.lastName}</div>
+															<div className="text-sm text-slate-600">{c.patient.lastName}</div>
 														</div>
 													) : (
 														'—'
 													)}
 												</td>
-												<td className="p-3 text-slate-700 dark:text-slate-300">{c.chief_complaint || '—'}</td>
-												<td className="p-3 text-slate-700 dark:text-slate-300">{c.diagnosis || '—'}</td>
+												<td className="p-3 text-slate-700">{c.chief_complaint || '—'}</td>
+												<td className="p-3 text-slate-700">{c.diagnosis || '—'}</td>
 												<td className="text-center p-3">
 													<Link href={`/dashboard/medic/consultas/${c.id}`} className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-teal-700 bg-teal-50 hover:bg-teal-100 transition">
 														<FileText size={16} />

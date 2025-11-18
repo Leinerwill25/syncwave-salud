@@ -120,20 +120,36 @@ function FileUploader({ files, setFiles }: { files: File[]; setFiles: (f: File[]
 
 	return (
 		<div>
-			<label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-2">Adjuntar archivos</label>
+			<div className="mb-4">
+				<label className="block text-sm font-semibold text-slate-900 mb-2">Adjuntar documentos médicos</label>
+				<div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-3">
+					<p className="text-sm font-medium text-slate-900 mb-2">📋 Documentos requeridos para el paciente:</p>
+					<ul className="space-y-2 text-sm text-slate-800">
+						<li className="flex items-start gap-2">
+							<span className="text-teal-600 font-bold">•</span>
+							<span><strong>Informe médico:</strong> Documento con el resumen clínico, diagnóstico y recomendaciones de la consulta.</span>
+						</li>
+						<li className="flex items-start gap-2">
+							<span className="text-teal-600 font-bold">•</span>
+							<span><strong>Receta médica:</strong> Documento físico o digital de la receta que has escrito durante la consulta con el paciente.</span>
+						</li>
+					</ul>
+					<p className="text-xs text-slate-700 mt-3 italic">Estos documentos quedarán guardados digitalmente y estarán disponibles para el paciente en su panel.</p>
+				</div>
+			</div>
 
-			<div onDrop={onDrop} onDragOver={(e) => e.preventDefault()} onClick={openPicker} role="button" tabIndex={0} onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && openPicker()} className="group relative border-2 border-dashed border-slate-200 dark:border-slate-700 rounded-xl p-4 bg-linear-to-b from-white to-slate-50 dark:from-[#041821] dark:to-[#04111a] hover:shadow-lg transition cursor-pointer" aria-label="Área para arrastrar o adjuntar archivos">
+			<div onDrop={onDrop} onDragOver={(e) => e.preventDefault()} onClick={openPicker} role="button" tabIndex={0} onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && openPicker()} className="group relative border-2 border-dashed border-teal-300 rounded-xl p-4 bg-gradient-to-b from-white to-teal-50/30 hover:shadow-lg hover:border-teal-400 transition cursor-pointer" aria-label="Área para arrastrar o adjuntar archivos">
 				<input ref={inputRef} type="file" multiple accept={ACCEPT_TYPES.join(',')} className="hidden" onChange={(e) => pushFiles(e.target.files)} />
 
 				<div className="flex items-center justify-between gap-4">
 					<div className="flex items-center gap-4">
-						<div className="flex items-center justify-center w-10 h-10 rounded-lg bg-teal-50 dark:bg-teal-700 text-teal-700 dark:text-white shadow-sm">
+						<div className="flex items-center justify-center w-10 h-10 rounded-lg bg-teal-100 text-teal-700 shadow-sm">
 							<Paperclip size={18} />
 						</div>
 
 						<div>
-							<p className="font-medium text-slate-800 dark:text-slate-100">Arrastra o selecciona archivos</p>
-							<p className="text-xs text-slate-500 dark:text-slate-300">PNG, JPG, WEBP, PDF, DOC, DOCX • Máx 10 MB por archivo</p>
+							<p className="font-semibold text-slate-900">Arrastra o selecciona los documentos</p>
+							<p className="text-xs text-slate-700">Formato: PNG, JPG, WEBP, PDF, DOC, DOCX • Máx 10 MB por archivo</p>
 						</div>
 					</div>
 
@@ -144,55 +160,65 @@ function FileUploader({ files, setFiles }: { files: File[]; setFiles: (f: File[]
 								e.stopPropagation();
 								inputRef.current?.click();
 							}}
-							className="inline-flex items-center gap-2 px-3 py-2 rounded-md bg-linear-to-r from-teal-600 to-cyan-500 text-white shadow">
-							<Paperclip size={14} /> Adjuntar
+							className="inline-flex items-center gap-2 px-4 py-2 rounded-md bg-gradient-to-r from-teal-600 to-cyan-600 text-white shadow hover:from-teal-700 hover:to-cyan-700">
+							<Paperclip size={14} /> Adjuntar Documentos
 						</button>
 					</div>
 				</div>
 
 				{files.length > 0 && (
-					<div className="mt-4 grid grid-cols-1 gap-2">
-						{files.map((f, i) => {
-							const isImage = f.type.startsWith('image/');
-							const key = f.name + f.size;
-							const previewUrl = urls[key];
+					<div className="mt-4">
+						<div className="mb-3 flex items-center justify-between">
+							<p className="text-sm font-medium text-slate-900">
+								Documentos adjuntos ({files.length})
+							</p>
+							<p className="text-xs text-slate-600">
+								El paciente podrá descargar estos documentos desde su panel
+							</p>
+						</div>
+						<div className="grid grid-cols-1 gap-2">
+							{files.map((f, i) => {
+								const isImage = f.type.startsWith('image/');
+								const key = f.name + f.size;
+								const previewUrl = urls[key];
 
-							return (
-								<div key={i} className="flex items-center justify-between gap-3 bg-white dark:bg-[#04202b] border border-slate-100 dark:border-slate-800 rounded-lg p-3">
-									<div className="flex items-center gap-3 min-w-0">
-										<div className="w-14 h-14 rounded-md flex items-center justify-center bg-slate-50 dark:bg-slate-800 overflow-hidden">
-											{isImage && previewUrl ? (
-												// eslint-disable-next-line @next/next/no-img-element
-												<img src={previewUrl} alt={f.name} className="w-full h-full object-cover" />
-											) : (
-												<div className="flex flex-col items-center justify-center text-slate-500">
-													{getExtension(f.name) === 'pdf' ? <FileText size={28} /> : <ImgIcon size={28} />}
-													<span className="sr-only">{f.name}</span>
-												</div>
-											)}
+								return (
+									<div key={i} className="flex items-center justify-between gap-3 bg-white border border-teal-200 rounded-lg p-3 hover:bg-teal-50/50 transition">
+										<div className="flex items-center gap-3 min-w-0 flex-1">
+											<div className="w-14 h-14 rounded-md flex items-center justify-center bg-teal-50 overflow-hidden border border-teal-100">
+												{isImage && previewUrl ? (
+													// eslint-disable-next-line @next/next/no-img-element
+													<img src={previewUrl} alt={f.name} className="w-full h-full object-cover" />
+												) : (
+													<div className="flex flex-col items-center justify-center text-teal-700">
+														{getExtension(f.name) === 'pdf' ? <FileText size={28} /> : <ImgIcon size={28} />}
+														<span className="sr-only">{f.name}</span>
+													</div>
+												)}
+											</div>
+
+											<div className="min-w-0 flex-1">
+												<div className="text-sm font-semibold text-slate-900 break-all">{f.name}</div>
+												<div className="text-xs text-slate-700 mt-0.5">{humanFileSize(f.size)}</div>
+											</div>
 										</div>
 
-										<div className="min-w-0">
-											<div className="text-sm font-medium text-slate-800 dark:text-slate-100 break-all">{f.name}</div>
-											<div className="text-xs text-slate-400">{humanFileSize(f.size)}</div>
+										<div className="flex items-center gap-2">
+											<button
+												type="button"
+												onClick={(ev) => {
+													ev.stopPropagation();
+													removeAt(i);
+												}}
+												className="inline-flex items-center gap-2 px-2 py-1 rounded-md text-rose-600 border border-rose-100 hover:bg-rose-50 transition"
+												aria-label={`Eliminar archivo ${f.name}`}>
+												<Trash size={14} /> Eliminar
+											</button>
 										</div>
 									</div>
-
-									<div className="flex items-center gap-2">
-										<button
-											type="button"
-											onClick={(ev) => {
-												ev.stopPropagation();
-												removeAt(i);
-											}}
-											className="inline-flex items-center gap-2 px-2 py-1 rounded-md text-rose-600 border border-rose-100 hover:bg-rose-50 transition"
-											aria-label={`Eliminar archivo ${f.name}`}>
-											<Trash size={14} /> Eliminar
-										</button>
-									</div>
-								</div>
-							);
-						})}
+								);
+							})}
+						</div>
 					</div>
 				)}
 			</div>
@@ -217,48 +243,48 @@ function PrescriptionItemsEditor({ items, setItems }: { items: Item[]; setItems:
 	}
 
 	return (
-		<div className="rounded-2xl bg-white dark:bg-[#04202b] border border-slate-100 dark:border-slate-800 p-4 space-y-4 shadow-sm">
+		<div className="rounded-2xl bg-white border border-blue-100 p-4 space-y-4 shadow-sm">
 			<div className="flex items-center justify-between">
-				<h3 className="text-lg font-semibold text-slate-800 dark:text-slate-100">Ítems de prescripción</h3>
-				<button type="button" onClick={add} className="inline-flex items-center gap-2 px-3 py-1 rounded-md bg-indigo-600 text-white shadow">
+				<h3 className="text-lg font-semibold text-slate-900">Ítems de prescripción</h3>
+				<button type="button" onClick={add} className="inline-flex items-center gap-2 px-3 py-1 rounded-md bg-gradient-to-r from-teal-600 to-cyan-600 text-white shadow hover:from-teal-700 hover:to-cyan-700">
 					<Plus size={14} /> Añadir ítem
 				</button>
 			</div>
 
 			<div className="space-y-3">
-				{items.length === 0 && <div className="text-sm text-slate-500">No hay ítems — añade medicamentos o instrucciones.</div>}
+				{items.length === 0 && <div className="text-sm text-slate-700">No hay ítems — añade medicamentos o instrucciones.</div>}
 
 				{items.map((it) => (
-					<div key={it.id} className="border rounded-lg p-3 bg-slate-50 dark:bg-transparent grid grid-cols-1 md:grid-cols-6 gap-3 items-start">
+					<div key={it.id} className="border border-blue-100 rounded-lg p-3 bg-blue-50/50 grid grid-cols-1 md:grid-cols-6 gap-3 items-start">
 						<div className="md:col-span-3">
-							<label className="text-xs text-slate-600 dark:text-slate-300">Medicamento</label>
-							<input className="w-full mt-1 px-3 py-2 rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-[#031820]" placeholder="Nombre (ej. Amoxicilina)" value={it.name} onChange={(e) => update(it.id, { name: e.target.value })} required />
+							<label className="text-xs text-slate-800 font-medium">Medicamento</label>
+							<input className="w-full mt-1 px-3 py-2 rounded-md border border-blue-200 bg-white text-slate-900" placeholder="Nombre (ej. Amoxicilina)" value={it.name} onChange={(e) => update(it.id, { name: e.target.value })} required />
 						</div>
 
 						<div className="md:col-span-1">
-							<label className="text-xs text-slate-600 dark:text-slate-300">Dosis</label>
-							<input className="w-full mt-1 px-3 py-2 rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-[#031820]" placeholder="500 mg" value={it.dosage} onChange={(e) => update(it.id, { dosage: e.target.value })} />
+							<label className="text-xs text-slate-800 font-medium">Dosis</label>
+							<input className="w-full mt-1 px-3 py-2 rounded-md border border-blue-200 bg-white text-slate-900" placeholder="500 mg" value={it.dosage} onChange={(e) => update(it.id, { dosage: e.target.value })} />
 						</div>
 
 						<div className="md:col-span-1">
-							<label className="text-xs text-slate-600 dark:text-slate-300">Frecuencia</label>
-							<input className="w-full mt-1 px-3 py-2 rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-[#031820]" placeholder="8/8 hrs" value={it.frequency} onChange={(e) => update(it.id, { frequency: e.target.value })} />
+							<label className="text-xs text-slate-800 font-medium">Frecuencia</label>
+							<input className="w-full mt-1 px-3 py-2 rounded-md border border-blue-200 bg-white text-slate-900" placeholder="8/8 hrs" value={it.frequency} onChange={(e) => update(it.id, { frequency: e.target.value })} />
 						</div>
 
 						<div className="md:col-span-1 flex flex-col items-end gap-2">
-							<label className="text-xs text-slate-600 dark:text-slate-300">Cant.</label>
+							<label className="text-xs text-slate-800 font-medium">Cant.</label>
 							<div className="w-full">
-								<input type="number" min={1} className="w-full mt-1 px-3 py-2 rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-[#031820] text-right" value={it.quantity ?? 1} onChange={(e) => update(it.id, { quantity: Number(e.target.value) })} />
+								<input type="number" min={1} className="w-full mt-1 px-3 py-2 rounded-md border border-blue-200 bg-white text-slate-900 text-right" value={it.quantity ?? 1} onChange={(e) => update(it.id, { quantity: Number(e.target.value) })} />
 							</div>
 
-							<button type="button" onClick={() => remove(it.id)} className="mt-2 inline-flex items-center gap-2 px-3 py-1 rounded-md bg-rose-600 text-white" aria-label={`Eliminar item ${it.name}`}>
+							<button type="button" onClick={() => remove(it.id)} className="mt-2 inline-flex items-center gap-2 px-3 py-1 rounded-md bg-rose-600 text-white hover:bg-rose-700" aria-label={`Eliminar item ${it.name}`}>
 								<Trash size={14} /> Eliminar
 							</button>
 						</div>
 
 						<div className="md:col-span-6">
-							<label className="text-xs text-slate-600 dark:text-slate-300">Instrucciones</label>
-							<input className="w-full mt-1 px-3 py-2 rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-[#031820]" placeholder="Tomar con alimentos, evitar alcohol, etc." value={it.instructions} onChange={(e) => update(it.id, { instructions: e.target.value })} />
+							<label className="text-xs text-slate-800 font-medium">Instrucciones</label>
+							<input className="w-full mt-1 px-3 py-2 rounded-md border border-blue-200 bg-white text-slate-900" placeholder="Tomar con alimentos, evitar alcohol, etc." value={it.instructions} onChange={(e) => update(it.id, { instructions: e.target.value })} />
 						</div>
 					</div>
 				))}
@@ -332,29 +358,29 @@ export default function PrescriptionForm({ consultationId, patientId, doctorId }
 	return (
 		<form onSubmit={handleSubmit} className="space-y-6">
 			{/* Header card */}
-			<div className="rounded-2xl bg-inear-to-r from-white to-slate-50 dark:from-[#06171a] dark:to-[#031018] border border-slate-100 dark:border-slate-800 p-5 shadow-sm">
+			<div className="rounded-2xl bg-gradient-to-r from-white to-blue-50 border border-blue-100 p-5 shadow-sm">
 				<div className="flex items-start justify-between gap-4">
 					<div>
-						<h2 className="text-xl md:text-2xl font-semibold text-slate-900 dark:text-slate-100">Crear Prescripción</h2>
-						<p className="mt-1 text-sm text-slate-500 dark:text-slate-300">Registra la prescripción para esta consulta y adjunta el informe si lo deseas.</p>
+						<h2 className="text-xl md:text-2xl font-semibold text-slate-900">Crear Prescripción Médica</h2>
+						<p className="mt-1 text-sm text-slate-800">Registra los medicamentos prescritos y adjunta el <strong>informe médico</strong> y la <strong>receta médica</strong> para que el paciente tenga constancia digital de su consulta.</p>
 					</div>
 
 					<div className="text-right">
-						<div className="text-xs text-slate-500 dark:text-slate-400">Consulta</div>
-						<div className="font-mono font-medium text-slate-800 dark:text-slate-100">{consultationId}</div>
+						<div className="text-xs text-slate-700">Consulta</div>
+						<div className="font-mono font-medium text-slate-900">{consultationId}</div>
 					</div>
 				</div>
 
 				<div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-3">
 					<div>
-						<label className="text-xs text-slate-600 dark:text-slate-300">Validez (opcional)</label>
-						<input type="date" value={validUntil} onChange={(e) => setValidUntil(e.target.value)} className="mt-1 w-full px-3 py-2 rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-[#031820]" />
-						<p className="text-xs text-slate-400 mt-1">Fecha límite de validez de la prescripción.</p>
+						<label className="text-xs text-slate-800 font-medium">Validez (opcional)</label>
+						<input type="date" value={validUntil} onChange={(e) => setValidUntil(e.target.value)} className="mt-1 w-full px-3 py-2 rounded-md border border-blue-200 bg-white text-slate-900" />
+						<p className="text-xs text-slate-700 mt-1">Fecha límite de validez de la prescripción.</p>
 					</div>
 
 					<div>
-						<label className="text-xs text-slate-600 dark:text-slate-300">Notas / Indicaciones generales</label>
-						<input value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Observaciones para el paciente o instrucciones generales..." className="mt-1 w-full px-3 py-2 rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-[#031820]" />
+						<label className="text-xs text-slate-800 font-medium">Notas / Indicaciones generales</label>
+						<input value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Observaciones para el paciente o instrucciones generales..." className="mt-1 w-full px-3 py-2 rounded-md border border-blue-200 bg-white text-slate-900" />
 					</div>
 				</div>
 			</div>
@@ -363,7 +389,7 @@ export default function PrescriptionForm({ consultationId, patientId, doctorId }
 			<PrescriptionItemsEditor items={items} setItems={setItems} />
 
 			{/* File uploader */}
-			<div className="rounded-2xl bg-white dark:bg-[#04202b] border border-slate-100 dark:border-slate-800 p-4 shadow-sm">
+			<div className="rounded-2xl bg-white border border-blue-100 p-5 shadow-sm">
 				<FileUploader files={files} setFiles={setFiles} />
 			</div>
 
@@ -373,15 +399,17 @@ export default function PrescriptionForm({ consultationId, patientId, doctorId }
 
 			{/* Actions */}
 			<div className="flex items-center gap-3">
-				<button type="submit" disabled={loading} className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-linear-to-r from-teal-600 to-cyan-500 text-white font-semibold shadow hover:scale-[1.01] transition disabled:opacity-50">
+				<button type="submit" disabled={loading} className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-gradient-to-r from-teal-600 to-cyan-600 text-white font-semibold shadow hover:from-teal-700 hover:to-cyan-700 hover:scale-[1.01] transition disabled:opacity-50">
 					{loading ? <Loader2 className="animate-spin" /> : <span>Crea prescripción</span>}
 				</button>
 
-				<button type="button" onClick={() => router.back()} className="px-4 py-2 rounded-lg border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 transition dark:border-slate-800 dark:bg-[#031821] dark:text-slate-200">
+				<button type="button" onClick={() => router.back()} className="px-4 py-2 rounded-lg border border-blue-200 bg-white text-slate-800 hover:bg-blue-50 transition">
 					Cancelar
 				</button>
 
-				<div className="ml-auto text-xs text-slate-500 dark:text-slate-400">Guardado en la nube y accesible por especialistas autorizados</div>
+				<div className="ml-auto text-xs text-slate-800">
+					<div className="hidden sm:block">Los documentos y la receta quedarán guardados digitalmente para el paciente</div>
+				</div>
 			</div>
 		</form>
 	);

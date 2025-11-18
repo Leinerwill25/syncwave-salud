@@ -16,12 +16,10 @@ function isThenable<T = string>(v: unknown): v is Promise<T> {
 
 function extractText(result: any): string | Promise<string> {
 	try {
-		// SDKs y wrappers comunes
 		if (result == null) return '';
 		if (result?.response && typeof result.response.text === 'function') {
 			return result.response.text();
 		}
-		// algunas respuestas tienen .output / .outputs / .candidates
 		const out = result?.output ?? result?.outputs ?? result?.candidates ?? null;
 		if (Array.isArray(out) && out.length > 0) {
 			const first = out[0];
@@ -30,16 +28,31 @@ function extractText(result: any): string | Promise<string> {
 			if (first?.output_text) return first.output_text;
 			if (typeof first === 'string') return first;
 		}
-		// propiedades directas
 		if (typeof result?.text === 'string') return result.text;
 		if (typeof result?.reply === 'string') return result.reply;
-		// caso: result.data o result.result
 		if (typeof result?.data === 'string') return result.data;
 		if (Array.isArray(result) && typeof result[0] === 'string') return result[0];
-		// fallback: stringify safe
 		return JSON.stringify(result);
 	} catch (err) {
 		return JSON.stringify({ error: 'failed to extract text', raw: result });
+	}
+}
+
+/** Extrae segundos de retry de mensajes tipo "Please retry in 37.511104361s." */
+function extractRetrySeconds(err: any): number | null {
+	try {
+		const msg = String(err?.message ?? err ?? '');
+		// busca "Please retry in 37.511104361s" o "retryDelay":"37s"
+		let m = msg.match(/Please retry in\s*([0-9]+(?:\.[0-9]+)?)s/i);
+		if (m) return Number(m[1]);
+		m = msg.match(/"retryDelay"\s*:\s*"(\d+)s"/i);
+		if (m) return Number(m[1]);
+		// google rpc RetryInfo sometimes appears as "retryDelay":"37s" in details; as fallback busca "(\d+)s" con "retry" cercano
+		m = msg.match(/retry.*?([0-9]+)s/i);
+		if (m) return Number(m[1]);
+		return null;
+	} catch {
+		return null;
 	}
 }
 
@@ -50,6 +63,10 @@ async function generateContentSafe(modelInstance: any, prompt: string) {
 
 	const attempts: Array<{ name: string; call: () => Promise<any> }> = [
 		{
+			name: 'generateContent({ input: prompt })',
+			call: async () => (typeof modelInstance.generateContent === 'function' ? await modelInstance.generateContent({ input: prompt }) : Promise.reject(new Error('no method'))),
+		},
+		{
 			name: 'generateContent({ input: { text } })',
 			call: async () => (typeof modelInstance.generateContent === 'function' ? await modelInstance.generateContent({ input: { text: prompt } }) : Promise.reject(new Error('no method'))),
 		},
@@ -58,15 +75,11 @@ async function generateContentSafe(modelInstance: any, prompt: string) {
 			call: async () => (typeof modelInstance.generateContent === 'function' ? await modelInstance.generateContent(prompt) : Promise.reject(new Error('no method'))),
 		},
 		{
-			name: 'generate({ input: { text } })',
-			call: async () => (typeof modelInstance.generate === 'function' ? await modelInstance.generate({ input: { text: prompt } }) : Promise.reject(new Error('no method'))),
+			name: 'generate({ input: prompt })',
+			call: async () => (typeof modelInstance.generate === 'function' ? await modelInstance.generate({ input: prompt }) : Promise.reject(new Error('no method'))),
 		},
 		{
-			name: 'generate(prompt)',
-			call: async () => (typeof modelInstance.generate === 'function' ? await modelInstance.generate(prompt) : Promise.reject(new Error('no method'))),
-		},
-		{
-			name: 'chat({ messages: [{ role: "user", content: prompt }] })',
+			name: 'chat({ messages: [...] })',
 			call: async () => (typeof modelInstance.chat === 'function' ? await modelInstance.chat({ messages: [{ role: 'user', content: prompt }] }) : Promise.reject(new Error('no method'))),
 		},
 		{
@@ -91,6 +104,13 @@ async function generateContentSafe(modelInstance: any, prompt: string) {
 			console.log(`[ADVICE_API] generateContentSafe success with ${attempt.name}`);
 			return res;
 		} catch (err) {
+			// Si es un 429/Quota -> rethrow para manejarlo arriba con retry info
+			const retrySec = extractRetrySeconds(err);
+			if (retrySec !== null) {
+				const enriched = new Error(`Quota/Rate limit detected. retryAfter=${retrySec}s — original: ${(err && (err as any).message) || err}`);
+				(enriched as any).retryAfter = retrySec;
+				throw enriched;
+			}
 			errors.push({ name: attempt.name, error: (err && (err as any).message) || err });
 		}
 	}
@@ -102,25 +122,42 @@ async function generateContentSafe(modelInstance: any, prompt: string) {
 	throw new Error(msg);
 }
 
-/* ----------------- Supabase DB helpers (reemplazan prisma) ----------------- */
+/* ----------------- Supabase DB helpers (ajustados al schema) ----------------- */
 
-/** Guardar mensaje en la tabla public.ai_conversation (fila por mensaje) */
+/**
+ * Guardar mensaje en la tabla public.ai_conversation.messages (jsonb array).
+ * Si la conversación no existe, la crea con id = conversationId.
+ * Cada mensaje es un objeto { id, role, content, ai_response, created_at }.
+ */
 async function saveMessageRow(params: { conversationId: string; patientId: string; role: 'user' | 'assistant' | 'system'; content: string; ai_response?: any }, supabase: any) {
 	const id = crypto.randomUUID();
 	const { conversationId, patientId, role, content, ai_response } = params;
-	const payload: any = {
+	const timestamp = new Date().toISOString();
+	const messageObj: any = {
 		id,
-		conversation_id: conversationId,
-		patient_id: patientId,
 		role,
 		content,
-		content_json: null,
 		ai_response: ai_response ?? null,
-		created_at: new Date().toISOString(),
-		updated_at: new Date().toISOString(),
+		created_at: timestamp,
 	};
+
 	try {
-		await supabase.from('ai_conversation').insert(payload).select().single();
+		// intenta leer la conversación existente
+		const sel = await supabase.from('ai_conversation').select('messages').eq('id', conversationId).maybeSingle();
+		if (!sel?.error && sel?.data) {
+			const existing = Array.isArray(sel.data.messages) ? sel.data.messages : [];
+			const updated = [...existing, messageObj];
+			const upd = await supabase.from('ai_conversation').update({ messages: updated, updated_at: timestamp }).eq('id', conversationId);
+			if (upd?.error) {
+				console.warn('[ADVICE_API] saveMessageRow update error', upd.error);
+			}
+		} else {
+			// crear nueva conversación (id = conversationId)
+			const ins = await supabase.from('ai_conversation').insert({ id: conversationId, patient_id: patientId, messages: [messageObj] });
+			if (ins?.error) {
+				console.warn('[ADVICE_API] saveMessageRow insert error', ins.error);
+			}
+		}
 	} catch (error) {
 		console.warn('[ADVICE_API] saveMessageRow supabase error', error);
 		// no lanzar para mantener resiliencia
@@ -128,15 +165,21 @@ async function saveMessageRow(params: { conversationId: string; patientId: strin
 	return id;
 }
 
-/** Leer historial por conversationId (orden asc por created_at) */
+/** Leer historial por conversationId (usa ai_conversation.messages) */
 async function loadConversationRows(conversationId: string, supabase: any) {
 	try {
-		const res = await supabase.from('ai_conversation').select('role, content, created_at').eq('conversation_id', conversationId).order('created_at', { ascending: true });
+		const res = await supabase.from('ai_conversation').select('messages').eq('id', conversationId).maybeSingle();
 		if (res?.error) {
 			console.warn('[ADVICE_API] loadConversationRows supabase error', res.error);
 			return [];
 		}
-		return Array.isArray(res.data) ? res.data : [];
+		const msgs = Array.isArray(res.data?.messages) ? res.data.messages : [];
+		// normaliza a [{ role, content, created_at }]
+		return msgs.map((m: any) => ({
+			role: m?.role ?? 'user',
+			content: typeof m?.content === 'string' ? m.content : JSON.stringify(m?.content ?? ''),
+			created_at: m?.created_at ?? null,
+		}));
 	} catch (err) {
 		console.warn('[ADVICE_API] loadConversationRows unexpected error', err);
 		return [];
@@ -181,10 +224,10 @@ Reglas obligatorias:
 4) Cuando declares 'Resumen final', produce **únicamente** JSON válido (sin texto antes ni después) con este esquema:
 {
   "summary": "Texto breve (1-2 frases).",
-  "possible_causes": ["Causa 1", "Causa 2", "..."],    // máximo 5
+  "possible_causes": ["Causa 1", "Causa 2", "..."],
   "recommended_specialist": "Especialidad recomendada",
   "next_steps": "Qué hacer ahora (máx 2 acciones concretas).",
-  "resources": [ {"clinic": "Nombre", "phone": "...", "doctors": [{"name":"...","email":"...","id":"..."}] } ]  // opcional
+  "resources": [ {"clinic": "Nombre", "phone": "...", "doctors": [{"name":"...","email":"...","id":"..."}] } ]
 }
 5) Si llegas al límite de mensajes sin poder concluir, indica: {"incomplete": true, "reason":"..."} en lugar del JSON final.
 6) Mantén cada respuesta (no JSON) en máximo 2-3 frases, preguntas directas y numeradas si necesitas más de una.
@@ -379,8 +422,6 @@ export async function POST(request: Request) {
 		let modelInstance: any;
 		try {
 			modelInstance = genAI.getGenerativeModel({ model: MODEL_NAME });
-
-			// debug: muestra claves disponibles en la instancia para ayudar a elegir la firma correcta
 			try {
 				const keys = modelInstance && typeof modelInstance === 'object' ? Object.keys(modelInstance) : [];
 				console.log('[ADVICE_API] modelInstance keys:', keys.join(', ') || '(none)');
@@ -395,9 +436,13 @@ export async function POST(request: Request) {
 		let generationResult: any;
 		try {
 			generationResult = await generateContentSafe(modelInstance, inputText);
-		} catch (err) {
+		} catch (err: any) {
 			console.error('[ADVICE_API] Error generando contenido:', err);
-			// devolver info mínima al cliente (no volcamos todo el mensaje de debug en producción)
+			const retry = extractRetrySeconds(err);
+			if (retry !== null || (err && (err as any).retryAfter)) {
+				const retryAfter = Math.ceil((err?.retryAfter ?? retry ?? 0) as number);
+				return new NextResponse(JSON.stringify({ error: 'Rate limit / Quota excedida', retryAfter }), { status: 429, headers: { 'Content-Type': 'application/json' } });
+			}
 			return new NextResponse(JSON.stringify({ error: 'Error generando contenido con el modelo seleccionado.' }), { status: 502, headers: { 'Content-Type': 'application/json' } });
 		}
 

@@ -1,141 +1,352 @@
 // app/api/patients/route.ts
 import { NextResponse } from 'next/server';
-import createSupabaseServerClient from '@/app/adapters/server'; // ajusta la ruta si es necesario
+import { cookies } from 'next/headers';
+import { createSupabaseServerClient } from '@/app/adapters/server';
 
-/** Helpers */
+/* ---------------------- Helpers ---------------------- */
 function parseIntOrDefault(v: string | null, d = 1) {
 	if (!v) return d;
 	const n = parseInt(v, 10);
 	return Number.isNaN(n) ? d : n;
+}
+
+async function tryRestoreSessionFromCookies(supabase: any, cookieStore: any): Promise<boolean> {
+	if (!cookieStore) return false;
+
+	const tried: string[] = [];
+	// Priorizar sb-session como primera opción
+	const cookieCandidates = ['sb-session', 'sb:token', 'supabase-auth-token', 'sb-access-token', 'sb-refresh-token'];
+
+	for (const name of cookieCandidates) {
+		tried.push(name);
+		try {
+			const c = typeof cookieStore.get === 'function' ? cookieStore.get(name) : undefined;
+			const raw = c?.value ?? null;
+			if (!raw) {
+				console.debug(`[Patients API] Cookie "${name}" no encontrada`);
+				continue;
+			}
+
+			console.debug(`[Patients API] Intentando restaurar sesión desde cookie "${name}"`);
+
+			// `sb-session` y `sb:token` son JSON. `sb-access-token` es JWT string.
+			// Intentamos parsear JSON; si no es JSON, lo tratamos según el nombre.
+			let parsed: any = null;
+			try {
+				parsed = JSON.parse(raw);
+			} catch {
+				parsed = null;
+			}
+
+			// Casos:
+			// - sb-session: { access_token, refresh_token, ... } o el objeto session completo
+			// - sb:token or supabase-auth-token: object with currentSession or similar
+			// - sb-access-token: just an access token string (sin refresh)
+			let access_token: string | null = null;
+			let refresh_token: string | null = null;
+
+			if (parsed) {
+				// Para sb-session, buscar directamente access_token y refresh_token
+				if (name === 'sb-session') {
+					// sb-session puede contener la sesión completa de Supabase
+					// Puede ser: { access_token, refresh_token } o el objeto session completo
+					access_token = parsed?.access_token ?? parsed?.session?.access_token ?? parsed?.currentSession?.access_token ?? null;
+					refresh_token = parsed?.refresh_token ?? parsed?.session?.refresh_token ?? parsed?.currentSession?.refresh_token ?? null;
+
+					// Si es el objeto session completo de Supabase (formato de set-session)
+					if (!access_token && parsed?.user) {
+						access_token = parsed.access_token ?? null;
+						refresh_token = parsed.refresh_token ?? null;
+					}
+
+					console.debug(`[Patients API] sb-session parseado - access_token: ${access_token ? 'encontrado' : 'no encontrado'}, refresh_token: ${refresh_token ? 'encontrado' : 'no encontrado'}`);
+				} else {
+					// Para otras cookies JSON, buscar en varias rutas
+					access_token = parsed?.access_token ?? parsed?.currentSession?.access_token ?? parsed?.current_session?.access_token ?? null;
+					refresh_token = parsed?.refresh_token ?? parsed?.currentSession?.refresh_token ?? parsed?.current_session?.refresh_token ?? null;
+
+					// algunos formatos guardan en currentSession: { access_token: '...', refresh_token: '...' }
+					if (!access_token && parsed?.currentSession && typeof parsed.currentSession === 'object') {
+						access_token = parsed.currentSession.access_token ?? null;
+						refresh_token = parsed.currentSession.refresh_token ?? null;
+					}
+				}
+			} else {
+				// no JSON: puede ser sólo el access token
+				if (name === 'sb-access-token') {
+					access_token = raw;
+				} else if (name === 'sb-refresh-token') {
+					refresh_token = raw;
+				}
+			}
+
+			if (!access_token && !refresh_token) {
+				console.debug(`[Patients API] No se encontraron tokens en cookie "${name}"`);
+				continue;
+			}
+
+			// Llamamos a setSession para que supabase-js tenga la sesión en memoria
+			const payload: any = {};
+			if (access_token) {
+				payload.access_token = access_token;
+				console.debug(`[Patients API] Usando access_token de cookie "${name}"`);
+			}
+			if (refresh_token) {
+				payload.refresh_token = refresh_token;
+				console.debug(`[Patients API] Usando refresh_token de cookie "${name}"`);
+			}
+
+			// setSession devuelve data con session o error
+			const { data, error } = await supabase.auth.setSession(payload);
+			if (error) {
+				console.warn(`[Patients API] Intento de setSession desde cookie "${name}" fallo:`, error.message);
+				// Si solo tenemos refresh_token y falla, intentar refresh
+				if (refresh_token && !access_token && error.message.includes('session')) {
+					try {
+						const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession({ refresh_token });
+						if (!refreshError && refreshData?.session) {
+							console.log(`[Patients API] Sesión refrescada exitosamente desde cookie "${name}"`);
+							return true;
+						}
+					} catch (refreshErr: any) {
+						console.debug(`[Patients API] Error al refrescar sesión:`, refreshErr?.message);
+					}
+				}
+				continue;
+			}
+
+			if (data?.session) {
+				console.log(`[Patients API] Sesión restaurada desde cookie "${name}"`);
+				return true;
+			}
+
+			// si setSession no devolvió session, intentar getSession luego de setSession igualmente
+			const { data: sessionAfter } = await supabase.auth.getSession();
+			if (sessionAfter?.session) {
+				console.log(`[Patients API] Sesión disponible luego de setSession (cookie: "${name}")`);
+				return true;
+			}
+		} catch (err: any) {
+			console.debug(`[Patients API] Error procesando cookie "${name}":`, err?.message ?? String(err));
+			continue;
+		}
+	}
+
+	return false;
 }
 function isoOrNull(v: string | null) {
 	if (!v) return null;
 	const d = new Date(v);
 	return Number.isNaN(d.getTime()) ? null : d.toISOString();
 }
-// leer un campo (soporta snake_case / camelCase)
-function readMaybe<T = any>(row: any, ...names: string[]) {
-	for (const n of names) {
-		if (row == null) break;
-		if (n in row && row[n] != null) return row[n];
-	}
+function readMaybe<T = any>(row: any, ...names: string[]): T | undefined {
+	for (const n of names) if (row && n in row && row[n] != null) return row[n];
 	return undefined;
 }
-// normalizar fecha: acepta created_at / createdAt etc
 function normalizeDate(row: any, ...names: string[]) {
 	const v = readMaybe(row, ...names);
 	if (!v) return null;
-	try {
-		const d = new Date(v);
-		return Number.isNaN(d.getTime()) ? String(v) : d.toISOString();
-	} catch {
-		return String(v);
-	}
+	const d = new Date(v);
+	return Number.isNaN(d.getTime()) ? String(v) : d.toISOString();
 }
 
+/* ---------------------- GET ---------------------- */
 export async function GET(request: Request) {
 	try {
-		const { supabase } = createSupabaseServerClient();
+		// Obtener cookie store explícitamente
+		const cookieStore = await cookies();
+		const { supabase } = createSupabaseServerClient(cookieStore);
+
+		// Intentar obtener access_token directamente de cookies primero
+		let accessTokenFromCookie: string | null = null;
+		try {
+			const sbAccessToken = cookieStore.get('sb-access-token');
+			if (sbAccessToken?.value) {
+				accessTokenFromCookie = sbAccessToken.value;
+				console.debug('[Patients API] Encontrado sb-access-token en cookies');
+			}
+		} catch (err) {
+			console.debug('[Patients API] Error leyendo sb-access-token:', err);
+		}
+
+		// Intentar obtener usuario con access_token directo si está disponible
+		let {
+			data: { user },
+			error: authError,
+		} = accessTokenFromCookie ? await supabase.auth.getUser(accessTokenFromCookie) : await supabase.auth.getUser();
+
+		if (authError) {
+			console.error('[Patients API] Auth error:', authError);
+		}
+
+		// Si getUser falla, intentar restaurar sesión desde cookies
+		if (!user) {
+			const restored = await tryRestoreSessionFromCookies(supabase, cookieStore);
+			if (restored) {
+				const after = await supabase.auth.getUser();
+				user = after.data?.user ?? null;
+				if (user) {
+					console.log('[Patients API] Sesión restaurada exitosamente');
+				}
+			}
+		}
+
+		if (!user) {
+			return NextResponse.json({ error: 'No autenticado' }, { status: 401 });
+		}
+
 		const url = new URL(request.url);
 		const qp = url.searchParams;
 
-		// history for a single patient
+		/* ---------- HISTORIAL DETALLADO ---------- */
 		const historyFor = qp.get('historyFor');
 		if (historyFor) {
-			if (!historyFor || historyFor.length < 8) {
-				return NextResponse.json({ error: 'historyFor inválido' }, { status: 400 });
+			// Obtener el app user ID (necesario para doctor_id en consultation)
+			const { data: appUserData, error: appUserError } = await supabase.from('User').select('id').eq('authId', user.id).maybeSingle();
+
+			if (appUserError || !appUserData) {
+				console.error('Error fetching app user for history', appUserError);
+				return NextResponse.json({ error: 'Error al obtener datos del usuario' }, { status: 500 });
 			}
 
-			// consultas (tabla "consultation")
-			const consultationsPromise = supabase.from('consultation').select(`id,appointment_id,patient_id,doctor_id,organization_id,started_at,ended_at,chief_complaint,diagnosis,notes,vitals,medical_record_id,created_at,updated_at`).eq('patient_id', historyFor).order('created_at', { ascending: false });
+			const currentAppUserId = appUserData.id;
 
-			// recetas (tabla "prescription")
-			const prescriptionsPromise = supabase.from('prescription').select(`id,patient_id,doctor_id,consultation_id,issued_at,valid_until,status,notes,created_at`).eq('patient_id', historyFor).order('created_at', { ascending: false });
+			// Verificar relación médico-paciente: buscar en appointments O consultations (doctor_id usa app user ID)
+			const [appointmentCheck, consultationCheck] = await Promise.all([supabase.from('appointment').select('id').eq('patient_id', historyFor).eq('doctor_id', currentAppUserId).limit(1).maybeSingle(), supabase.from('consultation').select('id').eq('patient_id', historyFor).eq('doctor_id', currentAppUserId).limit(1).maybeSingle()]);
 
-			// lab results (tabla "lab_result") - traemos also consultation(organization_id) para resolver organización
-			const labResultsPromise = supabase.from('lab_result').select(`id,patient_id,consultation_id,result_type,result,attachments,is_critical,reported_at,created_at,consultation(organization_id)`).eq('patient_id', historyFor).order('created_at', { ascending: false });
+			if (appointmentCheck.error || consultationCheck.error) {
+				console.error('Error verifying relation', appointmentCheck.error || consultationCheck.error);
+				return NextResponse.json({ error: 'Error al verificar relación', detail: (appointmentCheck.error || consultationCheck.error)?.message }, { status: 500 });
+			}
 
-			// facturación (tabla "facturacion")
-			const billingPromise = supabase.from('facturacion').select(`id,appointment_id,patient_id,doctor_id,organization_id,subtotal,impuestos,total,currency,tipo_cambio,billing_series,numero_factura,estado_factura,estado_pago,metodo_pago,fecha_emision,fecha_pago,notas,created_at,updated_at`).eq('patient_id', historyFor).order('created_at', { ascending: false });
+			const hasRelation = appointmentCheck.data || consultationCheck.data;
+			if (!hasRelation) {
+				return NextResponse.json({ error: 'Acceso denegado: sin relación médica previa' }, { status: 403 });
+			}
 
-			const [consultRes, prescRes, labRes, billRes] = await Promise.all([consultationsPromise, prescriptionsPromise, labResultsPromise, billingPromise]);
+			// Obtener appointments (citas), recetas y labs
+			const [appointmentRes, prescRes, labRes] = await Promise.all([
+				supabase.from('appointment').select('id,patient_id,doctor_id,organization_id,scheduled_at,duration_minutes,status,reason,location,created_at,updated_at').eq('patient_id', historyFor).order('scheduled_at', { ascending: false }),
+				supabase
+					.from('prescription')
+					.select(
+						`
+					id,
+					patient_id,
+					doctor_id,
+					consultation_id,
+					issued_at,
+					valid_until,
+					status,
+					notes,
+					created_at,
+					prescription_item (
+						id,
+						name,
+						dosage,
+						form,
+						frequency,
+						duration,
+						quantity,
+						instructions
+					)
+				`
+					)
+					.eq('patient_id', historyFor)
+					.order('created_at', { ascending: false }),
+				supabase.from('lab_result').select('id,patient_id,consultation_id,result_type,result,is_critical,reported_at,created_at').eq('patient_id', historyFor).order('created_at', { ascending: false }),
+			]);
 
-			const e = consultRes.error || prescRes.error || labRes.error || billRes.error;
+			const e = appointmentRes.error || prescRes.error || labRes.error;
 			if (e) {
-				console.error('Error reading history data', e);
-				return NextResponse.json({ error: 'Error al obtener historial', detail: e?.message ?? String(e) }, { status: 500 });
+				console.error('Error obteniendo historial', e);
+				return NextResponse.json({ error: 'Error al obtener historial', detail: e.message }, { status: 500 });
 			}
 
-			// Consolidar organizaciones tocadas
-			const orgMap = new Map<string, { id: string; lastSeenAt: string; types: string[] }>();
-			const addOrgSeen = (orgId: string | null | undefined, at?: string | null, tag?: string) => {
-				if (!orgId) return;
-				const nowIso = at ? new Date(at).toISOString() : new Date().toISOString();
-				const entry = orgMap.get(orgId) ?? { id: orgId, lastSeenAt: nowIso, types: [] as string[] };
-				if (at && new Date(at) > new Date(entry.lastSeenAt)) entry.lastSeenAt = new Date(at).toISOString();
-				if (tag && !entry.types.includes(tag)) entry.types.push(tag);
-				orgMap.set(orgId, entry);
-			};
+			const normalizeRows = (arr: any[], dates: string[]) =>
+				(arr ?? []).map((r) => ({
+					...r,
+					createdAt: normalizeDate(r, ...dates),
+				}));
 
-			// consultations
-			(consultRes.data ?? []).forEach((c: any) => {
-				const orgId = readMaybe(c, 'organization_id', 'organizationId');
-				const at = normalizeDate(c, 'created_at', 'createdAt', 'started_at');
-				addOrgSeen(orgId, at, 'consultation');
+			// Obtener IDs únicos de doctores para obtener sus nombres
+			const doctorIds = [...new Set([...(appointmentRes.data ?? []).map((a: any) => a.doctor_id).filter(Boolean), ...(prescRes.data ?? []).map((p: any) => p.doctor_id).filter(Boolean)])];
+
+			// Obtener nombres de doctores
+			const doctorNamesMap = new Map<string, string>();
+			if (doctorIds.length > 0) {
+				const { data: doctors } = await supabase.from('User').select('id, name').in('id', doctorIds);
+
+				if (doctors) {
+					doctors.forEach((doc: any) => {
+						doctorNamesMap.set(doc.id, doc.name || 'Médico');
+					});
+				}
+			}
+
+			// Normalizar prescripciones: mapear prescription_item a medications
+			const normalizedPrescriptions = (prescRes.data ?? []).map((p: any) => {
+				const prescriptionItems = Array.isArray(p.prescription_item) ? p.prescription_item : [];
+				const medications = prescriptionItems.map((item: any) => ({
+					name: item.name || '',
+					dose: item.dosage ? `${item.dosage}${item.form ? ` (${item.form})` : ''}` : item.form || '',
+					instructions: item.instructions || (item.frequency && item.duration ? `${item.frequency} por ${item.duration}` : item.frequency || item.duration || ''),
+					quantity: item.quantity,
+					frequency: item.frequency,
+					duration: item.duration,
+				}));
+
+				return {
+					id: p.id,
+					createdAt: normalizeDate(p, 'created_at'),
+					date: normalizeDate(p, 'issued_at', 'created_at'),
+					issuedAt: normalizeDate(p, 'issued_at'),
+					validUntil: normalizeDate(p, 'valid_until'),
+					doctor: doctorNamesMap.get(p.doctor_id) || 'Médico',
+					doctorId: p.doctor_id,
+					status: p.status || 'ACTIVE',
+					notes: p.notes || null,
+					medications: medications,
+					meds: medications, // alias para compatibilidad
+				};
 			});
 
-			// labs: try to get organization via consultation relation if exists
-			(labRes.data ?? []).forEach((l: any) => {
-				const orgFromConsultation = readMaybe(l, 'consultation') ? readMaybe(l.consultation, 'organization_id', 'organizationId') : null;
-				const at = normalizeDate(l, 'created_at', 'createdAt', 'reported_at');
-				addOrgSeen(orgFromConsultation ?? null, at, 'lab_result');
-			});
-
-			// billing
-			(billRes.data ?? []).forEach((b: any) => {
-				const orgId = readMaybe(b, 'organization_id', 'organizationId');
-				const at = normalizeDate(b, 'created_at', 'createdAt', 'fecha_emision');
-				addOrgSeen(orgId, at, 'billing');
-			});
-
-			// prescriptions: try to resolve org via consultation join (if present)
-			(prescRes.data ?? []).forEach((p: any) => {
-				const consultId = readMaybe(p, 'consultation_id', 'consultationId');
-				// try to find consultation with that id in previously fetched consultations
-				const consult = (consultRes.data ?? []).find((c: any) => readMaybe(c, 'id') === consultId);
-				const orgId = consult ? readMaybe(consult, 'organization_id', 'organizationId') : null;
-				const at = normalizeDate(p, 'created_at', 'createdAt', 'issued_at');
-				addOrgSeen(orgId, at, 'prescription');
-			});
-
-			const orgs = Array.from(orgMap.values());
-
-			// Build normalized response: keep DB rows but also return createdAt/iso fields consistent
-			const normalizeRows = (arr: any[], knownDateFields: string[] = ['created_at', 'createdAt']) =>
-				(arr ?? []).map((r: any) => {
-					const createdAt = normalizeDate(r, ...knownDateFields);
-					return { ...r, createdAt };
-				});
+			// Normalizar appointments (citas): mapear datos de appointment
+			const normalizedConsultations = (appointmentRes.data ?? []).map((a: any) => ({
+				id: a.id,
+				createdAt: normalizeDate(a, 'created_at'),
+				date: normalizeDate(a, 'scheduled_at', 'created_at'),
+				scheduledAt: normalizeDate(a, 'scheduled_at'),
+				doctor: doctorNamesMap.get(a.doctor_id) || 'Médico',
+				doctorId: a.doctor_id,
+				organizationId: a.organization_id,
+				status: a.status || 'SCHEDULED',
+				reason: a.reason || null,
+				presentingComplaint: a.reason || null,
+				location: a.location || null,
+				durationMinutes: a.duration_minutes || 30,
+				notes: null, // appointment no tiene notes, pero lo dejamos para compatibilidad
+			}));
 
 			const history = {
 				patientId: historyFor,
 				summary: {
-					consultationsCount: (consultRes.data ?? []).length,
-					prescriptionsCount: (prescRes.data ?? []).length,
-					labResultsCount: (labRes.data ?? []).length,
-					billingsCount: (billRes.data ?? []).length,
+					consultationsCount: appointmentRes.data?.length ?? 0,
+					prescriptionsCount: prescRes.data?.length ?? 0,
+					labResultsCount: labRes.data?.length ?? 0,
+					billingsCount: 0, // TODO: agregar si es necesario
 				},
-				organizations: orgs,
-				consultations: normalizeRows(consultRes.data, ['created_at', 'createdAt', 'started_at']),
-				prescriptions: normalizeRows(prescRes.data, ['created_at', 'createdAt', 'issued_at']),
-				lab_results: normalizeRows(labRes.data, ['created_at', 'createdAt', 'reported_at']),
-				facturacion: normalizeRows(billRes.data, ['created_at', 'createdAt', 'fecha_emision']),
+				organizations: [], // TODO: agregar si es necesario
+				consultations: normalizedConsultations,
+				prescriptions: normalizedPrescriptions,
+				lab_results: normalizeRows(labRes.data ?? [], ['created_at', 'reported_at']),
+				facturacion: [], // TODO: agregar si es necesario
 			};
 
 			return NextResponse.json(history);
 		}
 
-		// LIST MODE
+		/* ---------- LISTADO DE PACIENTES ---------- */
 		const page = parseIntOrDefault(qp.get('page'), 1);
 		const per_page = Math.min(parseIntOrDefault(qp.get('per_page'), 25), 200);
 		const offset = (page - 1) * per_page;
@@ -143,207 +354,204 @@ export async function GET(request: Request) {
 		const gender = qp.get('gender');
 		const includeSummary = qp.get('include_summary') === 'true';
 
-		// Query base a tabla Patient (schema muestra Patient con camelCase fields)
+		// Buscar el usuario en la tabla User usando authId (el user.id es el auth user ID)
+		const { data: userData, error: userError } = await supabase.from('User').select('id, role').eq('authId', user.id).maybeSingle();
+
+		if (userError || !userData) {
+			console.error('Error fetching user role', userError);
+			return NextResponse.json({ error: 'Error fetching user data' }, { status: 500 });
+		}
+
+		// userData.id es el app user ID (de la tabla User), necesario para consultas con doctor_id
+		const appUserId = userData.id;
+		const isMedic = userData.role === 'MEDICO';
+
 		let baseQuery = supabase.from('Patient').select('id,firstName,lastName,identifier,dob,gender,phone,address,createdAt,updatedAt', { count: 'exact' });
+
+		if (isMedic) {
+			// doctor_id en consultation referencia User.id (app user ID), no authId
+			const { data: patientIdsData, error: idsError } = await supabase.from('consultation').select('patient_id').eq('doctor_id', appUserId);
+
+			if (idsError) {
+				console.error('Error fetching patient IDs for medic', idsError);
+				return NextResponse.json({ error: 'Error fetching patient data', detail: idsError.message }, { status: 500 });
+			}
+
+			const patientIds = [...new Set(patientIdsData.map((p) => p.patient_id))];
+			if (patientIds.length === 0) {
+				return NextResponse.json({
+					data: [],
+					meta: { page, per_page, total: 0 },
+				});
+			}
+			baseQuery = baseQuery.in('id', patientIds);
+		}
 
 		if (q) {
 			const escaped = q.replace(/'/g, "''");
-			// usar or para buscar en los tres campos
 			baseQuery = baseQuery.or(`firstName.ilike.%${escaped}%,lastName.ilike.%${escaped}%,identifier.ilike.%${escaped}%`);
 		}
 		if (gender) baseQuery = baseQuery.eq('gender', gender);
 
-		baseQuery = baseQuery.order('createdAt', { ascending: false });
-		const { data: patients, error, count } = await baseQuery.range(offset, offset + per_page - 1);
+		const { data: patients, error, count } = await baseQuery.order('createdAt', { ascending: false }).range(offset, offset + per_page - 1);
 
 		if (error) {
-			console.error('Error listing patients', error);
-			return NextResponse.json({ error: 'Error al listar pacientes', detail: error.message ?? String(error) }, { status: 500 });
+			console.error('Error al listar pacientes', error);
+			return NextResponse.json({ error: 'Error al listar pacientes', detail: error.message }, { status: 500 });
 		}
 
-		// include_summary: agregados por paciente
-		if (includeSummary && Array.isArray(patients) && patients.length > 0) {
-			const ids = patients.map((p: any) => readMaybe(p, 'id'));
-
-			// fetch related rows (consultation, prescription, lab_result, facturacion)
-			const consultRowsP = supabase.from('consultation').select('id,patient_id,organization_id,created_at,started_at').in('patient_id', ids).order('created_at', { ascending: false });
-
-			const prescRowsP = supabase.from('prescription').select('id,patient_id,consultation_id,created_at,issued_at,status').in('patient_id', ids).order('created_at', { ascending: false });
-
-			const labRowsP = supabase.from('lab_result').select('id,patient_id,consultation_id,created_at,is_critical,reported_at').in('patient_id', ids).order('created_at', { ascending: false });
-
-			const billRowsP = supabase.from('facturacion').select('id,patient_id,organization_id,created_at,total,fecha_emision,estado_factura').in('patient_id', ids).order('created_at', { ascending: false });
-
-			const [consultRowsRes, prescRowsRes, labRowsRes, billRowsRes] = await Promise.all([consultRowsP, prescRowsP, labRowsP, billRowsP]);
-
-			const anyError = consultRowsRes.error || prescRowsRes.error || labRowsRes.error || billRowsRes.error;
-			if (anyError) {
-				console.error('Error fetching related rows for summary', anyError);
-				// devolvemos pacientes pero avisamos del warning
-				return NextResponse.json({
-					data: patients,
-					meta: { page, per_page, total: count ?? patients.length },
-					warning: 'No se pudo obtener resumen completo de pacientes',
-				});
-			}
+		if (includeSummary && patients?.length) {
+			const ids = patients.map((p) => p.id);
+			const [consultRowsRes, prescRowsRes, labRowsRes] = await Promise.all([supabase.from('consultation').select('id,patient_id,created_at').in('patient_id', ids), supabase.from('prescription').select('id,patient_id,created_at').in('patient_id', ids), supabase.from('lab_result').select('id,patient_id,created_at').in('patient_id', ids)]);
 
 			const consultRows = consultRowsRes.data ?? [];
 			const prescRows = prescRowsRes.data ?? [];
 			const labRows = labRowsRes.data ?? [];
-			const billRows = billRowsRes.data ?? [];
 
-			// construir mapa por patient id
-			const mapById = new Map<string, any>();
-			patients.forEach((p: any) => {
-				// normalizar patient fields y asegurar camelCase output
-				mapById.set(p.id, {
-					id: p.id,
-					firstName: readMaybe(p, 'firstName', 'first_name'),
-					lastName: readMaybe(p, 'lastName', 'last_name'),
-					identifier: readMaybe(p, 'identifier'),
-					dob: normalizeDate(p, 'dob'),
-					gender: readMaybe(p, 'gender'),
-					phone: readMaybe(p, 'phone'),
-					address: readMaybe(p, 'address'),
-					createdAt: normalizeDate(p, 'createdAt', 'created_at'),
-					updatedAt: normalizeDate(p, 'updatedAt', 'updated_at'),
+			const map = new Map<string, any>();
+			patients.forEach((p) => {
+				map.set(p.id, {
+					...p,
 					consultationsCount: 0,
 					prescriptionsCount: 0,
 					labResultsCount: 0,
-					billingsCount: 0,
 					lastConsultationAt: null,
 					lastPrescriptionAt: null,
 					lastLabResultAt: null,
-					organizationsTouched: [] as string[],
 				});
 			});
 
-			const pushOrg = (patientId: string, orgId: string | null | undefined) => {
-				if (!orgId) return;
-				const m = mapById.get(patientId);
-				if (!m) return;
-				if (!m.organizationsTouched.includes(orgId)) m.organizationsTouched.push(orgId);
+			const updateLast = (current: string | null, next: string | null) => {
+				if (!next) return current;
+				if (!current) return next;
+				return new Date(next) > new Date(current) ? next : current;
 			};
 
-			consultRows.forEach((r: any) => {
-				const pid = readMaybe(r, 'patient_id', 'patientId');
-				const m = mapById.get(pid);
+			consultRows.forEach((r) => {
+				const pid = r.patient_id;
+				const m = map.get(pid);
 				if (!m) return;
-				m.consultationsCount = (m.consultationsCount || 0) + 1;
-				const rCreated = normalizeDate(r, 'created_at', 'createdAt', 'started_at');
-				if (!m.lastConsultationAt || (rCreated && new Date(rCreated) > new Date(m.lastConsultationAt))) {
-					m.lastConsultationAt = rCreated;
-				}
-				const orgId = readMaybe(r, 'organization_id', 'organizationId');
-				pushOrg(pid, orgId);
+				m.consultationsCount++;
+				const date = normalizeDate(r, 'created_at');
+				m.lastConsultationAt = updateLast(m.lastConsultationAt, date);
 			});
 
-			prescRows.forEach((r: any) => {
-				const pid = readMaybe(r, 'patient_id', 'patientId');
-				const m = mapById.get(pid);
+			prescRows.forEach((r) => {
+				const pid = r.patient_id;
+				const m = map.get(pid);
 				if (!m) return;
-				m.prescriptionsCount = (m.prescriptionsCount || 0) + 1;
-				const rCreated = normalizeDate(r, 'created_at', 'createdAt', 'issued_at');
-				if (!m.lastPrescriptionAt || (rCreated && new Date(rCreated) > new Date(m.lastPrescriptionAt))) {
-					m.lastPrescriptionAt = rCreated;
-				}
-				// try to resolve org via consultation if available in consultRows
-				const consultId = readMaybe(r, 'consultation_id', 'consultationId');
-				const consult = consultRows.find((c: any) => readMaybe(c, 'id') === consultId);
-				if (consult) pushOrg(pid, readMaybe(consult, 'organization_id', 'organizationId'));
+				m.prescriptionsCount++;
+				const date = normalizeDate(r, 'created_at');
+				m.lastPrescriptionAt = updateLast(m.lastPrescriptionAt, date);
 			});
 
-			labRows.forEach((r: any) => {
-				const pid = readMaybe(r, 'patient_id', 'patientId');
-				const m = mapById.get(pid);
+			labRows.forEach((r) => {
+				const pid = r.patient_id;
+				const m = map.get(pid);
 				if (!m) return;
-				m.labResultsCount = (m.labResultsCount || 0) + 1;
-				const rCreated = normalizeDate(r, 'created_at', 'createdAt', 'reported_at');
-				if (!m.lastLabResultAt || (rCreated && new Date(rCreated) > new Date(m.lastLabResultAt))) {
-					m.lastLabResultAt = rCreated;
-				}
-				// resolve org via associated consultation if possible (we didn't include consultation relation here to keep query simpler)
-				const consultId = readMaybe(r, 'consultation_id', 'consultationId');
-				const consult = consultRows.find((c: any) => readMaybe(c, 'id') === consultId);
-				if (consult) pushOrg(pid, readMaybe(consult, 'organization_id', 'organizationId'));
+				m.labResultsCount++;
+				const date = normalizeDate(r, 'created_at');
+				m.lastLabResultAt = updateLast(m.lastLabResultAt, date);
 			});
 
-			billRows.forEach((r: any) => {
-				const pid = readMaybe(r, 'patient_id', 'patientId');
-				const m = mapById.get(pid);
-				if (!m) return;
-				m.billingsCount = (m.billingsCount || 0) + 1;
-				pushOrg(pid, readMaybe(r, 'organization_id', 'organizationId'));
-			});
-
-			const finalPatients = Array.from(mapById.values());
-
+			const finalPatients = Array.from(map.values());
 			return NextResponse.json({
 				data: finalPatients,
 				meta: { page, per_page, total: count ?? finalPatients.length },
 			});
 		}
 
-		// default: return raw patient rows (but still normalize createdAt/updatedAt)
-		const normalized = (patients ?? []).map((p: any) => ({
-			id: p.id,
-			firstName: readMaybe(p, 'firstName', 'first_name'),
-			lastName: readMaybe(p, 'lastName', 'last_name'),
-			identifier: readMaybe(p, 'identifier'),
-			dob: normalizeDate(p, 'dob'),
-			gender: readMaybe(p, 'gender'),
-			phone: readMaybe(p, 'phone'),
-			address: readMaybe(p, 'address'),
-			createdAt: normalizeDate(p, 'createdAt', 'created_at'),
-			updatedAt: normalizeDate(p, 'updatedAt', 'updated_at'),
-		}));
-
 		return NextResponse.json({
-			data: normalized,
-			meta: { page, per_page, total: count ?? (Array.isArray(patients) ? patients.length : 0) },
+			data: patients ?? [],
+			meta: { page, per_page, total: count ?? 0 },
 		});
 	} catch (err: any) {
-		console.error('Unhandled GET /api/patients error', err);
-		return NextResponse.json({ error: 'Error interno', detail: err?.message ?? String(err) }, { status: 500 });
+		console.error('GET /api/patients error', err);
+		return NextResponse.json({ error: 'Error interno', detail: err.message }, { status: 500 });
 	}
 }
 
+/* ---------------------- POST ---------------------- */
 export async function POST(request: Request) {
 	try {
-		const { supabase } = createSupabaseServerClient();
+		// Obtener cookie store explícitamente
+		const cookieStore = await cookies();
+		const { supabase } = createSupabaseServerClient(cookieStore);
+
+		// Intentar obtener access_token directamente de cookies primero
+		let accessTokenFromCookie: string | null = null;
+		try {
+			const sbAccessToken = cookieStore.get('sb-access-token');
+			if (sbAccessToken?.value) {
+				accessTokenFromCookie = sbAccessToken.value;
+				console.debug('[Patients API POST] Encontrado sb-access-token en cookies');
+			}
+		} catch (err) {
+			console.debug('[Patients API POST] Error leyendo sb-access-token:', err);
+		}
+
+		// Intentar obtener usuario con access_token directo si está disponible
+		let {
+			data: { user },
+			error: authError,
+		} = accessTokenFromCookie ? await supabase.auth.getUser(accessTokenFromCookie) : await supabase.auth.getUser();
+
+		if (authError) {
+			console.error('[Patients API POST] Auth error:', authError);
+		}
+
+		// Si getUser falla, intentar restaurar sesión desde cookies
+		if (!user) {
+			const restored = await tryRestoreSessionFromCookies(supabase, cookieStore);
+			if (restored) {
+				const after = await supabase.auth.getUser();
+				user = after.data?.user ?? null;
+				if (user) {
+					console.log('[Patients API POST] Sesión restaurada exitosamente');
+				}
+			}
+		}
+
+		if (!user) {
+			return NextResponse.json({ error: 'No autenticado' }, { status: 401 });
+		}
+
 		const body = await request.json();
 
-		if (!body || typeof body !== 'object') {
-			return NextResponse.json({ error: 'Payload inválido' }, { status: 400 });
-		}
 		const firstName = (body.firstName || body.first_name || '').trim();
 		const lastName = (body.lastName || body.last_name || '').trim();
 		if (!firstName || !lastName) {
 			return NextResponse.json({ error: 'firstName y lastName son requeridos' }, { status: 400 });
 		}
 
-		const payload: any = {
+		const payload = {
 			firstName,
 			lastName,
-			identifier: body.identifier ?? body.id_number ?? null,
-			dob: isoOrNull(body.dob ?? body.dateOfBirth ?? null),
+			identifier: body.identifier ?? null,
+			dob: isoOrNull(body.dob ?? null),
 			gender: body.gender ?? null,
 			phone: body.phone ?? null,
 			address: body.address ?? null,
 		};
 
 		const { data, error } = await supabase.from('Patient').insert(payload).select().maybeSingle();
+
 		if (error) {
-			console.error('Error creating patient', error);
-			return NextResponse.json({ error: 'Error al crear paciente', detail: error.message ?? String(error) }, { status: 500 });
+			console.error('Error creando paciente', error);
+			return NextResponse.json({ error: 'Error al crear paciente', detail: error.message }, { status: 500 });
 		}
 
-		// Normalize createdAt/updatedAt if present
-		const created = data ? { ...data, createdAt: normalizeDate(data, 'createdAt', 'created_at'), updatedAt: normalizeDate(data, 'updatedAt', 'updated_at') } : data;
+		const created = data
+			? {
+					...data,
+					createdAt: normalizeDate(data, 'createdAt', 'created_at'),
+					updatedAt: normalizeDate(data, 'updatedAt', 'updated_at'),
+			  }
+			: data;
 
 		return NextResponse.json({ data: created }, { status: 201 });
 	} catch (err: any) {
-		console.error('Unhandled POST /api/patients error', err);
-		return NextResponse.json({ error: 'Error interno', detail: err?.message ?? String(err) }, { status: 500 });
+		console.error('POST /api/patients error', err);
+		return NextResponse.json({ error: 'Error interno', detail: err.message }, { status: 500 });
 	}
 }

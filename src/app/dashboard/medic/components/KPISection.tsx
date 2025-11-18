@@ -80,8 +80,8 @@ export default function KPISection() {
 			<div className="space-y-4">
 				{/* Filtros de período */}
 				<div className="flex items-center gap-2 mb-4">
-					<CalendarIcon size={18} className="text-gray-500" />
-					<span className="text-sm font-medium text-gray-700">Período:</span>
+					<CalendarIcon size={18} className="text-slate-600" />
+					<span className="text-sm font-medium text-slate-800">Período:</span>
 					<div className="flex gap-2">
 						{(['day', 'week', 'month'] as PeriodType[]).map((p) => (
 							<Button
@@ -89,7 +89,7 @@ export default function KPISection() {
 								variant={period === p ? 'default' : 'outline'}
 								size="sm"
 								onClick={() => setPeriod(p)}
-								className={period === p ? 'bg-blue-600 hover:bg-blue-700 text-white' : ''}>
+								className={period === p ? 'bg-gradient-to-r from-teal-600 to-cyan-600 hover:from-teal-700 hover:to-cyan-700 text-white' : 'bg-white hover:bg-blue-50 text-slate-700 border-blue-200'}>
 								{periodLabels[p]}
 							</Button>
 						))}
@@ -117,8 +117,8 @@ export default function KPISection() {
 			{/* Filtros de período */}
 			<div className="flex items-center gap-3 mb-4">
 				<div className="flex items-center gap-2">
-					<CalendarIcon size={18} className="text-gray-500" />
-					<span className="text-sm font-medium text-gray-700 dark:text-gray-300">Filtrar por período:</span>
+					<CalendarIcon size={18} className="text-slate-600" />
+					<span className="text-sm font-medium text-slate-800">Filtrar por período:</span>
 				</div>
 				<div className="flex gap-2">
 					{(['day', 'week', 'month'] as PeriodType[]).map((p) => (
@@ -129,8 +129,8 @@ export default function KPISection() {
 							onClick={() => setPeriod(p)}
 							className={
 								period === p
-									? 'bg-blue-600 hover:bg-blue-700 text-white shadow-md'
-									: 'bg-white hover:bg-gray-50 text-gray-700 border-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-700'
+									? 'bg-gradient-to-r from-teal-600 to-cyan-600 hover:from-teal-700 hover:to-cyan-700 text-white shadow-md'
+									: 'bg-white hover:bg-blue-50 text-slate-700 border-blue-200'
 							}>
 							{periodLabels[p]}
 						</Button>

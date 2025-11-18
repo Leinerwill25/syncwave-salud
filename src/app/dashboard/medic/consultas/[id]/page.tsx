@@ -14,21 +14,21 @@ export default async function ConsultationDetail({ params }: Props) {
      Layout / Small helpers
      --------------------------- */
 	const PageShell = ({ children }: { children: React.ReactNode }) => (
-		<main className="min-h-screen bg-linear-to-b from-slate-50 to-white dark:from-[#071422] dark:to-[#021018] py-10 px-6">
+		<main className="min-h-screen bg-gradient-to-br from-blue-50 via-cyan-50 to-teal-50 py-10 px-6">
 			<div className="max-w-6xl mx-auto">{children}</div>
 		</main>
 	);
 
-	const CardShell = ({ children }: { children: React.ReactNode }) => <div className="rounded-2xl bg-white dark:bg-[#04202b] border border-slate-100 dark:border-slate-800 shadow-sm p-5">{children}</div>;
+	const CardShell = ({ children }: { children: React.ReactNode }) => <div className="rounded-2xl bg-white border border-blue-100 shadow-sm p-5">{children}</div>;
 
 	const ErrorCard = ({ message }: { message: string }) => (
 		<PageShell>
 			<div className="max-w-3xl mx-auto">
-				<div className="rounded-2xl bg-white dark:bg-[#042634] border border-slate-200 dark:border-slate-800 shadow-md p-6">
+				<div className="rounded-2xl bg-white border border-blue-100 shadow-md p-6">
 					<h3 className="text-rose-600 font-semibold mb-2">Atención</h3>
-					<p className="text-slate-700 dark:text-slate-200">{message}</p>
+					<p className="text-slate-700">{message}</p>
 					<div className="mt-4">
-						<Link href="/dashboard/medic/consultas" className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-slate-900 text-white hover:opacity-95 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-400">
+						<Link href="/dashboard/medic/consultas" className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-gradient-to-r from-teal-600 to-cyan-600 text-white hover:from-teal-700 hover:to-cyan-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-teal-400">
 							← Volver a consultas
 						</Link>
 					</div>
@@ -85,7 +85,7 @@ export default async function ConsultationDetail({ params }: Props) {
 				<div className="space-y-6">
 					{/* Header / Hero */}
 					<header>
-						<div className="bg-linear-to-r from-[#0ea5e9] to-[#6366f1] p-6">
+						<div className="bg-gradient-to-r from-teal-600 to-cyan-600 p-6">
 							<div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
 								<div className="min-w-0">
 									<h1 className="text-2xl md:text-3xl font-semibold text-white flex items-center gap-3">
@@ -115,27 +115,27 @@ export default async function ConsultationDetail({ params }: Props) {
 						</div>
 
 						{/* Meta row */}
-						<div className="bg-white dark:bg-[#031e26] p-4 flex flex-col md:flex-row items-start md:items-center justify-between gap-3 border-t border-slate-100 dark:border-slate-800">
-							<div className="flex flex-wrap items-center gap-3 text-sm text-slate-700 dark:text-slate-200">
-								<span className="inline-flex items-center gap-2 bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-200 rounded-full px-3 py-1">
+						<div className="bg-white p-4 flex flex-col md:flex-row items-start md:items-center justify-between gap-3 border-t border-blue-100">
+							<div className="flex flex-wrap items-center gap-3 text-sm">
+								<span className="inline-flex items-center gap-2 bg-blue-50 text-slate-800 rounded-full px-3 py-1">
 									<Calendar size={14} /> {c.appointment_id ? 'Cita vinculada' : 'Consulta libre'}
 								</span>
 
-								<span className="inline-flex items-center gap-2 bg-slate-50 dark:bg-slate-800 rounded-full px-3 py-1 text-slate-600 dark:text-slate-300">
+								<span className="inline-flex items-center gap-2 bg-blue-50 rounded-full px-3 py-1 text-slate-800">
 									<Clock size={14} /> {c.started_at ? format(new Date(c.started_at), 'dd/MM/yyyy HH:mm') : '—'}
 								</span>
 
-								<span className="inline-flex items-center gap-2 rounded-full px-3 py-1 bg-indigo-50 text-indigo-700">
+								<span className="inline-flex items-center gap-2 rounded-full px-3 py-1 bg-teal-50 text-teal-700">
 									<ClipboardList size={14} /> <span className="font-mono ml-1">{c.id}</span>
 								</span>
 							</div>
 
 							<div className="flex items-center gap-3">
-								<Link href={`/dashboard/medic/consultas/${c.id}/edit`} className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-slate-900 text-white hover:opacity-95 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-400">
+								<Link href={`/dashboard/medic/consultas/${c.id}/edit`} className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-gradient-to-r from-teal-600 to-cyan-600 text-white hover:from-teal-700 hover:to-cyan-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-teal-400">
 									Editar
 								</Link>
 
-								<Link href="/dashboard/medic/consultas" className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border bg-white text-slate-700 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-slate-300">
+								<Link href="/dashboard/medic/consultas" className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-blue-200 bg-white text-slate-800 hover:bg-blue-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-300">
 									Volver
 								</Link>
 							</div>
@@ -147,31 +147,31 @@ export default async function ConsultationDetail({ params }: Props) {
 						{/* Left: main clinical area */}
 						<div className="lg:col-span-2 space-y-5">
 							<CardShell>
-								<h2 className="text-lg font-semibold text-slate-800 dark:text-slate-100 mb-3 flex items-center gap-2">
+								<h2 className="text-lg font-semibold text-slate-900 mb-3 flex items-center gap-2">
 									<Stethoscope size={18} /> Motivo de consulta
 								</h2>
-								<p className="text-slate-700 dark:text-slate-200 leading-relaxed">{c.chief_complaint || '—'}</p>
+								<p className="text-slate-800 leading-relaxed">{c.chief_complaint || '—'}</p>
 							</CardShell>
 
 							<CardShell>
-								<h2 className="text-lg font-semibold text-slate-800 dark:text-slate-100 mb-3 flex items-center gap-2">
+								<h2 className="text-lg font-semibold text-slate-900 mb-3 flex items-center gap-2">
 									<User size={18} /> Diagnóstico
 								</h2>
-								<p className="text-slate-700 dark:text-slate-200 leading-relaxed">{c.diagnosis || '—'}</p>
+								<p className="text-slate-800 leading-relaxed">{c.diagnosis || '—'}</p>
 							</CardShell>
 
 							<CardShell>
-								<h2 className="text-lg font-semibold text-slate-800 dark:text-slate-100 mb-3 flex items-center gap-2">
+								<h2 className="text-lg font-semibold text-slate-900 mb-3 flex items-center gap-2">
 									<FileText size={18} /> Notas clínicas
 								</h2>
-								<div className="prose prose-sm dark:prose-invert max-w-none">
-									<pre className="whitespace-pre-wrap bg-slate-50 dark:bg-transparent p-3 rounded text-sm text-slate-700 dark:text-slate-200">{c.notes || '—'}</pre>
+								<div className="prose prose-sm max-w-none">
+									<pre className="whitespace-pre-wrap bg-blue-50 p-3 rounded text-sm text-slate-900">{c.notes || '—'}</pre>
 								</div>
 							</CardShell>
 
 							{/* Signos / Vitals — tarjeta limpia, tipografía y layout por secciones */}
-							<div className="rounded-2xl bg-white dark:bg-[#042434] border border-slate-100 dark:border-slate-800 shadow-sm p-4">
-								<h3 className="text-sm font-medium text-slate-700 dark:text-slate-200 mb-3 flex items-center gap-2">Signos / Vitals</h3>
+							<div className="rounded-2xl bg-white border border-blue-100 shadow-sm p-4">
+								<h3 className="text-sm font-medium text-slate-900 mb-3 flex items-center gap-2">Signos / Vitals</h3>
 
 								{c.vitals ? (
 									(() => {
@@ -206,26 +206,26 @@ export default async function ConsultationDetail({ params }: Props) {
 													const entries = Object.entries(sectionData);
 
 													return (
-														<div key={section} className="border border-slate-100 dark:border-slate-800 rounded-xl p-3 bg-white/60 dark:bg-[#042434]">
+														<div key={section} className="border border-blue-100 rounded-xl p-3 bg-blue-50/50">
 															<div className="flex items-center justify-between mb-3">
 																<div className="flex items-center gap-3">
 																	<div className="w-10 h-10 rounded-lg bg-gradient-to-br from-teal-50 to-cyan-50 flex items-center justify-center text-teal-600 font-semibold">{String(section).charAt(0).toUpperCase()}</div>
 																	<div>
-																		<div className="text-sm font-semibold text-slate-800 dark:text-slate-100">{prettyLabel(section)}</div>
-																		<div className="text-xs text-slate-500 dark:text-slate-400">{entries.length} campo(s)</div>
+																		<div className="text-sm font-semibold text-slate-900">{prettyLabel(section)}</div>
+																		<div className="text-xs text-slate-700">{entries.length} campo(s)</div>
 																	</div>
 																</div>
 															</div>
 
 															{entries.length === 0 ? (
-																<div className="text-sm text-slate-500">No hay datos en esta sección.</div>
+																<div className="text-sm text-slate-700">No hay datos en esta sección.</div>
 															) : (
 																<div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
 																	{entries.map(([k, v]) => (
-																		<div key={k} className="flex flex-col gap-1 p-3 rounded-lg bg-white dark:bg-[#022b34] border border-slate-100 dark:border-slate-800">
-																			<div className="text-xs text-slate-500 dark:text-slate-400">{prettyLabel(k)}</div>
+																		<div key={k} className="flex flex-col gap-1 p-3 rounded-lg bg-white border border-blue-100">
+																			<div className="text-xs text-slate-800 font-medium">{prettyLabel(k)}</div>
 																			<div className="flex items-center justify-between gap-2">
-																				<div className="text-sm font-medium text-slate-800 dark:text-slate-100 break-words">{formatValue(v)}</div>
+																				<div className="text-sm font-medium text-slate-900 break-words">{formatValue(v)}</div>
 																				{/* pequeño chip para valores booleanos o numéricos destacables */}
 																				{typeof v === 'boolean' ? <div className={`text-xs px-2 py-0.5 rounded-full font-medium ${v ? 'bg-green-100 text-green-800' : 'bg-rose-100 text-rose-800'}`}>{v ? 'Sí' : 'No'}</div> : typeof v === 'string' && /^\d+(\.\d+)?$/.test(v) ? <div className="text-xs px-2 py-0.5 rounded-full bg-slate-100 text-slate-700">{v}</div> : null}
 																			</div>
@@ -240,7 +240,7 @@ export default async function ConsultationDetail({ params }: Props) {
 										);
 									})()
 								) : (
-									<div className="text-sm text-slate-500">No hay signos registrados.</div>
+									<div className="text-sm text-slate-700">No hay signos registrados.</div>
 								)}
 							</div>
 						</div>
@@ -248,20 +248,20 @@ export default async function ConsultationDetail({ params }: Props) {
 						{/* Right: quick facts / actions — estilos mejorados, mismos subcomponentes */}
 						<aside className="space-y-5">
 							{/* QuickFacts — envuelto en tarjeta con estilo corporativo */}
-							<div className="rounded-2xl bg-white dark:bg-[#041f25] border border-slate-100 dark:border-slate-800 shadow-sm p-4">
+							<div className="rounded-2xl bg-white border border-blue-100 shadow-sm p-4">
 								<QuickFacts c={c} />
 							</div>
 
 							{/* Acciones — tarjeta con botones corporativos y accesibles */}
-							<div className="rounded-2xl bg-white dark:bg-[#042434] border border-slate-100 dark:border-slate-800 shadow-sm p-4">
-								<h3 className="text-sm font-semibold text-slate-800 dark:text-slate-100 mb-3">Acciones</h3>
+							<div className="rounded-2xl bg-white border border-blue-100 shadow-sm p-4">
+								<h3 className="text-sm font-semibold text-slate-900 mb-3">Acciones</h3>
 
 								<div className="flex flex-col gap-2">
-									<Link href={`/dashboard/medic/pacientes/${c.patient_id}`} className="inline-flex items-center justify-center px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-transparent text-sm text-slate-800 dark:text-slate-100 hover:bg-slate-50 dark:hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-offset-1 focus:ring-indigo-400" aria-label="Ver historial del paciente">
+									<Link href={`/dashboard/medic/pacientes/${c.patient_id}`} className="inline-flex items-center justify-center px-3 py-2 rounded-lg border border-blue-200 bg-white text-sm text-slate-900 hover:bg-blue-50 focus:outline-none focus:ring-2 focus:ring-offset-1 focus:ring-teal-400" aria-label="Ver historial del paciente">
 										Ver historial del paciente
 									</Link>
 
-									<Link href={`/dashboard/medic/consultas/${c.id}/prescription`} className="inline-flex items-center justify-center px-3 py-2 rounded-lg bg-indigo-600 text-white text-sm hover:opacity-95 focus:outline-none focus:ring-2 focus:ring-offset-1 focus:ring-indigo-400" aria-label="Crear prescripción">
+									<Link href={`/dashboard/medic/consultas/${c.id}/prescription`} className="inline-flex items-center justify-center px-3 py-2 rounded-lg bg-gradient-to-r from-teal-600 to-cyan-600 text-white text-sm hover:from-teal-700 hover:to-cyan-700 focus:outline-none focus:ring-2 focus:ring-offset-1 focus:ring-teal-400" aria-label="Crear prescripción">
 										Crear Prescripción
 									</Link>
 
@@ -275,7 +275,7 @@ export default async function ConsultationDetail({ params }: Props) {
 					</div>
 
 					{/* Footer note */}
-					<div className="text-center text-xs text-slate-500">Registro clínico — mantén la información precisa y evita compartir datos sensibles fuera de la plataforma.</div>
+					<div className="text-center text-xs text-slate-700">Registro clínico — mantén la información precisa y evita compartir datos sensibles fuera de la plataforma.</div>
 				</div>
 			</PageShell>
 		);
@@ -283,11 +283,11 @@ export default async function ConsultationDetail({ params }: Props) {
 		return (
 			<PageShell>
 				<div className="max-w-3xl mx-auto">
-					<div className="rounded-2xl bg-white dark:bg-[#042634] border border-slate-200 dark:border-slate-800 shadow-md p-6">
+					<div className="rounded-2xl bg-white border border-blue-100 shadow-md p-6">
 						<h3 className="text-rose-600 font-semibold mb-2">Error</h3>
-						<p className="text-slate-700 dark:text-slate-200">Ocurrió un error al cargar la consulta: {err?.message ?? String(err)}</p>
+						<p className="text-slate-700">Ocurrió un error al cargar la consulta: {err?.message ?? String(err)}</p>
 						<div className="mt-4">
-							<Link href="/dashboard/medic/consultas" className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-slate-900 text-white">
+							<Link href="/dashboard/medic/consultas" className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-gradient-to-r from-teal-600 to-cyan-600 text-white hover:from-teal-700 hover:to-cyan-700">
 								← Volver a consultas
 							</Link>
 						</div>
