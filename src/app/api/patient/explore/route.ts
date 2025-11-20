@@ -32,7 +32,8 @@ export async function GET(request: Request) {
 		if (!type || type === 'CLINICA') {
 			let clinicQuery = supabase
 				.from('clinic_profile')
-				.select(`
+				.select(
+					`
 					id,
 					organization_id,
 					legal_name,
@@ -45,7 +46,8 @@ export async function GET(request: Request) {
 						name,
 						type
 					)
-				`)
+				`
+				)
 				.range(offset, offset + perPage - 1);
 
 			if (query) {
@@ -84,7 +86,8 @@ export async function GET(request: Request) {
 		if (!type || type === 'FARMACIA') {
 			let pharmacyQuery = supabase
 				.from('Organization')
-				.select(`
+				.select(
+					`
 					id,
 					name,
 					type,
@@ -94,7 +97,8 @@ export async function GET(request: Request) {
 						address_operational,
 						phone_mobile
 					)
-				`)
+				`
+				)
 				.eq('type', 'FARMACIA')
 				.range(offset, offset + perPage - 1);
 
@@ -121,7 +125,8 @@ export async function GET(request: Request) {
 		if (!type || type === 'LABORATORIO') {
 			let labQuery = supabase
 				.from('Organization')
-				.select(`
+				.select(
+					`
 					id,
 					name,
 					type,
@@ -132,7 +137,8 @@ export async function GET(request: Request) {
 						phone_mobile,
 						specialties
 					)
-				`)
+				`
+				)
 				.eq('type', 'LABORATORIO')
 				.range(offset, offset + perPage - 1);
 
@@ -167,52 +173,169 @@ export async function GET(request: Request) {
 			}
 		}
 
-		// Buscar consultorios privados (médicos sin organizationId)
-		if (!type || type === 'CONSULTORIO_PRIVADO') {
-			let privateQuery = supabase
-				.from('User')
-				.select(`
+		// Buscar consultorios privados (Organizations con type CONSULTORIO)
+		if (!type || type === 'CONSULTORIO' || type === 'CONSULTORIO_PRIVADO') {
+			// Primero obtener las organizaciones con type CONSULTORIO
+			let orgQuery = supabase
+				.from('Organization')
+				.select(
+					`
 					id,
 					name,
-					email,
-					medic_profile:medic_profile!fk_medic_profile_doctor (
-						private_specialty,
-						specialty,
-						services,
-						photo_url
+					type,
+					contactEmail,
+					phone,
+					address,
+					clinic_profile:clinic_profile!clinic_profile_org_fk (
+						id,
+						trade_name,
+						legal_name,
+						address_operational,
+						phone_mobile,
+						specialties,
+						location,
+						photos,
+						profile_photo
 					)
-				`)
-				.eq('role', 'MEDICO')
-				.is('organizationId', null)
+				`
+				)
+				.eq('type', 'CONSULTORIO')
 				.range(offset, offset + perPage - 1);
 
 			if (query) {
-				privateQuery = privateQuery.ilike('name', `%${query}%`);
+				orgQuery = orgQuery.or(`name.ilike.%${query}%,address.ilike.%${query}%`);
 			}
 
-			const { data: doctors } = await privateQuery;
+			const { data: consultorios, error: consultoriosError } = await orgQuery;
 
-			if (doctors) {
-				doctors.forEach((doctor: any) => {
-					const specialty = doctor.medic_profile?.private_specialty || doctor.medic_profile?.specialty;
-					
+			if (consultoriosError) {
+				console.error('[Patient Explore API] Error al buscar consultorios:', consultoriosError);
+			} else {
+				console.log(`[Patient Explore API] Consultorios encontrados: ${consultorios?.length || 0}`);
+			}
+
+			if (consultorios && consultorios.length > 0) {
+				console.log(`[Patient Explore API] Procesando ${consultorios.length} consultorios`);
+
+				// Obtener todos los IDs de organizaciones para buscar usuarios
+				const orgIds = consultorios.map((c: any) => c.id);
+
+				// Buscar usuarios asociados a estas organizaciones
+				const { data: users, error: usersError } = await supabase
+					.from('User')
+					.select(
+						`
+						id,
+						name,
+						email,
+						organizationId,
+						medic_profile:medic_profile!fk_medic_profile_doctor (
+							private_specialty,
+							specialty,
+							services,
+							photo_url
+						)
+					`
+					)
+					.in('organizationId', orgIds)
+					.eq('role', 'MEDICO');
+
+				if (usersError) {
+					console.error('[Patient Explore API] Error al buscar usuarios:', usersError);
+				}
+
+				// Crear un mapa de organizationId -> usuarios
+				const usersByOrg = new Map<string, any[]>();
+				if (users) {
+					users.forEach((user: any) => {
+						if (user.organizationId) {
+							const orgId = user.organizationId;
+							if (!usersByOrg.has(orgId)) {
+								usersByOrg.set(orgId, []);
+							}
+							usersByOrg.get(orgId)!.push(user);
+						}
+					});
+				}
+
+				consultorios.forEach((consultorio: any) => {
+					console.log(`[Patient Explore API] Procesando consultorio: ${consultorio.name} (ID: ${consultorio.id})`);
+
+					// Obtener el médico asociado al consultorio desde el mapa
+					const orgUsers = usersByOrg.get(consultorio.id) || [];
+					const doctor = orgUsers.find((d: any) => d.medic_profile) || orgUsers[0];
+
+					const doctorSpecialty = doctor?.medic_profile?.private_specialty || doctor?.medic_profile?.specialty;
+					const specialties = parseSpecialties(consultorio.clinic_profile?.specialties);
+
 					// Filtrar por especialidad si se proporciona
-					if (specialty && specialty.toLowerCase().includes((specialty || '').toLowerCase())) {
-						// continue
-					} else if (specialty) {
-						return;
+					if (specialty) {
+						const searchSpecialtyLower = specialty.toLowerCase();
+						const hasSpecialty =
+							(doctorSpecialty && doctorSpecialty.toLowerCase().includes(searchSpecialtyLower)) ||
+							specialties.some((s: any) => {
+								const specName = typeof s === 'string' ? s : s?.name || s?.specialty || '';
+								return specName.toLowerCase().includes(searchSpecialtyLower);
+							});
+						if (!hasSpecialty) {
+							console.log(`[Patient Explore API] Consultorio ${consultorio.name} no coincide con especialidad ${specialty}`);
+							return;
+						}
 					}
 
-					results.push({
+					// Parsear location si existe
+					let location = null;
+					if (consultorio.clinic_profile?.location) {
+						try {
+							location = typeof consultorio.clinic_profile.location === 'string' ? JSON.parse(consultorio.clinic_profile.location) : consultorio.clinic_profile.location;
+						} catch {
+							location = null;
+						}
+					}
+
+					// Parsear photos si existe
+					let photos: string[] = [];
+					if (consultorio.clinic_profile?.photos) {
+						try {
+							photos = Array.isArray(consultorio.clinic_profile.photos) ? consultorio.clinic_profile.photos : typeof consultorio.clinic_profile.photos === 'string' ? JSON.parse(consultorio.clinic_profile.photos) : [];
+						} catch {
+							photos = [];
+						}
+					}
+
+					const resultItem = {
 						type: 'CONSULTORIO_PRIVADO',
-						id: doctor.id,
-						name: doctor.name,
-						email: doctor.email,
-						specialty,
-						services: doctor.medic_profile?.services || [],
-						photo: doctor.medic_profile?.photo_url,
-					});
+						id: consultorio.id,
+						name: consultorio.clinic_profile?.trade_name || consultorio.clinic_profile?.legal_name || consultorio.name,
+						organization: {
+							id: consultorio.id,
+							name: consultorio.name,
+							type: consultorio.type,
+						},
+						address: consultorio.clinic_profile?.address_operational || consultorio.address,
+						phone: consultorio.clinic_profile?.phone_mobile || consultorio.phone,
+						email: consultorio.contactEmail,
+						specialty: doctorSpecialty,
+						specialties: specialties.length > 0 ? specialties : doctorSpecialty ? [doctorSpecialty] : [],
+						services: doctor?.medic_profile?.services || [],
+						photo: consultorio.clinic_profile?.profile_photo || doctor?.medic_profile?.photo_url,
+						location,
+						photos,
+						profile_photo: consultorio.clinic_profile?.profile_photo,
+						doctor: doctor
+							? {
+									id: doctor.id,
+									name: doctor.name,
+									email: doctor.email,
+							  }
+							: null,
+					};
+
+					console.log(`[Patient Explore API] Agregando consultorio a resultados: ${resultItem.name}`);
+					results.push(resultItem);
 				});
+			} else {
+				console.log('[Patient Explore API] No se encontraron consultorios o el array está vacío');
 			}
 		}
 
@@ -229,4 +352,3 @@ export async function GET(request: Request) {
 		return NextResponse.json({ error: 'Error interno', detail: err.message }, { status: 500 });
 	}
 }
-

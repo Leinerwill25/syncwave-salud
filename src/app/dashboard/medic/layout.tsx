@@ -2,6 +2,7 @@
 import React from 'react';
 import MedicSidebar from '../medic/components/MedicSidebar';
 import ServerDashboardGuard from '@/components/auth/ServerDashboardGuard';
+import AlertsButton from '@/components/medic/AlertsButton';
 
 export const metadata = {
 	title: 'Dashboard — Medico',
@@ -15,7 +16,16 @@ export default function MedicLayout({ children }: { children: React.ReactNode })
 					<div className="grid grid-cols-1 md:grid-cols-[260px_1fr] gap-6">
 						<MedicSidebar />
 
-						<main className="bg-white rounded-2xl p-6 shadow-sm border border-blue-100">{children}</main>
+						<div className="flex flex-col gap-4">
+							{/* Botón de Alertas - Visible y prominente */}
+							<div className="flex justify-end">
+								<AlertsButton />
+							</div>
+
+							<main className="bg-white rounded-2xl p-6 shadow-sm border border-blue-100 flex-1">
+								{children}
+							</main>
+						</div>
 					</div>
 				</div>
 			</div>

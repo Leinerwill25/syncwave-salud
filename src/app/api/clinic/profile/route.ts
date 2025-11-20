@@ -1,6 +1,7 @@
 // app/api/clinic/profile/route.ts
 import { NextResponse } from 'next/server';
-import createSupabaseServerClient from '@/app/adapters/server';
+import { createSupabaseServerClient } from '@/app/adapters/server';
+import { cookies } from 'next/headers';
 
 type Supa = any;
 
@@ -40,21 +41,132 @@ const SUBS_VARIANTS = ['Subscription', 'subscription', '"Subscription"', '"publi
 const INVITE_VARIANTS = ['Invite', 'invite', '"Invite"', '"public"."Invite"'];
 const CLINIC_PROFILE_VARIANTS = ['clinic_profile', '"clinic_profile"', '"public"."clinic_profile"', 'clinicProfile'];
 
+interface CookieStore {
+	get?: (name: string) => { value?: string } | undefined;
+}
+
+async function tryRestoreSessionFromCookies(supabase: Supa, cookieStore: CookieStore): Promise<boolean> {
+	if (!cookieStore) return false;
+
+	const cookieCandidates = ['sb-session', 'sb:token', 'supabase-auth-token', 'sb-access-token', 'sb-refresh-token'];
+
+	for (const name of cookieCandidates) {
+		try {
+			const c = typeof cookieStore.get === 'function' ? cookieStore.get(name) : undefined;
+			const raw = c?.value ?? null;
+			if (!raw) continue;
+
+			let parsed: Record<string, unknown> | null = null;
+			try {
+				parsed = JSON.parse(raw) as Record<string, unknown>;
+			} catch {
+				parsed = null;
+			}
+
+			let access_token: string | null = null;
+			let refresh_token: string | null = null;
+
+			if (parsed) {
+				const getNestedValue = (obj: Record<string, unknown>, ...paths: string[]): unknown => {
+					for (const path of paths) {
+						const keys = path.split('.');
+						let current: unknown = obj;
+						for (const key of keys) {
+							if (current && typeof current === 'object' && key in current) {
+								current = (current as Record<string, unknown>)[key];
+							} else {
+								return null;
+							}
+						}
+						if (current) return current;
+					}
+					return null;
+				};
+
+				if (name === 'sb-session') {
+					access_token = (getNestedValue(parsed, 'access_token', 'session.access_token', 'currentSession.access_token') as string | null) ?? null;
+					refresh_token = (getNestedValue(parsed, 'refresh_token', 'session.refresh_token', 'currentSession.refresh_token') as string | null) ?? null;
+					if (!access_token && parsed.user) {
+						access_token = (parsed.access_token as string | null) ?? null;
+						refresh_token = (parsed.refresh_token as string | null) ?? null;
+					}
+				} else {
+					access_token = (getNestedValue(parsed, 'access_token', 'currentSession.access_token', 'current_session.access_token') as string | null) ?? null;
+					refresh_token = (getNestedValue(parsed, 'refresh_token', 'currentSession.refresh_token', 'current_session.refresh_token') as string | null) ?? null;
+					if (!access_token && parsed.currentSession && typeof parsed.currentSession === 'object') {
+						const currentSession = parsed.currentSession as Record<string, unknown>;
+						access_token = (currentSession.access_token as string | null) ?? null;
+						refresh_token = (currentSession.refresh_token as string | null) ?? null;
+					}
+				}
+			} else {
+				if (name === 'sb-access-token') {
+					access_token = raw;
+				} else if (name === 'sb-refresh-token') {
+					refresh_token = raw;
+				}
+			}
+
+			if (!access_token && !refresh_token) continue;
+
+			// Solo intentar setSession si tenemos al menos access_token
+			if (access_token) {
+				const payload: { access_token: string; refresh_token: string } = {
+					access_token,
+					refresh_token: refresh_token || '',
+				};
+
+				const { data, error } = await supabase.auth.setSession(payload);
+				if (error) {
+					// Si falla y tenemos refresh_token, intentar refresh
+					if (refresh_token) {
+						try {
+							const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession({ refresh_token });
+							if (!refreshError && refreshData?.session) {
+								return true;
+							}
+						} catch {
+							// ignore
+						}
+					}
+					continue;
+				}
+
+				if (data?.session) return true;
+
+				const { data: sessionAfter } = await supabase.auth.getSession();
+				if (sessionAfter?.session) return true;
+			}
+		} catch {
+			continue;
+		}
+	}
+
+	return false;
+}
+
 export async function GET(req: Request) {
 	try {
-		const authHeader = req.headers.get('authorization');
-		const token = authHeader?.replace('Bearer ', '').trim();
-		if (!token) return NextResponse.json({ error: 'Falta token de autorización.' }, { status: 401 });
+		const cookieStore = await cookies();
+		const { supabase } = createSupabaseServerClient(cookieStore);
 
-		const { supabase } = createSupabaseServerClient();
+		// Intentar restaurar sesión desde cookies
+		let { data: { user }, error: userError } = await supabase.auth.getUser();
+		
+		if (userError || !user) {
+			// Intentar restaurar sesión desde cookies
+			const restored = await tryRestoreSessionFromCookies(supabase, cookieStore);
+			if (restored) {
+				const after = await supabase.auth.getUser();
+				user = after.data?.user ?? null;
+				userError = after.error ?? null;
+			}
+		}
 
-		// Obtener usuario autenticado
-		const { data: userData, error: userError } = await supabase.auth.getUser(token);
-		if (userError || !userData?.user) {
+		if (userError || !user) {
 			console.error('auth.getUser error', userError);
 			return NextResponse.json({ error: 'Usuario no autenticado.' }, { status: 401 });
 		}
-		const user = userData.user;
 
 		// Detectar tabla User y validar existencia
 		const userFetch = await tryFromVariants(supabase, USER_VARIANTS, 'id, organizationId, authId, email');
@@ -90,7 +202,24 @@ export async function GET(req: Request) {
 		const cpFetch = await tryFromVariants(supabase, CLINIC_PROFILE_VARIANTS, '*');
 		if (cpFetch.name) {
 			const cpQ = await supabase.from(cpFetch.name).select('*').eq('organization_id', orgId).maybeSingle();
-			if (!cpQ.error && cpQ.data) clinicProfile = cpQ.data;
+			if (!cpQ.error && cpQ.data) {
+				clinicProfile = cpQ.data;
+				// Parsear location y photos si son strings JSON
+				if (clinicProfile.location && typeof clinicProfile.location === 'string') {
+					try {
+						clinicProfile.location = JSON.parse(clinicProfile.location);
+					} catch {
+						// Si no es JSON válido, dejarlo como está
+					}
+				}
+				if (clinicProfile.photos && typeof clinicProfile.photos === 'string') {
+					try {
+						clinicProfile.photos = JSON.parse(clinicProfile.photos);
+					} catch {
+						// Si no es JSON válido, dejarlo como está
+					}
+				}
+			}
 		}
 
 		// ---------------- Organization ----------------
@@ -139,6 +268,7 @@ export async function GET(req: Request) {
 		const storagePerSpecialistMB = clinicProfile?.storagePerSpecialistMB ?? clinicProfile?.capacity_per_day ?? 500;
 
 		return NextResponse.json({
+			profile: clinicProfile,
 			clinicProfile,
 			organization: orgData,
 			subscription: subscription
@@ -165,18 +295,28 @@ export async function GET(req: Request) {
 	}
 }
 
-export async function PATCH(req: Request) {
+export async function PUT(req: Request) {
 	try {
-		const authHeader = req.headers.get('authorization');
-		const token = authHeader?.replace('Bearer ', '').trim();
-		if (!token) return NextResponse.json({ error: 'Falta token de autorización.' }, { status: 401 });
-
-		const { supabase } = createSupabaseServerClient();
+		const cookieStore = await cookies();
+		const { supabase } = createSupabaseServerClient(cookieStore);
 		const body = await req.json();
 
-		const { data: userData, error: userError } = await supabase.auth.getUser(token);
-		if (userError || !userData?.user) return NextResponse.json({ error: 'Usuario no autenticado.' }, { status: 401 });
-		const user = userData.user;
+		// Intentar restaurar sesión desde cookies
+		let { data: { user }, error: userError } = await supabase.auth.getUser();
+		
+		if (userError || !user) {
+			// Intentar restaurar sesión desde cookies
+			const restored = await tryRestoreSessionFromCookies(supabase, cookieStore);
+			if (restored) {
+				const after = await supabase.auth.getUser();
+				user = after.data?.user ?? null;
+				userError = after.error ?? null;
+			}
+		}
+
+		if (userError || !user) {
+			return NextResponse.json({ error: 'Usuario no autenticado.' }, { status: 401 });
+		}
 
 		// validar existencia tabla User
 		const userFetch = await tryFromVariants(supabase, USER_VARIANTS, 'id, organizationId, authId, email');
@@ -214,6 +354,21 @@ export async function PATCH(req: Request) {
 			storagePerSpecialistMB: body.storagePerSpecialistMB ?? 500,
 			updated_at: new Date().toISOString(),
 		};
+
+		// Agregar location (coordenadas de Google Maps) si existe
+		if (body.location) {
+			updates.location = typeof body.location === 'string' ? body.location : JSON.stringify(body.location);
+		}
+
+		// Agregar photos si existe
+		if (body.photos) {
+			updates.photos = typeof body.photos === 'string' ? body.photos : JSON.stringify(body.photos);
+		}
+
+		// Agregar profile_photo si existe
+		if (body.profile_photo) {
+			updates.profile_photo = body.profile_photo;
+		}
 
 		const updateRes = await supabase.from(cpFetch.name).update(updates).eq('organization_id', orgId).select('*').maybeSingle();
 		if (updateRes.error) {

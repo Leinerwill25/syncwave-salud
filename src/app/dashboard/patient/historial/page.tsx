@@ -1,7 +1,27 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { FileText, User, Calendar, Stethoscope, Heart, Thermometer, Activity, Download } from 'lucide-react';
+import { FileText, User, Calendar, Stethoscope, Heart, Thermometer, Activity, Download, Pill, FileCheck } from 'lucide-react';
+
+type PrescriptionItem = {
+	id: string;
+	medication_name: string | null;
+	dosage: string | null;
+	frequency: string | null;
+	duration_days: number | null;
+	instructions: string | null;
+};
+
+type Prescription = {
+	id: string;
+	consultation_id: string | null;
+	issued_at: string;
+	valid_until: string | null;
+	status: string;
+	notes: string | null;
+	attachments: string[];
+	prescription_item: PrescriptionItem[];
+};
 
 type Consultation = {
 	id: string;
@@ -11,6 +31,8 @@ type Consultation = {
 	diagnosis: string | null;
 	notes: string | null;
 	vitals: any;
+	prescriptions: Prescription[];
+	attachments: string[];
 	doctor: {
 		name: string | null;
 	} | null;
@@ -199,6 +221,116 @@ export default function HistorialPage() {
 																<p className="text-sm font-medium text-gray-900">{vitals.weight} kg</p>
 															</div>
 														)}
+													</div>
+												</div>
+											)}
+
+											{/* Archivos adjuntos de la consulta (informes médicos) */}
+											{consultation.attachments && consultation.attachments.length > 0 && (
+												<div className="mt-4 pt-4 border-t border-gray-200">
+													<p className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
+														<FileCheck className="w-5 h-5 text-indigo-600" />
+														Documentos e Informes Médicos ({consultation.attachments.length})
+													</p>
+													<div className="flex flex-wrap gap-2">
+														{consultation.attachments.map((attachment, idx) => (
+															<a
+																key={idx}
+																href={attachment}
+																target="_blank"
+																rel="noopener noreferrer"
+																className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-50 text-indigo-600 rounded-lg hover:bg-indigo-100 transition-colors border border-indigo-200"
+															>
+																<Download className="w-4 h-4" />
+																<span className="text-sm font-medium">Informe {idx + 1}</span>
+															</a>
+														))}
+													</div>
+												</div>
+											)}
+
+											{/* Prescripciones relacionadas */}
+											{consultation.prescriptions && consultation.prescriptions.length > 0 && (
+												<div className="mt-4 pt-4 border-t border-gray-200">
+													<p className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
+														<Pill className="w-5 h-5 text-indigo-600" />
+														Prescripciones ({consultation.prescriptions.length})
+													</p>
+													<div className="space-y-4">
+														{consultation.prescriptions.map((prescription) => (
+															<div key={prescription.id} className="bg-indigo-50 rounded-lg p-4 border border-indigo-200">
+																<div className="flex items-start justify-between mb-3">
+																	<div>
+																		<p className="text-sm font-medium text-gray-700">
+																			Emitida: {new Date(prescription.issued_at).toLocaleDateString('es-ES')}
+																		</p>
+																		{prescription.valid_until && (
+																			<p className="text-xs text-gray-600">
+																				Válida hasta: {new Date(prescription.valid_until).toLocaleDateString('es-ES')}
+																			</p>
+																		)}
+																		<span className={`inline-block mt-1 px-2 py-1 rounded-full text-xs font-semibold ${
+																			prescription.status === 'ACTIVE' ? 'bg-green-100 text-green-700' :
+																			prescription.status === 'COMPLETED' ? 'bg-blue-100 text-blue-700' :
+																			'bg-gray-100 text-gray-700'
+																		}`}>
+																			{prescription.status}
+																		</span>
+																	</div>
+																</div>
+
+																{/* Medicamentos */}
+																{prescription.prescription_item && prescription.prescription_item.length > 0 && (
+																	<div className="mb-3">
+																		<p className="text-xs font-semibold text-gray-700 mb-2 uppercase">Medicamentos:</p>
+																		<div className="space-y-2">
+																			{prescription.prescription_item.map((item) => (
+																				<div key={item.id} className="bg-white rounded-lg p-3 border border-indigo-100">
+																					<p className="font-medium text-gray-900">{item.medication_name}</p>
+																					<div className="mt-1 text-xs text-gray-600 space-y-1">
+																						{item.dosage && <p>Dosis: {item.dosage}</p>}
+																						{item.frequency && <p>Frecuencia: {item.frequency}</p>}
+																						{item.duration_days && <p>Duración: {item.duration_days} días</p>}
+																						{item.instructions && <p className="text-gray-700 mt-2">{item.instructions}</p>}
+																					</div>
+																				</div>
+																			))}
+																		</div>
+																	</div>
+																)}
+
+																{/* Archivos adjuntos de la prescripción */}
+																{prescription.attachments && prescription.attachments.length > 0 && (
+																	<div className="mt-3 pt-3 border-t border-indigo-200">
+																		<p className="text-xs font-semibold text-gray-700 mb-2 flex items-center gap-2">
+																			<FileCheck className="w-4 h-4" />
+																			Documentos Adjuntos:
+																		</p>
+																		<div className="flex flex-wrap gap-2">
+																			{prescription.attachments.map((attachment, idx) => (
+																				<a
+																					key={idx}
+																					href={attachment}
+																					target="_blank"
+																					rel="noopener noreferrer"
+																					className="inline-flex items-center gap-2 px-3 py-2 bg-white text-indigo-600 rounded-lg hover:bg-indigo-50 transition-colors border border-indigo-200"
+																				>
+																					<Download className="w-4 h-4" />
+																					<span className="text-sm">Documento {idx + 1}</span>
+																				</a>
+																			))}
+																		</div>
+																	</div>
+																)}
+
+																{prescription.notes && (
+																	<div className="mt-3 pt-3 border-t border-indigo-200">
+																		<p className="text-xs font-semibold text-gray-700 mb-1">Notas:</p>
+																		<p className="text-sm text-gray-700 bg-white rounded-lg p-2">{prescription.notes}</p>
+																	</div>
+																)}
+															</div>
+														))}
 													</div>
 												</div>
 											)}

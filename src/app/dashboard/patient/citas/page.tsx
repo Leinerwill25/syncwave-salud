@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { Calendar, Clock, MapPin, User, X, RefreshCw, CheckCircle, XCircle } from 'lucide-react';
 import Link from 'next/link';
+import RescheduleModal from '@/components/patient/RescheduleModal';
 
 type Appointment = {
 	id: string;
@@ -27,6 +28,8 @@ export default function CitasPage() {
 	const [loading, setLoading] = useState(true);
 	const [appointments, setAppointments] = useState<Appointment[]>([]);
 	const [filter, setFilter] = useState<'all' | 'upcoming' | 'past'>('upcoming');
+	const [rescheduleModalOpen, setRescheduleModalOpen] = useState(false);
+	const [selectedAppointment, setSelectedAppointment] = useState<Appointment | null>(null);
 
 	useEffect(() => {
 		loadAppointments();
@@ -67,6 +70,15 @@ export default function CitasPage() {
 			console.error('Error:', err);
 			alert('Error al cancelar la cita');
 		}
+	};
+
+	const handleReschedule = (appointment: Appointment) => {
+		setSelectedAppointment(appointment);
+		setRescheduleModalOpen(true);
+	};
+
+	const handleRescheduleSuccess = () => {
+		loadAppointments();
 	};
 
 	const getStatusColor = (status: string) => {
@@ -255,6 +267,7 @@ export default function CitasPage() {
 													Cancelar
 												</button>
 												<button
+													onClick={() => handleReschedule(appointment)}
 													className="px-4 py-2 bg-indigo-50 text-indigo-600 rounded-lg font-medium hover:bg-indigo-100 transition-colors flex items-center gap-2"
 												>
 													<RefreshCw className="w-4 h-4" />
@@ -267,6 +280,21 @@ export default function CitasPage() {
 							);
 						})}
 					</div>
+				)}
+
+				{/* Modal de Reagendamiento */}
+				{selectedAppointment && (
+					<RescheduleModal
+						isOpen={rescheduleModalOpen}
+						onClose={() => {
+							setRescheduleModalOpen(false);
+							setSelectedAppointment(null);
+						}}
+						appointmentId={selectedAppointment.id}
+						doctorId={selectedAppointment.doctor?.id || null}
+						currentScheduledAt={selectedAppointment.scheduled_at}
+						onSuccess={handleRescheduleSuccess}
+					/>
 				)}
 			</div>
 		</div>

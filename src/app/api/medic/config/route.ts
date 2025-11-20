@@ -171,11 +171,23 @@ export async function GET(request: Request) {
 			return NextResponse.json({ error: 'Acceso denegado: solo médicos' }, { status: 403 });
 		}
 
-		// Obtener perfil de clínica si está afiliado
+		// Obtener perfil de clínica y tipo de organización si está afiliado
 		let clinicProfile: { legal_name: string | null; trade_name: string | null; specialties: unknown } | null = null;
 		let clinicSpecialties: string[] = [];
+		let organizationType: string | null = null;
 		
 		if (appUser.organizationId) {
+			// Obtener tipo de organización
+			const { data: organization, error: orgError } = await supabase
+				.from('Organization')
+				.select('type')
+				.eq('id', appUser.organizationId)
+				.maybeSingle();
+
+			if (!orgError && organization) {
+				organizationType = organization.type;
+			}
+
 			const { data: clinic, error: clinicError } = await supabase
 				.from('clinic_profile')
 				.select('specialties, legal_name, trade_name')
@@ -257,6 +269,7 @@ export async function GET(request: Request) {
 				organizationId: appUser.organizationId,
 			},
 			isAffiliated: !!appUser.organizationId,
+			organizationType: organizationType,
 			clinicProfile: clinicProfile ? {
 				name: clinicProfile.trade_name || clinicProfile.legal_name,
 				specialties: clinicSpecialties,

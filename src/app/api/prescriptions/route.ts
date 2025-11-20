@@ -1,6 +1,7 @@
 // app/api/prescriptions/route.ts
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { createNotification } from '@/lib/notifications';
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY!;
@@ -147,12 +148,70 @@ export async function POST(req: Request) {
 			}
 		}
 
-		// 4) NO intento actualizar prescription.attachments aquí porque en tu schema no existe la columna.
-		// Si quieres la columna attachments, abajo te dejo el SQL para agregarla y en ese caso podemos actualizarla.
+		// 4) Crear notificación y enviar email al paciente
+		try {
+			// Obtener información del paciente y doctor
+			const [patientRes, doctorRes] = await Promise.all([
+				supabaseAdmin.from('Patient').select('firstName, lastName').eq('id', patient_id).maybeSingle(),
+				supabaseAdmin.from('User').select('name, organizationId').eq('id', doctor_id).maybeSingle(),
+			]);
+
+			const patientName = patientRes.data ? `${patientRes.data.firstName} ${patientRes.data.lastName}` : undefined;
+			const doctorName = doctorRes.data?.name || undefined;
+			const organizationId = doctorRes.data?.organizationId || null;
+
+			const prescriptionDate = presCreated.issued_at 
+				? new Date(presCreated.issued_at).toLocaleDateString('es-ES', {
+					weekday: 'long',
+					year: 'numeric',
+					month: 'long',
+					day: 'numeric',
+				})
+				: new Date().toLocaleDateString('es-ES');
+
+			// Obtener userId del paciente (si existe en User table)
+			let patientUserId: string | null = null;
+			try {
+				const { data: patientUser } = await supabaseAdmin
+					.from('User')
+					.select('id')
+					.eq('patientProfileId', patient_id)
+					.maybeSingle();
+				patientUserId = patientUser?.id || null;
+			} catch {
+				// Ignorar error
+			}
+
+			const prescriptionUrl = `${process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_VERCEL_URL ? `https://${process.env.NEXT_PUBLIC_VERCEL_URL}` : 'http://localhost:3000'}/dashboard/patient/recetas`;
+
+			if (patientUserId) {
+				await createNotification({
+					userId: patientUserId,
+					organizationId,
+					type: 'PRESCRIPTION',
+					title: 'Nueva Receta Médica',
+					message: `El Dr./Dra. ${doctorName || 'tu médico'} ha emitido una nueva receta médica para ti.`,
+					payload: {
+						prescriptionId: prescriptionId,
+						prescription_id: prescriptionId,
+						patient_id,
+						patientName,
+						doctorName,
+						prescriptionDate,
+						prescriptionUrl,
+					},
+					sendEmail: true,
+				});
+			}
+		} catch (notifErr) {
+			console.error('Error creando notificación/email para receta:', notifErr);
+			// No fallar la creación de la receta si la notificación falla
+		}
 
 		return NextResponse.json({ success: true, prescription: presCreated, files: uploadedFiles }, { status: 201 });
-	} catch (err: any) {
+	} catch (err) {
 		console.error('Error POST /api/prescriptions:', err);
-		return NextResponse.json({ error: err?.message ?? String(err) }, { status: 500 });
+		const errorMessage = err instanceof Error ? err.message : String(err);
+		return NextResponse.json({ error: errorMessage }, { status: 500 });
 	}
 }

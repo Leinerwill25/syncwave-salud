@@ -392,7 +392,7 @@ export default function PatientDashboardPage() {
 							Explorar Laboratorios
 						</Link>
 					</div>
-				</div>
+			</div>
 
 				{/* Farmacias afiliadas */}
 				<div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-xl border border-white/20 p-8 hover:shadow-2xl transition-all">

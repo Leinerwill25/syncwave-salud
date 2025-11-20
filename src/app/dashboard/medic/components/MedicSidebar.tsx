@@ -1,9 +1,10 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { LayoutDashboard, CalendarDays, User, ClipboardList, FileText, Settings, MessageCircle, CheckSquare, Folder, ChevronRight, ChevronDown, Search } from 'lucide-react';
+import { LayoutDashboard, CalendarDays, User, ClipboardList, FileText, Settings, MessageCircle, CheckSquare, Folder, ChevronRight, ChevronDown, Search, FileCheck } from 'lucide-react';
+import type { MedicConfig } from '@/types/medic-config';
 
 type IconComponent = React.ComponentType<React.SVGProps<SVGSVGElement>>;
 
@@ -13,6 +14,7 @@ type LinkItem = {
 	icon?: IconComponent;
 	submenu?: LinkItem[];
 	comingSoon?: boolean;
+	showOnlyForOrgType?: string; // Solo mostrar si organizationType coincide
 };
 
 const LINKS: LinkItem[] = [
@@ -40,6 +42,14 @@ const LINKS: LinkItem[] = [
 		submenu: [{ href: '/dashboard/medic/recetas', label: 'Todas las recetas' }],
 	},
 	{
+		label: 'Órdenes Médicas',
+		icon: FileCheck,
+		submenu: [
+			{ href: '/dashboard/medic/ordenes', label: 'Todas las órdenes' },
+			{ href: '/dashboard/medic/ordenes/new', label: 'Nueva orden' },
+		],
+	},
+	{
 		href: '/dashboard/medic/citas',
 		label: 'Citas',
 		icon: CalendarDays,
@@ -48,36 +58,58 @@ const LINKS: LinkItem[] = [
 		href: '/dashboard/medic/resultados',
 		label: 'Resultados',
 		icon: Folder,
-		comingSoon: true,
 	},
 	{
 		href: '/dashboard/medic/mensajes',
 		label: 'Mensajes',
 		icon: MessageCircle,
-		comingSoon: true,
 	},
 	{
 		href: '/dashboard/medic/tareas',
 		label: 'Tareas',
 		icon: CheckSquare,
-		comingSoon: true,
 	},
 	{
-		href: '/dashboard/medic/configuracion',
 		label: 'Configuración',
 		icon: Settings,
+		submenu: [
+			{ href: '/dashboard/medic/configuracion', label: 'Perfil Profesional' },
+			{ href: '/dashboard/medic/configuracion/consultorio', label: 'Consultorio', showOnlyForOrgType: 'CONSULTORIO' },
+		],
 	},
 	{
 		href: '/dashboard/medic/reportes',
 		label: 'Reportes',
 		icon: FileText,
-		comingSoon: true,
 	},
 ];
 
 export default function MedicSidebar() {
 	const pathname = usePathname() ?? '/';
 	const [openMenus, setOpenMenus] = useState<string[]>([]);
+	const [medicConfig, setMedicConfig] = useState<MedicConfig | null>(null);
+	const [loadingConfig, setLoadingConfig] = useState(true);
+
+	useEffect(() => {
+		loadMedicConfig();
+	}, []);
+
+	const loadMedicConfig = async () => {
+		try {
+			const res = await fetch('/api/medic/config', {
+				credentials: 'include',
+			});
+
+			if (res.ok) {
+				const data = await res.json();
+				setMedicConfig(data);
+			}
+		} catch (err) {
+			console.error('Error cargando configuración del médico:', err);
+		} finally {
+			setLoadingConfig(false);
+		}
+	};
 
 	const toggleMenu = (label: string) => {
 		setOpenMenus((prev) => (prev.includes(label) ? prev.filter((m) => m !== label) : [...prev, label]));
@@ -102,8 +134,58 @@ export default function MedicSidebar() {
 
 		// Submenu
 		if (link.submenu) {
+			// Filtrar submenu según el tipo de organización
+			const visibleSubmenu = link.submenu.filter((sub) => {
+				if (sub.showOnlyForOrgType) {
+					// Si aún está cargando, no mostrar items condicionales
+					if (loadingConfig) return false;
+					return medicConfig?.organizationType === sub.showOnlyForOrgType;
+				}
+				return true;
+			});
+
+			// Si no hay items visibles en el submenu, no mostrar el menú
+			if (visibleSubmenu.length === 0) {
+				return null;
+			}
+
+			// Si solo hay un item visible, mostrar como link directo en lugar de submenu
+			if (visibleSubmenu.length === 1) {
+				const singleItem = visibleSubmenu[0];
+				const singleActive = isPathActive(singleItem.href);
+				const singleComing = !!singleItem.comingSoon;
+
+				if (singleComing) {
+					return (
+						<li key={link.label}>
+							<div
+								aria-disabled="true"
+								className={`group flex items-center gap-3 w-full px-3 py-2 rounded-lg text-sm font-medium cursor-not-allowed opacity-80
+								${singleActive ? 'bg-teal-100 text-teal-700' : 'text-slate-400 bg-blue-50'}`}>
+								{link.icon && <link.icon className="w-5 h-5" />}
+								<span>{singleItem.label}</span>
+								<span className="ml-2 inline-flex items-center px-2 py-0.5 text-[11px] font-medium rounded-full bg-slate-100 text-slate-600 border border-slate-200">Próximamente</span>
+							</div>
+						</li>
+					);
+				}
+
+				return (
+					<li key={link.label}>
+						<Link
+							href={singleItem.href!}
+							aria-current={singleActive ? 'page' : undefined}
+							className={`group flex items-center gap-3 w-full px-3 py-2 rounded-lg text-sm font-medium transition
+							${singleActive ? 'bg-gradient-to-r from-teal-600 to-cyan-600 text-white shadow-md' : 'text-slate-700 hover:bg-blue-50'}`}>
+							{link.icon && <link.icon className={`w-5 h-5 ${singleActive ? 'text-white' : 'text-teal-600'}`} />}
+							{singleItem.label}
+						</Link>
+					</li>
+				);
+			}
+
 			// Abrir si está en openMenus o si alguno de los hijos es la ruta actual (exacta)
-			const childActive = link.submenu.some((l) => isPathActive(l.href));
+			const childActive = visibleSubmenu.some((l) => isPathActive(l.href));
 			const isOpen = openMenus.includes(link.label) || childActive;
 
 			return (
@@ -120,7 +202,7 @@ export default function MedicSidebar() {
 					</button>
 
 					<ul className={`pl-8 mt-1 flex flex-col gap-1 transition-[max-height] duration-200 overflow-hidden ${isOpen ? 'max-h-60' : 'max-h-0'}`}>
-						{link.submenu.map((sub) => {
+						{visibleSubmenu.map((sub) => {
 							const subActive = isPathActive(sub.href);
 							const subComing = !!sub.comingSoon;
 

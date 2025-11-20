@@ -1,5 +1,6 @@
 // app/api/facturacion/route.ts
 import { NextRequest, NextResponse } from 'next/server';
+import { createNotification } from '@/lib/notifications';
 import createSupabaseServerClient from '@/app/adapters/server';
 
 export async function POST(req: NextRequest) {
@@ -158,10 +159,67 @@ export async function POST(req: NextRequest) {
 			return NextResponse.json({ error: insertErr.message || 'Error al crear facturación' }, { status: 500 });
 		}
 
+		// Crear notificación y enviar email al paciente
+		try {
+			// Obtener información del paciente
+			const { data: patientData } = await supabase
+				.from('Patient')
+				.select('firstName, lastName')
+				.eq('id', patient_id)
+				.maybeSingle();
+
+			const patientName = patientData ? `${patientData.firstName} ${patientData.lastName}` : undefined;
+
+			// Obtener userId del paciente
+			let patientUserId: string | null = null;
+			try {
+				const { data: patientUser } = await supabase
+					.from('User')
+					.select('id')
+					.eq('patientProfileId', patient_id)
+					.maybeSingle();
+				patientUserId = patientUser?.id || null;
+			} catch {
+				// Ignorar error
+			}
+
+			const invoiceUrl = `${process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_VERCEL_URL ? `https://${process.env.NEXT_PUBLIC_VERCEL_URL}` : 'http://localhost:3000'}/dashboard/patient/pagos`;
+			const dueDate = insertData.fecha_pago 
+				? new Date(insertData.fecha_pago).toLocaleDateString('es-ES')
+				: undefined;
+
+			if (patientUserId) {
+				await createNotification({
+					userId: patientUserId,
+					organizationId: organizationIdToUse,
+					type: 'INVOICE',
+					title: 'Nueva Factura Disponible',
+					message: `Se ha generado una nueva factura por un monto de ${total} ${currency}.`,
+					payload: {
+						invoiceId: insertData.id,
+						invoice_id: insertData.id,
+						invoiceNumber: insertData.numero_factura || insertData.id,
+						numero_factura: insertData.numero_factura,
+						patient_id,
+						patientName,
+						amount: total.toString(),
+						currency,
+						dueDate,
+						invoiceUrl,
+					},
+					sendEmail: true,
+				});
+			}
+		} catch (notifErr) {
+			console.error('Error creando notificación/email para factura:', notifErr);
+			// No fallar la creación de la factura si la notificación falla
+		}
+
 		return NextResponse.json({ data: insertData }, { status: 201 });
-	} catch (error: any) {
-		console.error('❌ Error POST /facturacion:', error?.message ?? error);
-		return NextResponse.json({ error: error?.message ?? 'Error interno' }, { status: 500 });
+	} catch (error) {
+		console.error('❌ Error POST /facturacion:', error);
+		const errorMessage = error instanceof Error ? error.message : 'Error interno';
+		return NextResponse.json({ error: errorMessage }, { status: 500 });
 	}
 }
 

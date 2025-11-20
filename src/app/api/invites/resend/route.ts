@@ -87,14 +87,45 @@ async function findDbUserBySupabaseUser(supabaseUser: any) {
 	return dbUser;
 }
 
-/** Mock/placeholder del envío de correo — reemplaza por tu implementación real */
+/** Envía correo usando Resend */
 async function sendInviteEmail(opts: { to: string; token: string; organizationId: string; inviteBaseUrl?: string | undefined }) {
-	const base = opts.inviteBaseUrl ?? process.env.NEXT_PUBLIC_INVITE_BASE_URL ?? '';
-	const origin = base ? base.replace(/\/$/, '') : process.env.NEXT_PUBLIC_VERCEL_URL ? `https://${process.env.NEXT_PUBLIC_VERCEL_URL}` : '';
-	const url = `${origin}/invite/${opts.token}`;
-	console.log(`[sendInviteEmail] enviar a ${opts.to} link=${url}`);
-	// Implementa tu envío real (SendGrid, SES, nodemailer, etc.) aquí.
-	return true;
+	try {
+		const { sendNotificationEmail } = await import('@/lib/email');
+		const base = opts.inviteBaseUrl ?? process.env.NEXT_PUBLIC_INVITE_BASE_URL ?? '';
+		const origin = base ? base.replace(/\/$/, '') : process.env.NEXT_PUBLIC_VERCEL_URL ? `https://${process.env.NEXT_PUBLIC_VERCEL_URL}` : '';
+		const url = `${origin}/invite/${opts.token}`;
+
+		// Obtener nombre de la organización y rol
+		let organizationName: string | undefined;
+		let role: string | undefined;
+		try {
+			const org = await prisma.organization.findUnique({ 
+				where: { id: opts.organizationId },
+				select: { name: true }
+			});
+			organizationName = org?.name || undefined;
+
+			const invite = await prisma.invite.findUnique({
+				where: { token: opts.token },
+				select: { role: true }
+			});
+			role = invite?.role?.toString() || undefined;
+		} catch {
+			// Ignorar error
+		}
+
+		const result = await sendNotificationEmail('INVITE', opts.to, {
+			inviteUrl: url,
+			organizationName,
+			role,
+		});
+
+		return result.success;
+	} catch (err) {
+		const errorMessage = err instanceof Error ? err.message : 'Unknown error';
+		console.error('[sendInviteEmail] Exception:', errorMessage);
+		return false;
+	}
 }
 
 export async function POST(request: Request) {

@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { Receipt, Calendar, CreditCard, Download, CheckCircle, XCircle, Clock, DollarSign } from 'lucide-react';
+import PaymentModal from '@/components/patient/PaymentModal';
 
 type Factura = {
 	id: string;
@@ -32,6 +33,9 @@ export default function PagosPage() {
 	const [loading, setLoading] = useState(true);
 	const [facturas, setFacturas] = useState<Factura[]>([]);
 	const [filter, setFilter] = useState<'all' | 'pendiente' | 'pagada'>('pendiente');
+	const [processingPayment, setProcessingPayment] = useState<string | null>(null);
+	const [paymentModalOpen, setPaymentModalOpen] = useState(false);
+	const [selectedFactura, setSelectedFactura] = useState<Factura | null>(null);
 
 	useEffect(() => {
 		loadFacturas();
@@ -54,6 +58,15 @@ export default function PagosPage() {
 		} finally {
 			setLoading(false);
 		}
+	};
+
+	const handlePayment = (factura: Factura) => {
+		setSelectedFactura(factura);
+		setPaymentModalOpen(true);
+	};
+
+	const handlePaymentSuccess = () => {
+		loadFacturas();
 	};
 
 	const formatCurrency = (amount: number, currency: string) => {
@@ -250,9 +263,13 @@ export default function PagosPage() {
 
 									<div className="flex flex-col gap-2">
 										{factura.estado_pago === 'pendiente' && (
-											<button className="px-4 py-2 bg-green-600 text-white rounded-lg font-medium hover:bg-green-700 transition-colors flex items-center gap-2">
+											<button
+												onClick={() => handlePayment(factura)}
+												disabled={processingPayment === factura.id}
+												className="px-4 py-2 bg-gradient-to-r from-teal-600 to-cyan-600 text-white rounded-lg font-medium hover:from-teal-700 hover:to-cyan-700 transition-all shadow-md flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+											>
 												<CreditCard className="w-4 h-4" />
-												Pagar
+												{processingPayment === factura.id ? 'Procesando...' : 'Pagar'}
 											</button>
 										)}
 										<button className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg font-medium hover:bg-gray-200 transition-colors flex items-center gap-2">
@@ -266,6 +283,17 @@ export default function PagosPage() {
 					</div>
 				)}
 			</div>
+
+			{/* Payment Modal */}
+			<PaymentModal
+				isOpen={paymentModalOpen}
+				onClose={() => {
+					setPaymentModalOpen(false);
+					setSelectedFactura(null);
+				}}
+				factura={selectedFactura}
+				onPaymentSuccess={handlePaymentSuccess}
+			/>
 		</div>
 	);
 }

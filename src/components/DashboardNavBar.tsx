@@ -18,9 +18,44 @@ function initialsFromName(name?: string | null) {
 	return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
 }
 
+/** Obtener URL de perfil según el rol */
+function getProfileUrl(role: string | null): string {
+	switch (role) {
+		case 'PACIENTE':
+			return '/dashboard/patient/configuracion';
+		case 'MEDICO':
+			return '/dashboard/medic/configuracion';
+		case 'ADMIN':
+		case 'CLINICA':
+			return '/dashboard/clinic/profile';
+		case 'FARMACIA':
+			return '/dashboard/pharmacy/profile';
+		default:
+			return '/dashboard';
+	}
+}
+
+/** Obtener URL de configuración según el rol */
+function getSettingsUrl(role: string | null): string {
+	switch (role) {
+		case 'PACIENTE':
+			return '/dashboard/patient/configuracion';
+		case 'MEDICO':
+			return '/dashboard/medic/configuracion';
+		case 'ADMIN':
+		case 'CLINICA':
+			return '/dashboard/clinic/settings';
+		case 'FARMACIA':
+			return '/dashboard/pharmacy/settings';
+		default:
+			return '/dashboard';
+	}
+}
+
 export default function DashboardNavBar(): React.ReactElement {
 	const router = useRouter();
 	const [user, setUser] = useState<any | null>(null);
+	const [userRole, setUserRole] = useState<string | null>(null);
 	const [displayName, setDisplayName] = useState<string>('Panel');
 	const [loading, setLoading] = useState<boolean>(true);
 	const [signOutLoading, setSignOutLoading] = useState<boolean>(false);
@@ -45,6 +80,21 @@ export default function DashboardNavBar(): React.ReactElement {
 					setUser(u);
 					const fullName = (u.user_metadata?.fullName ?? `${u.user_metadata?.firstName ?? ''} ${u.user_metadata?.lastName ?? ''}`).trim() || 'Panel';
 					setDisplayName(fullName);
+
+					// Obtener rol del usuario desde la base de datos
+					try {
+						const { data: userData } = await supabaseClient
+							.from('User')
+							.select('role')
+							.eq('authId', u.id)
+							.maybeSingle();
+						
+						if (userData?.role) {
+							setUserRole(userData.role);
+						}
+					} catch (err) {
+						console.error('Error obteniendo rol:', err);
+					}
 				}
 			} catch (err) {
 				console.error('Error inicializando usuario:', err);
@@ -138,10 +188,18 @@ export default function DashboardNavBar(): React.ReactElement {
 							</button>
 
 							<div role="menu" aria-hidden={!menuOpen} className={`absolute right-0 mt-2 w-56 rounded-lg bg-white border border-slate-100 shadow-lg py-2 transition-all duration-150 transform origin-top-right ${menuOpen ? 'opacity-100 scale-100' : 'opacity-0 pointer-events-none scale-95'}`}>
-								<Link href="/dashboard/clinic/profile" className="flex items-center gap-2 px-4 py-2 text-sm text-slate-700 hover:bg-slate-50">
+								<Link 
+									href={getProfileUrl(userRole)} 
+									className="flex items-center gap-2 px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 transition-colors"
+									onClick={() => setMenuOpen(false)}
+								>
 									<UserIcon className="w-4 h-4 text-slate-500" /> Perfil
 								</Link>
-								<Link href="/dashboard/clinic/settings" className="flex items-center gap-2 px-4 py-2 text-sm text-slate-700 hover:bg-slate-50">
+								<Link 
+									href={getSettingsUrl(userRole)} 
+									className="flex items-center gap-2 px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 transition-colors"
+									onClick={() => setMenuOpen(false)}
+								>
 									<Settings className="w-4 h-4 text-slate-500" /> Configuración
 								</Link>
 								<div className="border-t border-slate-100 my-1" />

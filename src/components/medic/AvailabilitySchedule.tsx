@@ -1,7 +1,8 @@
 'use client';
 
-import { useState } from 'react';
-import { Clock, Calendar, Plus, X, Check } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Clock, Calendar, CheckCircle2, AlertCircle, Save } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 import type { MedicConfig } from '@/types/medic-config';
 
 type TimeSlot = {
@@ -31,12 +32,25 @@ export default function AvailabilitySchedule({
 	const [loading, setLoading] = useState(false);
 	const [success, setSuccess] = useState<string | null>(null);
 	const [error, setError] = useState<string | null>(null);
+	const [hasChanges, setHasChanges] = useState(false);
 
+	// Cargar disponibilidad inicial desde la configuración
 	const initialAvailability = config.config.availability || {};
-	const [schedule, setSchedule] = useState<Record<string, TimeSlot[]>>(() => {
+	
+	// Función para parsear la disponibilidad inicial
+	const parseInitialSchedule = (): Record<string, TimeSlot[]> => {
 		const defaultSchedule: Record<string, TimeSlot[]> = {};
 		DAYS.forEach(day => {
-			const dayValue = initialAvailability[day.value];
+			// Intentar obtener desde availability.schedule[day]
+			const scheduleObj = initialAvailability.schedule;
+			let dayValue: any = null;
+			
+			if (scheduleObj && typeof scheduleObj === 'object' && !Array.isArray(scheduleObj)) {
+				dayValue = scheduleObj[day.value];
+			} else if (initialAvailability[day.value]) {
+				dayValue = initialAvailability[day.value];
+			}
+			
 			if (dayValue && Array.isArray(dayValue)) {
 				// Validar que los elementos sean TimeSlot válidos
 				const validSlots = dayValue.filter((slot): slot is TimeSlot => 
@@ -55,7 +69,26 @@ export default function AvailabilitySchedule({
 			}
 		});
 		return defaultSchedule;
-	});
+	};
+
+	const [schedule, setSchedule] = useState<Record<string, TimeSlot[]>>(parseInitialSchedule);
+	const [savedSchedule, setSavedSchedule] = useState<Record<string, TimeSlot[]>>(parseInitialSchedule);
+
+	// Sincronizar cuando cambie la configuración (después de recargar)
+	useEffect(() => {
+		const newSchedule = parseInitialSchedule();
+		setSchedule(newSchedule);
+		setSavedSchedule(newSchedule);
+		setHasChanges(false);
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [config.config.availability]);
+
+	// Detectar cambios
+	useEffect(() => {
+		const currentStr = JSON.stringify(schedule);
+		const savedStr = JSON.stringify(savedSchedule);
+		setHasChanges(currentStr !== savedStr);
+	}, [schedule, savedSchedule]);
 
 	const [appointmentDuration, setAppointmentDuration] = useState(() => {
 		const duration = initialAvailability.appointmentDuration;
@@ -66,27 +99,17 @@ export default function AvailabilitySchedule({
 		return typeof breakVal === 'number' ? breakVal : 15;
 	});
 
-	const addTimeSlot = (day: string) => {
-		setSchedule(prev => ({
-			...prev,
-			[day]: [...(prev[day] || []), { day, startTime: '09:00', endTime: '17:00', enabled: true }],
-		}));
-	};
-
-	const removeTimeSlot = (day: string, index: number) => {
-		setSchedule(prev => ({
-			...prev,
-			[day]: prev[day].filter((_, i) => i !== index),
-		}));
-	};
-
-	const updateTimeSlot = (day: string, index: number, field: keyof TimeSlot, value: string | boolean) => {
-		setSchedule(prev => ({
-			...prev,
-			[day]: prev[day].map((slot, i) =>
-				i === index ? { ...slot, [field]: value } : slot
-			),
-		}));
+	// Actualizar el horario único de un día
+	const updateDaySchedule = (day: string, field: 'startTime' | 'endTime' | 'enabled', value: string | boolean) => {
+		setSchedule(prev => {
+			const currentDay = prev[day] || [{ day, startTime: '08:00', endTime: '17:00', enabled: false }];
+			const currentSlot = currentDay[0] || { day, startTime: '08:00', endTime: '17:00', enabled: false };
+			
+			return {
+				...prev,
+				[day]: [{ ...currentSlot, [field]: value }],
+			};
+		});
 	};
 
 	const handleSubmit = async (e: React.FormEvent) => {
@@ -114,9 +137,15 @@ export default function AvailabilitySchedule({
 				throw new Error(data.error || 'Error al guardar horarios');
 			}
 
-			setSuccess('Horarios guardados correctamente');
+			// Guardar el estado actual como guardado
+			setSavedSchedule(JSON.parse(JSON.stringify(schedule)));
+			setHasChanges(false);
+			
+			setSuccess('✅ Horarios guardados correctamente');
 			onUpdate();
-			setTimeout(() => setSuccess(null), 3000);
+			
+			// Mantener el mensaje visible por más tiempo
+			setTimeout(() => setSuccess(null), 5000);
 		} catch (err) {
 			const errorMessage = err instanceof Error ? err.message : 'Error al guardar los horarios';
 			setError(errorMessage);
@@ -125,37 +154,106 @@ export default function AvailabilitySchedule({
 		}
 	};
 
+	// Verificar si hay horarios guardados
+	const hasSavedSchedule = Object.values(savedSchedule).some(daySlots => 
+		daySlots?.[0]?.enabled === true
+	);
+
 	return (
 		<form onSubmit={handleSubmit} className="space-y-6">
 			{/* Mensajes de estado */}
-			{error && (
-				<div className="p-4 bg-red-50 border border-red-200 rounded-lg flex items-center gap-2">
-					<X className="w-5 h-5 text-red-600" />
-					<span className="text-red-700">{error}</span>
+			<AnimatePresence>
+				{error && (
+					<motion.div
+						initial={{ opacity: 0, y: -10 }}
+						animate={{ opacity: 1, y: 0 }}
+						exit={{ opacity: 0, y: -10 }}
+						className="p-4 bg-red-50 border-2 border-red-300 rounded-xl flex items-center gap-3 shadow-sm"
+					>
+						<AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0" />
+						<span className="text-red-700 font-medium">{error}</span>
+					</motion.div>
+				)}
+				{success && (
+					<motion.div
+						initial={{ opacity: 0, y: -10 }}
+						animate={{ opacity: 1, y: 0 }}
+						exit={{ opacity: 0, y: -10 }}
+						className="p-4 bg-green-50 border-2 border-green-300 rounded-xl flex items-center gap-3 shadow-sm"
+					>
+						<CheckCircle2 className="w-5 h-5 text-green-600 flex-shrink-0" />
+						<span className="text-green-700 font-medium">{success}</span>
+					</motion.div>
+				)}
+			</AnimatePresence>
+
+			{/* Indicador de cambios no guardados */}
+			{hasChanges && (
+				<motion.div
+					initial={{ opacity: 0 }}
+					animate={{ opacity: 1 }}
+					className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg flex items-center gap-2"
+				>
+					<AlertCircle className="w-4 h-4 text-yellow-600" />
+					<span className="text-sm text-yellow-800 font-medium">
+						Tienes cambios sin guardar
+					</span>
+				</motion.div>
+			)}
+
+			{/* Resumen de horarios guardados */}
+			{hasSavedSchedule && (
+				<div className="bg-gradient-to-r from-teal-50 to-cyan-50 border border-teal-200 rounded-xl p-6">
+					<div className="flex items-center gap-3 mb-4">
+						<CheckCircle2 className="w-6 h-6 text-teal-600" />
+						<h3 className="text-lg font-semibold text-slate-900">Horarios Guardados Actualmente</h3>
+					</div>
+					<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+						{DAYS.map((day) => {
+							const daySchedule = savedSchedule[day.value]?.[0];
+							if (!daySchedule?.enabled) return null;
+							
+							return (
+								<div key={day.value} className="bg-white rounded-lg p-3 border border-teal-200">
+									<div className="font-semibold text-slate-900 mb-2">{day.label}</div>
+									<div className="text-sm text-slate-600 flex items-center gap-2">
+										<Clock className="w-3 h-3 text-teal-600" />
+										<span>{daySchedule.startTime} - {daySchedule.endTime}</span>
+									</div>
+								</div>
+							);
+						})}
+					</div>
 				</div>
 			)}
-			{success && (
-				<div className="p-4 bg-green-50 border border-green-200 rounded-lg flex items-center gap-2">
-					<Check className="w-5 h-5 text-green-600" />
-					<span className="text-green-700">{success}</span>
+			
+			{/* Mensaje cuando no hay horarios guardados */}
+			{!hasSavedSchedule && (
+				<div className="bg-blue-50 border border-blue-200 rounded-xl p-6">
+					<div className="flex items-center gap-3">
+						<AlertCircle className="w-5 h-5 text-blue-600" />
+						<p className="text-sm text-slate-700">
+							No hay horarios guardados. Configura tus horarios de atención a continuación.
+						</p>
+					</div>
 				</div>
 			)}
 
 			{/* Configuración general */}
-			<div className="bg-gray-50 rounded-xl p-6">
-				<h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-					<Clock className="w-5 h-5 text-indigo-600" />
+			<div className="bg-white border border-blue-100 rounded-xl p-6 shadow-sm">
+				<h3 className="text-lg font-semibold text-slate-900 mb-4 flex items-center gap-2">
+					<Clock className="w-5 h-5 text-teal-600" />
 					Configuración General
 				</h3>
 				<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
 					<div>
-						<label className="block text-sm font-medium text-gray-700 mb-2">
+						<label className="block text-sm font-medium text-slate-700 mb-2">
 							Duración de Cita (minutos)
 						</label>
 						<select
 							value={appointmentDuration}
 							onChange={(e) => setAppointmentDuration(Number(e.target.value))}
-							className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+							className="w-full px-4 py-2 border border-blue-200 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-transparent bg-white text-slate-900"
 						>
 							<option value={15}>15 minutos</option>
 							<option value={30}>30 minutos</option>
@@ -166,13 +264,13 @@ export default function AvailabilitySchedule({
 						</select>
 					</div>
 					<div>
-						<label className="block text-sm font-medium text-gray-700 mb-2">
+						<label className="block text-sm font-medium text-slate-700 mb-2">
 							Tiempo entre Citas (minutos)
 						</label>
 						<select
 							value={breakTime}
 							onChange={(e) => setBreakTime(Number(e.target.value))}
-							className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+							className="w-full px-4 py-2 border border-blue-200 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-transparent bg-white text-slate-900"
 						>
 							<option value={0}>Sin pausa</option>
 							<option value={5}>5 minutos</option>
@@ -184,105 +282,169 @@ export default function AvailabilitySchedule({
 				</div>
 			</div>
 
-			{/* Horarios por día */}
-			<div className="bg-gray-50 rounded-xl p-6">
-				<h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-					<Calendar className="w-5 h-5 text-indigo-600" />
-					Horarios de Atención
-				</h3>
-				<div className="space-y-4">
-					{DAYS.map((day) => (
-						<div key={day.value} className="bg-white rounded-lg border border-gray-200 p-4">
-							<div className="flex items-center justify-between mb-3">
-								<label className="flex items-center gap-2 cursor-pointer">
-									<input
-										type="checkbox"
-										checked={schedule[day.value]?.some(s => s.enabled) || false}
-										onChange={(e) => {
-											if (e.target.checked && (!schedule[day.value] || schedule[day.value].length === 0)) {
-												setSchedule(prev => ({
-													...prev,
-													[day.value]: [{ day: day.value, startTime: '09:00', endTime: '17:00', enabled: true }],
-												}));
-											} else if (!e.target.checked) {
-												setSchedule(prev => ({
-													...prev,
-													[day.value]: (prev[day.value] || []).map(s => ({ ...s, enabled: false })),
-												}));
-											}
-										}}
-										className="w-4 h-4 text-indigo-600 rounded focus:ring-indigo-500"
-									/>
-									<span className="font-semibold text-gray-900">{day.label}</span>
-								</label>
-								<button
-									type="button"
-									onClick={() => addTimeSlot(day.value)}
-									className="p-1.5 text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
-									title="Agregar horario"
+			{/* Resumen de días activos */}
+			{hasSavedSchedule && (
+				<div className="bg-gradient-to-r from-teal-50 to-cyan-50 border border-teal-200 rounded-xl p-4">
+					<div className="flex items-center gap-3 mb-3">
+						<CheckCircle2 className="w-5 h-5 text-teal-600" />
+						<h4 className="text-sm font-semibold text-slate-900">Días de Trabajo Configurados</h4>
+					</div>
+					<div className="flex flex-wrap gap-2">
+						{DAYS.map((day) => {
+							const daySchedule = savedSchedule[day.value]?.[0];
+							const isActive = daySchedule?.enabled || false;
+							return (
+								<span
+									key={day.value}
+									className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+										isActive
+											? 'bg-teal-600 text-white shadow-sm'
+											: 'bg-slate-200 text-slate-500'
+									}`}
+									title={isActive && daySchedule ? `${daySchedule.startTime} - ${daySchedule.endTime}` : undefined}
 								>
-									<Plus className="w-4 h-4" />
-								</button>
-							</div>
+									{day.label}
+									{isActive && daySchedule && (
+										<span className="ml-2 text-xs opacity-90">
+											({daySchedule.startTime} - {daySchedule.endTime})
+										</span>
+									)}
+								</span>
+							);
+						})}
+					</div>
+					<p className="text-xs text-slate-600 mt-3">
+						Los pacientes solo podrán agendar citas en los días que tengas configurados y habilitados.
+					</p>
+				</div>
+			)}
 
-							{schedule[day.value] && schedule[day.value].length > 0 && (
-								<div className="space-y-2">
-									{schedule[day.value].map((slot, idx) => (
-										<div key={idx} className="flex items-center gap-2 p-3 bg-gray-50 rounded-lg">
-											<input
-												type="checkbox"
-												checked={slot.enabled}
-												onChange={(e) => updateTimeSlot(day.value, idx, 'enabled', e.target.checked)}
-												className="w-4 h-4 text-indigo-600 rounded focus:ring-indigo-500"
-											/>
-											<input
-												type="time"
-												value={slot.startTime}
-												onChange={(e) => updateTimeSlot(day.value, idx, 'startTime', e.target.value)}
-												disabled={!slot.enabled}
-												className="px-3 py-1.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent disabled:bg-gray-100 disabled:text-gray-500"
-											/>
-											<span className="text-gray-500">-</span>
-											<input
-												type="time"
-												value={slot.endTime}
-												onChange={(e) => updateTimeSlot(day.value, idx, 'endTime', e.target.value)}
-												disabled={!slot.enabled}
-												className="px-3 py-1.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent disabled:bg-gray-100 disabled:text-gray-500"
-											/>
-											{schedule[day.value].length > 1 && (
-												<button
-													type="button"
-													onClick={() => removeTimeSlot(day.value, idx)}
-													className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg transition-colors ml-auto"
-												>
-													<X className="w-4 h-4" />
-												</button>
-											)}
-										</div>
-									))}
+			{/* Horario de atención por día */}
+			<div className="bg-white border border-blue-100 rounded-xl p-6 shadow-sm">
+				<h3 className="text-lg font-semibold text-slate-900 mb-4 flex items-center gap-2">
+					<Calendar className="w-5 h-5 text-teal-600" />
+					Horario de Atención
+					{hasSavedSchedule && (
+						<span className="ml-2 text-sm font-normal text-slate-500">
+							(Define tu jornada laboral para cada día)
+						</span>
+					)}
+				</h3>
+				<p className="text-sm text-slate-600 mb-6">
+					Configura el horario de inicio y fin de tu jornada laboral para cada día. Los horarios disponibles para citas se generarán automáticamente según la duración de cita y tiempo entre citas configurados arriba.
+				</p>
+				<div className="space-y-4">
+					{DAYS.map((day) => {
+						const daySchedule = schedule[day.value]?.[0] || { day: day.value, startTime: '08:00', endTime: '17:00', enabled: false };
+						const savedDaySchedule = savedSchedule[day.value]?.[0] || { day: day.value, startTime: '08:00', endTime: '17:00', enabled: false };
+						const isEnabled = daySchedule.enabled;
+						const isSaved = savedDaySchedule.enabled && 
+							savedDaySchedule.startTime === daySchedule.startTime &&
+							savedDaySchedule.endTime === daySchedule.endTime;
+						
+						return (
+							<div 
+								key={day.value} 
+								className={`bg-white rounded-lg border-2 p-4 transition-colors ${
+									savedDaySchedule.enabled 
+										? 'border-teal-200 bg-teal-50/30' 
+										: 'border-blue-200 bg-blue-50/30'
+								}`}
+							>
+								<div className="flex items-center justify-between mb-3">
+									<label className="flex items-center gap-2 cursor-pointer">
+										<input
+											type="checkbox"
+											checked={isEnabled}
+											onChange={(e) => {
+												updateDaySchedule(day.value, 'enabled', e.target.checked);
+												// Si se habilita y no hay horario configurado, usar valores por defecto
+												if (e.target.checked && (!schedule[day.value] || schedule[day.value].length === 0)) {
+													setSchedule(prev => ({
+														...prev,
+														[day.value]: [{ day: day.value, startTime: '08:00', endTime: '17:00', enabled: true }],
+													}));
+												}
+											}}
+											className="w-4 h-4 text-teal-600 rounded focus:ring-teal-500"
+										/>
+										<span className="font-semibold text-slate-900">{day.label}</span>
+										{savedDaySchedule.enabled && (
+											<span className="ml-2 px-2 py-0.5 bg-teal-100 text-teal-700 text-xs font-medium rounded-full">
+												Guardado
+											</span>
+										)}
+									</label>
 								</div>
-							)}
-						</div>
-					))}
+
+								{isEnabled && (
+									<div className={`flex items-center gap-3 p-4 rounded-lg border transition-colors ${
+										isSaved
+											? 'bg-teal-50 border-teal-200'
+											: 'bg-blue-50 border-blue-200'
+									}`}>
+										<div className="flex items-center gap-2 flex-1">
+											<Clock className="w-4 h-4 text-slate-500" />
+											<span className="text-sm font-medium text-slate-700">Inicio:</span>
+											<input
+												type="time"
+												value={daySchedule.startTime}
+												onChange={(e) => updateDaySchedule(day.value, 'startTime', e.target.value)}
+												className="px-3 py-2 border border-blue-200 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-transparent bg-white text-slate-900 font-medium"
+											/>
+										</div>
+										<div className="flex items-center gap-2 flex-1">
+											<Clock className="w-4 h-4 text-slate-500" />
+											<span className="text-sm font-medium text-slate-700">Fin:</span>
+											<input
+												type="time"
+												value={daySchedule.endTime}
+												onChange={(e) => updateDaySchedule(day.value, 'endTime', e.target.value)}
+												className="px-3 py-2 border border-blue-200 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-transparent bg-white text-slate-900 font-medium"
+											/>
+										</div>
+										{isSaved && (
+											<CheckCircle2 className="w-5 h-5 text-teal-600 flex-shrink-0" title="Horario guardado" />
+										)}
+									</div>
+								)}
+								
+								{!isEnabled && (
+									<div className="px-4 py-3 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-500">
+										Este día no está disponible para atención
+									</div>
+								)}
+							</div>
+						);
+					})}
 				</div>
 			</div>
 
 			{/* Botón de guardar */}
-			<div className="flex justify-end gap-4 pt-6 border-t border-gray-200">
-				<button
-					type="button"
-					onClick={() => window.location.reload()}
-					className="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
-				>
-					Cancelar
-				</button>
+			<div className="flex justify-end gap-4 pt-6 border-t border-blue-100">
+				{hasChanges && (
+					<button
+						type="button"
+						onClick={() => {
+							setSchedule(JSON.parse(JSON.stringify(savedSchedule)));
+							setHasChanges(false);
+						}}
+						className="px-6 py-2 border border-blue-200 text-slate-700 rounded-lg hover:bg-blue-50 transition-colors"
+					>
+						Descartar Cambios
+					</button>
+				)}
 				<button
 					type="submit"
-					disabled={loading}
-					className="px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+					disabled={loading || !hasChanges}
+					className={`px-6 py-2 rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 ${
+						hasChanges
+							? 'bg-gradient-to-r from-teal-600 to-cyan-600 text-white hover:from-teal-700 hover:to-cyan-700 shadow-md'
+							: 'bg-slate-300 text-slate-500 cursor-not-allowed'
+					}`}
 				>
-					{loading ? 'Guardando...' : 'Guardar Horarios'}
+					<Save className="w-4 h-4" />
+					{loading ? 'Guardando...' : hasChanges ? 'Guardar Cambios' : 'Sin cambios'}
 				</button>
 			</div>
 		</form>

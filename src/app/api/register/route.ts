@@ -6,6 +6,7 @@ import { randomUUID } from 'crypto';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import bcrypt from 'bcryptjs';
 import type { Prisma } from '@prisma/client'; // tipos Prisma
+import { createNotification } from '@/lib/notifications';
 
 const SUPABASE_URL = process.env.SUPABASE_URL ?? process.env.NEXT_PUBLIC_SUPABASE_URL ?? '';
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY ?? '';
@@ -326,6 +327,27 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 				// casteo al pasar a prisma.createMany para evitar problemas de typing en compilación
 				await prisma.invite.createMany({ data: invitesData as unknown as any, skipDuplicates: true });
 			}
+		}
+
+		// Enviar email de bienvenida
+		try {
+			const loginUrl = APP_URL ? `${APP_URL}/login` : undefined;
+			await createNotification({
+				userId: txResult.userRecord.id,
+				organizationId: txResult.organizationId,
+				type: 'WELCOME',
+				title: '¡Bienvenido a SyncWave Salud!',
+				message: `Tu cuenta ha sido creada exitosamente. Bienvenido, ${account.fullName || account.email}!`,
+				payload: {
+					userName: account.fullName || account.email,
+					userEmail: account.email,
+					loginUrl,
+				},
+				sendEmail: true,
+			});
+		} catch (emailErr) {
+			// No fallar el registro si el email falla
+			console.error('[Register] Error enviando email de bienvenida:', emailErr);
 		}
 
 		const responsePayload = {

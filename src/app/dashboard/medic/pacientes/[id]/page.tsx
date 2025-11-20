@@ -3,6 +3,9 @@ import { format } from 'date-fns';
 import createSupabaseServerClient from '@/app/adapters/server';
 import Link from 'next/link';
 import { FileText, User, ArrowLeft, Plus } from 'lucide-react';
+import { apiRequireRole } from '@/lib/auth-guards';
+import { cookies } from 'next/headers';
+import PatientHistoryClient from './PatientHistoryClient';
 
 type Props = { params: Promise<{ id?: string }> };
 
@@ -41,7 +44,32 @@ export default async function PatientHistory({ params }: Props) {
 	}
 
 	try {
-		const { supabase } = createSupabaseServerClient();
+		const cookieStore = await cookies();
+		const { supabase } = createSupabaseServerClient(cookieStore);
+
+		// Verificar autenticación y rol
+		const authResult = await apiRequireRole(['MEDICO']);
+		if (authResult.response) {
+			return <ErrorBox message="No autorizado" />;
+		}
+		const doctor = authResult.user!;
+
+		// Verificar acceso médico
+		const accessCheckRes = await fetch(
+			`${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/medical-access/check?patient_id=${id}`,
+			{
+				headers: {
+					Cookie: cookieStore.toString(),
+				},
+			}
+		);
+		let hasFullAccess = false;
+		let hasConsultation = false;
+		if (accessCheckRes.ok) {
+			const accessData = await accessCheckRes.json();
+			hasFullAccess = accessData.hasFullAccess || false;
+			hasConsultation = accessData.hasConsultation || false;
+		}
 
 		// Obtener paciente (campos del schema: firstName, lastName, dob, phone, gender, id)
 		const { data: patient, error: patientError } = await supabase.from('Patient').select('id, firstName, lastName, dob, phone, gender, createdAt').eq('id', id).maybeSingle();
@@ -50,8 +78,19 @@ export default async function PatientHistory({ params }: Props) {
 			return <ErrorBox message={`No se encontró el paciente: ${patientError?.message ?? 'Paciente no encontrado.'}`} />;
 		}
 
-		// Obtener consultas del paciente (incluimos doctor por foreign key doctor_id)
-		const { data: consultations, error: consultError } = await supabase.from('consultation').select('id, chief_complaint, diagnosis, started_at, created_at, doctor:doctor_id(id,name,email)').eq('patient_id', id).order('started_at', { ascending: false });
+		// Obtener consultas del paciente
+		// Si no tiene acceso completo, solo mostrar las consultas del médico actual
+		let consultationsQuery = supabase
+			.from('consultation')
+			.select('id, chief_complaint, diagnosis, started_at, created_at, doctor:doctor_id(id,name,email)')
+			.eq('patient_id', id);
+
+		if (!hasFullAccess) {
+			// Solo consultas del médico actual
+			consultationsQuery = consultationsQuery.eq('doctor_id', doctor.id);
+		}
+
+		const { data: consultations, error: consultError } = await consultationsQuery.order('started_at', { ascending: false });
 
 		// normalizar a array seguro para evitar "possibly null"
 		const consultationsArray: any[] = Array.isArray(consultations) ? consultations : [];
@@ -155,6 +194,12 @@ export default async function PatientHistory({ params }: Props) {
 		// Render normal con consultas
 		return (
 			<PageShell>
+				<PatientHistoryClient
+					patientId={id}
+					patientName={`${patient.firstName} ${patient.lastName}`}
+					hasFullAccess={hasFullAccess}
+					hasConsultation={hasConsultation}
+				/>
 				<div className="space-y-6">
 					{/* Header */}
 					<div className="rounded-2xl overflow-hidden shadow-lg border border-slate-100 dark:border-slate-800">

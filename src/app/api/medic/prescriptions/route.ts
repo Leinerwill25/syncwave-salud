@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import createSupabaseServerClient from '@/app/adapters/server';
+import { createNotification } from '@/lib/notifications';
 
 // ✅ GET — Lista todas las recetas (puede filtrarse por paciente)
 export async function GET(req: Request) {
@@ -152,9 +153,70 @@ export async function POST(req: Request) {
 			return NextResponse.json({ error: fetchError.message }, { status: 500 });
 		}
 
+		// Crear notificación y enviar email al paciente
+		try {
+			// Obtener información del paciente y doctor
+			const [patientRes, doctorRes] = await Promise.all([
+				supabase.from('Patient').select('firstName, lastName').eq('id', body.patient_id).maybeSingle(),
+				supabase.from('User').select('name, organizationId').eq('id', doctor_id).maybeSingle(),
+			]);
+
+			const patientName = patientRes.data ? `${patientRes.data.firstName} ${patientRes.data.lastName}` : undefined;
+			const doctorName = doctorRes.data?.name || undefined;
+			const organizationId = doctorRes.data?.organizationId || null;
+
+			const prescriptionDate = createdPrescription.issued_at 
+				? new Date(createdPrescription.issued_at).toLocaleDateString('es-ES', {
+					weekday: 'long',
+					year: 'numeric',
+					month: 'long',
+					day: 'numeric',
+				})
+				: new Date().toLocaleDateString('es-ES');
+
+			// Obtener userId del paciente (si existe en User table)
+			let patientUserId: string | null = null;
+			try {
+				const { data: patientUser } = await supabase
+					.from('User')
+					.select('id')
+					.eq('patientProfileId', body.patient_id)
+					.maybeSingle();
+				patientUserId = patientUser?.id || null;
+			} catch {
+				// Ignorar error
+			}
+
+			const prescriptionUrl = `${process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_VERCEL_URL ? `https://${process.env.NEXT_PUBLIC_VERCEL_URL}` : 'http://localhost:3000'}/dashboard/patient/recetas`;
+
+			if (patientUserId) {
+				await createNotification({
+					userId: patientUserId,
+					organizationId,
+					type: 'PRESCRIPTION',
+					title: 'Nueva Receta Médica',
+					message: `El Dr./Dra. ${doctorName || 'tu médico'} ha emitido una nueva receta médica para ti.`,
+					payload: {
+						prescriptionId: prescription.id,
+						prescription_id: prescription.id,
+						patient_id: body.patient_id,
+						patientName,
+						doctorName,
+						prescriptionDate,
+						prescriptionUrl,
+					},
+					sendEmail: true,
+				});
+			}
+		} catch (notifErr) {
+			console.error('❌ Error creando notificación/email para receta:', notifErr);
+			// No fallar la creación de la receta si la notificación falla
+		}
+
 		return NextResponse.json({ prescription: createdPrescription }, { status: 201 });
-	} catch (err: any) {
+	} catch (err) {
 		console.error('❌ Error inesperado en POST /prescriptions:', err);
-		return NextResponse.json({ error: err.message }, { status: 500 });
+		const errorMessage = err instanceof Error ? err.message : 'Error desconocido';
+		return NextResponse.json({ error: errorMessage }, { status: 500 });
 	}
 }

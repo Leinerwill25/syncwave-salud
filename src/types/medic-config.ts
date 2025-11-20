@@ -67,6 +67,7 @@ export interface MedicConfigData {
 export interface MedicConfig {
 	user: MedicUser;
 	isAffiliated: boolean;
+	organizationType: string | null; // 'CLINICA', 'CONSULTORIO', 'HOSPITAL', etc.
 	clinicProfile: ClinicProfile | null;
 	config: MedicConfigData;
 }

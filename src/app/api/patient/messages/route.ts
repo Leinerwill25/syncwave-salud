@@ -45,12 +45,14 @@ export async function GET(request: Request) {
 						sender:User!fk_message_sender (
 							id,
 							name,
-							email
+							email,
+							role
 						),
 						recipient:User!fk_message_recipient (
 							id,
 							name,
-							email
+							email,
+							role
 						)
 					)
 				`)
@@ -61,6 +63,57 @@ export async function GET(request: Request) {
 				console.error('[Patient Messages API] Error obteniendo conversaciones:', convError);
 			} else {
 				conversations = convs || [];
+				
+				// Enriquecer conversaciones con información del médico
+				for (const conv of conversations) {
+					const messages = conv.messages || [];
+					const patientUserId = patient.userId;
+					
+					// Identificar el ID del doctor en la conversación
+					let doctorUserId: string | null = null;
+					for (const msg of messages) {
+						// Si el sender no es el paciente, el sender es el doctor
+						if (msg.sender_id && msg.sender_id !== patientUserId) {
+							doctorUserId = msg.sender_id;
+							break;
+						}
+						// Si el sender es el paciente, el recipient es el doctor
+						if (msg.sender_id === patientUserId && msg.recipient_user_id) {
+							doctorUserId = msg.recipient_user_id;
+							break;
+						}
+					}
+					
+					// Obtener información del médico si existe
+					if (doctorUserId) {
+						const { data: doctorUser } = await supabase
+							.from('User')
+							.select(`
+								id,
+								name,
+								email,
+								medic_profile:medic_profile!fk_medic_profile_doctor (
+									specialty,
+									private_specialty,
+									photo_url
+								)
+							`)
+							.eq('id', doctorUserId)
+							.eq('role', 'MEDICO')
+							.maybeSingle();
+						
+						if (doctorUser) {
+							// Agregar información del doctor a la conversación
+							conv.doctorInfo = {
+								id: doctorUser.id,
+								name: doctorUser.name,
+								email: doctorUser.email,
+								specialty: doctorUser.medic_profile?.specialty || doctorUser.medic_profile?.private_specialty || null,
+								photo: doctorUser.medic_profile?.photo_url || null,
+							};
+						}
+					}
+				}
 			}
 		}
 

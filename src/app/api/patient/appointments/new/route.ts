@@ -3,6 +3,7 @@ import { NextResponse } from 'next/server';
 import { getAuthenticatedPatient } from '@/lib/patient-auth';
 import { createSupabaseServerClient } from '@/app/adapters/server';
 import { cookies } from 'next/headers';
+import { createNotification } from '@/lib/notifications';
 
 export async function POST(request: Request) {
 	try {
@@ -15,7 +16,7 @@ export async function POST(request: Request) {
 		const { supabase } = createSupabaseServerClient(cookieStore);
 
 		const body = await request.json();
-		const { doctor_id, organization_id, scheduled_at, duration_minutes, reason, location } = body;
+		const { doctor_id, organization_id, scheduled_at, duration_minutes, reason, location, selected_service } = body;
 
 		if (!scheduled_at) {
 			return NextResponse.json({ error: 'scheduled_at es requerido' }, { status: 400 });
@@ -70,28 +71,54 @@ export async function POST(request: Request) {
 			return NextResponse.json({ error: 'Error al crear la cita', detail: appointmentError.message }, { status: 500 });
 		}
 
-		// Crear notificación para el médico si existe
+		// Crear notificación y enviar email al médico si existe
 		if (doctor_id) {
-			const { error: notifError } = await supabase
-				.from('Notification')
-				.insert({
-					userId: doctor_id,
-					organizationId: organization_id || null,
-					type: 'APPOINTMENT_REQUEST',
-					title: 'Nueva Cita Solicitada',
-					message: `El paciente ${patient.patient.firstName} ${patient.patient.lastName} ha solicitado una cita para el ${appointmentDate.toLocaleDateString('es-ES', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' })}`,
-					payload: {
-						appointment_id: appointment.id,
-						patient_id: patient.patientId,
-						scheduled_at: scheduled_at,
-					},
-					read: false,
-				});
-
-			if (notifError) {
-				console.error('[New Appointment API] Error creando notificación:', notifError);
-				// No fallar la creación de la cita si la notificación falla
+			// Obtener información del doctor para el email
+			let doctorName: string | undefined;
+			try {
+				const { data: doctor } = await supabase
+					.from('User')
+					.select('name')
+					.eq('id', doctor_id)
+					.maybeSingle();
+				doctorName = doctor?.name || undefined;
+			} catch {
+				// Ignorar error
 			}
+
+			const formattedDate = appointmentDate.toLocaleDateString('es-ES', {
+				weekday: 'long',
+				year: 'numeric',
+				month: 'long',
+				day: 'numeric',
+				hour: '2-digit',
+				minute: '2-digit',
+			});
+
+			const appointmentUrl = `${process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_VERCEL_URL ? `https://${process.env.NEXT_PUBLIC_VERCEL_URL}` : 'http://localhost:3000'}/dashboard/medic/consultas/${appointment.id}`;
+
+			await createNotification({
+				userId: doctor_id,
+				organizationId: organization_id || null,
+				type: 'APPOINTMENT_REQUEST',
+				title: 'Nueva Cita Solicitada',
+				message: `El paciente ${patient.patient.firstName} ${patient.patient.lastName} ha solicitado una cita para el ${formattedDate}${selected_service ? ` - Servicio: ${selected_service.name} (${selected_service.price} ${selected_service.currency})` : ''}`,
+				payload: {
+					appointmentId: appointment.id,
+					appointment_id: appointment.id,
+					patient_id: patient.patientId,
+					patientName: `${patient.patient.firstName} ${patient.patient.lastName}`,
+					doctorName: doctorName,
+					scheduled_at: scheduled_at,
+					scheduledAt: formattedDate,
+					reason: reason || null,
+					location: location || null,
+					selected_service: selected_service || null,
+					appointmentUrl,
+					isForDoctor: true,
+				},
+				sendEmail: true,
+			});
 		}
 
 		return NextResponse.json({
@@ -99,9 +126,10 @@ export async function POST(request: Request) {
 			appointment,
 			message: 'Cita creada correctamente. El médico recibirá una notificación.',
 		});
-	} catch (err: any) {
+	} catch (err) {
 		console.error('[New Appointment API] Error:', err);
-		return NextResponse.json({ error: 'Error interno', detail: err.message }, { status: 500 });
+		const errorMessage = err instanceof Error ? err.message : 'Error interno';
+		return NextResponse.json({ error: 'Error interno', detail: errorMessage }, { status: 500 });
 	}
 }
 

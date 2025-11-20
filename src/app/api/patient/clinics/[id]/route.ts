@@ -68,7 +68,8 @@ export async function GET(
 				medic_profile:medic_profile!fk_medic_profile_doctor (
 					specialty,
 					private_specialty,
-					photo_url
+					photo_url,
+					services
 				)
 			`)
 			.eq('organizationId', clinic.organization_id)
@@ -78,10 +79,38 @@ export async function GET(
 		const specialties = parseSpecialties(clinic.specialties);
 		const openingHours = parseOpeningHours(clinic.opening_hours);
 
+		// Parsear location si existe
+		let location = null;
+		if (clinic.location) {
+			try {
+				location = typeof clinic.location === 'string' 
+					? JSON.parse(clinic.location) 
+					: clinic.location;
+			} catch {
+				location = null;
+			}
+		}
+
+		// Parsear photos si existe
+		let photos: string[] = [];
+		if (clinic.photos) {
+			try {
+				photos = Array.isArray(clinic.photos)
+					? clinic.photos
+					: typeof clinic.photos === 'string'
+					? JSON.parse(clinic.photos)
+					: [];
+			} catch {
+				photos = [];
+			}
+		}
+
 		return NextResponse.json({
 			...clinic,
 			specialties,
 			opening_hours: openingHours,
+			location,
+			photos,
 			doctors: doctors || [],
 		});
 	} catch (err: any) {

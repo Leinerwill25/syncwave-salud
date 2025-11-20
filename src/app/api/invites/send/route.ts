@@ -113,42 +113,54 @@ async function resolveDbUserFromToken(token: string | null) {
 	return null;
 }
 
-/** Envía correo usando SendGrid — import dinámico y setApiKey dentro de la función (sin side-effects top-level) */
+/** Envía correo usando Resend */
 async function sendInviteEmail(opts: { to: string; token: string; organizationId: string; inviteBaseUrl?: string | undefined }) {
-	const SENDGRID_API_KEY = process.env.SENDGRID_API_KEY;
-	if (!SENDGRID_API_KEY) {
-		console.error('SendGrid API key missing (SENDGRID_API_KEY)');
-		return false;
-	}
-
-	// import dinámico para evitar side-effects en import
-	const sgMailModule = await import('@sendgrid/mail').catch((e) => {
-		console.error('Failed to import @sendgrid/mail', e);
-		return null;
-	});
-	if (!sgMailModule) return false;
-	const sgMail = sgMailModule.default ?? sgMailModule;
-	sgMail.setApiKey(SENDGRID_API_KEY);
-
-	const base = opts.inviteBaseUrl ?? NEXT_PUBLIC_INVITE_BASE_URL ?? '';
-	const origin = base ? base.replace(/\/$/, '') : NEXT_PUBLIC_VERCEL_URL ? `https://${NEXT_PUBLIC_VERCEL_URL}` : '';
-	const url = `${origin}/invite/${opts.token}`;
-
-	const from = EMAIL_FROM;
-	const subject = 'Invitación a unirse a la organización';
-	const html = `
-    <p>Hola,</p>
-    <p>Has sido invitado a unirte a la organización. Haz clic en el siguiente enlace para completar tu registro:</p>
-    <p><a href="${url}">${url}</a></p>
-    <p>Si no esperabas este correo, ignóralo.</p>
-  `;
-
 	try {
-		await sgMail.send({ to: opts.to, from, subject, html });
-		console.log('[sendInviteEmail] Sent to', opts.to);
-		return true;
-	} catch (err: any) {
-		console.error('[sendInviteEmail] SendGrid error', err?.response?.body ?? err.message ?? err);
+		const { sendNotificationEmail } = await import('@/lib/email');
+		const base = opts.inviteBaseUrl ?? NEXT_PUBLIC_INVITE_BASE_URL ?? '';
+		const origin = base ? base.replace(/\/$/, '') : NEXT_PUBLIC_VERCEL_URL ? `https://${NEXT_PUBLIC_VERCEL_URL}` : '';
+		const url = `${origin}/invite/${opts.token}`;
+
+		// Obtener nombre de la organización
+		let organizationName: string | undefined;
+		try {
+			const org = await prisma.organization.findUnique({ 
+				where: { id: opts.organizationId },
+				select: { name: true }
+			});
+			organizationName = org?.name || undefined;
+		} catch {
+			// Ignorar error
+		}
+
+		// Obtener rol de la invitación
+		let role: string | undefined;
+		try {
+			const invite = await prisma.invite.findUnique({
+				where: { token: opts.token },
+				select: { role: true }
+			});
+			role = invite?.role?.toString() || undefined;
+		} catch {
+			// Ignorar error
+		}
+
+		const result = await sendNotificationEmail('INVITE', opts.to, {
+			inviteUrl: url,
+			organizationName,
+			role,
+		});
+
+		if (result.success) {
+			console.log('[sendInviteEmail] Email enviado exitosamente a', opts.to);
+			return true;
+		} else {
+			console.error('[sendInviteEmail] Error enviando email:', result.error);
+			return false;
+		}
+	} catch (err) {
+		const errorMessage = err instanceof Error ? err.message : 'Unknown error';
+		console.error('[sendInviteEmail] Exception:', errorMessage);
 		return false;
 	}
 }
