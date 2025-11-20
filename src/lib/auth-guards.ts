@@ -61,16 +61,30 @@ export async function getAuthenticatedUser(): Promise<AuthenticatedUser | null> 
 			organizationId: appUser.organizationId,
 			patientProfileId: appUser.patientProfileId,
 		};
-	} catch (err: any) {
-		console.error('[Auth Guard] Error:', err);
+	} catch (err) {
+		const errorMessage = err instanceof Error ? err.message : 'Error desconocido';
+		console.error('[Auth Guard] Error:', errorMessage);
 		return null;
 	}
+}
+
+interface CookieStore {
+	get?: (name: string) => { value?: string } | undefined;
+}
+
+interface SupabaseClient {
+	auth: {
+		getUser: () => Promise<{ data: { user: { id: string } | null }; error: Error | null }>;
+		getSession: () => Promise<{ data: { session: { access_token: string; refresh_token: string } | null } }>;
+		setSession: (payload: { access_token: string; refresh_token?: string }) => Promise<{ data: { session: { access_token: string; refresh_token: string } | null } | null; error: Error | null }>;
+		refreshSession: (payload: { refresh_token: string }) => Promise<{ data: { session: { access_token: string; refresh_token: string } | null } | null; error: Error | null }>;
+	};
 }
 
 /**
  * Restaura la sesión desde cookies
  */
-async function tryRestoreSessionFromCookies(supabase: any, cookieStore: any): Promise<boolean> {
+async function tryRestoreSessionFromCookies(supabase: SupabaseClient, cookieStore: CookieStore): Promise<boolean> {
 	if (!cookieStore) return false;
 
 	const cookieCandidates = ['sb-session', 'sb:token', 'supabase-auth-token', 'sb-access-token', 'sb-refresh-token'];
@@ -81,9 +95,9 @@ async function tryRestoreSessionFromCookies(supabase: any, cookieStore: any): Pr
 			const raw = c?.value ?? null;
 			if (!raw) continue;
 
-			let parsed: any = null;
+			let parsed: Record<string, unknown> | null = null;
 			try {
-				parsed = JSON.parse(raw);
+				parsed = JSON.parse(raw) as Record<string, unknown>;
 			} catch {
 				parsed = null;
 			}
@@ -92,12 +106,28 @@ async function tryRestoreSessionFromCookies(supabase: any, cookieStore: any): Pr
 			let refresh_token: string | null = null;
 
 			if (parsed) {
+				const getNestedValue = (obj: Record<string, unknown>, ...paths: string[]): string | null => {
+					for (const path of paths) {
+						const keys = path.split('.');
+						let current: unknown = obj;
+						for (const key of keys) {
+							if (current && typeof current === 'object' && key in current) {
+								current = (current as Record<string, unknown>)[key];
+							} else {
+								return null;
+							}
+						}
+						if (typeof current === 'string') return current;
+					}
+					return null;
+				};
+
 				if (name === 'sb-session') {
-					access_token = parsed?.access_token ?? parsed?.session?.access_token ?? parsed?.currentSession?.access_token ?? null;
-					refresh_token = parsed?.refresh_token ?? parsed?.session?.refresh_token ?? parsed?.currentSession?.refresh_token ?? null;
+					access_token = getNestedValue(parsed, 'access_token', 'session.access_token', 'currentSession.access_token');
+					refresh_token = getNestedValue(parsed, 'refresh_token', 'session.refresh_token', 'currentSession.refresh_token');
 				} else {
-					access_token = parsed?.access_token ?? parsed?.currentSession?.access_token ?? null;
-					refresh_token = parsed?.refresh_token ?? parsed?.currentSession?.refresh_token ?? null;
+					access_token = getNestedValue(parsed, 'access_token', 'currentSession.access_token');
+					refresh_token = getNestedValue(parsed, 'refresh_token', 'currentSession.refresh_token');
 				}
 			} else {
 				if (name === 'sb-access-token') {
@@ -109,9 +139,12 @@ async function tryRestoreSessionFromCookies(supabase: any, cookieStore: any): Pr
 
 			if (!access_token && !refresh_token) continue;
 
-			const payload: any = {};
-			if (access_token) payload.access_token = access_token;
-			if (refresh_token) payload.refresh_token = refresh_token;
+			const payload: { access_token: string; refresh_token?: string } = {
+				access_token: access_token || '',
+			};
+			if (refresh_token) {
+				payload.refresh_token = refresh_token;
+			}
 
 			const { data, error } = await supabase.auth.setSession(payload);
 			if (error) {
@@ -163,11 +196,10 @@ export async function requireRole(allowedRoles: UserRole[]): Promise<Authenticat
 /**
  * Guard para APIs - retorna NextResponse con error si no está autenticado
  */
-export async function apiRequireAuth(): Promise<{ user: AuthenticatedUser; response?: NextResponse }> {
+export async function apiRequireAuth(): Promise<{ user?: AuthenticatedUser; response?: NextResponse }> {
 	const user = await getAuthenticatedUser();
 	if (!user) {
 		return {
-			user: null as any,
 			response: NextResponse.json({ error: 'No autenticado' }, { status: 401 }),
 		};
 	}
@@ -177,14 +209,19 @@ export async function apiRequireAuth(): Promise<{ user: AuthenticatedUser; respo
 /**
  * Guard para APIs - retorna NextResponse con error si no tiene el rol correcto
  */
-export async function apiRequireRole(allowedRoles: UserRole[]): Promise<{ user: AuthenticatedUser; response?: NextResponse }> {
+export async function apiRequireRole(allowedRoles: UserRole[]): Promise<{ user?: AuthenticatedUser; response?: NextResponse }> {
 	const authResult = await apiRequireAuth();
 	if (authResult.response) return authResult;
 
 	const user = authResult.user;
+	if (!user) {
+		return {
+			response: NextResponse.json({ error: 'Usuario no autenticado' }, { status: 401 }),
+		};
+	}
+
 	if (!allowedRoles.includes(user.role)) {
 		return {
-			user: null as any,
 			response: NextResponse.json({ error: 'No autorizado - rol incorrecto' }, { status: 403 }),
 		};
 	}

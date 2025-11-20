@@ -12,12 +12,16 @@ export async function GET(req: Request) {
 		if (authResult.response) return authResult.response;
 
 		const user = authResult.user;
+		if (!user) {
+			return NextResponse.json({ error: 'Usuario no autenticado' }, { status: 401 });
+		}
+
 		const cookieStore = await cookies();
 		const { supabase } = createSupabaseServerClient(cookieStore);
 
 		const now = new Date();
 		const nowISO = now.toISOString();
-		const doctorId = user.id; // ID de la tabla User
+		const doctorId = user.userId; // ID de la tabla User
 
 		// Obtener citas en progreso o programadas que ya comenzaron del médico
 		// Incluimos tanto IN_PROGRESS como SCHEDULED que ya comenzaron
@@ -68,8 +72,69 @@ export async function GET(req: Request) {
 			console.error('[Active Patients API] Error obteniendo consultas:', consultationsError);
 		}
 
+		// Tipos para los datos
+		type AppointmentData = {
+			id: string;
+			patient_id: string;
+			scheduled_at: string;
+			duration_minutes: number | null;
+			status: string;
+			Patient: {
+				id: string;
+				firstName: string;
+				lastName: string;
+				identifier: string | null;
+			} | {
+				id: string;
+				firstName: string;
+				lastName: string;
+				identifier: string | null;
+			}[];
+		};
+
+		type ConsultationData = {
+			id: string;
+			patient_id: string;
+			started_at: string;
+			chief_complaint: string | null;
+			diagnosis: string | null;
+			Patient: {
+				id: string;
+				firstName: string;
+				lastName: string;
+				identifier: string | null;
+			} | {
+				id: string;
+				firstName: string;
+				lastName: string;
+				identifier: string | null;
+			}[];
+		};
+
+		type PatientData = {
+			id: string;
+			firstName: string;
+			lastName: string;
+			identifier: string | null;
+		};
+
+		type ActivePatientItem = {
+			patient: PatientData;
+			appointment?: {
+				id: string;
+				scheduled_at: string;
+				duration_minutes: number | null;
+			};
+			consultation?: {
+				id: string;
+				started_at: string;
+				chief_complaint: string | null;
+				diagnosis: string | null;
+			};
+		};
+
 		// Validar que las citas estén dentro del rango de tiempo
-		const validAppointments = (activeAppointments || []).filter((apt: any) => {
+		const validAppointments = (activeAppointments || []).filter((apt: AppointmentData) => {
 			if (!apt.scheduled_at) return false;
 			
 			const scheduledTime = new Date(apt.scheduled_at);
@@ -83,7 +148,7 @@ export async function GET(req: Request) {
 		});
 
 		// Validar que las consultas estén activas (started_at reciente, no más de 4 horas)
-		const validConsultations = (activeConsultations || []).filter((cons: any) => {
+		const validConsultations = (activeConsultations || []).filter((cons: ConsultationData) => {
 			if (!cons.started_at) return false;
 			
 			const startedTime = new Date(cons.started_at);
@@ -94,14 +159,10 @@ export async function GET(req: Request) {
 		});
 
 		// Combinar y deduplicar pacientes
-		const patientMap = new Map<string, {
-			patient: any;
-			appointment?: any;
-			consultation?: any;
-		}>();
+		const patientMap = new Map<string, ActivePatientItem>();
 
 		// Agregar pacientes de citas válidas
-		validAppointments.forEach((apt: any) => {
+		validAppointments.forEach((apt: AppointmentData) => {
 			if (apt.Patient && apt.patient_id) {
 				const patient = Array.isArray(apt.Patient) ? apt.Patient[0] : apt.Patient;
 				if (!patientMap.has(apt.patient_id)) {
@@ -118,7 +179,7 @@ export async function GET(req: Request) {
 		});
 
 		// Agregar pacientes de consultas válidas (priorizar si ya existe)
-		validConsultations.forEach((cons: any) => {
+		validConsultations.forEach((cons: ConsultationData) => {
 			if (cons.Patient && cons.patient_id) {
 				const patient = Array.isArray(cons.Patient) ? cons.Patient[0] : cons.Patient;
 				const existing = patientMap.get(cons.patient_id);

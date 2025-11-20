@@ -4,6 +4,86 @@ import { getAuthenticatedPatient } from '@/lib/patient-auth';
 import { createSupabaseServerClient } from '@/app/adapters/server';
 import { cookies } from 'next/headers';
 
+// Tipos para los datos de la base de datos
+type ConsultationData = {
+	id: string;
+	patient_id: string;
+	doctor_id: string;
+	appointment_id: string | null;
+	started_at: string | null;
+	ended_at: string | null;
+	chief_complaint: string | null;
+	diagnosis: string | null;
+	notes: string | null;
+	vitals: unknown;
+	created_at: string;
+	updated_at: string;
+	doctor: {
+		id: string;
+		name: string | null;
+		email: string | null;
+	} | null;
+	appointment: {
+		id: string;
+		reason: string | null;
+		scheduled_at: string | null;
+	} | null;
+};
+
+type PrescriptionData = {
+	id: string;
+	consultation_id: string | null;
+	issued_at: string;
+	valid_until: string | null;
+	status: string;
+	notes: string | null;
+	prescription_item: {
+		id: string;
+		name: string;
+		dosage: string | null;
+		frequency: string | null;
+		duration: string | null;
+		instructions: string | null;
+	}[];
+};
+
+type PrescriptionFile = {
+	prescription_id: string;
+	url: string;
+	file_name: string;
+};
+
+type MedicalRecordData = {
+	id: string;
+	patientId: string;
+	authorId: string | null;
+	content: unknown;
+	attachments: string[];
+	createdAt: string;
+};
+
+type ConsultationWithRecord = {
+	id: string;
+	medical_record_id: string | null;
+};
+
+type AuthorData = {
+	id: string;
+	name: string | null;
+	email: string | null;
+};
+
+type ParsedConsultation = ConsultationData & {
+	vitals: unknown;
+	prescriptions: (PrescriptionData & { attachments: string[] })[];
+	attachments: string[];
+};
+
+type ParsedMedicalRecord = MedicalRecordData & {
+	content: unknown;
+	author: AuthorData | null;
+};
+
 export async function GET(request: Request) {
 	try {
 		const patient = await getAuthenticatedPatient();
@@ -45,8 +125,8 @@ export async function GET(request: Request) {
 			.order('created_at', { ascending: false });
 
 		// Obtener prescripciones relacionadas con las consultas
-		const consultationIds = (consultations || []).map((c: any) => c.id);
-		let prescriptionsMap: Record<string, any[]> = {};
+		const consultationIds = (consultations || []).map((c: ConsultationData) => c.id);
+		const prescriptionsMap: Record<string, (PrescriptionData & { attachments: string[] })[]> = {};
 		if (consultationIds.length > 0) {
 			const { data: prescriptions, error: prescError } = await supabase
 				.from('prescription')
@@ -57,28 +137,56 @@ export async function GET(request: Request) {
 					valid_until,
 					status,
 					notes,
-					attachments,
 					prescription_item:prescription_item!fk_prescriptionitem_prescription (
 						id,
-						medication_name,
+						name,
 						dosage,
 						frequency,
-						duration_days,
+						duration,
 						instructions
 					)
 				`)
 				.in('consultation_id', consultationIds)
 				.order('issued_at', { ascending: false });
 
+			// Obtener archivos adjuntos de las prescripciones desde prescription_files
+			const prescriptionIds = (prescriptions || []).map((p: PrescriptionData) => p.id);
+			const prescriptionFilesMap: Record<string, string[]> = {};
+			if (prescriptionIds.length > 0) {
+				const { data: prescriptionFiles, error: filesError } = await supabase
+					.from('prescription_files')
+					.select('prescription_id, url, file_name')
+					.in('prescription_id', prescriptionIds);
+
+				if (filesError) {
+					console.error('[Patient Historial API] Error obteniendo archivos de prescripciones:', filesError);
+				} else if (prescriptionFiles) {
+					prescriptionFiles.forEach((file: PrescriptionFile) => {
+						if (file.prescription_id && file.url) {
+							if (!prescriptionFilesMap[file.prescription_id]) {
+								prescriptionFilesMap[file.prescription_id] = [];
+							}
+							prescriptionFilesMap[file.prescription_id].push(file.url);
+						}
+					});
+				}
+			}
+
+			// Agregar archivos a las prescripciones
 			if (prescError) {
 				console.error('[Patient Historial API] Error obteniendo prescripciones:', prescError);
-			} else {
-				(prescriptions || []).forEach((presc: any) => {
+			} else if (prescriptions) {
+				prescriptions.forEach((presc: PrescriptionData) => {
 					if (presc.consultation_id) {
 						if (!prescriptionsMap[presc.consultation_id]) {
 							prescriptionsMap[presc.consultation_id] = [];
 						}
-						prescriptionsMap[presc.consultation_id].push(presc);
+						// Agregar archivos adjuntos de prescription_files
+						const prescriptionWithAttachments: PrescriptionData & { attachments: string[] } = {
+							...presc,
+							attachments: prescriptionFilesMap[presc.id] || [],
+						};
+						prescriptionsMap[presc.consultation_id].push(prescriptionWithAttachments);
 					}
 				});
 			}
@@ -108,15 +216,15 @@ export async function GET(request: Request) {
 
 		// Crear mapa de medical_record_id a consultation_id
 		const recordToConsultationMap: Record<string, string> = {};
-		(consultationsWithRecords || []).forEach((c: any) => {
+		(consultationsWithRecords || []).forEach((c: ConsultationWithRecord) => {
 			if (c.medical_record_id) {
 				recordToConsultationMap[c.medical_record_id] = c.id;
 			}
 		});
 
 		// Obtener información de los autores si existen
-		const authorIds = [...new Set((medicalRecords || []).map((r: any) => r.authorId).filter(Boolean))];
-		let authorsMap: Record<string, any> = {};
+		const authorIds = [...new Set((medicalRecords || []).map((r: MedicalRecordData) => r.authorId).filter((id): id is string => Boolean(id)))];
+		const authorsMap: Record<string, AuthorData> = {};
 		if (authorIds.length > 0) {
 			const { data: authors } = await supabase
 				.from('User')
@@ -124,7 +232,7 @@ export async function GET(request: Request) {
 				.in('id', authorIds);
 			
 			if (authors) {
-				authors.forEach((a: any) => {
+				authors.forEach((a: AuthorData) => {
 					authorsMap[a.id] = a;
 				});
 			}
@@ -139,7 +247,7 @@ export async function GET(request: Request) {
 		}
 
 		// Parsear campos JSON de forma segura
-		const safeParseJson = (field: any) => {
+		const safeParseJson = (field: unknown): unknown => {
 			if (!field) return null;
 			if (typeof field === 'object') return field;
 			if (typeof field === 'string') {
@@ -154,24 +262,26 @@ export async function GET(request: Request) {
 
 		// Mapear archivos de MedicalRecord a consultas
 		const consultationAttachmentsMap: Record<string, string[]> = {};
-		(medicalRecords || []).forEach((record: any) => {
+		(medicalRecords || []).forEach((record: MedicalRecordData) => {
 			const consultationId = recordToConsultationMap[record.id];
-			if (consultationId && record.attachments && record.attachments.length > 0) {
+			if (consultationId && record.attachments && Array.isArray(record.attachments) && record.attachments.length > 0) {
 				if (!consultationAttachmentsMap[consultationId]) {
 					consultationAttachmentsMap[consultationId] = [];
 				}
-				consultationAttachmentsMap[consultationId].push(...record.attachments);
+				// Asegurar que los attachments sean strings válidos
+				const validAttachments = record.attachments.filter((att: unknown): att is string => typeof att === 'string' && att.length > 0);
+				consultationAttachmentsMap[consultationId].push(...validAttachments);
 			}
 		});
 
-		const parsedConsultations = (consultations || []).map((c: any) => ({
+		const parsedConsultations: ParsedConsultation[] = (consultations || []).map((c: ConsultationData): ParsedConsultation => ({
 			...c,
 			vitals: safeParseJson(c.vitals),
 			prescriptions: prescriptionsMap[c.id] || [],
 			attachments: consultationAttachmentsMap[c.id] || [],
 		}));
 
-		const parsedRecords = (medicalRecords || []).map((r: any) => ({
+		const parsedRecords: ParsedMedicalRecord[] = (medicalRecords || []).map((r: MedicalRecordData): ParsedMedicalRecord => ({
 			...r,
 			content: safeParseJson(r.content),
 			author: r.authorId ? authorsMap[r.authorId] || null : null,
@@ -181,9 +291,10 @@ export async function GET(request: Request) {
 			consultations: parsedConsultations,
 			medicalRecords: parsedRecords,
 		});
-	} catch (err: any) {
-		console.error('[Patient Historial API] Error:', err);
-		return NextResponse.json({ error: 'Error interno', detail: err.message }, { status: 500 });
+	} catch (err) {
+		const errorMessage = err instanceof Error ? err.message : 'Error desconocido';
+		console.error('[Patient Historial API] Error:', errorMessage);
+		return NextResponse.json({ error: 'Error interno', detail: errorMessage }, { status: 500 });
 	}
 }
 
