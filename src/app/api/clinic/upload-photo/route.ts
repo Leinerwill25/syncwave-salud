@@ -118,7 +118,10 @@ export async function POST(req: NextRequest) {
 				// El bucket existe, intentar actualizar para remover restricciones de MIME types si es posible
 				// Esto ayuda si el bucket fue creado con restricciones que causan problemas
 				try {
+					// Obtener la configuración actual del bucket para preservar otras propiedades
+					const existingBucket = buckets.find(b => b.name === bucketName);
 					await supabaseAdmin.storage.updateBucket(bucketName, {
+						public: existingBucket?.public ?? true, // Preservar o establecer como público
 						allowedMimeTypes: null, // Remover restricciones de MIME types
 					});
 					console.log('[Clinic Upload Photo] Política del bucket actualizada para remover restricciones de MIME types');
