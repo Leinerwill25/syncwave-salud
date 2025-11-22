@@ -1,8 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, CreditCard, CheckCircle, Loader2, Receipt, DollarSign, Calendar, User, Building2 } from 'lucide-react';
+import { X, CreditCard, CheckCircle, Loader2, Receipt, DollarSign, Calendar, User, Building2, Smartphone, Upload, FileImage } from 'lucide-react';
 
 type Factura = {
 	id: string;
@@ -13,16 +13,29 @@ type Factura = {
 	currency: string;
 	estado_pago: string;
 	fecha_emision: string;
+	doctor_id?: string | null;
 	appointment: {
 		scheduled_at: string;
 		reason: string | null;
 		doctor: {
+			id: string;
 			name: string | null;
 		} | null;
 	} | null;
 	organization: {
 		name: string | null;
 	} | null;
+};
+
+type PaymentMethod = {
+	type: string;
+	enabled: boolean;
+	data?: {
+		cedula?: string;
+		rif?: string;
+		banco?: string;
+		telefono?: string;
+	};
 };
 
 interface PaymentModalProps {
@@ -33,20 +46,73 @@ interface PaymentModalProps {
 }
 
 const paymentMethods = [
+	{ value: 'PAGO_MOVIL', label: 'Pago Móvil', icon: Smartphone },
 	{ value: 'EFECTIVO', label: 'Efectivo', icon: DollarSign },
-	{ value: 'TRANSFERENCIA', label: 'Transferencia Bancaria', icon: CreditCard },
-	{ value: 'TARJETA_DEBITO', label: 'Tarjeta de Débito', icon: CreditCard },
-	{ value: 'TARJETA_CREDITO', label: 'Tarjeta de Crédito', icon: CreditCard },
-	{ value: 'PAYPAL', label: 'PayPal', icon: CreditCard },
-	{ value: 'OTRO', label: 'Otro', icon: CreditCard },
 ];
 
 export default function PaymentModal({ isOpen, onClose, factura, onPaymentSuccess }: PaymentModalProps) {
 	const [selectedMethod, setSelectedMethod] = useState<string>('');
-	const [customMethod, setCustomMethod] = useState<string>('');
 	const [processing, setProcessing] = useState(false);
 	const [success, setSuccess] = useState(false);
 	const [error, setError] = useState<string | null>(null);
+	const [doctorPaymentMethods, setDoctorPaymentMethods] = useState<PaymentMethod[]>([]);
+	const [loadingPaymentMethods, setLoadingPaymentMethods] = useState(false);
+	const [paymentScreenshot, setPaymentScreenshot] = useState<string | null>(null);
+	const [paymentReference, setPaymentReference] = useState<string>('');
+	const [screenshotFile, setScreenshotFile] = useState<File | null>(null);
+
+	// Cargar métodos de pago del doctor cuando se abre el modal
+	useEffect(() => {
+		if (isOpen && factura) {
+			const doctorId = factura.doctor_id || factura.appointment?.doctor?.id;
+			if (doctorId) {
+				loadDoctorPaymentMethods(doctorId);
+			}
+		}
+	}, [isOpen, factura]);
+
+	const loadDoctorPaymentMethods = async (doctorId: string) => {
+		try {
+			setLoadingPaymentMethods(true);
+			const res = await fetch(`/api/patient/pagos/doctor-payment-methods?doctorId=${doctorId}`, {
+				credentials: 'include',
+			});
+
+			if (res.ok) {
+				const data = await res.json();
+				setDoctorPaymentMethods(data.paymentMethods || []);
+			}
+		} catch (err) {
+			console.error('Error cargando métodos de pago del doctor:', err);
+		} finally {
+			setLoadingPaymentMethods(false);
+		}
+	};
+
+	const handleScreenshotUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+		const file = e.target.files?.[0];
+		if (!file) return;
+
+		// Validar que sea una imagen
+		if (!file.type.startsWith('image/')) {
+			setError('Por favor selecciona un archivo de imagen');
+			return;
+		}
+
+		// Validar tamaño (máximo 5MB)
+		if (file.size > 5 * 1024 * 1024) {
+			setError('La imagen no debe superar los 5MB');
+			return;
+		}
+
+		setScreenshotFile(file);
+		const reader = new FileReader();
+		reader.onloadend = () => {
+			setPaymentScreenshot(reader.result as string);
+		};
+		reader.readAsDataURL(file);
+		setError(null);
+	};
 
 	const formatCurrency = (amount: number, currency: string) => {
 		return new Intl.NumberFormat('es-VE', {
@@ -55,27 +121,50 @@ export default function PaymentModal({ isOpen, onClose, factura, onPaymentSucces
 		}).format(amount);
 	};
 
+	const getPagoMovilInfo = () => {
+		return doctorPaymentMethods.find(pm => pm.type === 'pago_movil' && pm.enabled);
+	};
+
 	const handleSubmit = async () => {
 		if (!factura) return;
 
-		const metodoPago = selectedMethod === 'OTRO' ? customMethod.trim() : selectedMethod;
-
-		if (!metodoPago) {
+		if (!selectedMethod) {
 			setError('Por favor selecciona un método de pago');
 			return;
+		}
+
+		// Validar que si es pago móvil, se haya subido la captura y el número de referencia
+		if (selectedMethod === 'PAGO_MOVIL') {
+			if (!paymentScreenshot) {
+				setError('Por favor sube la captura de pantalla del pago móvil');
+				return;
+			}
+			if (!paymentReference.trim()) {
+				setError('Por favor ingresa el número de referencia del pago');
+				return;
+			}
 		}
 
 		setProcessing(true);
 		setError(null);
 
 		try {
+			// Crear FormData para enviar la captura si existe
+			const formData = new FormData();
+			formData.append('metodo_pago', selectedMethod);
+			
+			// Solo agregar referencia y captura si es pago móvil
+			if (selectedMethod === 'PAGO_MOVIL') {
+				formData.append('numero_referencia', paymentReference.trim());
+				if (screenshotFile) {
+					formData.append('captura_pago', screenshotFile);
+				}
+			}
+
 			const res = await fetch(`/api/patient/pagos/${factura.id}/pay`, {
 				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
 				credentials: 'include',
-				body: JSON.stringify({
-					metodo_pago: metodoPago,
-				}),
+				body: formData,
 			});
 
 			if (!res.ok) {
@@ -99,9 +188,12 @@ export default function PaymentModal({ isOpen, onClose, factura, onPaymentSucces
 	const handleClose = () => {
 		if (processing) return;
 		setSelectedMethod('');
-		setCustomMethod('');
 		setError(null);
 		setSuccess(false);
+		setPaymentScreenshot(null);
+		setPaymentReference('');
+		setScreenshotFile(null);
+		setDoctorPaymentMethods([]);
 		onClose();
 	};
 
@@ -233,6 +325,51 @@ export default function PaymentModal({ isOpen, onClose, factura, onPaymentSucces
 											</div>
 										</div>
 
+										{/* Doctor Payment Methods Info - Pago Móvil */}
+										{getPagoMovilInfo() && (
+											<motion.div
+												initial={{ opacity: 0, y: -10 }}
+												animate={{ opacity: 1, y: 0 }}
+												className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-xl p-6 border-2 border-green-200"
+											>
+												<div className="flex items-center gap-3 mb-4">
+													<div className="p-2 bg-green-100 rounded-lg">
+														<Smartphone className="w-5 h-5 text-green-600" />
+													</div>
+													<div>
+														<h3 className="font-semibold text-gray-900">Información de Pago Móvil</h3>
+														<p className="text-sm text-gray-600">Datos del especialista para realizar el pago</p>
+													</div>
+												</div>
+												<div className="space-y-3">
+													{getPagoMovilInfo()?.data?.cedula && (
+														<div className="bg-white rounded-lg p-3 border border-green-100">
+															<p className="text-xs text-gray-600 mb-1">Cédula de Identidad</p>
+															<p className="font-semibold text-gray-900">{getPagoMovilInfo()?.data?.cedula}</p>
+														</div>
+													)}
+													{getPagoMovilInfo()?.data?.rif && (
+														<div className="bg-white rounded-lg p-3 border border-green-100">
+															<p className="text-xs text-gray-600 mb-1">RIF</p>
+															<p className="font-semibold text-gray-900">{getPagoMovilInfo()?.data?.rif}</p>
+														</div>
+													)}
+													{getPagoMovilInfo()?.data?.banco && (
+														<div className="bg-white rounded-lg p-3 border border-green-100">
+															<p className="text-xs text-gray-600 mb-1">Banco</p>
+															<p className="font-semibold text-gray-900">{getPagoMovilInfo()?.data?.banco}</p>
+														</div>
+													)}
+													{getPagoMovilInfo()?.data?.telefono && (
+														<div className="bg-white rounded-lg p-3 border border-green-100">
+															<p className="text-xs text-gray-600 mb-1">Teléfono Afiliado</p>
+															<p className="font-semibold text-gray-900">{getPagoMovilInfo()?.data?.telefono}</p>
+														</div>
+													)}
+												</div>
+											</motion.div>
+										)}
+
 										{/* Payment Method Selection */}
 										<div>
 											<label className="block text-sm font-semibold text-gray-900 mb-3">
@@ -242,17 +379,19 @@ export default function PaymentModal({ isOpen, onClose, factura, onPaymentSucces
 												{paymentMethods.map((method) => {
 													const Icon = method.icon;
 													const isSelected = selectedMethod === method.value;
+													// Deshabilitar pago móvil si el doctor no lo tiene configurado
+													const isDisabled = method.value === 'PAGO_MOVIL' && !getPagoMovilInfo();
 													return (
 														<button
 															key={method.value}
 															type="button"
 															onClick={() => setSelectedMethod(method.value)}
-															disabled={processing}
+															disabled={processing || isDisabled}
 															className={`p-4 rounded-xl border-2 transition-all text-left ${
 																isSelected
 																	? 'border-teal-600 bg-teal-50 shadow-md'
 																	: 'border-gray-200 bg-white hover:border-teal-300 hover:bg-teal-50/50'
-															} ${processing ? 'opacity-50 cursor-not-allowed' : ''}`}
+															} ${processing || isDisabled ? 'opacity-50 cursor-not-allowed' : ''}`}
 														>
 															<div className="flex items-center gap-3">
 																<div
@@ -280,23 +419,78 @@ export default function PaymentModal({ isOpen, onClose, factura, onPaymentSucces
 												})}
 											</div>
 
-											{selectedMethod === 'OTRO' && (
+											{/* Campos adicionales para Pago Móvil */}
+											{selectedMethod === 'PAGO_MOVIL' && (
 												<motion.div
 													initial={{ opacity: 0, height: 0 }}
 													animate={{ opacity: 1, height: 'auto' }}
-													className="mt-4"
+													className="mt-6 space-y-4 pt-4 border-t border-gray-200"
 												>
-													<label className="block text-sm font-medium text-gray-700 mb-2">
-														Especifica el método de pago
-													</label>
-													<input
-														type="text"
-														value={customMethod}
-														onChange={(e) => setCustomMethod(e.target.value)}
-														placeholder="Ej: Zelle, Binance, etc."
-														disabled={processing}
-														className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-transparent disabled:bg-gray-50 disabled:cursor-not-allowed"
-													/>
+													<div>
+														<label className="block text-sm font-semibold text-gray-900 mb-2">
+															Número de Referencia <span className="text-red-500">*</span>
+														</label>
+														<input
+															type="text"
+															value={paymentReference}
+															onChange={(e) => setPaymentReference(e.target.value)}
+															placeholder="Ingresa el número de referencia del pago móvil"
+															disabled={processing}
+															className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-transparent disabled:bg-gray-50 disabled:cursor-not-allowed"
+															required
+														/>
+														<p className="mt-1 text-xs text-gray-500">
+															Ingresa el número de referencia que aparece en tu comprobante de pago móvil
+														</p>
+													</div>
+
+													<div>
+														<label className="block text-sm font-semibold text-gray-900 mb-2">
+															Captura de Pantalla del Pago <span className="text-red-500">*</span>
+														</label>
+														<div className="space-y-3">
+															{paymentScreenshot ? (
+																<div className="relative">
+																	<img
+																		src={paymentScreenshot}
+																		alt="Captura de pago"
+																		className="w-full max-h-64 object-contain rounded-lg border-2 border-gray-200 bg-gray-50"
+																	/>
+																	<button
+																		type="button"
+																		onClick={() => {
+																			setPaymentScreenshot(null);
+																			setScreenshotFile(null);
+																		}}
+																		className="absolute top-2 right-2 p-2 bg-red-500 text-white rounded-full hover:bg-red-600 transition-colors"
+																		disabled={processing}
+																	>
+																		<X className="w-4 h-4" />
+																	</button>
+																</div>
+															) : (
+																<label className="flex flex-col items-center justify-center w-full h-48 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer bg-gray-50 hover:bg-gray-100 transition-colors">
+																	<div className="flex flex-col items-center justify-center pt-5 pb-6">
+																		<Upload className="w-10 h-10 mb-3 text-gray-400" />
+																		<p className="mb-2 text-sm text-gray-500">
+																			<span className="font-semibold">Click para subir</span> o arrastra la imagen
+																		</p>
+																		<p className="text-xs text-gray-500">PNG, JPG o JPEG (MAX. 5MB)</p>
+																	</div>
+																	<input
+																		type="file"
+																		accept="image/*"
+																		onChange={handleScreenshotUpload}
+																		className="hidden"
+																		disabled={processing}
+																	/>
+																</label>
+															)}
+														</div>
+														<p className="mt-1 text-xs text-gray-500">
+															Sube una captura de pantalla del comprobante de pago móvil para verificación
+														</p>
+													</div>
 												</motion.div>
 											)}
 										</div>
@@ -323,8 +517,12 @@ export default function PaymentModal({ isOpen, onClose, factura, onPaymentSucces
 											</button>
 											<button
 												onClick={handleSubmit}
-												disabled={processing || !selectedMethod || (selectedMethod === 'OTRO' && !customMethod.trim())}
-												className="flex-1 px-6 py-3 bg-gradient-to-r from-teal-600 to-cyan-600 text-white rounded-lg font-semibold hover:from-teal-700 hover:to-cyan-700 transition-all shadow-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+												disabled={
+													processing || 
+													!selectedMethod || 
+													(selectedMethod === 'PAGO_MOVIL' && (!paymentScreenshot || !paymentReference.trim()))
+												}
+												className="flex-1 px-6 py-3 bg-linear-to-r from-teal-600 to-cyan-600 text-white rounded-lg font-semibold hover:from-teal-700 hover:to-cyan-700 transition-all shadow-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
 											>
 												{processing ? (
 													<>

@@ -15,9 +15,9 @@ async function tryRestoreSessionFromCookies(supabase: any, cookieStore: any): Pr
 			const raw = c?.value ?? null;
 			if (!raw) continue;
 
-			let parsed: any = null;
+			let parsed: Record<string, unknown> | null = null;
 			try {
-				parsed = JSON.parse(raw);
+				parsed = JSON.parse(raw) as Record<string, unknown>;
 			} catch {
 				parsed = null;
 			}
@@ -26,19 +26,37 @@ async function tryRestoreSessionFromCookies(supabase: any, cookieStore: any): Pr
 			let refresh_token: string | null = null;
 
 			if (parsed) {
+				// Función helper para obtener valores anidados
+				const getNestedValue = (obj: Record<string, unknown>, ...paths: string[]): unknown => {
+					for (const path of paths) {
+						const keys = path.split('.');
+						let current: unknown = obj;
+						for (const key of keys) {
+							if (current && typeof current === 'object' && key in current) {
+								current = (current as Record<string, unknown>)[key];
+							} else {
+								return null;
+							}
+						}
+						if (current) return current;
+					}
+					return null;
+				};
+
 				if (name === 'sb-session') {
-					access_token = parsed?.access_token ?? parsed?.session?.access_token ?? parsed?.currentSession?.access_token ?? null;
-					refresh_token = parsed?.refresh_token ?? parsed?.session?.refresh_token ?? parsed?.currentSession?.refresh_token ?? null;
-					if (!access_token && parsed?.user) {
-						access_token = parsed.access_token ?? null;
-						refresh_token = parsed.refresh_token ?? null;
+					access_token = (getNestedValue(parsed, 'access_token', 'session.access_token', 'currentSession.access_token') as string | null) ?? null;
+					refresh_token = (getNestedValue(parsed, 'refresh_token', 'session.refresh_token', 'currentSession.refresh_token') as string | null) ?? null;
+					if (!access_token && parsed.user) {
+						access_token = (parsed.access_token as string | null) ?? null;
+						refresh_token = (parsed.refresh_token as string | null) ?? null;
 					}
 				} else {
-					access_token = parsed?.access_token ?? parsed?.currentSession?.access_token ?? parsed?.current_session?.access_token ?? null;
-					refresh_token = parsed?.refresh_token ?? parsed?.currentSession?.refresh_token ?? parsed?.current_session?.refresh_token ?? null;
-					if (!access_token && parsed?.currentSession && typeof parsed.currentSession === 'object') {
-						access_token = parsed.currentSession.access_token ?? null;
-						refresh_token = parsed.currentSession.refresh_token ?? null;
+					access_token = (getNestedValue(parsed, 'access_token', 'currentSession.access_token', 'current_session.access_token') as string | null) ?? null;
+					refresh_token = (getNestedValue(parsed, 'refresh_token', 'currentSession.refresh_token', 'current_session.refresh_token') as string | null) ?? null;
+					if (!access_token && parsed.currentSession && typeof parsed.currentSession === 'object') {
+						const currentSession = parsed.currentSession as Record<string, unknown>;
+						access_token = (currentSession.access_token as string | null) ?? null;
+						refresh_token = (currentSession.refresh_token as string | null) ?? null;
 					}
 				}
 			} else {
@@ -51,29 +69,44 @@ async function tryRestoreSessionFromCookies(supabase: any, cookieStore: any): Pr
 
 			if (!access_token && !refresh_token) continue;
 
-			const payload: any = {};
-			if (access_token) payload.access_token = access_token;
-			if (refresh_token) payload.refresh_token = refresh_token;
+			// Solo intentar setSession si tenemos al menos access_token
+			if (access_token) {
+				const payload: { access_token: string; refresh_token: string } = {
+					access_token,
+					refresh_token: refresh_token || '',
+				};
 
-			const { data, error } = await supabase.auth.setSession(payload);
-			if (error) {
-				if (refresh_token && !access_token && error.message.includes('session')) {
-					try {
-						const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession({ refresh_token });
-						if (!refreshError && refreshData?.session) {
-							return true;
+				const { data, error } = await supabase.auth.setSession(payload);
+				if (error) {
+					// Si falla y tenemos refresh_token, intentar refresh
+					if (refresh_token) {
+						try {
+							const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession({ refresh_token });
+							if (!refreshError && refreshData?.session) {
+								return true;
+							}
+						} catch {
+							// ignore
 						}
-					} catch {
-						// ignore
 					}
+					continue;
 				}
-				continue;
+
+				if (data?.session) return true;
+
+				const { data: sessionAfter } = await supabase.auth.getSession();
+				if (sessionAfter?.session) return true;
+			} else if (refresh_token) {
+				// Si solo tenemos refresh_token, intentar refresh
+				try {
+					const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession({ refresh_token });
+					if (!refreshError && refreshData?.session) {
+						return true;
+					}
+				} catch {
+					// ignore
+				}
 			}
-
-			if (data?.session) return true;
-
-			const { data: sessionAfter } = await supabase.auth.getSession();
-			if (sessionAfter?.session) return true;
 		} catch {
 			continue;
 		}

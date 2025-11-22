@@ -155,6 +155,7 @@ CREATE TABLE public.appointment (
   location text,
   created_at timestamp with time zone NOT NULL DEFAULT now(),
   updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  selected_service jsonb,
   CONSTRAINT appointment_pkey PRIMARY KEY (id),
   CONSTRAINT fk_appointment_patient FOREIGN KEY (patient_id) REFERENCES public.Patient(id),
   CONSTRAINT fk_appointment_doctor FOREIGN KEY (doctor_id) REFERENCES public.User(id),
@@ -200,6 +201,9 @@ CREATE TABLE public.clinic_profile (
   billing_address text,
   created_at timestamp with time zone NOT NULL DEFAULT now(),
   updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  location jsonb,
+  photos jsonb DEFAULT '[]'::jsonb,
+  profile_photo text,
   CONSTRAINT clinic_profile_pkey PRIMARY KEY (id),
   CONSTRAINT clinic_profile_org_fk FOREIGN KEY (organization_id) REFERENCES public.Organization(id)
 );
@@ -218,11 +222,13 @@ CREATE TABLE public.consultation (
   created_at timestamp with time zone NOT NULL DEFAULT now(),
   updated_at timestamp with time zone NOT NULL DEFAULT now(),
   medical_record_id uuid,
+  unregistered_patient_id uuid,
   CONSTRAINT consultation_pkey PRIMARY KEY (id),
   CONSTRAINT fk_consultation_patient FOREIGN KEY (patient_id) REFERENCES public.Patient(id),
   CONSTRAINT fk_consultation_doctor FOREIGN KEY (doctor_id) REFERENCES public.User(id),
   CONSTRAINT fk_consultation_appointment FOREIGN KEY (appointment_id) REFERENCES public.appointment(id),
-  CONSTRAINT fk_consultation_medrec FOREIGN KEY (medical_record_id) REFERENCES public.MedicalRecord(id)
+  CONSTRAINT fk_consultation_medrec FOREIGN KEY (medical_record_id) REFERENCES public.MedicalRecord(id),
+  CONSTRAINT consultation_unregistered_patient_id_fkey FOREIGN KEY (unregistered_patient_id) REFERENCES public.unregisteredpatients(id)
 );
 CREATE TABLE public.conversation (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
@@ -289,8 +295,21 @@ CREATE TABLE public.medic_profile (
   two_factor_secret text,
   created_at timestamp with time zone NOT NULL DEFAULT now(),
   updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  payment_methods jsonb DEFAULT '[]'::jsonb,
   CONSTRAINT medic_profile_pkey PRIMARY KEY (id),
   CONSTRAINT fk_medic_profile_doctor FOREIGN KEY (doctor_id) REFERENCES public.User(id)
+);
+CREATE TABLE public.medicalaccessgrant (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  patient_id uuid NOT NULL,
+  doctor_id uuid NOT NULL,
+  granted_at timestamp with time zone NOT NULL DEFAULT now(),
+  expires_at timestamp with time zone,
+  revoked_at timestamp with time zone,
+  is_active boolean NOT NULL DEFAULT true,
+  CONSTRAINT medicalaccessgrant_pkey PRIMARY KEY (id),
+  CONSTRAINT fk_medical_access_grant_patient FOREIGN KEY (patient_id) REFERENCES public.Patient(id),
+  CONSTRAINT fk_medical_access_grant_doctor FOREIGN KEY (doctor_id) REFERENCES public.User(id)
 );
 CREATE TABLE public.medication (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
@@ -439,4 +458,38 @@ CREATE TABLE public.task (
   CONSTRAINT fk_task_patient FOREIGN KEY (patient_id) REFERENCES public.Patient(id),
   CONSTRAINT fk_task_consultation FOREIGN KEY (related_consultation_id) REFERENCES public.consultation(id),
   CONSTRAINT fk_task_creator FOREIGN KEY (created_by) REFERENCES public.User(id)
+);
+CREATE TABLE public.unregisteredpatients (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  first_name text NOT NULL,
+  last_name text NOT NULL,
+  identification text,
+  birth_date date,
+  sex text CHECK (sex = ANY (ARRAY['M'::text, 'F'::text, 'OTHER'::text])),
+  phone text NOT NULL,
+  email text,
+  address text,
+  height_cm numeric,
+  weight_kg numeric,
+  bmi numeric,
+  allergies text,
+  chronic_conditions text,
+  current_medication text,
+  family_history text,
+  created_at timestamp with time zone DEFAULT now(),
+  updated_at timestamp with time zone DEFAULT now(),
+  created_by uuid,
+  migrated_to_patient_id uuid,
+  motive text,
+  pain_scale integer CHECK (pain_scale >= 0 AND pain_scale <= 10),
+  vital_bp_systolic integer,
+  vital_bp_diastolic integer,
+  vital_heart_rate integer,
+  vital_respiratory_rate integer,
+  vital_temperature numeric,
+  vital_spo2 integer,
+  vital_glucose numeric,
+  CONSTRAINT unregisteredpatients_pkey PRIMARY KEY (id),
+  CONSTRAINT unregisteredpatients_created_by_fkey FOREIGN KEY (created_by) REFERENCES public.medic_profile(id),
+  CONSTRAINT unregisteredpatients_migrated_to_patient_id_fkey FOREIGN KEY (migrated_to_patient_id) REFERENCES public.Patient(id)
 );

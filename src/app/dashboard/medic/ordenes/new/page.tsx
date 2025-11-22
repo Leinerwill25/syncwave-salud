@@ -13,6 +13,7 @@ interface Patient {
 	firstName: string;
 	lastName: string;
 	identifier?: string;
+	is_unregistered?: boolean;
 }
 
 interface ActivePatient {
@@ -36,6 +37,8 @@ export default function NewOrderPage() {
 	const [loadingPatients, setLoadingPatients] = useState(true);
 	const [activePatients, setActivePatients] = useState<ActivePatient[]>([]);
 	const [selectedPatient, setSelectedPatient] = useState<ActivePatient | null>(null);
+	const [patientConsultations, setPatientConsultations] = useState<any[]>([]);
+	const [loadingConsultations, setLoadingConsultations] = useState(false);
 	const [formData, setFormData] = useState({
 		patient_id: '',
 		consultation_id: '',
@@ -56,6 +59,10 @@ export default function NewOrderPage() {
 		if (formData.patient_id) {
 			const patient = activePatients.find(p => p.patient.id === formData.patient_id);
 			setSelectedPatient(patient || null);
+			
+			// Cargar consultas del paciente
+			fetchPatientConsultations(formData.patient_id);
+			
 			// Si hay una consulta activa, seleccionarla automáticamente
 			if (patient?.consultation) {
 				setFormData(prev => ({ ...prev, consultation_id: patient.consultation!.id }));
@@ -64,8 +71,32 @@ export default function NewOrderPage() {
 			}
 		} else {
 			setSelectedPatient(null);
+			setPatientConsultations([]);
+			setFormData(prev => ({ ...prev, consultation_id: '' }));
 		}
 	}, [formData.patient_id, activePatients]);
+
+	const fetchPatientConsultations = async (patientId: string) => {
+		try {
+			setLoadingConsultations(true);
+			const res = await fetch(`/api/medic/orders/patient-consultations?patientId=${patientId}`, {
+				credentials: 'include',
+			});
+			
+			if (res.ok) {
+				const data = await res.json();
+				setPatientConsultations(data.consultations || []);
+			} else {
+				console.error('Error cargando consultas del paciente');
+				setPatientConsultations([]);
+			}
+		} catch (err) {
+			console.error('Error cargando consultas del paciente:', err);
+			setPatientConsultations([]);
+		} finally {
+			setLoadingConsultations(false);
+		}
+	};
 
 	const fetchActivePatients = async () => {
 		try {
@@ -103,6 +134,15 @@ export default function NewOrderPage() {
 			return;
 		}
 
+		// Para pacientes no registrados, necesitamos usar el patient_id de la consulta si existe
+		// Si la consulta tiene unregistered_patient_id pero no patient_id, no podemos crear la orden
+		// porque lab_result requiere patient_id de la tabla Patient
+		if (patient.patient.is_unregistered && patient.consultation) {
+			// Intentar obtener el patient_id de la consulta
+			// Si la consulta no tiene patient_id, no podemos continuar
+			// Esto se validará en el backend también
+		}
+
 		setLoading(true);
 		try {
 			// Usar la consulta activa si existe
@@ -118,6 +158,7 @@ export default function NewOrderPage() {
 					result_type: formData.result_type,
 					attachments: formData.attachments,
 					notes: formData.notes,
+					is_critical: formData.is_critical,
 				}),
 			});
 
@@ -209,19 +250,32 @@ export default function NewOrderPage() {
 								<option value="">Seleccionar paciente</option>
 								{activePatients.map((ap) => (
 									<option key={ap.patient.id} value={ap.patient.id}>
-										{ap.patient.firstName} {ap.patient.lastName} {ap.patient.identifier ? `(${ap.patient.identifier})` : ''}
+										{ap.patient.firstName} {ap.patient.lastName} {ap.patient.identifier ? `(${ap.patient.identifier})` : ''} {ap.patient.is_unregistered ? '[No Registrado]' : ''}
 									</option>
 								))}
 							</select>
 							{selectedPatient && (
-								<div className="mt-3 p-3 bg-teal-50 border border-teal-200 rounded-lg">
+								<div className={`mt-3 p-3 border rounded-lg ${selectedPatient.patient.is_unregistered ? 'bg-orange-50 border-orange-200' : 'bg-teal-50 border-teal-200'}`}>
 									<div className="flex items-start gap-2">
-										<CheckCircle2 className="w-4 h-4 text-teal-600 mt-0.5 flex-shrink-0" />
+										<CheckCircle2 className={`w-4 h-4 mt-0.5 flex-shrink-0 ${selectedPatient.patient.is_unregistered ? 'text-orange-600' : 'text-teal-600'}`} />
 										<div className="flex-1 text-sm">
+											<div className="mb-2 flex items-center gap-2">
+												<span className={`font-medium ${selectedPatient.patient.is_unregistered ? 'text-orange-900' : 'text-teal-900'}`}>
+													{selectedPatient.patient.firstName} {selectedPatient.patient.lastName}
+												</span>
+												{selectedPatient.patient.is_unregistered && (
+													<span className="text-xs px-2 py-0.5 rounded-full bg-orange-100 text-orange-700 font-medium">
+														No Registrado
+													</span>
+												)}
+												{selectedPatient.patient.identifier && (
+													<span className="text-xs text-slate-600">({selectedPatient.patient.identifier})</span>
+												)}
+											</div>
 											{selectedPatient.appointment && (
 												<div className="mb-2">
-													<span className="font-medium text-teal-900">Cita en progreso:</span>
-													<div className="text-teal-700 mt-1 flex items-center gap-2">
+													<span className={`font-medium ${selectedPatient.patient.is_unregistered ? 'text-orange-900' : 'text-teal-900'}`}>Cita en progreso:</span>
+													<div className={`mt-1 flex items-center gap-2 ${selectedPatient.patient.is_unregistered ? 'text-orange-700' : 'text-teal-700'}`}>
 														<Clock className="w-3 h-3" />
 														{new Date(selectedPatient.appointment.scheduled_at).toLocaleString('es-ES', {
 															day: '2-digit',
@@ -235,8 +289,8 @@ export default function NewOrderPage() {
 											)}
 											{selectedPatient.consultation && (
 												<div>
-													<span className="font-medium text-teal-900">Consulta activa:</span>
-													<div className="text-teal-700 mt-1">
+													<span className={`font-medium ${selectedPatient.patient.is_unregistered ? 'text-orange-900' : 'text-teal-900'}`}>Consulta activa:</span>
+													<div className={`mt-1 ${selectedPatient.patient.is_unregistered ? 'text-orange-700' : 'text-teal-700'}`}>
 														{selectedPatient.consultation.chief_complaint && (
 															<div className="text-xs">Motivo: {selectedPatient.consultation.chief_complaint}</div>
 														)}
@@ -255,24 +309,49 @@ export default function NewOrderPage() {
 				</div>
 
 				{/* Consulta asociada */}
-				{selectedPatient?.consultation && (
+				{selectedPatient && (
 					<div>
 						<label className="block text-sm font-medium text-slate-700 mb-2">
-							Consulta Asociada
+							Consulta Asociada {selectedPatient.consultation && <span className="text-xs text-slate-500">(Opcional)</span>}
 						</label>
-						<div className="px-4 py-2 border border-teal-200 rounded-xl bg-teal-50 text-slate-900">
-							<div className="flex items-center gap-2">
-								<User className="w-4 h-4 text-teal-600" />
-								<span className="text-sm font-medium">
-									{selectedPatient.consultation.chief_complaint || 
-									 selectedPatient.consultation.diagnosis || 
-									 `Consulta activa (${selectedPatient.consultation.id.slice(0, 8)})`}
-								</span>
+						{loadingConsultations ? (
+							<div className="w-full px-4 py-2 border border-blue-200 rounded-xl bg-slate-50 flex items-center gap-2">
+								<div className="animate-spin rounded-full h-4 w-4 border-b-2 border-teal-600"></div>
+								<span className="text-sm text-slate-600">Cargando consultas...</span>
 							</div>
-							<input type="hidden" value={selectedPatient.consultation.id} />
-						</div>
+						) : patientConsultations.length === 0 ? (
+							<div className="px-4 py-2 border border-yellow-200 rounded-xl bg-yellow-50 text-yellow-800 text-sm">
+								<AlertCircle className="w-4 h-4 inline mr-2" />
+								No se encontraron consultas para este paciente.
+							</div>
+						) : (
+							<select
+								value={formData.consultation_id}
+								onChange={(e) => setFormData({ ...formData, consultation_id: e.target.value })}
+								className="w-full px-4 py-2 border border-blue-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500 text-slate-900"
+							>
+								<option value="">Seleccionar consulta (opcional)</option>
+								{patientConsultations.map((consultation) => (
+									<option key={consultation.id} value={consultation.id}>
+										{new Date(consultation.created_at).toLocaleString('es-ES', {
+											day: '2-digit',
+											month: '2-digit',
+											year: 'numeric',
+											hour: '2-digit',
+											minute: '2-digit',
+										})} - {consultation.chief_complaint || consultation.diagnosis || 'Sin motivo'}
+									</option>
+								))}
+							</select>
+						)}
+						{selectedPatient.consultation && formData.consultation_id === selectedPatient.consultation.id && (
+							<p className="text-xs text-teal-600 mt-1 flex items-center gap-1">
+								<CheckCircle2 className="w-3 h-3" />
+								Consulta activa seleccionada
+							</p>
+						)}
 						<p className="text-xs text-slate-500 mt-1">
-							Esta consulta está activa y será asociada automáticamente a la orden
+							Selecciona una consulta para asociarla a esta orden médica. Esto ayudará a mantener un registro completo del historial del paciente.
 						</p>
 					</div>
 				)}

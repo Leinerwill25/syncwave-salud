@@ -2,6 +2,7 @@
 import { NextResponse } from 'next/server';
 import { createSupabaseServerClient } from '@/app/adapters/server';
 import { cookies } from 'next/headers';
+import { getAuthenticatedUser } from '@/lib/auth-guards';
 
 type Supa = any;
 
@@ -147,55 +148,22 @@ async function tryRestoreSessionFromCookies(supabase: Supa, cookieStore: CookieS
 
 export async function GET(req: Request) {
 	try {
-		const cookieStore = await cookies();
-		const { supabase } = createSupabaseServerClient(cookieStore);
-
-		// Intentar restaurar sesión desde cookies
-		let { data: { user }, error: userError } = await supabase.auth.getUser();
+		// Usar getAuthenticatedUser de auth-guards que maneja correctamente la restauración de sesión
+		const authenticatedUser = await getAuthenticatedUser();
 		
-		if (userError || !user) {
-			// Intentar restaurar sesión desde cookies
-			const restored = await tryRestoreSessionFromCookies(supabase, cookieStore);
-			if (restored) {
-				const after = await supabase.auth.getUser();
-				user = after.data?.user ?? null;
-				userError = after.error ?? null;
-			}
-		}
-
-		if (userError || !user) {
-			console.error('auth.getUser error', userError);
+		if (!authenticatedUser) {
+			console.error('[GET /api/clinic/profile] Usuario no autenticado');
 			return NextResponse.json({ error: 'Usuario no autenticado.' }, { status: 401 });
 		}
 
-		// Detectar tabla User y validar existencia
-		const userFetch = await tryFromVariants(supabase, USER_VARIANTS, 'id, organizationId, authId, email');
-		if (!userFetch.name) {
-			console.error('No se encontró tabla User en variantes probadas.');
-			return NextResponse.json({ error: 'No se pudo leer la tabla de usuarios.' }, { status: 500 });
+		// Verificar que el usuario tenga una organización
+		const orgId = authenticatedUser.organizationId;
+		if (!orgId) {
+			return NextResponse.json({ error: 'El usuario no está asignado a una organización.' }, { status: 404 });
 		}
 
-		// --------------- Buscar el registro del usuario ----------------
-		// Intento 1: buscar por authId (campo authId en tu tabla User)
-		const qAuth = await supabase.from(userFetch.name).select('id, organizationId, authId, email').eq('authId', user.id).maybeSingle();
-		let userRecord: { id: string; organizationId?: string | null; authId?: string | null; email?: string | null } | null = null;
-		if (!qAuth.error && qAuth.data) {
-			userRecord = qAuth.data;
-		} else {
-			// Fallback por email en la tabla User
-			const qEmail = await supabase.from(userFetch.name).select('id, organizationId, authId, email').eq('email', user.email).maybeSingle();
-			if (!qEmail.error && qEmail.data) {
-				userRecord = qEmail.data;
-			}
-		}
-
-		if (!userRecord) {
-			console.error('No se encontró registro User para authId/email.');
-			return NextResponse.json({ error: 'No se encontró la organización del usuario.' }, { status: 404 });
-		}
-
-		const orgId = userRecord.organizationId;
-		if (!orgId) return NextResponse.json({ error: 'El usuario no está asignado a una organización.' }, { status: 404 });
+		const cookieStore = await cookies();
+		const { supabase } = createSupabaseServerClient(cookieStore);
 
 		// ---------------- clinic_profile ----------------
 		let clinicProfile: any = null;
@@ -214,9 +182,39 @@ export async function GET(req: Request) {
 				}
 				if (clinicProfile.photos && typeof clinicProfile.photos === 'string') {
 					try {
-						clinicProfile.photos = JSON.parse(clinicProfile.photos);
+						const parsedPhotos = JSON.parse(clinicProfile.photos);
+						// Convertir paths de Supabase Storage a URLs públicas
+						if (Array.isArray(parsedPhotos)) {
+							clinicProfile.photos = parsedPhotos.map((photo: string) => {
+								// Si ya es una URL completa, devolverla tal cual
+								if (photo.startsWith('http://') || photo.startsWith('https://')) {
+									return photo;
+								}
+								// Si es un path de Supabase Storage, convertir a URL pública
+								if (photo.startsWith('clinic-photos/')) {
+									const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+									const bucket = 'clinic-photos';
+									return `${supabaseUrl}/storage/v1/object/public/${bucket}/${photo}`;
+								}
+								return photo;
+							});
+						} else {
+							clinicProfile.photos = parsedPhotos;
+						}
 					} catch {
 						// Si no es JSON válido, dejarlo como está
+					}
+				}
+				
+				// Convertir profile_photo a URL pública si es un path de Supabase Storage
+				if (clinicProfile.profile_photo && typeof clinicProfile.profile_photo === 'string') {
+					const profilePhoto = clinicProfile.profile_photo;
+					if (!profilePhoto.startsWith('http://') && !profilePhoto.startsWith('https://')) {
+						if (profilePhoto.startsWith('clinic-photos/')) {
+							const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+							const bucket = 'clinic-photos';
+							clinicProfile.profile_photo = `${supabaseUrl}/storage/v1/object/public/${bucket}/${profilePhoto}`;
+						}
 					}
 				}
 			}
@@ -257,15 +255,18 @@ export async function GET(req: Request) {
 
 		// ---------------- conteos adicionales ----------------
 		let usersCount = 0;
-		const uQ = await supabase.from(userFetch.name).select('id', { count: 'exact', head: true }).eq('organizationId', orgId);
-		if (!uQ.error) usersCount = uQ.count ?? 0;
+		const userFetch = await tryFromVariants(supabase, USER_VARIANTS, 'id');
+		if (userFetch.name) {
+			const uQ = await supabase.from(userFetch.name).select('id', { count: 'exact', head: true }).eq('organizationId', orgId);
+			if (!uQ.error) usersCount = uQ.count ?? 0;
+		}
 
 		let appointmentsCount = 0;
 		const aQ = await supabase.from('appointment').select('id', { count: 'exact', head: true }).eq('organization_id', orgId);
 		if (!aQ.error) appointmentsCount = aQ.count ?? 0;
 
 		const specialistCount = orgData?.specialistCount ?? 0;
-		const storagePerSpecialistMB = clinicProfile?.storagePerSpecialistMB ?? clinicProfile?.capacity_per_day ?? 500;
+		const capacityPerDay = clinicProfile?.capacity_per_day ?? null;
 
 		return NextResponse.json({
 			profile: clinicProfile,
@@ -282,7 +283,7 @@ export async function GET(req: Request) {
 				: null,
 			plan,
 			specialistCount,
-			storagePerSpecialistMB,
+			capacityPerDay,
 			invitesAvailable: invitesCount ?? 0,
 			counts: {
 				users: usersCount,
@@ -297,83 +298,112 @@ export async function GET(req: Request) {
 
 export async function PUT(req: Request) {
 	try {
-		const cookieStore = await cookies();
-		const { supabase } = createSupabaseServerClient(cookieStore);
-		const body = await req.json();
-
-		// Intentar restaurar sesión desde cookies
-		let { data: { user }, error: userError } = await supabase.auth.getUser();
+		// Usar getAuthenticatedUser de auth-guards que maneja correctamente la restauración de sesión
+		const authenticatedUser = await getAuthenticatedUser();
 		
-		if (userError || !user) {
-			// Intentar restaurar sesión desde cookies
-			const restored = await tryRestoreSessionFromCookies(supabase, cookieStore);
-			if (restored) {
-				const after = await supabase.auth.getUser();
-				user = after.data?.user ?? null;
-				userError = after.error ?? null;
-			}
-		}
-
-		if (userError || !user) {
+		if (!authenticatedUser) {
+			console.error('[PUT /api/clinic/profile] Usuario no autenticado');
 			return NextResponse.json({ error: 'Usuario no autenticado.' }, { status: 401 });
 		}
 
-		// validar existencia tabla User
-		const userFetch = await tryFromVariants(supabase, USER_VARIANTS, 'id, organizationId, authId, email');
-		if (!userFetch.name) return NextResponse.json({ error: 'No se pudo leer la tabla de usuarios.' }, { status: 500 });
-
-		// Buscar user record por authId, fallback por email
-		const qAuth = await supabase.from(userFetch.name).select('id, organizationId, authId, email').eq('authId', user.id).maybeSingle();
-		let userRecord: { id: string; organizationId?: string | null } | null = null;
-		if (!qAuth.error && qAuth.data) {
-			userRecord = qAuth.data;
-		} else {
-			const qEmail = await supabase.from(userFetch.name).select('id, organizationId, authId, email').eq('email', user.email).maybeSingle();
-			if (!qEmail.error && qEmail.data) userRecord = qEmail.data;
+		// Verificar que el usuario tenga una organización
+		const orgId = authenticatedUser.organizationId;
+		if (!orgId) {
+			return NextResponse.json({ error: 'El usuario no está asignado a una organización.' }, { status: 404 });
 		}
 
-		if (!userRecord) return NextResponse.json({ error: 'No se encontró la organización del usuario.' }, { status: 404 });
-
-		const orgId = userRecord.organizationId;
-		if (!orgId) return NextResponse.json({ error: 'El usuario no está asignado a una organización.' }, { status: 404 });
+		const cookieStore = await cookies();
+		const { supabase } = createSupabaseServerClient(cookieStore);
+		const body = await req.json();
 
 		// encontrar tabla clinic_profile
 		const cpFetch = await tryFromVariants(supabase, CLINIC_PROFILE_VARIANTS, '*');
 		if (!cpFetch.name) return NextResponse.json({ error: 'No se encontró la tabla clinic_profile.' }, { status: 500 });
 
-		const updates: any = {
-			legal_name: body.legal_name,
-			trade_name: body.trade_name,
-			address_operational: body.address_operational,
-			phone_fixed: body.phone_fixed,
-			phone_mobile: body.phone_mobile,
-			contact_email: body.contact_email,
-			website: body.website,
-			offices_count: body.offices_count,
-			specialties: body.specialties,
-			storagePerSpecialistMB: body.storagePerSpecialistMB ?? 500,
+		// Verificar si ya existe un registro para esta organización
+		const existingCheck = await supabase
+			.from(cpFetch.name)
+			.select('id')
+			.eq('organization_id', orgId)
+			.maybeSingle();
+
+		// Preparar datos para insertar/actualizar
+		const dataToSave: any = {
+			organization_id: orgId,
+			legal_name: body.legal_name || null,
+			trade_name: body.trade_name || null,
+			address_operational: body.address_operational || null,
+			phone_fixed: body.phone_fixed || null,
+			phone_mobile: body.phone_mobile || null,
+			contact_email: body.contact_email || null,
+			website: body.website || null,
+			social_facebook: body.social_facebook || null,
+			social_instagram: body.social_instagram || null,
+			sanitary_license: body.sanitary_license || null,
+			liability_insurance_number: body.liability_insurance_number || null,
+			offices_count: body.offices_count || 0,
 			updated_at: new Date().toISOString(),
 		};
 
-		// Agregar location (coordenadas de Google Maps) si existe
-		if (body.location) {
-			updates.location = typeof body.location === 'string' ? body.location : JSON.stringify(body.location);
+		// Agregar campos JSON si existen
+		if (body.specialties !== undefined) {
+			dataToSave.specialties = body.specialties 
+				? (typeof body.specialties === 'string' ? body.specialties : JSON.stringify(body.specialties))
+				: null;
 		}
 
-		// Agregar photos si existe
-		if (body.photos) {
-			updates.photos = typeof body.photos === 'string' ? body.photos : JSON.stringify(body.photos);
+		if (body.opening_hours !== undefined) {
+			dataToSave.opening_hours = body.opening_hours 
+				? (typeof body.opening_hours === 'string' ? body.opening_hours : JSON.stringify(body.opening_hours))
+				: null;
 		}
 
-		// Agregar profile_photo si existe
-		if (body.profile_photo) {
-			updates.profile_photo = body.profile_photo;
+		if (body.capacity_per_day !== undefined) {
+			dataToSave.capacity_per_day = body.capacity_per_day || null;
 		}
 
-		const updateRes = await supabase.from(cpFetch.name).update(updates).eq('organization_id', orgId).select('*').maybeSingle();
-		if (updateRes.error) {
-			console.error('Error actualizando clinic_profile:', updateRes.error);
-			return NextResponse.json({ error: 'Error al actualizar la información.' }, { status: 500 });
+		if (body.location !== undefined) {
+			dataToSave.location = body.location 
+				? (typeof body.location === 'string' ? body.location : JSON.stringify(body.location))
+				: null;
+		}
+
+		if (body.photos !== undefined) {
+			dataToSave.photos = body.photos 
+				? (typeof body.photos === 'string' ? body.photos : JSON.stringify(body.photos))
+				: null;
+		}
+
+		if (body.profile_photo !== undefined) {
+			dataToSave.profile_photo = body.profile_photo || null;
+		}
+
+		let result;
+		if (existingCheck.data) {
+			// Actualizar registro existente
+			const { id, ...updates } = dataToSave;
+			result = await supabase
+				.from(cpFetch.name)
+				.update(updates)
+				.eq('organization_id', orgId)
+				.select('*')
+				.single();
+		} else {
+			// Crear nuevo registro
+			result = await supabase
+				.from(cpFetch.name)
+				.insert(dataToSave)
+				.select('*')
+				.single();
+		}
+
+		if (result.error) {
+			console.error('Error guardando clinic_profile:', result.error);
+			console.error('Datos intentados:', JSON.stringify(dataToSave, null, 2));
+			return NextResponse.json({ 
+				error: 'Error al guardar la información.',
+				details: result.error.message 
+			}, { status: 500 });
 		}
 
 		// crear invites extras si aplica
@@ -385,7 +415,7 @@ export async function PUT(req: Request) {
 					token: crypto.randomUUID(),
 					expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
 					role: 'MEDICO',
-					invitedById: userRecord!.id,
+					invitedById: authenticatedUser.userId,
 				}));
 				const ins = await supabase.from(inviteFetch.name).insert(inserts);
 				if (ins.error) console.warn('Error creando invites:', ins.error);
@@ -394,7 +424,7 @@ export async function PUT(req: Request) {
 			}
 		}
 
-		return NextResponse.json(updateRes.data);
+		return NextResponse.json(result.data);
 	} catch (error: any) {
 		console.error('Error en PATCH /api/clinic/profile:', error);
 		return NextResponse.json({ error: 'Error al actualizar la información.' }, { status: 500 });

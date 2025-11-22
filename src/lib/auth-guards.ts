@@ -25,11 +25,32 @@ export async function getAuthenticatedUser(): Promise<AuthenticatedUser | null> 
 		const cookieStore = await cookies();
 		const { supabase } = createSupabaseServerClient(cookieStore);
 
-		// Intentar obtener usuario desde la sesión
-		let { data: { user }, error: authError } = await supabase.auth.getUser();
+		// Intentar obtener sesión primero
+		let { data: sessionData, error: sessionError } = await supabase.auth.getSession();
 
-		// Si falla, intentar restaurar desde cookies
-		if (authError || !user) {
+		// Si no hay sesión, intentar restaurar desde cookies
+		if (!sessionData?.session) {
+			const restored = await tryRestoreSessionFromCookies(supabase, cookieStore);
+			if (restored) {
+				const after = await supabase.auth.getSession();
+				sessionData = after.data ?? after;
+				sessionError = after.error ?? sessionError;
+			}
+		}
+
+		// Obtener usuario de la sesión o intentar getUser()
+		let user = sessionData?.session?.user || null;
+
+		// Si no hay usuario en la sesión, intentar getUser()
+		if (!user) {
+			const { data: { user: userData }, error: authError } = await supabase.auth.getUser();
+			if (!authError && userData) {
+				user = userData;
+			}
+		}
+
+		// Si aún no hay usuario, intentar restaurar desde cookies nuevamente
+		if (!user) {
 			const restored = await tryRestoreSessionFromCookies(supabase, cookieStore);
 			if (restored) {
 				const after = await supabase.auth.getUser();
@@ -38,6 +59,7 @@ export async function getAuthenticatedUser(): Promise<AuthenticatedUser | null> 
 		}
 
 		if (!user) {
+			console.warn('[Auth Guard] No se pudo obtener usuario autenticado después de todos los intentos');
 			return null;
 		}
 
@@ -48,8 +70,13 @@ export async function getAuthenticatedUser(): Promise<AuthenticatedUser | null> 
 			.eq('authId', user.id)
 			.maybeSingle();
 
-		if (userError || !appUser) {
-			console.error('[Auth Guard] Error obteniendo usuario:', userError);
+		if (userError) {
+			console.error('[Auth Guard] Error obteniendo usuario de la app:', userError);
+			return null;
+		}
+
+		if (!appUser) {
+			console.warn('[Auth Guard] No se encontró usuario en la tabla User para authId:', user.id);
 			return null;
 		}
 

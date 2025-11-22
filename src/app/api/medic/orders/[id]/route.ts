@@ -25,6 +25,7 @@ export async function GET(
 			.select(`
 				id,
 				patient_id,
+				unregistered_patient_id,
 				consultation_id,
 				ordering_provider_id,
 				result_type,
@@ -33,15 +34,6 @@ export async function GET(
 				is_critical,
 				reported_at,
 				created_at,
-				Patient:patient_id (
-					id,
-					firstName,
-					lastName,
-					identifier,
-					dob,
-					gender,
-					phone
-				),
 				consultation:consultation_id (
 					id,
 					chief_complaint,
@@ -64,10 +56,108 @@ export async function GET(
 			return NextResponse.json({ error: 'Orden no encontrada' }, { status: 404 });
 		}
 
+		// Obtener información del paciente (registrado o no registrado)
+		let patient = null;
+		if (order.patient_id) {
+			// Intentar obtener de pacientes registrados primero
+			const { data: registeredPatient } = await supabase
+				.from('Patient')
+				.select('id, firstName, lastName, identifier, dob, gender, phone')
+				.eq('id', order.patient_id)
+				.maybeSingle();
+			
+			if (registeredPatient) {
+				patient = registeredPatient;
+			} else {
+				// Si no está en registrados, puede ser un paciente no registrado (usando su ID como patient_id)
+				const { data: unregisteredPatient } = await supabase
+					.from('unregisteredpatients')
+					.select('id, first_name, last_name, identification, birth_date, sex, phone')
+					.eq('id', order.patient_id)
+					.maybeSingle();
+				
+				if (unregisteredPatient) {
+					patient = {
+						id: unregisteredPatient.id,
+						firstName: unregisteredPatient.first_name,
+						lastName: unregisteredPatient.last_name,
+						identifier: unregisteredPatient.identification,
+						dob: unregisteredPatient.birth_date,
+						gender: unregisteredPatient.sex,
+						phone: unregisteredPatient.phone,
+					};
+				}
+			}
+		}
+		
+		// Si hay unregistered_patient_id, usar ese
+		if (!patient && order.unregistered_patient_id) {
+			const { data: unregisteredPatient } = await supabase
+				.from('unregisteredpatients')
+				.select('id, first_name, last_name, identification, birth_date, sex, phone')
+				.eq('id', order.unregistered_patient_id)
+				.maybeSingle();
+			
+			if (unregisteredPatient) {
+				patient = {
+					id: unregisteredPatient.id,
+					firstName: unregisteredPatient.first_name,
+					lastName: unregisteredPatient.last_name,
+					identifier: unregisteredPatient.identification,
+					dob: unregisteredPatient.birth_date,
+					gender: unregisteredPatient.sex,
+					phone: unregisteredPatient.phone,
+				};
+			}
+		}
+
+		// Si aún no hay paciente pero hay result con información del paciente no registrado
+		if (!patient && order.result) {
+			try {
+				const resultData = typeof order.result === 'string' ? JSON.parse(order.result) : order.result;
+				if (resultData && resultData.unregistered_patient_id) {
+					patient = {
+						id: resultData.unregistered_patient_id,
+						firstName: resultData.patient_name?.split(' ')[0] || '',
+						lastName: resultData.patient_name?.split(' ').slice(1).join(' ') || '',
+						identifier: resultData.identification,
+						dob: resultData.birth_date,
+						gender: resultData.sex,
+						phone: resultData.phone,
+					};
+				}
+			} catch {
+				// Ignorar errores de parsing
+			}
+		}
+
 		// Determinar estado
 		let status = 'pending';
 		if (order.result) {
-			status = 'completed';
+			// Verificar si result es un objeto JSON con información del paciente no registrado
+			// Si contiene unregistered_patient_id, NO es un resultado de laboratorio
+			try {
+				const resultData = typeof order.result === 'string' ? JSON.parse(order.result) : order.result;
+				if (resultData && resultData.unregistered_patient_id) {
+					// Es información del paciente no registrado, NO es un resultado de laboratorio
+					// Mantener como pending porque no hay resultados reales
+					status = 'pending';
+				} else {
+					// Es un resultado de laboratorio normal
+					status = 'completed';
+				}
+			} catch {
+				// Si no es JSON válido, puede ser un resultado de laboratorio en texto
+				// Solo considerar completado si no es un string que parece información del paciente
+				const resultStr = String(order.result);
+				if (resultStr.includes('unregistered_patient_id') || resultStr.includes('patient_name')) {
+					// Parece información del paciente, mantener como pending
+					status = 'pending';
+				} else {
+					// Es un resultado de laboratorio
+					status = 'completed';
+				}
+			}
 		} else if (order.reported_at) {
 			status = 'processing';
 		}
@@ -76,6 +166,7 @@ export async function GET(
 			{
 				order: {
 					...order,
+					Patient: patient, // Agregar información del paciente
 					status,
 				},
 			},

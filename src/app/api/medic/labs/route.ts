@@ -22,11 +22,13 @@ export async function GET(req: Request) {
 		const isCritical = url.searchParams.get('isCritical');
 
 		// Obtener resultados donde el médico es el ordering_provider o donde el paciente tiene consultas con el médico
+		// Nota: Ya no usamos la relación Patient:patient_id porque patient_id puede ser de Patient o unregisteredpatients
 		let query = supabase
 			.from('lab_result')
 			.select(`
 				id,
 				patient_id,
+				unregistered_patient_id,
 				consultation_id,
 				ordering_provider_id,
 				result_type,
@@ -35,12 +37,6 @@ export async function GET(req: Request) {
 				is_critical,
 				reported_at,
 				created_at,
-				Patient:patient_id (
-					id,
-					firstName,
-					lastName,
-					identifier
-				),
 				consultation:consultation_id (
 					id,
 					chief_complaint,
@@ -86,7 +82,8 @@ export async function GET(req: Request) {
 		}
 
 		if (patientId) {
-			query = query.eq('patient_id', patientId);
+			// Buscar tanto en patient_id como en unregistered_patient_id
+			query = query.or(`patient_id.eq.${patientId},unregistered_patient_id.eq.${patientId}`);
 		}
 
 		if (consultationId) {
@@ -112,7 +109,75 @@ export async function GET(req: Request) {
 			);
 		});
 
-		return NextResponse.json({ results: filteredResults }, { status: 200 });
+		// Obtener información de pacientes (tanto registrados como no registrados)
+		const patientIds = new Set<string>();
+		const unregisteredPatientIds = new Set<string>();
+
+		filteredResults.forEach((r: any) => {
+			if (r.patient_id) patientIds.add(r.patient_id);
+			if (r.unregistered_patient_id) unregisteredPatientIds.add(r.unregistered_patient_id);
+		});
+
+		// Obtener pacientes registrados
+		const registeredPatientsMap = new Map();
+		if (patientIds.size > 0) {
+			const { data: registeredPatients } = await supabase
+				.from('Patient')
+				.select('id, firstName, lastName, identifier')
+				.in('id', Array.from(patientIds));
+
+			if (registeredPatients) {
+				registeredPatients.forEach((p: any) => {
+					registeredPatientsMap.set(p.id, p);
+				});
+			}
+		}
+
+		// Obtener pacientes no registrados
+		const unregisteredPatientsMap = new Map();
+		if (unregisteredPatientIds.size > 0) {
+			const { data: unregisteredPatients } = await supabase
+				.from('unregisteredpatients')
+				.select('id, first_name, last_name, identification')
+				.in('id', Array.from(unregisteredPatientIds));
+
+			if (unregisteredPatients) {
+				unregisteredPatients.forEach((up: any) => {
+					unregisteredPatientsMap.set(up.id, {
+						id: up.id,
+						firstName: up.first_name,
+						lastName: up.last_name,
+						identifier: up.identification,
+						is_unregistered: true,
+					});
+				});
+			}
+		}
+
+		// Combinar resultados con información de pacientes
+		const resultsWithPatients = filteredResults.map((r: any) => {
+			let patientInfo = null;
+			
+			// Intentar obtener de pacientes registrados primero
+			if (r.patient_id && registeredPatientsMap.has(r.patient_id)) {
+				patientInfo = registeredPatientsMap.get(r.patient_id);
+			}
+			// Si no está en registrados, puede ser un paciente no registrado (usando su ID como patient_id)
+			else if (r.patient_id && unregisteredPatientsMap.has(r.patient_id)) {
+				patientInfo = unregisteredPatientsMap.get(r.patient_id);
+			}
+			// Si hay unregistered_patient_id, usar ese
+			else if (r.unregistered_patient_id && unregisteredPatientsMap.has(r.unregistered_patient_id)) {
+				patientInfo = unregisteredPatientsMap.get(r.unregistered_patient_id);
+			}
+
+			return {
+				...r,
+				Patient: patientInfo,
+			};
+		});
+
+		return NextResponse.json({ results: resultsWithPatients }, { status: 200 });
 	} catch (err) {
 		const errorMessage = err instanceof Error ? err.message : 'Error desconocido';
 		console.error('[Medic Labs API] Error inesperado:', errorMessage);

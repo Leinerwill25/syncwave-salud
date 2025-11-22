@@ -183,8 +183,22 @@ export async function GET(request: Request) {
 
 			const currentAppUserId = appUserData.id;
 
+			// Verificar si es un paciente registrado o no registrado
+			// Primero verificamos en la tabla Patient
+			const { data: registeredPatient } = await supabase.from('Patient').select('id').eq('id', historyFor).maybeSingle();
+			const isRegistered = !!registeredPatient;
+
 			// Verificar relación médico-paciente: buscar en appointments O consultations (doctor_id usa app user ID)
-			const [appointmentCheck, consultationCheck] = await Promise.all([supabase.from('appointment').select('id').eq('patient_id', historyFor).eq('doctor_id', currentAppUserId).limit(1).maybeSingle(), supabase.from('consultation').select('id').eq('patient_id', historyFor).eq('doctor_id', currentAppUserId).limit(1).maybeSingle()]);
+			// Si es paciente registrado, buscar por patient_id
+			// Si es paciente no registrado, buscar por unregistered_patient_id
+			const [appointmentCheck, consultationCheck] = await Promise.all([
+				isRegistered
+					? supabase.from('appointment').select('id').eq('patient_id', historyFor).eq('doctor_id', currentAppUserId).limit(1).maybeSingle()
+					: Promise.resolve({ data: null, error: null }),
+				isRegistered
+					? supabase.from('consultation').select('id').eq('patient_id', historyFor).eq('doctor_id', currentAppUserId).limit(1).maybeSingle()
+					: supabase.from('consultation').select('id').eq('unregistered_patient_id', historyFor).eq('doctor_id', currentAppUserId).limit(1).maybeSingle(),
+			]);
 
 			if (appointmentCheck.error || consultationCheck.error) {
 				console.error('Error verifying relation', appointmentCheck.error || consultationCheck.error);
@@ -197,12 +211,22 @@ export async function GET(request: Request) {
 			}
 
 			// Obtener appointments (citas), recetas y labs
-			const [appointmentRes, prescRes, labRes] = await Promise.all([
-				supabase.from('appointment').select('id,patient_id,doctor_id,organization_id,scheduled_at,duration_minutes,status,reason,location,created_at,updated_at').eq('patient_id', historyFor).order('scheduled_at', { ascending: false }),
-				supabase
-					.from('prescription')
-					.select(
-						`
+			// Filtrar TODOS por el doctor en sesión para mostrar solo lo que corresponde al especialista actual
+			// Para pacientes no registrados, solo buscamos en consultation (no hay appointments ni prescripciones/labs directamente vinculados)
+			const [appointmentRes, prescRes, labRes, consultationRes] = await Promise.all([
+				isRegistered
+					? supabase
+							.from('appointment')
+							.select('id,patient_id,doctor_id,organization_id,scheduled_at,duration_minutes,status,reason,location,created_at,updated_at')
+							.eq('patient_id', historyFor)
+							.eq('doctor_id', currentAppUserId)
+							.order('scheduled_at', { ascending: false })
+					: Promise.resolve({ data: [], error: null }),
+				isRegistered
+					? supabase
+							.from('prescription')
+							.select(
+								`
 					id,
 					patient_id,
 					doctor_id,
@@ -223,17 +247,48 @@ export async function GET(request: Request) {
 						instructions
 					)
 				`
-					)
-					.eq('patient_id', historyFor)
+							)
+							.eq('patient_id', historyFor)
+							.eq('doctor_id', currentAppUserId)
+							.order('created_at', { ascending: false })
+					: Promise.resolve({ data: [], error: null }),
+				isRegistered
+					? supabase
+							.from('lab_result')
+							.select('id,patient_id,consultation_id,result_type,result,is_critical,reported_at,created_at')
+							.eq('patient_id', historyFor)
+							.order('created_at', { ascending: false })
+					: Promise.resolve({ data: [], error: null }),
+				// Buscar consultas tanto por patient_id como por unregistered_patient_id
+				// Incluir appointment_id para detectar duplicados
+				supabase
+					.from('consultation')
+					.select('id,chief_complaint,diagnosis,notes,created_at,patient_id,unregistered_patient_id,doctor_id,organization_id,appointment_id')
+					.or(isRegistered ? `patient_id.eq.${historyFor}` : `unregistered_patient_id.eq.${historyFor}`)
+					.eq('doctor_id', currentAppUserId)
 					.order('created_at', { ascending: false }),
-				supabase.from('lab_result').select('id,patient_id,consultation_id,result_type,result,is_critical,reported_at,created_at').eq('patient_id', historyFor).order('created_at', { ascending: false }),
 			]);
 
-			const e = appointmentRes.error || prescRes.error || labRes.error;
+			const e = appointmentRes.error || prescRes.error || labRes.error || consultationRes.error;
 			if (e) {
 				console.error('Error obteniendo historial', e);
 				return NextResponse.json({ error: 'Error al obtener historial', detail: e.message }, { status: 500 });
 			}
+
+			// Obtener IDs de consultas del doctor actual para filtrar lab_results
+			const consultationIds = (consultationRes.data ?? []).map((c: any) => c.id).filter(Boolean);
+			
+			// Filtrar lab_results para mostrar solo los que pertenecen a consultas del doctor actual
+			const filteredLabResults = isRegistered && consultationIds.length > 0
+				? (labRes.data ?? []).filter((lab: any) => {
+						// Si tiene consultation_id, verificar que pertenezca a una consultation del doctor
+						if (lab.consultation_id) {
+							return consultationIds.includes(lab.consultation_id);
+						}
+						// Si no tiene consultation_id, no mostrarlo (ya que no podemos verificar el doctor)
+						return false;
+				  })
+				: [];
 
 			const normalizeRows = (arr: any[], dates: string[]) =>
 				(arr ?? []).map((r) => ({
@@ -242,7 +297,13 @@ export async function GET(request: Request) {
 				}));
 
 			// Obtener IDs únicos de doctores para obtener sus nombres
-			const doctorIds = [...new Set([...(appointmentRes.data ?? []).map((a: any) => a.doctor_id).filter(Boolean), ...(prescRes.data ?? []).map((p: any) => p.doctor_id).filter(Boolean)])];
+			const doctorIds = [
+				...new Set([
+					...(appointmentRes.data ?? []).map((a: any) => a.doctor_id).filter(Boolean),
+					...(prescRes.data ?? []).map((p: any) => p.doctor_id).filter(Boolean),
+					...(consultationRes.data ?? []).map((c: any) => c.doctor_id).filter(Boolean),
+				]),
+			];
 
 			// Obtener nombres de doctores
 			const doctorNamesMap = new Map<string, string>();
@@ -283,35 +344,140 @@ export async function GET(request: Request) {
 				};
 			});
 
+			// Obtener appointment IDs para buscar facturación
+			const appointmentIds = [...new Set([...(appointmentRes.data ?? []).map((a: any) => a.id)])];
+			
+			// Buscar facturación asociada a los appointments
+			let billingMap = new Map<string, any>();
+			if (appointmentIds.length > 0) {
+				const { data: billingData } = await supabase
+					.from('facturacion')
+					.select('id, appointment_id, total, currency, estado_pago, fecha_pago')
+					.in('appointment_id', appointmentIds);
+
+				if (billingData) {
+					billingData.forEach((b: any) => {
+						if (b.appointment_id) {
+							billingMap.set(b.appointment_id, {
+								id: b.id,
+								total: b.total,
+								currency: b.currency || 'USD',
+								estadoPago: b.estado_pago,
+								fechaPago: b.fecha_pago ? normalizeDate(b, 'fecha_pago') : null,
+							});
+						}
+					});
+				}
+			}
+
+			// Crear un mapa de appointments por ID para evitar duplicados
+			const appointmentsById = new Map<string, any>();
+			(appointmentRes.data ?? []).forEach((a: any) => {
+				appointmentsById.set(a.id, a);
+			});
+
+			// Crear un mapa de consultas por appointment_id para detectar relaciones
+			const consultationsByAppointmentId = new Map<string, any>();
+			(consultationRes.data ?? []).forEach((c: any) => {
+				if (c.appointment_id) {
+					consultationsByAppointmentId.set(c.appointment_id, c);
+				}
+			});
+
+			// Crear un conjunto de appointment IDs que ya tienen consultation asociada
+			const appointmentIdsWithConsultation = new Set(consultationsByAppointmentId.keys());
+
 			// Normalizar appointments (citas): mapear datos de appointment
-			const normalizedConsultations = (appointmentRes.data ?? []).map((a: any) => ({
-				id: a.id,
-				createdAt: normalizeDate(a, 'created_at'),
-				date: normalizeDate(a, 'scheduled_at', 'created_at'),
-				scheduledAt: normalizeDate(a, 'scheduled_at'),
-				doctor: doctorNamesMap.get(a.doctor_id) || 'Médico',
-				doctorId: a.doctor_id,
-				organizationId: a.organization_id,
-				status: a.status || 'SCHEDULED',
-				reason: a.reason || null,
-				presentingComplaint: a.reason || null,
-				location: a.location || null,
-				durationMinutes: a.duration_minutes || 30,
-				notes: null, // appointment no tiene notes, pero lo dejamos para compatibilidad
-			}));
+			// Solo incluir appointments que NO tienen consultation asociada (para evitar duplicados)
+			const normalizedAppointments = (appointmentRes.data ?? [])
+				.filter((a: any) => !appointmentIdsWithConsultation.has(a.id))
+				.map((a: any) => {
+					const billing = billingMap.get(a.id);
+					return {
+						id: a.id,
+						createdAt: normalizeDate(a, 'created_at'),
+						date: normalizeDate(a, 'scheduled_at', 'created_at'),
+						scheduledAt: normalizeDate(a, 'scheduled_at'),
+						doctor: doctorNamesMap.get(a.doctor_id) || 'Médico',
+						doctorId: a.doctor_id,
+						organizationId: a.organization_id,
+						status: a.status || 'SCHEDULED',
+						reason: a.reason || null,
+						presentingComplaint: a.reason || null,
+						location: a.location || null,
+						durationMinutes: a.duration_minutes || 30,
+						notes: null,
+						isAppointment: true,
+						billing: billing || null,
+					};
+				});
+
+			// Normalizar consultas de la tabla consultation
+			// Si tiene appointment_id, combinar información del appointment
+			const normalizedConsultationsFromTable = (consultationRes.data ?? []).map((c: any) => {
+				const hasAppointment = c.appointment_id && appointmentsById.has(c.appointment_id);
+				const appointment = hasAppointment ? appointmentsById.get(c.appointment_id) : null;
+				const billing = appointment ? billingMap.get(appointment.id) : null;
+
+				// Si tiene appointment, combinar información
+				if (appointment) {
+					return {
+						id: c.appointment_id, // Usar el ID del appointment como ID principal para la vista
+						consultationId: c.id, // Guardar el ID de la consultation para referencia
+						createdAt: normalizeDate(c, 'created_at'),
+						date: normalizeDate(appointment, 'scheduled_at', 'created_at'),
+						scheduledAt: normalizeDate(appointment, 'scheduled_at'),
+						doctor: doctorNamesMap.get(c.doctor_id) || 'Médico',
+						doctorId: c.doctor_id,
+						organizationId: appointment.organization_id || c.organization_id,
+						status: appointment.status || 'SCHEDULED',
+						reason: appointment.reason || c.chief_complaint || null,
+						presentingComplaint: appointment.reason || c.chief_complaint || null,
+						location: appointment.location || null,
+						durationMinutes: appointment.duration_minutes || 30,
+						diagnosis: c.diagnosis || null,
+						notes: c.notes || null,
+						isAppointment: true, // Marcamos como appointment porque tiene la información completa
+						billing: billing || null,
+					};
+				}
+
+				// Si no tiene appointment, mostrar solo información de la consultation
+				return {
+					id: c.id,
+					createdAt: normalizeDate(c, 'created_at'),
+					date: normalizeDate(c, 'created_at'),
+					doctor: doctorNamesMap.get(c.doctor_id) || 'Médico',
+					doctorId: c.doctor_id,
+					organizationId: c.organization_id,
+					reason: c.chief_complaint || null,
+					presentingComplaint: c.chief_complaint || null,
+					diagnosis: c.diagnosis || null,
+					notes: c.notes || null,
+					isAppointment: false,
+					billing: null,
+				};
+			});
+
+			// Combinar appointments sin consultation y consultas (que ya incluyen appointments con consultation)
+			const allConsultations = [...normalizedAppointments, ...normalizedConsultationsFromTable].sort((a, b) => {
+				const dateA = new Date(a.scheduledAt || a.date || a.createdAt || 0).getTime();
+				const dateB = new Date(b.scheduledAt || b.date || b.createdAt || 0).getTime();
+				return dateB - dateA; // Orden descendente (más reciente primero)
+			});
 
 			const history = {
 				patientId: historyFor,
 				summary: {
-					consultationsCount: appointmentRes.data?.length ?? 0,
+					consultationsCount: allConsultations.length,
 					prescriptionsCount: prescRes.data?.length ?? 0,
-					labResultsCount: labRes.data?.length ?? 0,
+					labResultsCount: filteredLabResults.length,
 					billingsCount: 0, // TODO: agregar si es necesario
 				},
 				organizations: [], // TODO: agregar si es necesario
-				consultations: normalizedConsultations,
+				consultations: allConsultations,
 				prescriptions: normalizedPrescriptions,
-				lab_results: normalizeRows(labRes.data ?? [], ['created_at', 'reported_at']),
+				lab_results: normalizeRows(filteredLabResults, ['created_at', 'reported_at']),
 				facturacion: [], // TODO: agregar si es necesario
 			};
 
@@ -342,21 +508,182 @@ export async function GET(request: Request) {
 
 		if (isMedic) {
 			// doctor_id en consultation referencia User.id (app user ID), no authId
-			const { data: patientIdsData, error: idsError } = await supabase.from('consultation').select('patient_id').eq('doctor_id', appUserId);
+			// Buscar tanto por patient_id como por unregistered_patient_id
+			const { data: consultationsData, error: idsError } = await supabase
+				.from('consultation')
+				.select('patient_id, unregistered_patient_id')
+				.eq('doctor_id', appUserId);
 
 			if (idsError) {
 				console.error('Error fetching patient IDs for medic', idsError);
 				return NextResponse.json({ error: 'Error fetching patient data', detail: idsError.message }, { status: 500 });
 			}
 
-			const patientIds = [...new Set(patientIdsData.map((p) => p.patient_id))];
-			if (patientIds.length === 0) {
+			// Obtener IDs de pacientes registrados y no registrados
+			const registeredPatientIds = [...new Set((consultationsData ?? []).map((p) => p.patient_id).filter(Boolean))];
+			const unregisteredPatientIds = [...new Set((consultationsData ?? []).map((p) => p.unregistered_patient_id).filter(Boolean))];
+
+			if (registeredPatientIds.length === 0 && unregisteredPatientIds.length === 0) {
 				return NextResponse.json({
 					data: [],
 					meta: { page, per_page, total: 0 },
 				});
 			}
-			baseQuery = baseQuery.in('id', patientIds);
+
+			// Si hay pacientes registrados, filtrar por ellos
+			if (registeredPatientIds.length > 0) {
+				baseQuery = baseQuery.in('id', registeredPatientIds);
+			} else {
+				// Si no hay pacientes registrados, devolver solo pacientes no registrados
+				baseQuery = null as any;
+			}
+
+			// Si hay pacientes no registrados, obtenerlos también
+			if (unregisteredPatientIds.length > 0) {
+				const { data: unregisteredPatientsData, error: unregisteredError } = await supabase
+					.from('unregisteredpatients')
+					.select('id, first_name, last_name, identification, phone, created_at')
+					.in('id', unregisteredPatientIds);
+
+				if (unregisteredError) {
+					console.error('Error fetching unregistered patients', unregisteredError);
+				}
+
+				// Convertir pacientes no registrados al formato esperado
+				const normalizedUnregistered = (unregisteredPatientsData ?? []).map((up: any) => ({
+					id: up.id,
+					firstName: up.first_name || '',
+					lastName: up.last_name || '',
+					identifier: up.identification || null,
+					dob: null,
+					gender: null,
+					phone: up.phone || null,
+					address: null,
+					createdAt: normalizeDate(up, 'created_at'),
+					updatedAt: normalizeDate(up, 'created_at'),
+					isUnregistered: true, // Marca para identificar pacientes no registrados
+				}));
+
+				// Obtener pacientes registrados
+				let registeredPatients: any[] = [];
+				if (baseQuery) {
+					const registeredQuery = q
+						? baseQuery.or(`firstName.ilike.%${q.replace(/'/g, "''")}%,lastName.ilike.%${q.replace(/'/g, "''")}%,identifier.ilike.%${q.replace(/'/g, "''")}%`)
+						: baseQuery;
+					const genderQuery = gender ? registeredQuery.eq('gender', gender) : registeredQuery;
+					const { data: registeredData, error: registeredError } = await genderQuery
+						.order('createdAt', { ascending: false })
+						.range(offset, offset + per_page - 1);
+
+					if (registeredError) {
+						console.error('Error fetching registered patients', registeredError);
+					} else {
+						registeredPatients = registeredData ?? [];
+					}
+				}
+
+				// Combinar ambos tipos de pacientes
+				let allPatients = [...registeredPatients, ...normalizedUnregistered];
+
+				// Aplicar búsqueda si existe
+				if (q) {
+					const searchLower = q.toLowerCase();
+					allPatients = allPatients.filter((p) => {
+						const firstName = (p.firstName || '').toLowerCase();
+						const lastName = (p.lastName || '').toLowerCase();
+						const identifier = (p.identifier || '').toLowerCase();
+						return firstName.includes(searchLower) || lastName.includes(searchLower) || identifier.includes(searchLower);
+					});
+				}
+
+				// Aplicar paginación
+				const total = allPatients.length;
+				const paginatedPatients = allPatients.slice(offset, offset + per_page);
+
+				// Si se solicita summary, agregar datos adicionales
+				if (includeSummary && paginatedPatients.length > 0) {
+					const ids = paginatedPatients.filter((p) => !p.isUnregistered).map((p) => p.id);
+					const unregisteredIds = paginatedPatients.filter((p) => p.isUnregistered).map((p) => p.id);
+
+					const [consultRowsRes, prescRowsRes, labRowsRes, unregisteredConsultRowsRes] = await Promise.all([
+						ids.length > 0 ? supabase.from('consultation').select('id,patient_id,created_at').in('patient_id', ids) : Promise.resolve({ data: [], error: null }),
+						ids.length > 0 ? supabase.from('prescription').select('id,patient_id,created_at').in('patient_id', ids) : Promise.resolve({ data: [], error: null }),
+						ids.length > 0 ? supabase.from('lab_result').select('id,patient_id,created_at').in('patient_id', ids) : Promise.resolve({ data: [], error: null }),
+						unregisteredIds.length > 0
+							? supabase.from('consultation').select('id,unregistered_patient_id,created_at').in('unregistered_patient_id', unregisteredIds)
+							: Promise.resolve({ data: [], error: null }),
+					]);
+
+					const consultRows = [...(consultRowsRes.data ?? []), ...(unregisteredConsultRowsRes.data ?? []).map((r: any) => ({ ...r, patient_id: r.unregistered_patient_id }))];
+					const prescRows = prescRowsRes.data ?? [];
+					const labRows = labRowsRes.data ?? [];
+
+					const map = new Map<string, any>();
+					paginatedPatients.forEach((p) => {
+						map.set(p.id, {
+							...p,
+							consultationsCount: 0,
+							prescriptionsCount: 0,
+							labResultsCount: 0,
+							lastConsultationAt: null,
+							lastPrescriptionAt: null,
+							lastLabResultAt: null,
+						});
+					});
+
+					const updateLast = (current: string | null, next: string | null) => {
+						if (!next) return current;
+						if (!current) return next;
+						return new Date(next) > new Date(current) ? next : current;
+					};
+
+					consultRows.forEach((r) => {
+						const pid = r.patient_id;
+						const m = map.get(pid);
+						if (!m) return;
+						m.consultationsCount++;
+						const date = normalizeDate(r, 'created_at');
+						m.lastConsultationAt = updateLast(m.lastConsultationAt, date);
+					});
+
+					prescRows.forEach((r) => {
+						const pid = r.patient_id;
+						const m = map.get(pid);
+						if (!m) return;
+						m.prescriptionsCount++;
+						const date = normalizeDate(r, 'created_at');
+						m.lastPrescriptionAt = updateLast(m.lastPrescriptionAt, date);
+					});
+
+					labRows.forEach((r) => {
+						const pid = r.patient_id;
+						const m = map.get(pid);
+						if (!m) return;
+						m.labResultsCount++;
+						const date = normalizeDate(r, 'created_at');
+						m.lastLabResultAt = updateLast(m.lastLabResultAt, date);
+					});
+
+					const finalPatients = Array.from(map.values());
+					return NextResponse.json({
+						data: finalPatients,
+						meta: { page, per_page, total },
+					});
+				}
+
+				return NextResponse.json({
+					data: paginatedPatients,
+					meta: { page, per_page, total },
+				});
+			}
+		}
+
+		// Continuar con el flujo normal para pacientes registrados
+		if (!baseQuery) {
+			return NextResponse.json({
+				data: [],
+				meta: { page, per_page, total: 0 },
+			});
 		}
 
 		if (q) {
@@ -496,10 +823,59 @@ export async function POST(request: Request) {
 			return NextResponse.json({ error: 'firstName y lastName son requeridos' }, { status: 400 });
 		}
 
+		// Validar que la cédula de identidad sea única (si se proporciona)
+		if (body.identifier) {
+			const identifier = String(body.identifier).trim();
+			
+			// Verificar en pacientes registrados
+			const { data: existingRegistered, error: registeredCheckError } = await supabase
+				.from('Patient')
+				.select('id, identifier')
+				.eq('identifier', identifier)
+				.maybeSingle();
+
+			if (registeredCheckError) {
+				console.error('Error verificando cédula en Patient:', registeredCheckError);
+				return NextResponse.json({ error: 'Error al verificar la cédula de identidad' }, { status: 500 });
+			}
+
+			if (existingRegistered) {
+				return NextResponse.json(
+					{
+						error: `La cédula de identidad "${identifier}" ya está registrada para un paciente en el sistema.`,
+						existingPatientId: existingRegistered.id,
+					},
+					{ status: 409 }
+				);
+			}
+
+			// Verificar en pacientes no registrados
+			const { data: existingUnregistered, error: unregisteredCheckError } = await supabase
+				.from('unregisteredpatients')
+				.select('id, identification')
+				.eq('identification', identifier)
+				.maybeSingle();
+
+			if (unregisteredCheckError) {
+				console.error('Error verificando cédula en unregisteredpatients:', unregisteredCheckError);
+				return NextResponse.json({ error: 'Error al verificar la cédula de identidad' }, { status: 500 });
+			}
+
+			if (existingUnregistered) {
+				return NextResponse.json(
+					{
+						error: `La cédula de identidad "${identifier}" ya está registrada para un paciente no registrado. Considere buscarlo en la lista de pacientes no registrados.`,
+						existingPatientId: existingUnregistered.id,
+					},
+					{ status: 409 }
+				);
+			}
+		}
+
 		const payload = {
 			firstName,
 			lastName,
-			identifier: body.identifier ?? null,
+			identifier: body.identifier ? String(body.identifier).trim() : null,
 			dob: isoOrNull(body.dob ?? null),
 			gender: body.gender ?? null,
 			phone: body.phone ?? null,

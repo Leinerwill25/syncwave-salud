@@ -175,6 +175,48 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
 		const referredOrgIdFromForm = (patient && isObject(patient) && patient.organizationId ? String(patient.organizationId) : body.selectedOrganizationId ?? null) ?? null;
 
+		// Validar cédula única antes de la transacción (si se proporciona)
+		if (patient && patient.identifier) {
+			const identifier = String(patient.identifier).trim();
+
+			// Verificar en pacientes registrados
+			const existingRegistered = await prisma.patient.findFirst({
+				where: { identifier: identifier },
+			});
+
+			if (existingRegistered) {
+				return NextResponse.json(
+					{
+						ok: false,
+						message: `La cédula de identidad "${identifier}" ya está registrada para un paciente en el sistema.`,
+					},
+					{ status: 409 }
+				);
+			}
+
+			// Verificar en pacientes no registrados usando Supabase
+			if (supabaseAdmin) {
+				const { data: existingUnregistered, error: unregisteredCheckError } = await supabaseAdmin
+					.from('unregisteredpatients')
+					.select('id, identification')
+					.eq('identification', identifier)
+					.maybeSingle();
+
+				if (unregisteredCheckError) {
+					console.error('Error verificando cédula en unregisteredpatients:', unregisteredCheckError);
+					// Continuar aunque haya error en la verificación, pero loguearlo
+				} else if (existingUnregistered) {
+					return NextResponse.json(
+						{
+							ok: false,
+							message: `La cédula de identidad "${identifier}" ya está registrada para un paciente no registrado. Considere buscarlo en la lista de pacientes no registrados.`,
+						},
+						{ status: 409 }
+					);
+				}
+			}
+		}
+
 		// Tipamos correctamente tx para Prisma
 		const txResult = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
 			let orgRecord: any = null;
@@ -198,7 +240,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 					data: {
 						firstName: patient.firstName,
 						lastName: patient.lastName,
-						identifier: patient.identifier ?? null,
+						identifier: patient.identifier ? String(patient.identifier).trim() : null,
 						dob: patient.dob ? new Date(patient.dob) : null,
 						gender: patient.gender ?? null,
 						phone: patient.phone ?? null,

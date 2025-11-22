@@ -216,19 +216,51 @@ export default function LabResultDetailPage() {
 			</motion.div>
 
 			{/* Resultados */}
-			{result.result && (
-				<motion.div
-					initial={{ opacity: 0, y: 10 }}
-					animate={{ opacity: 1, y: 0 }}
-					transition={{ delay: 0.3 }}
-					className="bg-white rounded-2xl border border-blue-100 p-6"
-				>
-					<h2 className="text-lg font-semibold text-slate-900 mb-4">Resultados</h2>
-					<pre className="bg-blue-50 p-4 rounded-xl text-sm text-slate-900 overflow-auto max-h-96">
-						{JSON.stringify(result.result, null, 2)}
-					</pre>
-				</motion.div>
-			)}
+			{result.result && (() => {
+				// Verificar si el result contiene información del paciente no registrado
+				let resultData: any = null;
+				try {
+					resultData = typeof result.result === 'string' ? JSON.parse(result.result) : result.result;
+				} catch {
+					resultData = result.result;
+				}
+
+				// Si contiene unregistered_patient_id, es información del paciente, no un resultado de laboratorio
+				if (resultData && resultData.unregistered_patient_id) {
+					// No mostrar como resultado de laboratorio
+					return null;
+				}
+
+				// Mostrar resultado real de laboratorio
+				return (
+					<motion.div
+						initial={{ opacity: 0, y: 10 }}
+						animate={{ opacity: 1, y: 0 }}
+						transition={{ delay: 0.3 }}
+						className="bg-white rounded-2xl border border-blue-100 p-6"
+					>
+						<h2 className="text-lg font-semibold text-slate-900 mb-4">Resultados</h2>
+						{typeof resultData === 'object' && resultData !== null ? (
+							<div className="bg-blue-50 p-4 rounded-xl space-y-3">
+								{Object.entries(resultData).map(([key, value]) => (
+									<div key={key} className="border-b border-blue-200 last:border-0 pb-2 last:pb-0">
+										<p className="text-sm font-medium text-slate-700 capitalize mb-1">
+											{key.replace(/_/g, ' ')}:
+										</p>
+										<p className="text-slate-900">
+											{typeof value === 'object' ? JSON.stringify(value, null, 2) : String(value)}
+										</p>
+									</div>
+								))}
+							</div>
+						) : (
+							<pre className="bg-blue-50 p-4 rounded-xl text-sm text-slate-900 overflow-auto max-h-96">
+								{typeof result.result === 'string' ? result.result : JSON.stringify(result.result, null, 2)}
+							</pre>
+						)}
+					</motion.div>
+				);
+			})()}
 
 			{/* Archivos Adjuntos */}
 			{result.attachments && result.attachments.length > 0 && (

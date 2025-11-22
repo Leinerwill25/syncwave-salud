@@ -17,16 +17,16 @@ export async function GET(request: Request) {
 
 		const url = new URL(request.url);
 		const query = url.searchParams.get('query') || '';
-		const type = url.searchParams.get('type'); // CLINICA, FARMACIA, LABORATORIO, CONSULTORIO_PRIVADO
+		const type = url.searchParams.get('type') || 'CONSULTORIO_PRIVADO'; // Por defecto solo consultorios privados
 		const specialty = url.searchParams.get('specialty');
-		const exam = url.searchParams.get('exam');
-		const budgetMin = url.searchParams.get('budget_min');
-		const budgetMax = url.searchParams.get('budget_max');
 		const page = parseInt(url.searchParams.get('page') || '1', 10);
 		const perPage = Math.min(parseInt(url.searchParams.get('per_page') || '20', 10), 100);
 		const offset = (page - 1) * perPage;
 
 		const results: any[] = [];
+
+		// Solo buscar consultorios privados por ahora
+		// Las clínicas, farmacias y laboratorios están "Próximamente"
 
 		// Buscar clínicas
 		if (!type || type === 'CLINICA') {
@@ -82,7 +82,8 @@ export async function GET(request: Request) {
 			}
 		}
 
-		// Buscar farmacias
+		// Buscar farmacias - PRÓXIMAMENTE
+		/*
 		if (!type || type === 'FARMACIA') {
 			let pharmacyQuery = supabase
 				.from('Organization')
@@ -108,8 +109,8 @@ export async function GET(request: Request) {
 
 			const { data: pharmacies } = await pharmacyQuery;
 
-			if (pharmacies) {
-				pharmacies.forEach((pharmacy: any) => {
+			if (pharmacies && pharmacies.length > 0) {
+				for (const pharmacy of pharmacies) {
 					results.push({
 						type: 'FARMACIA',
 						id: pharmacy.id,
@@ -117,11 +118,13 @@ export async function GET(request: Request) {
 						address: pharmacy.clinic_profile?.address_operational,
 						phone: pharmacy.clinic_profile?.phone_mobile,
 					});
-				});
+				}
 			}
 		}
+		*/
 
-		// Buscar laboratorios
+		// Buscar laboratorios - PRÓXIMAMENTE
+		/*
 		if (!type || type === 'LABORATORIO') {
 			let labQuery = supabase
 				.from('Organization')
@@ -148,18 +151,9 @@ export async function GET(request: Request) {
 
 			const { data: labs } = await labQuery;
 
-			if (labs) {
-				labs.forEach((lab: any) => {
+			if (labs && labs.length > 0) {
+				for (const lab of labs) {
 					const specialties = parseSpecialties(lab.clinic_profile?.specialties);
-
-					// Filtrar por tipo de examen si se proporciona
-					if (exam) {
-						const hasExam = specialties.some((s: any) => {
-							const specName = typeof s === 'string' ? s : s?.name || s?.specialty || '';
-							return specName.toLowerCase().includes(exam.toLowerCase());
-						});
-						if (!hasExam) return;
-					}
 
 					results.push({
 						type: 'LABORATORIO',
@@ -169,12 +163,14 @@ export async function GET(request: Request) {
 						phone: lab.clinic_profile?.phone_mobile,
 						specialties,
 					});
-				});
+				}
 			}
 		}
+		*/
 
 		// Buscar consultorios privados (Organizations con type CONSULTORIO)
-		if (!type || type === 'CONSULTORIO' || type === 'CONSULTORIO_PRIVADO') {
+		// Solo buscar consultorios privados por ahora
+		if (type === 'CONSULTORIO' || type === 'CONSULTORIO_PRIVADO' || !type) {
 			// Primero obtener las organizaciones con type CONSULTORIO
 			let orgQuery = supabase
 				.from('Organization')
@@ -270,12 +266,14 @@ export async function GET(request: Request) {
 
 					// Filtrar por especialidad si se proporciona
 					if (specialty) {
-						const searchSpecialtyLower = specialty.toLowerCase();
+						const searchSpecialtyLower = specialty.toLowerCase().trim();
+						// Comparación exacta o parcial para private_specialty
 						const hasSpecialty =
-							(doctorSpecialty && doctorSpecialty.toLowerCase().includes(searchSpecialtyLower)) ||
+							(doctorSpecialty && doctorSpecialty.toLowerCase().trim() === searchSpecialtyLower) ||
+							(doctorSpecialty && doctorSpecialty.toLowerCase().trim().includes(searchSpecialtyLower)) ||
 							specialties.some((s: any) => {
 								const specName = typeof s === 'string' ? s : s?.name || s?.specialty || '';
-								return specName.toLowerCase().includes(searchSpecialtyLower);
+								return specName.toLowerCase().trim() === searchSpecialtyLower || specName.toLowerCase().trim().includes(searchSpecialtyLower);
 							});
 						if (!hasSpecialty) {
 							console.log(`[Patient Explore API] Consultorio ${consultorio.name} no coincide con especialidad ${specialty}`);
@@ -303,9 +301,12 @@ export async function GET(request: Request) {
 						}
 					}
 
+					// Usar organization.id como identificador principal para consultorios privados
+					// Esto asegura que la redirección funcione correctamente
 					const resultItem = {
 						type: 'CONSULTORIO_PRIVADO',
-						id: consultorio.id,
+						id: consultorio.id, // organization.id - usado para redirección
+						clinicProfileId: consultorio.clinic_profile?.id || null, // clinic_profile.id si existe
 						name: consultorio.clinic_profile?.trade_name || consultorio.clinic_profile?.legal_name || consultorio.name,
 						organization: {
 							id: consultorio.id,
@@ -315,8 +316,8 @@ export async function GET(request: Request) {
 						address: consultorio.clinic_profile?.address_operational || consultorio.address,
 						phone: consultorio.clinic_profile?.phone_mobile || consultorio.phone,
 						email: consultorio.contactEmail,
-						specialty: doctorSpecialty,
-						specialties: specialties.length > 0 ? specialties : doctorSpecialty ? [doctorSpecialty] : [],
+						// Solo incluir specialty, no specialties para evitar duplicación
+						specialty: doctorSpecialty || (specialties.length > 0 ? (typeof specialties[0] === 'string' ? specialties[0] : specialties[0]?.name || specialties[0]?.specialty || null) : null),
 						services: doctor?.medic_profile?.services || [],
 						photo: consultorio.clinic_profile?.profile_photo || doctor?.medic_profile?.photo_url,
 						location,

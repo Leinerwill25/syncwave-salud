@@ -15,8 +15,12 @@ export async function PATCH(req: Request, context: { params: Promise<{ id: strin
 			return NextResponse.json({ error: 'ID de cita no proporcionado.' }, { status: 400 });
 		}
 
-		// 1️⃣ Obtener cita actual antes del cambio
-		const { data: current, error: fetchErr } = await supabaseAdmin.from('appointment').select('*').eq('id', id).single();
+		// 1️⃣ Obtener cita actual antes del cambio (incluyendo selected_service)
+		const { data: current, error: fetchErr } = await supabaseAdmin
+			.from('appointment')
+			.select('*, selected_service')
+			.eq('id', id)
+			.single();
 
 		if (fetchErr || !current) return NextResponse.json({ error: 'Cita no encontrada.' }, { status: 404 });
 
@@ -35,7 +39,118 @@ export async function PATCH(req: Request, context: { params: Promise<{ id: strin
 			return NextResponse.json({ error: 'No se pudo actualizar la cita.' }, { status: 500 });
 		}
 
-		// 3️⃣ Si cambió el status → crear notificaciones y enviar emails
+		// 3️⃣ Si el status cambió a "CONFIRMADA" o "CONFIRMED" → generar facturación automáticamente
+		const isConfirmed = body.status === 'CONFIRMADA' || body.status === 'CONFIRMED';
+		const wasNotConfirmed = current.status !== 'CONFIRMADA' && current.status !== 'CONFIRMED';
+		if (body.status && isConfirmed && wasNotConfirmed) {
+			const { patient_id, doctor_id, organization_id, selected_service } = current;
+
+			// Validar que exista un servicio seleccionado
+			if (!selected_service || typeof selected_service !== 'object') {
+				console.error('[Appointment Update] No se encontró servicio seleccionado para generar facturación');
+			} else {
+				try {
+					// Parsear el servicio seleccionado
+					const service = typeof selected_service === 'string' ? JSON.parse(selected_service) : selected_service;
+					const price = parseFloat(service.price || '0');
+					const currency = service.currency || 'USD';
+					
+					// Calcular subtotal, impuestos y total
+					// Por ahora, asumimos que no hay impuestos (puedes ajustar esta lógica)
+					const subtotal = price;
+					const impuestos = 0; // Puedes calcular impuestos si es necesario
+					const total = subtotal + impuestos;
+
+					// Verificar si ya existe una facturación para esta cita
+					const { data: existingFacturacion } = await supabaseAdmin
+						.from('facturacion')
+						.select('id')
+						.eq('appointment_id', id)
+						.maybeSingle();
+
+					if (!existingFacturacion) {
+						// Crear facturación automáticamente
+						const { data: facturacion, error: facturacionError } = await supabaseAdmin
+							.from('facturacion')
+							.insert({
+								appointment_id: id,
+								patient_id: patient_id,
+								doctor_id: doctor_id || null,
+								organization_id: organization_id || null,
+								subtotal: subtotal,
+								impuestos: impuestos,
+								total: total,
+								currency: currency,
+								estado_factura: 'emitida',
+								estado_pago: 'pendiente',
+								fecha_emision: new Date().toISOString(),
+								notas: `Facturación generada automáticamente al confirmar la cita. Servicio: ${service.name}`,
+							})
+							.select('id')
+							.single();
+
+						if (facturacionError) {
+							console.error('[Appointment Update] Error creando facturación:', facturacionError);
+							// No fallar la actualización de la cita si falla la facturación
+						} else {
+							console.log('[Appointment Update] Facturación creada automáticamente:', facturacion.id);
+							
+							// Crear notificación al paciente sobre el pago pendiente
+							try {
+								// Obtener información del paciente y su user_id
+								const { data: patientData } = await supabaseAdmin
+									.from('Patient')
+									.select('firstName, lastName')
+									.eq('id', patient_id)
+									.maybeSingle();
+
+								// Obtener el user_id del paciente
+								const { data: userData } = await supabaseAdmin
+									.from('User')
+									.select('id')
+									.eq('patientProfileId', patient_id)
+									.maybeSingle();
+
+								const patientName = patientData ? `${patientData.firstName} ${patientData.lastName}` : 'Paciente';
+								const patientUserId = userData?.id || null;
+
+								if (patientUserId) {
+									await createNotifications([
+										{
+											userId: patientUserId,
+											organizationId: organization_id || null,
+											type: 'PAYMENT_DUE',
+											title: 'Pago Pendiente',
+											message: `Tu cita ha sido confirmada. Tienes un pago pendiente de ${total} ${currency} por el servicio "${service.name}".`,
+											payload: {
+												facturacionId: facturacion.id,
+												appointmentId: id,
+												appointment_id: id,
+												total: total,
+												currency: currency,
+												serviceName: service.name,
+												paymentUrl: `${process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_VERCEL_URL ? `https://${process.env.NEXT_PUBLIC_VERCEL_URL}` : 'http://localhost:3000'}/dashboard/patient/pagos`,
+											},
+											sendEmail: true,
+										},
+									]);
+								} else {
+									console.warn('[Appointment Update] No se encontró user_id para el paciente, no se creó notificación');
+								}
+							} catch (notifError) {
+								console.error('[Appointment Update] Error creando notificación de pago:', notifError);
+								// No fallar si la notificación falla
+							}
+						}
+					}
+				} catch (billingError) {
+					console.error('[Appointment Update] Error procesando facturación:', billingError);
+					// No fallar la actualización de la cita si falla la facturación
+				}
+			}
+		}
+
+		// 4️⃣ Si cambió el status → crear notificaciones y enviar emails
 		if (body.status && body.status !== current.status) {
 			const { patient_id, doctor_id, organization_id, scheduled_at, reason, location } = current;
 			const statusText = body.status.replace('_', ' ').toLowerCase();

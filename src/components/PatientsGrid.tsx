@@ -3,7 +3,7 @@
 
 import React, { useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
-import { ClipboardList, FileText, X, Calendar, User, Building2, Pill, FlaskConical, Stethoscope, Receipt, ChevronRight, Clock, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { ClipboardList, FileText, X, Calendar, User, Building2, Pill, FlaskConical, Stethoscope, Receipt, ChevronRight, Clock, AlertCircle, CheckCircle2, DollarSign, Check, XCircle, RotateCcw, Loader2 } from 'lucide-react';
 
 /* ---------------------- Types ---------------------- */
 
@@ -70,11 +70,23 @@ export type Consultation = {
 	id: string;
 	date?: string;
 	createdAt?: string;
+	scheduledAt?: string;
 	reason?: string;
 	presentingComplaint?: string;
 	doctor?: string;
 	diagnosis?: string;
 	notes?: string;
+	status?: string;
+	location?: string;
+	durationMinutes?: number;
+	isAppointment?: boolean;
+	billing?: {
+		id?: string;
+		total?: number;
+		currency?: string;
+		estadoPago?: string;
+		fechaPago?: string;
+	} | null;
 };
 
 export type BillingItem = {
@@ -447,13 +459,49 @@ function LabResultCard({ item }: { item: LabResult }) {
 	);
 }
 
-function ConsultationCard({ item }: { item: Consultation }) {
+function ConsultationCard({ item, onStatusUpdate }: { item: Consultation; onStatusUpdate?: () => void }) {
 	const appointment = item as any;
 	const scheduledAt = appointment.scheduledAt ?? item.date ?? item.createdAt;
-	const status = appointment.status;
-	const durationMinutes = appointment.durationMinutes;
-	const location = appointment.location;
+	const status = appointment.status || item.status || 'SCHEDULED';
+	const durationMinutes = appointment.durationMinutes || item.durationMinutes;
+	const location = appointment.location || item.location;
 	const reason = item.reason ?? item.presentingComplaint;
+	const isAppointment = item.isAppointment || appointment.isAppointment;
+	const billing = item.billing || appointment.billing;
+	const [updatingStatus, setUpdatingStatus] = React.useState(false);
+
+	// Detectar estado temporal
+	const getTemporalStatus = () => {
+		if (!scheduledAt) return null;
+		try {
+			const scheduledDate = new Date(scheduledAt);
+			const now = new Date();
+			const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+			const scheduledDay = new Date(scheduledDate.getFullYear(), scheduledDate.getMonth(), scheduledDate.getDate());
+
+			// Si es pasada
+			if (scheduledDay < today) {
+				return { type: 'past', label: 'Pasada', color: 'bg-gray-500 text-white', icon: Clock };
+			}
+			// Si es hoy
+			if (scheduledDay.getTime() === today.getTime()) {
+				return { type: 'today', label: 'Hoy', color: 'bg-blue-500 text-white', icon: Calendar };
+			}
+			// Si es futura
+			const daysDiff = Math.ceil((scheduledDay.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+			if (daysDiff === 1) {
+				return { type: 'tomorrow', label: 'Mañana', color: 'bg-cyan-500 text-white', icon: Calendar };
+			}
+			if (daysDiff <= 7) {
+				return { type: 'this_week', label: `En ${daysDiff} días`, color: 'bg-indigo-500 text-white', icon: Calendar };
+			}
+			return { type: 'future', label: 'Futura', color: 'bg-purple-500 text-white', icon: Calendar };
+		} catch {
+			return null;
+		}
+	};
+
+	const temporalStatus = getTemporalStatus();
 
 	// Mapear estados de appointment
 	const getStatusColor = (status: string) => {
@@ -469,63 +517,248 @@ function ConsultationCard({ item }: { item: Consultation }) {
 				return 'bg-red-100 text-red-700';
 			case 'IN_PROGRESS':
 			case 'EN_PROGRESO':
+			case 'EN_CURSO':
 				return 'bg-yellow-100 text-yellow-700';
+			case 'RESCHEDULED':
+			case 'REAGENDADA':
+				return 'bg-orange-100 text-orange-700';
 			default:
 				return 'bg-gray-100 text-gray-700';
 		}
 	};
 
+	const getStatusLabel = (status: string) => {
+		switch (status?.toUpperCase()) {
+			case 'SCHEDULED':
+			case 'PROGRAMADA':
+				return 'Agendada';
+			case 'COMPLETED':
+			case 'COMPLETADA':
+				return 'Atendida';
+			case 'CANCELLED':
+			case 'CANCELADA':
+				return 'Cancelada';
+			case 'IN_PROGRESS':
+			case 'EN_PROGRESO':
+			case 'EN_CURSO':
+				return 'En Curso';
+			case 'RESCHEDULED':
+			case 'REAGENDADA':
+				return 'Reagendada';
+			default:
+				return status || 'Sin estado';
+		}
+	};
+
+	const handleStatusChange = async (newStatus: string) => {
+		if (!isAppointment) {
+			alert('Solo las citas (appointments) pueden cambiar de estado.');
+			return;
+		}
+
+		setUpdatingStatus(true);
+		try {
+			const res = await fetch(`/api/dashboard/medic/appointments/${item.id}`, {
+				method: 'PATCH',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ status: newStatus }),
+			});
+
+			if (!res.ok) {
+				const data = await res.json();
+				throw new Error(data.error || 'Error al actualizar estado');
+			}
+
+			if (onStatusUpdate) {
+				onStatusUpdate();
+			} else {
+				window.location.reload();
+			}
+		} catch (err: any) {
+			console.error('Error al actualizar estado:', err);
+			alert(err.message || 'Error al actualizar el estado de la consulta');
+		} finally {
+			setUpdatingStatus(false);
+		}
+	};
+
+	const isCompleted = status?.toUpperCase() === 'COMPLETED' || status?.toUpperCase() === 'COMPLETADA';
+	const isPaid = billing?.estadoPago === 'pagado' || billing?.estadoPago === 'paid';
+	const isPendingPayment = isCompleted && billing && !isPaid;
+
 	return (
-		<div className="group relative bg-gradient-to-br from-white to-indigo-50/30 border border-indigo-200/60 rounded-xl p-5 shadow-sm hover:shadow-md transition-all duration-200 hover:border-indigo-300">
-			<div className="flex items-start justify-between mb-4">
-				<div className="flex items-center gap-3">
-					<div className="p-2 bg-indigo-100 rounded-lg">
-						<Calendar className="w-5 h-5 text-indigo-600" />
-					</div>
-					<div>
-						<h4 className="font-semibold text-gray-900 text-base">Cita Médica</h4>
-						<div className="flex items-center gap-2 mt-1 text-xs text-gray-500">
-							<Calendar className="w-3 h-3" />
-							<span>Programada: {formatDateTime(scheduledAt)}</span>
+		<div className="group relative bg-white border border-gray-200 rounded-xl shadow-sm hover:shadow-lg transition-all duration-200 hover:border-indigo-300 overflow-hidden">
+			{/* Header con gradiente de color según estado */}
+			<div className={`px-5 py-4 ${isCompleted ? 'bg-gradient-to-r from-green-500 to-emerald-500' : status?.toUpperCase() === 'CANCELLED' || status?.toUpperCase() === 'CANCELADA' ? 'bg-gradient-to-r from-red-500 to-rose-500' : 'bg-gradient-to-r from-indigo-500 to-purple-500'}`}>
+				<div className="flex items-center justify-between">
+					<div className="flex items-center gap-3">
+						<div className="p-2 bg-white/20 backdrop-blur-sm rounded-lg">
+							<Calendar className="w-5 h-5 text-white" />
 						</div>
-						{durationMinutes && (
-							<div className="flex items-center gap-2 mt-1 text-xs text-gray-500">
-								<Clock className="w-3 h-3" />
-								<span>Duración: {durationMinutes} minutos</span>
+						<div>
+							<h4 className="font-bold text-white text-base">Consulta Médica</h4>
+							<div className="flex items-center gap-2 mt-0.5">
+								<Calendar className="w-3 h-3 text-white/90" />
+								<span className="text-xs text-white/90 font-medium">{formatDateTime(scheduledAt)}</span>
+							</div>
+						</div>
+					</div>
+					<div className="flex flex-col items-end gap-1.5">
+						{temporalStatus && (
+							<div className={`text-xs font-bold px-2.5 py-1 rounded-md flex items-center gap-1.5 shadow-sm ${temporalStatus.color}`}>
+								{React.createElement(temporalStatus.icon, { className: 'w-3 h-3' })}
+								{temporalStatus.label}
 							</div>
 						)}
+						{status && <div className={`text-xs font-bold px-2.5 py-1 rounded-md shadow-sm ${getStatusColor(status)}`}>{getStatusLabel(status)}</div>}
 					</div>
-				</div>
-				<div className="flex flex-col items-end gap-2">
-					{item.doctor && (
-						<div className="flex items-center gap-1.5 text-xs text-gray-600 bg-gray-50 px-2.5 py-1 rounded-md">
-							<User className="w-3 h-3" />
-							<span className="font-medium">{item.doctor}</span>
-						</div>
-					)}
-					{status && <div className={`text-xs font-semibold px-2 py-1 rounded-md ${getStatusColor(status)}`}>{status}</div>}
 				</div>
 			</div>
 
-			{location && (
-				<div className="mb-4">
-					<div className="flex items-center gap-2 mb-2">
-						<Building2 className="w-4 h-4 text-indigo-600" />
-						<span className="text-xs font-semibold text-gray-700 uppercase tracking-wide">Ubicación</span>
-					</div>
-					<div className="bg-white/60 rounded-lg p-3 border border-indigo-100 text-sm text-gray-700 leading-relaxed">{location}</div>
+			{/* Contenido principal */}
+			<div className="px-5 py-4 space-y-4">
+				{/* Información de la cita */}
+				<div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+					{item.doctor && (
+						<div className="flex items-center gap-2.5 p-2.5 bg-gray-50 rounded-lg border border-gray-100">
+							<div className="p-1.5 bg-indigo-100 rounded-md">
+								<User className="w-4 h-4 text-indigo-600" />
+							</div>
+							<div className="flex-1 min-w-0">
+								<div className="text-xs text-gray-500 font-medium">Médico</div>
+								<div className="text-sm font-semibold text-gray-900 truncate">{item.doctor}</div>
+							</div>
+						</div>
+					)}
+					{durationMinutes && (
+						<div className="flex items-center gap-2.5 p-2.5 bg-gray-50 rounded-lg border border-gray-100">
+							<div className="p-1.5 bg-blue-100 rounded-md">
+								<Clock className="w-4 h-4 text-blue-600" />
+							</div>
+							<div className="flex-1 min-w-0">
+								<div className="text-xs text-gray-500 font-medium">Duración</div>
+								<div className="text-sm font-semibold text-gray-900">{durationMinutes} minutos</div>
+							</div>
+						</div>
+					)}
 				</div>
-			)}
 
-			{reason && (
-				<div className="mb-4">
-					<div className="flex items-center gap-2 mb-2">
-						<AlertCircle className="w-4 h-4 text-indigo-600" />
-						<span className="text-xs font-semibold text-gray-700 uppercase tracking-wide">Motivo de la Cita</span>
+				{/* Información de pago si fue atendida */}
+				{isCompleted && billing && (
+					<div className={`p-4 rounded-lg border-2 ${isPaid ? 'bg-green-50 border-green-300' : 'bg-yellow-50 border-yellow-300'}`}>
+						<div className="flex items-center justify-between mb-2">
+							<div className="flex items-center gap-2">
+								{isPaid ? (
+									<>
+										<CheckCircle2 className="w-5 h-5 text-green-600" />
+										<span className="text-sm font-bold text-green-900">Pago Completado</span>
+									</>
+								) : (
+									<>
+										<AlertCircle className="w-5 h-5 text-yellow-600" />
+										<span className="text-sm font-bold text-yellow-900">Pago Pendiente</span>
+									</>
+								)}
+							</div>
+							<div className="flex items-center gap-1.5">
+								<DollarSign className="w-4 h-4 text-gray-600" />
+								<span className="text-base font-bold text-gray-900">
+									{formatCurrency(billing.total || 0)} <span className="text-xs text-gray-600">{billing.currency || 'USD'}</span>
+								</span>
+							</div>
+						</div>
+						{billing.fechaPago && isPaid && <div className="text-xs text-gray-600 mt-1">Pagado el: {formatDate(billing.fechaPago)}</div>}
 					</div>
-					<div className="bg-white/60 rounded-lg p-3 border border-indigo-100 text-sm text-gray-700 leading-relaxed">{reason}</div>
+				)}
+
+				{/* Información de la consulta - Sección unificada */}
+				<div className="space-y-2.5">
+					{/* Motivo de la consulta */}
+					{reason && (
+						<div className="p-3 bg-amber-50/70 rounded-lg border border-amber-200">
+							<div className="flex items-start gap-2">
+								<AlertCircle className="w-4 h-4 text-amber-700 mt-0.5 flex-shrink-0" />
+								<div className="flex-1 min-w-0">
+									<div className="text-xs font-bold text-amber-900 uppercase tracking-wide mb-1">Motivo</div>
+									<p className="text-sm text-amber-900 leading-relaxed">{reason}</p>
+								</div>
+							</div>
+						</div>
+					)}
+
+					{/* Diagnóstico */}
+					{item.diagnosis && (
+						<div className="p-3 bg-blue-50/70 rounded-lg border border-blue-200">
+							<div className="flex items-start gap-2">
+								<Stethoscope className="w-4 h-4 text-blue-700 mt-0.5 flex-shrink-0" />
+								<div className="flex-1 min-w-0">
+									<div className="text-xs font-bold text-blue-900 uppercase tracking-wide mb-1">Diagnóstico</div>
+									<p className="text-sm text-blue-900 leading-relaxed">{item.diagnosis}</p>
+								</div>
+							</div>
+						</div>
+					)}
+
+					{/* Ubicación */}
+					{location && (
+						<div className="p-3 bg-purple-50/70 rounded-lg border border-purple-200">
+							<div className="flex items-start gap-2">
+								<Building2 className="w-4 h-4 text-purple-700 mt-0.5 flex-shrink-0" />
+								<div className="flex-1 min-w-0">
+									<div className="text-xs font-bold text-purple-900 uppercase tracking-wide mb-1">Ubicación</div>
+									<p className="text-sm text-purple-900 leading-relaxed">{location}</p>
+								</div>
+							</div>
+						</div>
+					)}
+
+					{/* Notas adicionales */}
+					{item.notes && (
+						<div className="p-3 bg-gray-50/70 rounded-lg border border-gray-200">
+							<div className="flex items-start gap-2">
+								<FileText className="w-4 h-4 text-gray-600 mt-0.5 flex-shrink-0" />
+								<div className="flex-1 min-w-0">
+									<div className="text-xs font-bold text-gray-900 uppercase tracking-wide mb-1">Notas</div>
+									<p className="text-sm text-gray-700 leading-relaxed">{item.notes}</p>
+								</div>
+							</div>
+						</div>
+					)}
 				</div>
-			)}
+
+				{/* Botones de acción para cambiar estado */}
+				{isAppointment && (
+					<div className="pt-3 mt-3 border-t border-gray-200">
+						<div className="flex flex-wrap gap-2">
+							{status?.toUpperCase() !== 'COMPLETED' && status?.toUpperCase() !== 'COMPLETADA' && (
+								<button onClick={() => handleStatusChange('COMPLETADA')} disabled={updatingStatus} className="inline-flex items-center justify-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-green-600 text-white hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-sm hover:shadow">
+									{updatingStatus ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
+									<span>Atendida</span>
+								</button>
+							)}
+							{status?.toUpperCase() !== 'CANCELLED' && status?.toUpperCase() !== 'CANCELADA' && (
+								<button onClick={() => handleStatusChange('CANCELADA')} disabled={updatingStatus} className="inline-flex items-center justify-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-red-600 text-white hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-sm hover:shadow">
+									{updatingStatus ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <XCircle className="w-3.5 h-3.5" />}
+									<span>Cancelar</span>
+								</button>
+							)}
+							{status?.toUpperCase() !== 'RESCHEDULED' && status?.toUpperCase() !== 'REAGENDADA' && (
+								<button
+									onClick={() => {
+										if (confirm('¿Deseas reagendar esta cita?')) {
+											handleStatusChange('REAGENDADA');
+										}
+									}}
+									disabled={updatingStatus}
+									className="inline-flex items-center justify-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-orange-600 text-white hover:bg-orange-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-sm hover:shadow">
+									{updatingStatus ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RotateCcw className="w-3.5 h-3.5" />}
+									<span>Reagendar</span>
+								</button>
+							)}
+						</div>
+					</div>
+				)}
+			</div>
 		</div>
 	);
 }
@@ -586,33 +819,6 @@ function BillingCard({ item }: { item: Billing }) {
 	);
 }
 
-function GenericCard({ item }: { item: Record<string, unknown> }) {
-	const keys = Object.keys(item ?? {});
-
-	return (
-		<div className="group relative overflow-hidden rounded-2xl border border-gray-100 bg-white p-5 shadow-md transition-all duration-300 hover:-translate-y-1 hover:shadow-xl">
-			{/* Encabezado */}
-			<div className="flex items-center justify-between">
-				<h4 className="text-base font-semibold text-gray-800 tracking-tight">{(item as any).title ?? (item as any).id ?? 'Registro'}</h4>
-				<span className="text-xs text-gray-400 font-medium uppercase bg-gray-50 border border-gray-100 px-2 py-0.5 rounded-md">Detalle</span>
-			</div>
-
-			{/* Contenido principal */}
-			<div className="mt-3 space-y-2">
-				{keys.slice(0, 6).map((k) => (
-					<div key={k} className="flex justify-between items-start text-sm border-b border-gray-100 pb-1 last:border-0">
-						<span className="text-gray-600 font-medium capitalize">{k.replace(/_/g, ' ')}</span>
-						<span className="text-gray-800 text-right max-w-[60%] truncate">{String((item as any)[k]) || '—'}</span>
-					</div>
-				))}
-			</div>
-
-			{/* Pie de card (sutil efecto visual) */}
-			<div className="absolute inset-x-0 bottom-0 h-1 bg-linear-to-r from-sky-500 via-indigo-500 to-sky-500 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-		</div>
-	);
-}
-
 /* ---------------------- Type guards ---------------------- */
 
 function isPrescription(item: HistoryItem): item is Prescription {
@@ -644,27 +850,38 @@ function isConsultation(item: HistoryItem): item is Consultation {
 	const p = item as Prescription;
 	const l = item as LabResult;
 	const b = item as Billing;
+	const c = item as Consultation;
+
+	// Verificar que NO sea otro tipo primero
+	const isNotOtherType = !p.medications && !p.meds && !l.testName && l.result === undefined && b.total === undefined && b.amount === undefined && !asAny.issuedAt && !asAny.validUntil;
+
+	if (!isNotOtherType) {
+		return false;
+	}
 
 	// Consultation (appointment) debe tener scheduledAt (campo único de appointment)
-	// Este es el campo más distintivo de appointments
 	if (asAny.scheduledAt) {
-		// Y NO debe tener medications, meds, testName, result, total/amount, issuedAt, o validUntil
-		if (!p.medications && !p.meds && !l.testName && l.result === undefined && b.total === undefined && b.amount === undefined && !asAny.issuedAt && !asAny.validUntil) {
-			return true;
-		}
+		return true;
 	}
 
-	// O tener durationMinutes (campo único de appointment) Y scheduledAt
-	if (asAny.durationMinutes !== undefined && asAny.scheduledAt) {
-		if (!p.medications && !p.meds && !l.testName && l.result === undefined && b.total === undefined && b.amount === undefined && !asAny.issuedAt && !asAny.validUntil) {
-			return true;
-		}
+	// O tener durationMinutes (campo único de appointment)
+	if (asAny.durationMinutes !== undefined) {
+		return true;
 	}
 
-	// O tener status de appointment (sin scheduledAt pero con location o reason de appointment)
+	// O tener status de appointment con valores específicos
 	if (asAny.status && typeof asAny.status === 'string' && ['SCHEDULED', 'COMPLETED', 'CANCELLED', 'IN_PROGRESS'].includes(asAny.status.toUpperCase())) {
-		// Debe tener location o reason (campos de appointment) y NO tener campos de otros tipos
-		if ((asAny.location || asAny.reason) && !p.medications && !p.meds && !l.testName && l.result === undefined && b.total === undefined && b.amount === undefined && !asAny.issuedAt && !asAny.validUntil) {
+		return true;
+	}
+
+	// O tener campos específicos de consulta (de la tabla consultation)
+	// Consultas tienen: reason, presentingComplaint, diagnosis, notes, doctor, createdAt
+	const hasConsultationFields = c.reason || c.presentingComplaint || c.diagnosis || c.notes || c.doctor || c.createdAt || c.date;
+
+	// Si tiene campos de consulta y tiene un ID, es una consulta
+	if (hasConsultationFields && (asAny.id || c.id)) {
+		// Asegurarse de que no tenga campos de otros tipos que puedan causar confusión
+		if (!asAny.scheduledAt && !asAny.durationMinutes && !asAny.testName && !asAny.result && !asAny.referenceRange) {
 			return true;
 		}
 	}
@@ -691,7 +908,7 @@ function isBilling(item: HistoryItem): item is Billing {
 
 /* ---------------------- HistoryTab: decide renderer and layout ---------------------- */
 
-function HistoryTab({ data, emptyText }: { data: HistoryItem[] | undefined; emptyText: string }) {
+function HistoryTab({ data, emptyText, onStatusUpdate }: { data: HistoryItem[] | undefined; emptyText: string; onStatusUpdate?: () => void }) {
 	if (!data || !Array.isArray(data) || data.length === 0) {
 		return (
 			<div className="flex flex-col items-center justify-center py-12 px-4">
@@ -714,9 +931,9 @@ function HistoryTab({ data, emptyText }: { data: HistoryItem[] | undefined; empt
 				// 3. Billing (tiene total/amount/items)
 				if (isBilling(raw)) return <BillingCard key={(raw as Billing).id ?? idx} item={raw} />;
 				// 4. Consultation último (appointment - tiene scheduledAt/status)
-				if (isConsultation(raw)) return <ConsultationCard key={(raw as Consultation).id ?? idx} item={raw} />;
-				// fallback: mostrar campos principales
-				return <GenericCard key={(raw as any).id ?? idx} item={raw as Record<string, unknown>} />;
+				if (isConsultation(raw)) return <ConsultationCard key={(raw as Consultation).id ?? idx} item={raw} onStatusUpdate={onStatusUpdate} />;
+				// fallback: no renderizar nada si no coincide con ningún tipo conocido
+				return null;
 			})}
 		</div>
 	);
@@ -724,7 +941,7 @@ function HistoryTab({ data, emptyText }: { data: HistoryItem[] | undefined; empt
 
 /* ---------------------- Modal and helpers ---------------------- */
 
-function HistoryModal({ open, onClose, loading, history, activeTab, setActiveTab }: { open: boolean; onClose: () => void; loading: boolean; history?: PatientHistory | null; activeTab: 'overview' | 'prescriptions' | 'labs' | 'consultations'; setActiveTab: (t: 'overview' | 'prescriptions' | 'labs' | 'consultations') => void }) {
+function HistoryModal({ open, onClose, loading, history, activeTab, setActiveTab, onReload }: { open: boolean; onClose: () => void; loading: boolean; history?: PatientHistory | null; activeTab: 'overview' | 'prescriptions' | 'labs' | 'consultations'; setActiveTab: (t: 'overview' | 'prescriptions' | 'labs' | 'consultations') => void; onReload?: () => void }) {
 	if (!open) return null;
 
 	const organizations = history?.organizations ?? [];
@@ -838,9 +1055,9 @@ function HistoryModal({ open, onClose, loading, history, activeTab, setActiveTab
 									</div>
 								)}
 
-								{activeTab === 'prescriptions' && <HistoryTab data={history.prescriptions} emptyText="No hay recetas médicas registradas para este paciente." />}
-								{activeTab === 'labs' && <HistoryTab data={history.lab_results} emptyText="No hay resultados de laboratorio registrados para este paciente." />}
-								{activeTab === 'consultations' && <HistoryTab data={history.consultations} emptyText="No hay consultas médicas registradas para este paciente." />}
+								{activeTab === 'prescriptions' && <HistoryTab data={history.prescriptions} emptyText="No hay recetas médicas registradas para este paciente." onStatusUpdate={onReload} />}
+								{activeTab === 'labs' && <HistoryTab data={history.lab_results} emptyText="No hay resultados de laboratorio registrados para este paciente." onStatusUpdate={onReload} />}
+								{activeTab === 'consultations' && <HistoryTab data={history.consultations} emptyText="No hay consultas médicas registradas para este paciente." onStatusUpdate={onReload} />}
 							</div>
 						)}
 					</div>
@@ -864,6 +1081,7 @@ export default function PatientsGrid({ perPage = 18 }: { perPage?: number }) {
 	const [modalHistory, setModalHistory] = useState<PatientHistory | null>(null);
 	const [modalActiveTab, setModalActiveTab] = useState<'overview' | 'prescriptions' | 'labs' | 'consultations'>('overview');
 	const [loadingHistory, setLoadingHistory] = useState(false);
+	const [currentPatientId, setCurrentPatientId] = useState<string | null>(null);
 
 	const [debouncedQuery, setDebouncedQuery] = useState(query);
 	useEffect(() => {
@@ -914,6 +1132,7 @@ export default function PatientsGrid({ perPage = 18 }: { perPage?: number }) {
 
 	const loadHistory = async (patientId: string, tab: typeof modalActiveTab) => {
 		try {
+			setCurrentPatientId(patientId);
 			setModalOpen(true);
 			setModalActiveTab(tab);
 			setLoadingHistory(true);
@@ -934,6 +1153,12 @@ export default function PatientsGrid({ perPage = 18 }: { perPage?: number }) {
 			setModalHistory(null);
 		} finally {
 			setLoadingHistory(false);
+		}
+	};
+
+	const reloadHistory = async () => {
+		if (currentPatientId) {
+			await loadHistory(currentPatientId, modalActiveTab);
 		}
 	};
 
@@ -983,7 +1208,7 @@ export default function PatientsGrid({ perPage = 18 }: { perPage?: number }) {
 			</footer>
 
 			{/* Modal */}
-			<HistoryModal open={modalOpen} onClose={() => setModalOpen(false)} loading={loadingHistory} history={modalHistory} activeTab={modalActiveTab} setActiveTab={(t) => setModalActiveTab(t)} />
+			<HistoryModal open={modalOpen} onClose={() => setModalOpen(false)} loading={loadingHistory} history={modalHistory} activeTab={modalActiveTab} setActiveTab={(t) => setModalActiveTab(t)} onReload={reloadHistory} />
 		</div>
 	);
 }

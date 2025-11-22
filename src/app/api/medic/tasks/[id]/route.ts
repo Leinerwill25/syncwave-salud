@@ -20,6 +20,7 @@ export async function GET(
 		const cookieStore = await cookies();
 		const { supabase } = createSupabaseServerClient(cookieStore);
 
+		// Nota: Ya no usamos la relación Patient:patient_id porque patient_id puede ser de Patient o unregisteredpatients
 		const { data: task, error } = await supabase
 			.from('task')
 			.select(`
@@ -28,21 +29,13 @@ export async function GET(
 				description,
 				assigned_to,
 				patient_id,
+				unregistered_patient_id,
 				related_consultation_id,
 				due_at,
 				completed,
 				created_by,
 				created_at,
 				updated_at,
-				Patient:patient_id (
-					id,
-					firstName,
-					lastName,
-					identifier,
-					dob,
-					gender,
-					phone
-				),
 				consultation:related_consultation_id (
 					id,
 					chief_complaint,
@@ -69,7 +62,77 @@ export async function GET(
 			return NextResponse.json({ error: 'No autorizado' }, { status: 403 });
 		}
 
-		return NextResponse.json({ task }, { status: 200 });
+		// Obtener información del paciente (registrado o no registrado)
+		let patientInfo: any = null;
+		let isUnregistered = false;
+
+		if (task.patient_id) {
+			// Intentar obtener de pacientes registrados
+			const { data: registeredPatient } = await supabase
+				.from('Patient')
+				.select('id, firstName, lastName, identifier, dob, gender, phone')
+				.eq('id', task.patient_id)
+				.maybeSingle();
+
+			if (registeredPatient) {
+				patientInfo = registeredPatient;
+			} else {
+				// Si no está en registrados, puede ser un paciente no registrado (usando su ID como patient_id)
+				const { data: unregisteredPatient } = await supabase
+					.from('unregisteredpatients')
+					.select('id, first_name, last_name, identification, birth_date, sex, phone')
+					.eq('id', task.patient_id)
+					.maybeSingle();
+
+				if (unregisteredPatient) {
+					patientInfo = {
+						id: unregisteredPatient.id,
+						firstName: unregisteredPatient.first_name,
+						lastName: unregisteredPatient.last_name,
+						identifier: unregisteredPatient.identification,
+						dob: unregisteredPatient.birth_date,
+						gender: unregisteredPatient.sex,
+						phone: unregisteredPatient.phone,
+						is_unregistered: true,
+					};
+					isUnregistered = true;
+				}
+			}
+		}
+
+		// Si hay unregistered_patient_id, usar ese
+		if (!patientInfo && task.unregistered_patient_id) {
+			const { data: unregisteredPatient } = await supabase
+				.from('unregisteredpatients')
+				.select('id, first_name, last_name, identification, birth_date, sex, phone')
+				.eq('id', task.unregistered_patient_id)
+				.maybeSingle();
+
+			if (unregisteredPatient) {
+				patientInfo = {
+					id: unregisteredPatient.id,
+					firstName: unregisteredPatient.first_name,
+					lastName: unregisteredPatient.last_name,
+					identifier: unregisteredPatient.identification,
+					dob: unregisteredPatient.birth_date,
+					gender: unregisteredPatient.sex,
+					phone: unregisteredPatient.phone,
+					is_unregistered: true,
+				};
+				isUnregistered = true;
+			}
+		}
+
+		return NextResponse.json(
+			{
+				task: {
+					...task,
+					Patient: patientInfo,
+					is_unregistered: isUnregistered,
+				},
+			},
+			{ status: 200 }
+		);
 	} catch (err) {
 		const errorMessage = err instanceof Error ? err.message : 'Error desconocido';
 		console.error('[Medic Tasks API] Error inesperado:', errorMessage);
@@ -126,6 +189,7 @@ export async function PATCH(
 				description,
 				assigned_to,
 				patient_id,
+				unregistered_patient_id,
 				related_consultation_id,
 				due_at,
 				completed,

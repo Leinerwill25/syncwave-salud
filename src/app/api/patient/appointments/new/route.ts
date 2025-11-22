@@ -7,9 +7,10 @@ import { createNotification } from '@/lib/notifications';
 
 export async function POST(request: Request) {
 	try {
+		// Obtener paciente autenticado (esta función ya maneja la restauración de sesión)
 		const patient = await getAuthenticatedPatient();
 		if (!patient) {
-			return NextResponse.json({ error: 'No autenticado' }, { status: 401 });
+			return NextResponse.json({ error: 'No autenticado. Por favor inicia sesión nuevamente.' }, { status: 401 });
 		}
 
 		const cookieStore = await cookies();
@@ -20,6 +21,11 @@ export async function POST(request: Request) {
 
 		if (!scheduled_at) {
 			return NextResponse.json({ error: 'scheduled_at es requerido' }, { status: 400 });
+		}
+
+		// Validar que se haya seleccionado un servicio
+		if (!selected_service || !selected_service.name || !selected_service.price) {
+			return NextResponse.json({ error: 'Debe seleccionar un servicio para agendar la cita' }, { status: 400 });
 		}
 
 		// Validar que la fecha no sea en el pasado
@@ -50,7 +56,7 @@ export async function POST(request: Request) {
 			return NextResponse.json({ error: 'El horario seleccionado no está disponible' }, { status: 400 });
 		}
 
-		// Crear la cita
+		// Crear la cita (SIN crear facturación aún - se creará cuando el médico confirme)
 		const { data: appointment, error: appointmentError } = await supabase
 			.from('appointment')
 			.insert({
@@ -62,6 +68,7 @@ export async function POST(request: Request) {
 				status: 'SCHEDULED',
 				reason: reason || null,
 				location: location || null,
+				selected_service: selected_service || null, // Guardar el servicio seleccionado
 			})
 			.select()
 			.single();

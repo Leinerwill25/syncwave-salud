@@ -57,17 +57,43 @@ export async function PATCH(req: NextRequest, context: { params: Promise<{ id: s
 		const body = await req.json();
 		const { supabase } = createSupabaseServerClient();
 
+		const updatePayload: any = {
+			chief_complaint: body.chief_complaint ?? undefined,
+			diagnosis: body.diagnosis ?? undefined,
+			notes: body.notes ?? undefined,
+			vitals: body.vitals ?? undefined,
+			started_at: body.started_at ? new Date(body.started_at).toISOString() : undefined,
+			ended_at: body.ended_at ? new Date(body.ended_at).toISOString() : undefined,
+			updated_at: new Date().toISOString(),
+		};
+
+		// Permitir actualizar patient_id o unregistered_patient_id
+		if (body.patient_id !== undefined) {
+			updatePayload.patient_id = body.patient_id;
+		}
+		if (body.unregistered_patient_id !== undefined) {
+			updatePayload.unregistered_patient_id = body.unregistered_patient_id;
+		}
+
+		// Si se está cambiando a un paciente no registrado, limpiar patient_id
+		if (body.unregistered_patient_id && body.patient_id === null) {
+			updatePayload.patient_id = null;
+		}
+		// Si se está cambiando a un paciente registrado, limpiar unregistered_patient_id
+		if (body.patient_id && body.unregistered_patient_id === null) {
+			updatePayload.unregistered_patient_id = null;
+		}
+
+		// Remover campos undefined para evitar actualizaciones no deseadas
+		Object.keys(updatePayload).forEach(key => {
+			if (updatePayload[key] === undefined) {
+				delete updatePayload[key];
+			}
+		});
+
 		const { data, error } = await supabase
 			.from('consultation')
-			.update({
-				chief_complaint: body.chief_complaint ?? null,
-				diagnosis: body.diagnosis ?? null,
-				notes: body.notes ?? null,
-				vitals: body.vitals ?? null,
-				started_at: body.started_at ? new Date(body.started_at).toISOString() : null,
-				ended_at: body.ended_at ? new Date(body.ended_at).toISOString() : null,
-				updated_at: new Date().toISOString(),
-			})
+			.update(updatePayload)
 			.eq('id', id)
 			.select()
 			.single();

@@ -17,10 +17,12 @@ type Factura = {
 	fecha_emision: string;
 	fecha_pago: string | null;
 	notas: string | null;
+	doctor_id?: string | null;
 	appointment: {
 		scheduled_at: string;
 		reason: string | null;
 		doctor: {
+			id: string;
 			name: string | null;
 		} | null;
 	} | null;

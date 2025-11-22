@@ -49,6 +49,7 @@ export async function GET(request: Request) {
 						name
 					)
 				),
+				doctor_id,
 				organization:Organization!fk_facturacion_org (
 					id,
 					name

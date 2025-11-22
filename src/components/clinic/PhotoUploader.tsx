@@ -5,6 +5,26 @@ import { useState, useRef, useEffect } from 'react';
 import { Upload, X, Image as ImageIcon, Camera, CheckCircle, AlertCircle } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
+// Helper function to convert Supabase Storage path to public URL
+function getPublicImageUrl(path: string): string {
+	if (!path) return path;
+	// Si ya es una URL completa, devolverla tal cual
+	if (path.startsWith('http://') || path.startsWith('https://')) {
+		return path;
+	}
+	// Si es un path de Supabase Storage, convertir a URL pública
+	if (path.startsWith('clinic-photos/')) {
+		const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+		const bucket = 'clinic-photos';
+		return `${supabaseUrl}/storage/v1/object/public/${bucket}/${path}`;
+	}
+	// Si es un blob URL temporal, mantenerla
+	if (path.startsWith('blob:')) {
+		return path;
+	}
+	return path;
+}
+
 interface PhotoUploaderProps {
 	onPhotosChange: (photos: string[]) => void;
 	initialPhotos?: string[];
@@ -24,8 +44,12 @@ export default function PhotoUploader({
 	const fileInputRef = useRef<HTMLInputElement>(null);
 
 	useEffect(() => {
-		if (initialPhotos.length > 0) {
-			setPhotos(initialPhotos);
+		// Sincronizar fotos iniciales cuando cambien y convertir paths a URLs públicas
+		if (initialPhotos && initialPhotos.length > 0) {
+			const convertedPhotos = initialPhotos.map((photo: string) => getPublicImageUrl(photo));
+			setPhotos(convertedPhotos);
+		} else {
+			setPhotos([]);
 		}
 	}, [initialPhotos]);
 
@@ -49,8 +73,35 @@ export default function PhotoUploader({
 		try {
 			const newPhotoUrls: string[] = [];
 			for (const file of files) {
+				// Detectar tipo MIME basado en la extensión si el tipo detectado no es válido
+				let fileType = file.type;
+				const fileName = file.name.toLowerCase();
+				const fileExt = fileName.split('.').pop() || '';
+				
+				// Mapeo de extensiones a tipos MIME
+				const mimeTypeMap: Record<string, string> = {
+					'jpg': 'image/jpeg',
+					'jpeg': 'image/jpeg',
+					'png': 'image/png',
+					'gif': 'image/gif',
+					'webp': 'image/webp',
+					'bmp': 'image/bmp',
+					'svg': 'image/svg+xml',
+				};
+
+				// Si el tipo MIME no es válido o es text/plain, intentar detectarlo por extensión
+				if (!fileType || !fileType.startsWith('image/') || fileType.includes('text/plain')) {
+					if (mimeTypeMap[fileExt]) {
+						fileType = mimeTypeMap[fileExt];
+						console.log(`[PhotoUploader] Tipo MIME corregido de "${file.type}" a "${fileType}" para archivo ${file.name}`);
+					} else {
+						alert(`${file.name}: Tipo de archivo no soportado. Extensiones permitidas: ${Object.keys(mimeTypeMap).join(', ')}`);
+						continue;
+					}
+				}
+
 				// Validar tipo de archivo
-				if (!file.type.startsWith('image/')) {
+				if (!fileType.startsWith('image/')) {
 					alert(`${file.name} no es una imagen válida`);
 					continue;
 				}
@@ -61,15 +112,46 @@ export default function PhotoUploader({
 					continue;
 				}
 
-				// Crear URL temporal para preview
-				const url = URL.createObjectURL(file);
-				newPhotoUrls.push(url);
+				// Crear URL temporal para preview inmediato
+				const previewUrl = URL.createObjectURL(file);
+				newPhotoUrls.push(previewUrl);
 
-				// TODO: Aquí deberías subir el archivo a Supabase Storage
-				// const { data, error } = await supabase.storage
-				//   .from('clinic-photos')
-				//   .upload(`${organizationId}/${Date.now()}-${file.name}`, file);
-				// if (data) newPhotoUrls.push(data.path);
+				// Subir a Supabase Storage
+				try {
+					const uploadFormData = new FormData();
+					uploadFormData.append('file', file);
+					uploadFormData.append('photo_type', 'gallery');
+
+					const uploadRes = await fetch('/api/clinic/upload-photo', {
+						method: 'POST',
+						credentials: 'include',
+						body: uploadFormData,
+					});
+
+					if (uploadRes.ok) {
+						const uploadData = await uploadRes.json();
+						// Reemplazar la URL temporal con la URL pública
+						const index = newPhotoUrls.indexOf(previewUrl);
+						if (index !== -1) {
+							newPhotoUrls[index] = uploadData.url;
+							// Revocar la URL temporal
+							URL.revokeObjectURL(previewUrl);
+						}
+					} else {
+						const errorData = await uploadRes.json().catch(() => ({ error: 'Error desconocido' }));
+						console.error(`Error subiendo ${file.name}:`, errorData);
+						// Revocar la URL temporal y remover de la lista
+						URL.revokeObjectURL(previewUrl);
+						const index = newPhotoUrls.indexOf(previewUrl);
+						if (index !== -1) {
+							newPhotoUrls.splice(index, 1);
+						}
+						alert(`Error al subir ${file.name}: ${errorData.error || 'Error desconocido'}`);
+					}
+				} catch (uploadErr) {
+					console.error(`Error subiendo ${file.name}:`, uploadErr);
+					// Mantener la URL temporal
+				}
 			}
 
 			const updatedPhotos = [...photos, ...newPhotoUrls];
@@ -107,7 +189,33 @@ export default function PhotoUploader({
 		}
 
 		const files = Array.from(e.dataTransfer.files);
-		const imageFiles = files.filter(file => file.type.startsWith('image/'));
+		
+		// Filtrar archivos de imagen, detectando tipo MIME por extensión si es necesario
+		const mimeTypeMap: Record<string, string> = {
+			'jpg': 'image/jpeg',
+			'jpeg': 'image/jpeg',
+			'png': 'image/png',
+			'gif': 'image/gif',
+			'webp': 'image/webp',
+			'bmp': 'image/bmp',
+			'svg': 'image/svg+xml',
+		};
+
+		const imageFiles = files.filter(file => {
+			let fileType = file.type;
+			const fileName = file.name.toLowerCase();
+			const fileExt = fileName.split('.').pop() || '';
+			
+			// Si el tipo MIME no es válido o es text/plain, intentar detectarlo por extensión
+			if (!fileType || !fileType.startsWith('image/') || fileType.includes('text/plain')) {
+				if (mimeTypeMap[fileExt]) {
+					return true; // Es una imagen válida por extensión
+				}
+				return false;
+			}
+			
+			return fileType.startsWith('image/');
+		});
 		
 		if (imageFiles.length === 0) {
 			alert('Por favor arrastra solo archivos de imagen');

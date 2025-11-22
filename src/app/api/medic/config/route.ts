@@ -2,6 +2,7 @@
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { createSupabaseServerClient } from '@/app/adapters/server';
+import { PRIVATE_SPECIALTIES, isValidPrivateSpecialty } from '@/lib/constants/specialties';
 
 interface CookieStore {
 	get?: (name: string) => { value?: string } | undefined;
@@ -230,6 +231,7 @@ export async function GET(request: Request) {
 					credit_history: {},
 					availability: {},
 					notifications: { email: true, whatsapp: false, push: false },
+					payment_methods: [],
 				})
 				.select()
 				.single();
@@ -260,6 +262,11 @@ export async function GET(request: Request) {
 			profile?.notifications,
 			{ email: true, whatsapp: false, push: false }
 		);
+		const paymentMethods = parseJsonField<Array<Record<string, unknown>>>(profile?.payment_methods, []);
+
+		// Un médico está "afiliado" si tiene una organización de tipo CLINICA o HOSPITAL
+		// Los consultorios privados (CONSULTORIO) no se consideran afiliados
+		const isAffiliated = organizationType === 'CLINICA' || organizationType === 'HOSPITAL';
 
 		return NextResponse.json({
 			user: {
@@ -268,7 +275,7 @@ export async function GET(request: Request) {
 				email: appUser.email,
 				organizationId: appUser.organizationId,
 			},
-			isAffiliated: !!appUser.organizationId,
+			isAffiliated: isAffiliated,
 			organizationType: organizationType,
 			clinicProfile: clinicProfile ? {
 				name: clinicProfile.trade_name || clinicProfile.legal_name,
@@ -289,6 +296,7 @@ export async function GET(request: Request) {
 					: profile?.private_specialty 
 						? [profile.private_specialty] 
 						: [],
+				paymentMethods: paymentMethods,
 			},
 		});
 	} catch (err) {
@@ -406,7 +414,13 @@ export async function PATCH(request: Request) {
 		}
 
 		if (body.privateSpecialty !== undefined) {
-			profileData.private_specialty = body.privateSpecialty;
+			// Validar que la especialidad sea una de las permitidas
+			if (body.privateSpecialty && !isValidPrivateSpecialty(body.privateSpecialty)) {
+				return NextResponse.json({ 
+					error: `Especialidad inválida. Debe ser una de: ${PRIVATE_SPECIALTIES.join(', ')}` 
+				}, { status: 400 });
+			}
+			profileData.private_specialty = body.privateSpecialty || null;
 		}
 
 		if (body.photo !== undefined) {
@@ -435,6 +449,10 @@ export async function PATCH(request: Request) {
 
 		if (body.notifications !== undefined) {
 			profileData.notifications = body.notifications;
+		}
+
+		if (body.paymentMethods !== undefined) {
+			profileData.payment_methods = body.paymentMethods;
 		}
 
 		// Verificar si existe perfil

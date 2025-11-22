@@ -4,6 +4,9 @@ import createSupabaseServerClient from '@/app/adapters/server';
 import Link from 'next/link';
 import { User, Stethoscope, Calendar, Clock, FileText, ClipboardList, DollarSign } from 'lucide-react';
 import QuickFacts from '@/app/dashboard/medic/components/QuickFacts';
+import ConsultationDataDisplay from '@/app/dashboard/medic/consultas/components/ConsultationDataDisplay';
+import PatientSelector from '@/app/dashboard/medic/consultas/[id]/components/PatientSelector';
+import PatientHistoryLink from '@/app/dashboard/medic/consultas/[id]/components/PatientHistoryLink';
 
 type Props = { params: Promise<{ id?: string }> };
 
@@ -55,8 +58,8 @@ export default async function ConsultationDetail({ params }: Props) {
 		const { data, error } = await supabase
 			.from('consultation')
 			.select(
-				`id, appointment_id, patient_id, doctor_id, organization_id, chief_complaint, diagnosis, notes, vitals, started_at, ended_at, created_at,
-         patient:patient_id(firstName,lastName,dob),
+				`id, appointment_id, patient_id, unregistered_patient_id, doctor_id, organization_id, chief_complaint, diagnosis, notes, vitals, started_at, ended_at, created_at,
+         patient:patient_id(firstName,lastName,dob,identifier),
          doctor:doctor_id(id, name, email)`
 			)
 			.eq('id', id)
@@ -67,6 +70,34 @@ export default async function ConsultationDetail({ params }: Props) {
 		}
 
 		const c: any = data;
+
+		// Obtener datos del paciente no registrado si existe
+		let unregisteredPatient: any = null;
+		if (c.unregistered_patient_id) {
+			const { data: unregisteredData } = await supabase
+				.from('unregisteredpatients')
+				.select('id, first_name, last_name, identification, phone, email, birth_date, sex, address')
+				.eq('id', c.unregistered_patient_id)
+				.maybeSingle();
+			
+			if (unregisteredData) {
+				unregisteredPatient = {
+					id: unregisteredData.id,
+					firstName: unregisteredData.first_name,
+					lastName: unregisteredData.last_name,
+					identifier: unregisteredData.identification,
+					phone: unregisteredData.phone,
+					email: unregisteredData.email,
+					birthDate: unregisteredData.birth_date,
+					sex: unregisteredData.sex,
+					address: unregisteredData.address,
+					isUnregistered: true,
+				};
+			}
+		}
+
+		const currentPatient = c.patient || unregisteredPatient;
+		const isUnregistered = !!c.unregistered_patient_id;
 
 		const initials = (name?: string, last?: string) => {
 			if (!name && !last) return '??';
@@ -103,11 +134,13 @@ export default async function ConsultationDetail({ params }: Props) {
 
 									<div className="flex items-center gap-3 bg-white/10 px-3 py-1.5 rounded-lg">
 										<div aria-hidden className="w-12 h-12 rounded-full bg-white/20 flex items-center justify-center text-white font-semibold text-lg">
-											{initials(c.patient?.firstName, c.patient?.lastName)}
+											{initials(currentPatient?.firstName, currentPatient?.lastName)}
 										</div>
 										<div className="text-white text-sm text-left">
-											<div className="font-semibold truncate">{c.patient ? `${c.patient.firstName} ${c.patient.lastName}` : 'Paciente —'}</div>
-											<div className="text-xs opacity-90 truncate">{c.doctor?.name ? `Dr(a). ${c.doctor.name}` : '—'}</div>
+											<div className="font-semibold truncate">{currentPatient ? `${currentPatient.firstName} ${currentPatient.lastName}` : 'Paciente —'}</div>
+											<div className="text-xs opacity-90 truncate">
+												{isUnregistered ? 'Paciente No Registrado' : c.doctor?.name ? `Dr(a). ${c.doctor.name}` : '—'}
+											</div>
 										</div>
 									</div>
 								</div>
@@ -169,19 +202,53 @@ export default async function ConsultationDetail({ params }: Props) {
 								</div>
 							</CardShell>
 
+							{/* New Consultation Data Display */}
+							{(() => {
+								const vitalsObj = typeof c.vitals === 'string' ? JSON.parse(c.vitals) : c.vitals || {};
+								const initialPatientData = vitalsObj.initial_patient_data;
+								const specialtyData = vitalsObj.specialty_data;
+								const privateNotes = vitalsObj.private_notes;
+								const images = vitalsObj.images;
+
+								if (initialPatientData || specialtyData || privateNotes || images) {
+									return <ConsultationDataDisplay vitals={c.vitals} initialPatientData={initialPatientData} specialtyData={specialtyData} privateNotes={privateNotes} images={images} />;
+								}
+								return null;
+							})()}
+
 							{/* Signos / Vitals — tarjeta limpia, tipografía y layout por secciones */}
 							<div className="rounded-2xl bg-white border border-blue-100 shadow-sm p-4">
-								<h3 className="text-sm font-medium text-slate-900 mb-3 flex items-center gap-2">Signos / Vitals</h3>
+								<h3 className="text-sm font-medium text-slate-900 mb-3 flex items-center gap-2">Signos Vitales</h3>
 
 								{c.vitals ? (
 									(() => {
 										// helpers localizados dentro del JSX (no crear componente nuevo)
 										const vitalsObj = typeof c.vitals === 'string' ? JSON.parse(c.vitals) : c.vitals || {};
+										
+										// Filtrar campos que no son signos vitales (scheduled_date, consultation_date, initial_patient_data, specialty_data, private_notes, images)
+										const excludedKeys = ['scheduled_date', 'consultation_date', 'initial_patient_data', 'specialty_data', 'private_notes', 'images'];
+										const filteredVitalsObj: Record<string, any> = {};
+										Object.keys(vitalsObj).forEach(key => {
+											if (!excludedKeys.includes(key)) {
+												filteredVitalsObj[key] = vitalsObj[key];
+											}
+										});
+
 										const prettyLabel = (key: string) =>
 											key
 												.replace(/_/g, ' ')
 												.replace(/\b([a-z])/g, (m) => m.toUpperCase())
-												.replace(/\bBpm\b/i, 'BPM');
+												.replace(/\bBpm\b/i, 'BPM')
+												.replace(/\bBp\b/i, 'PA')
+												.replace(/\bSpo2\b/i, 'SpO₂')
+												.replace(/\bGcs\b/i, 'GCS')
+												.replace(/\bFev1\b/i, 'FEV1')
+												.replace(/\bFvc\b/i, 'FVC')
+												.replace(/\bBnp\b/i, 'BNP')
+												.replace(/\bPhq9\b/i, 'PHQ-9')
+												.replace(/\bIop\b/i, 'PIO')
+												.replace(/\bHba1c\b/i, 'HbA1c')
+												.replace(/\bTsh\b/i, 'TSH');
 
 										const formatValue = (val: any) => {
 											if (val === null || val === undefined || (typeof val === 'string' && val.trim() === '')) return '—';
@@ -192,7 +259,7 @@ export default async function ConsultationDetail({ params }: Props) {
 
 										// custom order: ensure 'general' first, then cardiology, pulmonology, others alpha
 										const orderPriority: Record<string, number> = { general: 0, cardiology: 1, pulmonology: 2 };
-										const sections = Object.keys(vitalsObj).sort((a, b) => {
+										const sections = Object.keys(filteredVitalsObj).sort((a, b) => {
 											const pa = orderPriority[a] ?? 99;
 											const pb = orderPriority[b] ?? 99;
 											if (pa !== pb) return pa - pb;
@@ -201,9 +268,12 @@ export default async function ConsultationDetail({ params }: Props) {
 
 										return (
 											<div className="space-y-4">
-												{sections.map((section) => {
-													const sectionData = vitalsObj[section] || {};
-													const entries = Object.entries(sectionData);
+												{sections.length === 0 ? (
+													<div className="text-sm text-slate-700">No hay signos vitales registrados.</div>
+												) : (
+													sections.map((section) => {
+														const sectionData = filteredVitalsObj[section] || {};
+														const entries = Object.entries(sectionData);
 
 													return (
 														<div key={section} className="border border-blue-100 rounded-xl p-3 bg-blue-50/50">
@@ -235,21 +305,33 @@ export default async function ConsultationDetail({ params }: Props) {
 															)}
 														</div>
 													);
-												})}
+													})
+												)}
 											</div>
 										);
 									})()
 								) : (
-									<div className="text-sm text-slate-700">No hay signos registrados.</div>
+									<div className="text-sm text-slate-700">No hay signos vitales registrados.</div>
 								)}
 							</div>
 						</div>
 
 						{/* Right: quick facts / actions — estilos mejorados, mismos subcomponentes */}
 						<aside className="space-y-5">
+							{/* Selector de Paciente */}
+							<div className="rounded-2xl bg-white border border-blue-100 shadow-sm p-4">
+								<PatientSelector
+									consultationId={c.id}
+									currentPatientId={c.patient_id}
+									currentUnregisteredPatientId={c.unregistered_patient_id}
+									currentPatientName={currentPatient ? `${currentPatient.firstName} ${currentPatient.lastName}` : 'Sin paciente'}
+									isUnregistered={isUnregistered}
+								/>
+							</div>
+
 							{/* QuickFacts — envuelto en tarjeta con estilo corporativo */}
 							<div className="rounded-2xl bg-white border border-blue-100 shadow-sm p-4">
-								<QuickFacts c={c} />
+								<QuickFacts c={{ ...c, patient: currentPatient }} />
 							</div>
 
 							{/* Acciones — tarjeta con botones corporativos y accesibles */}
@@ -257,9 +339,9 @@ export default async function ConsultationDetail({ params }: Props) {
 								<h3 className="text-sm font-semibold text-slate-900 mb-3">Acciones</h3>
 
 								<div className="flex flex-col gap-2">
-									<Link href={`/dashboard/medic/pacientes/${c.patient_id}`} className="inline-flex items-center justify-center px-3 py-2 rounded-lg border border-blue-200 bg-white text-sm text-slate-900 hover:bg-blue-50 focus:outline-none focus:ring-2 focus:ring-offset-1 focus:ring-teal-400" aria-label="Ver historial del paciente">
-										Ver historial del paciente
-									</Link>
+									{currentPatient && (
+										<PatientHistoryLink patientId={c.patient_id} isUnregistered={isUnregistered} />
+									)}
 
 									<Link href={`/dashboard/medic/consultas/${c.id}/prescription`} className="inline-flex items-center justify-center px-3 py-2 rounded-lg bg-gradient-to-r from-teal-600 to-cyan-600 text-white text-sm hover:from-teal-700 hover:to-cyan-700 focus:outline-none focus:ring-2 focus:ring-offset-1 focus:ring-teal-400" aria-label="Crear prescripción">
 										Crear Prescripción

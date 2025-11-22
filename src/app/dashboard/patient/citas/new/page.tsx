@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { Calendar, Clock, User, Building2, Search, ChevronLeft, CheckCircle, AlertCircle, DollarSign } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import AlertModal from '@/components/ui/AlertModal';
 
 type MedicService = {
 	name: string;
@@ -62,6 +63,34 @@ export default function NewAppointmentPage() {
 	const [searchOrg, setSearchOrg] = useState('');
 	const [searchDoctor, setSearchDoctor] = useState('');
 
+	// Modal state
+	const [modal, setModal] = useState<{
+		isOpen: boolean;
+		type: 'success' | 'error' | 'info' | 'warning';
+		title: string;
+		message: string;
+		onConfirm?: () => void;
+	}>({
+		isOpen: false,
+		type: 'info',
+		title: '',
+		message: '',
+	});
+
+	// Helper para extraer el organization_id real
+	const getOrganizationId = (org: Organization | null): string | null => {
+		if (!org) return null;
+		// Si tiene organization_id, usarlo directamente
+		if (org.organization_id) return org.organization_id;
+		// Si el id es compuesto (formato: "uuid-consultorio-index"), extraer el UUID
+		if (org.id && org.id.includes('-consultorio-')) {
+			const idParts = org.id.split('-consultorio-');
+			return idParts[0];
+		}
+		// Si no, usar el id directamente
+		return org.id;
+	};
+
 	useEffect(() => {
 		loadOrganizations();
 	}, []);
@@ -96,49 +125,43 @@ export default function NewAppointmentPage() {
 		try {
 			setLoading(true);
 
-			// Cargar clínicas
-			const clinicsRes = await fetch('/api/patient/clinics?per_page=50', {
-				credentials: 'include',
-			});
-
-			// Cargar consultorios privados
+			// Solo cargar consultorios privados (no clínicas, farmacias o laboratorios)
 			const consultoriosRes = await fetch('/api/patient/explore?type=CONSULTORIO_PRIVADO&per_page=50', {
 				credentials: 'include',
 			});
 
 			const allOrgs: Organization[] = [];
 
-			// Procesar clínicas
-			if (clinicsRes.ok) {
-				const clinicsData = await clinicsRes.json();
-				const clinics = (clinicsData.data || []).map((clinic: any) => ({
-					id: clinic.organization_id || clinic.organization?.id || clinic.id,
-					name: clinic.organization?.name || clinic.legal_name || clinic.trade_name,
-					type: clinic.organization?.type || 'CLINICA',
-					organization_id: clinic.organization_id || clinic.organization?.id,
-					clinic_profile: {
-						trade_name: clinic.trade_name,
-						specialties: clinic.specialties || [],
-						address_operational: clinic.address_operational,
-					},
-				}));
-				allOrgs.push(...clinics);
-			}
-
 			// Procesar consultorios privados
 			if (consultoriosRes.ok) {
 				const consultoriosData = await consultoriosRes.json();
-				const consultorios = (consultoriosData.data || []).map((consultorio: any) => ({
-					id: consultorio.organization?.id || consultorio.id,
-					name: consultorio.name || consultorio.organization?.name,
-					type: consultorio.organization?.type || 'CONSULTORIO',
-					organization_id: consultorio.organization?.id || consultorio.id,
-					clinic_profile: {
-						trade_name: consultorio.name,
-						specialties: consultorio.specialties || consultorio.specialty ? [consultorio.specialty] : [],
-						address_operational: consultorio.address,
-					},
-				}));
+				// Usar un Set para evitar duplicados basados en organization_id
+				const seenIds = new Set<string>();
+
+				const consultorios = (consultoriosData.data || [])
+					.filter((consultorio: any) => {
+						const orgId = consultorio.organization?.id || consultorio.id;
+						if (!orgId || seenIds.has(orgId)) {
+							return false;
+						}
+						seenIds.add(orgId);
+						return true;
+					})
+					.map((consultorio: any, index: number) => {
+						const orgId = consultorio.organization?.id || consultorio.id;
+						// Crear un ID único combinando organization_id con un índice para evitar duplicados
+						return {
+							id: `${orgId}-consultorio-${index}`,
+							organization_id: orgId, // Mantener el organization_id real para usar en otras llamadas
+							name: consultorio.name || consultorio.organization?.name || consultorio.trade_name || consultorio.legal_name,
+							type: 'CONSULTORIO',
+							clinic_profile: {
+								trade_name: consultorio.trade_name || consultorio.name || consultorio.organization?.name,
+								specialties: Array.isArray(consultorio.specialties) ? consultorio.specialties : consultorio.specialty ? [consultorio.specialty] : [],
+								address_operational: consultorio.address_operational || consultorio.address,
+							},
+						};
+					});
 				allOrgs.push(...consultorios);
 			}
 
@@ -155,88 +178,52 @@ export default function NewAppointmentPage() {
 
 		try {
 			setLoading(true);
-			// Usar organization_id si está disponible, sino usar id
-			const orgId = selectedOrganization.organization_id || selectedOrganization.id;
+			// Extraer el organization_id real
+			const orgId = getOrganizationId(selectedOrganization);
+			if (!orgId) {
+				setDoctors([]);
+				return;
+			}
 
-			// Si es un consultorio, usar la API de explore para obtener el médico
-			if (selectedOrganization.type === 'CONSULTORIO') {
-				const res = await fetch(`/api/patient/explore?type=CONSULTORIO_PRIVADO&per_page=50`, {
-					credentials: 'include',
-				});
+			// Solo manejar consultorios
+			const res = await fetch(`/api/patient/explore?type=CONSULTORIO_PRIVADO&per_page=50`, {
+				credentials: 'include',
+			});
 
-				if (res.ok) {
-					const data = await res.json();
-					const consultorio = (data.data || []).find((c: any) => (c.organization?.id || c.id) === orgId);
+			if (res.ok) {
+				const data = await res.json();
+				const consultorio = (data.data || []).find((c: any) => (c.organization?.id || c.id) === orgId);
 
-					if (consultorio && consultorio.doctor) {
-						// Parsear services si viene como string JSON o array
-						let services = consultorio.services || null;
-						if (services && typeof services === 'string') {
-							try {
-								services = JSON.parse(services);
-							} catch {
-								services = null;
-							}
+				if (consultorio && consultorio.doctor) {
+					// Parsear services si viene como string JSON o array
+					let services = consultorio.services || null;
+					if (services && typeof services === 'string') {
+						try {
+							services = JSON.parse(services);
+						} catch {
+							services = null;
 						}
-
-						// Mapear el doctor del consultorio al formato esperado
-						setDoctors([
-							{
-								id: consultorio.doctor.id,
-								name: consultorio.doctor.name,
-								email: consultorio.doctor.email,
-								medic_profile: {
-									specialty: consultorio.specialty || null,
-									private_specialty: consultorio.specialty || null,
-									photo_url: consultorio.photo || null,
-									services: services,
-								},
-							},
-						]);
-					} else {
-						setDoctors([]);
 					}
+
+					// Mapear el doctor del consultorio al formato esperado
+					setDoctors([
+						{
+							id: consultorio.doctor.id,
+							name: consultorio.doctor.name,
+							email: consultorio.doctor.email,
+							medic_profile: {
+								specialty: consultorio.specialty || null,
+								private_specialty: consultorio.specialty || null,
+								photo_url: consultorio.photo || null,
+								services: services,
+							},
+						},
+					]);
 				} else {
 					setDoctors([]);
 				}
 			} else {
-				// Para clínicas, usar la API normal
-				const res = await fetch(`/api/patient/clinics/${orgId}`, {
-					credentials: 'include',
-				});
-
-				if (!res.ok) throw new Error('Error al cargar médicos');
-
-				const clinicData = await res.json();
-				if (clinicData.doctors) {
-					// Mapear los doctores al formato esperado
-					const mappedDoctors = (clinicData.doctors || []).map((doc: any) => {
-						// Parsear services si viene como string JSON
-						let services = doc.medic_profile?.services || null;
-						if (services && typeof services === 'string') {
-							try {
-								services = JSON.parse(services);
-							} catch {
-								services = null;
-							}
-						}
-
-						return {
-							id: doc.id,
-							name: doc.name,
-							email: doc.email,
-							medic_profile: {
-								specialty: doc.medic_profile?.specialty || null,
-								private_specialty: doc.medic_profile?.private_specialty || null,
-								photo_url: doc.medic_profile?.photo_url || null,
-								services: services,
-							},
-						};
-					});
-					setDoctors(mappedDoctors);
-				} else {
-					setDoctors([]);
-				}
+				setDoctors([]);
 			}
 		} catch (err) {
 			console.error('Error:', err);
@@ -258,8 +245,10 @@ export default function NewAppointmentPage() {
 				doctor_id: selectedDoctor.id,
 			});
 			if (selectedOrganization) {
-				const orgId = selectedOrganization.organization_id || selectedOrganization.id;
-				params.set('organization_id', orgId);
+				const orgId = getOrganizationId(selectedOrganization);
+				if (orgId) {
+					params.set('organization_id', orgId);
+				}
 			}
 
 			const res = await fetch(`/api/patient/appointments/available-days?${params.toString()}`, {
@@ -304,14 +293,16 @@ export default function NewAppointmentPage() {
 				date: selectedDate,
 			});
 			if (selectedOrganization) {
-				const orgId = selectedOrganization.organization_id || selectedOrganization.id;
-				params.set('organization_id', orgId);
+				const orgId = getOrganizationId(selectedOrganization);
+				if (orgId) {
+					params.set('organization_id', orgId);
+				}
 			}
 
 			console.log('[New Appointment] Cargando slots disponibles:', {
 				doctor_id: selectedDoctor.id,
 				date: selectedDate,
-				organization_id: selectedOrganization?.organization_id || selectedOrganization?.id,
+				organization_id: getOrganizationId(selectedOrganization),
 			});
 
 			const res = await fetch(`/api/patient/appointments/available?${params.toString()}`, {
@@ -341,9 +332,29 @@ export default function NewAppointmentPage() {
 		}
 	};
 
+	const showModal = (type: 'success' | 'error' | 'info' | 'warning', title: string, message: string, onConfirm?: () => void) => {
+		setModal({
+			isOpen: true,
+			type,
+			title,
+			message,
+			onConfirm,
+		});
+	};
+
+	const closeModal = () => {
+		setModal((prev) => ({ ...prev, isOpen: false }));
+	};
+
 	const handleSubmit = async () => {
 		if (!selectedDate || !selectedTime || !selectedOrganization) {
-			alert('Por favor complete todos los campos requeridos');
+			showModal('warning', 'Campos Incompletos', 'Por favor complete todos los campos requeridos para continuar.');
+			return;
+		}
+
+		// Validar servicio si el doctor tiene servicios
+		if (selectedDoctor?.medic_profile?.services && Array.isArray(selectedDoctor.medic_profile.services) && selectedDoctor.medic_profile.services.length > 0 && !selectedService) {
+			showModal('warning', 'Servicio Requerido', 'Por favor selecciona un servicio para agendar la cita.');
 			return;
 		}
 
@@ -351,8 +362,12 @@ export default function NewAppointmentPage() {
 			setSubmitting(true);
 			const scheduledAt = `${selectedDate}T${selectedTime}:00`;
 
-			// Usar organization_id si está disponible, sino usar id
-			const orgId = selectedOrganization.organization_id || selectedOrganization.id;
+			// Extraer el organization_id real
+			const orgId = getOrganizationId(selectedOrganization);
+			if (!orgId) {
+				showModal('error', 'Error de Configuración', 'No se pudo obtener el ID de la organización. Por favor intenta nuevamente.');
+				return;
+			}
 
 			const res = await fetch('/api/patient/appointments/new', {
 				method: 'POST',
@@ -378,20 +393,37 @@ export default function NewAppointmentPage() {
 
 			if (!res.ok) {
 				const data = await res.json();
-				throw new Error(data.error || 'Error al crear la cita');
+				const errorMessage = data.error || data.detail || 'Error al crear la cita';
+
+				if (res.status === 401) {
+					showModal('error', 'Sesión Expirada', 'Tu sesión ha expirado. Por favor inicia sesión nuevamente.', () => {
+						router.push('/login');
+					});
+				} else {
+					showModal('error', 'Error al Crear Cita', errorMessage);
+				}
+				return;
 			}
 
 			const data = await res.json();
-			alert('Cita creada correctamente. El médico recibirá una notificación.');
-			router.push('/dashboard/patient/citas');
+			showModal('success', '¡Cita Creada Exitosamente!', 'Tu cita ha sido registrada correctamente. El médico recibirá una notificación y podrá confirmarla.', () => {
+				router.push('/dashboard/patient/citas');
+			});
 		} catch (err: any) {
-			alert(err.message || 'Error al crear la cita');
+			showModal('error', 'Error Inesperado', err.message || 'Ocurrió un error inesperado al crear la cita. Por favor intenta nuevamente.');
 		} finally {
 			setSubmitting(false);
 		}
 	};
 
-	const filteredOrgs = organizations.filter((org) => org.name.toLowerCase().includes(searchOrg.toLowerCase()) || org.clinic_profile?.trade_name?.toLowerCase().includes(searchOrg.toLowerCase()));
+	// Filtrar solo consultorios y aplicar búsqueda
+	const filteredOrgs = organizations.filter((org) => {
+		// Asegurar que solo sean consultorios
+		if (org.type !== 'CONSULTORIO') return false;
+		// Aplicar búsqueda
+		const searchLower = searchOrg.toLowerCase();
+		return org.name.toLowerCase().includes(searchLower) || org.clinic_profile?.trade_name?.toLowerCase().includes(searchLower);
+	});
 
 	const filteredDoctors = doctors.filter((doctor) => doctor.name?.toLowerCase().includes(searchDoctor.toLowerCase()));
 
@@ -466,12 +498,12 @@ export default function NewAppointmentPage() {
 				<div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-xl border border-white/20 p-8">
 					<h2 className="text-2xl font-bold text-gray-900 mb-6 flex items-center gap-3">
 						<Building2 className="w-6 h-6 text-indigo-600" />
-						Selecciona una Clínica o Consultorio
+						Selecciona un Consultorio
 					</h2>
 
 					<div className="relative mb-6">
 						<Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-						<input type="text" placeholder="Buscar clínica o consultorio..." value={searchOrg} onChange={(e) => setSearchOrg(e.target.value)} className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent" />
+						<input type="text" placeholder="Buscar consultorio..." value={searchOrg} onChange={(e) => setSearchOrg(e.target.value)} className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent" />
 					</div>
 
 					{loading ? (
@@ -656,7 +688,7 @@ export default function NewAppointmentPage() {
 								onChange={(e) => {
 									const newDate = e.target.value;
 									if (newDate && !isDateAvailable(newDate)) {
-										alert('Este día no está disponible. Por favor selecciona un día en el que el médico atiende.');
+										showModal('warning', 'Día No Disponible', 'Este día no está disponible. Por favor selecciona un día en el que el médico atiende.');
 										return;
 									}
 									setSelectedDate(newDate);
@@ -803,12 +835,16 @@ export default function NewAppointmentPage() {
 						<button onClick={() => setStep('schedule')} className="px-6 py-3 border border-gray-300 rounded-lg font-semibold hover:bg-gray-50 transition-colors">
 							Anterior
 						</button>
-						<button onClick={handleSubmit} disabled={submitting} className="flex-1 px-6 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-lg font-semibold hover:from-indigo-700 hover:to-purple-700 transition-all shadow-lg disabled:opacity-50 disabled:cursor-not-allowed">
+						<button onClick={handleSubmit} disabled={submitting || (selectedDoctor?.medic_profile?.services && Array.isArray(selectedDoctor.medic_profile.services) && selectedDoctor.medic_profile.services.length > 0 ? !selectedService : false)} className="flex-1 px-6 py-3 bg-linear-to-r from-indigo-600 to-purple-600 text-white rounded-lg font-semibold hover:from-indigo-700 hover:to-purple-700 transition-all shadow-lg disabled:opacity-50 disabled:cursor-not-allowed">
 							{submitting ? 'Creando cita...' : 'Confirmar y Crear Cita'}
 						</button>
 					</div>
+					{selectedDoctor?.medic_profile?.services && Array.isArray(selectedDoctor.medic_profile.services) && selectedDoctor.medic_profile.services.length > 0 && !selectedService && <p className="text-sm text-red-600 mt-2">Por favor selecciona un servicio para continuar</p>}
 				</div>
 			)}
+
+			{/* Alert Modal */}
+			<AlertModal isOpen={modal.isOpen} onClose={closeModal} type={modal.type} title={modal.title} message={modal.message} onConfirm={modal.onConfirm} confirmText={modal.type === 'success' ? 'Continuar' : 'Entendido'} />
 		</div>
 	);
 }

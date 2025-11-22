@@ -25,6 +25,7 @@ export async function GET(
 			.select(`
 				id,
 				patient_id,
+				unregistered_patient_id,
 				consultation_id,
 				ordering_provider_id,
 				result_type,
@@ -33,15 +34,6 @@ export async function GET(
 				is_critical,
 				reported_at,
 				created_at,
-				Patient:patient_id (
-					id,
-					firstName,
-					lastName,
-					identifier,
-					dob,
-					gender,
-					phone
-				),
 				consultation:consultation_id (
 					id,
 					chief_complaint,
@@ -73,7 +65,77 @@ export async function GET(
 			return NextResponse.json({ error: 'No autorizado' }, { status: 403 });
 		}
 
-		return NextResponse.json({ result }, { status: 200 });
+		// Obtener información del paciente (registrado o no registrado)
+		let patientInfo: any = null;
+		let isUnregistered = false;
+
+		if (result.patient_id) {
+			// Intentar obtener de pacientes registrados
+			const { data: registeredPatient } = await supabase
+				.from('Patient')
+				.select('id, firstName, lastName, identifier, dob, gender, phone')
+				.eq('id', result.patient_id)
+				.maybeSingle();
+
+			if (registeredPatient) {
+				patientInfo = registeredPatient;
+			} else {
+				// Si no está en registrados, puede ser un paciente no registrado (usando su ID como patient_id)
+				const { data: unregisteredPatient } = await supabase
+					.from('unregisteredpatients')
+					.select('id, first_name, last_name, identification, birth_date, sex, phone')
+					.eq('id', result.patient_id)
+					.maybeSingle();
+
+				if (unregisteredPatient) {
+					patientInfo = {
+						id: unregisteredPatient.id,
+						firstName: unregisteredPatient.first_name,
+						lastName: unregisteredPatient.last_name,
+						identifier: unregisteredPatient.identification,
+						dob: unregisteredPatient.birth_date,
+						gender: unregisteredPatient.sex,
+						phone: unregisteredPatient.phone,
+						is_unregistered: true,
+					};
+					isUnregistered = true;
+				}
+			}
+		}
+
+		// Si hay unregistered_patient_id, usar ese
+		if (!patientInfo && result.unregistered_patient_id) {
+			const { data: unregisteredPatient } = await supabase
+				.from('unregisteredpatients')
+				.select('id, first_name, last_name, identification, birth_date, sex, phone')
+				.eq('id', result.unregistered_patient_id)
+				.maybeSingle();
+
+			if (unregisteredPatient) {
+				patientInfo = {
+					id: unregisteredPatient.id,
+					firstName: unregisteredPatient.first_name,
+					lastName: unregisteredPatient.last_name,
+					identifier: unregisteredPatient.identification,
+					dob: unregisteredPatient.birth_date,
+					gender: unregisteredPatient.sex,
+					phone: unregisteredPatient.phone,
+					is_unregistered: true,
+				};
+				isUnregistered = true;
+			}
+		}
+
+		return NextResponse.json(
+			{
+				result: {
+					...result,
+					Patient: patientInfo,
+					is_unregistered: isUnregistered,
+				},
+			},
+			{ status: 200 }
+		);
 	} catch (err) {
 		const errorMessage = err instanceof Error ? err.message : 'Error desconocido';
 		console.error('[Medic Labs API] Error inesperado:', errorMessage);

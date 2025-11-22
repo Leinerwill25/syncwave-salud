@@ -1,13 +1,15 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Search, Building2, ShoppingBag, FlaskConical, Stethoscope, MapPin, Phone } from 'lucide-react';
+import { Search, Building2, ShoppingBag, FlaskConical, Stethoscope, MapPin, Phone, Clock } from 'lucide-react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
+import { PRIVATE_SPECIALTIES } from '@/lib/constants/specialties';
 
 type ExploreResult = {
 	type: 'CLINICA' | 'FARMACIA' | 'LABORATORIO' | 'CONSULTORIO_PRIVADO';
 	id: string;
+	clinicProfileId?: string | null;
 	name: string;
 	address?: string | null;
 	phone?: string | null;
@@ -19,6 +21,11 @@ type ExploreResult = {
 		name: string;
 		type: string;
 	} | null;
+	doctor?: {
+		id: string;
+		name: string | null;
+		email: string | null;
+	} | null;
 };
 
 export default function ExplorePage() {
@@ -27,11 +34,8 @@ export default function ExplorePage() {
 	const [results, setResults] = useState<ExploreResult[]>([]);
 	const [filters, setFilters] = useState({
 		query: searchParams.get('query') || '',
-		type: searchParams.get('type') || '',
+		type: searchParams.get('type') || 'CONSULTORIO_PRIVADO', // Por defecto solo consultorios privados
 		specialty: searchParams.get('specialty') || '',
-		exam: searchParams.get('exam') || '',
-		budget_min: searchParams.get('budget_min') || '',
-		budget_max: searchParams.get('budget_max') || '',
 	});
 
 	useEffect(() => {
@@ -43,11 +47,9 @@ export default function ExplorePage() {
 			setLoading(true);
 			const params = new URLSearchParams();
 			if (filters.query) params.set('query', filters.query);
-			if (filters.type) params.set('type', filters.type);
+			// Solo buscar consultorios privados
+			params.set('type', 'CONSULTORIO_PRIVADO');
 			if (filters.specialty) params.set('specialty', filters.specialty);
-			if (filters.exam) params.set('exam', filters.exam);
-			if (filters.budget_min) params.set('budget_min', filters.budget_min);
-			if (filters.budget_max) params.set('budget_max', filters.budget_max);
 
 			const res = await fetch(`/api/patient/explore?${params.toString()}`, {
 				credentials: 'include',
@@ -116,66 +118,66 @@ export default function ExplorePage() {
 				<div className="bg-white rounded-2xl shadow-lg p-6">
 					<h1 className="text-3xl font-bold text-gray-900 mb-2 flex items-center gap-3">
 						<Search className="w-8 h-8 text-indigo-600" />
-						Explorador Global
+						Buscar Consultorios Privados
 					</h1>
-					<p className="text-gray-600">Busca clínicas, farmacias, laboratorios y consultorios</p>
+					<p className="text-gray-600">Encuentra especialistas y consultorios privados según tu necesidad</p>
 				</div>
 
 				{/* Filtros */}
 				<div className="bg-white rounded-2xl shadow-lg p-6">
 					<div className="space-y-4">
+						{/* Búsqueda y tipo */}
 						<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
 							<div className="relative">
 								<Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
 								<input
 									type="text"
-									placeholder="Buscar..."
+									placeholder="Buscar por nombre del especialista o consultorio..."
 									value={filters.query}
 									onChange={(e) => setFilters(prev => ({ ...prev, query: e.target.value }))}
 									className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
 								/>
 							</div>
-							<select
-								value={filters.type}
-								onChange={(e) => setFilters(prev => ({ ...prev, type: e.target.value }))}
-								className="px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-							>
-								<option value="">Todos los tipos</option>
-								<option value="CLINICA">Clínica</option>
-								<option value="FARMACIA">Farmacia</option>
-								<option value="LABORATORIO">Laboratorio</option>
-								<option value="CONSULTORIO_PRIVADO">Consultorio Privado</option>
-							</select>
+							<div className="relative">
+								<select
+									value={filters.type}
+									onChange={(e) => setFilters(prev => ({ ...prev, type: e.target.value }))}
+									className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent bg-white appearance-none"
+								>
+									<option value="CONSULTORIO_PRIVADO">Consultorio Privado</option>
+									<option value="CLINICA" disabled>Clínica - Próximamente</option>
+									<option value="FARMACIA" disabled>Farmacia - Próximamente</option>
+									<option value="LABORATORIO" disabled>Laboratorio - Próximamente</option>
+								</select>
+								<style jsx>{`
+									select option:disabled {
+										text-decoration: line-through;
+										color: #9CA3AF;
+										opacity: 0.6;
+									}
+								`}</style>
+							</div>
 						</div>
-						<div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-							<input
-								type="text"
-								placeholder="Especialidad"
-								value={filters.specialty}
-								onChange={(e) => setFilters(prev => ({ ...prev, specialty: e.target.value }))}
-								className="px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-							/>
-							<input
-								type="text"
-								placeholder="Tipo de examen"
-								value={filters.exam}
-								onChange={(e) => setFilters(prev => ({ ...prev, exam: e.target.value }))}
-								className="px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-							/>
-							<input
-								type="number"
-								placeholder="Presupuesto mínimo"
-								value={filters.budget_min}
-								onChange={(e) => setFilters(prev => ({ ...prev, budget_min: e.target.value }))}
-								className="px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-							/>
-							<input
-								type="number"
-								placeholder="Presupuesto máximo"
-								value={filters.budget_max}
-								onChange={(e) => setFilters(prev => ({ ...prev, budget_max: e.target.value }))}
-								className="px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-							/>
+						
+						{/* Filtro de especialidad */}
+						<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+							<div>
+								<label className="block text-sm font-medium text-gray-700 mb-2">
+									Filtrar por Especialidad
+								</label>
+								<select
+									value={filters.specialty}
+									onChange={(e) => setFilters(prev => ({ ...prev, specialty: e.target.value }))}
+									className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent bg-white"
+								>
+									<option value="">Todas las especialidades</option>
+									{PRIVATE_SPECIALTIES.map((specialty) => (
+										<option key={specialty} value={specialty}>
+											{specialty}
+										</option>
+									))}
+								</select>
+							</div>
 						</div>
 					</div>
 				</div>
@@ -198,62 +200,116 @@ export default function ExplorePage() {
 				) : (
 					<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
 						{results.map((result) => {
-							const color = getColor(result.type);
+							// Para consultorios privados, usar el organization.id como identificador
+							const consultorioId = result.type === 'CONSULTORIO_PRIVADO' && result.organization?.id 
+								? result.organization.id 
+								: result.id;
+							
+							// Obtener especialidad única (evitar duplicados)
+							// Priorizar result.specialty sobre result.specialties
+							const displaySpecialty = result.specialty || (result.specialties && result.specialties.length > 0 
+								? (typeof result.specialties[0] === 'string' ? result.specialties[0] : result.specialties[0]?.name || result.specialties[0]?.specialty || null)
+								: null);
+							
 							return (
 								<Link
-									key={`${result.type}-${result.id}`}
-									href={getLink(result)}
-									className={`bg-white rounded-xl shadow-lg p-6 hover:shadow-xl transition-shadow group border-2 border-transparent hover:border-${color}-300`}
+									key={`${result.type}-${consultorioId}`}
+									href={result.type === 'CONSULTORIO_PRIVADO' 
+										? `/dashboard/patient/consultorio/${consultorioId}` 
+										: getLink(result)}
+									className="group bg-gradient-to-br from-white to-purple-50/30 rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 border-2 border-purple-100 hover:border-purple-300 overflow-hidden"
 								>
-									<div className="flex items-start justify-between mb-4">
-										<div className={`p-3 bg-${color}-100 rounded-lg group-hover:bg-${color}-200 transition-colors`}>
-											{getIcon(result.type)}
-										</div>
-										<span className={`px-2 py-1 bg-${color}-50 text-${color}-600 text-xs font-semibold rounded`}>
-											{result.type.replace('_', ' ')}
-										</span>
-									</div>
-									<h3 className={`text-lg font-semibold text-gray-900 mb-2 group-hover:text-${color}-600 transition-colors`}>
-										{result.name}
-									</h3>
-									{result.address && (
-										<div className="flex items-center gap-2 text-sm text-gray-600 mb-2">
-											<MapPin className="w-4 h-4" />
-											<span className="line-clamp-1">{result.address}</span>
-										</div>
-									)}
-									{result.phone && (
-										<div className="flex items-center gap-2 text-sm text-gray-600 mb-2">
-											<Phone className="w-4 h-4" />
-											<span>{result.phone}</span>
-										</div>
-									)}
-									{result.specialty && (
-										<div className="mt-2">
-											<span className="px-2 py-1 bg-gray-100 text-gray-700 text-xs rounded">
-												{result.specialty}
+									{/* Header con icono y badge */}
+									<div className="relative bg-gradient-to-r from-purple-500 to-indigo-600 p-6">
+										<div className="flex items-start justify-between mb-3">
+											<div className="p-3 bg-white/20 backdrop-blur-sm rounded-xl shadow-lg">
+												<Stethoscope className="w-8 h-8 text-white" />
+											</div>
+											<span className="px-3 py-1.5 bg-white/90 backdrop-blur-sm text-purple-700 text-xs font-bold rounded-full shadow-md">
+												Consultorio Privado
 											</span>
 										</div>
-									)}
-									{result.specialties && result.specialties.length > 0 && (
-										<div className="mt-2 flex flex-wrap gap-2">
-											{result.specialties.slice(0, 2).map((spec: any, idx: number) => {
-												const specName = typeof spec === 'string' ? spec : spec?.name || spec?.specialty || '';
-												return (
-													<span
-														key={idx}
-														className="px-2 py-1 bg-gray-100 text-gray-700 text-xs rounded"
-													>
-														{specName}
+										<h3 className="text-xl font-bold text-white mb-1 line-clamp-2 leading-tight">
+											{result.name}
+										</h3>
+										{result.doctor?.name && (
+											<p className="text-purple-100 text-sm font-medium mt-1">
+												Dr. {result.doctor.name}
+											</p>
+										)}
+									</div>
+
+									{/* Contenido */}
+									<div className="p-6 space-y-4">
+										{/* Especialidad destacada - Solo mostrar una vez */}
+										{displaySpecialty && (
+											<div className="flex items-center gap-2">
+												<div className="w-full px-4 py-2.5 bg-gradient-to-r from-purple-100 to-indigo-100 rounded-lg border-2 border-purple-200 shadow-sm">
+													<span className="text-sm font-bold text-purple-700 flex items-center gap-2">
+														<Stethoscope className="w-4 h-4" />
+														{displaySpecialty}
 													</span>
-												);
-											})}
+												</div>
+											</div>
+										)}
+
+										{/* Información de contacto */}
+										<div className="space-y-2.5">
+											{result.address && (
+												<div className="flex items-start gap-3 text-sm text-slate-700">
+													<MapPin className="w-5 h-5 text-purple-600 flex-shrink-0 mt-0.5" />
+													<span className="line-clamp-2 leading-relaxed">{result.address}</span>
+												</div>
+											)}
+											{result.phone && (
+												<div className="flex items-center gap-3 text-sm text-slate-700">
+													<Phone className="w-5 h-5 text-purple-600 flex-shrink-0" />
+													<span>{result.phone}</span>
+												</div>
+											)}
 										</div>
-									)}
-									<div className="mt-4 pt-4 border-t border-gray-200">
-										<span className={`text-${color}-600 font-medium text-sm group-hover:underline`}>
-											Ver detalles →
-										</span>
+
+										{/* Servicios disponibles (si existen) */}
+										{result.services && Array.isArray(result.services) && result.services.length > 0 && (
+											<div className="pt-3 border-t border-purple-100">
+												<p className="text-xs font-semibold text-slate-600 mb-2 uppercase tracking-wide">
+													Servicios Disponibles
+												</p>
+												<div className="flex flex-wrap gap-2">
+													{result.services.slice(0, 3).map((service: any, idx: number) => {
+														const serviceName = typeof service === 'string' 
+															? service 
+															: service?.name || '';
+														if (!serviceName) return null;
+														return (
+															<span
+																key={idx}
+																className="px-2.5 py-1 bg-white border border-purple-200 text-purple-700 text-xs font-medium rounded-lg shadow-sm"
+															>
+																{serviceName}
+															</span>
+														);
+													})}
+													{result.services.length > 3 && (
+														<span className="px-2.5 py-1 bg-purple-50 text-purple-600 text-xs font-medium rounded-lg border border-purple-200">
+															+{result.services.length - 3} más
+														</span>
+													)}
+												</div>
+											</div>
+										)}
+
+										{/* Botón de acción */}
+										<div className="pt-4 border-t border-purple-100">
+											<div className="flex items-center justify-between">
+												<span className="text-purple-600 font-semibold text-sm group-hover:text-purple-700 transition-colors">
+													Ver detalles
+												</span>
+												<span className="text-purple-600 group-hover:translate-x-1 transition-transform text-lg">
+													→
+												</span>
+											</div>
+										</div>
 									</div>
 								</Link>
 							);

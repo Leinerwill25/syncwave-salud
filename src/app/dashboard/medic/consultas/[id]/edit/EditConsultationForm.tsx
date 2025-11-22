@@ -496,7 +496,21 @@ export default function EditConsultationForm({ initial, patient, doctor }: { ini
 								</div>
 								{patient && (
 									<div className="mt-2 text-xs text-slate-600 dark:text-slate-300">
-										Paciente: <span className="font-medium">{`${patient.firstName ?? ''} ${patient.lastName ?? ''}`.trim() || '—'}</span>
+										<div className="flex items-center gap-2">
+											<span>
+												Paciente: <span className="font-medium">{`${patient.firstName ?? ''} ${patient.lastName ?? ''}`.trim() || '—'}</span>
+											</span>
+											{patient.isUnregistered && (
+												<span className="px-2 py-0.5 rounded-full bg-orange-100 dark:bg-orange-600 text-orange-700 dark:text-white text-xs font-medium">
+													No Registrado
+												</span>
+											)}
+										</div>
+										{patient.identifier && (
+											<div className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+												ID: {patient.identifier}
+											</div>
+										)}
 									</div>
 								)}
 								{doctor && (

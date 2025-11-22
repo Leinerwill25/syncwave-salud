@@ -49,11 +49,13 @@ export async function GET(req: Request) {
 		}
 
 		// Obtener consultas en progreso del médico (started_at no null, ended_at null)
+		// Incluir tanto pacientes registrados como no registrados
 		const { data: activeConsultations, error: consultationsError } = await supabase
 			.from('consultation')
 			.select(`
 				id,
 				patient_id,
+				unregistered_patient_id,
 				started_at,
 				chief_complaint,
 				diagnosis,
@@ -94,7 +96,8 @@ export async function GET(req: Request) {
 
 		type ConsultationData = {
 			id: string;
-			patient_id: string;
+			patient_id: string | null;
+			unregistered_patient_id: string | null;
 			started_at: string;
 			chief_complaint: string | null;
 			diagnosis: string | null;
@@ -108,7 +111,7 @@ export async function GET(req: Request) {
 				firstName: string;
 				lastName: string;
 				identifier: string | null;
-			}[];
+			}[] | null;
 		};
 
 		type PatientData = {
@@ -178,11 +181,58 @@ export async function GET(req: Request) {
 			}
 		});
 
+		// Obtener datos de pacientes no registrados si hay consultas con unregistered_patient_id
+		const unregisteredPatientIds = [
+			...new Set(
+				(activeConsultations || [])
+					.filter((c: ConsultationData) => c.unregistered_patient_id && !c.patient_id)
+					.map((c: ConsultationData) => c.unregistered_patient_id)
+					.filter(Boolean) as string[]
+			),
+		];
+
+		let unregisteredPatientsMap = new Map<string, any>();
+		if (unregisteredPatientIds.length > 0) {
+			const { data: unregisteredPatientsData, error: unregisteredError } = await supabase
+				.from('unregisteredpatients')
+				.select('id, first_name, last_name, identification')
+				.in('id', unregisteredPatientIds);
+
+			if (unregisteredError) {
+				console.error('[Active Patients API] Error obteniendo pacientes no registrados:', unregisteredError);
+			} else if (unregisteredPatientsData) {
+				unregisteredPatientsData.forEach((up: any) => {
+					unregisteredPatientsMap.set(up.id, {
+						id: up.id,
+						firstName: up.first_name,
+						lastName: up.last_name,
+						identifier: up.identification || null,
+					});
+				});
+			}
+		}
+
 		// Agregar pacientes de consultas válidas (priorizar si ya existe)
 		validConsultations.forEach((cons: ConsultationData) => {
-			if (cons.Patient && cons.patient_id) {
-				const patient = Array.isArray(cons.Patient) ? cons.Patient[0] : cons.Patient;
-				const existing = patientMap.get(cons.patient_id);
+			let patient: PatientData | null = null;
+			let patientKey: string | null = null;
+
+			// Si es paciente registrado
+			if (cons.patient_id && cons.Patient) {
+				patient = Array.isArray(cons.Patient) ? cons.Patient[0] : cons.Patient;
+				patientKey = cons.patient_id;
+			}
+			// Si es paciente no registrado
+			else if (cons.unregistered_patient_id) {
+				const unregisteredPatient = unregisteredPatientsMap.get(cons.unregistered_patient_id);
+				if (unregisteredPatient) {
+					patient = unregisteredPatient;
+					patientKey = cons.unregistered_patient_id;
+				}
+			}
+
+			if (patient && patientKey) {
+				const existing = patientMap.get(patientKey);
 				if (existing) {
 					existing.consultation = {
 						id: cons.id,
@@ -191,7 +241,7 @@ export async function GET(req: Request) {
 						diagnosis: cons.diagnosis,
 					};
 				} else {
-					patientMap.set(cons.patient_id, {
+					patientMap.set(patientKey, {
 						patient,
 						consultation: {
 							id: cons.id,
@@ -204,12 +254,19 @@ export async function GET(req: Request) {
 			}
 		});
 
-		// Convertir a array
-		const activePatients = Array.from(patientMap.values()).map((item) => ({
-			patient: item.patient,
-			appointment: item.appointment || null,
-			consultation: item.consultation || null,
-		}));
+		// Convertir a array y marcar si es paciente no registrado
+		const activePatients = Array.from(patientMap.values()).map((item) => {
+			// Verificar si el patient_id está en la tabla de pacientes no registrados
+			const isUnregistered = unregisteredPatientsMap.has(item.patient.id);
+			return {
+				patient: {
+					...item.patient,
+					is_unregistered: isUnregistered,
+				},
+				appointment: item.appointment || null,
+				consultation: item.consultation || null,
+			};
+		});
 
 		return NextResponse.json({
 			patients: activePatients,

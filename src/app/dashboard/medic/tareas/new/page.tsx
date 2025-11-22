@@ -12,11 +12,14 @@ interface Patient {
 	id: string;
 	firstName: string;
 	lastName: string;
+	identifier?: string;
+	is_unregistered?: boolean;
 }
 
 export default function NewTaskPage() {
 	const router = useRouter();
 	const [loading, setLoading] = useState(false);
+	const [loadingPatients, setLoadingPatients] = useState(true);
 	const [patients, setPatients] = useState<Patient[]>([]);
 	const [formData, setFormData] = useState({
 		title: '',
@@ -31,15 +34,29 @@ export default function NewTaskPage() {
 
 	const fetchPatients = async () => {
 		try {
-			const res = await fetch('/api/patients?include_summary=false', {
+			setLoadingPatients(true);
+			console.log('[NewTaskPage] Cargando pacientes...');
+			// Obtener solo pacientes que han tenido consultas con el doctor en sesión
+			const res = await fetch('/api/medic/patients-with-consultations', {
 				credentials: 'include',
 			});
+			
+			console.log('[NewTaskPage] Respuesta del servidor:', res.status, res.statusText);
+			
 			if (res.ok) {
 				const data = await res.json();
+				console.log('[NewTaskPage] Pacientes recibidos:', data.patients?.length || 0);
 				setPatients(data.patients || []);
+			} else {
+				const errorData = await res.json();
+				console.error('[NewTaskPage] Error cargando pacientes:', errorData);
+				alert(`Error al cargar pacientes: ${errorData.error || 'Error desconocido'}`);
 			}
 		} catch (err) {
-			console.error('Error cargando pacientes:', err);
+			console.error('[NewTaskPage] Error cargando pacientes:', err);
+			alert('Error al cargar pacientes. Por favor, recarga la página.');
+		} finally {
+			setLoadingPatients(false);
 		}
 	};
 
@@ -127,18 +144,38 @@ export default function NewTaskPage() {
 
 				<div>
 					<label className="block text-sm font-medium text-slate-700 mb-2">Paciente (opcional)</label>
-					<select
-						value={formData.patient_id}
-						onChange={(e) => setFormData({ ...formData, patient_id: e.target.value })}
-						className="w-full px-4 py-2 border border-blue-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500 text-slate-900"
-					>
-						<option value="">Sin paciente asociado</option>
-						{patients.map((p) => (
-							<option key={p.id} value={p.id}>
-								{p.firstName} {p.lastName}
-							</option>
-						))}
-					</select>
+					{loadingPatients ? (
+						<div className="w-full px-4 py-2 border border-blue-200 rounded-xl bg-slate-50 flex items-center gap-2">
+							<div className="animate-spin rounded-full h-4 w-4 border-b-2 border-teal-600"></div>
+							<span className="text-sm text-slate-600">Cargando pacientes...</span>
+						</div>
+					) : (
+						<select
+							value={formData.patient_id}
+							onChange={(e) => setFormData({ ...formData, patient_id: e.target.value })}
+							className="w-full px-4 py-2 border border-blue-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500 text-slate-900"
+						>
+							<option value="">Sin paciente asociado</option>
+							{patients.length === 0 ? (
+								<option value="" disabled>
+									No hay pacientes con consultas previas
+								</option>
+							) : (
+								patients.map((p) => (
+									<option key={p.id} value={p.id}>
+										{p.firstName} {p.lastName}
+										{p.identifier ? ` (${p.identifier})` : ''}
+										{p.is_unregistered ? ' [No Registrado]' : ''}
+									</option>
+								))
+							)}
+						</select>
+					)}
+					{!loadingPatients && patients.length === 0 && (
+						<p className="text-xs text-slate-500 mt-1">
+							No hay pacientes que hayan tenido consultas previas con usted.
+						</p>
+					)}
 				</div>
 
 				<div>

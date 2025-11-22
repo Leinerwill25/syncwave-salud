@@ -1,10 +1,10 @@
 'use client';
 
 import React, { useEffect, useRef, useState } from 'react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { format } from 'date-fns';
 import Link from 'next/link';
-import { FileText, PlusCircle, Download, Loader2, RefreshCw, Search, File, FileMinus } from 'lucide-react';
+import { FileText, PlusCircle, Download, Loader2, RefreshCw, Search, File, FileMinus, Calendar, User, Stethoscope, Eye, Filter, X, ChevronRight, Clock } from 'lucide-react';
 
 type Patient = {
 	firstName: string;
@@ -230,149 +230,276 @@ export default function ConsultationsPage() {
 	}
 
 	return (
-		<main className="min-h-screen bg-gradient-to-br from-blue-50 via-cyan-50 to-teal-50 p-8">
-			<div className="max-w-6xl mx-auto">
-				{/* Header */}
-				<div className="mb-6 grid grid-cols-1 md:grid-cols-2 gap-4 items-center">
-					<div>
-						<h1 className="text-3xl font-semibold text-slate-900">Consultas Médicas</h1>
-						<p className="text-sm text-slate-600 mt-1">Historial de consultas del centro — filtra, exporta o crea una nueva consulta.</p>
-						<div className="mt-3 text-xs text-slate-500">Datos mostrados: {consultations.length} consulta(s)</div>
-					</div>
+		<main className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-cyan-50/20 p-6 md:p-8">
+			<div className="max-w-7xl mx-auto space-y-6">
+				{/* Header Section - Enhanced */}
+				<motion.div
+					initial={{ opacity: 0, y: -20 }}
+					animate={{ opacity: 1, y: 0 }}
+					transition={{ duration: 0.4 }}
+					className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-teal-600 via-cyan-600 to-blue-600 p-8 md:p-10 shadow-2xl"
+				>
+					{/* Decorative elements */}
+					<div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full -mr-32 -mt-32 blur-3xl" />
+					<div className="absolute bottom-0 left-0 w-48 h-48 bg-white/10 rounded-full -ml-24 -mb-24 blur-3xl" />
 
-					<div className="flex items-center justify-end gap-3">
-						<ActionButton
-							onClick={() => {
-								setQuery('');
-								loadConsultations({ reset: true });
-							}}
-							variant="outline"
-							title="Refrescar"
-							leading={<RefreshCw size={16} />}>
-							Refrescar
-						</ActionButton>
-
-						<Link href="/dashboard/medic/consultas/new" className="inline-flex">
-							<ActionButton variant="solid" title="Nueva consulta" leading={<PlusCircle size={16} />}>
-								Nueva Consulta
-							</ActionButton>
-						</Link>
-					</div>
-				</div>
-
-				{/* Toolbar */}
-				<div className="mb-4 flex flex-col md:flex-row gap-3 items-center">
-					<div className="flex-1">
-						<SearchInput value={query} onChange={setQuery} />
-					</div>
-
-					<div className="flex gap-2 items-center">
-						<ActionButton onClick={exportCSV} variant="ghost" title="Exportar CSV" leading={<Download size={14} />} disabled={!consultations.length || exporting}>
-							{exporting ? 'Exportando...' : 'CSV'}
-						</ActionButton>
-
-						<ActionButton onClick={exportExcel} variant="ghost" title="Exportar Excel" leading={<File size={14} />} disabled={!consultations.length || exporting}>
-							XLS
-						</ActionButton>
-
-						<ActionButton
-							onClick={() => {
-								// ejemplo: limpiar filtros
-								setQuery('');
-								loadConsultations({ reset: true });
-							}}
-							variant="outline"
-							title="Limpiar filtros"
-							leading={<FileMinus size={14} />}>
-							Limpiar
-						</ActionButton>
-					</div>
-				</div>
-
-				<motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="bg-white/95 rounded-2xl border border-blue-100 shadow-sm overflow-hidden">
-					{loading ? (
-						<div className="p-6">
-							<div className="flex items-center gap-3 text-slate-500">
-								<Loader2 className="animate-spin" />
-								Cargando consultas...
+					<div className="relative z-10">
+						<div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6">
+							<div className="space-y-2">
+								<div className="flex items-center gap-3">
+									<div className="p-3 bg-white/20 backdrop-blur-sm rounded-2xl">
+										<FileText className="w-8 h-8 text-white" />
+									</div>
+									<div>
+										<h1 className="text-3xl md:text-4xl font-bold text-white">Consultas Médicas</h1>
+										<p className="text-teal-50 text-sm md:text-base mt-1">Gestión completa del historial clínico</p>
+									</div>
+								</div>
+								<div className="flex items-center gap-4 pt-2">
+									<div className="flex items-center gap-2 px-4 py-2 bg-white/20 backdrop-blur-sm rounded-xl">
+										<div className="w-2 h-2 bg-emerald-300 rounded-full animate-pulse" />
+										<span className="text-white text-sm font-medium">{consultations.length} consulta(s) registrada(s)</span>
+									</div>
+								</div>
 							</div>
 
-							{/* skeleton rows */}
-							<div className="mt-4 space-y-3">
+							<div className="flex items-center gap-3">
+								<ActionButton
+									onClick={() => {
+										setQuery('');
+										loadConsultations({ reset: true });
+									}}
+									variant="outline"
+									title="Refrescar"
+									leading={<RefreshCw size={16} className={refreshing ? 'animate-spin' : ''} />}
+									disabled={refreshing}
+								>
+									Refrescar
+								</ActionButton>
+
+								<Link href="/dashboard/medic/consultas/new" className="inline-flex">
+									<ActionButton variant="solid" title="Nueva consulta" leading={<PlusCircle size={18} />}>
+										Nueva Consulta
+									</ActionButton>
+								</Link>
+							</div>
+						</div>
+					</div>
+				</motion.div>
+
+				{/* Toolbar Section - Enhanced */}
+				<motion.div
+					initial={{ opacity: 0, y: 10 }}
+					animate={{ opacity: 1, y: 0 }}
+					transition={{ duration: 0.4, delay: 0.1 }}
+					className="bg-white/80 backdrop-blur-sm rounded-2xl border border-slate-200/60 shadow-lg p-4 md:p-5"
+				>
+					<div className="flex flex-col md:flex-row gap-4 items-stretch md:items-center">
+						<div className="flex-1">
+							<SearchInput value={query} onChange={setQuery} />
+						</div>
+
+						<div className="flex gap-2 items-center flex-wrap">
+							<ActionButton
+								onClick={exportCSV}
+								variant="ghost"
+								title="Exportar CSV"
+								leading={exporting ? <Loader2 size={14} className="animate-spin" /> : <Download size={14} />}
+								disabled={!consultations.length || exporting}
+							>
+								{exporting ? 'Exportando...' : 'CSV'}
+							</ActionButton>
+
+							<ActionButton
+								onClick={exportExcel}
+								variant="ghost"
+								title="Exportar Excel"
+								leading={exporting ? <Loader2 size={14} className="animate-spin" /> : <File size={14} />}
+								disabled={!consultations.length || exporting}
+							>
+								XLS
+							</ActionButton>
+
+							{query && (
+								<ActionButton
+									onClick={() => {
+										setQuery('');
+										loadConsultations({ reset: true });
+									}}
+									variant="outline"
+									title="Limpiar filtros"
+									leading={<X size={14} />}
+								>
+									Limpiar
+								</ActionButton>
+							)}
+						</div>
+					</div>
+				</motion.div>
+
+				{/* Consultations List - Enhanced Card Layout */}
+				<motion.div
+					initial={{ opacity: 0, y: 10 }}
+					animate={{ opacity: 1, y: 0 }}
+					transition={{ duration: 0.4, delay: 0.2 }}
+					className="bg-white/80 backdrop-blur-sm rounded-2xl border border-slate-200/60 shadow-lg overflow-hidden"
+				>
+					{loading ? (
+						<div className="p-8 md:p-12">
+							<div className="flex items-center gap-3 text-slate-600 mb-6">
+								<Loader2 className="animate-spin text-teal-600" size={20} />
+								<span className="font-medium">Cargando consultas...</span>
+							</div>
+
+							{/* Enhanced skeleton */}
+							<div className="space-y-4">
 								{Array.from({ length: 5 }).map((_, i) => (
-									<div key={i} className="flex flex-col gap-2 animate-pulse">
-										<div className="h-4 w-1/4 bg-slate-100 rounded" />
-										<div className="h-4 w-3/4 bg-slate-100 rounded" />
-										<div className="h-4 w-full bg-slate-100 rounded" />
+									<div key={i} className="animate-pulse">
+										<div className="h-24 bg-gradient-to-r from-slate-100 via-slate-50 to-slate-100 rounded-xl" />
 									</div>
 								))}
 							</div>
 						</div>
 					) : error ? (
-						<p className="p-6 text-rose-600">Error: {error}</p>
-					) : consultations.length === 0 ? (
-						<div className="p-8 text-center">
-							<div className="mx-auto mb-4 w-20 h-20 rounded-full bg-gradient-to-br from-teal-50 to-cyan-50 flex items-center justify-center text-teal-600">
-								<FileText size={28} />
+						<div className="p-8 md:p-12 text-center">
+							<div className="mx-auto mb-4 w-16 h-16 rounded-full bg-rose-100 flex items-center justify-center">
+								<X className="w-8 h-8 text-rose-600" />
 							</div>
-							<p className="text-lg font-medium text-slate-800">No hay consultas registradas</p>
-							<p className="text-sm text-slate-600 mt-2">
-								Crea la primera consulta usando el botón <strong>“Nueva Consulta”</strong>.
+							<p className="text-lg font-semibold text-rose-600 mb-2">Error al cargar consultas</p>
+							<p className="text-sm text-slate-600">{error}</p>
+						</div>
+					) : consultations.length === 0 ? (
+						<div className="p-12 md:p-16 text-center">
+							<motion.div
+								initial={{ scale: 0.8, opacity: 0 }}
+								animate={{ scale: 1, opacity: 1 }}
+								transition={{ duration: 0.3 }}
+								className="mx-auto mb-6 w-24 h-24 rounded-3xl bg-gradient-to-br from-teal-100 to-cyan-100 flex items-center justify-center shadow-lg"
+							>
+								<FileText className="w-12 h-12 text-teal-600" />
+							</motion.div>
+							<h3 className="text-xl font-bold text-slate-900 mb-2">No hay consultas registradas</h3>
+							<p className="text-slate-600 mb-6 max-w-md mx-auto">
+								Comienza registrando tu primera consulta médica. Toda la información quedará guardada de forma segura.
 							</p>
+							<Link href="/dashboard/medic/consultas/new">
+								<ActionButton variant="solid" leading={<PlusCircle size={18} />}>
+									Crear Primera Consulta
+								</ActionButton>
+							</Link>
 						</div>
 					) : (
 						<>
-							<div className="overflow-x-auto">
-								<table className="min-w-full text-sm divide-y divide-slate-100">
-									<thead className="bg-gradient-to-r from-teal-50 to-cyan-50 text-slate-700">
-										<tr>
-											<th className="text-left p-3">Fecha</th>
-											<th className="text-left p-3">Paciente</th>
-											<th className="text-left p-3">Motivo</th>
-											<th className="text-left p-3">Diagnóstico</th>
-											<th className="text-center p-3">Acciones</th>
-										</tr>
-									</thead>
+							{/* Enhanced Card Grid Layout */}
+							<div className="p-4 md:p-6">
+								<AnimatePresence mode="popLayout">
+									<div className="grid grid-cols-1 gap-4">
+										{consultations.map((c, index) => (
+											<motion.div
+												key={c.id}
+												initial={{ opacity: 0, y: 20 }}
+												animate={{ opacity: 1, y: 0 }}
+												exit={{ opacity: 0, scale: 0.95 }}
+												transition={{ duration: 0.3, delay: index * 0.05 }}
+												whileHover={{ y: -2 }}
+												className="group relative bg-white rounded-xl border border-slate-200 hover:border-teal-300 shadow-sm hover:shadow-lg transition-all duration-300 overflow-hidden"
+											>
+												{/* Gradient accent bar */}
+												<div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-teal-500 via-cyan-500 to-blue-500" />
 
-									<tbody className="bg-white">
-										{consultations.map((c) => (
-											<tr key={c.id} className="border-t border-slate-100 hover:bg-blue-50 transition">
-												<td className="p-3 align-middle text-slate-700">{format(new Date(c.created_at), 'dd/MM/yyyy HH:mm')}</td>
-												<td className="p-3 font-medium text-slate-800">
-													{c.patient ? (
-														<div className="inline-flex items-center gap-2">
-															<div className="px-2 py-0.5 rounded-md bg-teal-100 text-teal-800 text-xs">{c.patient.firstName}</div>
-															<div className="text-sm text-slate-600">{c.patient.lastName}</div>
+												<div className="p-5 md:p-6">
+													<div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
+														{/* Left: Main Info */}
+														<div className="flex-1 space-y-4">
+															{/* Patient & Date Row */}
+															<div className="flex flex-wrap items-center gap-3">
+																{c.patient ? (
+																	<div className="flex items-center gap-2 px-3 py-1.5 bg-gradient-to-r from-teal-50 to-cyan-50 rounded-lg border border-teal-100">
+																		<User className="w-4 h-4 text-teal-600" />
+																		<span className="font-semibold text-slate-900 text-sm">
+																			{c.patient.firstName} {c.patient.lastName}
+																		</span>
+																	</div>
+																) : (
+																	<div className="px-3 py-1.5 bg-slate-100 rounded-lg">
+																		<span className="text-sm text-slate-500">Paciente no registrado</span>
+																	</div>
+																)}
+
+																<div className="flex items-center gap-2 px-3 py-1.5 bg-slate-50 rounded-lg">
+																	<Calendar className="w-4 h-4 text-slate-500" />
+																	<span className="text-sm font-medium text-slate-700">{format(new Date(c.created_at), 'dd MMM yyyy')}</span>
+																</div>
+
+																<div className="flex items-center gap-2 px-3 py-1.5 bg-slate-50 rounded-lg">
+																	<Clock className="w-4 h-4 text-slate-500" />
+																	<span className="text-sm text-slate-600">{format(new Date(c.created_at), 'HH:mm')}</span>
+																</div>
+															</div>
+
+															{/* Chief Complaint */}
+															{c.chief_complaint && (
+																<div className="space-y-1">
+																	<div className="flex items-center gap-2 text-xs font-semibold text-slate-500 uppercase tracking-wide">
+																		<Stethoscope className="w-3.5 h-3.5" />
+																		Motivo de Consulta
+																	</div>
+																	<p className="text-slate-900 font-medium leading-relaxed">{c.chief_complaint}</p>
+																</div>
+															)}
+
+															{/* Diagnosis */}
+															{c.diagnosis && (
+																<div className="space-y-1">
+																	<div className="flex items-center gap-2 text-xs font-semibold text-slate-500 uppercase tracking-wide">
+																		<FileText className="w-3.5 h-3.5" />
+																		Diagnóstico
+																	</div>
+																	<p className="text-slate-700 leading-relaxed">{c.diagnosis}</p>
+																</div>
+															)}
 														</div>
-													) : (
-														'—'
-													)}
-												</td>
-												<td className="p-3 text-slate-700">{c.chief_complaint || '—'}</td>
-												<td className="p-3 text-slate-700">{c.diagnosis || '—'}</td>
-												<td className="text-center p-3">
-													<Link href={`/dashboard/medic/consultas/${c.id}`} className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-teal-700 bg-teal-50 hover:bg-teal-100 transition">
-														<FileText size={16} />
-														Ver
-													</Link>
-												</td>
-											</tr>
+
+														{/* Right: Action Button */}
+														<div className="flex items-center">
+															<Link
+																href={`/dashboard/medic/consultas/${c.id}`}
+																className="group/btn inline-flex items-center gap-2 px-5 py-3 bg-gradient-to-r from-teal-600 to-cyan-600 hover:from-teal-700 hover:to-cyan-700 text-white rounded-xl font-medium shadow-md hover:shadow-lg transition-all duration-200 transform hover:scale-105"
+															>
+																<Eye className="w-4 h-4" />
+																<span>Ver Detalle</span>
+																<ChevronRight className="w-4 h-4 group-hover/btn:translate-x-1 transition-transform" />
+															</Link>
+														</div>
+													</div>
+												</div>
+											</motion.div>
 										))}
-									</tbody>
-								</table>
+									</div>
+								</AnimatePresence>
 							</div>
 
-							<div className="p-4 flex flex-col md:flex-row items-center justify-between gap-3">
-								<div className="text-xs text-slate-500">Mostrando {consultations.length} resultado(s)</div>
+							{/* Footer with pagination */}
+							<div className="px-4 md:px-6 py-4 bg-gradient-to-r from-slate-50 to-blue-50/30 border-t border-slate-200 flex flex-col md:flex-row items-center justify-between gap-4">
+								<div className="flex items-center gap-2 text-sm text-slate-600">
+									<div className="w-2 h-2 bg-teal-500 rounded-full" />
+									<span className="font-medium">Mostrando {consultations.length} consulta(s)</span>
+								</div>
 								<div>
 									{hasMore ? (
-										<ActionButton onClick={loadMore} variant="ghost" leading={refreshing ? <Loader2 className="animate-spin" /> : undefined} disabled={refreshing}>
-											{refreshing ? 'Cargando...' : 'Cargar más'}
+										<ActionButton
+											onClick={loadMore}
+											variant="ghost"
+											leading={refreshing ? <Loader2 className="animate-spin" size={16} /> : undefined}
+											disabled={refreshing}
+										>
+											{refreshing ? 'Cargando...' : 'Cargar más consultas'}
 										</ActionButton>
 									) : (
-										<button disabled className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-white border text-slate-400">
-											No hay más
-										</button>
+										<div className="flex items-center gap-2 px-4 py-2 text-sm text-slate-500">
+											<div className="w-1.5 h-1.5 bg-slate-300 rounded-full" />
+											<span>No hay más consultas para mostrar</span>
+										</div>
 									)}
 								</div>
 							</div>

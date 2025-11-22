@@ -11,19 +11,36 @@ export async function GET(req: NextRequest) {
 		const search = req.nextUrl.searchParams.get('identifier')?.trim();
 		if (!search) return NextResponse.json([], { status: 200 });
 
-		// IMPORTANTE: Usamos comillas para tabla y columnas si existen mayúsculas
-		const result = await pool.query(
-			`SELECT id, "firstName", "lastName", identifier
+		const searchPattern = `%${search}%`;
+
+		// Buscar en pacientes registrados
+		const registeredResult = await pool.query(
+			`SELECT id, "firstName", "lastName", identifier, 'registered' as type
        FROM "public"."Patient"
        WHERE identifier ILIKE $1
           OR "firstName" ILIKE $1
           OR "lastName" ILIKE $1
        ORDER BY "firstName" ASC
        LIMIT 10`,
-			[`%${search}%`]
+			[searchPattern]
 		);
 
-		return NextResponse.json(result.rows);
+		// Buscar en pacientes no registrados
+		const unregisteredResult = await pool.query(
+			`SELECT id, first_name as "firstName", last_name as "lastName", identification as identifier, 'unregistered' as type
+       FROM "public"."unregisteredpatients"
+       WHERE identification ILIKE $1
+          OR first_name ILIKE $1
+          OR last_name ILIKE $1
+       ORDER BY first_name ASC
+       LIMIT 10`,
+			[searchPattern]
+		);
+
+		// Combinar resultados y limitar a 10 total
+		const combined = [...registeredResult.rows, ...unregisteredResult.rows].slice(0, 10);
+
+		return NextResponse.json(combined);
 	} catch (error) {
 		console.error('Error searching patients:', error);
 		return NextResponse.json({ error: 'Error al buscar pacientes' }, { status: 500 });

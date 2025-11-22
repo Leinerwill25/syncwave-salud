@@ -43,9 +43,10 @@ const LINKS: LinkItem[] = [
 		icon: Search,
 		submenu: [
 			{ href: '/dashboard/patient/explore', label: 'Buscador Global' },
-			{ href: '/dashboard/patient/clinics', label: 'Clínicas' },
-			{ href: '/dashboard/patient/pharmacies', label: 'Farmacias' },
-			{ href: '/dashboard/patient/labs', label: 'Laboratorios' },
+			{ href: '/dashboard/patient/consultorio', label: 'Consultorios' },
+			{ href: '/dashboard/patient/clinics', label: 'Clínicas', comingSoon: true },
+			{ href: '/dashboard/patient/pharmacies', label: 'Farmacias', comingSoon: true },
+			{ href: '/dashboard/patient/labs', label: 'Laboratorios', comingSoon: true },
 		],
 	},
 	{
@@ -62,6 +63,7 @@ const LINKS: LinkItem[] = [
 		href: '/dashboard/patient/resultados',
 		label: 'Resultados',
 		icon: FlaskConical,
+		comingSoon: true,
 	},
 	{
 		href: '/dashboard/patient/recetas',
@@ -81,6 +83,7 @@ const LINKS: LinkItem[] = [
 	{
 		label: 'Grupo Familiar',
 		icon: Users,
+		comingSoon: true,
 		submenu: [
 			{ href: '/dashboard/patient/family', label: 'Mi Grupo' },
 			{ href: '/dashboard/patient/family/codes', label: 'Códigos de Acceso' },
@@ -124,6 +127,22 @@ export default function SidebarPatient() {
 
 		// Submenu
 		if (link.submenu) {
+			// Si tiene comingSoon, mostrar como deshabilitado
+			if (isComing) {
+				return (
+					<li key={link.label}>
+						<div
+							aria-disabled="true"
+							className={`group flex items-center gap-3 w-full px-3 py-2 rounded-lg text-sm font-medium cursor-not-allowed opacity-80
+							${isActive ? 'bg-indigo-100 text-indigo-700' : 'text-slate-400 bg-slate-50'}`}>
+							{link.icon && <link.icon className="w-5 h-5" />}
+							<span>{link.label}</span>
+							<span className="ml-auto inline-flex items-center px-2 py-0.5 text-[11px] font-medium rounded-full bg-slate-100 text-slate-600 border border-slate-200">Próximamente</span>
+						</div>
+					</li>
+				);
+			}
+
 			// Abrir si está en openMenus o si alguno de los hijos es la ruta actual
 			const childActive = link.submenu.some((l) => isPathActive(l.href));
 			const isOpen = openMenus.includes(link.label) || childActive;

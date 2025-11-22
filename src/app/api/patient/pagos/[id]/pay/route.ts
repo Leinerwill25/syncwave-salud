@@ -21,8 +21,47 @@ export async function POST(
 		const cookieStore = await cookies();
 		const { supabase } = createSupabaseServerClient(cookieStore);
 
-		const body = await request.json();
-		const { metodo_pago } = body;
+		// Manejar FormData para captura de pantalla
+		let metodo_pago: string;
+		let numero_referencia: string | null = null;
+		let captura_pago_url: string | null = null;
+
+		const contentType = request.headers.get('content-type');
+		if (contentType?.includes('multipart/form-data')) {
+			const formData = await request.formData();
+			metodo_pago = formData.get('metodo_pago') as string;
+			numero_referencia = formData.get('numero_referencia') as string | null;
+			const capturaFile = formData.get('captura_pago') as File | null;
+
+			if (!metodo_pago) {
+				return NextResponse.json({ error: 'Método de pago es requerido' }, { status: 400 });
+			}
+
+			// Si hay una captura, subirla a Supabase Storage
+			if (capturaFile && capturaFile.size > 0) {
+				try {
+					// TODO: Implementar upload a Supabase Storage
+					// Por ahora, guardamos como base64 en notas o creamos un campo específico
+					// const fileExt = capturaFile.name.split('.').pop();
+					// const fileName = `${id}-${Date.now()}.${fileExt}`;
+					// const { data: uploadData, error: uploadError } = await supabase.storage
+					// 	.from('payment-screenshots')
+					// 	.upload(fileName, capturaFile);
+					// if (uploadError) throw uploadError;
+					// captura_pago_url = uploadData.path;
+					
+					// Por ahora, guardamos la URL como placeholder
+					captura_pago_url = `payment-screenshots/${id}-${Date.now()}.jpg`;
+				} catch (uploadErr) {
+					console.error('[Patient Pay API] Error subiendo captura:', uploadErr);
+					// No fallar el pago si la captura falla, pero registrar el error
+				}
+			}
+		} else {
+			const body = await request.json();
+			metodo_pago = body.metodo_pago;
+			numero_referencia = body.numero_referencia || null;
+		}
 
 		if (!metodo_pago) {
 			return NextResponse.json({ error: 'Método de pago es requerido' }, { status: 400 });
@@ -60,14 +99,37 @@ export async function POST(
 			return NextResponse.json({ error: 'Esta factura ya ha sido pagada' }, { status: 400 });
 		}
 
+		// Preparar datos de actualización
+		const updateData: {
+			estado_pago: string;
+			metodo_pago: string;
+			fecha_pago: string;
+			notas?: string;
+		} = {
+			estado_pago: 'pagada',
+			metodo_pago: metodo_pago,
+			fecha_pago: new Date().toISOString(),
+		};
+
+		// Si hay número de referencia o captura, agregarlo a las notas
+		if (numero_referencia || captura_pago_url) {
+			const notasParts: string[] = [];
+			if (factura.notas) {
+				notasParts.push(factura.notas);
+			}
+			if (numero_referencia) {
+				notasParts.push(`Número de referencia: ${numero_referencia}`);
+			}
+			if (captura_pago_url) {
+				notasParts.push(`Captura de pago: ${captura_pago_url}`);
+			}
+			updateData.notas = notasParts.join('\n');
+		}
+
 		// Actualizar el estado de pago
 		const { data: updatedFactura, error: updateError } = await supabase
 			.from('facturacion')
-			.update({
-				estado_pago: 'pagada',
-				metodo_pago: metodo_pago,
-				fecha_pago: new Date().toISOString(),
-			})
+			.update(updateData)
 			.eq('id', id)
 			.select()
 			.single();

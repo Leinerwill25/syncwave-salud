@@ -2,7 +2,7 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { FileText, Loader2, Stethoscope } from 'lucide-react';
+import { FileText, Loader2, Stethoscope, Calendar, UserCheck, UserPlus } from 'lucide-react';
 import { createSupabaseBrowserClient } from '@/app/adapters/client'; // lo dejé por si lo necesitas en otras partes
 
 /* ------------------------- UI primitives (estilizados) ------------------------- */
@@ -58,11 +58,11 @@ function TextareaInput({ id, label, value, onChange, placeholder, rows = 4, erro
 	);
 }
 
-/* ------------------------- Patient searcher — reutilizo tu componente (sin cambios) ------------------------- */
+/* ------------------------- Patient searcher — actualizado para mostrar tipo ------------------------- */
 
-type Patient = { id: string; firstName: string; lastName: string; identifier?: string };
+type Patient = { id: string; firstName: string; lastName: string; identifier?: string; is_unregistered?: boolean; type?: string };
 
-function PatientSearcher({ onSelect }: { onSelect: (p: Patient) => void }) {
+function PatientSearcher({ onSelect, patientType }: { onSelect: (p: Patient) => void; patientType: 'registered' | 'unregistered' }) {
 	const [term, setTerm] = useState('');
 	const [suggestions, setSuggestions] = useState<Patient[]>([]);
 	const [loading, setLoading] = useState(false);
@@ -81,7 +81,12 @@ function PatientSearcher({ onSelect }: { onSelect: (p: Patient) => void }) {
 				setLoading(true);
 				const res = await fetch(`/api/patients/search?identifier=${encodeURIComponent(term)}`);
 				const data = await res.json();
-				setSuggestions(data || []);
+				// Filtrar según el tipo de paciente seleccionado
+				const filtered = (data || []).filter((p: Patient) => {
+					const isUnregistered = p.is_unregistered === true || p.type === 'unregistered';
+					return patientType === 'unregistered' ? isUnregistered : !isUnregistered;
+				});
+				setSuggestions(filtered);
 				setOpen(true);
 			} catch (err) {
 				console.error('search error', err);
@@ -91,11 +96,11 @@ function PatientSearcher({ onSelect }: { onSelect: (p: Patient) => void }) {
 				setLoading(false);
 			}
 		}, 300);
-	}, [term]);
+	}, [term, patientType]);
 
 	return (
 		<div className="w-full">
-			<Label>Buscar paciente</Label>
+			<Label>Buscar paciente {patientType === 'registered' ? 'registrado' : 'no registrado'}</Label>
 			<div className="relative">
 				<div className="flex items-center gap-2">
 					<div className="flex-1">
@@ -107,33 +112,44 @@ function PatientSearcher({ onSelect }: { onSelect: (p: Patient) => void }) {
 				{open && suggestions.length > 0 && (
 					<div className="absolute z-40 left-0 right-0 mt-2 rounded-xl border border-blue-200 bg-white shadow-xl overflow-hidden">
 						<ul className="divide-y divide-blue-100">
-							{suggestions.map((p) => (
-								<li
-									key={p.id}
-									role="option"
-									tabIndex={0}
-									onClick={() => {
-										onSelect(p);
-										setTerm('');
-										setOpen(false);
-									}}
-									onKeyDown={(e) => {
-										if (e.key === 'Enter') {
+							{suggestions.map((p) => {
+								const isUnregistered = p.is_unregistered === true || p.type === 'unregistered';
+								return (
+									<li
+										key={p.id}
+										role="option"
+										tabIndex={0}
+										onClick={() => {
 											onSelect(p);
 											setTerm('');
 											setOpen(false);
-										}
-									}}
-									className="px-4 py-3 hover:bg-blue-50 cursor-pointer transition flex items-center justify-between">
-									<div>
-										<div className="font-medium text-slate-900">
-											{p.firstName} {p.lastName}
+										}}
+										onKeyDown={(e) => {
+											if (e.key === 'Enter') {
+												onSelect(p);
+												setTerm('');
+												setOpen(false);
+											}
+										}}
+										className="px-4 py-3 hover:bg-blue-50 cursor-pointer transition flex items-center justify-between">
+										<div className="flex items-center gap-3">
+											<div className={`p-1.5 rounded-md ${isUnregistered ? 'bg-orange-100' : 'bg-green-100'}`}>
+												{isUnregistered ? <UserPlus size={14} className={isUnregistered ? 'text-orange-600' : 'text-green-600'} /> : <UserCheck size={14} className="text-green-600" />}
+											</div>
+											<div>
+												<div className="font-medium text-slate-900">
+													{p.firstName} {p.lastName}
+												</div>
+												{p.identifier && <div className="text-xs text-slate-700 mt-0.5">{p.identifier}</div>}
+												<div className={`text-xs mt-0.5 ${isUnregistered ? 'text-orange-600' : 'text-green-600'}`}>
+													{isUnregistered ? 'No registrado' : 'Registrado'}
+												</div>
+											</div>
 										</div>
-										{p.identifier && <div className="text-xs text-slate-700 mt-0.5">{p.identifier}</div>}
-									</div>
-									<div className="text-xs text-slate-600">Seleccionar</div>
-								</li>
-							))}
+										<div className="text-xs text-slate-600">Seleccionar</div>
+									</li>
+								);
+							})}
 						</ul>
 					</div>
 				)}
@@ -149,13 +165,81 @@ export default function ConsultationForm() {
 	const [doctorId, setDoctorId] = useState<string | null>(null);
 	const [organizationId, setOrganizationId] = useState<string | null>(null);
 	const [organizationName, setOrganizationName] = useState<string | null>(null);
+	const [patientType, setPatientType] = useState<'registered' | 'unregistered'>('registered');
 	const [patientId, setPatientId] = useState('');
+	const [unregisteredPatientId, setUnregisteredPatientId] = useState('');
+	const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
+	const [consultationDate, setConsultationDate] = useState('');
 	const [chiefComplaint, setChiefComplaint] = useState('');
 	const [diagnosis, setDiagnosis] = useState('');
 	const [notes, setNotes] = useState('');
 	const [loading, setLoading] = useState(false);
 	const [error, setError] = useState<string | null>(null);
 	const [fetchingSession, setFetchingSession] = useState(true);
+
+	// Signos vitales generales
+	const [weight, setWeight] = useState('');
+	const [height, setHeight] = useState('');
+	const [temperature, setTemperature] = useState('');
+	const [bpSystolic, setBpSystolic] = useState('');
+	const [bpDiastolic, setBpDiastolic] = useState('');
+	const [heartRate, setHeartRate] = useState('');
+	const [respiratoryRate, setRespiratoryRate] = useState('');
+	const [spo2, setSpo2] = useState('');
+	const [glucose, setGlucose] = useState('');
+
+	// Especialidad seleccionada
+	const [selectedSpecialty, setSelectedSpecialty] = useState<string>('');
+
+	// Campos por especialidad (simplificados)
+	const [specialtyFields, setSpecialtyFields] = useState<Record<string, any>>({});
+
+	// Datos del paciente no registrado
+	const [unregisteredFirstName, setUnregisteredFirstName] = useState('');
+	const [unregisteredLastName, setUnregisteredLastName] = useState('');
+	const [unregisteredIdentification, setUnregisteredIdentification] = useState('');
+	const [unregisteredPhone, setUnregisteredPhone] = useState('');
+	const [unregisteredEmail, setUnregisteredEmail] = useState('');
+	const [unregisteredBirthDate, setUnregisteredBirthDate] = useState('');
+	const [unregisteredSex, setUnregisteredSex] = useState<'M' | 'F' | 'OTHER' | ''>('');
+	const [unregisteredAddress, setUnregisteredAddress] = useState('');
+	const [unregisteredAllergies, setUnregisteredAllergies] = useState('');
+	const [unregisteredChronicConditions, setUnregisteredChronicConditions] = useState('');
+	const [unregisteredCurrentMedication, setUnregisteredCurrentMedication] = useState('');
+	const [unregisteredFamilyHistory, setUnregisteredFamilyHistory] = useState('');
+
+	// Inicializar fecha con la fecha actual
+	useEffect(() => {
+		const now = new Date();
+		const year = now.getFullYear();
+		const month = String(now.getMonth() + 1).padStart(2, '0');
+		const day = String(now.getDate()).padStart(2, '0');
+		const hours = String(now.getHours()).padStart(2, '0');
+		const minutes = String(now.getMinutes()).padStart(2, '0');
+		setConsultationDate(`${year}-${month}-${day}T${hours}:${minutes}`);
+	}, []);
+
+	// Resetear selección de paciente cuando cambia el tipo
+	useEffect(() => {
+		setPatientId('');
+		setUnregisteredPatientId('');
+		setSelectedPatient(null);
+		// Limpiar formulario de paciente no registrado
+		if (patientType === 'unregistered') {
+			setUnregisteredFirstName('');
+			setUnregisteredLastName('');
+			setUnregisteredIdentification('');
+			setUnregisteredPhone('');
+			setUnregisteredEmail('');
+			setUnregisteredBirthDate('');
+			setUnregisteredSex('');
+			setUnregisteredAddress('');
+			setUnregisteredAllergies('');
+			setUnregisteredChronicConditions('');
+			setUnregisteredCurrentMedication('');
+			setUnregisteredFamilyHistory('');
+		}
+	}, [patientType]);
 
 	useEffect(() => {
 		async function fetchDoctorAndOrg() {
@@ -193,26 +277,167 @@ export default function ConsultationForm() {
 		fetchDoctorAndOrg();
 	}, []);
 
+	const handlePatientSelect = (patient: Patient) => {
+		setSelectedPatient(patient);
+		const isUnregistered = patient.is_unregistered === true || patient.type === 'unregistered';
+		if (isUnregistered) {
+			setUnregisteredPatientId(patient.id);
+			setPatientId('');
+		} else {
+			setPatientId(patient.id);
+			setUnregisteredPatientId('');
+		}
+	};
+
 	async function handleSubmit(e: React.FormEvent) {
 		e.preventDefault();
 		setError(null);
 		if (!doctorId) return setError('No se detectó la sesión del médico.');
-		if (!patientId) return setError('Debe seleccionar un paciente.');
 		if (!chiefComplaint) return setError('El motivo de consulta es obligatorio.');
+		if (!consultationDate) return setError('La fecha de la consulta es obligatoria.');
+
+		// Validar datos del paciente no registrado si es necesario
+		if (patientType === 'unregistered') {
+			if (!unregisteredPatientId && (!unregisteredFirstName || !unregisteredLastName || !unregisteredPhone)) {
+				return setError('Debe completar al menos nombre, apellido y teléfono del paciente, o seleccionar un paciente existente.');
+			}
+		} else {
+			if (!patientId) return setError('Debe seleccionar un paciente registrado.');
+		}
+
+		// Validar que la cédula no esté duplicada (solo si se proporciona y es paciente nuevo)
+		if (patientType === 'unregistered' && !unregisteredPatientId && unregisteredIdentification) {
+			try {
+				const checkRes = await fetch(`/api/patients/search?identifier=${encodeURIComponent(unregisteredIdentification.trim())}`);
+				const existingPatients = await checkRes.json();
+				if (Array.isArray(existingPatients) && existingPatients.length > 0) {
+					const exists = existingPatients.some((p: any) => 
+						(p.identifier && p.identifier.trim().toLowerCase() === unregisteredIdentification.trim().toLowerCase()) ||
+						(p.identification && p.identification.trim().toLowerCase() === unregisteredIdentification.trim().toLowerCase())
+					);
+					if (exists) {
+						return setError(`La cédula "${unregisteredIdentification}" ya está registrada. Por favor, busca al paciente en la lista.`);
+					}
+				}
+			} catch (checkErr) {
+				console.warn('Error verificando cédula antes de crear:', checkErr);
+				// Continuar aunque falle la verificación previa, el servidor lo validará
+			}
+		}
 
 		setLoading(true);
 		try {
+			let finalUnregisteredPatientId = unregisteredPatientId;
+
+			// Si es paciente no registrado y no hay ID, crear el paciente primero
+			if (patientType === 'unregistered' && !unregisteredPatientId) {
+				const patientPayload: any = {
+					first_name: unregisteredFirstName,
+					last_name: unregisteredLastName,
+					phone: unregisteredPhone,
+					identification: unregisteredIdentification || null,
+					birth_date: unregisteredBirthDate || null,
+					sex: unregisteredSex || null,
+					email: unregisteredEmail || null,
+					address: unregisteredAddress || null,
+					allergies: unregisteredAllergies || null,
+					chronic_conditions: unregisteredChronicConditions || null,
+					current_medication: unregisteredCurrentMedication || null,
+					family_history: unregisteredFamilyHistory || null,
+				};
+
+				const patientRes = await fetch('/api/unregistered-patients', {
+					method: 'POST',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify(patientPayload),
+				});
+
+				const patientData = await patientRes.json().catch(() => ({}));
+				if (!patientRes.ok) {
+					setLoading(false);
+					// Si el error es 409 (conflicto), mostrar el mensaje del servidor que incluye información sobre la cédula duplicada
+					if (patientRes.status === 409) {
+						return setError(patientData.error || 'Esta cédula de identidad ya está registrada en el sistema.');
+					}
+					return setError(patientData.error || 'Error al crear el paciente no registrado.');
+				}
+
+				finalUnregisteredPatientId = patientData.id || patientData.data?.id;
+				if (!finalUnregisteredPatientId) {
+					setLoading(false);
+					return setError('Error: no se obtuvo el ID del paciente creado.');
+				}
+			}
+
+			const payload: any = {
+				doctor_id: doctorId,
+				organization_id: organizationId,
+				chief_complaint: chiefComplaint,
+				diagnosis: diagnosis || null,
+				notes: notes || null,
+			};
+
+			if (patientType === 'registered') {
+				payload.patient_id = patientId;
+			} else {
+				payload.unregistered_patient_id = finalUnregisteredPatientId;
+			}
+
+			// Construir objeto de signos vitales
+			const vitalsObj: Record<string, any> = {};
+
+			// Signos vitales generales
+			const generalVitals: Record<string, any> = {};
+			if (weight) generalVitals.weight = weight;
+			if (height) generalVitals.height = height;
+			if (temperature) generalVitals.temperature = temperature;
+			if (bpSystolic) generalVitals.bp_systolic = bpSystolic;
+			if (bpDiastolic) generalVitals.bp_diastolic = bpDiastolic;
+			if (heartRate) generalVitals.heart_rate = heartRate;
+			if (respiratoryRate) generalVitals.respiratory_rate = respiratoryRate;
+			if (spo2) generalVitals.spo2 = spo2;
+			if (glucose) generalVitals.glucose = glucose;
+
+			// Calcular BMI si hay peso y altura
+			if (weight && height) {
+				const w = Number(String(weight).replace(',', '.'));
+				const h = Number(String(height).replace(',', '.'));
+				if (isFinite(w) && isFinite(h) && w > 0 && h > 0) {
+					const meters = h / 100;
+					const bmi = w / (meters * meters);
+					generalVitals.bmi = bmi.toFixed(1);
+				}
+			}
+
+			if (Object.keys(generalVitals).length > 0) {
+				vitalsObj.general = generalVitals;
+			}
+
+			// Agregar campos de especialidad si hay alguno
+			if (selectedSpecialty && Object.keys(specialtyFields).length > 0) {
+				const specialtyKey = selectedSpecialty.toLowerCase();
+				vitalsObj[specialtyKey] = specialtyFields;
+			}
+
+			// Agregar fecha de consulta si está disponible (guardar en vitals para consultas programadas)
+			if (consultationDate) {
+				const consultationDateTime = new Date(consultationDate);
+				const now = new Date();
+				if (consultationDateTime.getTime() !== now.getTime()) {
+					vitalsObj.scheduled_date = consultationDate;
+					vitalsObj.consultation_date = consultationDateTime.toISOString();
+				}
+			}
+
+			// Agregar vitals al payload solo si hay datos
+			if (Object.keys(vitalsObj).length > 0) {
+				payload.vitals = vitalsObj;
+			}
+
 			const res = await fetch('/api/consultations', {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({
-					patient_id: patientId,
-					doctor_id: doctorId,
-					organization_id: organizationId,
-					chief_complaint: chiefComplaint,
-					diagnosis,
-					notes,
-				}),
+				body: JSON.stringify(payload),
 			});
 			const data = await res.json().catch(() => ({}));
 			setLoading(false);
@@ -220,7 +445,7 @@ export default function ConsultationForm() {
 				console.error('Error creando consulta', res.status, data);
 				return setError(data.error || 'Error al crear consulta.');
 			}
-			// redirigir a la consulta creada (ajusta según tu respuesta del servidor)
+			// redirigir a la consulta creada
 			router.push(`/dashboard/medic/consultas/${data?.data?.id || data?.id}`);
 		} catch (err: any) {
 			console.error(err);
@@ -243,37 +468,459 @@ export default function ConsultationForm() {
 				</div>
 			</div>
 
-			{/* Session / patient picker */}
+			{/* Selector de tipo de paciente */}
 			<Card>
-				<div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-center">
-					<div className="md:col-span-2">
-						<PatientSearcher onSelect={(p) => setPatientId(p.id)} />
-					</div>
-
-					<div className="flex flex-col gap-2">
-						<Label>Paciente seleccionado</Label>
-						<div className="min-h-[56px] flex items-center justify-center rounded-lg border border-dashed border-blue-200 bg-blue-50/50 text-sm text-slate-800">{patientId ? <span className="font-medium">{patientId}</span> : <span className="text-xs text-slate-600">Ninguno</span>}</div>
-						{doctorId && (
-							<div className="mt-2 text-xs text-slate-700">
-								Médico: <span className="font-medium text-slate-900">{doctorId}</span>
-								{organizationName && (
-									<span className="block text-xs text-slate-700 mt-1">
-										Clínica: <span className="font-medium">{organizationName}</span>
-									</span>
-								)}
-							</div>
-						)}
+				<div className="space-y-4">
+					<Label>Tipo de Paciente</Label>
+					<div className="grid grid-cols-2 gap-3">
+						<button
+							type="button"
+							onClick={() => setPatientType('registered')}
+							className={`flex items-center justify-center gap-2 px-4 py-3 rounded-xl border-2 transition-all ${
+								patientType === 'registered'
+									? 'border-teal-500 bg-teal-50 text-teal-700 shadow-md'
+									: 'border-gray-200 bg-white text-gray-700 hover:border-gray-300 hover:bg-gray-50'
+							}`}>
+							<UserCheck size={20} />
+							<span className="font-semibold">Paciente Registrado</span>
+						</button>
+						<button
+							type="button"
+							onClick={() => setPatientType('unregistered')}
+							className={`flex items-center justify-center gap-2 px-4 py-3 rounded-xl border-2 transition-all ${
+								patientType === 'unregistered'
+									? 'border-orange-500 bg-orange-50 text-orange-700 shadow-md'
+									: 'border-gray-200 bg-white text-gray-700 hover:border-gray-300 hover:bg-gray-50'
+							}`}>
+							<UserPlus size={20} />
+							<span className="font-semibold">Paciente No Registrado</span>
+						</button>
 					</div>
 				</div>
 			</Card>
 
+			{/* Session / patient picker o formulario de paciente no registrado */}
+			{patientType === 'registered' ? (
+				<Card>
+					<div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-start">
+						<div className="md:col-span-2">
+							<PatientSearcher onSelect={handlePatientSelect} patientType={patientType} />
+						</div>
+
+						<div className="flex flex-col gap-2">
+							<Label>Paciente seleccionado</Label>
+							<div className="min-h-[56px] flex flex-col items-start justify-center px-3 py-2 rounded-lg border border-dashed border-blue-200 bg-blue-50/50 text-sm text-slate-800">
+								{selectedPatient ? (
+									<>
+										<span className="font-medium text-slate-900">
+											{selectedPatient.firstName} {selectedPatient.lastName}
+										</span>
+										{selectedPatient.identifier && <span className="text-xs text-slate-600 mt-0.5">{selectedPatient.identifier}</span>}
+										<span className="text-xs mt-1 text-green-600">Registrado</span>
+									</>
+								) : (
+									<span className="text-xs text-slate-600">Ninguno</span>
+								)}
+							</div>
+							{doctorId && (
+								<div className="mt-2 text-xs text-slate-700">
+									Médico: <span className="font-medium text-slate-900">{doctorId}</span>
+									{organizationName && (
+										<span className="block text-xs text-slate-700 mt-1">
+											Clínica: <span className="font-medium">{organizationName}</span>
+										</span>
+									)}
+								</div>
+							)}
+						</div>
+					</div>
+				</Card>
+			) : (
+				<>
+					{/* Buscador opcional para pacientes no registrados existentes */}
+					<Card>
+						<PatientSearcher onSelect={handlePatientSelect} patientType={patientType} />
+					</Card>
+
+					{/* Formulario de datos del paciente no registrado */}
+					{!unregisteredPatientId && (
+						<Card>
+							<div className="space-y-4">
+								<div className="flex items-center gap-2 mb-4">
+									<UserPlus className="w-5 h-5 text-orange-600" />
+									<h3 className="text-lg font-semibold text-slate-900">Datos del Paciente</h3>
+								</div>
+
+								<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+									<TextInput
+										id="unregisteredFirstName"
+										label="Nombre *"
+										value={unregisteredFirstName}
+										onChange={setUnregisteredFirstName}
+										placeholder="Nombre del paciente"
+										icon={<UserCheck size={16} />}
+									/>
+									<TextInput
+										id="unregisteredLastName"
+										label="Apellido *"
+										value={unregisteredLastName}
+										onChange={setUnregisteredLastName}
+										placeholder="Apellido del paciente"
+										icon={<UserCheck size={16} />}
+									/>
+									<TextInput
+										id="unregisteredIdentification"
+										label="Cédula / Identificación"
+										value={unregisteredIdentification}
+										onChange={setUnregisteredIdentification}
+										placeholder="Número de identificación"
+									/>
+									<TextInput
+										id="unregisteredPhone"
+										label="Teléfono *"
+										type="tel"
+										value={unregisteredPhone}
+										onChange={setUnregisteredPhone}
+										placeholder="Ej: +58 412 1234567"
+									/>
+									<TextInput
+										id="unregisteredEmail"
+										label="Correo Electrónico"
+										type="email"
+										value={unregisteredEmail}
+										onChange={setUnregisteredEmail}
+										placeholder="email@ejemplo.com"
+									/>
+									<TextInput
+										id="unregisteredBirthDate"
+										label="Fecha de Nacimiento"
+										type="date"
+										value={unregisteredBirthDate}
+										onChange={setUnregisteredBirthDate}
+									/>
+									<div className="flex flex-col gap-2">
+										<Label htmlFor="unregisteredSex">Sexo</Label>
+										<select
+											id="unregisteredSex"
+											value={unregisteredSex}
+											onChange={(e) => setUnregisteredSex(e.target.value as 'M' | 'F' | 'OTHER' | '')}
+											className="w-full rounded-lg border border-blue-200 px-4 py-3 bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-teal-400 transition"
+										>
+											<option value="">Seleccionar...</option>
+											<option value="M">Masculino</option>
+											<option value="F">Femenino</option>
+											<option value="OTHER">Otro</option>
+										</select>
+									</div>
+									<TextareaInput
+										id="unregisteredAddress"
+										label="Dirección"
+										value={unregisteredAddress}
+										onChange={setUnregisteredAddress}
+										placeholder="Dirección completa"
+										rows={2}
+									/>
+								</div>
+
+								<div className="border-t border-gray-200 pt-4 mt-4">
+									<h4 className="text-sm font-semibold text-slate-900 mb-3">Información Médica Relevante</h4>
+									<div className="grid grid-cols-1 gap-4">
+										<TextareaInput
+											id="unregisteredAllergies"
+											label="Alergias"
+											value={unregisteredAllergies}
+											onChange={setUnregisteredAllergies}
+											placeholder="Liste las alergias conocidas del paciente"
+											rows={3}
+										/>
+										<TextareaInput
+											id="unregisteredChronicConditions"
+											label="Condiciones Crónicas"
+											value={unregisteredChronicConditions}
+											onChange={setUnregisteredChronicConditions}
+											placeholder="Enfermedades crónicas, condiciones previas..."
+											rows={3}
+										/>
+										<TextareaInput
+											id="unregisteredCurrentMedication"
+											label="Medicamentos Actuales"
+											value={unregisteredCurrentMedication}
+											onChange={setUnregisteredCurrentMedication}
+											placeholder="Medicamentos que el paciente está tomando actualmente"
+											rows={3}
+										/>
+										<TextareaInput
+											id="unregisteredFamilyHistory"
+											label="Historial Familiar"
+											value={unregisteredFamilyHistory}
+											onChange={setUnregisteredFamilyHistory}
+											placeholder="Enfermedades o condiciones en la familia"
+											rows={3}
+										/>
+									</div>
+								</div>
+							</div>
+						</Card>
+					)}
+
+					{/* Mostrar paciente seleccionado si existe */}
+					{unregisteredPatientId && selectedPatient && (
+						<Card>
+							<div className="flex items-center justify-between">
+								<div>
+									<Label>Paciente Seleccionado</Label>
+									<div className="mt-2">
+										<span className="font-medium text-slate-900">
+											{selectedPatient.firstName} {selectedPatient.lastName}
+										</span>
+										{selectedPatient.identifier && <div className="text-xs text-slate-600 mt-0.5">{selectedPatient.identifier}</div>}
+										<span className="text-xs text-orange-600 mt-1 block">No registrado</span>
+									</div>
+								</div>
+								<button
+									type="button"
+									onClick={() => {
+										setUnregisteredPatientId('');
+										setSelectedPatient(null);
+									}}
+									className="text-xs text-slate-600 hover:text-slate-900 px-2 py-1 rounded border border-slate-300"
+								>
+									Cambiar
+								</button>
+							</div>
+						</Card>
+					)}
+				</>
+			)}
+
 			{/* Clinical fields */}
 			<Card className="space-y-4">
 				<div className="grid grid-cols-1 gap-4">
-					<TextInput id="chiefComplaint" label="Motivo de consulta" value={chiefComplaint} onChange={setChiefComplaint} placeholder="Ej: dolor abdominal, cefalea..." icon={<Stethoscope size={16} />} />
-					<TextareaInput id="diagnosis" label="Diagnóstico" value={diagnosis} onChange={setDiagnosis} placeholder="Diagnóstico (opcional)" rows={4} />
-					<TextareaInput id="notes" label="Notas clínicas" value={notes} onChange={setNotes} placeholder="Observaciones, recomendaciones, plan" rows={4} />
+					<TextInput
+						id="consultationDate"
+						label="Fecha de la consulta"
+						type="datetime-local"
+						value={consultationDate}
+						onChange={setConsultationDate}
+						placeholder="Fecha y hora de la consulta"
+						icon={<Calendar size={16} />}
+					/>
+					<TextInput id="chiefComplaint" label="Motivo de consulta *" value={chiefComplaint} onChange={setChiefComplaint} placeholder="Ej: dolor abdominal, cefalea..." icon={<Stethoscope size={16} />} />
+					<TextareaInput id="diagnosis" label="Diagnóstico (opcional)" value={diagnosis} onChange={setDiagnosis} placeholder="Diagnóstico..." rows={3} />
+					<TextareaInput id="notes" label="Notas clínicas (opcional)" value={notes} onChange={setNotes} placeholder="Observaciones, recomendaciones, plan" rows={4} />
 				</div>
+			</Card>
+
+			{/* Signos Vitales */}
+			<Card className="space-y-4">
+				<div className="flex items-center gap-2 mb-4">
+					<Stethoscope className="w-5 h-5 text-teal-600" />
+					<h3 className="text-lg font-semibold text-slate-900">Signos Vitales</h3>
+				</div>
+				<div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+					<TextInput id="weight" label="Peso (kg)" type="number" step="0.1" value={weight} onChange={setWeight} placeholder="Ej: 70.5" />
+					<TextInput id="height" label="Altura (cm)" type="number" step="0.1" value={height} onChange={setHeight} placeholder="Ej: 175" />
+					<TextInput id="temperature" label="Temperatura (°C)" type="number" step="0.1" value={temperature} onChange={setTemperature} placeholder="Ej: 36.5" />
+					<TextInput id="bpSystolic" label="PA Sistólica (mmHg)" type="number" value={bpSystolic} onChange={setBpSystolic} placeholder="Ej: 120" />
+					<TextInput id="bpDiastolic" label="PA Diastólica (mmHg)" type="number" value={bpDiastolic} onChange={setBpDiastolic} placeholder="Ej: 80" />
+					<TextInput id="heartRate" label="Frecuencia Cardíaca (lpm)" type="number" value={heartRate} onChange={setHeartRate} placeholder="Ej: 72" />
+					<TextInput id="respiratoryRate" label="Frecuencia Respiratoria (rpm)" type="number" value={respiratoryRate} onChange={setRespiratoryRate} placeholder="Ej: 16" />
+					<TextInput id="spo2" label="SpO₂ (%)" type="number" value={spo2} onChange={setSpo2} placeholder="Ej: 98" />
+					<TextInput id="glucose" label="Glucosa (mg/dL)" type="number" value={glucose} onChange={setGlucose} placeholder="Ej: 95" />
+				</div>
+			</Card>
+
+			{/* Especialidad y Campos Específicos */}
+			<Card className="space-y-4">
+				<div className="flex items-center gap-2 mb-4">
+					<Stethoscope className="w-5 h-5 text-indigo-600" />
+					<h3 className="text-lg font-semibold text-slate-900">Especialidad (Opcional)</h3>
+				</div>
+				<div>
+					<Label htmlFor="specialty">Seleccionar Especialidad</Label>
+					<select
+						id="specialty"
+						value={selectedSpecialty}
+						onChange={(e) => {
+							setSelectedSpecialty(e.target.value);
+							setSpecialtyFields({}); // Limpiar campos al cambiar especialidad
+						}}
+						className="w-full rounded-lg border border-blue-200 px-4 py-3 bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-teal-400 transition"
+					>
+						<option value="">Ninguna (Consulta General)</option>
+						<option value="cardiology">Cardiología</option>
+						<option value="pulmonology">Neumología</option>
+						<option value="neurology">Neurología</option>
+						<option value="obstetrics">Obstetricia</option>
+						<option value="nutrition">Nutrición</option>
+						<option value="dermatology">Dermatología</option>
+						<option value="psychiatry">Psiquiatría</option>
+						<option value="orthopedics">Ortopedia</option>
+						<option value="ent">Otorrinolaringología (ENT)</option>
+						<option value="gynecology">Ginecología</option>
+						<option value="endocrinology">Endocrinología</option>
+						<option value="ophthalmology">Oftalmología</option>
+					</select>
+				</div>
+
+				{/* Campos específicos por especialidad - versión simplificada */}
+				{selectedSpecialty === 'cardiology' && (
+					<div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 bg-red-50 rounded-lg border border-red-200">
+						<TextInput
+							id="ekgRhythm"
+							label="Ritmo ECG"
+							value={specialtyFields.ekg_rhythm || ''}
+							onChange={(val) => setSpecialtyFields({ ...specialtyFields, ekg_rhythm: val })}
+							placeholder="Ej: Ritmo sinusal"
+						/>
+						<TextInput
+							id="bnp"
+							label="BNP (pg/mL)"
+							type="number"
+							value={specialtyFields.bnp || ''}
+							onChange={(val) => setSpecialtyFields({ ...specialtyFields, bnp: val })}
+							placeholder="Ej: 100"
+						/>
+						<div className="flex items-center gap-2">
+							<input
+								type="checkbox"
+								id="edema"
+								checked={specialtyFields.edema || false}
+								onChange={(e) => setSpecialtyFields({ ...specialtyFields, edema: e.target.checked })}
+								className="rounded"
+							/>
+							<Label htmlFor="edema">Edema presente</Label>
+						</div>
+					</div>
+				)}
+
+				{selectedSpecialty === 'pulmonology' && (
+					<div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 bg-blue-50 rounded-lg border border-blue-200">
+						<TextInput
+							id="fev1"
+							label="FEV1 (L)"
+							type="number"
+							step="0.1"
+							value={specialtyFields.fev1 || ''}
+							onChange={(val) => setSpecialtyFields({ ...specialtyFields, fev1: val })}
+							placeholder="Ej: 2.5"
+						/>
+						<TextInput
+							id="fvc"
+							label="FVC (L)"
+							type="number"
+							step="0.1"
+							value={specialtyFields.fvc || ''}
+							onChange={(val) => setSpecialtyFields({ ...specialtyFields, fvc: val })}
+							placeholder="Ej: 3.2"
+						/>
+					</div>
+				)}
+
+				{selectedSpecialty === 'neurology' && (
+					<div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 bg-purple-50 rounded-lg border border-purple-200">
+						<TextInput
+							id="gcsTotal"
+							label="GCS Total"
+							type="number"
+							value={specialtyFields.gcs_total || ''}
+							onChange={(val) => setSpecialtyFields({ ...specialtyFields, gcs_total: val })}
+							placeholder="Ej: 15"
+						/>
+						<TextInput
+							id="pupillaryReactivity"
+							label="Reactividad Pupilar"
+							value={specialtyFields.pupillary_reactivity || ''}
+							onChange={(val) => setSpecialtyFields({ ...specialtyFields, pupillary_reactivity: val })}
+							placeholder="Ej: Reactivas"
+						/>
+					</div>
+				)}
+
+				{selectedSpecialty === 'obstetrics' && (
+					<div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 bg-pink-50 rounded-lg border border-pink-200">
+						<TextInput
+							id="fundalHeight"
+							label="Altura Uterina (cm)"
+							type="number"
+							value={specialtyFields.fundal_height_cm || ''}
+							onChange={(val) => setSpecialtyFields({ ...specialtyFields, fundal_height_cm: val })}
+							placeholder="Ej: 32"
+						/>
+						<TextInput
+							id="fetalHr"
+							label="FCF (lpm)"
+							type="number"
+							value={specialtyFields.fetal_heart_rate || ''}
+							onChange={(val) => setSpecialtyFields({ ...specialtyFields, fetal_heart_rate: val })}
+							placeholder="Ej: 140"
+						/>
+					</div>
+				)}
+
+				{selectedSpecialty === 'gynecology' && (
+					<div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 bg-rose-50 rounded-lg border border-rose-200">
+						<TextInput
+							id="lmp"
+							label="Última Menstruación (FUM)"
+							type="date"
+							value={specialtyFields.last_menstrual_period || ''}
+							onChange={(val) => setSpecialtyFields({ ...specialtyFields, last_menstrual_period: val })}
+						/>
+						<TextInput
+							id="contraceptive"
+							label="Anticonceptivo"
+							value={specialtyFields.contraceptive || ''}
+							onChange={(val) => setSpecialtyFields({ ...specialtyFields, contraceptive: val })}
+							placeholder="Ej: Ninguno, Píldora, DIU"
+						/>
+					</div>
+				)}
+
+				{selectedSpecialty === 'endocrinology' && (
+					<div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 bg-yellow-50 rounded-lg border border-yellow-200">
+						<TextInput
+							id="tsh"
+							label="TSH (mUI/L)"
+							type="number"
+							step="0.01"
+							value={specialtyFields.tsh || ''}
+							onChange={(val) => setSpecialtyFields({ ...specialtyFields, tsh: val })}
+							placeholder="Ej: 2.5"
+						/>
+						<TextInput
+							id="hba1c"
+							label="HbA1c (%)"
+							type="number"
+							step="0.1"
+							value={specialtyFields.hba1c || ''}
+							onChange={(val) => setSpecialtyFields({ ...specialtyFields, hba1c: val })}
+							placeholder="Ej: 5.8"
+						/>
+					</div>
+				)}
+
+				{selectedSpecialty === 'ophthalmology' && (
+					<div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 bg-cyan-50 rounded-lg border border-cyan-200">
+						<TextInput
+							id="visualAcuity"
+							label="Agudeza Visual"
+							value={specialtyFields.visual_acuity || ''}
+							onChange={(val) => setSpecialtyFields({ ...specialtyFields, visual_acuity: val })}
+							placeholder="Ej: 20/20"
+						/>
+						<TextInput
+							id="iop"
+							label="PIO (mmHg)"
+							type="number"
+							value={specialtyFields.iop || ''}
+							onChange={(val) => setSpecialtyFields({ ...specialtyFields, iop: val })}
+							placeholder="Ej: 15"
+						/>
+					</div>
+				)}
+
+				{/* Otras especialidades pueden agregarse aquí siguiendo el mismo patrón */}
 			</Card>
 
 			{/* Actions */}

@@ -1,8 +1,9 @@
 'use client';
 
 import { useState, useRef } from 'react';
-import { Upload, Camera, FileText, Award, Building2, Stethoscope, X, Check, User } from 'lucide-react';
-import type { MedicConfig, MedicCredentials, MedicService, CreditHistory } from '@/types/medic-config';
+import { Upload, Camera, FileText, Award, Building2, Stethoscope, X, Check, User, CreditCard, Smartphone } from 'lucide-react';
+import type { MedicConfig, MedicCredentials, MedicService, CreditHistory, PaymentMethod } from '@/types/medic-config';
+import { PRIVATE_SPECIALTIES } from '@/lib/constants/specialties';
 
 export default function ProfessionalProfile({ 
 	config, 
@@ -35,6 +36,7 @@ export default function ProfessionalProfile({
 			graduationYear: '',
 			certifications: [],
 		},
+		paymentMethods: config.config.paymentMethods || [],
 	});
 
 	// Formulario para consultorio privado
@@ -51,6 +53,7 @@ export default function ProfessionalProfile({
 			expirationDate: '',
 			credentialFiles: [] as string[],
 		},
+		paymentMethods: config.config.paymentMethods || [],
 	});
 
 	const photoInputRef = useRef<HTMLInputElement>(null);
@@ -142,6 +145,7 @@ export default function ProfessionalProfile({
 						services: affiliatedForm.services,
 						credentials: affiliatedForm.credentials,
 						creditHistory: affiliatedForm.creditHistory,
+						paymentMethods: affiliatedForm.paymentMethods,
 				  }
 				: {
 						name: privateForm.name,
@@ -150,6 +154,7 @@ export default function ProfessionalProfile({
 						privateSpecialty: privateForm.privateSpecialty,
 						services: privateForm.services,
 						credentials: privateForm.credentials,
+						paymentMethods: privateForm.paymentMethods,
 				  };
 
 			const res = await fetch('/api/medic/config', {
@@ -657,22 +662,27 @@ export default function ProfessionalProfile({
 					<div className="bg-gray-50 rounded-xl p-6">
 						<h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
 							<Stethoscope className="w-5 h-5 text-indigo-600" />
-							Especialidad
+							Especialidad Médica
 						</h3>
 						<div>
 							<label className="block text-sm font-medium text-gray-700 mb-2">
-								Especialidad que Ofrece
+								Seleccionar Especialidad <span className="text-red-500">*</span>
 							</label>
-							<input
-								type="text"
+							<select
 								value={privateForm.privateSpecialty}
 								onChange={(e) => setPrivateForm(prev => ({ ...prev, privateSpecialty: e.target.value }))}
-								placeholder="Ej: Cardiología, Pediatría, Medicina General..."
-								className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+								className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent bg-white"
 								required
-							/>
+							>
+								<option value="">Seleccione una especialidad</option>
+								{PRIVATE_SPECIALTIES.map((specialty) => (
+									<option key={specialty} value={specialty}>
+										{specialty}
+									</option>
+								))}
+							</select>
 							<p className="mt-2 text-sm text-gray-500">
-								Registre la especialidad que ofrece en su consultorio privado
+								Seleccione la especialidad médica que ejerce en su consultorio privado. Esta información será visible para los pacientes en las búsquedas.
 							</p>
 						</div>
 					</div>
@@ -847,6 +857,249 @@ export default function ProfessionalProfile({
 						<Upload className="w-4 h-4" />
 						{config.isAffiliated ? affiliatedForm.signature : privateForm.signature ? 'Cambiar Firma' : 'Subir Firma'}
 					</button>
+				</div>
+			</div>
+
+			{/* Métodos de Pago */}
+			<div className="bg-gray-50 rounded-xl p-6">
+				<h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+					<CreditCard className="w-5 h-5 text-indigo-600" />
+					Métodos de Pago
+				</h3>
+				<p className="text-sm text-gray-600 mb-4">
+					Configure los métodos de pago que acepta para recibir pagos de sus pacientes.
+				</p>
+				
+				{/* Pago Móvil */}
+				<div className="bg-white rounded-lg border border-gray-200 p-6 mb-4">
+					<div className="flex items-center justify-between mb-4">
+						<div className="flex items-center gap-3">
+							<div className="p-2 bg-green-100 rounded-lg">
+								<Smartphone className="w-5 h-5 text-green-600" />
+							</div>
+							<div>
+								<h4 className="font-semibold text-gray-900">Pago Móvil</h4>
+								<p className="text-sm text-gray-500">Recibe pagos mediante transferencias móviles</p>
+							</div>
+						</div>
+						<label className="relative inline-flex items-center cursor-pointer">
+							<input
+								type="checkbox"
+								checked={
+									(config.isAffiliated 
+										? affiliatedForm.paymentMethods 
+										: privateForm.paymentMethods
+									).find(pm => pm.type === 'pago_movil')?.enabled || false
+								}
+								onChange={(e) => {
+									const currentMethods = config.isAffiliated 
+										? affiliatedForm.paymentMethods 
+										: privateForm.paymentMethods;
+									const existingIndex = currentMethods.findIndex(pm => pm.type === 'pago_movil');
+									
+									if (existingIndex >= 0) {
+										const updated = [...currentMethods];
+										updated[existingIndex] = { ...updated[existingIndex], enabled: e.target.checked };
+										if (config.isAffiliated) {
+											setAffiliatedForm(prev => ({ ...prev, paymentMethods: updated }));
+										} else {
+											setPrivateForm(prev => ({ ...prev, paymentMethods: updated }));
+										}
+									} else {
+										const newMethod: PaymentMethod = {
+											type: 'pago_movil',
+											enabled: e.target.checked,
+											data: {
+												cedula: '',
+												rif: '',
+												banco: '',
+												telefono: '',
+											},
+										};
+										if (config.isAffiliated) {
+											setAffiliatedForm(prev => ({ ...prev, paymentMethods: [...prev.paymentMethods, newMethod] }));
+										} else {
+											setPrivateForm(prev => ({ ...prev, paymentMethods: [...prev.paymentMethods, newMethod] }));
+										}
+									}
+								}}
+								className="sr-only peer"
+							/>
+							<div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-indigo-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
+						</label>
+					</div>
+					
+					{(config.isAffiliated 
+						? affiliatedForm.paymentMethods 
+						: privateForm.paymentMethods
+					).find(pm => pm.type === 'pago_movil')?.enabled && (
+						<div className="space-y-4 mt-4 pt-4 border-t border-gray-200">
+							<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+								<div>
+									<label className="block text-sm font-medium text-gray-700 mb-2">
+										Cédula de Identidad o RIF <span className="text-red-500">*</span>
+									</label>
+									<input
+										type="text"
+										placeholder="Ej: V-12345678 o J-12345678-9"
+										value={
+											(config.isAffiliated 
+												? affiliatedForm.paymentMethods 
+												: privateForm.paymentMethods
+											).find(pm => pm.type === 'pago_movil')?.data?.cedula || 
+											(config.isAffiliated 
+												? affiliatedForm.paymentMethods 
+												: privateForm.paymentMethods
+											).find(pm => pm.type === 'pago_movil')?.data?.rif || ''
+										}
+										onChange={(e) => {
+											const currentMethods = config.isAffiliated 
+												? affiliatedForm.paymentMethods 
+												: privateForm.paymentMethods;
+											const existingIndex = currentMethods.findIndex(pm => pm.type === 'pago_movil');
+											
+											if (existingIndex >= 0) {
+												const updated = [...currentMethods];
+												const value = e.target.value;
+												// Determinar si es cédula (V- o E-) o RIF (J-)
+												if (value.startsWith('J-') || value.startsWith('j-')) {
+													updated[existingIndex] = {
+														...updated[existingIndex],
+														data: {
+															...updated[existingIndex].data,
+															rif: value,
+															cedula: '',
+														},
+													};
+												} else {
+													updated[existingIndex] = {
+														...updated[existingIndex],
+														data: {
+															...updated[existingIndex].data,
+															cedula: value,
+															rif: '',
+														},
+													};
+												}
+												if (config.isAffiliated) {
+													setAffiliatedForm(prev => ({ ...prev, paymentMethods: updated }));
+												} else {
+													setPrivateForm(prev => ({ ...prev, paymentMethods: updated }));
+												}
+											}
+										}}
+										className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+										required
+									/>
+									<p className="mt-1 text-xs text-gray-500">
+										Ingrese su cédula (V-12345678) o RIF (J-12345678-9)
+									</p>
+								</div>
+								<div>
+									<label className="block text-sm font-medium text-gray-700 mb-2">
+										Banco <span className="text-red-500">*</span>
+									</label>
+									<select
+										value={
+											(config.isAffiliated 
+												? affiliatedForm.paymentMethods 
+												: privateForm.paymentMethods
+											).find(pm => pm.type === 'pago_movil')?.data?.banco || ''
+										}
+										onChange={(e) => {
+											const currentMethods = config.isAffiliated 
+												? affiliatedForm.paymentMethods 
+												: privateForm.paymentMethods;
+											const existingIndex = currentMethods.findIndex(pm => pm.type === 'pago_movil');
+											
+											if (existingIndex >= 0) {
+												const updated = [...currentMethods];
+												updated[existingIndex] = {
+													...updated[existingIndex],
+													data: {
+														...updated[existingIndex].data,
+														banco: e.target.value,
+													},
+												};
+												if (config.isAffiliated) {
+													setAffiliatedForm(prev => ({ ...prev, paymentMethods: updated }));
+												} else {
+													setPrivateForm(prev => ({ ...prev, paymentMethods: updated }));
+												}
+											}
+										}}
+										className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+										required
+									>
+										<option value="">Seleccione un banco</option>
+										<option value="Banesco">Banesco</option>
+										<option value="Mercantil">Mercantil</option>
+										<option value="Venezuela">Banco de Venezuela</option>
+										<option value="Bancaribe">Bancaribe</option>
+										<option value="Banco del Tesoro">Banco del Tesoro</option>
+										<option value="100% Banco">100% Banco</option>
+										<option value="BFC Banco Fondo Común">BFC Banco Fondo Común</option>
+										<option value="Banco Activo">Banco Activo</option>
+										<option value="Banco Caroní">Banco Caroní</option>
+										<option value="Banco de la Gente Emprendedora">Banco de la Gente Emprendedora</option>
+										<option value="Banco del Sur">Banco del Sur</option>
+										<option value="Banco Exterior">Banco Exterior</option>
+										<option value="Banco Plaza">Banco Plaza</option>
+										<option value="Banco Provincial">Banco Provincial</option>
+										<option value="Banco Sofitasa">Banco Sofitasa</option>
+										<option value="Banco Venezolano de Crédito">Banco Venezolano de Crédito</option>
+										<option value="BBVA Provincial">BBVA Provincial</option>
+										<option value="BNC">BNC</option>
+										<option value="Citibank">Citibank</option>
+										<option value="Mi Banco">Mi Banco</option>
+										<option value="Otro">Otro</option>
+									</select>
+								</div>
+							</div>
+							<div>
+								<label className="block text-sm font-medium text-gray-700 mb-2">
+									Número de Teléfono Afiliado <span className="text-red-500">*</span>
+								</label>
+								<input
+									type="tel"
+									placeholder="Ej: 0412-1234567"
+									value={
+										(config.isAffiliated 
+											? affiliatedForm.paymentMethods 
+											: privateForm.paymentMethods
+										).find(pm => pm.type === 'pago_movil')?.data?.telefono || ''
+									}
+									onChange={(e) => {
+										const currentMethods = config.isAffiliated 
+											? affiliatedForm.paymentMethods 
+											: privateForm.paymentMethods;
+										const existingIndex = currentMethods.findIndex(pm => pm.type === 'pago_movil');
+										
+										if (existingIndex >= 0) {
+											const updated = [...currentMethods];
+											updated[existingIndex] = {
+												...updated[existingIndex],
+												data: {
+													...updated[existingIndex].data,
+													telefono: e.target.value,
+												},
+											};
+											if (config.isAffiliated) {
+												setAffiliatedForm(prev => ({ ...prev, paymentMethods: updated }));
+											} else {
+												setPrivateForm(prev => ({ ...prev, paymentMethods: updated }));
+											}
+										}
+									}}
+									className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+									required
+								/>
+								<p className="mt-1 text-xs text-gray-500">
+									Ingrese el número de teléfono asociado a su cuenta de pago móvil
+								</p>
+							</div>
+						</div>
+					)}
 				</div>
 			</div>
 

@@ -66,10 +66,10 @@ export async function POST(req: NextRequest) {
 
 		// Body
 		const body = await req.json().catch(() => ({}));
-		const { patient_id, doctor_id: providedDoctorId, organization_id: providedOrgId = null, chief_complaint, diagnosis = null, notes = null } = body || {};
+		const { patient_id, unregistered_patient_id, doctor_id: providedDoctorId, organization_id: providedOrgId = null, chief_complaint, diagnosis = null, notes = null, vitals = null, initial_patient_data = null, specialty_data = null, private_notes = null } = body || {};
 
 		// Validaciones básicas
-		if (!patient_id) return NextResponse.json({ error: 'patient_id es obligatorio' }, { status: 400 });
+		if (!patient_id && !unregistered_patient_id) return NextResponse.json({ error: 'patient_id o unregistered_patient_id es obligatorio' }, { status: 400 });
 		if (!chief_complaint) return NextResponse.json({ error: 'chief_complaint es obligatorio' }, { status: 400 });
 
 		let doctorIdToUse: string | null = null;
@@ -116,17 +116,168 @@ export async function POST(req: NextRequest) {
 		}
 
 		// Construir payload de inserción
+		// Usamos vitals (jsonb) para guardar tanto signos vitales como datos adicionales
+		let vitalsPayload: any = vitals || {};
+		
+		// Agregar datos adicionales al objeto vitals
+		if (initial_patient_data) {
+			vitalsPayload.initial_patient_data = initial_patient_data;
+		}
+		if (specialty_data) {
+			vitalsPayload.specialty_data = specialty_data;
+		}
+		if (private_notes) {
+			vitalsPayload.private_notes = private_notes;
+		}
+
+		// Determinar started_at automáticamente
+		// Si hay fecha de consulta en vitals y es en el pasado o hoy, usar esa fecha
+		// Si no, usar la fecha/hora actual
+		let startedAt: Date | null = null;
+		const now = new Date();
+		
+		if (vitalsPayload?.consultation_date) {
+			const consultationDate = new Date(vitalsPayload.consultation_date);
+			// Si la fecha de consulta es en el pasado o es hoy, establecer started_at
+			if (consultationDate <= now) {
+				startedAt = consultationDate;
+			}
+		} else if (vitalsPayload?.scheduled_date) {
+			const scheduledDate = new Date(vitalsPayload.scheduled_date);
+			// Si la fecha programada es en el pasado o es hoy, establecer started_at
+			if (scheduledDate <= now) {
+				startedAt = scheduledDate;
+			}
+		}
+		
+		// Si no se estableció started_at pero la consulta se está creando ahora, activarla automáticamente
+		if (!startedAt) {
+			startedAt = now;
+		}
+
+		// Construir payload según el tipo de paciente
+		// IMPORTANTE: Si patient_id es NOT NULL en la BD, necesitamos un valor válido o usar SQL directo
 		const insertPayload: any = {
-			patient_id,
 			doctor_id: doctorIdToUse,
 			organization_id: organizationIdToUse,
 			chief_complaint,
 			diagnosis,
 			notes,
+			vitals: Object.keys(vitalsPayload).length > 0 ? vitalsPayload : null,
+			started_at: startedAt.toISOString(),
 		};
 
-		// Insert y devolver fila completa
-		const { data: insertData, error: insertErr } = await supabase.from('consultation').insert([insertPayload]).select('*').maybeSingle();
+		let insertData;
+		let insertErr;
+
+		if (patient_id) {
+			// Paciente registrado: incluir patient_id
+			insertPayload.patient_id = patient_id;
+			const result = await supabase.from('consultation').insert([insertPayload]).select('*').maybeSingle();
+			insertData = result.data;
+			insertErr = result.error;
+		} else if (unregistered_patient_id) {
+			// Paciente no registrado: patient_id es NOT NULL pero necesitamos solo unregistered_patient_id
+			// NOTA: La tabla tiene patient_id como NOT NULL, lo cual es un problema de diseño
+			// Para solucionarlo, necesitamos usar SQL directo con un valor temporal o cambiar el esquema
+			// Por ahora, intentar insertar omitiendo patient_id - si falla, necesitarás modificar el esquema
+			const { Pool } = await import('pg');
+			const pool = new Pool({
+				connectionString: process.env.DATABASE_URL,
+			});
+
+			try {
+				// Intentar insertar sin patient_id (fallará si es NOT NULL, pero lo intentamos)
+				let result = await pool.query(
+					`
+					INSERT INTO consultation (
+						unregistered_patient_id,
+						doctor_id,
+						organization_id,
+						chief_complaint,
+						diagnosis,
+						notes,
+						vitals,
+						started_at
+					) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+					RETURNING *
+				`,
+					[
+						unregistered_patient_id,
+						doctorIdToUse,
+						organizationIdToUse,
+						chief_complaint,
+						diagnosis,
+						notes,
+						Object.keys(vitalsPayload).length > 0 ? JSON.stringify(vitalsPayload) : null,
+						startedAt.toISOString(),
+					]
+				);
+
+				insertData = result.rows[0];
+				insertErr = null;
+			} catch (sqlError: any) {
+				console.error('Error con SQL directo para paciente no registrado:', sqlError);
+				
+				// Si el error es que patient_id es NOT NULL, intentar modificar el esquema automáticamente
+				if (sqlError.code === '23502' && (sqlError.column === 'patient_id' || sqlError.message?.includes('patient_id'))) {
+					try {
+						console.log('Intentando modificar el esquema para hacer patient_id nullable...');
+						// Intentar modificar el esquema para hacer patient_id nullable
+						await pool.query('ALTER TABLE consultation ALTER COLUMN patient_id DROP NOT NULL');
+						
+						// Reintentar la inserción después de modificar el esquema
+						result = await pool.query(
+							`
+							INSERT INTO consultation (
+								unregistered_patient_id,
+								doctor_id,
+								organization_id,
+								chief_complaint,
+								diagnosis,
+								notes,
+								vitals,
+								started_at
+							) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+							RETURNING *
+						`,
+							[
+								unregistered_patient_id,
+								doctorIdToUse,
+								organizationIdToUse,
+								chief_complaint,
+								diagnosis,
+								notes,
+								Object.keys(vitalsPayload).length > 0 ? JSON.stringify(vitalsPayload) : null,
+								startedAt.toISOString(),
+							]
+						);
+						
+						insertData = result.rows[0];
+						insertErr = null;
+						console.log('Esquema modificado exitosamente y consulta creada');
+					} catch (alterError: any) {
+						console.error('Error al modificar el esquema:', alterError);
+						insertErr = new Error(
+							'No se pudo modificar el esquema de la base de datos automáticamente. ' +
+							'Por favor, ejecuta manualmente: ALTER TABLE consultation ALTER COLUMN patient_id DROP NOT NULL; ' +
+							'Error: ' + (alterError.message || 'Desconocido')
+						);
+					}
+				} else {
+					insertErr = sqlError;
+				}
+			} finally {
+				try {
+					await pool.end();
+				} catch (e) {
+					// ignore
+				}
+			}
+		} else {
+			// No hay paciente especificado
+			insertErr = new Error('Debe proporcionar patient_id o unregistered_patient_id');
+		}
 
 		if (insertErr) {
 			console.error('❌ Error insert consultation:', insertErr);

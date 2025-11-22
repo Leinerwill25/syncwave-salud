@@ -51,6 +51,19 @@ export interface MedicUser {
 	organizationId: string | null;
 }
 
+export interface PaymentMethod {
+	type: 'pago_movil' | 'transferencia' | 'efectivo' | 'tarjeta';
+	enabled: boolean;
+	data?: {
+		cedula?: string;
+		rif?: string;
+		banco?: string;
+		telefono?: string;
+		cuenta?: string;
+		nombre_titular?: string;
+	};
+}
+
 export interface MedicConfigData {
 	specialty: string | null;
 	privateSpecialty: string | null;
@@ -62,6 +75,7 @@ export interface MedicConfigData {
 	notifications: MedicNotifications;
 	services: MedicService[];
 	privateSpecialties: string[];
+	paymentMethods: PaymentMethod[];
 }
 
 export interface MedicConfig {

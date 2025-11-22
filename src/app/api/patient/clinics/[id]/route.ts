@@ -54,6 +54,100 @@ export async function GET(
 			clinicError = result.error;
 		}
 
+		// Si aún no se encuentra, puede ser un consultorio privado sin clinic_profile
+		// Intentar obtener la organización directamente
+		if (!clinic && !clinicError) {
+			const { data: organization, error: orgError } = await supabase
+				.from('Organization')
+				.select(`
+					id,
+					name,
+					type,
+					contactEmail,
+					phone,
+					address,
+					clinic_profile:clinic_profile!clinic_profile_org_fk (
+						id,
+						organization_id,
+						legal_name,
+						trade_name,
+						address_operational,
+						phone_mobile,
+						specialties,
+						opening_hours,
+						location,
+						photos,
+						profile_photo
+					)
+				`)
+				.eq('id', clinicId)
+				.eq('type', 'CONSULTORIO')
+				.maybeSingle();
+
+			if (organization && !orgError) {
+				// Si encontramos la organización, usar su clinic_profile si existe
+				const clinicProfile = organization.clinic_profile;
+				if (clinicProfile) {
+					// clinic_profile puede ser un array o un objeto único
+					if (Array.isArray(clinicProfile) && clinicProfile.length > 0) {
+						clinic = clinicProfile[0];
+					} else if (typeof clinicProfile === 'object') {
+						clinic = clinicProfile;
+					}
+					
+					if (clinic) {
+						clinic.organization = {
+							id: organization.id,
+							name: organization.name,
+							type: organization.type,
+						};
+					} else {
+						// Crear un clinic_profile básico desde la organización
+						clinic = {
+							id: null,
+							organization_id: organization.id,
+							legal_name: organization.name,
+							trade_name: organization.name,
+							address_operational: organization.address,
+							phone_mobile: organization.phone,
+							contact_email: organization.contactEmail,
+							specialties: null,
+							opening_hours: null,
+							location: null,
+							photos: null,
+							profile_photo: null,
+							organization: {
+								id: organization.id,
+								name: organization.name,
+								type: organization.type,
+							},
+						};
+					}
+				} else {
+					// Crear un clinic_profile básico desde la organización
+					clinic = {
+						id: null,
+						organization_id: organization.id,
+						legal_name: organization.name,
+						trade_name: organization.name,
+						address_operational: organization.address,
+						phone_mobile: organization.phone,
+						contact_email: organization.contactEmail,
+						specialties: null,
+						opening_hours: null,
+						location: null,
+						photos: null,
+						profile_photo: null,
+						organization: {
+							id: organization.id,
+							name: organization.name,
+							type: organization.type,
+						},
+					};
+				}
+			}
+		}
+
 		if (clinicError || !clinic) {
 			return NextResponse.json({ error: 'Clínica no encontrada' }, { status: 404 });
 		}
