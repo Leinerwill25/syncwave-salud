@@ -186,9 +186,10 @@ export async function POST(req: NextRequest) {
 				connectionString: process.env.DATABASE_URL,
 			});
 
+			let result: any;
 			try {
 				// Intentar insertar sin patient_id (fallará si es NOT NULL, pero lo intentamos)
-				let result = await pool.query(
+				result = await pool.query(
 					`
 					INSERT INTO consultation (
 						unregistered_patient_id,
