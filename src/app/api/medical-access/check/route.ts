@@ -11,7 +11,11 @@ export async function GET(request: Request) {
 		const authResult = await apiRequireRole(['MEDICO']);
 		if (authResult.response) return authResult.response;
 
-		const doctor = authResult.user!;
+		const doctor = authResult.user;
+		if (!doctor) {
+			return NextResponse.json({ error: 'Usuario no autenticado' }, { status: 401 });
+		}
+
 		const cookieStore = await cookies();
 		const { supabase } = createSupabaseServerClient(cookieStore);
 
@@ -27,7 +31,7 @@ export async function GET(request: Request) {
 			.from('consultation')
 			.select('id')
 			.eq('patient_id', patient_id)
-			.eq('doctor_id', doctor.id)
+			.eq('doctor_id', doctor.userId)
 			.limit(1)
 			.maybeSingle();
 
@@ -39,7 +43,7 @@ export async function GET(request: Request) {
 			.from('appointment')
 			.select('id')
 			.eq('patient_id', patient_id)
-			.eq('doctor_id', doctor.id)
+			.eq('doctor_id', doctor.userId)
 			.limit(1)
 			.maybeSingle();
 
@@ -52,7 +56,7 @@ export async function GET(request: Request) {
 			.from('MedicalAccessGrant')
 			.select('id, granted_at, expires_at')
 			.eq('patient_id', patient_id)
-			.eq('doctor_id', doctor.id)
+			.eq('doctor_id', doctor.userId)
 			.eq('is_active', true)
 			.maybeSingle();
 
@@ -72,9 +76,10 @@ export async function GET(request: Request) {
 			hasFullAccess,
 			grant: grant || null,
 		});
-	} catch (err: any) {
+	} catch (err: unknown) {
+		const errorMessage = err instanceof Error ? err.message : 'Error desconocido';
 		console.error('[Medical Access Check API] Error:', err);
-		return NextResponse.json({ error: 'Error interno', detail: err.message }, { status: 500 });
+		return NextResponse.json({ error: 'Error interno', detail: errorMessage }, { status: 500 });
 	}
 }
 

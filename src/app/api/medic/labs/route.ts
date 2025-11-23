@@ -13,6 +13,13 @@ export async function GET(req: Request) {
 		if (authResult.response) return authResult.response;
 
 		const user = authResult.user;
+		if (!user) {
+			return NextResponse.json({ error: 'Usuario no autenticado' }, { status: 401 });
+		}
+
+		// Type assertion: después de la validación, user está garantizado
+		const authenticatedUser = user;
+
 		const cookieStore = await cookies();
 		const { supabase } = createSupabaseServerClient(cookieStore);
 
@@ -52,7 +59,7 @@ export async function GET(req: Request) {
 		const { data: orderedResults, error: orderedError } = await supabase
 			.from('lab_result')
 			.select('id')
-			.eq('ordering_provider_id', user.userId);
+			.eq('ordering_provider_id', authenticatedUser.userId);
 
 		if (orderedError) {
 			console.error('[Medic Labs API] Error:', orderedError);
@@ -62,7 +69,7 @@ export async function GET(req: Request) {
 		const { data: consultations, error: consultationsError } = await supabase
 			.from('consultation')
 			.select('id')
-			.eq('doctor_id', user.userId);
+			.eq('doctor_id', authenticatedUser.userId);
 
 		if (consultationsError) {
 			console.error('[Medic Labs API] Error consultas:', consultationsError);
@@ -74,7 +81,7 @@ export async function GET(req: Request) {
 		// Filtrar resultados
 		if (orderedResultIds.length > 0 || consultationIds.length > 0) {
 			query = query.or(
-				`ordering_provider_id.eq.${user.userId},consultation_id.in.(${consultationIds.join(',')})`
+				`ordering_provider_id.eq.${authenticatedUser.userId},consultation_id.in.(${consultationIds.join(',')})`
 			);
 		} else {
 			// Si no hay resultados, retornar vacío
@@ -101,11 +108,59 @@ export async function GET(req: Request) {
 			return NextResponse.json({ error: error.message }, { status: 500 });
 		}
 
+		// Tipos para los resultados
+		interface LabResult {
+			id: string;
+			patient_id: string | null;
+			unregistered_patient_id: string | null;
+			consultation_id: string | null;
+			ordering_provider_id: string;
+			result_type: string;
+			result: unknown;
+			attachments: string[] | null;
+			is_critical: boolean;
+			reported_at: string | null;
+			created_at: string;
+			consultation?: {
+				id: string;
+				chief_complaint: string | null;
+				diagnosis: string | null;
+				doctor_id: string;
+			} | {
+				id: string;
+				chief_complaint: string | null;
+				diagnosis: string | null;
+				doctor_id: string;
+			}[] | null;
+		}
+
+		interface RegisteredPatient {
+			id: string;
+			firstName: string;
+			lastName: string;
+			identifier: string;
+		}
+
+		interface UnregisteredPatient {
+			id: string;
+			first_name: string;
+			last_name: string;
+			identification: string;
+		}
+
+		interface NormalizedPatient {
+			id: string;
+			firstName: string;
+			lastName: string;
+			identifier: string;
+			is_unregistered: true;
+		}
+
 		// Filtrar manualmente para asegurar que solo vemos resultados relevantes
-		const filteredResults = (results || []).filter((r: any) => {
+		const filteredResults = (results || []).filter((r) => {
 			return (
-				r.ordering_provider_id === user.userId ||
-				(consultationIds.length > 0 && consultationIds.includes(r.consultation_id))
+				r.ordering_provider_id === authenticatedUser.userId ||
+				(consultationIds.length > 0 && consultationIds.includes(r.consultation_id || ''))
 			);
 		});
 
@@ -113,13 +168,13 @@ export async function GET(req: Request) {
 		const patientIds = new Set<string>();
 		const unregisteredPatientIds = new Set<string>();
 
-		filteredResults.forEach((r: any) => {
+		filteredResults.forEach((r) => {
 			if (r.patient_id) patientIds.add(r.patient_id);
 			if (r.unregistered_patient_id) unregisteredPatientIds.add(r.unregistered_patient_id);
 		});
 
 		// Obtener pacientes registrados
-		const registeredPatientsMap = new Map();
+		const registeredPatientsMap = new Map<string, RegisteredPatient>();
 		if (patientIds.size > 0) {
 			const { data: registeredPatients } = await supabase
 				.from('Patient')
@@ -127,14 +182,14 @@ export async function GET(req: Request) {
 				.in('id', Array.from(patientIds));
 
 			if (registeredPatients) {
-				registeredPatients.forEach((p: any) => {
+				registeredPatients.forEach((p: RegisteredPatient) => {
 					registeredPatientsMap.set(p.id, p);
 				});
 			}
 		}
 
 		// Obtener pacientes no registrados
-		const unregisteredPatientsMap = new Map();
+		const unregisteredPatientsMap = new Map<string, NormalizedPatient>();
 		if (unregisteredPatientIds.size > 0) {
 			const { data: unregisteredPatients } = await supabase
 				.from('unregisteredpatients')
@@ -142,7 +197,7 @@ export async function GET(req: Request) {
 				.in('id', Array.from(unregisteredPatientIds));
 
 			if (unregisteredPatients) {
-				unregisteredPatients.forEach((up: any) => {
+				unregisteredPatients.forEach((up: UnregisteredPatient) => {
 					unregisteredPatientsMap.set(up.id, {
 						id: up.id,
 						firstName: up.first_name,
@@ -155,20 +210,20 @@ export async function GET(req: Request) {
 		}
 
 		// Combinar resultados con información de pacientes
-		const resultsWithPatients = filteredResults.map((r: any) => {
-			let patientInfo = null;
+		const resultsWithPatients = filteredResults.map((r) => {
+			let patientInfo: RegisteredPatient | NormalizedPatient | null = null;
 			
 			// Intentar obtener de pacientes registrados primero
 			if (r.patient_id && registeredPatientsMap.has(r.patient_id)) {
-				patientInfo = registeredPatientsMap.get(r.patient_id);
+				patientInfo = registeredPatientsMap.get(r.patient_id) || null;
 			}
 			// Si no está en registrados, puede ser un paciente no registrado (usando su ID como patient_id)
 			else if (r.patient_id && unregisteredPatientsMap.has(r.patient_id)) {
-				patientInfo = unregisteredPatientsMap.get(r.patient_id);
+				patientInfo = unregisteredPatientsMap.get(r.patient_id) || null;
 			}
 			// Si hay unregistered_patient_id, usar ese
 			else if (r.unregistered_patient_id && unregisteredPatientsMap.has(r.unregistered_patient_id)) {
-				patientInfo = unregisteredPatientsMap.get(r.unregistered_patient_id);
+				patientInfo = unregisteredPatientsMap.get(r.unregistered_patient_id) || null;
 			}
 
 			return {

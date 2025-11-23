@@ -111,10 +111,25 @@ export async function POST(
 		// Crear notificación para el médico
 		if (appointment.doctor_id) {
 			try {
-				const doctorName = appointment.doctor?.name || 'Médico';
-				const patientName = Array.isArray(appointment.Patient) 
-					? `${appointment.Patient[0]?.firstName} ${appointment.Patient[0]?.lastName}`
-					: `${appointment.Patient?.firstName} ${appointment.Patient?.lastName}`;
+				interface DoctorInfo {
+					name?: string;
+					email?: string;
+				}
+				interface PatientInfo {
+					firstName?: string;
+					lastName?: string;
+				}
+				const doctor: DoctorInfo | undefined = Array.isArray(appointment.doctor) 
+					? appointment.doctor[0] as DoctorInfo
+					: appointment.doctor as DoctorInfo | undefined;
+				const doctorName = doctor?.name || 'Médico';
+				
+				const patientInfo: PatientInfo | undefined = Array.isArray(appointment.Patient)
+					? appointment.Patient[0] as PatientInfo
+					: appointment.Patient as PatientInfo | undefined;
+				const patientName = patientInfo 
+					? `${patientInfo.firstName || ''} ${patientInfo.lastName || ''}`.trim() || 'Paciente'
+					: 'Paciente';
 				
 				const oldDate = new Date(appointment.scheduled_at);
 				const newDate = new Date(new_scheduled_at);
@@ -129,12 +144,12 @@ export async function POST(
 						patientId: patient.patientId,
 						oldScheduledAt: appointment.scheduled_at,
 						newScheduledAt: new_scheduled_at,
-						reason: reason || appointment.reason,
+						reason: reason || appointment.reason || null,
 						appointmentUrl: `/dashboard/medic/citas/${id}`,
 					},
 					sendEmail: true,
 				});
-			} catch (notifError) {
+			} catch (notifError: unknown) {
 				console.error('[Reschedule API] Error creando notificación:', notifError);
 				// No fallar el reagendamiento si la notificación falla
 			}
@@ -145,9 +160,10 @@ export async function POST(
 			message: 'Cita reagendada correctamente',
 			data: updatedAppointment,
 		});
-	} catch (err: any) {
+	} catch (err: unknown) {
+		const errorMessage = err instanceof Error ? err.message : 'Error desconocido';
 		console.error('[Reschedule API] Error:', err);
-		return NextResponse.json({ error: 'Error interno', detail: err.message }, { status: 500 });
+		return NextResponse.json({ error: 'Error interno', detail: errorMessage }, { status: 500 });
 	}
 }
 

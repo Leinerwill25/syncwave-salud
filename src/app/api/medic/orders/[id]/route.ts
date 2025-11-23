@@ -16,6 +16,13 @@ export async function GET(
 		if (authResult.response) return authResult.response;
 
 		const user = authResult.user;
+		if (!user) {
+			return NextResponse.json({ error: 'Usuario no autenticado' }, { status: 401 });
+		}
+
+		// Type assertion: después de la validación, user está garantizado
+		const authenticatedUser = user;
+
 		const { id } = await context.params;
 		const cookieStore = await cookies();
 		const { supabase } = createSupabaseServerClient(cookieStore);
@@ -44,7 +51,7 @@ export async function GET(
 				)
 			`)
 			.eq('id', id)
-			.eq('ordering_provider_id', user.userId)
+			.eq('ordering_provider_id', authenticatedUser.userId)
 			.single();
 
 		if (error) {
@@ -189,6 +196,13 @@ export async function PATCH(
 		if (authResult.response) return authResult.response;
 
 		const user = authResult.user;
+		if (!user) {
+			return NextResponse.json({ error: 'Usuario no autenticado' }, { status: 401 });
+		}
+
+		// Type assertion: después de la validación, user está garantizado
+		const authenticatedUser = user;
+
 		const { id } = await context.params;
 		const cookieStore = await cookies();
 		const { supabase } = createSupabaseServerClient(cookieStore);
@@ -201,7 +215,7 @@ export async function PATCH(
 			.from('lab_result')
 			.select('id, ordering_provider_id')
 			.eq('id', id)
-			.eq('ordering_provider_id', user.userId)
+			.eq('ordering_provider_id', authenticatedUser.userId)
 			.single();
 
 		if (checkError || !existingOrder) {

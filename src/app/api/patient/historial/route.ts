@@ -125,7 +125,13 @@ export async function GET(request: Request) {
 			.order('created_at', { ascending: false });
 
 		// Obtener prescripciones relacionadas con las consultas
-		const consultationIds = (consultations || []).map((c: ConsultationData) => c.id);
+		interface ConsultationWithRelations {
+			id: string;
+			doctor?: { id: string; name: string | null; email: string | null } | { id: string; name: string | null; email: string | null }[];
+			appointment?: unknown | unknown[];
+			[key: string]: unknown;
+		}
+		const consultationIds = (consultations || []).map((c: ConsultationWithRelations) => c.id);
 		const prescriptionsMap: Record<string, (PrescriptionData & { attachments: string[] })[]> = {};
 		if (consultationIds.length > 0) {
 			const { data: prescriptions, error: prescError } = await supabase
@@ -274,12 +280,28 @@ export async function GET(request: Request) {
 			}
 		});
 
-		const parsedConsultations: ParsedConsultation[] = (consultations || []).map((c: ConsultationData): ParsedConsultation => ({
-			...c,
-			vitals: safeParseJson(c.vitals),
-			prescriptions: prescriptionsMap[c.id] || [],
-			attachments: consultationAttachmentsMap[c.id] || [],
-		}));
+		const parsedConsultations: ParsedConsultation[] = (consultations || []).map((c: ConsultationWithRelations): ParsedConsultation => {
+			const doctor = Array.isArray(c.doctor) ? c.doctor[0] : c.doctor;
+			const appointment = Array.isArray(c.appointment) ? c.appointment[0] : c.appointment;
+			return {
+				id: c.id as string,
+				patient_id: c.patient_id as string,
+				doctor_id: c.doctor_id as string,
+				appointment_id: (c.appointment_id as string) || null,
+				started_at: (c.started_at as string) || null,
+				ended_at: (c.ended_at as string) || null,
+				chief_complaint: (c.chief_complaint as string) || null,
+				diagnosis: (c.diagnosis as string) || null,
+				notes: (c.notes as string) || null,
+				vitals: safeParseJson(c.vitals),
+				created_at: c.created_at as string,
+				updated_at: c.updated_at as string,
+				doctor: doctor as { id: string; name: string | null; email: string | null } | null,
+				appointment: appointment as { id: string; reason: string | null; scheduled_at: string | null } | null,
+				prescriptions: prescriptionsMap[c.id as string] || [],
+				attachments: consultationAttachmentsMap[c.id as string] || [],
+			};
+		});
 
 		const parsedRecords: ParsedMedicalRecord[] = (medicalRecords || []).map((r: MedicalRecordData): ParsedMedicalRecord => ({
 			...r,

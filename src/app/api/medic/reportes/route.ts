@@ -13,6 +13,10 @@ export async function GET(req: Request) {
 		if (authResult.response) return authResult.response;
 
 		const user = authResult.user;
+		if (!user) {
+			return NextResponse.json({ error: 'Usuario no autenticado' }, { status: 401 });
+		}
+
 		const cookieStore = await cookies();
 		const { supabase } = createSupabaseServerClient(cookieStore);
 
@@ -73,8 +77,11 @@ export async function GET(req: Request) {
 			.lte('reported_at', end.toISOString());
 
 		// Procesar diagnósticos
+		interface DiagnosisData {
+			diagnosis: string | null;
+		}
 		const diagnosisCounts: Record<string, number> = {};
-		(diagnosisData || []).forEach((c: any) => {
+		(diagnosisData || []).forEach((c: DiagnosisData) => {
 			if (c.diagnosis) {
 				diagnosisCounts[c.diagnosis] = (diagnosisCounts[c.diagnosis] || 0) + 1;
 			}
@@ -86,7 +93,11 @@ export async function GET(req: Request) {
 			.map(([diagnosis, count]) => ({ diagnosis, count }));
 
 		// Calcular ingresos
-		const totalIncome = (invoices || []).reduce((sum: number, inv: any) => {
+		interface Invoice {
+			estado_pago: string;
+			total: number | string | null;
+		}
+		const totalIncome = (invoices || []).reduce((sum: number, inv: Invoice) => {
 			if (inv.estado_pago === 'pagado') {
 				return sum + Number(inv.total || 0);
 			}
@@ -94,14 +105,20 @@ export async function GET(req: Request) {
 		}, 0);
 
 		// Agrupar por mes
+		interface Appointment {
+			scheduled_at: string;
+		}
 		const appointmentsByMonth: Record<string, number> = {};
-		(appointments || []).forEach((apt: any) => {
+		(appointments || []).forEach((apt: Appointment) => {
 			const month = new Date(apt.scheduled_at).toLocaleDateString('es-ES', { year: 'numeric', month: 'long' });
 			appointmentsByMonth[month] = (appointmentsByMonth[month] || 0) + 1;
 		});
 
+		interface Consultation {
+			started_at: string;
+		}
 		const consultationsByMonth: Record<string, number> = {};
-		(consultations || []).forEach((cons: any) => {
+		(consultations || []).forEach((cons: Consultation) => {
 			const month = new Date(cons.started_at).toLocaleDateString('es-ES', { year: 'numeric', month: 'long' });
 			consultationsByMonth[month] = (consultationsByMonth[month] || 0) + 1;
 		});
@@ -124,7 +141,7 @@ export async function GET(req: Request) {
 					totalAppointments: (appointments || []).length,
 					totalConsultations: (consultations || []).length,
 					totalInvoices: (invoices || []).length,
-					paidInvoices: (invoices || []).filter((inv: any) => inv.estado_pago === 'pagado').length,
+					paidInvoices: (invoices || []).filter((inv: Invoice) => inv.estado_pago === 'pagado').length,
 				},
 			},
 			{ status: 200 }

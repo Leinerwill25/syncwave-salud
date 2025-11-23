@@ -16,6 +16,10 @@ export async function GET(
 		if (authResult.response) return authResult.response;
 
 		const user = authResult.user;
+		if (!user) {
+			return NextResponse.json({ error: 'Usuario no autenticado' }, { status: 401 });
+		}
+
 		const { id } = await context.params;
 		const cookieStore = await cookies();
 		const { supabase } = createSupabaseServerClient(cookieStore);

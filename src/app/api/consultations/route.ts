@@ -42,16 +42,23 @@ export async function GET(req: NextRequest) {
 		const { data, error, count } = await query;
 		if (error) throw error;
 
-		const items = (data || []).map((c: any) => ({
+		interface ConsultationWithRelations {
+			patient?: unknown | unknown[];
+			doctor?: unknown | unknown[];
+			[key: string]: unknown;
+		}
+
+		const items = (data || []).map((c: ConsultationWithRelations) => ({
 			...c,
 			patient: Array.isArray(c.patient) ? c.patient[0] : c.patient,
 			doctor: Array.isArray(c.doctor) ? c.doctor[0] : c.doctor,
 		}));
 
 		return NextResponse.json({ items, total: typeof count === 'number' ? count : items.length }, { status: 200 });
-	} catch (error: any) {
-		console.error('❌ Error GET /consultations:', error?.message ?? error);
-		return NextResponse.json({ error: error?.message ?? 'Error interno' }, { status: 500 });
+	} catch (error: unknown) {
+		const errorMessage = error instanceof Error ? error.message : 'Error interno';
+		console.error('❌ Error GET /consultations:', errorMessage);
+		return NextResponse.json({ error: errorMessage }, { status: 500 });
 	}
 }
 
@@ -96,7 +103,14 @@ export async function POST(req: NextRequest) {
 
 			doctorIdToUse = appUser.id;
 			// si no se proporcionó organización, tomar la de appUser
-			if (!organizationIdToUse && (appUser as any).organizationId) organizationIdToUse = (appUser as any).organizationId;
+			interface AppUser {
+				id: string;
+				organizationId?: string | null;
+			}
+			const typedAppUser = appUser as AppUser;
+			if (!organizationIdToUse && typedAppUser.organizationId) {
+				organizationIdToUse = typedAppUser.organizationId;
+			}
 		} else {
 			// 2) No hay sesión server-side: aceptamos doctor_id enviado desde cliente solo si existe en tabla User
 			if (!providedDoctorId) {
@@ -117,7 +131,15 @@ export async function POST(req: NextRequest) {
 
 		// Construir payload de inserción
 		// Usamos vitals (jsonb) para guardar tanto signos vitales como datos adicionales
-		let vitalsPayload: any = vitals || {};
+		interface VitalsPayload {
+			consultation_date?: string;
+			scheduled_date?: string;
+			initial_patient_data?: unknown;
+			specialty_data?: unknown;
+			private_notes?: string;
+			[key: string]: unknown;
+		}
+		let vitalsPayload: VitalsPayload = (vitals as VitalsPayload) || {};
 		
 		// Agregar datos adicionales al objeto vitals
 		if (initial_patient_data) {
@@ -157,18 +179,34 @@ export async function POST(req: NextRequest) {
 
 		// Construir payload según el tipo de paciente
 		// IMPORTANTE: Si patient_id es NOT NULL en la BD, necesitamos un valor válido o usar SQL directo
-		const insertPayload: any = {
+		interface InsertPayload {
+			doctor_id: string | null;
+			organization_id: string | null;
+			chief_complaint: string | null;
+			diagnosis: string | null;
+			notes: string | null;
+			vitals: string | null;
+			started_at: string;
+			patient_id?: string | null;
+			unregistered_patient_id?: string | null;
+		}
+		const insertPayload: InsertPayload = {
 			doctor_id: doctorIdToUse,
 			organization_id: organizationIdToUse,
 			chief_complaint,
 			diagnosis,
 			notes,
-			vitals: Object.keys(vitalsPayload).length > 0 ? vitalsPayload : null,
+			vitals: Object.keys(vitalsPayload).length > 0 ? JSON.stringify(vitalsPayload) : null,
 			started_at: startedAt.toISOString(),
 		};
 
-		let insertData;
-		let insertErr;
+		interface PostgresError {
+			code?: string;
+			column?: string;
+			message?: string;
+		}
+		let insertData: Record<string, unknown> | undefined;
+		let insertErr: Error | PostgresError | null = null;
 
 		if (patient_id) {
 			// Paciente registrado: incluir patient_id
@@ -186,7 +224,10 @@ export async function POST(req: NextRequest) {
 				connectionString: process.env.DATABASE_URL,
 			});
 
-			let result: any;
+			interface QueryResult {
+				rows: Array<Record<string, unknown>>;
+			}
+			let result: QueryResult | null = null;
 			try {
 				// Intentar insertar sin patient_id (fallará si es NOT NULL, pero lo intentamos)
 				result = await pool.query(
@@ -215,13 +256,14 @@ export async function POST(req: NextRequest) {
 					]
 				);
 
-				insertData = result.rows[0];
+				insertData = result.rows[0] as Record<string, unknown>;
 				insertErr = null;
-			} catch (sqlError: any) {
+			} catch (sqlError: unknown) {
 				console.error('Error con SQL directo para paciente no registrado:', sqlError);
 				
 				// Si el error es que patient_id es NOT NULL, intentar modificar el esquema automáticamente
-				if (sqlError.code === '23502' && (sqlError.column === 'patient_id' || sqlError.message?.includes('patient_id'))) {
+				const pgError = sqlError as PostgresError;
+				if (pgError.code === '23502' && (pgError.column === 'patient_id' || pgError.message?.includes('patient_id'))) {
 					try {
 						console.log('Intentando modificar el esquema para hacer patient_id nullable...');
 						// Intentar modificar el esquema para hacer patient_id nullable
@@ -257,16 +299,17 @@ export async function POST(req: NextRequest) {
 						insertData = result.rows[0];
 						insertErr = null;
 						console.log('Esquema modificado exitosamente y consulta creada');
-					} catch (alterError: any) {
+					} catch (alterError: unknown) {
+						const alterErrorMessage = alterError instanceof Error ? alterError.message : 'Desconocido';
 						console.error('Error al modificar el esquema:', alterError);
 						insertErr = new Error(
 							'No se pudo modificar el esquema de la base de datos automáticamente. ' +
 							'Por favor, ejecuta manualmente: ALTER TABLE consultation ALTER COLUMN patient_id DROP NOT NULL; ' +
-							'Error: ' + (alterError.message || 'Desconocido')
+							'Error: ' + alterErrorMessage
 						);
 					}
 				} else {
-					insertErr = sqlError;
+					insertErr = pgError as PostgresError;
 				}
 			} finally {
 				try {
@@ -282,12 +325,16 @@ export async function POST(req: NextRequest) {
 
 		if (insertErr) {
 			console.error('❌ Error insert consultation:', insertErr);
-			return NextResponse.json({ error: insertErr.message || 'Error al crear consulta' }, { status: 500 });
+			const errorMessage = insertErr instanceof Error 
+				? insertErr.message 
+				: (insertErr as PostgresError).message || 'Error al crear consulta';
+			return NextResponse.json({ error: errorMessage }, { status: 500 });
 		}
 
 		return NextResponse.json({ data: insertData }, { status: 201 });
-	} catch (error: any) {
-		console.error('❌ Error POST /consultations:', error?.message ?? error);
-		return NextResponse.json({ error: error?.message ?? 'Error interno' }, { status: 500 });
+	} catch (error: unknown) {
+		const errorMessage = error instanceof Error ? error.message : 'Error interno';
+		console.error('❌ Error POST /consultations:', errorMessage);
+		return NextResponse.json({ error: errorMessage }, { status: 500 });
 	}
 }

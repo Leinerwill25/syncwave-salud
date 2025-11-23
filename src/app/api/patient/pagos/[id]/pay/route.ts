@@ -68,6 +68,25 @@ export async function POST(
 		}
 
 		// Verificar que la factura existe y pertenece al paciente
+		interface FacturaData {
+			id: string;
+			patient_id: string;
+			estado_pago: string;
+			total: number;
+			currency: string;
+			appointment_id?: string | null;
+			doctor_id?: string | null;
+			organization_id?: string | null;
+			notas?: string | null;
+			appointment?: Array<{
+				doctor?: Array<{
+					id: string;
+					name: string;
+					email: string;
+				}>;
+			}> | null;
+		}
+
 		const { data: factura, error: fetchError } = await supabase
 			.from('facturacion')
 			.select(`
@@ -79,6 +98,7 @@ export async function POST(
 				appointment_id,
 				doctor_id,
 				organization_id,
+				notas,
 				appointment:appointment_id (
 					doctor:User!fk_appointment_doctor (
 						id,
@@ -95,7 +115,9 @@ export async function POST(
 			return NextResponse.json({ error: 'Factura no encontrada' }, { status: 404 });
 		}
 
-		if (factura.estado_pago === 'pagada') {
+		const typedFactura = factura as FacturaData;
+
+		if (typedFactura.estado_pago === 'pagada') {
 			return NextResponse.json({ error: 'Esta factura ya ha sido pagada' }, { status: 400 });
 		}
 
@@ -114,8 +136,8 @@ export async function POST(
 		// Si hay número de referencia o captura, agregarlo a las notas
 		if (numero_referencia || captura_pago_url) {
 			const notasParts: string[] = [];
-			if (factura.notas) {
-				notasParts.push(factura.notas);
+			if (typedFactura.notas) {
+				notasParts.push(typedFactura.notas);
 			}
 			if (numero_referencia) {
 				notasParts.push(`Número de referencia: ${numero_referencia}`);
@@ -140,19 +162,21 @@ export async function POST(
 		}
 
 		// Crear notificación para el médico si existe
-		if (factura.doctor_id) {
+		if (typedFactura.doctor_id) {
 			try {
-				const doctorName = factura.appointment?.doctor?.name || 'Médico';
+				const appointment = Array.isArray(typedFactura.appointment) ? typedFactura.appointment[0] : typedFactura.appointment;
+				const doctor = appointment?.doctor && Array.isArray(appointment.doctor) ? appointment.doctor[0] : undefined;
+				const doctorName = doctor?.name || 'Médico';
 				await createNotification({
-					userId: factura.doctor_id,
+					userId: typedFactura.doctor_id,
 					type: 'PAYMENT_RECEIVED',
 					title: 'Pago Recibido',
-					message: `El paciente ha pagado la factura de ${factura.total} ${factura.currency}`,
+					message: `El paciente ha pagado la factura de ${typedFactura.total} ${typedFactura.currency}`,
 					payload: {
 						facturaId: id,
 						patientId: patient.patientId,
-						total: factura.total,
-						currency: factura.currency,
+						total: typedFactura.total,
+						currency: typedFactura.currency,
 						metodoPago: metodo_pago,
 						facturaUrl: `/dashboard/medic/pagos/${id}`,
 					},

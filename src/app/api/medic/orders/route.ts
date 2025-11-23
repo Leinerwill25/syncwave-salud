@@ -13,6 +13,13 @@ export async function GET(req: Request) {
 		if (authResult.response) return authResult.response;
 
 		const user = authResult.user;
+		if (!user) {
+			return NextResponse.json({ error: 'Usuario no autenticado' }, { status: 401 });
+		}
+
+		// Type assertion: después de la validación, user está garantizado
+		const authenticatedUser = user;
+
 		const cookieStore = await cookies();
 		const { supabase } = createSupabaseServerClient(cookieStore);
 
@@ -44,7 +51,7 @@ export async function GET(req: Request) {
 					diagnosis
 				)
 			`)
-			.eq('ordering_provider_id', user.userId)
+			.eq('ordering_provider_id', authenticatedUser.userId)
 			.order('created_at', { ascending: false });
 
 		if (patientId) {
@@ -199,6 +206,13 @@ export async function POST(req: Request) {
 		if (authResult.response) return authResult.response;
 
 		const user = authResult.user;
+		if (!user) {
+			return NextResponse.json({ error: 'Usuario no autenticado' }, { status: 401 });
+		}
+
+		// Type assertion: después de la validación, user está garantizado
+		const authenticatedUser = user;
+
 		const cookieStore = await cookies();
 		const { supabase } = createSupabaseServerClient(cookieStore);
 
@@ -222,7 +236,7 @@ export async function POST(req: Request) {
 				.from('consultation')
 				.select('id, patient_id, unregistered_patient_id, doctor_id, organization_id')
 				.eq('id', consultation_id)
-				.eq('doctor_id', user.userId)
+				.eq('doctor_id', authenticatedUser.userId)
 				.maybeSingle();
 
 			if (consultationError) {
@@ -333,7 +347,7 @@ export async function POST(req: Request) {
 					patient_id: finalPatientId, // Usar el id del paciente no registrado
 					unregistered_patient_id: consultation.unregistered_patient_id, // También guardar en unregistered_patient_id si existe
 					consultation_id: consultation_id || null,
-					ordering_provider_id: user.userId,
+					ordering_provider_id: authenticatedUser.userId,
 					result_type,
 					result: null, // NO guardar información del paciente aquí - este campo es solo para resultados de laboratorio
 					attachments: attachments || [],
@@ -372,7 +386,7 @@ export async function POST(req: Request) {
 				.insert({
 					patient_id: finalPatientId,
 					consultation_id: consultation_id || null,
-					ordering_provider_id: user.userId,
+					ordering_provider_id: authenticatedUser.userId,
 					result_type,
 					result: null, // IMPORTANTE: result siempre null al crear - solo para resultados de laboratorio
 					attachments: attachments || [],

@@ -131,38 +131,48 @@ export async function GET(
 				if (clinicProfile) {
 					// clinic_profile puede ser un array o un objeto único
 					if (Array.isArray(clinicProfile) && clinicProfile.length > 0) {
-						clinic = clinicProfile[0];
-					} else if (typeof clinicProfile === 'object') {
-						clinic = clinicProfile;
-					}
-					
-					if (clinic) {
-						clinic.organization = {
+						const profileData = clinicProfile[0] as unknown as Record<string, unknown>;
+						profileData.organization = [{
 							id: organization.id,
 							name: organization.name,
 							type: organization.type,
-						};
+						}];
+						clinic = profileData as unknown as typeof clinic;
+					} else if (typeof clinicProfile === 'object' && clinicProfile !== null) {
+						const profileData = { ...(clinicProfile as unknown as Record<string, unknown>) };
+						profileData.organization = [{
+							id: organization.id,
+							name: organization.name,
+							type: organization.type,
+						}];
+						clinic = profileData as unknown as typeof clinic;
 					} else {
 						// Crear un clinic_profile básico desde la organización
 						clinic = {
 							id: null,
 							organization_id: organization.id,
 							legal_name: organization.name,
-							trade_name: organization.name,
-							address_operational: organization.address,
-							phone_mobile: organization.phone,
-							contact_email: organization.contactEmail,
+							trade_name: organization.name || null,
+							address_operational: organization.address || null,
+							phone_mobile: organization.phone || null,
+							phone_fixed: null,
+							contact_email: organization.contactEmail || null,
+							website: null,
+							social_facebook: null,
+							social_instagram: null,
 							specialties: null,
 							opening_hours: null,
 							location: null,
 							photos: null,
 							profile_photo: null,
-							organization: {
+							sanitary_license: null,
+							liability_insurance_number: null,
+							organization: [{
 								id: organization.id,
 								name: organization.name,
 								type: organization.type,
-							},
-						};
+							}],
+						} as unknown as typeof clinic;
 					}
 				} else {
 					// Crear un clinic_profile básico desde la organización
@@ -170,21 +180,27 @@ export async function GET(
 						id: null,
 						organization_id: organization.id,
 						legal_name: organization.name,
-						trade_name: organization.name,
-						address_operational: organization.address,
-						phone_mobile: organization.phone,
-						contact_email: organization.contactEmail,
+						trade_name: organization.name || null,
+						address_operational: organization.address || null,
+						phone_mobile: organization.phone || null,
+						phone_fixed: null,
+						contact_email: organization.contactEmail || null,
+						website: null,
+						social_facebook: null,
+						social_instagram: null,
 						specialties: null,
 						opening_hours: null,
 						location: null,
 						photos: null,
 						profile_photo: null,
-						organization: {
+						sanitary_license: null,
+						liability_insurance_number: null,
+						organization: [{
 							id: organization.id,
 							name: organization.name,
 							type: organization.type,
-						},
-					};
+						}],
+					} as unknown as typeof clinic;
 				}
 			}
 		}
@@ -194,7 +210,8 @@ export async function GET(
 		}
 
 		// Verificar que sea un consultorio privado
-		if (clinic.organization?.type !== 'CONSULTORIO') {
+		const org = Array.isArray(clinic.organization) ? clinic.organization[0] : clinic.organization;
+		if (!org || (org as { type?: string }).type !== 'CONSULTORIO') {
 			return NextResponse.json({ error: 'No es un consultorio privado' }, { status: 400 });
 		}
 

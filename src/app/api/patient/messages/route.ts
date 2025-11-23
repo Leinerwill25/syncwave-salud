@@ -104,12 +104,20 @@ export async function GET(request: Request) {
 						
 						if (doctorUser) {
 							// Agregar información del doctor a la conversación
+							interface MedicProfile {
+								specialty?: string | null;
+								private_specialty?: string | null;
+								photo_url?: string | null;
+							}
+							const medicProfile: MedicProfile | undefined = Array.isArray(doctorUser.medic_profile)
+								? (doctorUser.medic_profile[0] as MedicProfile)
+								: (doctorUser.medic_profile as MedicProfile | undefined);
 							conv.doctorInfo = {
 								id: doctorUser.id,
 								name: doctorUser.name,
 								email: doctorUser.email,
-								specialty: doctorUser.medic_profile?.specialty || doctorUser.medic_profile?.private_specialty || null,
-								photo: doctorUser.medic_profile?.photo_url || null,
+								specialty: medicProfile?.specialty || medicProfile?.private_specialty || null,
+								photo: medicProfile?.photo_url || null,
 							};
 						}
 					}

@@ -11,7 +11,10 @@ export async function POST(request: Request) {
 		const authResult = await apiRequireRole(['MEDICO']);
 		if (authResult.response) return authResult.response;
 
-		const doctor = authResult.user!;
+		const doctor = authResult.user;
+		if (!doctor) {
+			return NextResponse.json({ error: 'Usuario no autenticado' }, { status: 401 });
+		}
 		const cookieStore = await cookies();
 		const { supabase } = createSupabaseServerClient(cookieStore);
 
@@ -37,7 +40,7 @@ export async function POST(request: Request) {
 			.from('MedicalAccessGrant')
 			.select('id, is_active')
 			.eq('patient_id', patient_id)
-			.eq('doctor_id', doctor.id)
+			.eq('doctor_id', doctor.userId)
 			.eq('is_active', true)
 			.maybeSingle();
 
@@ -75,7 +78,7 @@ export async function POST(request: Request) {
 			.from('MedicalAccessGrant')
 			.insert({
 				patient_id,
-				doctor_id: doctor.id,
+				doctor_id: doctor.userId,
 				expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(), // 24 horas
 				is_active: true,
 			})

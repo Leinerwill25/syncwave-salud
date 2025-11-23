@@ -19,6 +19,11 @@ export interface InitialPatientData {
 	email?: string;
 	address?: string;
 
+	// Información de paciente no registrado
+	isUnregistered?: boolean;
+	unregisteredPatientId?: string;
+	chiefComplaint?: string;
+
 	// Antecedentes personales
 	allergies?: string;
 	currentMedication?: string;
