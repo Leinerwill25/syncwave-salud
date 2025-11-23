@@ -45,11 +45,13 @@ export default function AvailabilitySchedule({
 			const scheduleObj = initialAvailability.schedule;
 			let dayValue: any = null;
 			
-			if (scheduleObj && typeof scheduleObj === 'object' && !Array.isArray(scheduleObj)) {
-				dayValue = scheduleObj[day.value];
-			} else if (initialAvailability[day.value]) {
-				dayValue = initialAvailability[day.value];
-			}
+		if (scheduleObj && typeof scheduleObj === 'object' && !Array.isArray(scheduleObj)) {
+			const scheduleRecord = scheduleObj as Record<string, unknown>;
+			dayValue = scheduleRecord[day.value];
+		} else if (typeof initialAvailability === 'object' && initialAvailability !== null && day.value in initialAvailability) {
+			const availabilityRecord = initialAvailability as Record<string, unknown>;
+			dayValue = availabilityRecord[day.value];
+		}
 			
 			if (dayValue && Array.isArray(dayValue)) {
 				// Validar que los elementos sean TimeSlot válidos
@@ -403,9 +405,11 @@ export default function AvailabilitySchedule({
 												className="px-3 py-2 border border-blue-200 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-transparent bg-white text-slate-900 font-medium"
 											/>
 										</div>
-										{isSaved && (
-											<CheckCircle2 className="w-5 h-5 text-teal-600 flex-shrink-0" title="Horario guardado" />
-										)}
+									{isSaved && (
+										<span title="Horario guardado">
+											<CheckCircle2 className="w-5 h-5 text-teal-600 flex-shrink-0" />
+										</span>
+									)}
 									</div>
 								)}
 								

@@ -52,7 +52,10 @@ export default async function PatientHistory({ params }: Props) {
 		if (authResult.response) {
 			return <ErrorBox message="No autorizado" />;
 		}
-		const doctor = authResult.user!;
+		const doctor = authResult.user;
+		if (!doctor) {
+			return <ErrorBox message="No autorizado" />;
+		}
 
 		// Verificar acceso médico
 		const accessCheckRes = await fetch(
@@ -87,7 +90,7 @@ export default async function PatientHistory({ params }: Props) {
 
 		if (!hasFullAccess) {
 			// Solo consultas del médico actual
-			consultationsQuery = consultationsQuery.eq('doctor_id', doctor.id);
+			consultationsQuery = consultationsQuery.eq('doctor_id', doctor.userId);
 		}
 
 		const { data: consultations, error: consultError } = await consultationsQuery.order('started_at', { ascending: false });
@@ -246,16 +249,25 @@ export default async function PatientHistory({ params }: Props) {
 										</div>
 									)}
 
-									{consultationsArray.map((row: any) => {
+									{consultationsArray.map((row: unknown) => {
+										interface ConsultationRow {
+											id: string;
+											chief_complaint?: string | null;
+											diagnosis?: string | null;
+											started_at?: string | null;
+											created_at?: string | null;
+											doctor?: Array<{ id: string; name: string; email: string }> | { id: string; name: string; email: string };
+										}
+										const consultation = row as ConsultationRow;
 										// normalizar doctor si viene como arreglo
-										const doctor = Array.isArray(row.doctor) ? row.doctor[0] : row.doctor;
-										const when = row.started_at ? new Date(row.started_at) : row.created_at ? new Date(row.created_at) : null;
+										const doctor = Array.isArray(consultation.doctor) ? consultation.doctor[0] : consultation.doctor;
+										const when = consultation.started_at ? new Date(consultation.started_at) : consultation.created_at ? new Date(consultation.created_at) : null;
 										return (
-											<Link key={row.id} href={`/dashboard/medic/consultas/${row.id}`} className="block hover:bg-slate-50 dark:hover:bg-[#031e26] p-4 flex items-start justify-between gap-4" aria-label={`Ver consulta ${row.id}`}>
+											<Link key={consultation.id} href={`/dashboard/medic/consultas/${consultation.id}`} className="block hover:bg-slate-50 dark:hover:bg-[#031e26] p-4 flex items-start justify-between gap-4" aria-label={`Ver consulta ${consultation.id}`}>
 												<div className="min-w-0">
 													<div className="text-sm text-slate-500">{doctor?.name ? `Dr(a). ${doctor.name}` : 'Médico —'}</div>
-													<div className="text-base font-medium text-slate-800 dark:text-slate-100 truncate">{row.chief_complaint || row.diagnosis || 'Consulta sin título'}</div>
-													<div className="text-xs text-slate-500 mt-1 truncate">{row.diagnosis ?? ''}</div>
+													<div className="text-base font-medium text-slate-800 dark:text-slate-100 truncate">{consultation.chief_complaint || consultation.diagnosis || 'Consulta sin título'}</div>
+													<div className="text-xs text-slate-500 mt-1 truncate">{consultation.diagnosis ?? ''}</div>
 												</div>
 
 												<div className="text-right text-sm text-slate-500">
@@ -326,7 +338,8 @@ export default async function PatientHistory({ params }: Props) {
 				</div>
 			</PageShell>
 		);
-	} catch (err: any) {
-		return <ErrorBox title="Error" message={`Ocurrió un error al cargar la página: ${err?.message ?? String(err)}`} />;
+	} catch (err: unknown) {
+		const errorMessage = err instanceof Error ? err.message : String(err);
+		return <ErrorBox title="Error" message={`Ocurrió un error al cargar la página: ${errorMessage}`} />;
 	}
 }

@@ -22,7 +22,6 @@ export interface InitialPatientData {
 	// Información de paciente no registrado
 	isUnregistered?: boolean;
 	unregisteredPatientId?: string;
-	chiefComplaint?: string;
 
 	// Antecedentes personales
 	allergies?: string;

@@ -14,29 +14,20 @@ const MapContainer = dynamic(() => import('react-leaflet').then((mod) => mod.Map
 const TileLayer = dynamic(() => import('react-leaflet').then((mod) => mod.TileLayer), { ssr: false });
 const Marker = dynamic(() => import('react-leaflet').then((mod) => mod.Marker), { ssr: false });
 const Popup = dynamic(() => import('react-leaflet').then((mod) => mod.Popup), { ssr: false });
-const useMapEvents = dynamic(() => import('react-leaflet').then((mod) => mod.useMapEvents), { ssr: false });
 
 // Componente para manejar eventos del mapa
 function MapClickHandler({ onClick }: { onClick: (lat: number, lng: number) => void }) {
 	if (typeof window === 'undefined') return null;
 	
-	const MapClickComponent = () => {
-		// eslint-disable-next-line react-hooks/rules-of-hooks
-		const map = useMapEvents({
-			click: (e) => {
-				onClick(e.latlng.lat, e.latlng.lng);
-			},
-		});
-		return null;
-	};
+	// Importar useMapEvents dinámicamente dentro del componente
+	const { useMapEvents } = require('react-leaflet');
 	
-	// Importar useMapEvents dinámicamente
-	const { useMapEvents: useMapEventsHook } = require('react-leaflet');
-	const map = useMapEventsHook({
-		click: (e: any) => {
+	useMapEvents({
+		click: (e: { latlng: { lat: number; lng: number } }) => {
 			onClick(e.latlng.lat, e.latlng.lng);
 		},
 	});
+	
 	return null;
 }
 
@@ -71,9 +62,29 @@ export default function LeafletMapPicker({ onLocationSelect, initialLocation }: 
 			import('leaflet').then((L) => {
 				import('leaflet/dist/images/marker-icon.png').then((icon) => {
 					import('leaflet/dist/images/marker-shadow.png').then((iconShadow) => {
+						const getIconUrl = (iconData: unknown): string => {
+							if (typeof iconData === 'string') return iconData;
+							if (iconData && typeof iconData === 'object' && 'src' in iconData) {
+								const src = (iconData as { src?: string }).src;
+								if (typeof src === 'string') return src;
+							}
+							return '/images/marker-icon.png';
+						};
+						
+						const getShadowUrl = (shadowData: unknown): string => {
+							if (typeof shadowData === 'string') return shadowData;
+							if (shadowData && typeof shadowData === 'object' && 'src' in shadowData) {
+								const src = (shadowData as { src?: string }).src;
+								if (typeof src === 'string') return src;
+							}
+							return '/images/marker-shadow.png';
+						};
+						
+						const iconUrl = getIconUrl(icon.default);
+						const shadowUrl = getShadowUrl(iconShadow.default);
 						const DefaultIcon = L.default.icon({
-							iconUrl: icon.default.src || icon.default,
-							shadowUrl: iconShadow.default.src || iconShadow.default,
+							iconUrl,
+							shadowUrl,
 							iconSize: [25, 41],
 							iconAnchor: [12, 41],
 							popupAnchor: [1, -34],

@@ -131,7 +131,7 @@ export default function LabResultDetailPage() {
 			)}
 
 			{/* Información del Paciente */}
-			{result.Patient && (
+			{result.Patient ? (
 				<motion.div
 					initial={{ opacity: 0, y: 10 }}
 					animate={{ opacity: 1, y: 0 }}
@@ -174,7 +174,7 @@ export default function LabResultDetailPage() {
 						)}
 					</div>
 				</motion.div>
-			)}
+			) : null}
 
 			{/* Detalles del Resultado */}
 			<motion.div
@@ -216,13 +216,17 @@ export default function LabResultDetailPage() {
 			</motion.div>
 
 			{/* Resultados */}
-			{result.result && (() => {
+			{result.result ? (() => {
 				// Verificar si el result contiene información del paciente no registrado
-				let resultData: any = null;
+				interface ResultData {
+					unregistered_patient_id?: string;
+					[key: string]: unknown;
+				}
+				let resultData: ResultData | null = null;
 				try {
-					resultData = typeof result.result === 'string' ? JSON.parse(result.result) : result.result;
+					resultData = typeof result.result === 'string' ? JSON.parse(result.result) as ResultData : result.result as ResultData;
 				} catch {
-					resultData = result.result;
+					resultData = result.result as ResultData;
 				}
 
 				// Si contiene unregistered_patient_id, es información del paciente, no un resultado de laboratorio
@@ -248,7 +252,11 @@ export default function LabResultDetailPage() {
 											{key.replace(/_/g, ' ')}:
 										</p>
 										<p className="text-slate-900">
-											{typeof value === 'object' ? JSON.stringify(value, null, 2) : String(value)}
+											{typeof value === 'object' && value !== null 
+												? JSON.stringify(value, null, 2) 
+												: value !== null && value !== undefined 
+													? String(value) 
+													: ''}
 										</p>
 									</div>
 								))}
@@ -260,7 +268,7 @@ export default function LabResultDetailPage() {
 						)}
 					</motion.div>
 				);
-			})()}
+			})() : null}
 
 			{/* Archivos Adjuntos */}
 			{result.attachments && result.attachments.length > 0 && (

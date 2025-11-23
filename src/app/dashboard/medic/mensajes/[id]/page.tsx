@@ -4,7 +4,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft, Send, Paperclip, User, Stethoscope, Clock, Check, CheckCheck } from 'lucide-react';
+import { ArrowLeft, Send, Paperclip, User, Stethoscope, Clock, Check, CheckCheck, MessageSquare } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { createSupabaseBrowserClient } from '@/app/adapters/client';

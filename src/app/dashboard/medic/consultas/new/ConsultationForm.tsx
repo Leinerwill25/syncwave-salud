@@ -770,7 +770,7 @@ export default function ConsultationForm() {
 							id="ekgRhythm"
 							label="Ritmo ECG"
 							value={specialtyFields.ekg_rhythm || ''}
-							onChange={(val) => setSpecialtyFields({ ...specialtyFields, ekg_rhythm: val })}
+							onChange={(val: string) => setSpecialtyFields({ ...specialtyFields, ekg_rhythm: val })}
 							placeholder="Ej: Ritmo sinusal"
 						/>
 						<TextInput
@@ -778,7 +778,7 @@ export default function ConsultationForm() {
 							label="BNP (pg/mL)"
 							type="number"
 							value={specialtyFields.bnp || ''}
-							onChange={(val) => setSpecialtyFields({ ...specialtyFields, bnp: val })}
+							onChange={(val: string) => setSpecialtyFields({ ...specialtyFields, bnp: val })}
 							placeholder="Ej: 100"
 						/>
 						<div className="flex items-center gap-2">
@@ -802,7 +802,7 @@ export default function ConsultationForm() {
 							type="number"
 							step="0.1"
 							value={specialtyFields.fev1 || ''}
-							onChange={(val) => setSpecialtyFields({ ...specialtyFields, fev1: val })}
+							onChange={(val: string) => setSpecialtyFields({ ...specialtyFields, fev1: val })}
 							placeholder="Ej: 2.5"
 						/>
 						<TextInput
@@ -811,7 +811,7 @@ export default function ConsultationForm() {
 							type="number"
 							step="0.1"
 							value={specialtyFields.fvc || ''}
-							onChange={(val) => setSpecialtyFields({ ...specialtyFields, fvc: val })}
+							onChange={(val: string) => setSpecialtyFields({ ...specialtyFields, fvc: val })}
 							placeholder="Ej: 3.2"
 						/>
 					</div>
@@ -824,14 +824,14 @@ export default function ConsultationForm() {
 							label="GCS Total"
 							type="number"
 							value={specialtyFields.gcs_total || ''}
-							onChange={(val) => setSpecialtyFields({ ...specialtyFields, gcs_total: val })}
+							onChange={(val: string) => setSpecialtyFields({ ...specialtyFields, gcs_total: val })}
 							placeholder="Ej: 15"
 						/>
 						<TextInput
 							id="pupillaryReactivity"
 							label="Reactividad Pupilar"
 							value={specialtyFields.pupillary_reactivity || ''}
-							onChange={(val) => setSpecialtyFields({ ...specialtyFields, pupillary_reactivity: val })}
+							onChange={(val: string) => setSpecialtyFields({ ...specialtyFields, pupillary_reactivity: val })}
 							placeholder="Ej: Reactivas"
 						/>
 					</div>
@@ -844,7 +844,7 @@ export default function ConsultationForm() {
 							label="Altura Uterina (cm)"
 							type="number"
 							value={specialtyFields.fundal_height_cm || ''}
-							onChange={(val) => setSpecialtyFields({ ...specialtyFields, fundal_height_cm: val })}
+							onChange={(val: string) => setSpecialtyFields({ ...specialtyFields, fundal_height_cm: val })}
 							placeholder="Ej: 32"
 						/>
 						<TextInput
@@ -852,7 +852,7 @@ export default function ConsultationForm() {
 							label="FCF (lpm)"
 							type="number"
 							value={specialtyFields.fetal_heart_rate || ''}
-							onChange={(val) => setSpecialtyFields({ ...specialtyFields, fetal_heart_rate: val })}
+							onChange={(val: string) => setSpecialtyFields({ ...specialtyFields, fetal_heart_rate: val })}
 							placeholder="Ej: 140"
 						/>
 					</div>
@@ -865,13 +865,13 @@ export default function ConsultationForm() {
 							label="Última Menstruación (FUM)"
 							type="date"
 							value={specialtyFields.last_menstrual_period || ''}
-							onChange={(val) => setSpecialtyFields({ ...specialtyFields, last_menstrual_period: val })}
+							onChange={(val: string) => setSpecialtyFields({ ...specialtyFields, last_menstrual_period: val })}
 						/>
 						<TextInput
 							id="contraceptive"
 							label="Anticonceptivo"
 							value={specialtyFields.contraceptive || ''}
-							onChange={(val) => setSpecialtyFields({ ...specialtyFields, contraceptive: val })}
+							onChange={(val: string) => setSpecialtyFields({ ...specialtyFields, contraceptive: val })}
 							placeholder="Ej: Ninguno, Píldora, DIU"
 						/>
 					</div>
@@ -885,7 +885,7 @@ export default function ConsultationForm() {
 							type="number"
 							step="0.01"
 							value={specialtyFields.tsh || ''}
-							onChange={(val) => setSpecialtyFields({ ...specialtyFields, tsh: val })}
+							onChange={(val: string) => setSpecialtyFields({ ...specialtyFields, tsh: val })}
 							placeholder="Ej: 2.5"
 						/>
 						<TextInput
@@ -894,7 +894,7 @@ export default function ConsultationForm() {
 							type="number"
 							step="0.1"
 							value={specialtyFields.hba1c || ''}
-							onChange={(val) => setSpecialtyFields({ ...specialtyFields, hba1c: val })}
+							onChange={(val: string) => setSpecialtyFields({ ...specialtyFields, hba1c: val })}
 							placeholder="Ej: 5.8"
 						/>
 					</div>
@@ -906,7 +906,7 @@ export default function ConsultationForm() {
 							id="visualAcuity"
 							label="Agudeza Visual"
 							value={specialtyFields.visual_acuity || ''}
-							onChange={(val) => setSpecialtyFields({ ...specialtyFields, visual_acuity: val })}
+							onChange={(val: string) => setSpecialtyFields({ ...specialtyFields, visual_acuity: val })}
 							placeholder="Ej: 20/20"
 						/>
 						<TextInput
@@ -914,7 +914,7 @@ export default function ConsultationForm() {
 							label="PIO (mmHg)"
 							type="number"
 							value={specialtyFields.iop || ''}
-							onChange={(val) => setSpecialtyFields({ ...specialtyFields, iop: val })}
+							onChange={(val: string) => setSpecialtyFields({ ...specialtyFields, iop: val })}
 							placeholder="Ej: 15"
 						/>
 					</div>

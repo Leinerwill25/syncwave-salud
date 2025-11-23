@@ -152,7 +152,7 @@ export default function OrderDetailPage() {
 			</motion.div>
 
 			{/* Información del Paciente */}
-			{order.Patient && (
+			{order.Patient ? (
 				<motion.div
 					initial={{ opacity: 0, y: 10 }}
 					animate={{ opacity: 1, y: 0 }}
@@ -195,7 +195,7 @@ export default function OrderDetailPage() {
 						)}
 					</div>
 				</motion.div>
-			)}
+			) : null}
 
 			{/* Detalles de la Orden */}
 			<motion.div
@@ -237,13 +237,17 @@ export default function OrderDetailPage() {
 			</motion.div>
 
 			{/* Resultados */}
-			{order.status === 'completed' && order.result && (() => {
+			{order.status === 'completed' && order.result ? (() => {
 				// Verificar si el result contiene información del paciente no registrado
-				let resultData: any = null;
+				interface ResultData {
+					unregistered_patient_id?: string;
+					[key: string]: unknown;
+				}
+				let resultData: ResultData | null = null;
 				try {
-					resultData = typeof order.result === 'string' ? JSON.parse(order.result) : order.result;
+					resultData = typeof order.result === 'string' ? JSON.parse(order.result) as ResultData : order.result as ResultData;
 				} catch {
-					resultData = order.result;
+					resultData = order.result as ResultData;
 				}
 
 				// Si contiene unregistered_patient_id, es información del paciente, no un resultado de laboratorio
@@ -269,7 +273,11 @@ export default function OrderDetailPage() {
 											{key.replace(/_/g, ' ')}:
 										</p>
 										<p className="text-slate-900">
-											{typeof value === 'object' ? JSON.stringify(value, null, 2) : String(value)}
+											{typeof value === 'object' && value !== null 
+												? JSON.stringify(value, null, 2) 
+												: value !== null && value !== undefined 
+													? String(value) 
+													: ''}
 										</p>
 									</div>
 								))}
@@ -281,7 +289,7 @@ export default function OrderDetailPage() {
 						)}
 					</motion.div>
 				);
-			})()}
+			})() : null}
 
 			{/* Archivos Adjuntos */}
 			{order.attachments && order.attachments.length > 0 && (

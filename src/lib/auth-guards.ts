@@ -30,7 +30,7 @@ export async function getAuthenticatedUser(): Promise<AuthenticatedUser | null> 
 
 		// Si no hay sesión, intentar restaurar desde cookies
 		if (!sessionData?.session) {
-			const restored = await tryRestoreSessionFromCookies(supabase, cookieStore);
+			const restored = await tryRestoreSessionFromCookies(supabase as unknown as SupabaseClient, cookieStore);
 			if (restored) {
 				const after = await supabase.auth.getSession();
 				sessionData = after.data ?? after;
@@ -51,7 +51,7 @@ export async function getAuthenticatedUser(): Promise<AuthenticatedUser | null> 
 
 		// Si aún no hay usuario, intentar restaurar desde cookies nuevamente
 		if (!user) {
-			const restored = await tryRestoreSessionFromCookies(supabase, cookieStore);
+			const restored = await tryRestoreSessionFromCookies(supabase as unknown as SupabaseClient, cookieStore);
 			if (restored) {
 				const after = await supabase.auth.getUser();
 				user = after.data?.user ?? null;
@@ -103,7 +103,7 @@ interface SupabaseClient {
 	auth: {
 		getUser: () => Promise<{ data: { user: { id: string } | null }; error: Error | null }>;
 		getSession: () => Promise<{ data: { session: { access_token: string; refresh_token: string } | null } }>;
-		setSession: (payload: { access_token: string; refresh_token?: string }) => Promise<{ data: { session: { access_token: string; refresh_token: string } | null } | null; error: Error | null }>;
+		setSession: (payload: { access_token: string; refresh_token: string }) => Promise<{ data: { session: { access_token: string; refresh_token: string } | null } | null; error: Error | null }>;
 		refreshSession: (payload: { refresh_token: string }) => Promise<{ data: { session: { access_token: string; refresh_token: string } | null } | null; error: Error | null }>;
 	};
 }
@@ -173,7 +173,10 @@ async function tryRestoreSessionFromCookies(supabase: SupabaseClient, cookieStor
 				payload.refresh_token = refresh_token;
 			}
 
-			const { data, error } = await supabase.auth.setSession(payload);
+			const sessionPayload = refresh_token 
+			? { access_token: access_token || '', refresh_token }
+			: { access_token: access_token || '', refresh_token: '' };
+		const { data, error } = await supabase.auth.setSession(sessionPayload);
 			if (error) {
 				if (refresh_token && !access_token) {
 					try {
