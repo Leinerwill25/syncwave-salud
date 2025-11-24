@@ -69,23 +69,29 @@ export async function GET() {
 		// Para cada pago, obtener las consultas asociadas al appointment
 		const pagosConConsultas = await Promise.all(
 			pagosConReferencia.map(async (pago) => {
-				if (!pago.appointment?.id) return pago;
+				// Supabase puede devolver appointment como array o objeto, normalizar a objeto
+				const appointment = Array.isArray(pago.appointment) ? pago.appointment[0] : pago.appointment;
+				
+				if (!appointment?.id) {
+					return {
+						...pago,
+						appointment: null,
+					};
+				}
 
 				const { data: consultas } = await supabase
 					.from('consultation')
 					.select('id, chief_complaint, diagnosis, created_at')
-					.eq('appointment_id', pago.appointment.id)
+					.eq('appointment_id', appointment.id)
 					.eq('doctor_id', user.userId)
 					.order('created_at', { ascending: false });
 
 				return {
 					...pago,
-					appointment: pago.appointment
-						? {
-								...pago.appointment,
-								consultations: consultas || [],
-							}
-						: null,
+					appointment: {
+						...appointment,
+						consultations: consultas || [],
+					},
 				};
 			})
 		);
