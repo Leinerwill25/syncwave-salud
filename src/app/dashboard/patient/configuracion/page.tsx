@@ -154,11 +154,11 @@ export default function ConfiguracionPage() {
 
 	if (loading) {
 		return (
-			<div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 p-6">
+			<div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 p-3 sm:p-4 md:p-6">
 				<div className="max-w-7xl mx-auto">
-					<div className="animate-pulse space-y-6">
-						<div className="h-8 bg-gray-200 rounded w-1/3"></div>
-						<div className="h-64 bg-gray-200 rounded"></div>
+					<div className="animate-pulse space-y-3 sm:space-y-4 md:space-y-6">
+						<div className="h-6 sm:h-7 md:h-8 bg-gray-200 rounded w-1/2 sm:w-1/3"></div>
+						<div className="h-48 sm:h-56 md:h-64 bg-gray-200 rounded"></div>
 					</div>
 				</div>
 			</div>
@@ -166,80 +166,80 @@ export default function ConfiguracionPage() {
 	}
 
 	return (
-		<div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 p-6">
-			<div className="max-w-7xl mx-auto space-y-6">
+		<div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 p-3 sm:p-4 md:p-6">
+			<div className="max-w-7xl mx-auto space-y-3 sm:space-y-4 md:space-y-6">
 				{/* Header */}
-				<div className="bg-white rounded-2xl shadow-lg p-6">
-					<h1 className="text-3xl font-bold text-gray-900 mb-2 flex items-center gap-3">
-						<Settings className="w-8 h-8 text-indigo-600" />
-						Configuración
+				<div className="bg-white rounded-xl sm:rounded-2xl shadow-lg p-4 sm:p-5 md:p-6">
+					<h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-900 mb-1 sm:mb-2 flex items-center gap-2 sm:gap-3">
+						<Settings className="w-5 h-5 sm:w-6 sm:h-6 md:w-8 md:h-8 text-indigo-600 flex-shrink-0" />
+						<span>Configuración</span>
 					</h1>
-					<p className="text-gray-600">Gestiona tu perfil y preferencias</p>
+					<p className="text-xs sm:text-sm md:text-base text-gray-600">Gestiona tu perfil y preferencias</p>
 				</div>
 
 				{/* Mensajes */}
 				{error && (
-					<div className="bg-red-50 border border-red-200 rounded-xl p-4 flex items-center gap-2">
-						<AlertCircle className="w-5 h-5 text-red-600" />
-						<span className="text-red-700">{error}</span>
+					<div className="bg-red-50 border border-red-200 rounded-lg sm:rounded-xl p-3 sm:p-4 flex items-center gap-2 sm:gap-3">
+						<AlertCircle className="w-4 h-4 sm:w-5 sm:h-5 text-red-600 flex-shrink-0" />
+						<span className="text-red-700 text-xs sm:text-sm md:text-base break-words">{error}</span>
 					</div>
 				)}
 				{success && (
-					<div className="bg-green-50 border border-green-200 rounded-xl p-4 flex items-center gap-2">
-						<Save className="w-5 h-5 text-green-600" />
-						<span className="text-green-700">{success}</span>
+					<div className="bg-green-50 border border-green-200 rounded-lg sm:rounded-xl p-3 sm:p-4 flex items-center gap-2 sm:gap-3">
+						<Save className="w-4 h-4 sm:w-5 sm:h-5 text-green-600 flex-shrink-0" />
+						<span className="text-green-700 text-xs sm:text-sm md:text-base break-words">{success}</span>
 					</div>
 				)}
 
 				{/* Datos Personales */}
-				<div className="bg-white rounded-2xl shadow-lg p-6">
-					<h2 className="text-xl font-semibold text-gray-900 mb-4 flex items-center gap-2">
-						<User className="w-5 h-5 text-indigo-600" />
-						Datos Personales
+				<div className="bg-white rounded-xl sm:rounded-2xl shadow-lg p-4 sm:p-5 md:p-6">
+					<h2 className="text-base sm:text-lg md:text-xl font-semibold text-gray-900 mb-3 sm:mb-4 flex items-center gap-2">
+						<User className="w-4 h-4 sm:w-5 sm:h-5 text-indigo-600 flex-shrink-0" />
+						<span>Datos Personales</span>
 					</h2>
-					<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+					<div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
 						<div>
-							<label className="block text-sm font-medium text-gray-700 mb-2">Nombre</label>
+							<label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1.5 sm:mb-2">Nombre</label>
 							<input
 								type="text"
 								value={formData.firstName}
 								onChange={(e) => setFormData(prev => ({ ...prev, firstName: e.target.value }))}
-								className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+								className="w-full px-3 sm:px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm sm:text-base"
 							/>
 						</div>
 						<div>
-							<label className="block text-sm font-medium text-gray-700 mb-2">Apellido</label>
+							<label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1.5 sm:mb-2">Apellido</label>
 							<input
 								type="text"
 								value={formData.lastName}
 								onChange={(e) => setFormData(prev => ({ ...prev, lastName: e.target.value }))}
-								className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+								className="w-full px-3 sm:px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm sm:text-base"
 							/>
 						</div>
 						<div>
-							<label className="block text-sm font-medium text-gray-700 mb-2">Identificación</label>
+							<label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1.5 sm:mb-2">Identificación</label>
 							<input
 								type="text"
 								value={formData.identifier}
 								onChange={(e) => setFormData(prev => ({ ...prev, identifier: e.target.value }))}
-								className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+								className="w-full px-3 sm:px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm sm:text-base"
 							/>
 						</div>
 						<div>
-							<label className="block text-sm font-medium text-gray-700 mb-2">Fecha de Nacimiento</label>
+							<label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1.5 sm:mb-2">Fecha de Nacimiento</label>
 							<input
 								type="date"
 								value={formData.dob}
 								onChange={(e) => setFormData(prev => ({ ...prev, dob: e.target.value }))}
-								className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+								className="w-full px-3 sm:px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm sm:text-base"
 							/>
 						</div>
 						<div>
-							<label className="block text-sm font-medium text-gray-700 mb-2">Género</label>
+							<label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1.5 sm:mb-2">Género</label>
 							<select
 								value={formData.gender}
 								onChange={(e) => setFormData(prev => ({ ...prev, gender: e.target.value }))}
-								className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+								className="w-full px-3 sm:px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm sm:text-base"
 							>
 								<option value="">Seleccionar</option>
 								<option value="M">Masculino</option>
@@ -248,65 +248,65 @@ export default function ConfiguracionPage() {
 							</select>
 						</div>
 						<div>
-							<label className="block text-sm font-medium text-gray-700 mb-2">Teléfono</label>
+							<label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1.5 sm:mb-2">Teléfono</label>
 							<input
 								type="tel"
 								value={formData.phone}
 								onChange={(e) => setFormData(prev => ({ ...prev, phone: e.target.value }))}
-								className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+								className="w-full px-3 sm:px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm sm:text-base"
 							/>
 						</div>
 						<div className="md:col-span-2">
-							<label className="block text-sm font-medium text-gray-700 mb-2">Dirección</label>
+							<label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1.5 sm:mb-2">Dirección</label>
 							<input
 								type="text"
 								value={formData.address}
 								onChange={(e) => setFormData(prev => ({ ...prev, address: e.target.value }))}
-								className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+								className="w-full px-3 sm:px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm sm:text-base"
 							/>
 						</div>
 					</div>
 				</div>
 
 				{/* Alergias y Condiciones */}
-				<div className="bg-white rounded-2xl shadow-lg p-6">
-					<h2 className="text-xl font-semibold text-gray-900 mb-4 flex items-center gap-2">
-						<AlertCircle className="w-5 h-5 text-indigo-600" />
-						Alergias y Condiciones
+				<div className="bg-white rounded-xl sm:rounded-2xl shadow-lg p-4 sm:p-5 md:p-6">
+					<h2 className="text-base sm:text-lg md:text-xl font-semibold text-gray-900 mb-3 sm:mb-4 flex items-center gap-2">
+						<AlertCircle className="w-4 h-4 sm:w-5 sm:h-5 text-indigo-600 flex-shrink-0" />
+						<span>Alergias y Condiciones</span>
 					</h2>
-					<div className="space-y-4">
+					<div className="space-y-3 sm:space-y-4">
 						<div>
-							<label className="block text-sm font-medium text-gray-700 mb-2">Alergias</label>
+							<label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1.5 sm:mb-2">Alergias</label>
 							<textarea
 								value={formData.allergies}
 								onChange={(e) => setFormData(prev => ({ ...prev, allergies: e.target.value }))}
 								placeholder="Lista tus alergias separadas por comas..."
 								rows={3}
-								className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+								className="w-full px-3 sm:px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm sm:text-base resize-none"
 							/>
 						</div>
 						<div>
-							<label className="block text-sm font-medium text-gray-700 mb-2">Condiciones Médicas</label>
+							<label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1.5 sm:mb-2">Condiciones Médicas</label>
 							<textarea
 								value={formData.conditions}
 								onChange={(e) => setFormData(prev => ({ ...prev, conditions: e.target.value }))}
 								placeholder="Lista tus condiciones médicas..."
 								rows={3}
-								className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+								className="w-full px-3 sm:px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm sm:text-base resize-none"
 							/>
 						</div>
 					</div>
 				</div>
 
 				{/* Notificaciones */}
-				<div className="bg-white rounded-2xl shadow-lg p-6">
-					<h2 className="text-xl font-semibold text-gray-900 mb-4 flex items-center gap-2">
-						<Bell className="w-5 h-5 text-indigo-600" />
-						Notificaciones
+				<div className="bg-white rounded-xl sm:rounded-2xl shadow-lg p-4 sm:p-5 md:p-6">
+					<h2 className="text-base sm:text-lg md:text-xl font-semibold text-gray-900 mb-3 sm:mb-4 flex items-center gap-2">
+						<Bell className="w-4 h-4 sm:w-5 sm:h-5 text-indigo-600 flex-shrink-0" />
+						<span>Notificaciones</span>
 					</h2>
-					<div className="space-y-3">
-						<label className="flex items-center justify-between p-3 bg-gray-50 rounded-lg cursor-pointer">
-							<span className="text-gray-700">Notificaciones por Email</span>
+					<div className="space-y-2 sm:space-y-3">
+						<label className="flex items-center justify-between p-2.5 sm:p-3 bg-gray-50 rounded-lg cursor-pointer">
+							<span className="text-gray-700 text-xs sm:text-sm md:text-base">Notificaciones por Email</span>
 							<input
 								type="checkbox"
 								checked={formData.notifications.email}
@@ -316,11 +316,11 @@ export default function ConfiguracionPage() {
 										notifications: { ...prev.notifications, email: e.target.checked },
 									}))
 								}
-								className="w-4 h-4 text-indigo-600 rounded focus:ring-indigo-500"
+								className="w-4 h-4 text-indigo-600 rounded focus:ring-indigo-500 flex-shrink-0"
 							/>
 						</label>
-						<label className="flex items-center justify-between p-3 bg-gray-50 rounded-lg cursor-pointer">
-							<span className="text-gray-700">Notificaciones por SMS</span>
+						<label className="flex items-center justify-between p-2.5 sm:p-3 bg-gray-50 rounded-lg cursor-pointer">
+							<span className="text-gray-700 text-xs sm:text-sm md:text-base">Notificaciones por SMS</span>
 							<input
 								type="checkbox"
 								checked={formData.notifications.sms}
@@ -330,11 +330,11 @@ export default function ConfiguracionPage() {
 										notifications: { ...prev.notifications, sms: e.target.checked },
 									}))
 								}
-								className="w-4 h-4 text-indigo-600 rounded focus:ring-indigo-500"
+								className="w-4 h-4 text-indigo-600 rounded focus:ring-indigo-500 flex-shrink-0"
 							/>
 						</label>
-						<label className="flex items-center justify-between p-3 bg-gray-50 rounded-lg cursor-pointer">
-							<span className="text-gray-700">Notificaciones Push</span>
+						<label className="flex items-center justify-between p-2.5 sm:p-3 bg-gray-50 rounded-lg cursor-pointer">
+							<span className="text-gray-700 text-xs sm:text-sm md:text-base">Notificaciones Push</span>
 							<input
 								type="checkbox"
 								checked={formData.notifications.push}
@@ -344,50 +344,50 @@ export default function ConfiguracionPage() {
 										notifications: { ...prev.notifications, push: e.target.checked },
 									}))
 								}
-								className="w-4 h-4 text-indigo-600 rounded focus:ring-indigo-500"
+								className="w-4 h-4 text-indigo-600 rounded focus:ring-indigo-500 flex-shrink-0"
 							/>
 						</label>
 					</div>
 				</div>
 
 				{/* Cambio de Contraseña */}
-				<div className="bg-white rounded-2xl shadow-lg p-6">
-					<h2 className="text-xl font-semibold text-gray-900 mb-4 flex items-center gap-2">
-						<Lock className="w-5 h-5 text-indigo-600" />
-						Cambiar Contraseña
+				<div className="bg-white rounded-xl sm:rounded-2xl shadow-lg p-4 sm:p-5 md:p-6">
+					<h2 className="text-base sm:text-lg md:text-xl font-semibold text-gray-900 mb-3 sm:mb-4 flex items-center gap-2">
+						<Lock className="w-4 h-4 sm:w-5 sm:h-5 text-indigo-600 flex-shrink-0" />
+						<span>Cambiar Contraseña</span>
 					</h2>
-					<div className="space-y-4">
+					<div className="space-y-3 sm:space-y-4">
 						<div>
-							<label className="block text-sm font-medium text-gray-700 mb-2">Contraseña Actual</label>
+							<label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1.5 sm:mb-2">Contraseña Actual</label>
 							<input
 								type="password"
 								value={passwordForm.currentPassword}
 								onChange={(e) => setPasswordForm(prev => ({ ...prev, currentPassword: e.target.value }))}
-								className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+								className="w-full px-3 sm:px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm sm:text-base"
 							/>
 						</div>
 						<div>
-							<label className="block text-sm font-medium text-gray-700 mb-2">Nueva Contraseña</label>
+							<label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1.5 sm:mb-2">Nueva Contraseña</label>
 							<input
 								type="password"
 								value={passwordForm.newPassword}
 								onChange={(e) => setPasswordForm(prev => ({ ...prev, newPassword: e.target.value }))}
-								className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+								className="w-full px-3 sm:px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm sm:text-base"
 							/>
 						</div>
 						<div>
-							<label className="block text-sm font-medium text-gray-700 mb-2">Confirmar Nueva Contraseña</label>
+							<label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1.5 sm:mb-2">Confirmar Nueva Contraseña</label>
 							<input
 								type="password"
 								value={passwordForm.confirmPassword}
 								onChange={(e) => setPasswordForm(prev => ({ ...prev, confirmPassword: e.target.value }))}
-								className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+								className="w-full px-3 sm:px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm sm:text-base"
 							/>
 						</div>
 						<button
 							onClick={handlePasswordChange}
 							disabled={saving}
-							className="px-6 py-2 bg-indigo-600 text-white rounded-lg font-medium hover:bg-indigo-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+							className="w-full sm:w-auto px-4 sm:px-6 py-2 bg-indigo-600 text-white rounded-lg font-medium hover:bg-indigo-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm sm:text-base"
 						>
 							{saving ? 'Cambiando...' : 'Cambiar Contraseña'}
 						</button>
@@ -399,10 +399,10 @@ export default function ConfiguracionPage() {
 					<button
 						onClick={handleSave}
 						disabled={saving}
-						className="px-8 py-3 bg-indigo-600 text-white rounded-lg font-semibold hover:bg-indigo-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+						className="w-full sm:w-auto px-6 sm:px-8 py-2.5 sm:py-3 bg-indigo-600 text-white rounded-lg font-semibold hover:bg-indigo-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 text-sm sm:text-base"
 					>
-						<Save className="w-5 h-5" />
-						{saving ? 'Guardando...' : 'Guardar Cambios'}
+						<Save className="w-4 h-4 sm:w-5 sm:h-5 flex-shrink-0" />
+						<span>{saving ? 'Guardando...' : 'Guardar Cambios'}</span>
 					</button>
 				</div>
 			</div>

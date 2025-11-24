@@ -103,25 +103,25 @@ export default function RecetasPage() {
 	};
 
 	return (
-		<div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-pink-50 p-6">
-			<div className="max-w-7xl mx-auto space-y-6">
+		<div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-pink-50 p-3 sm:p-4 md:p-6">
+			<div className="max-w-7xl mx-auto space-y-3 sm:space-y-4 md:space-y-6">
 				{/* Header */}
-				<div className="bg-white rounded-2xl shadow-lg p-6">
-					<h1 className="text-3xl font-bold text-gray-900 mb-2 flex items-center gap-3">
-						<Pill className="w-8 h-8 text-purple-600" />
-						Mis Recetas
+				<div className="bg-white rounded-xl sm:rounded-2xl shadow-lg p-3 sm:p-4 md:p-5 lg:p-6">
+					<h1 className="text-lg sm:text-xl md:text-2xl lg:text-3xl font-bold text-gray-900 mb-1 sm:mb-2 flex items-center gap-2 sm:gap-3">
+						<Pill className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6 lg:w-8 lg:h-8 text-purple-600 flex-shrink-0" />
+						<span>Mis Recetas</span>
 					</h1>
-					<p className="text-gray-600">Gestiona tus recetas médicas</p>
+					<p className="text-xs sm:text-sm md:text-base text-gray-600">Gestiona tus recetas médicas</p>
 				</div>
 
 				{/* Filtros */}
-				<div className="bg-white rounded-2xl shadow-lg p-6">
-					<div className="flex gap-2">
+				<div className="bg-white rounded-xl sm:rounded-2xl shadow-lg p-3 sm:p-4 md:p-5 lg:p-6">
+					<div className="flex flex-wrap gap-2">
 						<button
 							onClick={() => setFilter('active')}
-							className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+							className={`px-2.5 sm:px-3 md:px-4 py-1.5 sm:py-2 rounded-lg font-medium transition-colors text-xs sm:text-sm md:text-base ${
 								filter === 'active'
-									? 'bg-purple-600 text-white'
+									? 'bg-purple-600 text-white shadow-md'
 									: 'bg-gray-100 text-gray-700 hover:bg-gray-200'
 							}`}
 						>
@@ -129,9 +129,9 @@ export default function RecetasPage() {
 						</button>
 						<button
 							onClick={() => setFilter('expired')}
-							className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+							className={`px-2.5 sm:px-3 md:px-4 py-1.5 sm:py-2 rounded-lg font-medium transition-colors text-xs sm:text-sm md:text-base ${
 								filter === 'expired'
-									? 'bg-purple-600 text-white'
+									? 'bg-purple-600 text-white shadow-md'
 									: 'bg-gray-100 text-gray-700 hover:bg-gray-200'
 							}`}
 						>
@@ -139,9 +139,9 @@ export default function RecetasPage() {
 						</button>
 						<button
 							onClick={() => setFilter('all')}
-							className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+							className={`px-2.5 sm:px-3 md:px-4 py-1.5 sm:py-2 rounded-lg font-medium transition-colors text-xs sm:text-sm md:text-base ${
 								filter === 'all'
-									? 'bg-purple-600 text-white'
+									? 'bg-purple-600 text-white shadow-md'
 									: 'bg-gray-100 text-gray-700 hover:bg-gray-200'
 							}`}
 						>
@@ -161,44 +161,45 @@ export default function RecetasPage() {
 						))}
 					</div>
 				) : prescriptions.length === 0 ? (
-					<div className="bg-white rounded-2xl shadow-lg p-12 text-center">
-						<Pill className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-						<p className="text-gray-600 text-lg">No tienes recetas {filter === 'active' ? 'activas' : filter === 'expired' ? 'vencidas' : ''}</p>
+					<div className="bg-white rounded-xl sm:rounded-2xl shadow-lg p-6 sm:p-8 md:p-12 text-center">
+						<Pill className="w-10 h-10 sm:w-12 sm:h-12 md:w-16 md:h-16 text-gray-400 mx-auto mb-2 sm:mb-3 md:mb-4" />
+						<p className="text-gray-600 text-sm sm:text-base md:text-lg">No tienes recetas {filter === 'active' ? 'activas' : filter === 'expired' ? 'vencidas' : ''}</p>
 					</div>
 				) : (
-					<div className="space-y-4">
+					<div className="space-y-3 sm:space-y-4">
 						{prescriptions.map((prescription) => (
-							<div key={prescription.id} className="bg-white rounded-xl shadow-lg p-6">
-								<div className="flex items-start justify-between mb-4">
-									<div>
-										<div className="flex items-center gap-3 mb-2">
-											<div className="p-3 bg-purple-100 rounded-lg">
-												<Pill className="w-6 h-6 text-purple-600" />
+							<div key={prescription.id} className="bg-white rounded-xl shadow-lg p-3 sm:p-4 md:p-5 lg:p-6 hover:shadow-xl transition-shadow">
+								<div className="flex flex-col sm:flex-row items-start sm:items-start justify-between gap-3 sm:gap-4 mb-3 sm:mb-4">
+									<div className="flex-1 min-w-0 w-full">
+										<div className="flex items-center gap-2 sm:gap-3 mb-2 sm:mb-3">
+											<div className="p-1.5 sm:p-2 md:p-3 bg-purple-100 rounded-lg flex-shrink-0">
+												<Pill className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6 text-purple-600" />
 											</div>
-											<div>
-												<h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2 flex-wrap">
-													Receta #{prescription.id.slice(0, 8)}
+											<div className="flex-1 min-w-0">
+												<h3 className="text-sm sm:text-base md:text-lg font-semibold text-gray-900 flex items-center gap-1.5 sm:gap-2 flex-wrap">
+													<span className="break-words">Receta #{prescription.id.slice(0, 8)}</span>
 													{(() => {
 														const realStatus = getPrescriptionStatus(prescription);
 														return (
 															<span
-																className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold ${getStatusColor(
+																className={`inline-flex items-center gap-1 px-2 sm:px-2.5 md:px-3 py-0.5 sm:py-1 rounded-full text-[9px] sm:text-[10px] md:text-xs font-semibold ${getStatusColor(
 																	realStatus
 																)}`}
 															>
 																{getStatusIcon(realStatus)}
-																{realStatus === 'EXPIRED' ? 'Vencida' : 'Activa'}
+																<span className="hidden sm:inline">{realStatus === 'EXPIRED' ? 'Vencida' : 'Activa'}</span>
+																<span className="sm:hidden">{realStatus === 'EXPIRED' ? 'Ven.' : 'Act.'}</span>
 															</span>
 														);
 													})()}
 												</h3>
-												<p className="text-gray-600 flex items-center gap-2 mt-1 flex-wrap">
-													<Calendar className="w-4 h-4" />
+												<p className="text-[10px] sm:text-xs md:text-sm text-gray-600 flex items-center gap-1.5 sm:gap-2 mt-1 flex-wrap">
+													<Calendar className="w-3 h-3 sm:w-3.5 sm:h-3.5 md:w-4 md:h-4 flex-shrink-0" />
 													<span>Emitida: {new Date(prescription.issued_at).toLocaleDateString('es-ES')}</span>
 													{prescription.valid_until && (
 														<>
-															<span className="text-gray-400">•</span>
-															<span className={isExpired(prescription) ? 'text-red-600 font-semibold' : ''}>
+															<span className="text-gray-400 hidden sm:inline">•</span>
+															<span className={`${isExpired(prescription) ? 'text-red-600 font-semibold' : ''} break-words`}>
 																Válida hasta: {new Date(prescription.valid_until).toLocaleDateString('es-ES')}
 															</span>
 														</>
@@ -207,43 +208,43 @@ export default function RecetasPage() {
 											</div>
 										</div>
 										{prescription.doctor && (
-											<p className="text-gray-600 flex items-center gap-2 mb-4">
-												<User className="w-4 h-4" />
-												Dr. {prescription.doctor.name || 'Médico'}
+											<p className="text-[10px] sm:text-xs md:text-sm text-gray-600 flex items-center gap-1.5 sm:gap-2 mb-3 sm:mb-4">
+												<User className="w-3 h-3 sm:w-3.5 sm:h-3.5 md:w-4 md:h-4 flex-shrink-0" />
+												<span className="break-words">Dr. {prescription.doctor.name || 'Médico'}</span>
 											</p>
 										)}
 									</div>
-									<button className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors flex items-center gap-2">
-										<Download className="w-4 h-4" />
-										PDF
+									<button className="w-full sm:w-auto px-3 sm:px-4 py-1.5 sm:py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors flex items-center justify-center gap-1.5 sm:gap-2 text-xs sm:text-sm md:text-base shadow-md hover:shadow-lg">
+										<Download className="w-3 h-3 sm:w-3.5 sm:h-3.5 md:w-4 md:h-4" />
+										<span>PDF</span>
 									</button>
 								</div>
 
 								{/* Medicamentos */}
 								{prescription.prescription_item && prescription.prescription_item.length > 0 && (
-									<div className="mt-4 pt-4 border-t border-gray-200">
-										<p className="font-semibold text-gray-900 mb-3">Medicamentos</p>
-										<div className="space-y-3">
+									<div className="mt-3 sm:mt-4 pt-3 sm:pt-4 border-t border-gray-200">
+										<p className="font-semibold text-gray-900 mb-2 sm:mb-3 text-xs sm:text-sm md:text-base">Medicamentos</p>
+										<div className="space-y-2 sm:space-y-3">
 											{prescription.prescription_item.map((item) => (
-												<div key={item.id} className="bg-gray-50 rounded-lg p-4">
-													<div className="flex items-start justify-between mb-2">
-														<h4 className="font-semibold text-gray-900">{item.name}</h4>
+												<div key={item.id} className="bg-gray-50 rounded-lg p-2.5 sm:p-3 md:p-4">
+													<div className="flex flex-col sm:flex-row items-start sm:items-start justify-between gap-2 mb-2">
+														<h4 className="font-semibold text-gray-900 text-xs sm:text-sm md:text-base break-words">{item.name}</h4>
 														{item.quantity && (
-															<span className="px-2 py-1 bg-purple-100 text-purple-700 text-xs font-semibold rounded">
+															<span className="px-2 py-0.5 sm:py-1 bg-purple-100 text-purple-700 text-[9px] sm:text-[10px] md:text-xs font-semibold rounded whitespace-nowrap">
 																Cantidad: {item.quantity}
 															</span>
 														)}
 													</div>
-													<div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm text-gray-700">
+													<div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[10px] sm:text-xs md:text-sm text-gray-700">
 														{item.dosage && (
-															<div>
+															<div className="break-words">
 																<span className="font-medium">Dosis: </span>
 																{item.dosage}
 																{item.form && ` (${item.form})`}
 															</div>
 														)}
 														{item.frequency && (
-															<div>
+															<div className="break-words">
 																<span className="font-medium">Frecuencia: </span>
 																{item.frequency}
 																{item.duration && ` por ${item.duration}`}
@@ -251,7 +252,7 @@ export default function RecetasPage() {
 														)}
 													</div>
 													{item.instructions && (
-														<div className="mt-2 text-sm text-gray-700">
+														<div className="mt-2 text-[10px] sm:text-xs md:text-sm text-gray-700 break-words">
 															<span className="font-medium">Instrucciones: </span>
 															{item.instructions}
 														</div>
@@ -263,9 +264,11 @@ export default function RecetasPage() {
 								)}
 
 								{prescription.notes && (
-									<div className="mt-4 pt-4 border-t border-gray-200">
-										<p className="font-semibold text-gray-900 mb-1">Notas</p>
-										<p className="text-gray-700 bg-gray-50 rounded-lg p-3">{prescription.notes}</p>
+									<div className="mt-3 sm:mt-4 pt-3 sm:pt-4 border-t border-gray-200">
+										<p className="font-semibold text-gray-900 mb-1 text-xs sm:text-sm md:text-base">Notas</p>
+										<p className="text-[10px] sm:text-xs md:text-sm text-gray-700 bg-gray-50 rounded-lg p-2 sm:p-2.5 md:p-3 break-words leading-relaxed">
+											{prescription.notes}
+										</p>
 									</div>
 								)}
 							</div>

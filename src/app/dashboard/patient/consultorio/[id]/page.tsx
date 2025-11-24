@@ -92,11 +92,11 @@ export default function ConsultorioDetailPage() {
 
 	if (loading) {
 		return (
-			<div className="min-h-screen bg-gray-50 p-6">
+			<div className="min-h-screen bg-gray-50 p-3 sm:p-4 md:p-6">
 				<div className="max-w-7xl mx-auto">
-					<div className="animate-pulse space-y-6">
-						<div className="h-8 bg-gray-200 rounded w-1/3"></div>
-						<div className="h-64 bg-gray-200 rounded-xl"></div>
+					<div className="animate-pulse space-y-3 sm:space-y-4 md:space-y-6">
+						<div className="h-6 sm:h-7 md:h-8 bg-gray-200 rounded w-1/2 sm:w-1/3"></div>
+						<div className="h-48 sm:h-56 md:h-64 bg-gray-200 rounded-lg sm:rounded-xl"></div>
 					</div>
 				</div>
 			</div>
@@ -149,53 +149,53 @@ export default function ConsultorioDetailPage() {
 
 	return (
 		<div className="min-h-screen bg-gray-50">
-			<div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+			<div className="max-w-7xl mx-auto px-3 sm:px-4 md:px-6 lg:px-8 py-4 sm:py-6 md:py-8">
 				{/* Navegación */}
-				<div className="mb-8">
-					<Link href="/dashboard/patient/consultorio" className="inline-flex items-center gap-2 text-gray-600 hover:text-gray-900 font-medium transition-colors">
-						<ArrowLeft className="w-4 h-4" />
-						Volver a consultorios
+				<div className="mb-4 sm:mb-6 md:mb-8">
+					<Link href="/dashboard/patient/consultorio" className="inline-flex items-center gap-1.5 sm:gap-2 text-gray-600 hover:text-gray-900 font-medium transition-colors text-xs sm:text-sm md:text-base">
+						<ArrowLeft className="w-3.5 h-3.5 sm:w-4 sm:h-4 flex-shrink-0" />
+						<span>Volver a consultorios</span>
 					</Link>
 				</div>
 
 				{/* Header Principal */}
-				<div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 md:p-8 mb-8">
-					<div className="flex flex-col md:flex-row gap-6 md:items-center md:justify-between">
-						<div className="flex items-start gap-6 flex-1 min-w-0">
+				<div className="bg-white rounded-lg sm:rounded-xl shadow-sm border border-gray-200 p-4 sm:p-5 md:p-6 lg:p-8 mb-4 sm:mb-6 md:mb-8">
+					<div className="flex flex-col md:flex-row gap-4 sm:gap-5 md:gap-6 md:items-center md:justify-between">
+						<div className="flex items-start gap-3 sm:gap-4 md:gap-6 flex-1 min-w-0">
 							{validProfilePhoto ? (
 								<div className="flex-shrink-0">
 									<img
 										src={validProfilePhoto}
 										alt={consultorio.trade_name || consultorio.legal_name}
-										className="w-24 h-24 md:w-32 md:h-32 rounded-xl object-cover border-2 border-gray-200"
+										className="w-16 h-16 sm:w-20 sm:h-20 md:w-24 md:h-24 lg:w-32 lg:h-32 rounded-lg sm:rounded-xl object-cover border-2 border-gray-200"
 										onError={(e) => {
 											(e.target as HTMLImageElement).style.display = 'none';
 										}}
 									/>
 								</div>
 							) : (
-								<div className="flex-shrink-0 w-24 h-24 md:w-32 md:h-32 rounded-xl bg-gray-100 flex items-center justify-center border-2 border-gray-200">
-									<Building2 className="w-12 h-12 text-gray-400" />
+								<div className="flex-shrink-0 w-16 h-16 sm:w-20 sm:h-20 md:w-24 md:h-24 lg:w-32 lg:h-32 rounded-lg sm:rounded-xl bg-gray-100 flex items-center justify-center border-2 border-gray-200">
+									<Building2 className="w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 text-gray-400" />
 								</div>
 							)}
 							<div className="flex-1 min-w-0">
-								<div className="flex items-center gap-3 mb-2">
-									<h1 className="text-2xl md:text-3xl font-bold text-gray-900 break-words">{consultorio.trade_name || consultorio.legal_name}</h1>
-									<Verified className="w-6 h-6 text-blue-600 flex-shrink-0" />
+								<div className="flex items-center gap-2 sm:gap-3 mb-1 sm:mb-2">
+									<h1 className="text-lg sm:text-xl md:text-2xl lg:text-3xl font-bold text-gray-900 break-words">{consultorio.trade_name || consultorio.legal_name}</h1>
+									<Verified className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6 text-blue-600 flex-shrink-0" />
 								</div>
-								{consultorio.legal_name !== consultorio.trade_name && consultorio.legal_name && <p className="text-gray-600 text-base mb-3 break-words">{consultorio.legal_name}</p>}
+								{consultorio.legal_name !== consultorio.trade_name && consultorio.legal_name && <p className="text-gray-600 text-xs sm:text-sm md:text-base mb-2 sm:mb-3 break-words">{consultorio.legal_name}</p>}
 								{consultorio.doctors && consultorio.doctors.length > 0 && consultorio.doctors[0]?.name && (
-									<p className="text-gray-700 font-medium flex items-center gap-2">
-										<User className="w-4 h-4" />
-										Dr. {consultorio.doctors[0].name}
+									<p className="text-gray-700 font-medium flex items-center gap-1.5 sm:gap-2 text-xs sm:text-sm md:text-base">
+										<User className="w-3.5 h-3.5 sm:w-4 sm:h-4 flex-shrink-0" />
+										<span className="truncate">Dr. {consultorio.doctors[0].name}</span>
 									</p>
 								)}
 							</div>
 						</div>
 						<div className="flex-shrink-0">
-							<Link href={`/dashboard/patient/citas/new?clinic_id=${consultorio.organization?.id || consultorio.id}`} className="inline-flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 transition-colors shadow-sm">
-								<Calendar className="w-5 h-5" />
-								Agendar Cita
+							<Link href={`/dashboard/patient/citas/new?clinic_id=${consultorio.organization?.id || consultorio.id}`} className="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 sm:gap-2 px-4 sm:px-5 md:px-6 py-2 sm:py-2.5 md:py-3 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 transition-colors shadow-sm text-xs sm:text-sm md:text-base">
+								<Calendar className="w-4 h-4 sm:w-4 sm:h-4 md:w-5 md:h-5 flex-shrink-0" />
+								<span>Agendar Cita</span>
 							</Link>
 						</div>
 					</div>
@@ -203,12 +203,12 @@ export default function ConsultorioDetailPage() {
 
 				{/* Galería de Imágenes */}
 				{allImages.length > 0 && (
-					<div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-8">
-						<h2 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
-							<ImageIcon className="w-5 h-5 text-gray-700" />
-							Galería del Consultorio
+					<div className="bg-white rounded-lg sm:rounded-xl shadow-sm border border-gray-200 p-4 sm:p-5 md:p-6 mb-4 sm:mb-6 md:mb-8">
+						<h2 className="text-base sm:text-lg md:text-xl font-bold text-gray-900 mb-3 sm:mb-4 flex items-center gap-1.5 sm:gap-2">
+							<ImageIcon className="w-4 h-4 sm:w-4 sm:h-4 md:w-5 md:h-5 text-gray-700 flex-shrink-0" />
+							<span>Galería del Consultorio</span>
 						</h2>
-						<div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+						<div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 sm:gap-3 md:gap-4">
 							{allImages.map((img, idx) => (
 								<button key={idx} onClick={() => setSelectedImage(img)} className="relative aspect-square rounded-lg overflow-hidden group cursor-pointer hover:opacity-90 transition-opacity border border-gray-200">
 									<img
@@ -229,9 +229,9 @@ export default function ConsultorioDetailPage() {
 				{/* Modal de Imagen */}
 				<AnimatePresence>
 					{selectedImage && (
-						<motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-black/90 z-50 flex items-center justify-center p-4" onClick={() => setSelectedImage(null)}>
-							<button className="absolute top-4 right-4 text-white hover:text-gray-300 p-2 rounded-full bg-black/50 hover:bg-black/70 transition-colors z-10" onClick={() => setSelectedImage(null)}>
-								<X className="w-6 h-6" />
+						<motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-black/90 z-50 flex items-center justify-center p-2 sm:p-4" onClick={() => setSelectedImage(null)}>
+							<button className="absolute top-2 right-2 sm:top-4 sm:right-4 text-white hover:text-gray-300 p-1.5 sm:p-2 rounded-full bg-black/50 hover:bg-black/70 transition-colors z-10" onClick={() => setSelectedImage(null)}>
+								<X className="w-5 h-5 sm:w-6 sm:h-6" />
 							</button>
 							<img
 								src={selectedImage}
@@ -246,110 +246,110 @@ export default function ConsultorioDetailPage() {
 					)}
 				</AnimatePresence>
 
-				<div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+				<div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-5 md:gap-6 lg:gap-8">
 					{/* Columna Principal */}
-					<div className="lg:col-span-2 space-y-6">
+					<div className="lg:col-span-2 space-y-4 sm:space-y-5 md:space-y-6">
 						{/* Información de Contacto */}
-						<div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-							<h2 className="text-xl font-bold text-gray-900 mb-6 flex items-center gap-2">
-								<Building2 className="w-5 h-5 text-gray-700" />
-								Información de Contacto
+						<div className="bg-white rounded-lg sm:rounded-xl shadow-sm border border-gray-200 p-4 sm:p-5 md:p-6">
+							<h2 className="text-base sm:text-lg md:text-xl font-bold text-gray-900 mb-4 sm:mb-5 md:mb-6 flex items-center gap-1.5 sm:gap-2">
+								<Building2 className="w-4 h-4 sm:w-4 sm:h-4 md:w-5 md:h-5 text-gray-700 flex-shrink-0" />
+								<span>Información de Contacto</span>
 							</h2>
-							<div className="space-y-4">
+							<div className="space-y-3 sm:space-y-4">
 								{consultorio.address_operational && (
-									<div className="flex gap-4 pb-4 border-b border-gray-100 last:border-0 last:pb-0">
+									<div className="flex gap-2 sm:gap-3 md:gap-4 pb-3 sm:pb-4 border-b border-gray-100 last:border-0 last:pb-0">
 										<div className="flex-shrink-0">
-											<div className="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center">
-												<MapPin className="w-5 h-5 text-gray-600" />
+											<div className="w-8 h-8 sm:w-9 sm:h-9 md:w-10 md:h-10 rounded-lg bg-gray-100 flex items-center justify-center">
+												<MapPin className="w-4 h-4 sm:w-4 sm:h-4 md:w-5 md:h-5 text-gray-600" />
 											</div>
 										</div>
 										<div className="flex-1 min-w-0">
-											<p className="font-semibold text-gray-900 mb-1">Dirección</p>
-											<p className="text-gray-600 break-words leading-relaxed">{consultorio.address_operational}</p>
+											<p className="font-semibold text-gray-900 mb-0.5 sm:mb-1 text-xs sm:text-sm md:text-base">Dirección</p>
+											<p className="text-gray-600 break-words leading-relaxed text-xs sm:text-sm md:text-base">{consultorio.address_operational}</p>
 										</div>
 									</div>
 								)}
 								{consultorio.phone_mobile && (
-									<div className="flex gap-4 pb-4 border-b border-gray-100 last:border-0 last:pb-0">
+									<div className="flex gap-2 sm:gap-3 md:gap-4 pb-3 sm:pb-4 border-b border-gray-100 last:border-0 last:pb-0">
 										<div className="flex-shrink-0">
-											<div className="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center">
-												<Phone className="w-5 h-5 text-gray-600" />
+											<div className="w-8 h-8 sm:w-9 sm:h-9 md:w-10 md:h-10 rounded-lg bg-gray-100 flex items-center justify-center">
+												<Phone className="w-4 h-4 sm:w-4 sm:h-4 md:w-5 md:h-5 text-gray-600" />
 											</div>
 										</div>
 										<div className="flex-1 min-w-0">
-											<p className="font-semibold text-gray-900 mb-1">Teléfono Móvil</p>
-											<a href={`tel:${consultorio.phone_mobile}`} className="text-blue-600 hover:text-blue-700 font-medium break-all">
+											<p className="font-semibold text-gray-900 mb-0.5 sm:mb-1 text-xs sm:text-sm md:text-base">Teléfono Móvil</p>
+											<a href={`tel:${consultorio.phone_mobile}`} className="text-blue-600 hover:text-blue-700 font-medium break-all text-xs sm:text-sm md:text-base">
 												{consultorio.phone_mobile}
 											</a>
 										</div>
 									</div>
 								)}
 								{consultorio.phone_fixed && (
-									<div className="flex gap-4 pb-4 border-b border-gray-100 last:border-0 last:pb-0">
+									<div className="flex gap-2 sm:gap-3 md:gap-4 pb-3 sm:pb-4 border-b border-gray-100 last:border-0 last:pb-0">
 										<div className="flex-shrink-0">
-											<div className="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center">
-												<Phone className="w-5 h-5 text-gray-600" />
+											<div className="w-8 h-8 sm:w-9 sm:h-9 md:w-10 md:h-10 rounded-lg bg-gray-100 flex items-center justify-center">
+												<Phone className="w-4 h-4 sm:w-4 sm:h-4 md:w-5 md:h-5 text-gray-600" />
 											</div>
 										</div>
 										<div className="flex-1 min-w-0">
-											<p className="font-semibold text-gray-900 mb-1">Teléfono Fijo</p>
-											<a href={`tel:${consultorio.phone_fixed}`} className="text-blue-600 hover:text-blue-700 font-medium break-all">
+											<p className="font-semibold text-gray-900 mb-0.5 sm:mb-1 text-xs sm:text-sm md:text-base">Teléfono Fijo</p>
+											<a href={`tel:${consultorio.phone_fixed}`} className="text-blue-600 hover:text-blue-700 font-medium break-all text-xs sm:text-sm md:text-base">
 												{consultorio.phone_fixed}
 											</a>
 										</div>
 									</div>
 								)}
 								{consultorio.contact_email && (
-									<div className="flex gap-4 pb-4 border-b border-gray-100 last:border-0 last:pb-0">
+									<div className="flex gap-2 sm:gap-3 md:gap-4 pb-3 sm:pb-4 border-b border-gray-100 last:border-0 last:pb-0">
 										<div className="flex-shrink-0">
-											<div className="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center">
-												<Mail className="w-5 h-5 text-gray-600" />
+											<div className="w-8 h-8 sm:w-9 sm:h-9 md:w-10 md:h-10 rounded-lg bg-gray-100 flex items-center justify-center">
+												<Mail className="w-4 h-4 sm:w-4 sm:h-4 md:w-5 md:h-5 text-gray-600" />
 											</div>
 										</div>
 										<div className="flex-1 min-w-0">
-											<p className="font-semibold text-gray-900 mb-1">Email</p>
-											<a href={`mailto:${consultorio.contact_email}`} className="text-blue-600 hover:text-blue-700 font-medium break-all">
+											<p className="font-semibold text-gray-900 mb-0.5 sm:mb-1 text-xs sm:text-sm md:text-base">Email</p>
+											<a href={`mailto:${consultorio.contact_email}`} className="text-blue-600 hover:text-blue-700 font-medium break-all text-xs sm:text-sm md:text-base">
 												{consultorio.contact_email}
 											</a>
 										</div>
 									</div>
 								)}
 								{consultorio.website && (
-									<div className="flex gap-4 pb-4 border-b border-gray-100 last:border-0 last:pb-0">
+									<div className="flex gap-2 sm:gap-3 md:gap-4 pb-3 sm:pb-4 border-b border-gray-100 last:border-0 last:pb-0">
 										<div className="flex-shrink-0">
-											<div className="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center">
-												<Globe className="w-5 h-5 text-gray-600" />
+											<div className="w-8 h-8 sm:w-9 sm:h-9 md:w-10 md:h-10 rounded-lg bg-gray-100 flex items-center justify-center">
+												<Globe className="w-4 h-4 sm:w-4 sm:h-4 md:w-5 md:h-5 text-gray-600" />
 											</div>
 										</div>
 										<div className="flex-1 min-w-0">
-											<p className="font-semibold text-gray-900 mb-1">Sitio Web</p>
-											<a href={consultorio.website} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-700 font-medium break-all inline-flex items-center gap-1">
-												{consultorio.website}
-												<ExternalLink className="w-4 h-4" />
+											<p className="font-semibold text-gray-900 mb-0.5 sm:mb-1 text-xs sm:text-sm md:text-base">Sitio Web</p>
+											<a href={consultorio.website} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-700 font-medium break-all inline-flex items-center gap-1 text-xs sm:text-sm md:text-base">
+												<span className="truncate">{consultorio.website}</span>
+												<ExternalLink className="w-3.5 h-3.5 sm:w-4 sm:h-4 flex-shrink-0" />
 											</a>
 										</div>
 									</div>
 								)}
 								{(consultorio.social_facebook || consultorio.social_instagram) && (
-									<div className="flex gap-4">
+									<div className="flex gap-2 sm:gap-3 md:gap-4">
 										<div className="flex-shrink-0">
-											<div className="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center">
-												<Globe className="w-5 h-5 text-gray-600" />
+											<div className="w-8 h-8 sm:w-9 sm:h-9 md:w-10 md:h-10 rounded-lg bg-gray-100 flex items-center justify-center">
+												<Globe className="w-4 h-4 sm:w-4 sm:h-4 md:w-5 md:h-5 text-gray-600" />
 											</div>
 										</div>
 										<div className="flex-1 min-w-0">
-											<p className="font-semibold text-gray-900 mb-2">Redes Sociales</p>
-											<div className="flex flex-wrap gap-3">
+											<p className="font-semibold text-gray-900 mb-1.5 sm:mb-2 text-xs sm:text-sm md:text-base">Redes Sociales</p>
+											<div className="flex flex-wrap gap-2 sm:gap-3">
 												{consultorio.social_facebook && (
-													<a href={consultorio.social_facebook} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 px-4 py-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-colors font-medium text-sm">
-														<Facebook className="w-4 h-4" />
-														Facebook
+													<a href={consultorio.social_facebook} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-1.5 sm:py-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-colors font-medium text-xs sm:text-sm">
+														<Facebook className="w-3.5 h-3.5 sm:w-4 sm:h-4 flex-shrink-0" />
+														<span>Facebook</span>
 													</a>
 												)}
 												{consultorio.social_instagram && (
-													<a href={consultorio.social_instagram} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 px-4 py-2 bg-pink-50 text-pink-600 rounded-lg hover:bg-pink-100 transition-colors font-medium text-sm">
-														<Instagram className="w-4 h-4" />
-														Instagram
+													<a href={consultorio.social_instagram} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-1.5 sm:py-2 bg-pink-50 text-pink-600 rounded-lg hover:bg-pink-100 transition-colors font-medium text-xs sm:text-sm">
+														<Instagram className="w-3.5 h-3.5 sm:w-4 sm:h-4 flex-shrink-0" />
+														<span>Instagram</span>
 													</a>
 												)}
 											</div>
@@ -361,16 +361,16 @@ export default function ConsultorioDetailPage() {
 
 						{/* Especialidades */}
 						{specialties.length > 0 && (
-							<div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-								<h2 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
-									<Stethoscope className="w-5 h-5 text-gray-700" />
-									Especialidades Médicas
+							<div className="bg-white rounded-lg sm:rounded-xl shadow-sm border border-gray-200 p-4 sm:p-5 md:p-6">
+								<h2 className="text-base sm:text-lg md:text-xl font-bold text-gray-900 mb-3 sm:mb-4 flex items-center gap-1.5 sm:gap-2">
+									<Stethoscope className="w-4 h-4 sm:w-4 sm:h-4 md:w-5 md:h-5 text-gray-700 flex-shrink-0" />
+									<span>Especialidades Médicas</span>
 								</h2>
-								<div className="flex flex-wrap gap-2">
+								<div className="flex flex-wrap gap-1.5 sm:gap-2">
 									{specialties.map((spec: any, idx: number) => {
 										const specName = typeof spec === 'string' ? spec : spec?.name || spec?.specialty || '';
 										return (
-											<span key={idx} className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg font-medium text-sm border border-gray-200">
+											<span key={idx} className="px-2.5 sm:px-3 md:px-4 py-1.5 sm:py-2 bg-gray-100 text-gray-700 rounded-lg font-medium text-xs sm:text-sm border border-gray-200">
 												{specName}
 											</span>
 										);
@@ -381,16 +381,16 @@ export default function ConsultorioDetailPage() {
 
 						{/* Horarios */}
 						{openingHours.length > 0 && (
-							<div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-								<h2 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
-									<Clock className="w-5 h-5 text-gray-700" />
-									Horarios de Atención
+							<div className="bg-white rounded-lg sm:rounded-xl shadow-sm border border-gray-200 p-4 sm:p-5 md:p-6">
+								<h2 className="text-base sm:text-lg md:text-xl font-bold text-gray-900 mb-3 sm:mb-4 flex items-center gap-1.5 sm:gap-2">
+									<Clock className="w-4 h-4 sm:w-4 sm:h-4 md:w-5 md:h-5 text-gray-700 flex-shrink-0" />
+									<span>Horarios de Atención</span>
 								</h2>
-								<div className="space-y-2">
+								<div className="space-y-1.5 sm:space-y-2">
 									{openingHours.map((hour: any, idx: number) => (
-										<div key={idx} className="flex items-center justify-between py-3 px-4 bg-gray-50 rounded-lg border border-gray-100">
-											<span className="font-semibold text-gray-900">{hour.day || hour.dayOfWeek || 'Día'}</span>
-											<span className="text-gray-700 font-medium">
+										<div key={idx} className="flex items-center justify-between py-2 sm:py-2.5 md:py-3 px-3 sm:px-4 bg-gray-50 rounded-lg border border-gray-100">
+											<span className="font-semibold text-gray-900 text-xs sm:text-sm md:text-base">{hour.day || hour.dayOfWeek || 'Día'}</span>
+											<span className="text-gray-700 font-medium text-xs sm:text-sm md:text-base">
 												{hour.open || hour.start} - {hour.close || hour.end}
 											</span>
 										</div>
@@ -400,18 +400,18 @@ export default function ConsultorioDetailPage() {
 						)}
 
 						{/* Mapa */}
-						<div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-							<h2 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
-								<MapPin className="w-5 h-5 text-gray-700" />
-								Ubicación
+						<div className="bg-white rounded-lg sm:rounded-xl shadow-sm border border-gray-200 p-4 sm:p-5 md:p-6">
+							<h2 className="text-base sm:text-lg md:text-xl font-bold text-gray-900 mb-3 sm:mb-4 flex items-center gap-1.5 sm:gap-2">
+								<MapPin className="w-4 h-4 sm:w-4 sm:h-4 md:w-5 md:h-5 text-gray-700 flex-shrink-0" />
+								<span>Ubicación</span>
 							</h2>
 							{consultorio.location && typeof consultorio.location === 'object' && consultorio.location.lat && consultorio.location.lng ? (
 								<LeafletMapViewer location={consultorio.location as { lat: number; lng: number; address?: string }} address={consultorio.address_operational || undefined} />
 							) : (
-								<div className="bg-gray-50 rounded-lg h-64 flex items-center justify-center border border-gray-200">
-									<div className="text-center">
-										<MapPin className="w-12 h-12 text-gray-400 mx-auto mb-3" />
-										<p className="text-gray-600 font-medium">{consultorio.address_operational || 'Ubicación no disponible'}</p>
+								<div className="bg-gray-50 rounded-lg h-48 sm:h-56 md:h-64 flex items-center justify-center border border-gray-200">
+									<div className="text-center px-4">
+										<MapPin className="w-10 h-10 sm:w-12 sm:h-12 text-gray-400 mx-auto mb-2 sm:mb-3" />
+										<p className="text-gray-600 font-medium text-xs sm:text-sm md:text-base break-words">{consultorio.address_operational || 'Ubicación no disponible'}</p>
 									</div>
 								</div>
 							)}
@@ -419,12 +419,12 @@ export default function ConsultorioDetailPage() {
 
 						{/* Especialistas */}
 						{consultorio.doctors && consultorio.doctors.length > 0 && (
-							<div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-								<h2 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
-									<User className="w-5 h-5 text-gray-700" />
-									Especialista{consultorio.doctors.length > 1 ? 's' : ''}
+							<div className="bg-white rounded-lg sm:rounded-xl shadow-sm border border-gray-200 p-4 sm:p-5 md:p-6">
+								<h2 className="text-base sm:text-lg md:text-xl font-bold text-gray-900 mb-3 sm:mb-4 flex items-center gap-1.5 sm:gap-2">
+									<User className="w-4 h-4 sm:w-4 sm:h-4 md:w-5 md:h-5 text-gray-700 flex-shrink-0" />
+									<span>Especialista{consultorio.doctors.length > 1 ? 's' : ''}</span>
 								</h2>
-								<div className="space-y-6">
+								<div className="space-y-4 sm:space-y-5 md:space-y-6">
 									{consultorio.doctors.map((doctor) => {
 										const services = doctor.medic_profile?.services || [];
 										const credentials = doctor.medic_profile?.credentials || {};
@@ -432,28 +432,28 @@ export default function ConsultorioDetailPage() {
 										const hasCredentials = credentials && Object.keys(credentials).length > 0;
 
 										return (
-											<div key={doctor.id} className="p-5 bg-gray-50 rounded-lg border border-gray-200 space-y-4">
+											<div key={doctor.id} className="p-3 sm:p-4 md:p-5 bg-gray-50 rounded-lg border border-gray-200 space-y-3 sm:space-y-4">
 												{/* Información básica del doctor */}
-												<div className="flex items-start gap-4">
+												<div className="flex items-start gap-2 sm:gap-3 md:gap-4">
 													{doctor.medic_profile?.photo_url && isValidImageUrl(doctor.medic_profile.photo_url) ? (
 														<img
 															src={doctor.medic_profile.photo_url}
 															alt={doctor.name || 'Especialista'}
-															className="w-20 h-20 rounded-lg object-cover border border-gray-200 flex-shrink-0"
+															className="w-16 h-16 sm:w-18 sm:h-18 md:w-20 md:h-20 rounded-lg object-cover border border-gray-200 flex-shrink-0"
 															onError={(e) => {
 																(e.target as HTMLImageElement).style.display = 'none';
 															}}
 														/>
 													) : (
-														<div className="w-20 h-20 rounded-lg bg-gray-200 flex items-center justify-center border border-gray-200 flex-shrink-0">
-															<User className="w-10 h-10 text-gray-400" />
+														<div className="w-16 h-16 sm:w-18 sm:h-18 md:w-20 md:h-20 rounded-lg bg-gray-200 flex items-center justify-center border border-gray-200 flex-shrink-0">
+															<User className="w-8 h-8 sm:w-9 sm:h-9 md:w-10 md:h-10 text-gray-400" />
 														</div>
 													)}
 													<div className="flex-1 min-w-0">
-														<p className="font-bold text-gray-900 text-lg mb-1 break-words">Dr. {doctor.name || 'Especialista'}</p>
-														<p className="text-gray-600 font-medium mb-2">{doctor.medic_profile?.private_specialty || doctor.medic_profile?.specialty || 'Especialista'}</p>
+														<p className="font-bold text-gray-900 text-sm sm:text-base md:text-lg mb-0.5 sm:mb-1 break-words">Dr. {doctor.name || 'Especialista'}</p>
+														<p className="text-gray-600 font-medium mb-1 sm:mb-2 text-xs sm:text-sm md:text-base truncate">{doctor.medic_profile?.private_specialty || doctor.medic_profile?.specialty || 'Especialista'}</p>
 														{doctor.email && (
-															<a href={`mailto:${doctor.email}`} className="text-sm text-blue-600 hover:text-blue-700 font-medium break-all">
+															<a href={`mailto:${doctor.email}`} className="text-xs sm:text-sm text-blue-600 hover:text-blue-700 font-medium break-all">
 																{doctor.email}
 															</a>
 														)}
@@ -462,20 +462,20 @@ export default function ConsultorioDetailPage() {
 
 												{/* Servicios ofrecidos */}
 												{hasServices && (
-													<div className="pt-4 border-t border-gray-200">
-														<p className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
-															<Stethoscope className="w-4 h-4 text-gray-600" />
-															Servicios Ofrecidos
+													<div className="pt-3 sm:pt-4 border-t border-gray-200">
+														<p className="font-semibold text-gray-900 mb-2 sm:mb-3 flex items-center gap-1.5 sm:gap-2 text-xs sm:text-sm md:text-base">
+															<Stethoscope className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-gray-600 flex-shrink-0" />
+															<span>Servicios Ofrecidos</span>
 														</p>
-														<div className="flex flex-wrap gap-2">
+														<div className="flex flex-wrap gap-1.5 sm:gap-2">
 															{services.map((service: any, idx: number) => {
 																const serviceName = typeof service === 'string' ? service : service?.name || service?.title || '';
 																const servicePrice = typeof service === 'object' && service?.price ? service.price : null;
 
 																return (
-																	<div key={idx} className="px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm">
+																	<div key={idx} className="px-2 sm:px-2.5 md:px-3 py-1.5 sm:py-2 bg-white border border-gray-200 rounded-lg text-xs sm:text-sm">
 																		<span className="font-medium text-gray-700">{serviceName}</span>
-																		{servicePrice && <span className="text-gray-500 ml-2">- ${servicePrice}</span>}
+																		{servicePrice && <span className="text-gray-500 ml-1 sm:ml-2">- ${servicePrice}</span>}
 																	</div>
 																);
 															})}
@@ -485,12 +485,12 @@ export default function ConsultorioDetailPage() {
 
 												{/* Credenciales */}
 												{hasCredentials && (
-													<div className="pt-4 border-t border-gray-200">
-														<p className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
-															<Award className="w-4 h-4 text-gray-600" />
-															Credenciales y Certificaciones
+													<div className="pt-3 sm:pt-4 border-t border-gray-200">
+														<p className="font-semibold text-gray-900 mb-2 sm:mb-3 flex items-center gap-1.5 sm:gap-2 text-xs sm:text-sm md:text-base">
+															<Award className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-gray-600 flex-shrink-0" />
+															<span>Credenciales y Certificaciones</span>
 														</p>
-														<div className="space-y-2">
+														<div className="space-y-1.5 sm:space-y-2">
 															{Object.entries(credentials).map(([key, value]: [string, any]) => {
 																if (!value || (typeof value === 'string' && value.trim() === '')) return null;
 
@@ -500,11 +500,11 @@ export default function ConsultorioDetailPage() {
 																	.join(' ');
 
 																return (
-																	<div key={key} className="flex items-start gap-2 text-sm">
-																		<CheckCircle2 className="w-4 h-4 text-green-600 flex-shrink-0 mt-0.5" />
+																	<div key={key} className="flex items-start gap-1.5 sm:gap-2 text-xs sm:text-sm">
+																		<CheckCircle2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-green-600 flex-shrink-0 mt-0.5" />
 																		<div className="flex-1 min-w-0">
 																			<span className="font-medium text-gray-700">{label}:</span>
-																			<span className="text-gray-600 ml-2 break-words">{typeof value === 'string' ? value : JSON.stringify(value)}</span>
+																			<span className="text-gray-600 ml-1 sm:ml-2 break-words">{typeof value === 'string' ? value : JSON.stringify(value)}</span>
 																		</div>
 																	</div>
 																);
@@ -521,29 +521,29 @@ export default function ConsultorioDetailPage() {
 					</div>
 
 					{/* Sidebar */}
-					<div className="space-y-6">
+					<div className="space-y-4 sm:space-y-5 md:space-y-6">
 						{/* Información de Seguridad */}
-						<div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-							<h2 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
-								<Shield className="w-5 h-5 text-gray-700" />
-								Tu Seguridad es Nuestra Prioridad
+						<div className="bg-white rounded-lg sm:rounded-xl shadow-sm border border-gray-200 p-4 sm:p-5 md:p-6">
+							<h2 className="text-base sm:text-lg md:text-xl font-bold text-gray-900 mb-3 sm:mb-4 flex items-center gap-1.5 sm:gap-2">
+								<Shield className="w-4 h-4 sm:w-4 sm:h-4 md:w-5 md:h-5 text-gray-700 flex-shrink-0" />
+								<span className="truncate">Tu Seguridad es Nuestra Prioridad</span>
 							</h2>
-							<div className="space-y-3">
-								<div className="flex items-start gap-3">
-									<CheckCircle2 className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
-									<p className="text-gray-700 text-sm leading-relaxed">Consultorio verificado en SyncWave Salud</p>
+							<div className="space-y-2 sm:space-y-3">
+								<div className="flex items-start gap-2 sm:gap-3">
+									<CheckCircle2 className="w-4 h-4 sm:w-4 sm:h-4 md:w-5 md:h-5 text-green-600 flex-shrink-0 mt-0.5" />
+									<p className="text-gray-700 text-xs sm:text-sm leading-relaxed">Consultorio verificado en SyncWave Salud</p>
 								</div>
-								<div className="flex items-start gap-3">
-									<CheckCircle2 className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
-									<p className="text-gray-700 text-sm leading-relaxed">Especialistas certificados y licenciados</p>
+								<div className="flex items-start gap-2 sm:gap-3">
+									<CheckCircle2 className="w-4 h-4 sm:w-4 sm:h-4 md:w-5 md:h-5 text-green-600 flex-shrink-0 mt-0.5" />
+									<p className="text-gray-700 text-xs sm:text-sm leading-relaxed">Especialistas certificados y licenciados</p>
 								</div>
-								<div className="flex items-start gap-3">
-									<CheckCircle2 className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
-									<p className="text-gray-700 text-sm leading-relaxed">Confidencialidad garantizada</p>
+								<div className="flex items-start gap-2 sm:gap-3">
+									<CheckCircle2 className="w-4 h-4 sm:w-4 sm:h-4 md:w-5 md:h-5 text-green-600 flex-shrink-0 mt-0.5" />
+									<p className="text-gray-700 text-xs sm:text-sm leading-relaxed">Confidencialidad garantizada</p>
 								</div>
-								<div className="flex items-start gap-3">
-									<CheckCircle2 className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
-									<p className="text-gray-700 text-sm leading-relaxed">Historial médico seguro y privado</p>
+								<div className="flex items-start gap-2 sm:gap-3">
+									<CheckCircle2 className="w-4 h-4 sm:w-4 sm:h-4 md:w-5 md:h-5 text-green-600 flex-shrink-0 mt-0.5" />
+									<p className="text-gray-700 text-xs sm:text-sm leading-relaxed">Historial médico seguro y privado</p>
 								</div>
 							</div>
 						</div>

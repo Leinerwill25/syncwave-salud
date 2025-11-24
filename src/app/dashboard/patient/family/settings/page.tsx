@@ -204,11 +204,11 @@ export default function FamilySettingsPage() {
 
 	if (loading) {
 		return (
-			<div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-pink-50 p-6">
+			<div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-pink-50 p-3 sm:p-4 md:p-6">
 				<div className="max-w-7xl mx-auto">
-					<div className="animate-pulse space-y-6">
-						<div className="h-8 bg-gray-200 rounded w-1/3"></div>
-						<div className="h-64 bg-gray-200 rounded"></div>
+					<div className="animate-pulse space-y-3 sm:space-y-4 md:space-y-6">
+						<div className="h-6 sm:h-7 md:h-8 bg-gray-200 rounded w-1/2 sm:w-1/3"></div>
+						<div className="h-48 sm:h-56 md:h-64 bg-gray-200 rounded"></div>
 					</div>
 				</div>
 			</div>
@@ -216,115 +216,115 @@ export default function FamilySettingsPage() {
 	}
 
 	return (
-		<div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-pink-50 p-6">
-			<div className="max-w-7xl mx-auto space-y-6">
+		<div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-pink-50 p-3 sm:p-4 md:p-6">
+			<div className="max-w-7xl mx-auto space-y-3 sm:space-y-4 md:space-y-6">
 				{/* Header */}
-				<div className="bg-white rounded-2xl shadow-lg p-6">
-					<h1 className="text-3xl font-bold text-gray-900 mb-2 flex items-center gap-3">
-						<Settings className="w-8 h-8 text-purple-600" />
-						Configuración del Grupo Familiar
+				<div className="bg-white rounded-xl sm:rounded-2xl shadow-lg p-4 sm:p-5 md:p-6">
+					<h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-900 mb-1 sm:mb-2 flex items-center gap-2 sm:gap-3">
+						<Settings className="w-5 h-5 sm:w-6 sm:h-6 md:w-8 md:h-8 text-purple-600 flex-shrink-0" />
+						<span className="truncate">Configuración del Grupo Familiar</span>
 					</h1>
-					<p className="text-gray-600">Gestiona tu grupo familiar</p>
+					<p className="text-xs sm:text-sm md:text-base text-gray-600">Gestiona tu grupo familiar</p>
 				</div>
 
 				{/* Mensajes */}
 				{error && (
-					<div className="bg-red-50 border border-red-200 rounded-xl p-4">
-						<span className="text-red-700">{error}</span>
+					<div className="bg-red-50 border border-red-200 rounded-lg sm:rounded-xl p-3 sm:p-4">
+						<span className="text-red-700 text-xs sm:text-sm md:text-base break-words">{error}</span>
 					</div>
 				)}
 				{success && (
-					<div className="bg-green-50 border border-green-200 rounded-xl p-4">
-						<span className="text-green-700">{success}</span>
+					<div className="bg-green-50 border border-green-200 rounded-lg sm:rounded-xl p-3 sm:p-4">
+						<span className="text-green-700 text-xs sm:text-sm md:text-base break-words">{success}</span>
 					</div>
 				)}
 
 				{/* Nombre del grupo */}
-				<div className="bg-white rounded-2xl shadow-lg p-6">
-					<h2 className="text-xl font-semibold text-gray-900 mb-4">Nombre del Grupo</h2>
-					<div className="flex items-center gap-4">
+				<div className="bg-white rounded-xl sm:rounded-2xl shadow-lg p-4 sm:p-5 md:p-6">
+					<h2 className="text-base sm:text-lg md:text-xl font-semibold text-gray-900 mb-3 sm:mb-4">Nombre del Grupo</h2>
+					<div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3 md:gap-4">
 						<input
 							type="text"
 							value={groupName}
 							onChange={(e) => setGroupName(e.target.value)}
-							className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+							className="flex-1 px-3 sm:px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-sm sm:text-base"
 						/>
 						<button
 							onClick={handleSaveGroupName}
 							disabled={saving}
-							className="px-6 py-2 bg-purple-600 text-white rounded-lg font-semibold hover:bg-purple-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+							className="w-full sm:w-auto px-4 sm:px-5 md:px-6 py-2 bg-purple-600 text-white rounded-lg font-semibold hover:bg-purple-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-1.5 sm:gap-2 text-xs sm:text-sm md:text-base"
 						>
-							<Save className="w-5 h-5" />
-							{saving ? 'Guardando...' : 'Guardar'}
+							<Save className="w-4 h-4 sm:w-5 sm:h-5 flex-shrink-0" />
+							<span>{saving ? 'Guardando...' : 'Guardar'}</span>
 						</button>
 					</div>
 				</div>
 
 				{/* Agregar miembro existente */}
-				<div className="bg-white rounded-2xl shadow-lg p-6">
-					<h2 className="text-xl font-semibold text-gray-900 mb-4 flex items-center gap-2">
-						<Plus className="w-5 h-5 text-purple-600" />
-						Agregar Miembro Existente
+				<div className="bg-white rounded-xl sm:rounded-2xl shadow-lg p-4 sm:p-5 md:p-6">
+					<h2 className="text-base sm:text-lg md:text-xl font-semibold text-gray-900 mb-3 sm:mb-4 flex items-center gap-1.5 sm:gap-2">
+						<Plus className="w-4 h-4 sm:w-5 sm:h-5 text-purple-600 flex-shrink-0" />
+						<span>Agregar Miembro Existente</span>
 					</h2>
-					<p className="text-sm text-gray-600 mb-4">
+					<p className="text-xs sm:text-sm text-gray-600 mb-3 sm:mb-4">
 						Si el paciente ya está registrado en el sistema, ingresa su ID para agregarlo al grupo.
 					</p>
-					<div className="flex items-center gap-4">
+					<div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3 md:gap-4">
 						<input
 							type="text"
 							placeholder="ID del paciente a agregar"
 							value={newMemberId}
 							onChange={(e) => setNewMemberId(e.target.value)}
-							className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+							className="flex-1 px-3 sm:px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-sm sm:text-base"
 						/>
 						<button
 							onClick={handleAddMember}
 							disabled={members.length >= (group?.maxMembers || 5) - 1}
-							className="px-6 py-2 bg-green-600 text-white rounded-lg font-semibold hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+							className="w-full sm:w-auto px-4 sm:px-5 md:px-6 py-2 bg-green-600 text-white rounded-lg font-semibold hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-xs sm:text-sm md:text-base"
 						>
 							Agregar
 						</button>
 					</div>
 					{members.length >= (group?.maxMembers || 5) - 1 && (
-						<p className="text-sm text-gray-500 mt-2">
+						<p className="text-xs sm:text-sm text-gray-500 mt-1.5 sm:mt-2">
 							Se ha alcanzado el límite de miembros ({group?.maxMembers || 5})
 						</p>
 					)}
 				</div>
 
 				{/* Registrar nuevo miembro */}
-				<div className="bg-white rounded-2xl shadow-lg p-6">
-					<div className="flex items-center justify-between mb-4">
-						<h2 className="text-xl font-semibold text-gray-900 flex items-center gap-2">
-							<UserPlus className="w-5 h-5 text-indigo-600" />
-							Registrar Nuevo Miembro
+				<div className="bg-white rounded-xl sm:rounded-2xl shadow-lg p-4 sm:p-5 md:p-6">
+					<div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-3 sm:mb-4 gap-3 sm:gap-4">
+						<h2 className="text-base sm:text-lg md:text-xl font-semibold text-gray-900 flex items-center gap-1.5 sm:gap-2">
+							<UserPlus className="w-4 h-4 sm:w-5 sm:h-5 text-indigo-600 flex-shrink-0" />
+							<span>Registrar Nuevo Miembro</span>
 						</h2>
 						<button
 							onClick={() => {
 								setShowRegisterForm(!showRegisterForm);
 								setError(null);
 							}}
-							className="px-4 py-2 bg-indigo-600 text-white rounded-lg font-semibold hover:bg-indigo-700 transition-colors flex items-center gap-2"
+							className="w-full sm:w-auto px-3 sm:px-4 py-2 bg-indigo-600 text-white rounded-lg font-semibold hover:bg-indigo-700 transition-colors flex items-center justify-center gap-1.5 sm:gap-2 text-xs sm:text-sm md:text-base"
 						>
-							{showRegisterForm ? <X className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
-							{showRegisterForm ? 'Cerrar' : 'Nuevo Registro'}
+							{showRegisterForm ? <X className="w-3.5 h-3.5 sm:w-4 sm:h-4 flex-shrink-0" /> : <Plus className="w-3.5 h-3.5 sm:w-4 sm:h-4 flex-shrink-0" />}
+							<span>{showRegisterForm ? 'Cerrar' : 'Nuevo Registro'}</span>
 						</button>
 					</div>
-					<p className="text-sm text-gray-600 mb-4">
+					<p className="text-xs sm:text-sm text-gray-600 mb-3 sm:mb-4">
 						Registra un nuevo paciente y agrégalo automáticamente a tu grupo familiar.
 					</p>
 
 					{showRegisterForm && (
-						<form onSubmit={handleRegisterMember} className="space-y-6 mt-6">
+						<form onSubmit={handleRegisterMember} className="space-y-4 sm:space-y-5 md:space-y-6 mt-4 sm:mt-5 md:mt-6">
 							{/* Información Personal */}
-							<div className="border-t border-gray-200 pt-6">
-								<h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-									<UserPlus className="w-5 h-5 text-indigo-600" />
-									Información Personal
+							<div className="border-t border-gray-200 pt-4 sm:pt-5 md:pt-6">
+								<h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-3 sm:mb-4 flex items-center gap-1.5 sm:gap-2">
+									<UserPlus className="w-4 h-4 sm:w-5 sm:h-5 text-indigo-600 flex-shrink-0" />
+									<span>Información Personal</span>
 								</h3>
-								<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+								<div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
 									<div>
-										<label className="block text-sm font-medium text-gray-700 mb-2">
+										<label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1.5 sm:mb-2">
 											Nombre <span className="text-red-500">*</span>
 										</label>
 										<input
@@ -332,12 +332,12 @@ export default function FamilySettingsPage() {
 											required
 											value={formData.firstName}
 											onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
-											className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+											className="w-full px-3 sm:px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm sm:text-base"
 											placeholder="Nombre"
 										/>
 									</div>
 									<div>
-										<label className="block text-sm font-medium text-gray-700 mb-2">
+										<label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1.5 sm:mb-2">
 											Apellido <span className="text-red-500">*</span>
 										</label>
 										<input
@@ -345,42 +345,42 @@ export default function FamilySettingsPage() {
 											required
 											value={formData.lastName}
 											onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
-											className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+											className="w-full px-3 sm:px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm sm:text-base"
 											placeholder="Apellido"
 										/>
 									</div>
 									<div>
-										<label className="block text-sm font-medium text-gray-700 mb-2">
+										<label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1.5 sm:mb-2">
 											Identificador / Cédula
 										</label>
 										<input
 											type="text"
 											value={formData.identifier}
 											onChange={(e) => setFormData({ ...formData, identifier: e.target.value })}
-											className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+											className="w-full px-3 sm:px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm sm:text-base"
 											placeholder="V-12345678"
 										/>
 									</div>
 									<div>
-										<label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
-											<Calendar className="w-4 h-4" />
-											Fecha de Nacimiento
+										<label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1.5 sm:mb-2 flex items-center gap-1.5 sm:gap-2">
+											<Calendar className="w-3.5 h-3.5 sm:w-4 sm:h-4 flex-shrink-0" />
+											<span>Fecha de Nacimiento</span>
 										</label>
 										<input
 											type="date"
 											value={formData.dob}
 											onChange={(e) => setFormData({ ...formData, dob: e.target.value })}
-											className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+											className="w-full px-3 sm:px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm sm:text-base"
 										/>
 									</div>
 									<div>
-										<label className="block text-sm font-medium text-gray-700 mb-2">
+										<label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1.5 sm:mb-2">
 											Género
 										</label>
 										<select
 											value={formData.gender}
 											onChange={(e) => setFormData({ ...formData, gender: e.target.value as 'M' | 'F' | 'O' | '' })}
-											className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+											className="w-full px-3 sm:px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm sm:text-base"
 										>
 											<option value="">Seleccionar</option>
 											<option value="M">Masculino</option>
@@ -389,48 +389,48 @@ export default function FamilySettingsPage() {
 										</select>
 									</div>
 									<div>
-										<label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
-											<Phone className="w-4 h-4" />
-											Teléfono
+										<label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1.5 sm:mb-2 flex items-center gap-1.5 sm:gap-2">
+											<Phone className="w-3.5 h-3.5 sm:w-4 sm:h-4 flex-shrink-0" />
+											<span>Teléfono</span>
 										</label>
 										<input
 											type="tel"
 											value={formData.phone}
 											onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-											className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+											className="w-full px-3 sm:px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm sm:text-base"
 											placeholder="+58 412 1234567"
 										/>
 									</div>
 								</div>
-								<div className="mt-4">
-									<label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
-										<MapPin className="w-4 h-4" />
-										Dirección
+								<div className="mt-3 sm:mt-4">
+									<label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1.5 sm:mb-2 flex items-center gap-1.5 sm:gap-2">
+										<MapPin className="w-3.5 h-3.5 sm:w-4 sm:h-4 flex-shrink-0" />
+										<span>Dirección</span>
 									</label>
 									<textarea
 										value={formData.address}
 										onChange={(e) => setFormData({ ...formData, address: e.target.value })}
 										rows={3}
-										className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+										className="w-full px-3 sm:px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm sm:text-base resize-none"
 										placeholder="Dirección completa"
 									/>
 								</div>
 							</div>
 
 							{/* Rol en el Grupo */}
-							<div className="border-t border-gray-200 pt-6">
-								<h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-									<Users className="w-5 h-5 text-indigo-600" />
-									Rol en el Grupo
+							<div className="border-t border-gray-200 pt-4 sm:pt-5 md:pt-6">
+								<h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-3 sm:mb-4 flex items-center gap-1.5 sm:gap-2">
+									<Users className="w-4 h-4 sm:w-5 sm:h-5 text-indigo-600 flex-shrink-0" />
+									<span>Rol en el Grupo</span>
 								</h3>
 								<div>
-									<label className="block text-sm font-medium text-gray-700 mb-2">
+									<label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1.5 sm:mb-2">
 										Rol
 									</label>
 									<select
 										value={formData.roleInGroup}
 										onChange={(e) => setFormData({ ...formData, roleInGroup: e.target.value })}
-										className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+										className="w-full px-3 sm:px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm sm:text-base"
 									>
 										<option value="MIEMBRO">Miembro</option>
 										<option value="HIJO">Hijo/Hija</option>
@@ -443,16 +443,16 @@ export default function FamilySettingsPage() {
 
 							{/* Información */}
 							{members.length >= (group?.maxMembers || 5) - 1 && (
-								<div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 flex items-start gap-3">
-									<AlertCircle className="w-5 h-5 text-yellow-600 mt-0.5" />
-									<p className="text-sm text-yellow-800">
+								<div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 sm:p-4 flex items-start gap-2 sm:gap-3">
+									<AlertCircle className="w-4 h-4 sm:w-5 sm:h-5 text-yellow-600 mt-0.5 flex-shrink-0" />
+									<p className="text-xs sm:text-sm text-yellow-800 break-words">
 										Se ha alcanzado el límite de miembros ({group?.maxMembers || 5}). No puedes agregar más miembros al grupo.
 									</p>
 								</div>
 							)}
 
 							{/* Botones */}
-							<div className="flex items-center justify-end gap-4 pt-4 border-t border-gray-200">
+							<div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-end gap-2 sm:gap-3 md:gap-4 pt-3 sm:pt-4 border-t border-gray-200">
 								<button
 									type="button"
 									onClick={() => {
@@ -468,24 +468,24 @@ export default function FamilySettingsPage() {
 											roleInGroup: 'MIEMBRO',
 										});
 									}}
-									className="px-6 py-2 border border-gray-300 rounded-lg font-semibold text-gray-700 hover:bg-gray-50 transition-colors"
+									className="w-full sm:w-auto px-4 sm:px-5 md:px-6 py-2 border border-gray-300 rounded-lg font-semibold text-gray-700 hover:bg-gray-50 transition-colors text-xs sm:text-sm md:text-base"
 								>
 									Cancelar
 								</button>
 								<button
 									type="submit"
 									disabled={registering || members.length >= (group?.maxMembers || 5) - 1}
-									className="px-6 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-lg font-semibold hover:from-indigo-700 hover:to-purple-700 transition-all shadow-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+									className="w-full sm:w-auto px-4 sm:px-5 md:px-6 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-lg font-semibold hover:from-indigo-700 hover:to-purple-700 transition-all shadow-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-1.5 sm:gap-2 text-xs sm:text-sm md:text-base"
 								>
 									{registering ? (
 										<>
-											<div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-											Registrando...
+											<div className="animate-spin rounded-full h-3.5 w-3.5 sm:h-4 sm:w-4 border-b-2 border-white"></div>
+											<span>Registrando...</span>
 										</>
 									) : (
 										<>
-											<UserPlus className="w-5 h-5" />
-											Registrar y Agregar al Grupo
+											<UserPlus className="w-4 h-4 sm:w-5 sm:h-5 flex-shrink-0" />
+											<span>Registrar y Agregar al Grupo</span>
 										</>
 									)}
 								</button>
@@ -495,30 +495,30 @@ export default function FamilySettingsPage() {
 				</div>
 
 				{/* Lista de miembros */}
-				<div className="bg-white rounded-2xl shadow-lg p-6">
-					<h2 className="text-xl font-semibold text-gray-900 mb-4 flex items-center gap-2">
-						<Users className="w-5 h-5 text-purple-600" />
-						Miembros del Grupo ({members.length + 1})
+				<div className="bg-white rounded-xl sm:rounded-2xl shadow-lg p-4 sm:p-5 md:p-6">
+					<h2 className="text-base sm:text-lg md:text-xl font-semibold text-gray-900 mb-3 sm:mb-4 flex items-center gap-1.5 sm:gap-2">
+						<Users className="w-4 h-4 sm:w-5 sm:h-5 text-purple-600 flex-shrink-0" />
+						<span>Miembros del Grupo ({members.length + 1})</span>
 					</h2>
-					<div className="space-y-3">
+					<div className="space-y-2 sm:space-y-3">
 						{members.map((member) => (
-							<div key={member.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-								<div className="flex items-center gap-3">
-									<div className="p-2 bg-indigo-100 rounded-lg">
-										<Users className="w-5 h-5 text-indigo-600" />
+							<div key={member.id} className="flex items-center justify-between p-3 sm:p-4 bg-gray-50 rounded-lg gap-2">
+								<div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
+									<div className="p-1.5 sm:p-2 bg-indigo-100 rounded-lg flex-shrink-0">
+										<Users className="w-4 h-4 sm:w-5 sm:h-5 text-indigo-600" />
 									</div>
-									<div>
-										<p className="font-semibold text-gray-900">
+									<div className="min-w-0 flex-1">
+										<p className="font-semibold text-gray-900 text-sm sm:text-base truncate">
 											{member.patient?.firstName} {member.patient?.lastName}
 										</p>
-										<p className="text-sm text-gray-600">{member.roleInGroup || 'Miembro'}</p>
+										<p className="text-xs sm:text-sm text-gray-600 truncate">{member.roleInGroup || 'Miembro'}</p>
 									</div>
 								</div>
 								<button
 									onClick={() => handleRemoveMember(member.id)}
-									className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+									className="p-1.5 sm:p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors flex-shrink-0"
 								>
-									<X className="w-5 h-5" />
+									<X className="w-4 h-4 sm:w-5 sm:h-5" />
 								</button>
 							</div>
 						))}

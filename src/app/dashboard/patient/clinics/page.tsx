@@ -61,22 +61,22 @@ export default function ClinicsPage() {
 	};
 
 	return (
-		<div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 p-6">
-			<div className="max-w-7xl mx-auto space-y-6">
+		<div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 p-3 sm:p-4 md:p-6">
+			<div className="max-w-7xl mx-auto space-y-3 sm:space-y-4 md:space-y-6">
 				{/* Header */}
-				<div className="bg-white rounded-2xl shadow-lg p-6">
-					<h1 className="text-3xl font-bold text-gray-900 mb-2 flex items-center gap-3">
-						<Building2 className="w-8 h-8 text-indigo-600" />
-						Clínicas
+				<div className="bg-white rounded-xl sm:rounded-2xl shadow-lg p-4 sm:p-5 md:p-6">
+					<h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-900 mb-1 sm:mb-2 flex items-center gap-2 sm:gap-3">
+						<Building2 className="w-5 h-5 sm:w-6 sm:h-6 md:w-8 md:h-8 text-indigo-600 flex-shrink-0" />
+						<span>Clínicas</span>
 					</h1>
-					<p className="text-gray-600">Encuentra la clínica perfecta para tus necesidades</p>
+					<p className="text-xs sm:text-sm md:text-base text-gray-600">Encuentra la clínica perfecta para tus necesidades</p>
 				</div>
 
 				{/* Filtros */}
-				<div className="bg-white rounded-2xl shadow-lg p-6">
-					<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+				<div className="bg-white rounded-xl sm:rounded-2xl shadow-lg p-4 sm:p-5 md:p-6">
+					<div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
 						<div className="relative">
-							<Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+							<Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 sm:w-5 sm:h-5 text-gray-400" />
 							<input
 								type="text"
 								placeholder="Buscar clínicas..."
@@ -85,7 +85,7 @@ export default function ClinicsPage() {
 									setSearch(e.target.value);
 									setPage(1);
 								}}
-								className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+								className="w-full pl-9 sm:pl-10 pr-3 sm:pr-4 py-2 sm:py-2.5 md:py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm sm:text-base"
 							/>
 						</div>
 						<input
@@ -96,29 +96,29 @@ export default function ClinicsPage() {
 								setSpecialty(e.target.value);
 								setPage(1);
 							}}
-							className="px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+							className="px-3 sm:px-4 py-2 sm:py-2.5 md:py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm sm:text-base"
 						/>
 					</div>
 				</div>
 
 				{/* Lista de clínicas */}
 				{loading ? (
-					<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+					<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 md:gap-6">
 						{Array.from({ length: 6 }).map((_, i) => (
-							<div key={i} className="bg-white rounded-xl shadow-lg p-6 animate-pulse">
-								<div className="h-6 bg-gray-200 rounded w-3/4 mb-4"></div>
-								<div className="h-4 bg-gray-200 rounded w-full mb-2"></div>
-								<div className="h-4 bg-gray-200 rounded w-2/3"></div>
+							<div key={i} className="bg-white rounded-lg sm:rounded-xl shadow-lg p-4 sm:p-5 md:p-6 animate-pulse">
+								<div className="h-5 sm:h-6 bg-gray-200 rounded w-3/4 mb-3 sm:mb-4"></div>
+								<div className="h-3 sm:h-4 bg-gray-200 rounded w-full mb-1.5 sm:mb-2"></div>
+								<div className="h-3 sm:h-4 bg-gray-200 rounded w-2/3"></div>
 							</div>
 						))}
 					</div>
 				) : clinics.length === 0 ? (
-					<div className="bg-white rounded-2xl shadow-lg p-12 text-center">
-						<Building2 className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-						<p className="text-gray-600 text-lg">No se encontraron clínicas</p>
+					<div className="bg-white rounded-xl sm:rounded-2xl shadow-lg p-8 sm:p-10 md:p-12 text-center">
+						<Building2 className="w-12 h-12 sm:w-14 sm:h-14 md:w-16 md:h-16 text-gray-400 mx-auto mb-3 sm:mb-4" />
+						<p className="text-gray-600 text-sm sm:text-base md:text-lg">No se encontraron clínicas</p>
 					</div>
 				) : (
-					<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+					<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 md:gap-6">
 						{clinics.map((clinic) => {
 							const specialties = Array.isArray(clinic.specialties)
 								? clinic.specialties
@@ -130,55 +130,55 @@ export default function ClinicsPage() {
 								<Link
 									key={clinic.id}
 									href={`/dashboard/patient/clinics/${clinic.id}`}
-									className="bg-white rounded-xl shadow-lg p-6 hover:shadow-xl transition-shadow group"
+									className="bg-white rounded-lg sm:rounded-xl shadow-lg p-4 sm:p-5 md:p-6 hover:shadow-xl transition-shadow group"
 								>
-									<div className="flex items-start justify-between mb-4">
-										<div className="p-3 bg-indigo-100 rounded-lg group-hover:bg-indigo-200 transition-colors">
-											<Building2 className="w-6 h-6 text-indigo-600" />
+									<div className="flex items-start justify-between mb-3 sm:mb-4 gap-2">
+										<div className="p-2 sm:p-2.5 md:p-3 bg-indigo-100 rounded-lg group-hover:bg-indigo-200 transition-colors flex-shrink-0">
+											<Building2 className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6 text-indigo-600" />
 										</div>
 										{specialties.length > 0 && (
-											<span className="px-2 py-1 bg-indigo-50 text-indigo-600 text-xs font-semibold rounded">
+											<span className="px-1.5 sm:px-2 py-0.5 sm:py-1 bg-indigo-50 text-indigo-600 text-[9px] sm:text-[10px] md:text-xs font-semibold rounded flex-shrink-0">
 												{specialties.length} especialidades
 											</span>
 										)}
 									</div>
-									<h3 className="text-lg font-semibold text-gray-900 mb-2 group-hover:text-indigo-600 transition-colors">
+									<h3 className="text-sm sm:text-base md:text-lg font-semibold text-gray-900 mb-1.5 sm:mb-2 group-hover:text-indigo-600 transition-colors truncate">
 										{clinic.trade_name || clinic.legal_name}
 									</h3>
 									{clinic.address_operational && (
-										<div className="flex items-center gap-2 text-sm text-gray-600 mb-2">
-											<MapPin className="w-4 h-4" />
-											<span className="line-clamp-1">{clinic.address_operational}</span>
+										<div className="flex items-center gap-1.5 sm:gap-2 text-xs sm:text-sm text-gray-600 mb-1.5 sm:mb-2">
+											<MapPin className="w-3.5 h-3.5 sm:w-4 sm:h-4 flex-shrink-0" />
+											<span className="line-clamp-1 truncate">{clinic.address_operational}</span>
 										</div>
 									)}
 									{clinic.phone_mobile && (
-										<div className="flex items-center gap-2 text-sm text-gray-600 mb-2">
-											<Phone className="w-4 h-4" />
-											<span>{clinic.phone_mobile}</span>
+										<div className="flex items-center gap-1.5 sm:gap-2 text-xs sm:text-sm text-gray-600 mb-1.5 sm:mb-2">
+											<Phone className="w-3.5 h-3.5 sm:w-4 sm:h-4 flex-shrink-0" />
+											<span className="truncate">{clinic.phone_mobile}</span>
 										</div>
 									)}
 									{specialties.length > 0 && (
-										<div className="mt-4 flex flex-wrap gap-2">
+										<div className="mt-3 sm:mt-4 flex flex-wrap gap-1.5 sm:gap-2">
 											{specialties.slice(0, 3).map((spec: any, idx: number) => {
 												const specName = typeof spec === 'string' ? spec : spec?.name || spec?.specialty || '';
 												return (
 													<span
 														key={idx}
-														className="px-2 py-1 bg-gray-100 text-gray-700 text-xs rounded"
+														className="px-1.5 sm:px-2 py-0.5 sm:py-1 bg-gray-100 text-gray-700 text-[9px] sm:text-[10px] md:text-xs rounded"
 													>
 														{specName}
 													</span>
 												);
 											})}
 											{specialties.length > 3 && (
-												<span className="px-2 py-1 bg-gray-100 text-gray-700 text-xs rounded">
+												<span className="px-1.5 sm:px-2 py-0.5 sm:py-1 bg-gray-100 text-gray-700 text-[9px] sm:text-[10px] md:text-xs rounded">
 													+{specialties.length - 3}
 												</span>
 											)}
 										</div>
 									)}
-									<div className="mt-4 pt-4 border-t border-gray-200">
-										<span className="text-indigo-600 font-medium text-sm group-hover:underline">
+									<div className="mt-3 sm:mt-4 pt-3 sm:pt-4 border-t border-gray-200">
+										<span className="text-indigo-600 font-medium text-xs sm:text-sm group-hover:underline">
 											Ver detalles →
 										</span>
 									</div>
@@ -190,21 +190,21 @@ export default function ClinicsPage() {
 
 				{/* Paginación */}
 				{total > 20 && (
-					<div className="flex items-center justify-center gap-2">
+					<div className="flex items-center justify-center gap-2 flex-wrap">
 						<button
 							onClick={() => setPage(p => Math.max(1, p - 1))}
 							disabled={page === 1}
-							className="px-4 py-2 border border-gray-300 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+							className="px-3 sm:px-4 py-1.5 sm:py-2 border border-gray-300 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 text-xs sm:text-sm"
 						>
 							Anterior
 						</button>
-						<span className="px-4 py-2 text-gray-700">
+						<span className="px-3 sm:px-4 py-1.5 sm:py-2 text-gray-700 text-xs sm:text-sm">
 							Página {page} de {Math.ceil(total / 20)}
 						</span>
 						<button
 							onClick={() => setPage(p => p + 1)}
 							disabled={page >= Math.ceil(total / 20)}
-							className="px-4 py-2 border border-gray-300 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+							className="px-3 sm:px-4 py-1.5 sm:py-2 border border-gray-300 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 text-xs sm:text-sm"
 						>
 							Siguiente
 						</button>

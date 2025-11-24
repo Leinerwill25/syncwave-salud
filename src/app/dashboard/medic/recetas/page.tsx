@@ -171,23 +171,23 @@ export default function PrescriptionsPage() {
 	}
 
 	return (
-		<div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-emerald-50 p-10">
+		<div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-emerald-50 p-4 sm:p-6 md:p-8 lg:p-10">
 			{/* Header */}
-			<motion.div initial={{ opacity: 0, y: -15 }} animate={{ opacity: 1, y: 0 }} className="flex items-center justify-between mb-10">
+			<motion.div initial={{ opacity: 0, y: -15 }} animate={{ opacity: 1, y: 0 }} className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6 sm:mb-8 md:mb-10">
 				<div>
-					<h1 className="text-3xl font-bold text-gray-900 tracking-tight">Recetas Médicas</h1>
-					<p className="text-gray-600 text-sm">Administra, crea y visualiza las recetas de tus pacientes.</p>
+					<h1 className="text-2xl sm:text-3xl font-bold text-gray-900 tracking-tight">Recetas Médicas</h1>
+					<p className="text-gray-600 text-xs sm:text-sm mt-1">Administra, crea y visualiza las recetas de tus pacientes.</p>
 				</div>
 				<div className="hidden md:flex items-center gap-2 text-indigo-600">
-					<ClipboardList className="w-6 h-6" />
+					<ClipboardList className="w-5 h-5 sm:w-6 sm:h-6" />
 				</div>
 			</motion.div>
 
 			{/* Layout */}
-			<div className="grid grid-cols-1 lg:grid-cols-1 gap-10">
+			<div className="grid grid-cols-1 lg:grid-cols-1 gap-6 sm:gap-8 md:gap-10">
 				{/* Lista de recetas */}
 				<div className="lg:col-span-2">
-					<motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="bg-white/90 backdrop-blur-md rounded-2xl shadow-lg border border-gray-100 p-6">
+					<motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="bg-white/90 backdrop-blur-md rounded-xl sm:rounded-2xl shadow-lg border border-gray-100 p-4 sm:p-6">
 						<div className="flex items-center gap-2 mb-6">
 							<FileText className="w-5 h-5 text-indigo-600" />
 							<h2 className="text-xl font-semibold text-gray-900">Recetas recientes</h2>

@@ -108,21 +108,21 @@ export default function CitasPage() {
 	};
 
 	return (
-		<div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 p-6">
-			<div className="max-w-7xl mx-auto space-y-6">
+		<div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 p-3 sm:p-4 md:p-6">
+			<div className="max-w-7xl mx-auto space-y-3 sm:space-y-4 md:space-y-6">
 				{/* Header */}
-				<div className="bg-white rounded-2xl shadow-lg p-6">
-					<div className="flex items-center justify-between">
-						<div>
-							<h1 className="text-3xl font-bold text-gray-900 mb-2 flex items-center gap-3">
-								<Calendar className="w-8 h-8 text-indigo-600" />
-								Mis Citas
+				<div className="bg-white rounded-xl sm:rounded-2xl shadow-lg p-3 sm:p-4 md:p-5 lg:p-6">
+					<div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4">
+						<div className="flex-1 min-w-0 w-full">
+							<h1 className="text-lg sm:text-xl md:text-2xl lg:text-3xl font-bold text-gray-900 mb-1 sm:mb-2 flex items-center gap-2 sm:gap-3">
+								<Calendar className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6 lg:w-8 lg:h-8 text-indigo-600 flex-shrink-0" />
+								<span>Mis Citas</span>
 							</h1>
-							<p className="text-gray-600">Gestiona tus citas médicas</p>
+							<p className="text-xs sm:text-sm md:text-base text-gray-600">Gestiona tus citas médicas</p>
 						</div>
 						<Link
 							href="/dashboard/patient/citas/new"
-							className="px-6 py-3 bg-indigo-600 text-white rounded-lg font-semibold hover:bg-indigo-700 transition-colors"
+							className="w-full sm:w-auto px-3 sm:px-4 md:px-6 py-1.5 sm:py-2 md:py-3 bg-indigo-600 text-white rounded-lg font-semibold hover:bg-indigo-700 transition-colors text-center text-xs sm:text-sm md:text-base shadow-md hover:shadow-lg"
 						>
 							Nueva Cita
 						</Link>
@@ -130,13 +130,13 @@ export default function CitasPage() {
 				</div>
 
 				{/* Filtros */}
-				<div className="bg-white rounded-2xl shadow-lg p-6">
-					<div className="flex gap-2">
+				<div className="bg-white rounded-xl sm:rounded-2xl shadow-lg p-3 sm:p-4 md:p-5 lg:p-6">
+					<div className="flex flex-wrap gap-2">
 						<button
 							onClick={() => setFilter('upcoming')}
-							className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+							className={`px-2.5 sm:px-3 md:px-4 py-1.5 sm:py-2 rounded-lg font-medium transition-colors text-xs sm:text-sm md:text-base ${
 								filter === 'upcoming'
-									? 'bg-indigo-600 text-white'
+									? 'bg-indigo-600 text-white shadow-md'
 									: 'bg-gray-100 text-gray-700 hover:bg-gray-200'
 							}`}
 						>
@@ -144,9 +144,9 @@ export default function CitasPage() {
 						</button>
 						<button
 							onClick={() => setFilter('past')}
-							className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+							className={`px-2.5 sm:px-3 md:px-4 py-1.5 sm:py-2 rounded-lg font-medium transition-colors text-xs sm:text-sm md:text-base ${
 								filter === 'past'
-									? 'bg-indigo-600 text-white'
+									? 'bg-indigo-600 text-white shadow-md'
 									: 'bg-gray-100 text-gray-700 hover:bg-gray-200'
 							}`}
 						>
@@ -154,9 +154,9 @@ export default function CitasPage() {
 						</button>
 						<button
 							onClick={() => setFilter('all')}
-							className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+							className={`px-2.5 sm:px-3 md:px-4 py-1.5 sm:py-2 rounded-lg font-medium transition-colors text-xs sm:text-sm md:text-base ${
 								filter === 'all'
-									? 'bg-indigo-600 text-white'
+									? 'bg-indigo-600 text-white shadow-md'
 									: 'bg-gray-100 text-gray-700 hover:bg-gray-200'
 							}`}
 						>
@@ -167,21 +167,21 @@ export default function CitasPage() {
 
 				{/* Lista de citas */}
 				{loading ? (
-					<div className="space-y-4">
+					<div className="space-y-3 sm:space-y-4">
 						{Array.from({ length: 3 }).map((_, i) => (
-							<div key={i} className="bg-white rounded-xl shadow-lg p-6 animate-pulse">
-								<div className="h-6 bg-gray-200 rounded w-1/3 mb-4"></div>
-								<div className="h-4 bg-gray-200 rounded w-full mb-2"></div>
+							<div key={i} className="bg-white rounded-xl shadow-lg p-4 sm:p-6 animate-pulse">
+								<div className="h-5 sm:h-6 bg-gray-200 rounded w-1/2 sm:w-1/3 mb-3 sm:mb-4"></div>
+								<div className="h-3 sm:h-4 bg-gray-200 rounded w-full mb-2"></div>
 							</div>
 						))}
 					</div>
 				) : appointments.length === 0 ? (
-					<div className="bg-white rounded-2xl shadow-lg p-12 text-center">
-						<Calendar className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-						<p className="text-gray-600 text-lg">No tienes citas {filter === 'upcoming' ? 'próximas' : filter === 'past' ? 'pasadas' : ''}</p>
+					<div className="bg-white rounded-xl sm:rounded-2xl shadow-lg p-6 sm:p-8 md:p-12 text-center">
+						<Calendar className="w-10 h-10 sm:w-12 sm:h-12 md:w-16 md:h-16 text-gray-400 mx-auto mb-2 sm:mb-3 md:mb-4" />
+						<p className="text-gray-600 text-sm sm:text-base md:text-lg">No tienes citas {filter === 'upcoming' ? 'próximas' : filter === 'past' ? 'pasadas' : ''}</p>
 					</div>
 				) : (
-					<div className="space-y-4">
+					<div className="space-y-3 sm:space-y-4">
 						{appointments.map((appointment) => {
 							const date = new Date(appointment.scheduled_at);
 							const isPast = date < new Date();
@@ -190,88 +190,102 @@ export default function CitasPage() {
 							return (
 								<div
 									key={appointment.id}
-									className="bg-white rounded-xl shadow-lg p-6 hover:shadow-xl transition-shadow"
+									className="bg-white rounded-xl shadow-lg p-3 sm:p-4 md:p-5 lg:p-6 hover:shadow-xl transition-shadow"
 								>
-									<div className="flex items-start justify-between">
-										<div className="flex-1">
-											<div className="flex items-center gap-3 mb-4">
-												<div className="p-3 bg-indigo-100 rounded-lg">
-													<Calendar className="w-6 h-6 text-indigo-600" />
+									<div className="flex flex-col sm:flex-row items-start sm:items-start justify-between gap-3 sm:gap-4">
+										<div className="flex-1 min-w-0 w-full">
+											<div className="flex items-start gap-2 sm:gap-3 mb-3 sm:mb-4">
+												<div className="p-1.5 sm:p-2 md:p-3 bg-indigo-100 rounded-lg flex-shrink-0">
+													<Calendar className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6 text-indigo-600" />
 												</div>
-												<div>
-													<h3 className="text-lg font-semibold text-gray-900">
-														{date.toLocaleDateString('es-ES', {
-															weekday: 'long',
-															year: 'numeric',
-															month: 'long',
-															day: 'numeric',
-														})}
+												<div className="flex-1 min-w-0">
+													<h3 className="text-sm sm:text-base md:text-lg font-semibold text-gray-900 break-words leading-tight">
+														<span className="hidden sm:inline">
+															{date.toLocaleDateString('es-ES', {
+																weekday: 'long',
+																year: 'numeric',
+																month: 'long',
+																day: 'numeric',
+															})}
+														</span>
+														<span className="sm:hidden">
+															{date.toLocaleDateString('es-ES', {
+																day: 'numeric',
+																month: 'short',
+																year: 'numeric',
+															})}
+														</span>
 													</h3>
-													<p className="text-gray-600 flex items-center gap-2 mt-1">
-														<Clock className="w-4 h-4" />
-														{date.toLocaleTimeString('es-ES', {
-															hour: '2-digit',
-															minute: '2-digit',
-														})}
-														{appointment.duration_minutes && ` • ${appointment.duration_minutes} min`}
+													<p className="text-xs sm:text-sm md:text-base text-gray-600 flex items-center gap-1.5 sm:gap-2 mt-1 flex-wrap">
+														<Clock className="w-3 h-3 sm:w-3.5 sm:h-3.5 md:w-4 md:h-4 flex-shrink-0" />
+														<span>
+															{date.toLocaleTimeString('es-ES', {
+																hour: '2-digit',
+																minute: '2-digit',
+															})}
+															{appointment.duration_minutes && (
+																<span className="hidden sm:inline"> • {appointment.duration_minutes} min</span>
+															)}
+														</span>
 													</p>
 												</div>
 											</div>
 
-											<div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+											<div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3 md:gap-4 mb-3 sm:mb-4">
 												{appointment.doctor && (
-													<div className="flex items-center gap-2 text-gray-700">
-														<User className="w-4 h-4 text-gray-400" />
-														<span className="font-medium">Dr. {appointment.doctor.name || 'Médico'}</span>
+													<div className="flex items-center gap-1.5 sm:gap-2 text-xs sm:text-sm md:text-base text-gray-700">
+														<User className="w-3 h-3 sm:w-3.5 sm:h-3.5 md:w-4 md:h-4 text-gray-400 flex-shrink-0" />
+														<span className="font-medium break-words">Dr. {appointment.doctor.name || 'Médico'}</span>
 													</div>
 												)}
 												{appointment.organization && (
-													<div className="flex items-center gap-2 text-gray-700">
-														<MapPin className="w-4 h-4 text-gray-400" />
-														<span>{appointment.organization.name || 'Clínica'}</span>
+													<div className="flex items-center gap-1.5 sm:gap-2 text-xs sm:text-sm md:text-base text-gray-700">
+														<MapPin className="w-3 h-3 sm:w-3.5 sm:h-3.5 md:w-4 md:h-4 text-gray-400 flex-shrink-0" />
+														<span className="break-words">{appointment.organization.name || 'Clínica'}</span>
 													</div>
 												)}
 												{appointment.location && (
-													<div className="flex items-center gap-2 text-gray-700">
-														<MapPin className="w-4 h-4 text-gray-400" />
-														<span>{appointment.location}</span>
+													<div className="flex items-start gap-1.5 sm:gap-2 text-xs sm:text-sm md:text-base text-gray-700 sm:col-span-2">
+														<MapPin className="w-3 h-3 sm:w-3.5 sm:h-3.5 md:w-4 md:h-4 text-gray-400 flex-shrink-0 mt-0.5" />
+														<span className="break-words">{appointment.location}</span>
 													</div>
 												)}
 												{appointment.reason && (
-													<div className="text-gray-700">
+													<div className="text-xs sm:text-sm md:text-base text-gray-700 sm:col-span-2">
 														<span className="font-medium">Motivo: </span>
-														<span>{appointment.reason}</span>
+														<span className="break-words">{appointment.reason}</span>
 													</div>
 												)}
 											</div>
 
-											<div className="flex items-center gap-2">
+											<div className="flex items-center gap-2 flex-wrap mb-3 sm:mb-0">
 												<span
-													className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold ${getStatusColor(
+													className={`inline-flex items-center gap-1 px-2 sm:px-2.5 md:px-3 py-0.5 sm:py-1 rounded-full text-[9px] sm:text-[10px] md:text-xs font-semibold ${getStatusColor(
 														appointment.status
 													)}`}
 												>
 													{getStatusIcon(appointment.status)}
-													{appointment.status}
+													<span className="hidden sm:inline">{appointment.status}</span>
+													<span className="sm:hidden">{appointment.status.substring(0, 3)}</span>
 												</span>
 											</div>
 										</div>
 
 										{canCancel && (
-											<div className="flex flex-col gap-2">
+											<div className="flex flex-row sm:flex-col gap-2 w-full sm:w-auto sm:min-w-[140px]">
 												<button
 													onClick={() => handleCancel(appointment.id)}
-													className="px-4 py-2 bg-red-50 text-red-600 rounded-lg font-medium hover:bg-red-100 transition-colors flex items-center gap-2"
+													className="flex-1 sm:flex-none px-3 sm:px-4 py-1.5 sm:py-2 bg-red-50 text-red-600 rounded-lg font-medium hover:bg-red-100 transition-colors flex items-center justify-center gap-1.5 sm:gap-2 text-xs sm:text-sm md:text-base shadow-sm hover:shadow-md"
 												>
-													<X className="w-4 h-4" />
-													Cancelar
+													<X className="w-3 h-3 sm:w-3.5 sm:h-3.5 md:w-4 md:h-4" />
+													<span>Cancelar</span>
 												</button>
 												<button
 													onClick={() => handleReschedule(appointment)}
-													className="px-4 py-2 bg-indigo-50 text-indigo-600 rounded-lg font-medium hover:bg-indigo-100 transition-colors flex items-center gap-2"
+													className="flex-1 sm:flex-none px-3 sm:px-4 py-1.5 sm:py-2 bg-indigo-50 text-indigo-600 rounded-lg font-medium hover:bg-indigo-100 transition-colors flex items-center justify-center gap-1.5 sm:gap-2 text-xs sm:text-sm md:text-base shadow-sm hover:shadow-md"
 												>
-													<RefreshCw className="w-4 h-4" />
-													Reprogramar
+													<RefreshCw className="w-3 h-3 sm:w-3.5 sm:h-3.5 md:w-4 md:h-4" />
+													<span>Reprogramar</span>
 												</button>
 											</div>
 										)}

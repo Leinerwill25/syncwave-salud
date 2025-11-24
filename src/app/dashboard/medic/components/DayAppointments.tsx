@@ -42,14 +42,14 @@ export default function DayAppointments({ selectedDate }: { selectedDate: Date }
 				{/* Línea superior decorativa */}
 				<div className="absolute inset-x-0 top-0 h-[3px] bg-linear-to-r from-violet-500 to-indigo-600" />
 
-				<CardContent className="flex flex-col p-5 relative z-10 grow">
+				<CardContent className="flex flex-col p-4 sm:p-5 relative z-10 grow">
 					{/* Encabezado */}
-					<div className="flex items-center justify-between mb-5">
+					<div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 mb-4 sm:mb-5">
 						<div className="flex items-center gap-2">
 							<div className="bg-linear-to-br from-violet-500 to-indigo-600 p-1.5 rounded-md text-white shadow-md">
-								<User className="w-4 h-4" />
+								<User className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
 							</div>
-							<h3 className="text-base font-semibold text-gray-800 tracking-tight">Citas del Día</h3>
+							<h3 className="text-sm sm:text-base font-semibold text-gray-800 tracking-tight">Citas del Día</h3>
 						</div>
 						<p className="text-xs text-gray-500 font-medium">
 							{selectedDate.toLocaleDateString('es-ES', {
@@ -61,7 +61,7 @@ export default function DayAppointments({ selectedDate }: { selectedDate: Date }
 					</div>
 
 					{/* Contenido dinámico */}
-					<div className="space-y-3 overflow-y-auto pr-1 scrollbar-thin scrollbar-thumb-violet-300 scrollbar-track-transparent">
+					<div className="space-y-2 sm:space-y-3 overflow-y-auto pr-1 scrollbar-thin scrollbar-thumb-violet-300 scrollbar-track-transparent">
 						{loading ? (
 							<p className="text-sm text-gray-500 text-center py-4">Cargando citas...</p>
 						) : appointments.length === 0 ? (
@@ -71,14 +71,14 @@ export default function DayAppointments({ selectedDate }: { selectedDate: Date }
 							</div>
 						) : (
 							appointments.map((a) => (
-								<motion.div key={a.id} whileHover={{ scale: 1.01 }} className="group flex flex-col gap-1 p-3 bg-gray-50 hover:bg-linear-to-r hover:from-violet-50 hover:to-indigo-50 border border-gray-100 hover:border-violet-100 rounded-xl transition-all duration-300 shadow-sm">
-									<div className="flex items-center gap-3">
+								<motion.div key={a.id} whileHover={{ scale: 1.01 }} className="group flex flex-col gap-1 p-2.5 sm:p-3 bg-gray-50 hover:bg-linear-to-r hover:from-violet-50 hover:to-indigo-50 border border-gray-100 hover:border-violet-100 rounded-lg sm:rounded-xl transition-all duration-300 shadow-sm">
+									<div className="flex items-center gap-2 sm:gap-3">
 										<div className="bg-linear-to-br from-violet-500 to-indigo-600 p-1.5 rounded-full text-white shrink-0 shadow-sm">
-											<User className="w-4 h-4" />
+											<User className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
 										</div>
-										<p className="font-medium text-gray-800 text-sm leading-tight group-hover:text-violet-700 transition">{a.patient}</p>
+										<p className="font-medium text-gray-800 text-xs sm:text-sm leading-tight group-hover:text-violet-700 transition truncate">{a.patient}</p>
 									</div>
-									<p className="text-xs text-gray-500 flex items-center gap-1 ml-7">
+									<p className="text-[10px] sm:text-xs text-gray-500 flex items-center gap-1 ml-6 sm:ml-7">
 										<Clock className="w-3 h-3 text-violet-500" />
 										{a.time}
 									</p>

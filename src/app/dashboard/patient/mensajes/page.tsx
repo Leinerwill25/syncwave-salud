@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { MessageSquare, Send, User, Check, CheckCheck, Plus, Stethoscope, Search, Clock, X, Paperclip, Sparkles } from 'lucide-react';
+import { MessageSquare, Send, User, Check, CheckCheck, Plus, Stethoscope, Search, Clock, X, Paperclip, Sparkles, ChevronLeft } from 'lucide-react';
 import { createSupabaseBrowserClient } from '@/app/adapters/client';
 
 type Message = {
@@ -367,65 +367,65 @@ export default function MensajesPage() {
 	});
 
 	return (
-		<div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-indigo-50/20 p-4 md:p-6 h-screen overflow-hidden">
+		<div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-indigo-50/20 p-3 sm:p-4 md:p-6 h-screen overflow-hidden">
 			<div className="max-w-7xl mx-auto h-full flex flex-col">
 				{/* Header Principal */}
-				<div className="mb-6 flex-shrink-0">
-					<div className="flex items-center gap-4 mb-2">
-						<div className="p-3 bg-gradient-to-br from-teal-500 via-cyan-500 to-blue-500 rounded-2xl shadow-lg">
-							<MessageSquare className="w-7 h-7 text-white" />
+				<div className="mb-3 sm:mb-4 md:mb-6 flex-shrink-0">
+					<div className="flex items-center gap-2 sm:gap-3 md:gap-4 mb-1 sm:mb-2">
+						<div className="p-2 sm:p-2.5 md:p-3 bg-gradient-to-br from-teal-500 via-cyan-500 to-blue-500 rounded-xl sm:rounded-2xl shadow-lg flex-shrink-0">
+							<MessageSquare className="w-5 h-5 sm:w-6 sm:h-6 md:w-7 md:h-7 text-white" />
 						</div>
-						<div>
-							<h1 className="text-3xl font-bold text-slate-900">Centro de Mensajería</h1>
-							<p className="text-slate-600 text-sm mt-1">Comunícate directamente con tus especialistas</p>
+						<div className="min-w-0 flex-1">
+							<h1 className="text-lg sm:text-xl md:text-2xl lg:text-3xl font-bold text-slate-900 truncate">Centro de Mensajería</h1>
+							<p className="text-slate-600 text-xs sm:text-sm mt-0.5 sm:mt-1">Comunícate directamente con tus especialistas</p>
 						</div>
 					</div>
 				</div>
 
 				{/* Contenedor Principal */}
-				<div className="bg-white rounded-3xl shadow-2xl overflow-hidden border border-slate-200/60 backdrop-blur-sm flex-1 min-h-0 flex flex-col">
-					<div className="grid grid-cols-1 lg:grid-cols-[420px_1fr] flex-1 min-h-0 h-full">
+				<div className="bg-white rounded-xl sm:rounded-2xl lg:rounded-3xl shadow-2xl overflow-hidden border border-slate-200/60 backdrop-blur-sm flex-1 min-h-0 flex flex-col">
+					<div className="grid grid-cols-1 lg:grid-cols-[320px_1fr] xl:grid-cols-[420px_1fr] flex-1 min-h-0 h-full">
 						{/* Sidebar - Lista de conversaciones */}
-						<div className="border-r border-slate-200/60 bg-gradient-to-b from-white via-slate-50/50 to-white flex flex-col">
+						<div className={`${selectedConversation || selectedDoctor ? 'hidden lg:flex' : 'flex'} border-r border-slate-200/60 bg-gradient-to-b from-white via-slate-50/50 to-white flex-col`}>
 							{/* Header del Sidebar */}
-							<div className="p-6 border-b border-slate-200/60 bg-gradient-to-r from-slate-50 to-blue-50/30 backdrop-blur-sm">
-								<div className="flex items-center justify-between mb-5">
-									<div className="flex items-center gap-3">
-										<div className="relative">
-											<div className="p-2.5 bg-gradient-to-br from-teal-500 to-cyan-500 rounded-xl shadow-md">
-												<MessageSquare className="w-5 h-5 text-white" />
+							<div className="p-3 sm:p-4 md:p-5 lg:p-6 border-b border-slate-200/60 bg-gradient-to-r from-slate-50 to-blue-50/30 backdrop-blur-sm">
+								<div className="flex items-center justify-between mb-3 sm:mb-4 md:mb-5">
+									<div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
+										<div className="relative flex-shrink-0">
+											<div className="p-1.5 sm:p-2 md:p-2.5 bg-gradient-to-br from-teal-500 to-cyan-500 rounded-lg sm:rounded-xl shadow-md">
+												<MessageSquare className="w-4 h-4 sm:w-4 sm:h-4 md:w-5 md:h-5 text-white" />
 											</div>
 											{unreadCount > 0 && (
-												<span className="absolute -top-1 -right-1 px-2 py-0.5 bg-red-500 text-white text-xs font-bold rounded-full shadow-lg animate-pulse">
-													{unreadCount}
+												<span className="absolute -top-0.5 -right-0.5 sm:-top-1 sm:-right-1 px-1.5 sm:px-2 py-0.5 bg-red-500 text-white text-[9px] sm:text-[10px] md:text-xs font-bold rounded-full shadow-lg animate-pulse">
+													{unreadCount > 99 ? '99+' : unreadCount}
 												</span>
 											)}
 										</div>
-										<div>
-											<h2 className="text-lg font-bold text-slate-900">Conversaciones</h2>
-											<p className="text-xs text-slate-500">{conversations.length} activas</p>
+										<div className="min-w-0 flex-1">
+											<h2 className="text-sm sm:text-base md:text-lg font-bold text-slate-900 truncate">Conversaciones</h2>
+											<p className="text-[10px] sm:text-xs text-slate-500">{conversations.length} activas</p>
 										</div>
 									</div>
 									{availableDoctors.length > 0 && (
 										<button
 											onClick={() => setShowNewConversation(!showNewConversation)}
-											className="p-2.5 bg-gradient-to-r from-teal-600 to-cyan-600 text-white rounded-xl hover:from-teal-700 hover:to-cyan-700 transition-all shadow-md hover:shadow-lg hover:scale-105"
+											className="p-1.5 sm:p-2 md:p-2.5 bg-gradient-to-r from-teal-600 to-cyan-600 text-white rounded-lg sm:rounded-xl hover:from-teal-700 hover:to-cyan-700 transition-all shadow-md hover:shadow-lg hover:scale-105 flex-shrink-0"
 											title="Nueva conversación"
 										>
-											<Plus className="w-5 h-5" />
+											<Plus className="w-4 h-4 sm:w-4 sm:h-4 md:w-5 md:h-5" />
 										</button>
 									)}
 								</div>
 
 								{/* Búsqueda Mejorada */}
 								<div className="relative">
-									<Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+									<Search className="absolute left-3 sm:left-4 top-1/2 -translate-y-1/2 w-3.5 h-3.5 sm:w-4 sm:h-4 text-slate-400" />
 									<input
 										type="text"
 										placeholder="Buscar conversaciones o doctores..."
 										value={searchTerm}
 										onChange={(e) => setSearchTerm(e.target.value)}
-										className="w-full pl-11 pr-4 py-3 border-2 border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500 bg-white text-slate-900 text-sm transition-all shadow-sm hover:shadow-md"
+										className="w-full pl-9 sm:pl-10 md:pl-11 pr-3 sm:pr-4 py-2 sm:py-2.5 md:py-3 border-2 border-slate-200 rounded-lg sm:rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500 bg-white text-slate-900 text-xs sm:text-sm transition-all shadow-sm hover:shadow-md"
 									/>
 								</div>
 							</div>
@@ -439,24 +439,24 @@ export default function MensajesPage() {
 										exit={{ height: 0, opacity: 0 }}
 										className="overflow-hidden border-b border-slate-200/60 bg-gradient-to-br from-teal-50/50 via-cyan-50/30 to-blue-50/20"
 									>
-										<div className="p-5">
-											<div className="flex items-center justify-between mb-4">
-												<div className="flex items-center gap-2">
-													<Sparkles className="w-4 h-4 text-teal-600" />
-													<p className="text-sm font-bold text-slate-900">Nueva Conversación</p>
+										<div className="p-3 sm:p-4 md:p-5">
+											<div className="flex items-center justify-between mb-3 sm:mb-4">
+												<div className="flex items-center gap-1.5 sm:gap-2">
+													<Sparkles className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-teal-600 flex-shrink-0" />
+													<p className="text-xs sm:text-sm font-bold text-slate-900">Nueva Conversación</p>
 												</div>
 												<button
 													onClick={() => setShowNewConversation(false)}
-													className="p-1.5 hover:bg-teal-100 rounded-lg transition-colors"
+													className="p-1 sm:p-1.5 hover:bg-teal-100 rounded-lg transition-colors flex-shrink-0"
 												>
-													<X className="w-4 h-4 text-slate-600" />
+													<X className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-slate-600" />
 												</button>
 											</div>
-											<div className="space-y-2 max-h-72 overflow-y-auto custom-scrollbar">
+											<div className="space-y-1.5 sm:space-y-2 max-h-48 sm:max-h-60 md:max-h-72 overflow-y-auto custom-scrollbar">
 												{filteredDoctors.length === 0 ? (
-													<div className="text-center py-8">
-														<Stethoscope className="w-12 h-12 text-slate-300 mx-auto mb-3" />
-														<p className="text-xs text-slate-500">No hay doctores disponibles</p>
+													<div className="text-center py-6 sm:py-8">
+														<Stethoscope className="w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 text-slate-300 mx-auto mb-2 sm:mb-3" />
+														<p className="text-[10px] sm:text-xs text-slate-500">No hay doctores disponibles</p>
 													</div>
 												) : (
 													filteredDoctors.map((doctor) => (
@@ -465,23 +465,23 @@ export default function MensajesPage() {
 															onClick={() => handleStartConversation(doctor)}
 															whileHover={{ scale: 1.02 }}
 															whileTap={{ scale: 0.98 }}
-															className="w-full flex items-center gap-3 p-4 bg-white rounded-xl hover:bg-gradient-to-r hover:from-teal-50 hover:to-cyan-50 transition-all text-left border-2 border-slate-100 hover:border-teal-200 shadow-sm hover:shadow-md"
+															className="w-full flex items-center gap-2 sm:gap-3 p-2.5 sm:p-3 md:p-4 bg-white rounded-lg sm:rounded-xl hover:bg-gradient-to-r hover:from-teal-50 hover:to-cyan-50 transition-all text-left border-2 border-slate-100 hover:border-teal-200 shadow-sm hover:shadow-md"
 														>
 															{doctor.photo ? (
 																<img
 																	src={doctor.photo}
 																	alt={doctor.name || ''}
-																	className="w-14 h-14 rounded-full object-cover border-3 border-teal-200 shadow-md"
+																	className="w-10 h-10 sm:w-12 sm:h-12 md:w-14 md:h-14 rounded-full object-cover border-2 sm:border-3 border-teal-200 shadow-md flex-shrink-0"
 																/>
 															) : (
-																<div className="w-14 h-14 rounded-full bg-gradient-to-br from-teal-500 via-cyan-500 to-blue-500 flex items-center justify-center text-white font-semibold shadow-lg ring-2 ring-teal-200">
-																	<Stethoscope className="w-7 h-7" />
+																<div className="w-10 h-10 sm:w-12 sm:h-12 md:w-14 md:h-14 rounded-full bg-gradient-to-br from-teal-500 via-cyan-500 to-blue-500 flex items-center justify-center text-white font-semibold shadow-lg ring-1 sm:ring-2 ring-teal-200 flex-shrink-0">
+																	<Stethoscope className="w-5 h-5 sm:w-6 sm:h-6 md:w-7 md:h-7" />
 																</div>
 															)}
 															<div className="flex-1 min-w-0">
-																<p className="font-bold text-slate-900 truncate text-sm">Dr. {doctor.name}</p>
+																<p className="font-bold text-slate-900 truncate text-xs sm:text-sm">Dr. {doctor.name}</p>
 																{doctor.specialty && (
-																	<p className="text-xs text-slate-600 truncate mt-0.5">{doctor.specialty}</p>
+																	<p className="text-[10px] sm:text-xs text-slate-600 truncate mt-0.5">{doctor.specialty}</p>
 																)}
 															</div>
 														</motion.button>
@@ -496,18 +496,18 @@ export default function MensajesPage() {
 							{/* Lista de conversaciones */}
 							<div className="flex-1 overflow-y-auto custom-scrollbar">
 								{loading ? (
-									<div className="p-6 space-y-4">
+									<div className="p-3 sm:p-4 md:p-6 space-y-3 sm:space-y-4">
 										{Array.from({ length: 5 }).map((_, i) => (
-											<div key={i} className="h-24 bg-gradient-to-r from-slate-200 to-slate-100 rounded-2xl animate-pulse"></div>
+											<div key={i} className="h-16 sm:h-20 md:h-24 bg-gradient-to-r from-slate-200 to-slate-100 rounded-lg sm:rounded-xl md:rounded-2xl animate-pulse"></div>
 										))}
 									</div>
 								) : filteredConversations.length === 0 ? (
-									<div className="p-12 text-center">
-										<div className="p-4 bg-gradient-to-br from-slate-100 to-slate-200 rounded-full w-20 h-20 flex items-center justify-center mx-auto mb-4">
-											<MessageSquare className="w-10 h-10 text-slate-400" />
+									<div className="p-6 sm:p-8 md:p-12 text-center">
+										<div className="p-3 sm:p-4 bg-gradient-to-br from-slate-100 to-slate-200 rounded-full w-16 h-16 sm:w-18 sm:h-18 md:w-20 md:h-20 flex items-center justify-center mx-auto mb-3 sm:mb-4">
+											<MessageSquare className="w-8 h-8 sm:w-9 sm:h-9 md:w-10 md:h-10 text-slate-400" />
 										</div>
-										<p className="text-slate-600 font-medium mb-1">No hay conversaciones</p>
-										<p className="text-xs text-slate-400">Inicia una nueva conversación con tu especialista</p>
+										<p className="text-slate-600 font-medium mb-1 text-xs sm:text-sm md:text-base">No hay conversaciones</p>
+										<p className="text-[10px] sm:text-xs text-slate-400">Inicia una nueva conversación con tu especialista</p>
 									</div>
 								) : (
 									<div className="divide-y divide-slate-100">
@@ -522,42 +522,42 @@ export default function MensajesPage() {
 														setShowNewConversation(false);
 													}}
 													whileHover={{ x: 2 }}
-													className={`w-full p-5 text-left transition-all ${
+													className={`w-full p-3 sm:p-4 md:p-5 text-left transition-all ${
 														isSelected 
 															? 'bg-gradient-to-r from-teal-50 via-cyan-50 to-blue-50 border-l-4 border-teal-500 shadow-sm' 
 															: 'hover:bg-slate-50/80'
 													}`}
 												>
-													<div className="flex items-start gap-4">
+													<div className="flex items-start gap-2 sm:gap-3 md:gap-4">
 														{conv.doctor?.photo ? (
 															<img
 																src={conv.doctor.photo}
 																alt={conv.doctor.name || ''}
-																className="w-14 h-14 rounded-full object-cover border-3 border-teal-200 shadow-md flex-shrink-0"
+																className="w-10 h-10 sm:w-12 sm:h-12 md:w-14 md:h-14 rounded-full object-cover border-2 sm:border-3 border-teal-200 shadow-md flex-shrink-0"
 															/>
 														) : (
-															<div className="w-14 h-14 rounded-full bg-gradient-to-br from-teal-500 via-cyan-500 to-blue-500 flex items-center justify-center text-white font-semibold flex-shrink-0 shadow-lg ring-2 ring-teal-200">
-																<Stethoscope className="w-7 h-7" />
+															<div className="w-10 h-10 sm:w-12 sm:h-12 md:w-14 md:h-14 rounded-full bg-gradient-to-br from-teal-500 via-cyan-500 to-blue-500 flex items-center justify-center text-white font-semibold flex-shrink-0 shadow-lg ring-1 sm:ring-2 ring-teal-200">
+																<Stethoscope className="w-5 h-5 sm:w-6 sm:h-6 md:w-7 md:h-7" />
 															</div>
 														)}
 														<div className="flex-1 min-w-0">
-															<div className="flex items-center justify-between mb-2">
-																<h3 className="font-bold text-slate-900 truncate text-base">
+															<div className="flex items-center justify-between mb-1 sm:mb-2 gap-2">
+																<h3 className="font-bold text-slate-900 truncate text-xs sm:text-sm md:text-base">
 																	{conv.doctor?.name ? `Dr. ${conv.doctor.name}` : conv.title || 'Conversación'}
 																</h3>
 																{conv.unreadCount && conv.unreadCount > 0 && (
-																	<span className="px-2.5 py-1 bg-gradient-to-r from-red-500 to-pink-500 text-white text-xs font-bold rounded-full flex-shrink-0 ml-2 shadow-md animate-pulse">
-																		{conv.unreadCount}
+																	<span className="px-1.5 sm:px-2 md:px-2.5 py-0.5 sm:py-1 bg-gradient-to-r from-red-500 to-pink-500 text-white text-[9px] sm:text-[10px] md:text-xs font-bold rounded-full flex-shrink-0 ml-1 sm:ml-2 shadow-md animate-pulse">
+																		{conv.unreadCount > 99 ? '99+' : conv.unreadCount}
 																	</span>
 																)}
 															</div>
 															{conv.lastMessage && (
 																<>
-																	<p className="text-sm text-slate-600 line-clamp-2 mb-2 leading-relaxed">
+																	<p className="text-[10px] sm:text-xs md:text-sm text-slate-600 line-clamp-2 mb-1 sm:mb-2 leading-relaxed break-words">
 																		{conv.lastMessage.body}
 																	</p>
-																	<div className="flex items-center gap-2 text-xs text-slate-500">
-																		<Clock className="w-3.5 h-3.5" />
+																	<div className="flex items-center gap-1.5 sm:gap-2 text-[9px] sm:text-[10px] md:text-xs text-slate-500">
+																		<Clock className="w-3 h-3 sm:w-3.5 sm:h-3.5 flex-shrink-0" />
 																		{new Date(conv.lastMessage.created_at).toLocaleDateString('es-ES', {
 																			day: 'numeric',
 																			month: 'short',
@@ -568,7 +568,7 @@ export default function MensajesPage() {
 																</>
 															)}
 															{conv.doctor?.specialty && (
-																<p className="text-xs text-slate-500 mt-2 font-medium">{conv.doctor.specialty}</p>
+																<p className="text-[9px] sm:text-[10px] md:text-xs text-slate-500 mt-1 sm:mt-2 font-medium truncate">{conv.doctor.specialty}</p>
 															)}
 														</div>
 													</div>
@@ -585,21 +585,30 @@ export default function MensajesPage() {
 							{currentConversation || selectedDoctor ? (
 								<>
 									{/* Header del chat mejorado */}
-									<div className="p-6 border-b border-slate-200/60 bg-gradient-to-r from-white via-teal-50/30 to-cyan-50/20 backdrop-blur-sm shadow-sm flex-shrink-0">
-										<div className="flex items-center gap-4">
+									<div className="p-3 sm:p-4 md:p-5 lg:p-6 border-b border-slate-200/60 bg-gradient-to-r from-white via-teal-50/30 to-cyan-50/20 backdrop-blur-sm shadow-sm flex-shrink-0">
+										<div className="flex items-center gap-2 sm:gap-3 md:gap-4">
+											<button
+												onClick={() => {
+													setSelectedConversation(null);
+													setSelectedDoctor(null);
+												}}
+												className="lg:hidden p-1.5 hover:bg-teal-100 rounded-lg transition-colors flex-shrink-0 mr-1"
+											>
+												<ChevronLeft className="w-4 h-4 text-slate-600" />
+											</button>
 											{currentConversation?.doctor?.photo || selectedDoctor?.photo ? (
 												<img
 													src={currentConversation?.doctor?.photo || selectedDoctor?.photo || ''}
 													alt={currentConversation?.doctor?.name || selectedDoctor?.name || ''}
-													className="w-14 h-14 rounded-full object-cover border-3 border-teal-200 shadow-lg ring-2 ring-teal-100"
+													className="w-10 h-10 sm:w-12 sm:h-12 md:w-14 md:h-14 rounded-full object-cover border-2 sm:border-3 border-teal-200 shadow-lg ring-1 sm:ring-2 ring-teal-100 flex-shrink-0"
 												/>
 											) : (
-												<div className="w-14 h-14 rounded-full bg-gradient-to-br from-teal-500 via-cyan-500 to-blue-500 flex items-center justify-center text-white shadow-lg ring-2 ring-teal-200">
-													<Stethoscope className="w-7 h-7" />
+												<div className="w-10 h-10 sm:w-12 sm:h-12 md:w-14 md:h-14 rounded-full bg-gradient-to-br from-teal-500 via-cyan-500 to-blue-500 flex items-center justify-center text-white shadow-lg ring-1 sm:ring-2 ring-teal-200 flex-shrink-0">
+													<Stethoscope className="w-5 h-5 sm:w-6 sm:h-6 md:w-7 md:h-7" />
 												</div>
 											)}
-											<div className="flex-1">
-												<h2 className="font-bold text-slate-900 text-lg">
+											<div className="flex-1 min-w-0">
+												<h2 className="font-bold text-slate-900 text-sm sm:text-base md:text-lg truncate">
 													{currentConversation?.doctor?.name
 														? `Dr. ${currentConversation.doctor.name}`
 														: selectedDoctor
@@ -607,7 +616,7 @@ export default function MensajesPage() {
 														: currentConversation?.title || 'Conversación'}
 												</h2>
 												{currentConversation?.doctor?.specialty && (
-													<p className="text-sm text-slate-600 mt-0.5">{currentConversation.doctor.specialty}</p>
+													<p className="text-[10px] sm:text-xs md:text-sm text-slate-600 mt-0.5 truncate">{currentConversation.doctor.specialty}</p>
 												)}
 											</div>
 										</div>
@@ -616,16 +625,16 @@ export default function MensajesPage() {
 									{/* Mensajes con diseño mejorado */}
 									<div
 										ref={messagesContainerRef}
-										className="flex-1 overflow-y-auto p-8 space-y-6 bg-gradient-to-b from-white via-slate-50/20 to-blue-50/10 custom-scrollbar min-h-0"
+										className="flex-1 overflow-y-auto p-3 sm:p-4 md:p-6 lg:p-8 space-y-3 sm:space-y-4 md:space-y-6 bg-gradient-to-b from-white via-slate-50/20 to-blue-50/10 custom-scrollbar min-h-0"
 									>
 										{currentMessages.length === 0 ? (
 											<div className="flex items-center justify-center h-full">
-												<div className="text-center">
-													<div className="p-6 bg-gradient-to-br from-slate-100 to-slate-200 rounded-full w-24 h-24 flex items-center justify-center mx-auto mb-6 shadow-lg">
-														<MessageSquare className="w-12 h-12 text-slate-400" />
+												<div className="text-center px-4">
+													<div className="p-4 sm:p-5 md:p-6 bg-gradient-to-br from-slate-100 to-slate-200 rounded-full w-16 h-16 sm:w-20 sm:h-20 md:w-24 md:h-24 flex items-center justify-center mx-auto mb-4 sm:mb-5 md:mb-6 shadow-lg">
+														<MessageSquare className="w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 text-slate-400" />
 													</div>
-													<h3 className="text-lg font-bold text-slate-700 mb-2">No hay mensajes aún</h3>
-													<p className="text-sm text-slate-500">Inicia la conversación enviando un mensaje</p>
+													<h3 className="text-sm sm:text-base md:text-lg font-bold text-slate-700 mb-1 sm:mb-2">No hay mensajes aún</h3>
+													<p className="text-xs sm:text-sm text-slate-500">Inicia la conversación enviando un mensaje</p>
 												</div>
 											</div>
 										) : (
@@ -643,23 +652,23 @@ export default function MensajesPage() {
 														className={`flex ${isPatientMessage ? 'justify-end' : 'justify-start'}`}
 													>
 														<div
-															className={`max-w-[78%] rounded-2xl p-5 shadow-lg ${
+															className={`max-w-[85%] sm:max-w-[80%] md:max-w-[78%] rounded-xl sm:rounded-2xl p-3 sm:p-4 md:p-5 shadow-lg ${
 																isPatientMessage
 																	? 'bg-gradient-to-br from-teal-600 via-cyan-600 to-blue-600 text-white'
 																	: 'bg-white border-2 border-slate-200 text-slate-900 shadow-md'
 															}`}
 														>
 															{!isPatientMessage && msg.sender && (
-																<div className="flex items-center gap-2 mb-3 pb-2 border-b border-slate-200">
-																	<User className="w-4 h-4 text-teal-600" />
-																	<span className="font-bold text-sm text-slate-700">
+																<div className="flex items-center gap-1.5 sm:gap-2 mb-2 sm:mb-3 pb-1.5 sm:pb-2 border-b border-slate-200">
+																	<User className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-teal-600 flex-shrink-0" />
+																	<span className="font-bold text-xs sm:text-sm text-slate-700 truncate">
 																		{msg.sender.name || 'Médico'}
 																	</span>
 																</div>
 															)}
-															<p className="text-sm leading-relaxed whitespace-pre-wrap mb-3">{msg.body}</p>
-															<div className="flex items-center justify-between pt-3 border-t border-white/20">
-																<span className={`text-xs font-medium ${isPatientMessage ? 'text-white/90' : 'text-slate-500'}`}>
+															<p className="text-xs sm:text-sm leading-relaxed whitespace-pre-wrap mb-2 sm:mb-3 break-words">{msg.body}</p>
+															<div className="flex items-center justify-between pt-2 sm:pt-3 border-t border-white/20">
+																<span className={`text-[10px] sm:text-xs font-medium ${isPatientMessage ? 'text-white/90' : 'text-slate-500'}`}>
 																	{new Date(msg.created_at).toLocaleTimeString('es-ES', {
 																		hour: '2-digit',
 																		minute: '2-digit',
@@ -668,28 +677,28 @@ export default function MensajesPage() {
 																{isPatientMessage && (
 																	<span>
 																		{msg.read ? (
-																			<CheckCheck className="w-4 h-4 text-white/90" />
+																			<CheckCheck className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-white/90" />
 																		) : (
-																			<Check className="w-4 h-4 text-white/90" />
+																			<Check className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-white/90" />
 																		)}
 																	</span>
 																)}
 															</div>
 															{msg.attachments && msg.attachments.length > 0 && (
-																<div className="mt-4 flex flex-wrap gap-2 pt-3 border-t border-white/20">
+																<div className="mt-3 sm:mt-4 flex flex-wrap gap-1.5 sm:gap-2 pt-2 sm:pt-3 border-t border-white/20">
 																	{msg.attachments.map((att, idx) => (
 																		<a
 																			key={idx}
 																			href={att}
 																			target="_blank"
 																			rel="noopener noreferrer"
-																			className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-medium transition-all hover:scale-105 ${
+																			className={`inline-flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3 md:px-4 py-1.5 sm:py-2 rounded-lg sm:rounded-xl text-[10px] sm:text-xs font-medium transition-all hover:scale-105 ${
 																				isPatientMessage
 																					? 'bg-white/20 text-white hover:bg-white/30 shadow-md'
 																					: 'bg-slate-100 text-slate-700 hover:bg-slate-200 shadow-sm'
 																			}`}
 																		>
-																			<Paperclip className="w-3.5 h-3.5" />
+																			<Paperclip className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
 																			Archivo {idx + 1}
 																		</a>
 																	))}
@@ -704,13 +713,13 @@ export default function MensajesPage() {
 									</div>
 
 									{/* Input de mensaje mejorado */}
-									<div className="p-6 border-t border-slate-200/60 bg-white/80 backdrop-blur-sm shadow-lg flex-shrink-0">
+									<div className="p-3 sm:p-4 md:p-5 lg:p-6 border-t border-slate-200/60 bg-white/80 backdrop-blur-sm shadow-lg flex-shrink-0">
 										<form
 											onSubmit={(e) => {
 												e.preventDefault();
 												handleSendMessage();
 											}}
-											className="flex items-end gap-4"
+											className="flex items-end gap-2 sm:gap-3 md:gap-4"
 										>
 											<div className="flex-1 min-w-0">
 												<textarea
@@ -725,18 +734,18 @@ export default function MensajesPage() {
 													placeholder="Escribe tu mensaje aquí..."
 													disabled={sending}
 													rows={2}
-													className="w-full px-5 py-4 border-2 border-slate-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500 bg-white text-slate-900 disabled:bg-slate-50 disabled:cursor-not-allowed resize-none shadow-sm transition-all max-h-32 overflow-y-auto"
+													className="w-full px-3 sm:px-4 md:px-5 py-2.5 sm:py-3 md:py-4 border-2 border-slate-200 rounded-xl sm:rounded-2xl focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500 bg-white text-slate-900 disabled:bg-slate-50 disabled:cursor-not-allowed resize-none shadow-sm transition-all max-h-28 sm:max-h-32 overflow-y-auto text-xs sm:text-sm"
 												/>
 											</div>
 											<button
 												type="submit"
 												disabled={!newMessage.trim() || sending || (!selectedConversation && !selectedDoctor)}
-												className="p-4 bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-600 text-white rounded-2xl hover:from-teal-700 hover:via-cyan-700 hover:to-blue-700 transition-all shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center hover:scale-105 active:scale-95 flex-shrink-0"
+												className="p-2.5 sm:p-3 md:p-4 bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-600 text-white rounded-xl sm:rounded-2xl hover:from-teal-700 hover:via-cyan-700 hover:to-blue-700 transition-all shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center hover:scale-105 active:scale-95 flex-shrink-0"
 											>
 												{sending ? (
-													<div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent"></div>
+													<div className="animate-spin rounded-full h-4 w-4 sm:h-5 sm:w-5 border-2 border-white border-t-transparent"></div>
 												) : (
-													<Send className="w-5 h-5" />
+													<Send className="w-4 h-4 sm:w-5 sm:h-5" />
 												)}
 											</button>
 										</form>
@@ -744,24 +753,24 @@ export default function MensajesPage() {
 								</>
 							) : (
 								<div className="flex-1 flex items-center justify-center bg-gradient-to-br from-slate-50 via-blue-50/20 to-indigo-50/10 min-h-0 overflow-hidden">
-									<div className="text-center max-w-md px-8">
+									<div className="text-center max-w-md px-4 sm:px-6 md:px-8">
 										<motion.div
 											initial={{ scale: 0.9, opacity: 0 }}
 											animate={{ scale: 1, opacity: 1 }}
-											className="p-6 bg-gradient-to-br from-teal-500 via-cyan-500 to-blue-500 rounded-full w-28 h-28 flex items-center justify-center mx-auto mb-6 shadow-2xl"
+											className="p-4 sm:p-5 md:p-6 bg-gradient-to-br from-teal-500 via-cyan-500 to-blue-500 rounded-full w-20 h-20 sm:w-24 sm:h-24 md:w-28 md:h-28 flex items-center justify-center mx-auto mb-4 sm:mb-5 md:mb-6 shadow-2xl"
 										>
-											<MessageSquare className="w-14 h-14 text-white" />
+											<MessageSquare className="w-10 h-10 sm:w-12 sm:h-12 md:w-14 md:h-14 text-white" />
 										</motion.div>
-										<h3 className="text-2xl font-bold text-slate-900 mb-3">Centro de Mensajería</h3>
-										<p className="text-slate-600 mb-6 leading-relaxed">
+										<h3 className="text-lg sm:text-xl md:text-2xl font-bold text-slate-900 mb-2 sm:mb-3">Centro de Mensajería</h3>
+										<p className="text-xs sm:text-sm md:text-base text-slate-600 mb-4 sm:mb-5 md:mb-6 leading-relaxed px-2">
 											Selecciona una conversación existente o inicia una nueva para comunicarte con tus especialistas de manera directa y segura.
 										</p>
 										{availableDoctors.length > 0 && (
 											<button
 												onClick={() => setShowNewConversation(true)}
-												className="px-8 py-4 bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-600 text-white rounded-2xl font-bold hover:from-teal-700 hover:via-cyan-700 hover:to-blue-700 transition-all shadow-xl hover:shadow-2xl hover:scale-105 active:scale-95"
+												className="px-4 sm:px-6 md:px-8 py-2.5 sm:py-3 md:py-4 bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-600 text-white rounded-xl sm:rounded-2xl font-bold hover:from-teal-700 hover:via-cyan-700 hover:to-blue-700 transition-all shadow-xl hover:shadow-2xl hover:scale-105 active:scale-95 text-xs sm:text-sm md:text-base"
 											>
-												<Plus className="w-5 h-5 inline mr-2" />
+												<Plus className="w-4 h-4 sm:w-4 sm:h-4 md:w-5 md:h-5 inline mr-1.5 sm:mr-2" />
 												Nueva Conversación
 											</button>
 										)}

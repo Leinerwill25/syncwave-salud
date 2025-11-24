@@ -8,20 +8,65 @@ import { apiRequireRole } from '@/lib/auth-guards';
 
 export async function GET(req: Request) {
 	try {
-		const authResult = await apiRequireRole(['MEDICO']);
-		if (authResult.response) return authResult.response;
-
-		const user = authResult.user;
-		if (!user) {
-			return NextResponse.json({ error: 'Usuario no autenticado' }, { status: 401 });
-		}
-
+		// Obtener cookieStore primero
 		const cookieStore = await cookies();
 		const { supabase } = createSupabaseServerClient(cookieStore);
 
+		// Intentar obtener sesión directamente
+		let { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+
+		// Si no hay sesión, intentar restaurar desde cookies
+		if (!sessionData?.session) {
+			const { tryRestoreSessionFromCookies } = await import('@/lib/auth-guards');
+			const restored = await tryRestoreSessionFromCookies(supabase as any, cookieStore);
+			if (restored) {
+				const after = await supabase.auth.getSession();
+				sessionData = after.data ?? after;
+				sessionError = after.error ?? sessionError;
+			}
+		}
+
+		// Obtener usuario autenticado
+		let doctorId: string | null = null;
+
+		if (sessionData?.session?.user) {
+			// Si tenemos sesión, obtener el usuario de la app
+			const authId = sessionData.session.user.id;
+			const { data: appUser, error: userError } = await supabase
+				.from('User')
+				.select('id, role')
+				.eq('authId', authId)
+				.maybeSingle();
+
+			if (userError || !appUser) {
+				console.error('[Active Patients API] Error obteniendo usuario de la app:', userError);
+				return NextResponse.json({ error: 'Error al obtener datos del usuario' }, { status: 500 });
+			}
+
+			if (appUser.role !== 'MEDICO') {
+				return NextResponse.json({ error: 'No autorizado - rol incorrecto' }, { status: 403 });
+			}
+
+			doctorId = appUser.id;
+		} else {
+			// Si no hay sesión, usar apiRequireRole como fallback
+			const authResult = await apiRequireRole(['MEDICO']);
+			if (authResult.response) return authResult.response;
+
+			const user = authResult.user;
+			if (!user) {
+				return NextResponse.json({ error: 'Usuario no autenticado' }, { status: 401 });
+			}
+
+			doctorId = user.userId;
+		}
+
+		if (!doctorId) {
+			return NextResponse.json({ error: 'No se pudo determinar el ID del médico' }, { status: 500 });
+		}
+
 		const now = new Date();
 		const nowISO = now.toISOString();
-		const doctorId = user.userId; // ID de la tabla User
 
 		// Obtener citas en progreso o programadas que ya comenzaron del médico
 		// Incluimos tanto IN_PROGRESS como SCHEDULED que ya comenzaron

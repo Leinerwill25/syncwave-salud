@@ -13,14 +13,14 @@ export default function PatientLayout({
 				{/* Menú Hamburger para móviles */}
 				<PatientHamburgerMenu />
 
-				<div className="max-w-[1920px] mx-auto px-4 sm:px-6 lg:px-8 py-6 pt-20 md:pt-6">
-					<div className="flex gap-6">
-						<SidebarPatient />
-						<main className="flex-1 min-w-0">
-							{children}
-						</main>
-					</div>
+			<div className="max-w-[1920px] mx-auto px-3 sm:px-4 md:px-6 lg:px-8 py-4 sm:py-5 md:py-6 pt-20 sm:pt-20 md:pt-6">
+				<div className="flex flex-col md:flex-row gap-3 sm:gap-4 md:gap-6">
+					<SidebarPatient />
+					<main className="flex-1 min-w-0 w-full">
+						{children}
+					</main>
 				</div>
+			</div>
 			</div>
 		</ServerDashboardGuard>
 	);

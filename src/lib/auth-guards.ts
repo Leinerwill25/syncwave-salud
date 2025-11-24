@@ -49,12 +49,19 @@ export async function getAuthenticatedUser(): Promise<AuthenticatedUser | null> 
 			}
 		}
 
-		// Si aún no hay usuario, intentar restaurar desde cookies nuevamente
+		// Si aún no hay usuario, intentar restaurar desde cookies nuevamente y luego getUser()
 		if (!user) {
 			const restored = await tryRestoreSessionFromCookies(supabase as unknown as SupabaseClient, cookieStore);
 			if (restored) {
-				const after = await supabase.auth.getUser();
-				user = after.data?.user ?? null;
+				// Intentar getSession después de restaurar
+				const afterSession = await supabase.auth.getSession();
+				if (afterSession.data?.session?.user) {
+					user = afterSession.data.session.user;
+				} else {
+					// Si aún no hay usuario, intentar getUser()
+					const afterUser = await supabase.auth.getUser();
+					user = afterUser.data?.user ?? null;
+				}
 			}
 		}
 
@@ -90,7 +97,7 @@ export async function getAuthenticatedUser(): Promise<AuthenticatedUser | null> 
 		};
 	} catch (err) {
 		const errorMessage = err instanceof Error ? err.message : 'Error desconocido';
-		console.error('[Auth Guard] Error:', errorMessage);
+		console.error('[Auth Guard] Error:', errorMessage, err);
 		return null;
 	}
 }
@@ -111,7 +118,7 @@ interface SupabaseClient {
 /**
  * Restaura la sesión desde cookies
  */
-async function tryRestoreSessionFromCookies(supabase: SupabaseClient, cookieStore: CookieStore): Promise<boolean> {
+export async function tryRestoreSessionFromCookies(supabase: SupabaseClient, cookieStore: CookieStore): Promise<boolean> {
 	if (!cookieStore) return false;
 
 	const cookieCandidates = ['sb-session', 'sb:token', 'supabase-auth-token', 'sb-access-token', 'sb-refresh-token'];
@@ -153,8 +160,15 @@ async function tryRestoreSessionFromCookies(supabase: SupabaseClient, cookieStor
 					access_token = getNestedValue(parsed, 'access_token', 'session.access_token', 'currentSession.access_token');
 					refresh_token = getNestedValue(parsed, 'refresh_token', 'session.refresh_token', 'currentSession.refresh_token');
 				} else {
-					access_token = getNestedValue(parsed, 'access_token', 'currentSession.access_token');
-					refresh_token = getNestedValue(parsed, 'refresh_token', 'currentSession.refresh_token');
+					access_token = getNestedValue(parsed, 'access_token', 'currentSession.access_token', 'current_session.access_token');
+					refresh_token = getNestedValue(parsed, 'refresh_token', 'currentSession.refresh_token', 'current_session.refresh_token');
+					
+					// Algunos formatos guardan en currentSession como objeto
+					if (!access_token && parsed?.currentSession && typeof parsed.currentSession === 'object') {
+						const cs = parsed.currentSession as Record<string, unknown>;
+						access_token = (cs.access_token as string) || null;
+						refresh_token = (cs.refresh_token as string) || null;
+					}
 				}
 			} else {
 				if (name === 'sb-access-token') {
@@ -166,18 +180,17 @@ async function tryRestoreSessionFromCookies(supabase: SupabaseClient, cookieStor
 
 			if (!access_token && !refresh_token) continue;
 
-			const payload: { access_token: string; refresh_token?: string } = {
+			// Intentar setSession primero
+			const sessionPayload: { access_token: string; refresh_token?: string } = {
 				access_token: access_token || '',
 			};
 			if (refresh_token) {
-				payload.refresh_token = refresh_token;
+				sessionPayload.refresh_token = refresh_token;
 			}
 
-			const sessionPayload = refresh_token 
-			? { access_token: access_token || '', refresh_token }
-			: { access_token: access_token || '', refresh_token: '' };
-		const { data, error } = await supabase.auth.setSession(sessionPayload);
+			const { data, error } = await supabase.auth.setSession(sessionPayload);
 			if (error) {
+				// Si solo tenemos refresh_token y falla setSession, intentar refreshSession
 				if (refresh_token && !access_token) {
 					try {
 						const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession({ refresh_token });
@@ -193,9 +206,11 @@ async function tryRestoreSessionFromCookies(supabase: SupabaseClient, cookieStor
 
 			if (data?.session) return true;
 
+			// Verificar si la sesión está disponible después de setSession
 			const { data: sessionAfter } = await supabase.auth.getSession();
 			if (sessionAfter?.session) return true;
-		} catch {
+		} catch (err) {
+			// Continuar con la siguiente cookie si hay error
 			continue;
 		}
 	}

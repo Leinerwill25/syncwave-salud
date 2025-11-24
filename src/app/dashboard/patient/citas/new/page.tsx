@@ -453,40 +453,41 @@ export default function NewAppointmentPage() {
 	};
 
 	return (
-		<div className="space-y-6">
+		<div className="space-y-4 sm:space-y-6">
 			{/* Header */}
-			<div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-xl border border-white/20 p-8">
-				<div className="flex items-center gap-4 mb-6">
-					<Link href="/dashboard/patient/citas" className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
-						<ChevronLeft className="w-5 h-5 text-gray-600" />
+			<div className="bg-white/80 backdrop-blur-sm rounded-xl sm:rounded-2xl shadow-xl border border-white/20 p-4 sm:p-6 md:p-8">
+				<div className="flex items-center gap-2 sm:gap-4 mb-4 sm:mb-6">
+					<Link href="/dashboard/patient/citas" className="p-1.5 sm:p-2 hover:bg-gray-100 rounded-lg transition-colors flex-shrink-0">
+						<ChevronLeft className="w-4 h-4 sm:w-5 sm:h-5 text-gray-600" />
 					</Link>
-					<div>
-						<h1 className="text-3xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">Nueva Cita</h1>
-						<p className="text-gray-600 mt-1">Agenda una cita médica</p>
+					<div className="min-w-0 flex-1">
+						<h1 className="text-xl sm:text-2xl md:text-3xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">Nueva Cita</h1>
+						<p className="text-gray-600 mt-0.5 sm:mt-1 text-sm sm:text-base">Agenda una cita médica</p>
 					</div>
 				</div>
 
 				{/* Progress Steps */}
-				<div className="flex items-center justify-between mb-8">
+				<div className="flex items-center justify-between mb-4 sm:mb-8 overflow-x-auto pb-2 -mx-2 sm:mx-0 px-2 sm:px-0">
 					{[
-						{ id: 'organization', label: 'Clínica/Consultorio', icon: Building2 },
-						{ id: 'doctor', label: 'Médico', icon: User },
-						{ id: 'schedule', label: 'Horario', icon: Calendar },
-						{ id: 'confirm', label: 'Confirmar', icon: CheckCircle },
+						{ id: 'organization', label: 'Clínica/Consultorio', shortLabel: 'Clínica', icon: Building2 },
+						{ id: 'doctor', label: 'Médico', shortLabel: 'Médico', icon: User },
+						{ id: 'schedule', label: 'Horario', shortLabel: 'Horario', icon: Calendar },
+						{ id: 'confirm', label: 'Confirmar', shortLabel: 'Confirmar', icon: CheckCircle },
 					].map((s, idx) => {
 						const Icon = s.icon;
 						const isActive = step === s.id;
 						const isCompleted = ['organization', 'doctor', 'schedule', 'confirm'].indexOf(step) > idx;
 
 						return (
-							<div key={s.id} className="flex items-center flex-1">
-								<div className="flex flex-col items-center flex-1">
-									<div className={`w-12 h-12 rounded-full flex items-center justify-center transition-all ${isActive ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-lg scale-110' : isCompleted ? 'bg-green-500 text-white' : 'bg-gray-200 text-gray-500'}`}>
-										<Icon className="w-6 h-6" />
+							<div key={s.id} className="flex items-center flex-1 min-w-0">
+								<div className="flex flex-col items-center flex-1 min-w-0">
+									<div className={`w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 rounded-full flex items-center justify-center transition-all flex-shrink-0 ${isActive ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-lg scale-110' : isCompleted ? 'bg-green-500 text-white' : 'bg-gray-200 text-gray-500'}`}>
+										<Icon className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6" />
 									</div>
-									<span className={`mt-2 text-sm font-medium ${isActive ? 'text-indigo-600' : 'text-gray-500'}`}>{s.label}</span>
+									<span className={`mt-1 sm:mt-2 text-[10px] sm:text-xs md:text-sm font-medium text-center ${isActive ? 'text-indigo-600' : 'text-gray-500'} hidden sm:block`}>{s.label}</span>
+									<span className={`mt-1 text-[9px] font-medium text-center ${isActive ? 'text-indigo-600' : 'text-gray-500'} sm:hidden`}>{s.shortLabel}</span>
 								</div>
-								{idx < 3 && <div className={`flex-1 h-1 mx-2 ${isCompleted ? 'bg-green-500' : 'bg-gray-200'}`} />}
+								{idx < 3 && <div className={`flex-1 h-0.5 sm:h-1 mx-1 sm:mx-2 min-w-[8px] sm:min-w-0 ${isCompleted ? 'bg-green-500' : 'bg-gray-200'} hidden sm:block`} />}
 							</div>
 						);
 					})}
@@ -495,23 +496,29 @@ export default function NewAppointmentPage() {
 
 			{/* Step 1: Select Organization */}
 			{step === 'organization' && (
-				<div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-xl border border-white/20 p-8">
-					<h2 className="text-2xl font-bold text-gray-900 mb-6 flex items-center gap-3">
-						<Building2 className="w-6 h-6 text-indigo-600" />
-						Selecciona un Consultorio
+				<div className="bg-white/80 backdrop-blur-sm rounded-xl sm:rounded-2xl shadow-xl border border-white/20 p-4 sm:p-6 md:p-8">
+					<h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-4 sm:mb-6 flex items-center gap-2 sm:gap-3">
+						<Building2 className="w-5 h-5 sm:w-6 sm:h-6 text-indigo-600 flex-shrink-0" />
+						<span>Selecciona un Consultorio</span>
 					</h2>
 
-					<div className="relative mb-6">
-						<Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-						<input type="text" placeholder="Buscar consultorio..." value={searchOrg} onChange={(e) => setSearchOrg(e.target.value)} className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent" />
+					<div className="relative mb-4 sm:mb-6">
+						<Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 sm:w-5 sm:h-5 text-gray-400" />
+						<input 
+							type="text" 
+							placeholder="Buscar consultorio..." 
+							value={searchOrg} 
+							onChange={(e) => setSearchOrg(e.target.value)} 
+							className="w-full pl-9 sm:pl-10 pr-4 py-2.5 sm:py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm sm:text-base" 
+						/>
 					</div>
 
 					{loading ? (
-						<div className="text-center py-12">
-							<div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto"></div>
+						<div className="text-center py-8 sm:py-12">
+							<div className="animate-spin rounded-full h-10 w-10 sm:h-12 sm:w-12 border-b-2 border-indigo-600 mx-auto"></div>
 						</div>
 					) : (
-						<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+						<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
 							{filteredOrgs.map((org) => (
 								<button
 									key={org.id}
@@ -519,14 +526,14 @@ export default function NewAppointmentPage() {
 										setSelectedOrganization(org);
 										setStep('doctor');
 									}}
-									className={`p-6 rounded-xl border-2 transition-all text-left ${selectedOrganization?.id === org.id ? 'border-indigo-600 bg-indigo-50 shadow-lg' : 'border-gray-200 hover:border-indigo-300 hover:shadow-md'}`}>
-									<div className="flex items-center gap-3 mb-2">
-										<div className="p-2 bg-indigo-100 rounded-lg">
-											<Building2 className="w-5 h-5 text-indigo-600" />
+									className={`p-4 sm:p-6 rounded-xl border-2 transition-all text-left ${selectedOrganization?.id === org.id ? 'border-indigo-600 bg-indigo-50 shadow-lg' : 'border-gray-200 hover:border-indigo-300 hover:shadow-md'}`}>
+									<div className="flex items-center gap-2 sm:gap-3 mb-1 sm:mb-2">
+										<div className="p-1.5 sm:p-2 bg-indigo-100 rounded-lg flex-shrink-0">
+											<Building2 className="w-4 h-4 sm:w-5 sm:h-5 text-indigo-600" />
 										</div>
-										<h3 className="font-bold text-gray-900">{org.clinic_profile?.trade_name || org.name}</h3>
+										<h3 className="font-bold text-gray-900 text-sm sm:text-base break-words">{org.clinic_profile?.trade_name || org.name}</h3>
 									</div>
-									<p className="text-sm text-gray-600">{org.name}</p>
+									<p className="text-xs sm:text-sm text-gray-600 break-words">{org.name}</p>
 								</button>
 							))}
 						</div>
@@ -536,38 +543,44 @@ export default function NewAppointmentPage() {
 
 			{/* Step 2: Select Doctor */}
 			{step === 'doctor' && (
-				<div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-xl border border-white/20 p-8">
-					<div className="flex items-center justify-between mb-6">
-						<h2 className="text-2xl font-bold text-gray-900 flex items-center gap-3">
-							<User className="w-6 h-6 text-indigo-600" />
-							Selecciona un Médico
+				<div className="bg-white/80 backdrop-blur-sm rounded-xl sm:rounded-2xl shadow-xl border border-white/20 p-4 sm:p-6 md:p-8">
+					<div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4 mb-4 sm:mb-6">
+						<h2 className="text-xl sm:text-2xl font-bold text-gray-900 flex items-center gap-2 sm:gap-3">
+							<User className="w-5 h-5 sm:w-6 sm:h-6 text-indigo-600 flex-shrink-0" />
+							<span>Selecciona un Médico</span>
 						</h2>
-						<button onClick={() => setStep('organization')} className="text-indigo-600 hover:text-indigo-700 font-medium">
+						<button onClick={() => setStep('organization')} className="text-sm sm:text-base text-indigo-600 hover:text-indigo-700 font-medium whitespace-nowrap">
 							Cambiar clínica
 						</button>
 					</div>
 
-					<div className="relative mb-6">
-						<Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-						<input type="text" placeholder="Buscar médico..." value={searchDoctor} onChange={(e) => setSearchDoctor(e.target.value)} className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent" />
+					<div className="relative mb-4 sm:mb-6">
+						<Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 sm:w-5 sm:h-5 text-gray-400" />
+						<input 
+							type="text" 
+							placeholder="Buscar médico..." 
+							value={searchDoctor} 
+							onChange={(e) => setSearchDoctor(e.target.value)} 
+							className="w-full pl-9 sm:pl-10 pr-4 py-2.5 sm:py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm sm:text-base" 
+						/>
 					</div>
 
 					{loading ? (
-						<div className="text-center py-12">
-							<div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto"></div>
+						<div className="text-center py-8 sm:py-12">
+							<div className="animate-spin rounded-full h-10 w-10 sm:h-12 sm:w-12 border-b-2 border-indigo-600 mx-auto"></div>
 						</div>
 					) : (
-						<div className="space-y-4">
+						<div className="space-y-3 sm:space-y-4">
 							{filteredDoctors.length === 0 ? (
-								<div className="text-center py-12 text-gray-500">
-									<User className="w-16 h-16 mx-auto mb-4 opacity-50" />
-									<p>No hay médicos disponibles en esta clínica</p>
+								<div className="text-center py-8 sm:py-12 text-gray-500">
+									<User className="w-12 h-12 sm:w-16 sm:h-16 mx-auto mb-3 sm:mb-4 opacity-50" />
+									<p className="text-sm sm:text-base">No hay médicos disponibles en esta clínica</p>
 									<button
 										onClick={() => {
 											setSelectedDoctor(null);
 											setStep('schedule');
 										}}
-										className="mt-4 px-6 py-3 bg-indigo-600 text-white rounded-lg font-semibold hover:bg-indigo-700 transition-colors">
+										className="mt-3 sm:mt-4 px-4 sm:px-6 py-2 sm:py-3 bg-indigo-600 text-white rounded-lg font-semibold hover:bg-indigo-700 transition-colors text-sm sm:text-base">
 										Continuar sin seleccionar médico
 									</button>
 								</div>
@@ -579,18 +592,18 @@ export default function NewAppointmentPage() {
 											setSelectedDoctor(doctor);
 											setStep('schedule');
 										}}
-										className={`w-full p-6 rounded-xl border-2 transition-all text-left ${selectedDoctor?.id === doctor.id ? 'border-indigo-600 bg-indigo-50 shadow-lg' : 'border-gray-200 hover:border-indigo-300 hover:shadow-md'}`}>
-										<div className="flex items-center gap-4">
+										className={`w-full p-4 sm:p-6 rounded-xl border-2 transition-all text-left ${selectedDoctor?.id === doctor.id ? 'border-indigo-600 bg-indigo-50 shadow-lg' : 'border-gray-200 hover:border-indigo-300 hover:shadow-md'}`}>
+										<div className="flex items-center gap-3 sm:gap-4">
 											{doctor.medic_profile?.photo_url ? (
-												<img src={doctor.medic_profile.photo_url} alt={doctor.name || 'Médico'} className="w-16 h-16 rounded-full object-cover" />
+												<img src={doctor.medic_profile.photo_url} alt={doctor.name || 'Médico'} className="w-12 h-12 sm:w-16 sm:h-16 rounded-full object-cover flex-shrink-0" />
 											) : (
-												<div className="w-16 h-16 rounded-full bg-indigo-100 flex items-center justify-center">
-													<User className="w-8 h-8 text-indigo-600" />
+												<div className="w-12 h-12 sm:w-16 sm:h-16 rounded-full bg-indigo-100 flex items-center justify-center flex-shrink-0">
+													<User className="w-6 h-6 sm:w-8 sm:h-8 text-indigo-600" />
 												</div>
 											)}
-											<div className="flex-1">
-												<h3 className="font-bold text-gray-900 text-lg">Dr. {doctor.name || 'Médico'}</h3>
-												<p className="text-gray-600">{doctor.medic_profile?.specialty || doctor.medic_profile?.private_specialty || 'Especialista'}</p>
+											<div className="flex-1 min-w-0">
+												<h3 className="font-bold text-gray-900 text-base sm:text-lg break-words">Dr. {doctor.name || 'Médico'}</h3>
+												<p className="text-sm sm:text-base text-gray-600 break-words">{doctor.medic_profile?.specialty || doctor.medic_profile?.private_specialty || 'Especialista'}</p>
 											</div>
 										</div>
 									</button>
@@ -603,11 +616,11 @@ export default function NewAppointmentPage() {
 
 			{/* Step 3: Select Schedule */}
 			{step === 'schedule' && (
-				<div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-xl border border-white/20 p-8">
-					<div className="flex items-center justify-between mb-6">
-						<h2 className="text-2xl font-bold text-gray-900 flex items-center gap-3">
-							<Calendar className="w-6 h-6 text-indigo-600" />
-							Selecciona Fecha y Hora
+				<div className="bg-white/80 backdrop-blur-sm rounded-xl sm:rounded-2xl shadow-xl border border-white/20 p-4 sm:p-6 md:p-8">
+					<div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4 mb-4 sm:mb-6">
+						<h2 className="text-xl sm:text-2xl font-bold text-gray-900 flex items-center gap-2 sm:gap-3">
+							<Calendar className="w-5 h-5 sm:w-6 sm:h-6 text-indigo-600 flex-shrink-0" />
+							<span>Selecciona Fecha y Hora</span>
 						</h2>
 						<button
 							onClick={() => {
@@ -616,20 +629,20 @@ export default function NewAppointmentPage() {
 								setAvailableSlots([]);
 								setSlotsError(null);
 							}}
-							className="text-indigo-600 hover:text-indigo-700 font-medium">
+							className="text-sm sm:text-base text-indigo-600 hover:text-indigo-700 font-medium whitespace-nowrap">
 							Cambiar médico
 						</button>
 					</div>
 
 					{/* Información del médico seleccionado */}
 					{selectedDoctor && (
-						<div className="mb-6 p-4 bg-indigo-50 border border-indigo-200 rounded-lg">
-							<div className="flex items-center gap-3">
-								<User className="w-5 h-5 text-indigo-600" />
-								<div>
-									<p className="text-sm text-indigo-600 font-medium">Médico seleccionado</p>
-									<p className="text-lg font-semibold text-gray-900">Dr. {selectedDoctor.name}</p>
-									{selectedDoctor.medic_profile && <p className="text-sm text-gray-600">{selectedDoctor.medic_profile.specialty || selectedDoctor.medic_profile.private_specialty || 'Especialista'}</p>}
+						<div className="mb-4 sm:mb-6 p-3 sm:p-4 bg-indigo-50 border border-indigo-200 rounded-lg">
+							<div className="flex items-center gap-2 sm:gap-3">
+								<User className="w-4 h-4 sm:w-5 sm:h-5 text-indigo-600 flex-shrink-0" />
+								<div className="min-w-0 flex-1">
+									<p className="text-xs sm:text-sm text-indigo-600 font-medium">Médico seleccionado</p>
+									<p className="text-base sm:text-lg font-semibold text-gray-900 break-words">Dr. {selectedDoctor.name}</p>
+									{selectedDoctor.medic_profile && <p className="text-xs sm:text-sm text-gray-600 break-words">{selectedDoctor.medic_profile.specialty || selectedDoctor.medic_profile.private_specialty || 'Especialista'}</p>}
 								</div>
 							</div>
 						</div>
@@ -637,28 +650,28 @@ export default function NewAppointmentPage() {
 
 					{/* Servicios y Precios */}
 					{selectedDoctor?.medic_profile?.services && Array.isArray(selectedDoctor.medic_profile.services) && selectedDoctor.medic_profile.services.length > 0 && (
-						<div className="mb-6 p-6 bg-white border-2 border-teal-200 rounded-xl">
-							<h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
-								<DollarSign className="w-5 h-5 text-teal-600" />
-								Servicios y Precios
+						<div className="mb-4 sm:mb-6 p-4 sm:p-6 bg-white border-2 border-teal-200 rounded-xl">
+							<h3 className="text-base sm:text-lg font-bold text-gray-900 mb-3 sm:mb-4 flex items-center gap-2">
+								<DollarSign className="w-4 h-4 sm:w-5 sm:h-5 text-teal-600 flex-shrink-0" />
+								<span>Servicios y Precios</span>
 							</h3>
-							<p className="text-sm text-gray-600 mb-4">Selecciona el servicio que deseas agendar:</p>
-							<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+							<p className="text-xs sm:text-sm text-gray-600 mb-3 sm:mb-4">Selecciona el servicio que deseas agendar:</p>
+							<div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
 								{selectedDoctor.medic_profile.services.map((service, idx) => {
 									const isSelected = selectedService?.name === service.name;
 									return (
-										<button key={idx} type="button" onClick={() => setSelectedService(service)} className={`p-4 rounded-xl border-2 transition-all text-left ${isSelected ? 'border-teal-600 bg-teal-50 shadow-md' : 'border-gray-200 bg-white hover:border-teal-300 hover:bg-teal-50/50'}`}>
-											<div className="flex items-start justify-between mb-2">
-												<h4 className="font-semibold text-gray-900">{service.name}</h4>
+										<button key={idx} type="button" onClick={() => setSelectedService(service)} className={`p-3 sm:p-4 rounded-xl border-2 transition-all text-left ${isSelected ? 'border-teal-600 bg-teal-50 shadow-md' : 'border-gray-200 bg-white hover:border-teal-300 hover:bg-teal-50/50'}`}>
+											<div className="flex items-start justify-between mb-1 sm:mb-2 gap-2">
+												<h4 className="font-semibold text-gray-900 text-sm sm:text-base break-words flex-1">{service.name}</h4>
 												{isSelected && (
-													<div className="w-5 h-5 rounded-full bg-teal-600 flex items-center justify-center">
-														<CheckCircle className="w-3 h-3 text-white" />
+													<div className="w-4 h-4 sm:w-5 sm:h-5 rounded-full bg-teal-600 flex items-center justify-center flex-shrink-0">
+														<CheckCircle className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-white" />
 													</div>
 												)}
 											</div>
-											{service.description && <p className="text-sm text-gray-600 mb-2">{service.description}</p>}
-											<div className="flex items-center gap-2 mt-3">
-												<span className="text-2xl font-bold text-teal-600">
+											{service.description && <p className="text-xs sm:text-sm text-gray-600 mb-2 break-words">{service.description}</p>}
+											<div className="flex items-center gap-2 mt-2 sm:mt-3">
+												<span className="text-lg sm:text-2xl font-bold text-teal-600">
 													{service.price} {service.currency}
 												</span>
 											</div>
@@ -667,8 +680,8 @@ export default function NewAppointmentPage() {
 								})}
 							</div>
 							{selectedService && (
-								<div className="mt-4 p-4 bg-teal-50 border border-teal-200 rounded-lg">
-									<p className="text-sm font-medium text-teal-900">
+								<div className="mt-3 sm:mt-4 p-3 sm:p-4 bg-teal-50 border border-teal-200 rounded-lg">
+									<p className="text-xs sm:text-sm font-medium text-teal-900 break-words">
 										Servicio seleccionado: <span className="font-bold">{selectedService.name}</span> - {selectedService.price} {selectedService.currency}
 									</p>
 								</div>
@@ -676,11 +689,11 @@ export default function NewAppointmentPage() {
 						</div>
 					)}
 
-					<div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+					<div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 mb-4 sm:mb-6">
 						<div>
-							<label className="block text-sm font-medium text-gray-700 mb-2">
+							<label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1 sm:mb-2">
 								Fecha
-								{availableDays.length > 0 && <span className="ml-2 text-xs text-gray-500 font-normal">(Solo días disponibles)</span>}
+								{availableDays.length > 0 && <span className="ml-1 sm:ml-2 text-[10px] sm:text-xs text-gray-500 font-normal">(Solo días disponibles)</span>}
 							</label>
 							<input
 								type="date"
@@ -697,16 +710,16 @@ export default function NewAppointmentPage() {
 									setSlotsError(null);
 								}}
 								{...getDateInputProps()}
-								className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+								className="w-full px-3 sm:px-4 py-2 sm:py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm sm:text-base"
 							/>
 							{availableDays.length > 0 && (
-								<div className="mt-2 text-xs text-gray-600">
+								<div className="mt-2 text-[10px] sm:text-xs text-gray-600">
 									<p className="font-medium mb-1">Días disponibles:</p>
-									<div className="flex flex-wrap gap-2">
+									<div className="flex flex-wrap gap-1.5 sm:gap-2">
 										{['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'].map(
 											(day, idx) =>
 												availableDays.includes(idx) && (
-													<span key={idx} className="px-2 py-1 bg-green-100 text-green-700 rounded-full text-xs font-medium">
+													<span key={idx} className="px-1.5 sm:px-2 py-0.5 sm:py-1 bg-green-100 text-green-700 rounded-full text-[10px] sm:text-xs font-medium">
 														{day}
 													</span>
 												)
@@ -716,31 +729,31 @@ export default function NewAppointmentPage() {
 							)}
 						</div>
 						<div>
-							<label className="block text-sm font-medium text-gray-700 mb-2">Hora</label>
+							<label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1 sm:mb-2">Hora</label>
 							{!selectedDate ? (
-								<div className="px-4 py-3 border border-gray-300 rounded-lg bg-gray-50 text-gray-500">Selecciona una fecha primero</div>
+								<div className="px-3 sm:px-4 py-2 sm:py-3 border border-gray-300 rounded-lg bg-gray-50 text-gray-500 text-sm sm:text-base">Selecciona una fecha primero</div>
 							) : !selectedDoctor ? (
-								<div className="px-4 py-3 border border-yellow-300 rounded-lg bg-yellow-50 text-yellow-700">Selecciona un médico primero para ver los horarios disponibles</div>
+								<div className="px-3 sm:px-4 py-2 sm:py-3 border border-yellow-300 rounded-lg bg-yellow-50 text-yellow-700 text-sm sm:text-base">Selecciona un médico primero para ver los horarios disponibles</div>
 							) : loadingSlots ? (
-								<div className="px-4 py-8 border border-gray-300 rounded-lg bg-gray-50 text-center">
-									<div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600 mx-auto mb-2"></div>
-									<p className="text-sm text-gray-600">Cargando horarios disponibles...</p>
+								<div className="px-3 sm:px-4 py-6 sm:py-8 border border-gray-300 rounded-lg bg-gray-50 text-center">
+									<div className="animate-spin rounded-full h-6 w-6 sm:h-8 sm:w-8 border-b-2 border-indigo-600 mx-auto mb-2"></div>
+									<p className="text-xs sm:text-sm text-gray-600">Cargando horarios disponibles...</p>
 								</div>
 							) : slotsError ? (
-								<div className="px-4 py-3 border border-red-300 rounded-lg bg-red-50 text-red-700">
-									<AlertCircle className="w-4 h-4 inline mr-2" />
+								<div className="px-3 sm:px-4 py-2 sm:py-3 border border-red-300 rounded-lg bg-red-50 text-red-700 text-xs sm:text-sm">
+									<AlertCircle className="w-3.5 h-3.5 sm:w-4 sm:h-4 inline mr-1 sm:mr-2" />
 									{slotsError}
 								</div>
 							) : availableSlots.length === 0 ? (
-								<div className="col-span-3 text-center py-8 text-gray-500 border border-gray-300 rounded-lg bg-gray-50">
-									<Clock className="w-12 h-12 mx-auto mb-2 opacity-50" />
-									<p>No hay horarios disponibles para esta fecha</p>
-									<p className="text-sm mt-2">Intenta seleccionar otra fecha</p>
+								<div className="text-center py-6 sm:py-8 text-gray-500 border border-gray-300 rounded-lg bg-gray-50">
+									<Clock className="w-8 h-8 sm:w-12 sm:h-12 mx-auto mb-2 opacity-50" />
+									<p className="text-sm sm:text-base">No hay horarios disponibles para esta fecha</p>
+									<p className="text-xs sm:text-sm mt-1 sm:mt-2">Intenta seleccionar otra fecha</p>
 								</div>
 							) : (
-								<div className="grid grid-cols-3 gap-2 max-h-64 overflow-y-auto p-2 border border-gray-200 rounded-lg bg-gray-50">
+								<div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5 sm:gap-2 max-h-48 sm:max-h-64 overflow-y-auto p-2 border border-gray-200 rounded-lg bg-gray-50">
 									{availableSlots.map((slot) => (
-										<button key={slot} type="button" onClick={() => setSelectedTime(slot)} className={`px-4 py-2 rounded-lg border-2 transition-all ${selectedTime === slot ? 'border-indigo-600 bg-indigo-50 text-indigo-700 font-semibold shadow-md' : 'border-gray-200 hover:border-indigo-300 hover:bg-indigo-50 text-gray-700 bg-white'}`}>
+										<button key={slot} type="button" onClick={() => setSelectedTime(slot)} className={`px-2 sm:px-4 py-1.5 sm:py-2 rounded-lg border-2 transition-all text-xs sm:text-sm ${selectedTime === slot ? 'border-indigo-600 bg-indigo-50 text-indigo-700 font-semibold shadow-md' : 'border-gray-200 hover:border-indigo-300 hover:bg-indigo-50 text-gray-700 bg-white'}`}>
 											{slot}
 										</button>
 									))}
@@ -749,16 +762,22 @@ export default function NewAppointmentPage() {
 						</div>
 					</div>
 
-					<div className="mb-6">
-						<label className="block text-sm font-medium text-gray-700 mb-2">Motivo de la consulta</label>
-						<textarea value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Describe el motivo de tu consulta..." rows={3} className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent" />
+					<div className="mb-4 sm:mb-6">
+						<label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1 sm:mb-2">Motivo de la consulta</label>
+						<textarea 
+							value={reason} 
+							onChange={(e) => setReason(e.target.value)} 
+							placeholder="Describe el motivo de tu consulta..." 
+							rows={3} 
+							className="w-full px-3 sm:px-4 py-2 sm:py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm sm:text-base resize-none" 
+						/>
 					</div>
 
-					<div className="flex gap-4">
-						<button onClick={() => setStep('doctor')} className="px-6 py-3 border border-gray-300 rounded-lg font-semibold hover:bg-gray-50 transition-colors">
+					<div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
+						<button onClick={() => setStep('doctor')} className="w-full sm:w-auto px-4 sm:px-6 py-2 sm:py-3 border border-gray-300 rounded-lg font-semibold hover:bg-gray-50 transition-colors text-sm sm:text-base">
 							Anterior
 						</button>
-						<button onClick={() => setStep('confirm')} disabled={!selectedDate || !selectedTime} className="px-6 py-3 bg-indigo-600 text-white rounded-lg font-semibold hover:bg-indigo-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+						<button onClick={() => setStep('confirm')} disabled={!selectedDate || !selectedTime} className="w-full sm:w-auto px-4 sm:px-6 py-2 sm:py-3 bg-indigo-600 text-white rounded-lg font-semibold hover:bg-indigo-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm sm:text-base">
 							Continuar
 						</button>
 					</div>
@@ -767,34 +786,34 @@ export default function NewAppointmentPage() {
 
 			{/* Step 4: Confirm */}
 			{step === 'confirm' && (
-				<div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-xl border border-white/20 p-8">
-					<h2 className="text-2xl font-bold text-gray-900 mb-6 flex items-center gap-3">
-						<CheckCircle className="w-6 h-6 text-green-600" />
-						Confirmar Cita
+				<div className="bg-white/80 backdrop-blur-sm rounded-xl sm:rounded-2xl shadow-xl border border-white/20 p-4 sm:p-6 md:p-8">
+					<h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-4 sm:mb-6 flex items-center gap-2 sm:gap-3">
+						<CheckCircle className="w-5 h-5 sm:w-6 sm:h-6 text-green-600 flex-shrink-0" />
+						<span>Confirmar Cita</span>
 					</h2>
 
-					<div className="bg-gray-50 rounded-xl p-6 mb-6 space-y-4">
-						<div className="flex items-center gap-3">
-							<Building2 className="w-5 h-5 text-gray-400" />
-							<div>
-								<p className="text-sm text-gray-600">Clínica</p>
-								<p className="font-semibold text-gray-900">{selectedOrganization?.clinic_profile?.trade_name || selectedOrganization?.name}</p>
+					<div className="bg-gray-50 rounded-xl p-4 sm:p-6 mb-4 sm:mb-6 space-y-3 sm:space-y-4">
+						<div className="flex items-start gap-2 sm:gap-3">
+							<Building2 className="w-4 h-4 sm:w-5 sm:h-5 text-gray-400 flex-shrink-0 mt-0.5" />
+							<div className="min-w-0 flex-1">
+								<p className="text-xs sm:text-sm text-gray-600">Clínica</p>
+								<p className="font-semibold text-gray-900 text-sm sm:text-base break-words">{selectedOrganization?.clinic_profile?.trade_name || selectedOrganization?.name}</p>
 							</div>
 						</div>
 						{selectedDoctor && (
-							<div className="flex items-center gap-3">
-								<User className="w-5 h-5 text-gray-400" />
-								<div>
-									<p className="text-sm text-gray-600">Médico</p>
-									<p className="font-semibold text-gray-900">Dr. {selectedDoctor.name}</p>
+							<div className="flex items-start gap-2 sm:gap-3">
+								<User className="w-4 h-4 sm:w-5 sm:h-5 text-gray-400 flex-shrink-0 mt-0.5" />
+								<div className="min-w-0 flex-1">
+									<p className="text-xs sm:text-sm text-gray-600">Médico</p>
+									<p className="font-semibold text-gray-900 text-sm sm:text-base break-words">Dr. {selectedDoctor.name}</p>
 								</div>
 							</div>
 						)}
-						<div className="flex items-center gap-3">
-							<Calendar className="w-5 h-5 text-gray-400" />
-							<div>
-								<p className="text-sm text-gray-600">Fecha y Hora</p>
-								<p className="font-semibold text-gray-900">
+						<div className="flex items-start gap-2 sm:gap-3">
+							<Calendar className="w-4 h-4 sm:w-5 sm:h-5 text-gray-400 flex-shrink-0 mt-0.5" />
+							<div className="min-w-0 flex-1">
+								<p className="text-xs sm:text-sm text-gray-600">Fecha y Hora</p>
+								<p className="font-semibold text-gray-900 text-sm sm:text-base break-words">
 									{new Date(`${selectedDate}T${selectedTime}`).toLocaleDateString('es-ES', {
 										weekday: 'long',
 										year: 'numeric',
@@ -807,18 +826,18 @@ export default function NewAppointmentPage() {
 						</div>
 						{reason && (
 							<div>
-								<p className="text-sm text-gray-600 mb-1">Motivo</p>
-								<p className="text-gray-900">{reason}</p>
+								<p className="text-xs sm:text-sm text-gray-600 mb-1">Motivo</p>
+								<p className="text-gray-900 text-sm sm:text-base break-words">{reason}</p>
 							</div>
 						)}
 						{selectedService && (
-							<div className="flex items-center gap-3">
-								<DollarSign className="w-5 h-5 text-teal-600" />
-								<div>
-									<p className="text-sm text-gray-600">Servicio Seleccionado</p>
-									<p className="font-semibold text-gray-900">{selectedService.name}</p>
-									{selectedService.description && <p className="text-xs text-gray-500 mt-1">{selectedService.description}</p>}
-									<p className="text-lg font-bold text-teal-600 mt-1">
+							<div className="flex items-start gap-2 sm:gap-3">
+								<DollarSign className="w-4 h-4 sm:w-5 sm:h-5 text-teal-600 flex-shrink-0 mt-0.5" />
+								<div className="min-w-0 flex-1">
+									<p className="text-xs sm:text-sm text-gray-600">Servicio Seleccionado</p>
+									<p className="font-semibold text-gray-900 text-sm sm:text-base break-words">{selectedService.name}</p>
+									{selectedService.description && <p className="text-[10px] sm:text-xs text-gray-500 mt-1 break-words">{selectedService.description}</p>}
+									<p className="text-base sm:text-lg font-bold text-teal-600 mt-1">
 										{selectedService.price} {selectedService.currency}
 									</p>
 								</div>
@@ -826,20 +845,22 @@ export default function NewAppointmentPage() {
 						)}
 					</div>
 
-					<div className="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-6 flex items-start gap-3">
-						<AlertCircle className="w-5 h-5 text-blue-600 mt-0.5" />
-						<p className="text-sm text-blue-800">El médico recibirá una notificación y podrá confirmar tu cita. Te notificaremos cuando sea confirmada.</p>
+					<div className="bg-blue-50 border border-blue-200 rounded-xl p-3 sm:p-4 mb-4 sm:mb-6 flex items-start gap-2 sm:gap-3">
+						<AlertCircle className="w-4 h-4 sm:w-5 sm:h-5 text-blue-600 mt-0.5 flex-shrink-0" />
+						<p className="text-xs sm:text-sm text-blue-800">El médico recibirá una notificación y podrá confirmar tu cita. Te notificaremos cuando sea confirmada.</p>
 					</div>
 
-					<div className="flex gap-4">
-						<button onClick={() => setStep('schedule')} className="px-6 py-3 border border-gray-300 rounded-lg font-semibold hover:bg-gray-50 transition-colors">
+					<div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
+						<button onClick={() => setStep('schedule')} className="w-full sm:w-auto px-4 sm:px-6 py-2 sm:py-3 border border-gray-300 rounded-lg font-semibold hover:bg-gray-50 transition-colors text-sm sm:text-base">
 							Anterior
 						</button>
-						<button onClick={handleSubmit} disabled={submitting || (selectedDoctor?.medic_profile?.services && Array.isArray(selectedDoctor.medic_profile.services) && selectedDoctor.medic_profile.services.length > 0 ? !selectedService : false)} className="flex-1 px-6 py-3 bg-linear-to-r from-indigo-600 to-purple-600 text-white rounded-lg font-semibold hover:from-indigo-700 hover:to-purple-700 transition-all shadow-lg disabled:opacity-50 disabled:cursor-not-allowed">
+						<button onClick={handleSubmit} disabled={submitting || (selectedDoctor?.medic_profile?.services && Array.isArray(selectedDoctor.medic_profile.services) && selectedDoctor.medic_profile.services.length > 0 ? !selectedService : false)} className="flex-1 px-4 sm:px-6 py-2 sm:py-3 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-lg font-semibold hover:from-indigo-700 hover:to-purple-700 transition-all shadow-lg disabled:opacity-50 disabled:cursor-not-allowed text-sm sm:text-base">
 							{submitting ? 'Creando cita...' : 'Confirmar y Crear Cita'}
 						</button>
 					</div>
-					{selectedDoctor?.medic_profile?.services && Array.isArray(selectedDoctor.medic_profile.services) && selectedDoctor.medic_profile.services.length > 0 && !selectedService && <p className="text-sm text-red-600 mt-2">Por favor selecciona un servicio para continuar</p>}
+					{selectedDoctor?.medic_profile?.services && Array.isArray(selectedDoctor.medic_profile.services) && selectedDoctor.medic_profile.services.length > 0 && !selectedService && (
+						<p className="text-xs sm:text-sm text-red-600 mt-2">Por favor selecciona un servicio para continuar</p>
+					)}
 				</div>
 			)}
 

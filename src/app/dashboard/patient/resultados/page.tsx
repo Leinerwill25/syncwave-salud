@@ -49,25 +49,25 @@ export default function ResultadosPage() {
 	const normalResults = results.filter(r => !r.is_critical);
 
 	return (
-		<div className="min-h-screen bg-gradient-to-br from-yellow-50 via-white to-amber-50 p-6">
-			<div className="max-w-7xl mx-auto space-y-6">
+		<div className="min-h-screen bg-gradient-to-br from-yellow-50 via-white to-amber-50 p-3 sm:p-4 md:p-6">
+			<div className="max-w-7xl mx-auto space-y-3 sm:space-y-4 md:space-y-6">
 				{/* Header */}
-				<div className="bg-white rounded-2xl shadow-lg p-6">
-					<h1 className="text-3xl font-bold text-gray-900 mb-2 flex items-center gap-3">
-						<FlaskConical className="w-8 h-8 text-yellow-600" />
-						Resultados de Laboratorio
+				<div className="bg-white rounded-xl sm:rounded-2xl shadow-lg p-4 sm:p-5 md:p-6">
+					<h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-900 mb-1 sm:mb-2 flex items-center gap-2 sm:gap-3">
+						<FlaskConical className="w-5 h-5 sm:w-6 sm:h-6 md:w-8 md:h-8 text-yellow-600 flex-shrink-0" />
+						<span className="truncate">Resultados de Laboratorio</span>
 					</h1>
-					<p className="text-gray-600">Consulta tus resultados de exámenes médicos</p>
+					<p className="text-xs sm:text-sm md:text-base text-gray-600">Consulta tus resultados de exámenes médicos</p>
 				</div>
 
 				{/* Alertas críticas */}
 				{criticalResults.length > 0 && (
-					<div className="bg-red-50 border-2 border-red-200 rounded-2xl shadow-lg p-6">
-						<div className="flex items-center gap-3 mb-4">
-							<AlertTriangle className="w-6 h-6 text-red-600" />
-							<h2 className="text-xl font-semibold text-red-900">Resultados Críticos ({criticalResults.length})</h2>
+					<div className="bg-red-50 border-2 border-red-200 rounded-xl sm:rounded-2xl shadow-lg p-4 sm:p-5 md:p-6">
+						<div className="flex items-center gap-2 sm:gap-3 mb-3 sm:mb-4">
+							<AlertTriangle className="w-5 h-5 sm:w-6 sm:h-6 text-red-600 flex-shrink-0" />
+							<h2 className="text-base sm:text-lg md:text-xl font-semibold text-red-900 truncate">Resultados Críticos ({criticalResults.length})</h2>
 						</div>
-						<p className="text-red-800 mb-4">
+						<p className="text-xs sm:text-sm md:text-base text-red-800 mb-3 sm:mb-4 break-words">
 							Tienes resultados que requieren atención inmediata. Por favor, contacta a tu médico.
 						</p>
 					</div>
@@ -75,18 +75,18 @@ export default function ResultadosPage() {
 
 				{/* Resultados */}
 				{loading ? (
-					<div className="space-y-4">
+					<div className="space-y-3 sm:space-y-4">
 						{Array.from({ length: 3 }).map((_, i) => (
-							<div key={i} className="bg-white rounded-xl shadow-lg p-6 animate-pulse">
-								<div className="h-6 bg-gray-200 rounded w-1/3 mb-4"></div>
-								<div className="h-4 bg-gray-200 rounded w-full mb-2"></div>
+							<div key={i} className="bg-white rounded-lg sm:rounded-xl shadow-lg p-4 sm:p-5 md:p-6 animate-pulse">
+								<div className="h-5 sm:h-6 bg-gray-200 rounded w-1/2 sm:w-1/3 mb-3 sm:mb-4"></div>
+								<div className="h-3 sm:h-4 bg-gray-200 rounded w-full mb-2"></div>
 							</div>
 						))}
 					</div>
 				) : results.length === 0 ? (
-					<div className="bg-white rounded-2xl shadow-lg p-12 text-center">
-						<FlaskConical className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-						<p className="text-gray-600 text-lg">No hay resultados de laboratorio</p>
+					<div className="bg-white rounded-xl sm:rounded-2xl shadow-lg p-8 sm:p-10 md:p-12 text-center">
+						<FlaskConical className="w-12 h-12 sm:w-14 sm:h-14 md:w-16 md:h-16 text-gray-400 mx-auto mb-3 sm:mb-4" />
+						<p className="text-gray-600 text-sm sm:text-base md:text-lg">No hay resultados de laboratorio</p>
 					</div>
 				) : (
 					<div className="space-y-4">

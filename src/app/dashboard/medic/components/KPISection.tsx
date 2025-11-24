@@ -115,10 +115,10 @@ export default function KPISection() {
 	return (
 		<div className="space-y-4">
 			{/* Filtros de período */}
-			<div className="flex items-center gap-3 mb-4">
+			<div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-3 mb-4">
 				<div className="flex items-center gap-2">
 					<CalendarIcon size={18} className="text-slate-600" />
-					<span className="text-sm font-medium text-slate-800">Filtrar por período:</span>
+					<span className="text-xs sm:text-sm font-medium text-slate-800">Filtrar por período:</span>
 				</div>
 				<div className="flex gap-2">
 					{(['day', 'week', 'month'] as PeriodType[]).map((p) => (
@@ -127,11 +127,11 @@ export default function KPISection() {
 							variant={period === p ? 'default' : 'outline'}
 							size="sm"
 							onClick={() => setPeriod(p)}
-							className={
+							className={`text-xs sm:text-sm ${
 								period === p
 									? 'bg-gradient-to-r from-teal-600 to-cyan-600 hover:from-teal-700 hover:to-cyan-700 text-white shadow-md'
 									: 'bg-white hover:bg-blue-50 text-slate-700 border-blue-200'
-							}>
+							}`}>
 							{periodLabels[p]}
 						</Button>
 					))}
@@ -139,7 +139,7 @@ export default function KPISection() {
 			</div>
 
 			{/* KPIs */}
-			<div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+			<div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 sm:gap-6">
 			{kpis.map((kpi, i) => {
 				const Icon = iconMap[kpi.title];
 				const gradient = gradientMap[kpi.title];
@@ -147,16 +147,16 @@ export default function KPISection() {
 				return (
 					<motion.div key={i} whileHover={{ y: -6 }} transition={{ type: 'spring', stiffness: 300, damping: 18 }}>
 						<Card className="relative bg-white/90 backdrop-blur-sm border border-gray-100 shadow-sm hover:shadow-xl hover:border-gray-200 transition-all rounded-2xl overflow-hidden">
-							<CardContent className="p-6 flex items-center gap-5 relative z-10">
-								<div className={`relative flex items-center justify-center bg-linear-to-br ${gradient} p-4 rounded-2xl text-white`}>
-									<Icon className="w-6 h-6" />
-									<div className={`absolute inset-0 rounded-2xl opacity-30 blur-md bg-linear-to-br ${gradient}`} />
+							<CardContent className="p-4 sm:p-6 flex items-center gap-3 sm:gap-5 relative z-10">
+								<div className={`relative flex items-center justify-center bg-linear-to-br ${gradient} p-3 sm:p-4 rounded-xl sm:rounded-2xl text-white shrink-0`}>
+									<Icon className="w-5 h-5 sm:w-6 sm:h-6" />
+									<div className={`absolute inset-0 rounded-xl sm:rounded-2xl opacity-30 blur-md bg-linear-to-br ${gradient}`} />
 								</div>
 
-								<div className="flex flex-col justify-center">
-									<h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wide">{kpi.title}</h3>
-									<p className="text-3xl font-extrabold text-gray-900 mt-1 leading-none">{kpi.value}</p>
-									<p className={`text-sm mt-2 font-semibold ${kpi.trend === 'up' ? 'text-emerald-600' : kpi.trend === 'down' ? 'text-red-600' : 'text-gray-500'}`}>{kpi.change}</p>
+								<div className="flex flex-col justify-center min-w-0 flex-1">
+									<h3 className="text-[10px] sm:text-xs font-semibold text-gray-500 uppercase tracking-wide truncate">{kpi.title}</h3>
+									<p className="text-2xl sm:text-3xl font-extrabold text-gray-900 mt-1 leading-none">{kpi.value}</p>
+									<p className={`text-xs sm:text-sm mt-2 font-semibold ${kpi.trend === 'up' ? 'text-emerald-600' : kpi.trend === 'down' ? 'text-red-600' : 'text-gray-500'}`}>{kpi.change}</p>
 								</div>
 							</CardContent>
 

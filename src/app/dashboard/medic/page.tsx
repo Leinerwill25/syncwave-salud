@@ -51,10 +51,10 @@ export default function MedicDashboardPage() {
 	}, []);
 
 	return (
-		<div className="p-8 bg-gradient-to-br from-blue-50 via-cyan-50 to-teal-50 min-h-screen space-y-8">
+		<div className="p-4 sm:p-6 md:p-8 bg-gradient-to-br from-blue-50 via-cyan-50 to-teal-50 min-h-screen space-y-6 sm:space-y-8">
 			<div>
-				<h1 className="text-3xl font-bold text-slate-900">Panel de Control</h1>
-				<p className="text-slate-600 mt-1">Indicadores clave de rendimiento y agenda diaria</p>
+				<h1 className="text-2xl sm:text-3xl font-bold text-slate-900">Panel de Control</h1>
+				<p className="text-sm sm:text-base text-slate-600 mt-1">Indicadores clave de rendimiento y agenda diaria</p>
 			</div>
 
 			{/* KPIs */}
@@ -63,7 +63,7 @@ export default function MedicDashboardPage() {
 			</motion.div>
 
 			{/* Agenda y Citas */}
-			<div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+			<div className="grid grid-cols-1 lg:grid-cols-3 gap-6 sm:gap-8">
 				<div className="lg:col-span-2">
 					<DayAgenda onDateSelect={setSelectedDate} />
 				</div>
@@ -72,7 +72,7 @@ export default function MedicDashboardPage() {
 
 			{/* Atajos Rápidos */}
 			<div className="flex gap-4 pt-4">
-				<Button className="bg-gradient-to-r from-teal-600 to-cyan-600 hover:from-teal-700 hover:to-cyan-700 text-white px-6 py-2 rounded-xl shadow-md transition disabled:opacity-50" onClick={() => setIsModalOpen(true)} disabled={loadingSession || !userId || !organizationId}>
+				<Button className="bg-gradient-to-r from-teal-600 to-cyan-600 hover:from-teal-700 hover:to-cyan-700 text-white px-4 sm:px-6 py-2 text-sm sm:text-base rounded-xl shadow-md transition disabled:opacity-50" onClick={() => setIsModalOpen(true)} disabled={loadingSession || !userId || !organizationId}>
 					{loadingSession ? 'Cargando sesión...' : 'Nueva Cita'}
 				</Button>
 			</div>

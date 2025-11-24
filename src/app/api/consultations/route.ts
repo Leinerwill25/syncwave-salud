@@ -20,7 +20,7 @@ export async function GET(req: NextRequest) {
 		let query = supabase
 			.from('consultation')
 			.select(
-				`id, chief_complaint, diagnosis, notes, created_at,
+				`id, chief_complaint, diagnosis, notes, created_at, unregistered_patient_id,
          patient:patient_id(firstName, lastName, identifier),
          doctor:doctor_id(id, name)`,
 				{ count: 'exact' }
@@ -45,16 +45,58 @@ export async function GET(req: NextRequest) {
 		interface ConsultationWithRelations {
 			patient?: unknown | unknown[];
 			doctor?: unknown | unknown[];
+			unregistered_patient_id?: string | null;
 			[key: string]: unknown;
 		}
 
-		const items = (data || []).map((c: ConsultationWithRelations) => ({
-			...c,
-			patient: Array.isArray(c.patient) ? c.patient[0] : c.patient,
-			doctor: Array.isArray(c.doctor) ? c.doctor[0] : c.doctor,
-		}));
+		// Obtener información de pacientes no registrados si existen
+		const unregisteredPatientIds = (data || [])
+			.filter((c: ConsultationWithRelations) => c.unregistered_patient_id && !c.patient)
+			.map((c: ConsultationWithRelations) => c.unregistered_patient_id)
+			.filter((id): id is string => typeof id === 'string');
 
-		return NextResponse.json({ items, total: typeof count === 'number' ? count : items.length }, { status: 200 });
+		// Obtener todos los pacientes no registrados de una vez
+		let unregisteredPatientsMap: Record<string, { firstName: string; lastName: string; identifier?: string }> = {};
+		if (unregisteredPatientIds.length > 0) {
+			const { data: unregisteredData } = await supabase
+				.from('unregisteredpatients')
+				.select('id, first_name, last_name, identification')
+				.in('id', unregisteredPatientIds);
+
+			if (unregisteredData) {
+				unregisteredPatientsMap = unregisteredData.reduce((acc, up) => {
+					acc[up.id] = {
+						firstName: up.first_name,
+						lastName: up.last_name,
+						identifier: up.identification || undefined,
+					};
+					return acc;
+				}, {} as Record<string, { firstName: string; lastName: string; identifier?: string }>);
+			}
+		}
+
+		const consultationsWithUnregistered = (data || []).map((c: ConsultationWithRelations) => {
+			const normalized = {
+				...c,
+				patient: Array.isArray(c.patient) ? c.patient[0] : c.patient,
+				doctor: Array.isArray(c.doctor) ? c.doctor[0] : c.doctor,
+			};
+
+			// Si hay unregistered_patient_id y no hay patient, usar los datos del paciente no registrado
+			if (c.unregistered_patient_id && typeof c.unregistered_patient_id === 'string' && !normalized.patient) {
+				const unregisteredData = unregisteredPatientsMap[c.unregistered_patient_id];
+				if (unregisteredData) {
+					normalized.patient = {
+						...unregisteredData,
+						isUnregistered: true,
+					};
+				}
+			}
+
+			return normalized;
+		});
+
+		return NextResponse.json({ items: consultationsWithUnregistered, total: typeof count === 'number' ? count : consultationsWithUnregistered.length }, { status: 200 });
 	} catch (error: unknown) {
 		const errorMessage = error instanceof Error ? error.message : 'Error interno';
 		console.error('❌ Error GET /consultations:', errorMessage);

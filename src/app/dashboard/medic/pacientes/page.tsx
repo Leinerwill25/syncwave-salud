@@ -16,7 +16,7 @@ export default function PatientsPage() {
 			<div className="absolute inset-0 -z-10 bg-linear-to-br from-violet-500/5 via-indigo-600/5 to-emerald-500/5" />
 
 			{/* Contenido principal */}
-			<div className="relative p-6 md:p-12">
+			<div className="relative p-4 sm:p-6 md:p-12">
 				{/* Main grid */}
 				<section>
 					<PatientsGrid perPage={10} />

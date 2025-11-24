@@ -109,38 +109,55 @@ export default function HistorialPage() {
 				key={consultation.id}
 				initial={{ opacity: 0, y: 20 }}
 				animate={{ opacity: 1, y: 0 }}
-				className="bg-white rounded-2xl shadow-lg border border-slate-200 p-6 space-y-6"
+				className="bg-white rounded-xl sm:rounded-2xl shadow-lg border border-slate-200 p-3 sm:p-4 md:p-5 lg:p-6 space-y-3 sm:space-y-4 md:space-y-6"
 			>
 				{/* Header de la consulta */}
-				<div className="flex items-start justify-between pb-4 border-b border-slate-200">
-					<div className="flex-1">
-						<h3 className="text-xl font-bold text-slate-900 mb-2 flex items-center gap-2">
-							<Calendar className="w-6 h-6 text-teal-600" />
-							{consultation.started_at
-								? new Date(consultation.started_at).toLocaleDateString('es-ES', {
-										year: 'numeric',
-										month: 'long',
-										day: 'numeric',
-										hour: '2-digit',
-										minute: '2-digit',
-								  })
-								: 'Fecha no disponible'}
+				<div className="flex items-start justify-between pb-2 sm:pb-3 md:pb-4 border-b border-slate-200">
+					<div className="flex-1 min-w-0">
+						<h3 className="text-sm sm:text-base md:text-lg lg:text-xl font-bold text-slate-900 mb-1 sm:mb-2 flex items-center gap-1.5 sm:gap-2">
+							<Calendar className="w-3.5 h-3.5 sm:w-4 sm:h-4 md:w-5 md:h-5 lg:w-6 lg:h-6 text-teal-600 flex-shrink-0" />
+							<span className="break-words leading-tight">
+								{consultation.started_at ? (
+									<>
+										<span className="hidden sm:inline">
+											{new Date(consultation.started_at).toLocaleDateString('es-ES', {
+												year: 'numeric',
+												month: 'long',
+												day: 'numeric',
+												hour: '2-digit',
+												minute: '2-digit',
+											})}
+										</span>
+										<span className="sm:hidden">
+											{new Date(consultation.started_at).toLocaleDateString('es-ES', {
+												day: 'numeric',
+												month: 'short',
+												year: 'numeric',
+												hour: '2-digit',
+												minute: '2-digit',
+											})}
+										</span>
+									</>
+								) : (
+									'Fecha no disponible'
+								)}
+							</span>
 						</h3>
 						{consultation.doctor && (
-							<p className="text-slate-600 flex items-center gap-2">
-								<User className="w-4 h-4" />
-								<span className="font-semibold">Dr. {consultation.doctor.name || 'Médico'}</span>
+							<p className="text-[10px] sm:text-xs md:text-sm text-slate-600 flex items-center gap-1 sm:gap-1.5 md:gap-2">
+								<User className="w-3 h-3 sm:w-3.5 sm:h-3.5 md:w-4 md:h-4 flex-shrink-0" />
+								<span className="font-semibold break-words">Dr. {consultation.doctor.name || 'Médico'}</span>
 							</p>
 						)}
 					</div>
 				</div>
 
-				<div className="space-y-6">
+				<div className="space-y-3 sm:space-y-4 md:space-y-6">
 					{/* Motivo de Consulta */}
 					{consultation.chief_complaint && (
 						<div>
-							<p className="font-bold text-slate-900 mb-2 text-sm uppercase tracking-wide">Motivo de Consulta</p>
-							<p className="text-slate-700 bg-gradient-to-r from-blue-50 to-cyan-50 rounded-xl p-4 border border-blue-100 leading-relaxed">
+							<p className="font-bold text-slate-900 mb-1 sm:mb-1.5 md:mb-2 text-[10px] sm:text-xs md:text-sm uppercase tracking-wide">Motivo de Consulta</p>
+							<p className="text-xs sm:text-sm md:text-base text-slate-700 bg-gradient-to-r from-blue-50 to-cyan-50 rounded-lg sm:rounded-xl p-2.5 sm:p-3 md:p-4 border border-blue-100 leading-relaxed break-words">
 								{consultation.chief_complaint}
 							</p>
 						</div>
@@ -149,8 +166,8 @@ export default function HistorialPage() {
 					{/* Diagnóstico */}
 					{consultation.diagnosis && (
 						<div>
-							<p className="font-bold text-slate-900 mb-2 text-sm uppercase tracking-wide">Diagnóstico</p>
-							<p className="text-slate-700 bg-gradient-to-r from-teal-50 to-emerald-50 rounded-xl p-4 border border-teal-100 leading-relaxed">
+							<p className="font-bold text-slate-900 mb-1 sm:mb-1.5 md:mb-2 text-[10px] sm:text-xs md:text-sm uppercase tracking-wide">Diagnóstico</p>
+							<p className="text-xs sm:text-sm md:text-base text-slate-700 bg-gradient-to-r from-teal-50 to-emerald-50 rounded-lg sm:rounded-xl p-2.5 sm:p-3 md:p-4 border border-teal-100 leading-relaxed break-words">
 								{consultation.diagnosis}
 							</p>
 						</div>
@@ -159,8 +176,8 @@ export default function HistorialPage() {
 					{/* Notas */}
 					{consultation.notes && (
 						<div>
-							<p className="font-bold text-slate-900 mb-2 text-sm uppercase tracking-wide">Notas Médicas</p>
-							<p className="text-slate-700 bg-slate-50 rounded-xl p-4 border border-slate-200 leading-relaxed whitespace-pre-wrap">
+							<p className="font-bold text-slate-900 mb-1 sm:mb-1.5 md:mb-2 text-[10px] sm:text-xs md:text-sm uppercase tracking-wide">Notas Médicas</p>
+							<p className="text-xs sm:text-sm md:text-base text-slate-700 bg-slate-50 rounded-lg sm:rounded-xl p-2.5 sm:p-3 md:p-4 border border-slate-200 leading-relaxed whitespace-pre-wrap break-words">
 								{consultation.notes}
 							</p>
 						</div>
@@ -169,42 +186,42 @@ export default function HistorialPage() {
 					{/* Signos Vitales */}
 					{Object.keys(vitals).length > 0 && (
 						<div>
-							<p className="font-bold text-slate-900 mb-3 text-sm uppercase tracking-wide">Signos Vitales</p>
-							<div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+							<p className="font-bold text-slate-900 mb-2 sm:mb-3 text-[10px] sm:text-xs md:text-sm uppercase tracking-wide">Signos Vitales</p>
+							<div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-4 gap-2 sm:gap-2.5 md:gap-3 lg:gap-4">
 								{vitals.bloodPressure && (
-									<div className="bg-gradient-to-br from-red-50 to-rose-50 rounded-xl p-4 border border-red-200">
-										<div className="flex items-center gap-2 mb-2">
-											<Activity className="w-5 h-5 text-red-600" />
-											<span className="text-xs font-bold text-red-700 uppercase">Presión Arterial</span>
+									<div className="bg-gradient-to-br from-red-50 to-rose-50 rounded-lg sm:rounded-xl p-2 sm:p-2.5 md:p-3 lg:p-4 border border-red-200">
+										<div className="flex items-center gap-1 sm:gap-1.5 md:gap-2 mb-1 sm:mb-1.5 md:mb-2">
+											<Activity className="w-3 h-3 sm:w-3.5 sm:h-3.5 md:w-4 md:h-4 lg:w-5 lg:h-5 text-red-600 flex-shrink-0" />
+											<span className="text-[9px] sm:text-[10px] md:text-xs font-bold text-red-700 uppercase leading-tight">Presión Arterial</span>
 										</div>
-										<p className="text-lg font-bold text-slate-900">{vitals.bloodPressure}</p>
+										<p className="text-sm sm:text-base md:text-lg font-bold text-slate-900 break-words">{vitals.bloodPressure}</p>
 									</div>
 								)}
 								{vitals.heartRate && (
-									<div className="bg-gradient-to-br from-pink-50 to-rose-50 rounded-xl p-4 border border-pink-200">
-										<div className="flex items-center gap-2 mb-2">
-											<Heart className="w-5 h-5 text-pink-600" />
-											<span className="text-xs font-bold text-pink-700 uppercase">Frecuencia Cardíaca</span>
+									<div className="bg-gradient-to-br from-pink-50 to-rose-50 rounded-lg sm:rounded-xl p-2 sm:p-2.5 md:p-3 lg:p-4 border border-pink-200">
+										<div className="flex items-center gap-1 sm:gap-1.5 md:gap-2 mb-1 sm:mb-1.5 md:mb-2">
+											<Heart className="w-3 h-3 sm:w-3.5 sm:h-3.5 md:w-4 md:h-4 lg:w-5 lg:h-5 text-pink-600 flex-shrink-0" />
+											<span className="text-[9px] sm:text-[10px] md:text-xs font-bold text-pink-700 uppercase leading-tight">Frecuencia Cardíaca</span>
 										</div>
-										<p className="text-lg font-bold text-slate-900">{vitals.heartRate} bpm</p>
+										<p className="text-sm sm:text-base md:text-lg font-bold text-slate-900 break-words">{vitals.heartRate} bpm</p>
 									</div>
 								)}
 								{vitals.temperature && (
-									<div className="bg-gradient-to-br from-orange-50 to-amber-50 rounded-xl p-4 border border-orange-200">
-										<div className="flex items-center gap-2 mb-2">
-											<Thermometer className="w-5 h-5 text-orange-600" />
-											<span className="text-xs font-bold text-orange-700 uppercase">Temperatura</span>
+									<div className="bg-gradient-to-br from-orange-50 to-amber-50 rounded-lg sm:rounded-xl p-2 sm:p-2.5 md:p-3 lg:p-4 border border-orange-200">
+										<div className="flex items-center gap-1 sm:gap-1.5 md:gap-2 mb-1 sm:mb-1.5 md:mb-2">
+											<Thermometer className="w-3 h-3 sm:w-3.5 sm:h-3.5 md:w-4 md:h-4 lg:w-5 lg:h-5 text-orange-600 flex-shrink-0" />
+											<span className="text-[9px] sm:text-[10px] md:text-xs font-bold text-orange-700 uppercase leading-tight">Temperatura</span>
 										</div>
-										<p className="text-lg font-bold text-slate-900">{vitals.temperature}°C</p>
+										<p className="text-sm sm:text-base md:text-lg font-bold text-slate-900 break-words">{vitals.temperature}°C</p>
 									</div>
 								)}
 								{vitals.weight && (
-									<div className="bg-gradient-to-br from-blue-50 to-cyan-50 rounded-xl p-4 border border-blue-200">
-										<div className="flex items-center gap-2 mb-2">
-											<Activity className="w-5 h-5 text-blue-600" />
-											<span className="text-xs font-bold text-blue-700 uppercase">Peso</span>
+									<div className="bg-gradient-to-br from-blue-50 to-cyan-50 rounded-lg sm:rounded-xl p-2 sm:p-2.5 md:p-3 lg:p-4 border border-blue-200">
+										<div className="flex items-center gap-1 sm:gap-1.5 md:gap-2 mb-1 sm:mb-1.5 md:mb-2">
+											<Activity className="w-3 h-3 sm:w-3.5 sm:h-3.5 md:w-4 md:h-4 lg:w-5 lg:h-5 text-blue-600 flex-shrink-0" />
+											<span className="text-[9px] sm:text-[10px] md:text-xs font-bold text-blue-700 uppercase leading-tight">Peso</span>
 										</div>
-										<p className="text-lg font-bold text-slate-900">{vitals.weight} kg</p>
+										<p className="text-sm sm:text-base md:text-lg font-bold text-slate-900 break-words">{vitals.weight} kg</p>
 									</div>
 								)}
 							</div>
@@ -213,17 +230,19 @@ export default function HistorialPage() {
 
 					{/* Archivos adjuntos de la consulta (informes médicos) */}
 					{consultation.attachments && consultation.attachments.length > 0 && (
-						<div className="pt-6 border-t-2 border-slate-200">
-							<div className="flex items-center gap-3 mb-4">
-								<div className="p-2 bg-gradient-to-br from-indigo-500 to-purple-500 rounded-lg shadow-md">
-									<FileCheck className="w-5 h-5 text-white" />
+						<div className="pt-4 sm:pt-5 md:pt-6 border-t-2 border-slate-200">
+							<div className="flex items-center gap-2 sm:gap-3 mb-3 sm:mb-4">
+								<div className="p-1.5 sm:p-2 bg-gradient-to-br from-indigo-500 to-purple-500 rounded-lg shadow-md flex-shrink-0">
+									<FileCheck className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
 								</div>
-								<div>
-									<p className="font-bold text-slate-900 text-lg">Documentos e Informes Médicos</p>
-									<p className="text-sm text-slate-600">{consultation.attachments.length} {consultation.attachments.length === 1 ? 'documento' : 'documentos'} adjunto{consultation.attachments.length === 1 ? '' : 's'}</p>
+								<div className="min-w-0">
+									<p className="font-bold text-slate-900 text-sm sm:text-base md:text-lg">Documentos e Informes Médicos</p>
+									<p className="text-[10px] sm:text-xs md:text-sm text-slate-600">
+										{consultation.attachments.length} {consultation.attachments.length === 1 ? 'documento' : 'documentos'} adjunto{consultation.attachments.length === 1 ? '' : 's'}
+									</p>
 								</div>
 							</div>
-							<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+							<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-3">
 								{consultation.attachments.map((attachment, idx) => {
 									const FileIcon = getFileIcon(attachment);
 									const fileName = getFileName(attachment, idx);
@@ -233,16 +252,16 @@ export default function HistorialPage() {
 											href={attachment}
 											target="_blank"
 											rel="noopener noreferrer"
-											className="group flex items-center gap-3 px-4 py-3 bg-gradient-to-r from-indigo-50 to-purple-50 text-indigo-700 rounded-xl hover:from-indigo-100 hover:to-purple-100 transition-all border-2 border-indigo-200 hover:border-indigo-300 shadow-sm hover:shadow-md"
+											className="group flex items-center gap-2 sm:gap-3 px-3 sm:px-4 py-2 sm:py-3 bg-gradient-to-r from-indigo-50 to-purple-50 text-indigo-700 rounded-lg sm:rounded-xl hover:from-indigo-100 hover:to-purple-100 transition-all border-2 border-indigo-200 hover:border-indigo-300 shadow-sm hover:shadow-md"
 										>
-											<div className="p-2 bg-white rounded-lg group-hover:scale-110 transition-transform">
-												<FileIcon className="w-5 h-5 text-indigo-600" />
+											<div className="p-1.5 sm:p-2 bg-white rounded-lg group-hover:scale-110 transition-transform flex-shrink-0">
+												<FileIcon className="w-4 h-4 sm:w-5 sm:h-5 text-indigo-600" />
 											</div>
 											<div className="flex-1 min-w-0">
-												<p className="text-sm font-semibold text-slate-900 truncate">{fileName}</p>
-												<p className="text-xs text-slate-600">Informe médico</p>
+												<p className="text-xs sm:text-sm font-semibold text-slate-900 truncate">{fileName}</p>
+												<p className="text-[10px] sm:text-xs text-slate-600">Informe médico</p>
 											</div>
-											<Download className="w-4 h-4 text-indigo-600 flex-shrink-0" />
+											<Download className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-indigo-600 flex-shrink-0" />
 										</a>
 									);
 								})}
@@ -385,23 +404,25 @@ export default function HistorialPage() {
 	};
 
 	return (
-		<div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 p-6">
-			<div className="max-w-7xl mx-auto space-y-6">
+		<div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 p-3 sm:p-4 md:p-6">
+			<div className="max-w-7xl mx-auto space-y-3 sm:space-y-4 md:space-y-6">
 				{/* Header */}
-				<div className="bg-white rounded-2xl shadow-lg p-6 border border-slate-200">
-					<h1 className="text-3xl font-bold text-slate-900 mb-2 flex items-center gap-3">
-						<FileText className="w-8 h-8 text-teal-600" />
-						Historial Médico
+				<div className="bg-white rounded-xl sm:rounded-2xl shadow-lg p-3 sm:p-4 md:p-5 lg:p-6 border border-slate-200">
+					<h1 className="text-lg sm:text-xl md:text-2xl lg:text-3xl font-bold text-slate-900 mb-1 sm:mb-2 flex items-center gap-2 sm:gap-3">
+						<FileText className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6 lg:w-8 lg:h-8 text-teal-600 flex-shrink-0" />
+						<span>Historial Médico</span>
 					</h1>
-					<p className="text-slate-600">Consulta tu historial médico completo con todas las consultas, prescripciones y documentos adjuntos</p>
+					<p className="text-xs sm:text-sm md:text-base text-slate-600 leading-relaxed">
+						Consulta tu historial médico completo con todas las consultas, prescripciones y documentos adjuntos
+					</p>
 				</div>
 
 				{/* Tabs */}
-				<div className="bg-white rounded-2xl shadow-lg p-6 border border-slate-200">
-					<div className="flex gap-2 border-b border-slate-200">
+				<div className="bg-white rounded-xl sm:rounded-2xl shadow-lg p-3 sm:p-4 md:p-5 lg:p-6 border border-slate-200">
+					<div className="flex gap-1 sm:gap-2 border-b border-slate-200 overflow-x-auto -mx-2 sm:mx-0 px-2 sm:px-0">
 						<button
 							onClick={() => setActiveTab('consultations')}
-							className={`px-6 py-3 font-bold border-b-2 transition-colors ${
+							className={`px-2.5 sm:px-3 md:px-6 py-1.5 sm:py-2 md:py-3 font-bold border-b-2 transition-colors whitespace-nowrap text-xs sm:text-sm md:text-base ${
 								activeTab === 'consultations'
 									? 'border-teal-600 text-teal-600'
 									: 'border-transparent text-slate-600 hover:text-slate-900'
@@ -411,7 +432,7 @@ export default function HistorialPage() {
 						</button>
 						<button
 							onClick={() => setActiveTab('records')}
-							className={`px-6 py-3 font-bold border-b-2 transition-colors ${
+							className={`px-2.5 sm:px-3 md:px-6 py-1.5 sm:py-2 md:py-3 font-bold border-b-2 transition-colors whitespace-nowrap text-xs sm:text-sm md:text-base ${
 								activeTab === 'records'
 									? 'border-teal-600 text-teal-600'
 									: 'border-transparent text-slate-600 hover:text-slate-900'

@@ -3,6 +3,7 @@ import type { Metadata } from 'next';
 import { Geist, Geist_Mono } from 'next/font/google';
 import '../../public/globals.css';
 import NavbarSwitcher from '@/components/NavbarSwitcher';
+import ConditionalMain from '@/components/ConditionalMain';
 
 const geistSans = Geist({
 	variable: '--font-geist-sans',
@@ -15,8 +16,9 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-	title: 'Syncwave',
-	description: 'Diseño, desarrollo y marketing para empresas',
+	title: 'Syncwave Salud - Plataforma Integral de Salud para Venezuela',
+	description: 'Plataforma tecnológica que une farmacias, laboratorios, consultorios privados y clínicas para brindar una atención médica más eficiente, accesible y de calidad a todos los venezolanos. Gestión de pacientes, historial médico digital, citas y recetas electrónicas.',
+	keywords: 'salud digital, plataforma médica, Venezuela, consultorios, clínicas, farmacias, laboratorios, historial médico, citas médicas, telemedicina',
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
@@ -26,10 +28,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 				{/* Navbar dinámico */}
 				<NavbarSwitcher />
 
-				{/* Espaciado para que el contenido no quede oculto bajo la navbar */}
-				<main className="min-h-screen pt-16">
-					<div className="max-w-7xl mx-auto px-6 lg:px-8">{children}</div>
-				</main>
+				{/* Main con padding condicional */}
+				<ConditionalMain>
+					{children}
+				</ConditionalMain>
 			</body>
 		</html>
 	);

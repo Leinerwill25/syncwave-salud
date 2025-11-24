@@ -133,11 +133,13 @@ export default function SidebarPatient() {
 					<li key={link.label}>
 						<div
 							aria-disabled="true"
-							className={`group flex items-center gap-3 w-full px-3 py-2 rounded-lg text-sm font-medium cursor-not-allowed opacity-80
+							className={`group flex items-center gap-2 sm:gap-3 w-full px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-lg text-xs sm:text-sm font-medium cursor-not-allowed opacity-80
 							${isActive ? 'bg-indigo-100 text-indigo-700' : 'text-slate-400 bg-slate-50'}`}>
-							{link.icon && <link.icon className="w-5 h-5" />}
-							<span>{link.label}</span>
-							<span className="ml-auto inline-flex items-center px-2 py-0.5 text-[11px] font-medium rounded-full bg-slate-100 text-slate-600 border border-slate-200">Próximamente</span>
+							{link.icon && <link.icon className="w-4 h-4 sm:w-5 sm:h-5 flex-shrink-0" />}
+							<span className="truncate flex-1">{link.label}</span>
+							<span className="ml-auto inline-flex items-center px-1.5 sm:px-2 py-0.5 text-[9px] sm:text-[11px] font-medium rounded-full bg-slate-100 text-slate-600 border border-slate-200 whitespace-nowrap flex-shrink-0">
+								Próximamente
+							</span>
 						</div>
 					</li>
 				);
@@ -151,16 +153,16 @@ export default function SidebarPatient() {
 				<li key={link.label}>
 					<button
 						onClick={() => toggleMenu(link.label)}
-						className={`group flex items-center justify-between w-full px-3 py-2 rounded-lg text-sm font-medium transition
+						className={`group flex items-center justify-between w-full px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-lg text-xs sm:text-sm font-medium transition
 						${isOpen ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-md' : 'text-slate-700 hover:bg-slate-50'}`}>
-						<span className="flex items-center gap-3">
-							{link.icon && <link.icon className={`w-5 h-5 ${isOpen ? 'text-white' : 'text-indigo-600'}`} />}
-							{link.label}
+						<span className="flex items-center gap-2 sm:gap-3 min-w-0">
+							{link.icon && <link.icon className={`w-4 h-4 sm:w-5 sm:h-5 flex-shrink-0 ${isOpen ? 'text-white' : 'text-indigo-600'}`} />}
+							<span className="truncate">{link.label}</span>
 						</span>
-						<ChevronDown className={`w-4 h-4 transition-transform ${isOpen ? 'rotate-180 text-white' : 'text-slate-400 group-hover:text-indigo-600'}`} />
+						<ChevronDown className={`w-3.5 h-3.5 sm:w-4 sm:h-4 flex-shrink-0 transition-transform ${isOpen ? 'rotate-180 text-white' : 'text-slate-400 group-hover:text-indigo-600'}`} />
 					</button>
 
-					<ul className={`pl-8 mt-1 flex flex-col gap-1 transition-[max-height] duration-200 overflow-hidden ${isOpen ? 'max-h-60' : 'max-h-0'}`}>
+					<ul className={`pl-6 sm:pl-8 mt-1 flex flex-col gap-0.5 sm:gap-1 transition-[max-height] duration-200 overflow-hidden ${isOpen ? 'max-h-60' : 'max-h-0'}`}>
 						{link.submenu.map((sub) => {
 							const subActive = isPathActive(sub.href);
 							const subComing = !!sub.comingSoon;
@@ -170,10 +172,12 @@ export default function SidebarPatient() {
 									<li key={sub.label}>
 										<div
 											aria-disabled="true"
-											className={`group flex items-center gap-3 w-full px-3 py-2 rounded-lg text-sm font-medium cursor-not-allowed opacity-80
+											className={`group flex items-center gap-2 sm:gap-3 w-full px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-lg text-xs sm:text-sm font-medium cursor-not-allowed opacity-80
 											${subActive ? 'bg-indigo-100 text-indigo-700' : 'text-slate-400 bg-slate-50'}`}>
-											<span>{sub.label}</span>
-											<span className="ml-2 inline-flex items-center px-2 py-0.5 text-[11px] font-medium rounded-full bg-slate-100 text-slate-600 border border-slate-200">Próximamente</span>
+											<span className="truncate">{sub.label}</span>
+											<span className="ml-auto inline-flex items-center px-1.5 sm:px-2 py-0.5 text-[9px] sm:text-[11px] font-medium rounded-full bg-slate-100 text-slate-600 border border-slate-200 whitespace-nowrap flex-shrink-0">
+												Próximamente
+											</span>
 										</div>
 									</li>
 								);
@@ -184,9 +188,9 @@ export default function SidebarPatient() {
 									<Link
 										href={sub.href!}
 										aria-current={subActive ? 'page' : undefined}
-										className={`group block px-3 py-2 rounded-lg text-sm transition
+										className={`group block px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-lg text-xs sm:text-sm transition
 											${subActive ? 'bg-indigo-100 text-indigo-700 font-semibold' : 'text-slate-700 hover:bg-slate-50'}`}>
-										{sub.label}
+										<span className="truncate block">{sub.label}</span>
 									</Link>
 								</li>
 							);
@@ -202,11 +206,13 @@ export default function SidebarPatient() {
 				<li key={link.label}>
 					<div
 						aria-disabled="true"
-						className={`group flex items-center gap-3 w-full px-3 py-2 rounded-lg text-sm font-medium cursor-not-allowed opacity-80
+						className={`group flex items-center gap-2 sm:gap-3 w-full px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-lg text-xs sm:text-sm font-medium cursor-not-allowed opacity-80
 						${isActive ? 'bg-indigo-100 text-indigo-700' : 'text-slate-400 bg-slate-50'}`}>
-						{link.icon && <link.icon className="w-5 h-5" />}
-						<span>{link.label}</span>
-						<span className="ml-2 inline-flex items-center px-2 py-0.5 text-[11px] font-medium rounded-full bg-slate-100 text-slate-600 border border-slate-200">Próximamente</span>
+						{link.icon && <link.icon className="w-4 h-4 sm:w-5 sm:h-5 flex-shrink-0" />}
+						<span className="truncate flex-1">{link.label}</span>
+						<span className="ml-auto inline-flex items-center px-1.5 sm:px-2 py-0.5 text-[9px] sm:text-[11px] font-medium rounded-full bg-slate-100 text-slate-600 border border-slate-200 whitespace-nowrap flex-shrink-0">
+							Próximamente
+						</span>
 					</div>
 				</li>
 			);
@@ -217,41 +223,47 @@ export default function SidebarPatient() {
 				<Link
 					href={link.href!}
 					aria-current={isActive ? 'page' : undefined}
-					className={`group flex items-center gap-3 w-full px-3 py-2 rounded-lg text-sm font-medium transition
+					className={`group flex items-center gap-2 sm:gap-3 w-full px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-lg text-xs sm:text-sm font-medium transition
 					${isActive ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-md' : 'text-slate-700 hover:bg-slate-50'}`}>
-					{link.icon && <link.icon className={`w-5 h-5 ${isActive ? 'text-white' : 'text-indigo-600'}`} />}
-					{link.label}
+					{link.icon && <link.icon className={`w-4 h-4 sm:w-5 sm:h-5 flex-shrink-0 ${isActive ? 'text-white' : 'text-indigo-600'}`} />}
+					<span className="truncate">{link.label}</span>
 				</Link>
 			</li>
 		);
 	};
 
 	return (
-		<aside className="hidden md:block w-68" aria-label="Barra lateral del panel del paciente">
-			<div className="sticky top-[calc(var(--navbar-height,64px)+1.25rem)]" style={{ zIndex: 30 }}>
-				<div className="flex flex-col gap-4 bg-white/70 backdrop-blur-md rounded-2xl p-4 shadow-lg ring-1 ring-slate-100 border border-slate-50">
+		<aside className="hidden md:block w-full md:w-64 lg:w-68" aria-label="Barra lateral del panel del paciente">
+			<div className="sticky top-[calc(var(--navbar-height,64px)+1rem)] md:top-[calc(var(--navbar-height,64px)+1.25rem)]" style={{ zIndex: 30 }}>
+				<div className="flex flex-col gap-3 sm:gap-4 bg-white/90 backdrop-blur-md rounded-xl sm:rounded-2xl p-3 sm:p-4 shadow-lg ring-1 ring-slate-100 border border-slate-50">
 					{/* Brand */}
-					<div className="flex items-center gap-3">
-						<div className="w-12 h-12 rounded-xl bg-gradient-to-br from-indigo-600 to-purple-600 flex items-center justify-center text-white font-bold text-lg shadow-md ring-1 ring-white/20">PT</div>
-						<div>
-							<div className="text-sm font-semibold text-slate-900">Syncwave Salud</div>
-							<div className="text-[12px] text-slate-500">Panel del Paciente</div>
+					<div className="flex items-center gap-2 sm:gap-3">
+						<div className="w-10 h-10 sm:w-12 sm:h-12 rounded-lg sm:rounded-xl bg-gradient-to-br from-indigo-600 to-purple-600 flex items-center justify-center text-white font-bold text-base sm:text-lg shadow-md ring-1 ring-white/20 flex-shrink-0">
+							PT
+						</div>
+						<div className="min-w-0">
+							<div className="text-xs sm:text-sm font-semibold text-slate-900 truncate">Syncwave Salud</div>
+							<div className="text-[10px] sm:text-[12px] text-slate-500 truncate">Panel del Paciente</div>
 						</div>
 					</div>
 
 					{/* Search */}
 					<div className="relative">
-						<input placeholder="Buscar sección..." aria-label="Buscar sección" className="w-full px-3 py-2 text-sm rounded-lg border border-slate-100 bg-slate-50 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-200 transition" />
-						<SearchIcon className="absolute right-3 top-2.5 w-4 h-4 text-slate-400" aria-hidden />
+						<input 
+							placeholder="Buscar sección..." 
+							aria-label="Buscar sección" 
+							className="w-full px-2.5 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm rounded-lg border border-slate-100 bg-slate-50 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-200 transition" 
+						/>
+						<SearchIcon className="absolute right-2.5 sm:right-3 top-1.5 sm:top-2.5 w-3.5 h-3.5 sm:w-4 sm:h-4 text-slate-400" aria-hidden />
 					</div>
 
 					{/* Navigation */}
 					<nav className="mt-1" aria-label="Navegación principal">
-						<ul className="flex flex-col gap-1">{LINKS.map(renderLink)}</ul>
+						<ul className="flex flex-col gap-0.5 sm:gap-1">{LINKS.map(renderLink)}</ul>
 					</nav>
 
 					{/* Footer */}
-					<div className="mt-3 pt-2 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
+					<div className="mt-2 sm:mt-3 pt-2 border-t border-slate-100 flex items-center justify-between text-[10px] sm:text-xs text-slate-500">
 						<div>Soporte</div>
 						<a href="/help" className="text-indigo-600 hover:underline">
 							Ayuda
