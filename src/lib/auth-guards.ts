@@ -180,35 +180,46 @@ export async function tryRestoreSessionFromCookies(supabase: SupabaseClient, coo
 
 			if (!access_token && !refresh_token) continue;
 
-			// Intentar setSession primero
-			const sessionPayload: { access_token: string; refresh_token?: string } = {
-				access_token: access_token || '',
-			};
-			if (refresh_token) {
-				sessionPayload.refresh_token = refresh_token;
-			}
-
-			const { data, error } = await supabase.auth.setSession(sessionPayload);
-			if (error) {
-				// Si solo tenemos refresh_token y falla setSession, intentar refreshSession
-				if (refresh_token && !access_token) {
-					try {
-						const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession({ refresh_token });
-						if (!refreshError && refreshData?.session) {
-							return true;
-						}
-					} catch {
-						// ignore
+			// Si solo tenemos refresh_token, usar refreshSession
+			if (refresh_token && !access_token) {
+				try {
+					const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession({ refresh_token });
+					if (!refreshError && refreshData?.session) {
+						return true;
 					}
+				} catch {
+					// ignore
 				}
 				continue;
 			}
 
-			if (data?.session) return true;
+			// Si tenemos access_token pero no refresh_token, no podemos usar setSession
+			// Intentar obtener la sesión actual o continuar
+			if (access_token && !refresh_token) {
+				// Verificar si ya hay una sesión activa
+				const { data: currentSession } = await supabase.auth.getSession();
+				if (currentSession?.session) return true;
+				continue;
+			}
 
-			// Verificar si la sesión está disponible después de setSession
-			const { data: sessionAfter } = await supabase.auth.getSession();
-			if (sessionAfter?.session) return true;
+			// Si tenemos ambos tokens, usar setSession
+			if (access_token && refresh_token) {
+				const sessionPayload: { access_token: string; refresh_token: string } = {
+					access_token,
+					refresh_token,
+				};
+
+				const { data, error } = await supabase.auth.setSession(sessionPayload);
+				if (error) {
+					continue;
+				}
+
+				if (data?.session) return true;
+
+				// Verificar si la sesión está disponible después de setSession
+				const { data: sessionAfter } = await supabase.auth.getSession();
+				if (sessionAfter?.session) return true;
+			}
 		} catch (err) {
 			// Continuar con la siguiente cookie si hay error
 			continue;
