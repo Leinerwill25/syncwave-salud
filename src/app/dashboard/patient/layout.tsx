@@ -1,4 +1,5 @@
 import SidebarPatient from '@/components/patient/SidebarPatient';
+import PatientHamburgerMenu from '@/components/patient/PatientHamburgerMenu';
 import ServerDashboardGuard from '@/components/auth/ServerDashboardGuard';
 
 export default function PatientLayout({
@@ -9,7 +10,10 @@ export default function PatientLayout({
 	return (
 		<ServerDashboardGuard allowedRoles={['PACIENTE']}>
 			<div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
-				<div className="max-w-[1920px] mx-auto px-4 sm:px-6 lg:px-8 py-6">
+				{/* Menú Hamburger para móviles */}
+				<PatientHamburgerMenu />
+
+				<div className="max-w-[1920px] mx-auto px-4 sm:px-6 lg:px-8 py-6 pt-20 md:pt-6">
 					<div className="flex gap-6">
 						<SidebarPatient />
 						<main className="flex-1 min-w-0">
