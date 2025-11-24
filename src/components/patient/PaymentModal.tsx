@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, CreditCard, CheckCircle, Loader2, Receipt, DollarSign, Calendar, User, Building2, Smartphone, Upload, FileImage } from 'lucide-react';
+import { X, CreditCard, CheckCircle, Loader2, Receipt, DollarSign, Calendar, User, Building2, Smartphone, Upload, FileImage, Clock } from 'lucide-react';
 
 type Factura = {
 	id: string;
