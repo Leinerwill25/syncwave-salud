@@ -167,95 +167,95 @@ export default function LoginFormAdvanced(): React.ReactElement {
 	// success: #27AE60
 
 	return (
-		<form onSubmit={handleSubmit} className="w-full max-w-6xl mx-auto px-6 mt-12">
+		<form onSubmit={handleSubmit} className="w-full max-w-6xl mx-auto px-3 sm:px-6 mt-6 sm:mt-12">
 			<div className="relative">
 				{/* Glass card */}
-				<div className="relative z-10 rounded-3xl overflow-hidden bg-[rgba(255,255,255,0.72)] backdrop-blur-md border border-[rgba(44,62,80,0.06)] shadow-lg">
+				<div className="relative z-10 rounded-2xl sm:rounded-3xl overflow-hidden bg-[rgba(255,255,255,0.95)] sm:bg-[rgba(255,255,255,0.72)] backdrop-blur-md border border-[rgba(44,62,80,0.06)] shadow-lg">
 					<div className="grid grid-cols-1 md:grid-cols-2">
 						{/* Left decorative panel */}
 						<div
-							className="hidden md:flex items-center justify-center p-10"
+							className="hidden md:flex items-center justify-center p-8 lg:p-10"
 							style={{
 								background: 'linear-gradient(180deg, rgba(74,144,226,0.08) 0%, rgba(142,124,195,0.06) 100%)',
 							}}>
 							<div className="w-full max-w-sm text-center">
 								{/* Primary graphic: stylized shield + cross (health) */}
 								<div
-									className="mx-auto mb-6 flex h-24 w-24 items-center justify-center rounded-xl"
+									className="mx-auto mb-6 flex h-20 w-20 lg:h-24 lg:w-24 items-center justify-center rounded-xl"
 									style={{
 										background: 'linear-gradient(135deg, #4A90E2 0%, #8E7CC3 100%)',
 										boxShadow: '0 8px 20px rgba(72,88,120,0.12)',
 									}}>
 									{/* Icon from library */}
-									<FiShield className="h-10 w-10 text-white" aria-hidden />
+									<FiShield className="h-8 w-8 lg:h-10 lg:w-10 text-white" aria-hidden />
 								</div>
 
-								<h2 className="text-3xl font-semibold text-[#2C3E50] mb-2">Bienvenido de nuevo</h2>
-								<p className="text-base text-[#2C3E50]/75">Accede a tu panel profesional — seguridad empresarial y diseño pensado para tu flujo.</p>
+								<h2 className="text-2xl lg:text-3xl font-semibold text-[#2C3E50] mb-2">Bienvenido de nuevo</h2>
+								<p className="text-sm lg:text-base text-[#2C3E50]/75">Accede a tu panel profesional — seguridad empresarial y diseño pensado para tu flujo.</p>
 
-								<div className="mt-8 flex justify-center gap-3">
-									<span className="inline-flex items-center gap-2 rounded-full bg-[rgba(44,62,80,0.04)] px-4 py-2 text-sm text-[#2C3E50]/80 ring-1 ring-[rgba(44,62,80,0.04)]">
+								<div className="mt-6 lg:mt-8 flex flex-wrap justify-center gap-2 lg:gap-3">
+									<span className="inline-flex items-center gap-2 rounded-full bg-[rgba(44,62,80,0.04)] px-3 lg:px-4 py-1.5 lg:py-2 text-xs lg:text-sm text-[#2C3E50]/80 ring-1 ring-[rgba(44,62,80,0.04)]">
 										{/* Shield check icon */}
-										<FiCheckCircle className="h-4 w-4 text-[#2C3E50]" aria-hidden />
+										<FiCheckCircle className="h-3.5 w-3.5 lg:h-4 lg:w-4 text-[#2C3E50]" aria-hidden />
 										Acceso seguro
 									</span>
-									<span className="inline-flex items-center gap-2 rounded-full bg-[rgba(44,62,80,0.04)] px-4 py-2 text-sm text-[#2C3E50]/80 ring-1 ring-[rgba(44,62,80,0.04)]">
+									<span className="inline-flex items-center gap-2 rounded-full bg-[rgba(44,62,80,0.04)] px-3 lg:px-4 py-1.5 lg:py-2 text-xs lg:text-sm text-[#2C3E50]/80 ring-1 ring-[rgba(44,62,80,0.04)]">
 										{/* Corporate icon */}
-										<FiBriefcase className="h-4 w-4 text-[#2C3E50]" aria-hidden />
+										<FiBriefcase className="h-3.5 w-3.5 lg:h-4 lg:w-4 text-[#2C3E50]" aria-hidden />
 										Corporativo
 									</span>
 								</div>
 							</div>
 						</div>
 						{/* Right: form */}
-						<div className="p-6 sm:p-10">
+						<div className="p-4 sm:p-6 lg:p-10">
 							<div className="mx-auto max-w-2xl">
-								<div className="rounded-2xl bg-white p-6 sm:p-8 shadow-sm ring-1 ring-[rgba(44,62,80,0.03)]">
+								<div className="rounded-xl sm:rounded-2xl bg-white p-4 sm:p-6 lg:p-8 shadow-sm ring-1 ring-[rgba(44,62,80,0.03)]">
 									<div className="mb-4">
-										<h3 className="text-2xl sm:text-3xl font-bold text-[#2C3E50]">Iniciar sesión</h3>
-										<p className="text-sm text-[#2C3E50]/70">Introduce tus credenciales para continuar</p>
+										<h3 className="text-xl sm:text-2xl lg:text-3xl font-bold text-[#2C3E50]">Iniciar sesión</h3>
+										<p className="text-xs sm:text-sm text-[#2C3E50]/70 mt-1">Introduce tus credenciales para continuar</p>
 									</div>
 
-									<div className="space-y-5">
+									<div className="space-y-4 sm:space-y-5">
 										{/* Email with icon */}
 										<label htmlFor="email" className="block">
-											<span className="text-sm text-[#2C3E50]/80">Correo electrónico</span>
-											<div className="relative mt-3">
+											<span className="text-xs sm:text-sm text-[#2C3E50]/80">Correo electrónico</span>
+											<div className="relative mt-2 sm:mt-3">
 												{/* Mail icon (left) */}
 												<div className="absolute inset-y-0 left-3 flex items-center pointer-events-none">
-													<FiMail className="h-4 w-4 text-[#2C3E50]/70" aria-hidden />
+													<FiMail className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-[#2C3E50]/70" aria-hidden />
 												</div>
 
-												<input id="email" name="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required className="mt-0 w-full rounded-md border border-[rgba(44,62,80,0.08)] bg-[#FFFFFF] px-4 py-3 pl-11 text-[#2C3E50] placeholder-[#2C3E50]/40 focus:outline-none focus:ring-2 focus:ring-[#4A90E2] transition" placeholder="tu@ejemplo.com" />
+												<input id="email" name="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required className="mt-0 w-full rounded-md border border-[rgba(44,62,80,0.08)] bg-[#FFFFFF] px-3 sm:px-4 py-2.5 sm:py-3 pl-9 sm:pl-11 text-sm sm:text-base text-[#2C3E50] placeholder-[#2C3E50]/40 focus:outline-none focus:ring-2 focus:ring-[#4A90E2] transition" placeholder="tu@ejemplo.com" />
 											</div>
 										</label>
 
 										{/* Password with interactive eye icon */}
 										<label htmlFor="password" className="block">
-											<span className="text-sm text-[#2C3E50]/80">Contraseña</span>
+											<span className="text-xs sm:text-sm text-[#2C3E50]/80">Contraseña</span>
 
-											<div className="relative mt-3">
-												<input id="password" name="password" type={showPassword ? 'text' : 'password'} value={password} onChange={(e) => setPassword(e.target.value)} required className="w-full rounded-md border border-[rgba(44,62,80,0.08)] bg-[#FFFFFF] px-4 py-3 text-[#2C3E50] placeholder-[#2C3E50]/40 focus:outline-none focus:ring-2 focus:ring-[#4A90E2] transition pr-12" placeholder="••••••••" />
+											<div className="relative mt-2 sm:mt-3">
+												<input id="password" name="password" type={showPassword ? 'text' : 'password'} value={password} onChange={(e) => setPassword(e.target.value)} required className="w-full rounded-md border border-[rgba(44,62,80,0.08)] bg-[#FFFFFF] px-3 sm:px-4 py-2.5 sm:py-3 text-sm sm:text-base text-[#2C3E50] placeholder-[#2C3E50]/40 focus:outline-none focus:ring-2 focus:ring-[#4A90E2] transition pr-10 sm:pr-12" placeholder="••••••••" />
 
 												{/* Eye button (interactive) */}
-												<button type="button" onClick={() => setShowPassword((s) => !s)} aria-label={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'} className="absolute inset-y-0 right-3 flex items-center justify-center p-1 rounded focus:outline-none focus:ring-2 focus:ring-[#4A90E2]">
-													{showPassword ? <FiEyeOff className="h-5 w-5 text-[#2C3E50]" aria-hidden /> : <FiEye className="h-5 w-5 text-[#2C3E50]" aria-hidden />}
+												<button type="button" onClick={() => setShowPassword((s) => !s)} aria-label={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'} className="absolute inset-y-0 right-2 sm:right-3 flex items-center justify-center p-1 rounded focus:outline-none focus:ring-2 focus:ring-[#4A90E2]">
+													{showPassword ? <FiEyeOff className="h-4 w-4 sm:h-5 sm:w-5 text-[#2C3E50]" aria-hidden /> : <FiEye className="h-4 w-4 sm:h-5 sm:w-5 text-[#2C3E50]" aria-hidden />}
 												</button>
 											</div>
 										</label>
 
-										<div className="flex items-center justify-between">
-											<label className="inline-flex items-center gap-3 cursor-pointer select-none text-sm text-[#2C3E50]/80">
+										<div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 sm:gap-0">
+											<label className="inline-flex items-center gap-2 sm:gap-3 cursor-pointer select-none text-xs sm:text-sm text-[#2C3E50]/80">
 												<input 
 													type="checkbox" 
 													checked={rememberMe}
 													onChange={(e) => setRememberMe(e.target.checked)}
-													className="h-4 w-4 rounded border-[rgba(44,62,80,0.08)] bg-white text-[#4A90E2] focus:ring-2 focus:ring-[#4A90E2]" 
+													className="h-3.5 w-3.5 sm:h-4 sm:w-4 rounded border-[rgba(44,62,80,0.08)] bg-white text-[#4A90E2] focus:ring-2 focus:ring-[#4A90E2]" 
 												/>
 												<span>Recordarme</span>
 											</label>
 
-											<button type="button" onClick={handleForgotPassword} className="text-sm text-[#4A90E2] hover:underline transition">
+											<button type="button" onClick={handleForgotPassword} className="text-xs sm:text-sm text-[#4A90E2] hover:underline transition">
 												¿Olvidaste tu contraseña?
 											</button>
 										</div>
@@ -266,19 +266,19 @@ export default function LoginFormAdvanced(): React.ReactElement {
 												type="submit"
 												disabled={loading}
 												aria-busy={loading}
-												className="relative flex w-full items-center justify-center gap-3 rounded-lg px-5 py-3 text-base font-semibold text-white shadow-md transition-transform hover:-translate-y-0.5 active:translate-y-0 disabled:opacity-60"
+												className="relative flex w-full items-center justify-center gap-2 sm:gap-3 rounded-lg px-4 sm:px-5 py-2.5 sm:py-3 text-sm sm:text-base font-semibold text-white shadow-md transition-transform hover:-translate-y-0.5 active:translate-y-0 disabled:opacity-60"
 												style={{
 													background: 'linear-gradient(90deg,#4A90E2 0%, #8E7CC3 100%)',
 													boxShadow: '0 10px 30px rgba(74,144,226,0.15), 0 0 40px rgba(142,124,195,0.06)',
 												}}>
 												{loading ? (
 													<>
-														<FiRefreshCw className="h-5 w-5 animate-spin" aria-hidden />
+														<FiRefreshCw className="h-4 w-4 sm:h-5 sm:w-5 animate-spin" aria-hidden />
 														Iniciando...
 													</>
 												) : (
 													<>
-														<FiLogIn className="h-4 w-4 opacity-90" aria-hidden />
+														<FiLogIn className="h-3.5 w-3.5 sm:h-4 sm:w-4 opacity-90" aria-hidden />
 														Iniciar sesión
 													</>
 												)}
@@ -287,23 +287,23 @@ export default function LoginFormAdvanced(): React.ReactElement {
 									</div>
 
 									{/* Footer small actions */}
-									<div className="mt-5 flex items-center justify-between text-sm text-[#2C3E50]/70">
-										<div className="flex items-center gap-3">
-											<span className="inline-flex items-center gap-2 rounded-full bg-[rgba(74,144,226,0.06)] px-4 py-2 text-sm text-[#4A90E2]">Acceso seguro</span>
+									<div className="mt-4 sm:mt-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-0 text-xs sm:text-sm text-[#2C3E50]/70">
+										<div className="flex items-center gap-2 sm:gap-3">
+											<span className="inline-flex items-center gap-1.5 sm:gap-2 rounded-full bg-[rgba(74,144,226,0.06)] px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm text-[#4A90E2]">Acceso seguro</span>
 										</div>
 
-										<a href="/register" className="text-[#8E7CC3] hover:underline font-medium">
+										<a href="/register" className="text-[#8E7CC3] hover:underline font-medium text-xs sm:text-sm">
 											Crear cuenta
 										</a>
 									</div>
 
 									{/* Role badge + error */}
-									<div className="mt-4 flex items-center justify-between">
-										<div className="min-h-5 w-2/3" aria-live="polite">
+									<div className="mt-3 sm:mt-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 sm:gap-0">
+										<div className="min-h-5 w-full sm:w-2/3" aria-live="polite">
 											{errorMsg && (
 												<div
 													role="alert"
-													className="rounded-md px-3 py-2 text-sm"
+													className="rounded-md px-3 py-2 text-xs sm:text-sm"
 													style={{
 														background: 'rgba(231,76,60,0.08)',
 														border: '1px solid rgba(231,76,60,0.16)',
@@ -317,7 +317,7 @@ export default function LoginFormAdvanced(): React.ReactElement {
 										<div>
 											{detectedRole && (
 												<span
-													className="text-sm rounded-full px-4 py-1"
+													className="text-xs sm:text-sm rounded-full px-3 sm:px-4 py-1"
 													style={{
 														background: 'rgba(142,124,195,0.12)',
 														color: '#4A2E86',

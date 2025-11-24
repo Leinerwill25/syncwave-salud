@@ -418,9 +418,9 @@ export default function RegisterForm(): React.ReactElement {
 	const StepIndicator = ({ current }: { current: number }) => {
 		const steps = role === 'PACIENTE' ? ['Cuenta', 'Paciente', 'Historia', 'Revisar'] : ['Cuenta', 'Organización', 'Plan', 'Revisar'];
 		return (
-			<div className="relative mb-10">
+			<div className="relative mb-6 sm:mb-8 lg:mb-10">
 				{/* Línea de progreso */}
-				<div className="absolute top-5 left-0 right-0 h-0.5 bg-slate-200 -z-10">
+				<div className="absolute top-4 sm:top-5 left-0 right-0 h-0.5 bg-slate-200 -z-10">
 					<div
 						className="h-full bg-gradient-to-r from-teal-600 to-cyan-600 transition-all duration-500 ease-out"
 						style={{ width: `${((current - 1) / (steps.length - 1)) * 100}%` }}
@@ -435,16 +435,16 @@ export default function RegisterForm(): React.ReactElement {
 							<div key={label} className="flex flex-col items-center flex-1">
 								<div
 									aria-current={active ? 'step' : undefined}
-									className={`relative w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold transition-all duration-300 ${
+									className={`relative w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center text-xs sm:text-sm font-bold transition-all duration-300 ${
 										done
 											? 'bg-gradient-to-br from-teal-600 to-cyan-600 text-white shadow-lg scale-110'
 											: active
-											? 'bg-white border-3 border-teal-600 text-teal-700 shadow-xl scale-110 ring-4 ring-teal-100'
+											? 'bg-white border-2 sm:border-3 border-teal-600 text-teal-700 shadow-xl scale-110 ring-2 sm:ring-4 ring-teal-100'
 											: 'bg-white border-2 border-slate-300 text-slate-400 shadow-sm'
 									}`}
 								>
 									{done ? (
-										<svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+										<svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 											<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
 										</svg>
 									) : (
@@ -452,7 +452,7 @@ export default function RegisterForm(): React.ReactElement {
 									)}
 								</div>
 								<span
-									className={`mt-2 text-xs font-semibold text-center max-w-[80px] ${
+									className={`mt-1.5 sm:mt-2 text-[10px] sm:text-xs font-semibold text-center max-w-[60px] sm:max-w-[80px] ${
 										active ? 'text-teal-700' : done ? 'text-teal-600' : 'text-slate-400'
 									}`}
 								>
@@ -467,10 +467,10 @@ export default function RegisterForm(): React.ReactElement {
 	};
 
 	// Updated input class (elegante y profesional)
-	const inputClass = 'mt-2 w-full px-4 py-3.5 border-2 border-slate-200 rounded-xl bg-white text-slate-900 placeholder:text-slate-400 shadow-sm transition-all duration-300 focus:outline-none focus:ring-4 focus:ring-teal-500/20 focus:border-teal-500 hover:border-slate-300 hover:shadow-md';
-	const labelClass = 'block text-sm font-semibold text-slate-800 mb-1.5';
-	const textareaClass = 'mt-2 w-full px-4 py-3.5 border-2 border-slate-200 rounded-xl bg-white text-slate-900 placeholder:text-slate-400 shadow-sm transition-all duration-300 focus:outline-none focus:ring-4 focus:ring-teal-500/20 focus:border-teal-500 hover:border-slate-300 hover:shadow-md resize-none';
-	const selectClass = 'mt-2 w-full px-4 py-3.5 border-2 border-slate-200 rounded-xl bg-white text-slate-900 shadow-sm transition-all duration-300 focus:outline-none focus:ring-4 focus:ring-teal-500/20 focus:border-teal-500 hover:border-slate-300 hover:shadow-md appearance-none bg-[url("data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' fill=\'none\' viewBox=\'0 0 20 20\'%3E%3Cpath stroke=\'%236b7280\' stroke-linecap=\'round\' stroke-linejoin=\'round\' stroke-width=\'1.5\' d=\'M6 8l4 4 4-4\'/%3E%3C/svg%3E")] bg-[length:1.5em_1.5em] bg-[right_0.75rem_center] bg-no-repeat pr-10';
+	const inputClass = 'mt-2 w-full px-3 sm:px-4 py-2.5 sm:py-3.5 border-2 border-slate-200 rounded-lg sm:rounded-xl bg-white text-sm sm:text-base text-slate-900 placeholder:text-slate-400 shadow-sm transition-all duration-300 focus:outline-none focus:ring-2 sm:focus:ring-4 focus:ring-teal-500/20 focus:border-teal-500 hover:border-slate-300 hover:shadow-md';
+	const labelClass = 'block text-xs sm:text-sm font-semibold text-slate-800 mb-1.5';
+	const textareaClass = 'mt-2 w-full px-3 sm:px-4 py-2.5 sm:py-3.5 border-2 border-slate-200 rounded-lg sm:rounded-xl bg-white text-sm sm:text-base text-slate-900 placeholder:text-slate-400 shadow-sm transition-all duration-300 focus:outline-none focus:ring-2 sm:focus:ring-4 focus:ring-teal-500/20 focus:border-teal-500 hover:border-slate-300 hover:shadow-md resize-none';
+	const selectClass = 'mt-2 w-full px-3 sm:px-4 py-2.5 sm:py-3.5 border-2 border-slate-200 rounded-lg sm:rounded-xl bg-white text-sm sm:text-base text-slate-900 shadow-sm transition-all duration-300 focus:outline-none focus:ring-2 sm:focus:ring-4 focus:ring-teal-500/20 focus:border-teal-500 hover:border-slate-300 hover:shadow-md appearance-none bg-[url("data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' fill=\'none\' viewBox=\'0 0 20 20\'%3E%3Cpath stroke=\'%236b7280\' stroke-linecap=\'round\' stroke-linejoin=\'round\' stroke-width=\'1.5\' d=\'M6 8l4 4 4-4\'/%3E%3C/svg%3E")] bg-[length:1.2em_1.2em] sm:bg-[length:1.5em_1.5em] bg-[right_0.5rem_center] sm:bg-[right_0.75rem_center] bg-no-repeat pr-8 sm:pr-10';
 
 	// Password strength calculation (returns score 0..4 and which criteria pass)
 	function evaluatePassword(pw: string) {
@@ -543,31 +543,31 @@ export default function RegisterForm(): React.ReactElement {
 	}, [recommendedPlan, billingPeriod, role]);
 
 	return (
-		<form onSubmit={handleSubmit} className="max-w-4xl mx-auto bg-white rounded-3xl shadow-2xl border border-slate-200 overflow-hidden" aria-labelledby="register-heading">
+		<form onSubmit={handleSubmit} className="max-w-4xl mx-auto bg-white rounded-2xl sm:rounded-3xl shadow-2xl border border-slate-200 overflow-hidden" aria-labelledby="register-heading">
 			{/* Header del formulario */}
-			<div className="bg-gradient-to-r from-teal-600 via-cyan-600 to-teal-600 px-8 py-6">
-				<h2 id="register-heading" className="text-2xl md:text-3xl font-bold text-white mb-1">
+			<div className="bg-gradient-to-r from-teal-600 via-cyan-600 to-teal-600 px-4 sm:px-6 md:px-8 py-4 sm:py-5 md:py-6">
+				<h2 id="register-heading" className="text-xl sm:text-2xl md:text-3xl font-bold text-white mb-1">
 					Crear Cuenta
 				</h2>
-				<p className="text-teal-50 text-sm">Completa los pasos para comenzar. Tus datos están protegidos con encriptación de nivel empresarial.</p>
+				<p className="text-teal-50 text-xs sm:text-sm mt-1">Completa los pasos para comenzar. Tus datos están protegidos con encriptación de nivel empresarial.</p>
 			</div>
 
 			{/* Contenido del formulario */}
-			<div className="p-8 md:p-10">
+			<div className="p-4 sm:p-6 md:p-8 lg:p-10">
 
 			<StepIndicator current={step} />
 
 			{/* Paso 1: Cuenta */}
 			{step === 1 && (
-				<section aria-label="Cuenta" className="space-y-6 animate-in fade-in duration-300">
-					<div className="mb-6">
-						<h3 className="text-xl font-bold text-slate-900 mb-2 flex items-center gap-2">
-							<span className="w-1 h-6 bg-gradient-to-b from-teal-600 to-cyan-600 rounded-full"></span>
+				<section aria-label="Cuenta" className="space-y-4 sm:space-y-6 animate-in fade-in duration-300">
+					<div className="mb-4 sm:mb-6">
+						<h3 className="text-lg sm:text-xl font-bold text-slate-900 mb-2 flex items-center gap-2">
+							<span className="w-1 h-5 sm:h-6 bg-gradient-to-b from-teal-600 to-cyan-600 rounded-full"></span>
 							Información de Cuenta
 						</h3>
-						<p className="text-sm text-slate-600 ml-3">Crea tus credenciales de acceso seguras</p>
+						<p className="text-xs sm:text-sm text-slate-600 ml-3">Crea tus credenciales de acceso seguras</p>
 					</div>
-					<div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+					<div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
 						<label className="block group">
 							<span className={labelClass}>
 								<span className="inline-flex items-center gap-2">
@@ -736,19 +736,19 @@ export default function RegisterForm(): React.ReactElement {
 						</div>
 					)}
 
-					<div className="flex justify-end gap-3 mt-8 pt-6 border-t border-slate-200">
+					<div className="flex justify-end gap-3 mt-6 sm:mt-8 pt-4 sm:pt-6 border-t border-slate-200">
 						<button
 							type="button"
 							onClick={next}
 							disabled={!step1Valid}
-							className={`px-8 py-3 rounded-xl font-semibold text-sm transition-all duration-200 flex items-center gap-2 ${
+							className={`px-6 sm:px-8 py-2.5 sm:py-3 rounded-lg sm:rounded-xl font-semibold text-xs sm:text-sm transition-all duration-200 flex items-center gap-2 ${
 								step1Valid
 									? 'bg-gradient-to-r from-teal-600 to-cyan-600 text-white hover:from-teal-700 hover:to-cyan-700 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5'
 									: 'bg-slate-200 text-slate-500 cursor-not-allowed'
 							}`}
 						>
 							Continuar
-							<svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+							<svg className="w-3.5 h-3.5 sm:w-4 sm:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 								<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
 							</svg>
 						</button>
@@ -879,10 +879,10 @@ export default function RegisterForm(): React.ReactElement {
 					</div>
 
 					<div className="flex justify-between gap-3 mt-4">
-						<button type="button" onClick={back} className="px-5 py-2 rounded-lg border border-slate-200 bg-white text-slate-700">
+						<button type="button" onClick={back} className="px-4 sm:px-5 py-2 rounded-lg border border-slate-200 bg-white text-slate-700 text-xs sm:text-sm">
 							Atrás
 						</button>
-						<button type="button" onClick={next} disabled={!step2OrgValid} className={`px-5 py-2 rounded-lg ${step2OrgValid ? 'bg-emerald-600 text-white' : 'bg-slate-200 text-slate-500 cursor-not-allowed'}`}>
+						<button type="button" onClick={next} disabled={!step2OrgValid} className={`px-4 sm:px-5 py-2 rounded-lg text-xs sm:text-sm ${step2OrgValid ? 'bg-emerald-600 text-white' : 'bg-slate-200 text-slate-500 cursor-not-allowed'}`}>
 							Siguiente
 						</button>
 					</div>
@@ -1039,10 +1039,10 @@ export default function RegisterForm(): React.ReactElement {
 					</div>
 
 					<div className="flex justify-between gap-3 mt-4">
-						<button type="button" onClick={back} className="px-5 py-2 rounded-lg border border-slate-200 bg-white text-slate-700">
+						<button type="button" onClick={back} className="px-4 sm:px-5 py-2 rounded-lg border border-slate-200 bg-white text-slate-700 text-xs sm:text-sm">
 							Atrás
 						</button>
-						<button type="button" onClick={next} disabled={!step2PatientValid} className={`px-5 py-2 rounded-lg ${step2PatientValid ? 'bg-emerald-600 text-white' : 'bg-slate-200 text-slate-500 cursor-not-allowed'}`}>
+						<button type="button" onClick={next} disabled={!step2PatientValid} className={`px-4 sm:px-5 py-2 rounded-lg text-xs sm:text-sm ${step2PatientValid ? 'bg-emerald-600 text-white' : 'bg-slate-200 text-slate-500 cursor-not-allowed'}`}>
 							Siguiente
 						</button>
 					</div>
@@ -1113,10 +1113,10 @@ export default function RegisterForm(): React.ReactElement {
 					</div>
 
 					<div className="flex justify-between gap-3 mt-4">
-						<button type="button" onClick={back} className="px-5 py-2 rounded-lg border border-slate-200 bg-white text-slate-700">
+						<button type="button" onClick={back} className="px-4 sm:px-5 py-2 rounded-lg border border-slate-200 bg-white text-slate-700 text-xs sm:text-sm">
 							Atrás
 						</button>
-						<button type="button" onClick={() => setStep(4)} className="px-5 py-2 rounded-lg bg-emerald-600 text-white">
+						<button type="button" onClick={() => setStep(4)} className="px-4 sm:px-5 py-2 rounded-lg bg-emerald-600 text-white text-xs sm:text-sm">
 							Siguiente
 						</button>
 					</div>
@@ -1125,21 +1125,21 @@ export default function RegisterForm(): React.ReactElement {
 
 			{step === 3 && role !== 'PACIENTE' && (
 				<section aria-label="Plan" className="space-y-4">
-					<h3 className="text-lg font-semibold text-slate-700">Plan recomendado</h3>
+					<h3 className="text-base sm:text-lg font-semibold text-slate-700">Plan recomendado</h3>
 
 					{role === 'MEDICO' ? (
-						<div className="p-4 rounded-lg border border-emerald-600 bg-white shadow-lg flex items-center justify-between">
+						<div className="p-3 sm:p-4 rounded-lg border border-emerald-600 bg-white shadow-lg flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-0">
 							<div>
-								<div className="text-sm font-semibold text-slate-900">Plan Médico — Usuario individual</div>
-								<div className="text-xs text-slate-500">1 usuario — ideal para médicos independientes</div>
+								<div className="text-xs sm:text-sm font-semibold text-slate-900">Plan Médico — Usuario individual</div>
+								<div className="text-[10px] sm:text-xs text-slate-500">1 usuario — ideal para médicos independientes</div>
 							</div>
-							<div className="text-right">
-								<div className="text-2xl font-extrabold text-emerald-600">${recommendedPlan.price.toFixed(2)}</div>
-								<div className="text-xs text-slate-400">/ mes</div>
+							<div className="text-left sm:text-right">
+								<div className="text-xl sm:text-2xl font-extrabold text-emerald-600">${recommendedPlan.price.toFixed(2)}</div>
+								<div className="text-[10px] sm:text-xs text-slate-400">/ mes</div>
 							</div>
 						</div>
 					) : (
-						<div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-slate-700">
+						<div className="grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-4 text-slate-700">
 							{[
 								{ slug: '10-20', label: '10–20 especialistas', price: 69.99, range: '10–20' },
 								{ slug: '21-50', label: '21–50 especialistas', price: 99.99, range: '21–50' },
@@ -1147,34 +1147,34 @@ export default function RegisterForm(): React.ReactElement {
 							].map((p) => {
 								const recommended = p.slug === recommendedPlan.slug;
 								return (
-									<div key={p.slug} aria-labelledby={`plan-${p.slug}`} tabIndex={0} className={`relative pt-6 pb-4 px-4 rounded-2xl border bg-white transition-transform transform hover:-translate-y-0.5 focus:outline-none focus:ring-2 ${recommended ? 'border-emerald-600 shadow-lg ring-emerald-100' : 'border-slate-200 shadow-sm'} min-h-32 flex flex-col justify-between`}>
-										{recommended && <span className="absolute -top-3 left-1/2 -translate-x-1/2 bg-emerald-600 text-white text-xs font-semibold px-3 py-0.5 rounded-full shadow">Recomendado</span>}
+									<div key={p.slug} aria-labelledby={`plan-${p.slug}`} tabIndex={0} className={`relative pt-5 sm:pt-6 pb-3 sm:pb-4 px-3 sm:px-4 rounded-xl sm:rounded-2xl border bg-white transition-transform transform hover:-translate-y-0.5 focus:outline-none focus:ring-2 ${recommended ? 'border-emerald-600 shadow-lg ring-emerald-100' : 'border-slate-200 shadow-sm'} min-h-28 sm:min-h-32 flex flex-col justify-between`}>
+										{recommended && <span className="absolute -top-2.5 sm:-top-3 left-1/2 -translate-x-1/2 bg-emerald-600 text-white text-[10px] sm:text-xs font-semibold px-2.5 sm:px-3 py-0.5 rounded-full shadow">Recomendado</span>}
 
-										<div className="flex items-start justify-between gap-3">
+										<div className="flex items-start justify-between gap-2 sm:gap-3">
 											<div className="min-w-0">
-												<div id={`plan-${p.slug}`} className="text-sm font-semibold text-slate-900 truncate">
+												<div id={`plan-${p.slug}`} className="text-xs sm:text-sm font-semibold text-slate-900 truncate">
 													{p.label}
 												</div>
 											</div>
 										</div>
 
-										<hr className="my-3 border-t border-slate-100" />
+										<hr className="my-2 sm:my-3 border-t border-slate-100" />
 
-										<div className="flex items-center justify-between gap-3">
-											<ul className="flex-1 space-y-1 text-[12px] text-slate-600">
+										<div className="flex items-center justify-between gap-2 sm:gap-3">
+											<ul className="flex-1 space-y-0.5 sm:space-y-1 text-[10px] sm:text-[12px] text-slate-600">
 												<li className="truncate">• Soporte básico</li>
 												<li className="truncate">• Reportes semanales</li>
 											</ul>
 										</div>
 
 										{recommended && (
-											<div className="mt-3 text-[12px] text-slate-600">
+											<div className="mt-2 sm:mt-3 text-[10px] sm:text-[12px] text-slate-600">
 												Recomendado según <span className="font-semibold text-slate-800">{specialistCount}</span> especialistas.
 											</div>
 										)}
 										<div className="text-right flex flex-col items-end">
-											<div className="text-lg md:text-2xl font-extrabold leading-none text-emerald-600">${p.price.toFixed(2)}</div>
-											<div className="text-[11px] text-slate-400">/ mes</div>
+											<div className="text-base sm:text-lg md:text-2xl font-extrabold leading-none text-emerald-600">${p.price.toFixed(2)}</div>
+											<div className="text-[10px] sm:text-[11px] text-slate-400">/ mes</div>
 										</div>
 									</div>
 								);
@@ -1183,36 +1183,36 @@ export default function RegisterForm(): React.ReactElement {
 					)}
 
 					<div className="mt-4">
-						<div className="text-sm font-medium mb-2">Periodicidad</div>
+						<div className="text-xs sm:text-sm font-medium mb-2">Periodicidad</div>
 						<select value={billingPeriod} onChange={(e) => setBillingPeriod(e.target.value as BillingPeriod)} className={inputClass}>
 							<option value="monthly">Mensual</option>
 							<option value="quarterly">Trimestral — 5% descuento</option>
 							<option value="annual">Anual — 15% descuento</option>
 						</select>
 
-						<div className="mt-3 p-3 bg-slate-50 rounded-md border border-slate-100 text-slate-700">
-							<div className="text-sm">Resumen de cobro:</div>
-							<div className="mt-1 text-sm">
+						<div className="mt-3 p-3 sm:p-4 bg-slate-50 rounded-md border border-slate-100 text-slate-700">
+							<div className="text-xs sm:text-sm">Resumen de cobro:</div>
+							<div className="mt-1 text-xs sm:text-sm">
 								<strong>{recommendedPlan.label}</strong> — Precio base mensual: ${recommendedPlan.price.toFixed(2)}
 							</div>
-							<div className="text-sm">
+							<div className="text-xs sm:text-sm">
 								Periodo: {billingPreview.label} — {billingPreview.months} {billingPreview.months > 1 ? 'meses' : 'mes'}
 							</div>
-							{billingPreview.discount > 0 && <div className="text-sm">Descuento aplicado: {(billingPreview.discount * 100).toFixed(0)}%</div>}
-							<div className="mt-2 text-lg font-semibold text-emerald-600">Total a pagar: ${billingPreview.total.toFixed(2)}</div>
-							<div className="text-xs text-slate-500">Equivalente mensual: ${billingPreview.monthlyEquivalent.toFixed(2)} / mes</div>
+							{billingPreview.discount > 0 && <div className="text-xs sm:text-sm">Descuento aplicado: {(billingPreview.discount * 100).toFixed(0)}%</div>}
+							<div className="mt-2 text-base sm:text-lg font-semibold text-emerald-600">Total a pagar: ${billingPreview.total.toFixed(2)}</div>
+							<div className="text-[10px] sm:text-xs text-slate-500">Equivalente mensual: ${billingPreview.monthlyEquivalent.toFixed(2)} / mes</div>
 						</div>
 					</div>
 
-					<div className="mt-2 text-sm text-slate-600">
+					<div className="mt-2 text-xs sm:text-sm text-slate-600">
 						<p>Precio de referencia. Al continuar irás al checkout para elegir plan mensual, trimestral o anual con descuento.</p>
 					</div>
 
 					<div className="flex justify-between gap-3 mt-4">
-						<button type="button" onClick={back} className="px-5 py-2 rounded-lg border border-slate-200 bg-white text-slate-700">
+						<button type="button" onClick={back} className="px-4 sm:px-5 py-2 rounded-lg border border-slate-200 bg-white text-slate-700 text-xs sm:text-sm">
 							Atrás
 						</button>
-						<button type="button" onClick={() => setStep(4)} className="px-5 py-2 rounded-lg bg-emerald-600 text-white">
+						<button type="button" onClick={() => setStep(4)} className="px-4 sm:px-5 py-2 rounded-lg bg-emerald-600 text-white text-xs sm:text-sm">
 							Continuar al registro
 						</button>
 					</div>
@@ -1221,53 +1221,53 @@ export default function RegisterForm(): React.ReactElement {
 
 			{/* Paso 4: Revisión */}
 			{step === 4 && (
-				<section aria-label="Revisar" className="space-y-4">
-					<h3 className="text-lg font-semibold text-slate-700">Revisar y confirmar</h3>
+				<section aria-label="Revisar" className="space-y-3 sm:space-y-4">
+					<h3 className="text-base sm:text-lg font-semibold text-slate-700">Revisar y confirmar</h3>
 
-					<div className="bg-slate-50 p-4 rounded-lg border border-slate-100">
-						<div className="text-sm text-slate-700 font-medium mb-2">Cuenta</div>
-						<div className="text-sm text-slate-600">Nombre: {fullName}</div>
-						<div className="text-sm text-slate-600">Email: {email}</div>
-						<div className="text-sm text-slate-600">Tipo: {role}</div>
+					<div className="bg-slate-50 p-3 sm:p-4 rounded-lg border border-slate-100">
+						<div className="text-xs sm:text-sm text-slate-700 font-medium mb-2">Cuenta</div>
+						<div className="text-xs sm:text-sm text-slate-600">Nombre: {fullName}</div>
+						<div className="text-xs sm:text-sm text-slate-600">Email: {email}</div>
+						<div className="text-xs sm:text-sm text-slate-600">Tipo: {role}</div>
 					</div>
 
 					{role === 'PACIENTE' ? (
-						<div className="bg-gradient-to-br from-slate-50 to-blue-50 p-6 rounded-xl border border-slate-200 shadow-sm">
-							<div className="flex items-center gap-2 mb-4">
-								<div className="w-10 h-10 rounded-lg bg-gradient-to-br from-teal-600 to-cyan-600 flex items-center justify-center">
-									<svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+						<div className="bg-gradient-to-br from-slate-50 to-blue-50 p-4 sm:p-6 rounded-lg sm:rounded-xl border border-slate-200 shadow-sm">
+							<div className="flex items-center gap-2 mb-3 sm:mb-4">
+								<div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg bg-gradient-to-br from-teal-600 to-cyan-600 flex items-center justify-center">
+									<svg className="w-4 h-4 sm:w-5 sm:h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 										<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
 									</svg>
 								</div>
-								<div className="text-base font-bold text-slate-900">Paciente</div>
+								<div className="text-sm sm:text-base font-bold text-slate-900">Paciente</div>
 							</div>
-							<div className="space-y-2 ml-12">
-								<div className="text-sm text-slate-700">
+							<div className="space-y-2 ml-0 sm:ml-12">
+								<div className="text-xs sm:text-sm text-slate-700">
 									<span className="font-semibold">Nombre:</span> {firstName} {lastName}
 								</div>
-								<div className="text-sm text-slate-700">
+								<div className="text-xs sm:text-sm text-slate-700">
 									<span className="font-semibold">ID:</span> {identifier}
 								</div>
-								<div className="text-sm text-slate-700">
+								<div className="text-xs sm:text-sm text-slate-700">
 									<span className="font-semibold">Teléfono:</span> {phone || '—'}
 								</div>
-								<div className="mt-4 p-4 bg-gradient-to-r from-green-50 to-emerald-50 border-2 border-green-200 rounded-xl">
+								<div className="mt-3 sm:mt-4 p-3 sm:p-4 bg-gradient-to-r from-green-50 to-emerald-50 border-2 border-green-200 rounded-lg sm:rounded-xl">
 									<div className="flex items-center gap-2 mb-1">
-										<svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+										<svg className="w-4 h-4 sm:w-5 sm:h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 											<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
 										</svg>
-										<div className="text-sm font-bold text-green-900">Acceso Gratuito</div>
+										<div className="text-xs sm:text-sm font-bold text-green-900">Acceso Gratuito</div>
 									</div>
-									<div className="text-xs text-green-700 ml-7">Los pacientes tienen acceso gratuito a la plataforma.</div>
+									<div className="text-[10px] sm:text-xs text-green-700 ml-0 sm:ml-7">Los pacientes tienen acceso gratuito a la plataforma.</div>
 								</div>
-								<div className="text-sm text-slate-700 mt-4">
+								<div className="text-xs sm:text-sm text-slate-700 mt-3 sm:mt-4">
 									<span className="font-semibold">Alergias:</span> {allergies || '—'}
 								</div>
-								<div className="text-sm text-slate-700">
+								<div className="text-xs sm:text-sm text-slate-700">
 									<span className="font-semibold">Medicaciones:</span> {currentMedications || '—'}
 								</div>
 								{selectedOrganizationId && (
-									<div className="mt-3 pt-3 border-t border-slate-200 text-sm text-slate-700">
+									<div className="mt-3 pt-3 border-t border-slate-200 text-xs sm:text-sm text-slate-700">
 										<span className="font-semibold">Asociado a clínica:</span>{' '}
 										<strong className="text-teal-700">{organizations.find((o) => o.id === selectedOrganizationId)?.name ?? selectedOrganizationId}</strong>
 									</div>
@@ -1275,28 +1275,28 @@ export default function RegisterForm(): React.ReactElement {
 							</div>
 						</div>
 					) : (
-						<div className="bg-slate-50 p-4 rounded-lg border border-slate-100">
-							<div className="text-sm font-medium text-slate-700 mb-2">Organización</div>
-							<div className="text-sm text-slate-600">Nombre: {orgName}</div>
-							<div className="text-sm text-slate-600">Tipo: {orgType}</div>
-							<div className="text-sm text-slate-600">Especialistas (aprox.): {specialistCount}</div>
-							<div className="text-sm text-slate-600">
+						<div className="bg-slate-50 p-3 sm:p-4 rounded-lg border border-slate-100">
+							<div className="text-xs sm:text-sm font-medium text-slate-700 mb-2">Organización</div>
+							<div className="text-xs sm:text-sm text-slate-600">Nombre: {orgName}</div>
+							<div className="text-xs sm:text-sm text-slate-600">Tipo: {orgType}</div>
+							<div className="text-xs sm:text-sm text-slate-600">Especialistas (aprox.): {specialistCount}</div>
+							<div className="text-xs sm:text-sm text-slate-600">
 								Plan recomendado: <strong>{recommendedPlan.label}</strong>
 							</div>
-							<div className="text-sm text-slate-600">
+							<div className="text-xs sm:text-sm text-slate-600">
 								Periodicidad: <strong>{billingPreview.label}</strong>
 							</div>
-							<div className="text-sm text-slate-600">
+							<div className="text-xs sm:text-sm text-slate-600">
 								Total a pagar: <strong>${billingPreview.total.toFixed(2)}</strong>
 							</div>
 						</div>
 					)}
 
 					<div className="flex justify-between gap-3 mt-4">
-						<button type="button" onClick={back} className="px-5 py-2 rounded-lg border border-slate-200 bg-white text-slate-700">
+						<button type="button" onClick={back} className="px-4 sm:px-5 py-2 rounded-lg border border-slate-200 bg-white text-slate-700 text-xs sm:text-sm">
 							Atrás
 						</button>
-						<button type="submit" disabled={loading} className="px-5 py-2 rounded-lg bg-emerald-600 text-white font-medium">
+						<button type="submit" disabled={loading} className="px-4 sm:px-5 py-2 rounded-lg bg-emerald-600 text-white font-medium text-xs sm:text-sm">
 							{loading ? 'Registrando...' : 'Confirmar y registrar'}
 						</button>
 					</div>
@@ -1327,8 +1327,8 @@ export default function RegisterForm(): React.ReactElement {
 			</div>
 
 			{/* Footer del formulario */}
-			<div className="bg-slate-50 px-8 py-4 border-t border-slate-200">
-				<p className="text-xs text-slate-500 text-center">
+			<div className="bg-slate-50 px-4 sm:px-6 md:px-8 py-3 sm:py-4 border-t border-slate-200">
+				<p className="text-[10px] sm:text-xs text-slate-500 text-center leading-relaxed">
 					Al registrarte aceptas nuestra{' '}
 					<a href="/privacy" className="text-teal-600 hover:text-teal-700 font-medium underline">
 						Política de Privacidad

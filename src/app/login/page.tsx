@@ -68,9 +68,9 @@ export default function RegisterPage() {
 	}, []);
 
 	return (
-		<main className="flex min-h-screen items-center justify-center bg-white rounded-3xl p-6">
-			{/* --- Fondo Ballpit: fixed para cubrir todo el viewport --- */}
-			<div id="ballpit-bg" ref={bgRef} className="fixed inset-0 z-0" aria-hidden="true">
+		<main className="flex min-h-screen items-center justify-center bg-white sm:rounded-3xl p-3 sm:p-6">
+			{/* --- Fondo Ballpit: fixed para cubrir todo el viewport, oculto en móviles --- */}
+			<div id="ballpit-bg" ref={bgRef} className="hidden md:block fixed inset-0 z-0" aria-hidden="true">
 				{/* contenedor directo full-screen */}
 				<div className="absolute inset-0 w-full h-full">
 					<BallpitClientWrapper />
