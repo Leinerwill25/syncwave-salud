@@ -163,8 +163,8 @@ export default function RegisterForm(): React.ReactElement {
 			return { slug: 'paciente-gratis', label: 'Plan Gratuito', price: 0 };
 		}
 
-		// Para organizaciones, buscar plan según número de especialistas
-		if (role !== 'PACIENTE' && role !== 'MEDICO') {
+		// Para organizaciones (no médicos ni pacientes), buscar plan según número de especialistas
+		if (role === 'ADMIN' || role === 'FARMACIA' || role === 'LABORATORIO') {
 			const orgPlan = plans.find(
 				(p) =>
 					(p.minSpecialists === 0 || p.minSpecialists <= specialistCount) &&
