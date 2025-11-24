@@ -4,8 +4,8 @@ import { HeartPulse } from 'lucide-react';
 
 export default function RegisterPage() {
 	return (
-		<main className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-teal-50 py-6 sm:py-8 lg:py-12 px-3 sm:px-4 md:px-6 lg:px-8">
-			<div className="max-w-5xl mx-auto">
+		<main className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-teal-50 py-6 sm:py-8 lg:py-12 px-3 sm:px-4 md:px-6 lg:px-8 w-full overflow-x-hidden">
+			<div className="max-w-5xl mx-auto w-full">
 				{/* Header elegante */}
 				<div className="text-center mb-6 sm:mb-8 lg:mb-10">
 					<div className="inline-flex items-center justify-center w-16 h-16 sm:w-20 sm:h-20 rounded-xl sm:rounded-2xl bg-gradient-to-br from-teal-600 to-cyan-600 shadow-lg mb-4 sm:mb-6">

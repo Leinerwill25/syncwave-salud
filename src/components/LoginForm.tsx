@@ -167,10 +167,10 @@ export default function LoginFormAdvanced(): React.ReactElement {
 	// success: #27AE60
 
 	return (
-		<form onSubmit={handleSubmit} className="w-full max-w-6xl mx-auto px-3 sm:px-6 mt-6 sm:mt-12">
-			<div className="relative">
+		<form onSubmit={handleSubmit} className="w-full max-w-6xl mx-auto px-3 sm:px-6 mt-6 sm:mt-12 overflow-x-hidden">
+			<div className="relative w-full">
 				{/* Glass card */}
-				<div className="relative z-10 rounded-2xl sm:rounded-3xl overflow-hidden bg-[rgba(255,255,255,0.95)] sm:bg-[rgba(255,255,255,0.72)] backdrop-blur-md border border-[rgba(44,62,80,0.06)] shadow-lg">
+				<div className="relative z-10 rounded-2xl sm:rounded-3xl overflow-hidden bg-[rgba(255,255,255,0.95)] sm:bg-[rgba(255,255,255,0.72)] backdrop-blur-md border border-[rgba(44,62,80,0.06)] shadow-lg w-full">
 					<div className="grid grid-cols-1 md:grid-cols-2">
 						{/* Left decorative panel */}
 						<div

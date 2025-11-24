@@ -543,7 +543,7 @@ export default function RegisterForm(): React.ReactElement {
 	}, [recommendedPlan, billingPeriod, role]);
 
 	return (
-		<form onSubmit={handleSubmit} className="max-w-4xl mx-auto bg-white rounded-2xl sm:rounded-3xl shadow-2xl border border-slate-200 overflow-hidden" aria-labelledby="register-heading">
+		<form onSubmit={handleSubmit} className="max-w-4xl mx-auto bg-white rounded-2xl sm:rounded-3xl shadow-2xl border border-slate-200 overflow-hidden w-full" aria-labelledby="register-heading">
 			{/* Header del formulario */}
 			<div className="bg-gradient-to-r from-teal-600 via-cyan-600 to-teal-600 px-4 sm:px-6 md:px-8 py-4 sm:py-5 md:py-6">
 				<h2 id="register-heading" className="text-xl sm:text-2xl md:text-3xl font-bold text-white mb-1">
