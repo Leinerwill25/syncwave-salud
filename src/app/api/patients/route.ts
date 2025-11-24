@@ -418,13 +418,17 @@ export async function GET(request: Request) {
 
 			// Normalizar consultas de la tabla consultation
 			// Si tiene appointment_id, combinar información del appointment
+			// IMPORTANTE: Solo combinar si el appointment también pertenece al doctor actual
 			const normalizedConsultationsFromTable = (consultationRes.data ?? []).map((c: any) => {
 				const hasAppointment = c.appointment_id && appointmentsById.has(c.appointment_id);
 				const appointment = hasAppointment ? appointmentsById.get(c.appointment_id) : null;
-				const billing = appointment ? billingMap.get(appointment.id) : null;
+				
+				// Verificar que el appointment también pertenezca al doctor actual
+				const appointmentBelongsToDoctor = appointment && appointment.doctor_id === currentAppUserId;
+				const billing = appointmentBelongsToDoctor ? billingMap.get(appointment.id) : null;
 
-				// Si tiene appointment, combinar información
-				if (appointment) {
+				// Si tiene appointment y pertenece al doctor actual, combinar información
+				if (appointment && appointmentBelongsToDoctor) {
 					return {
 						id: c.appointment_id, // Usar el ID del appointment como ID principal para la vista
 						consultationId: c.id, // Guardar el ID de la consultation para referencia
@@ -610,17 +614,31 @@ export async function GET(request: Request) {
 					const unregisteredIds = paginatedPatients.filter((p) => p.isUnregistered).map((p) => p.id);
 
 					const [consultRowsRes, prescRowsRes, labRowsRes, unregisteredConsultRowsRes] = await Promise.all([
-						ids.length > 0 ? supabase.from('consultation').select('id,patient_id,created_at').in('patient_id', ids) : Promise.resolve({ data: [], error: null }),
-						ids.length > 0 ? supabase.from('prescription').select('id,patient_id,created_at').in('patient_id', ids) : Promise.resolve({ data: [], error: null }),
-						ids.length > 0 ? supabase.from('lab_result').select('id,patient_id,created_at').in('patient_id', ids) : Promise.resolve({ data: [], error: null }),
+						ids.length > 0 
+							? supabase.from('consultation').select('id,patient_id,created_at').in('patient_id', ids).eq('doctor_id', appUserId)
+							: Promise.resolve({ data: [], error: null }),
+						ids.length > 0 
+							? supabase.from('prescription').select('id,patient_id,created_at').in('patient_id', ids).eq('doctor_id', appUserId)
+							: Promise.resolve({ data: [], error: null }),
+						ids.length > 0 
+							? supabase.from('lab_result').select('id,patient_id,consultation_id,created_at').in('patient_id', ids)
+							: Promise.resolve({ data: [], error: null }),
 						unregisteredIds.length > 0
-							? supabase.from('consultation').select('id,unregistered_patient_id,created_at').in('unregistered_patient_id', unregisteredIds)
+							? supabase.from('consultation').select('id,unregistered_patient_id,created_at').in('unregistered_patient_id', unregisteredIds).eq('doctor_id', appUserId)
 							: Promise.resolve({ data: [], error: null }),
 					]);
 
 					const consultRows = [...(consultRowsRes.data ?? []), ...(unregisteredConsultRowsRes.data ?? []).map((r: any) => ({ ...r, patient_id: r.unregistered_patient_id }))];
 					const prescRows = prescRowsRes.data ?? [];
-					const labRows = labRowsRes.data ?? [];
+					
+					// Filtrar lab_results por consultas del doctor actual
+					const consultationIds = consultRows.map((c: any) => c.id).filter(Boolean);
+					const filteredLabRows = consultationIds.length > 0
+						? (labRowsRes.data ?? []).filter((lab: any) => 
+							lab.consultation_id && consultationIds.includes(lab.consultation_id)
+						)
+						: [];
+					const labRows = filteredLabRows;
 
 					const map = new Map<string, any>();
 					paginatedPatients.forEach((p) => {
@@ -705,11 +723,34 @@ export async function GET(request: Request) {
 
 		if (includeSummary && patients?.length) {
 			const ids = patients.map((p) => p.id);
-			const [consultRowsRes, prescRowsRes, labRowsRes] = await Promise.all([supabase.from('consultation').select('id,patient_id,created_at').in('patient_id', ids), supabase.from('prescription').select('id,patient_id,created_at').in('patient_id', ids), supabase.from('lab_result').select('id,patient_id,created_at').in('patient_id', ids)]);
+			
+			// Obtener consultas y prescripciones filtradas por doctor
+			const [consultRowsRes, prescRowsRes, labRowsRes] = await Promise.all([
+				isMedic 
+					? supabase.from('consultation').select('id,patient_id,created_at').in('patient_id', ids).eq('doctor_id', appUserId)
+					: supabase.from('consultation').select('id,patient_id,created_at').in('patient_id', ids),
+				isMedic
+					? supabase.from('prescription').select('id,patient_id,created_at').in('patient_id', ids).eq('doctor_id', appUserId)
+					: supabase.from('prescription').select('id,patient_id,created_at').in('patient_id', ids),
+				supabase.from('lab_result').select('id,patient_id,consultation_id,created_at').in('patient_id', ids),
+			]);
+
+			// Para lab_results, filtrar solo los que pertenecen a consultas del doctor actual
+			let filteredLabRows: any[] = [];
+			if (isMedic && consultRowsRes.data) {
+				const consultationIds = consultRowsRes.data.map((c: any) => c.id).filter(Boolean);
+				if (consultationIds.length > 0) {
+					filteredLabRows = (labRowsRes.data ?? []).filter((lab: any) => 
+						lab.consultation_id && consultationIds.includes(lab.consultation_id)
+					);
+				}
+			} else {
+				filteredLabRows = labRowsRes.data ?? [];
+			}
 
 			const consultRows = consultRowsRes.data ?? [];
 			const prescRows = prescRowsRes.data ?? [];
-			const labRows = labRowsRes.data ?? [];
+			const labRows = filteredLabRows;
 
 			const map = new Map<string, any>();
 			patients.forEach((p) => {

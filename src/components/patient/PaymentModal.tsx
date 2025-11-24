@@ -15,7 +15,9 @@ type Factura = {
 	fecha_emision: string;
 	doctor_id?: string | null;
 	appointment: {
+		id: string;
 		scheduled_at: string;
+		status: string;
 		reason: string | null;
 		doctor: {
 			id: string;
@@ -199,6 +201,10 @@ export default function PaymentModal({ isOpen, onClose, factura, onPaymentSucces
 
 	if (!factura) return null;
 
+	// Verificar si la cita está confirmada
+	const isAppointmentConfirmed = factura.appointment && 
+		(factura.appointment.status === 'CONFIRMADA' || factura.appointment.status === 'CONFIRMED');
+
 	return (
 		<AnimatePresence>
 			{isOpen && (
@@ -243,6 +249,24 @@ export default function PaymentModal({ isOpen, onClose, factura, onPaymentSucces
 
 							{/* Content */}
 							<div className="p-6 space-y-6">
+								{/* Mensaje si la cita no está confirmada */}
+								{!isAppointmentConfirmed && factura.appointment && (
+									<motion.div
+										initial={{ opacity: 0, y: -10 }}
+										animate={{ opacity: 1, y: 0 }}
+										className="bg-yellow-50 border-2 border-yellow-200 rounded-xl p-4"
+									>
+										<div className="flex items-center gap-3">
+											<Clock className="w-5 h-5 text-yellow-600" />
+											<div>
+												<p className="font-semibold text-yellow-900">Cita no confirmada</p>
+												<p className="text-sm text-yellow-800 mt-1">
+													Debes esperar a que el especialista confirme tu cita antes de poder realizar el pago.
+												</p>
+											</div>
+										</div>
+									</motion.div>
+								)}
 								{success ? (
 									/* Success State */
 									<motion.div
@@ -519,6 +543,7 @@ export default function PaymentModal({ isOpen, onClose, factura, onPaymentSucces
 												onClick={handleSubmit}
 												disabled={
 													processing || 
+													!isAppointmentConfirmed ||
 													!selectedMethod || 
 													(selectedMethod === 'PAGO_MOVIL' && (!paymentScreenshot || !paymentReference.trim()))
 												}

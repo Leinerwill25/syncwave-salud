@@ -17,15 +17,13 @@ export default function MedicLayout({ children }: { children: React.ReactNode })
 						<MedicSidebar />
 
 						<div className="flex flex-col gap-4">
-							{/* Botón de Alertas - Visible y prominente */}
-							<div className="flex justify-end">
-								<AlertsButton />
-							</div>
-
-							<main className="bg-white rounded-2xl p-6 shadow-sm border border-blue-100 flex-1">
-								{children}
-							</main>
+							<main className="bg-white rounded-2xl p-6 shadow-sm border border-blue-100 flex-1">{children}</main>
 						</div>
+					</div>
+
+					{/* Botón de Alertas - Burbuja flotante */}
+					<div className="fixed bottom-6 right-6 z-50">
+						<AlertsButton />
 					</div>
 				</div>
 			</div>

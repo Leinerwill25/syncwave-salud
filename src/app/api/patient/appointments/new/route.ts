@@ -56,7 +56,7 @@ export async function POST(request: Request) {
 			return NextResponse.json({ error: 'El horario seleccionado no está disponible' }, { status: 400 });
 		}
 
-		// Crear la cita (SIN crear facturación aún - se creará cuando el médico confirme)
+		// Crear la cita
 		const { data: appointment, error: appointmentError } = await supabase
 			.from('appointment')
 			.insert({
@@ -76,6 +76,39 @@ export async function POST(request: Request) {
 		if (appointmentError) {
 			console.error('[New Appointment API] Error:', appointmentError);
 			return NextResponse.json({ error: 'Error al crear la cita', detail: appointmentError.message }, { status: 500 });
+		}
+
+		// Crear facturación inmediatamente con estado pendiente (el pago se habilitará cuando se confirme)
+		const price = parseFloat(selected_service.price || '0');
+		const currency = selected_service.currency || 'USD';
+		const subtotal = price;
+		const impuestos = 0; // Puedes calcular impuestos si es necesario
+		const total = subtotal + impuestos;
+
+		const { data: facturacion, error: facturacionError } = await supabase
+			.from('facturacion')
+			.insert({
+				appointment_id: appointment.id,
+				patient_id: patient.patientId,
+				doctor_id: doctor_id || null,
+				organization_id: organization_id || null,
+				subtotal: subtotal,
+				impuestos: impuestos,
+				total: total,
+				currency: currency,
+				estado_factura: 'emitida',
+				estado_pago: 'pendiente', // Pendiente hasta que se confirme la cita
+				fecha_emision: new Date().toISOString(),
+				notas: `Facturación generada al crear la cita. Servicio: ${selected_service.name}. El pago estará disponible una vez que el médico confirme la cita.`,
+			})
+			.select('id')
+			.single();
+
+		if (facturacionError) {
+			console.error('[New Appointment API] Error creando facturación:', facturacionError);
+			// No fallar la creación de la cita si falla la facturación, pero registrar el error
+		} else {
+			console.log('[New Appointment API] Facturación creada:', facturacion.id);
 		}
 
 		// Crear notificación y enviar email al médico si existe

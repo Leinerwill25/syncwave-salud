@@ -40,18 +40,56 @@ export async function POST(
 			// Si hay una captura, subirla a Supabase Storage
 			if (capturaFile && capturaFile.size > 0) {
 				try {
-					// TODO: Implementar upload a Supabase Storage
-					// Por ahora, guardamos como base64 en notas o creamos un campo específico
-					// const fileExt = capturaFile.name.split('.').pop();
-					// const fileName = `${id}-${Date.now()}.${fileExt}`;
-					// const { data: uploadData, error: uploadError } = await supabase.storage
-					// 	.from('payment-screenshots')
-					// 	.upload(fileName, capturaFile);
-					// if (uploadError) throw uploadError;
-					// captura_pago_url = uploadData.path;
-					
-					// Por ahora, guardamos la URL como placeholder
-					captura_pago_url = `payment-screenshots/${id}-${Date.now()}.jpg`;
+					// Usar el admin client para tener permisos completos
+					const { createClient } = await import('@supabase/supabase-js');
+					const supabaseAdmin = createClient(
+						process.env.NEXT_PUBLIC_SUPABASE_URL!,
+						process.env.SUPABASE_SERVICE_ROLE_KEY!,
+						{
+							auth: {
+								autoRefreshToken: false,
+								persistSession: false,
+							},
+						}
+					);
+
+					// Verificar si el bucket existe, si no, crearlo
+					const bucketName = 'payment-screenshots';
+					const { data: buckets } = await supabaseAdmin.storage.listBuckets();
+					const bucketExists = buckets?.some(b => b.name === bucketName);
+
+					if (!bucketExists) {
+						await supabaseAdmin.storage.createBucket(bucketName, {
+							public: true,
+							fileSizeLimit: 5242880, // 5MB
+							allowedMimeTypes: ['image/jpeg', 'image/png', 'image/jpg', 'image/webp'],
+						});
+					}
+
+					// Generar nombre único para el archivo
+					const fileExt = capturaFile.name.split('.').pop() || 'jpg';
+					const fileName = `${id}-${Date.now()}.${fileExt}`;
+					const filePath = `${fileName}`;
+
+					// Subir el archivo
+					const { data: uploadData, error: uploadError } = await supabaseAdmin.storage
+						.from(bucketName)
+						.upload(filePath, capturaFile, {
+							contentType: capturaFile.type || `image/${fileExt}`,
+							upsert: false,
+						});
+
+					if (uploadError) {
+						console.error('[Patient Pay API] Error subiendo captura:', uploadError);
+						throw uploadError;
+					}
+
+					// Obtener URL pública
+					const { data: urlData } = supabaseAdmin.storage
+						.from(bucketName)
+						.getPublicUrl(filePath);
+
+					captura_pago_url = urlData.publicUrl;
 				} catch (uploadErr) {
 					console.error('[Patient Pay API] Error subiendo captura:', uploadErr);
 					// No fallar el pago si la captura falla, pero registrar el error
@@ -79,6 +117,8 @@ export async function POST(
 			organization_id?: string | null;
 			notas?: string | null;
 			appointment?: Array<{
+				id: string;
+				status: string;
 				doctor?: Array<{
 					id: string;
 					name: string;
@@ -100,6 +140,8 @@ export async function POST(
 				organization_id,
 				notas,
 				appointment:appointment_id (
+					id,
+					status,
 					doctor:User!fk_appointment_doctor (
 						id,
 						name,
@@ -121,29 +163,42 @@ export async function POST(
 			return NextResponse.json({ error: 'Esta factura ya ha sido pagada' }, { status: 400 });
 		}
 
+		// Verificar que la cita esté confirmada antes de permitir el pago
+		const appointment = Array.isArray(typedFactura.appointment) ? typedFactura.appointment[0] : typedFactura.appointment;
+		if (appointment && appointment.status !== 'CONFIRMADA' && appointment.status !== 'CONFIRMED') {
+			return NextResponse.json({ 
+				error: 'La cita asociada a esta factura aún no ha sido confirmada. Debes esperar a que el especialista confirme la cita antes de poder realizar el pago.' 
+			}, { status: 400 });
+		}
+
 		// Preparar datos de actualización
+		// Si es PAGO_MOVIL con referencia y captura, mantener como "pendiente_verificacion"
+		// Si es EFECTIVO o no tiene referencia/captura, marcar como "pagada"
+		const tieneReferenciaYCaptura = metodo_pago === 'PAGO_MOVIL' && numero_referencia && captura_pago_url;
+		const nuevoEstadoPago = tieneReferenciaYCaptura ? 'pendiente_verificacion' : 'pagada';
+
 		const updateData: {
 			estado_pago: string;
 			metodo_pago: string;
-			fecha_pago: string;
+			fecha_pago: string | null;
 			notas?: string;
 		} = {
-			estado_pago: 'pagada',
+			estado_pago: nuevoEstadoPago,
 			metodo_pago: metodo_pago,
-			fecha_pago: new Date().toISOString(),
+			fecha_pago: nuevoEstadoPago === 'pagada' ? new Date().toISOString() : null,
 		};
 
-		// Si hay número de referencia o captura, agregarlo a las notas
+		// Si hay número de referencia o captura, agregarlo a las notas en formato estructurado
 		if (numero_referencia || captura_pago_url) {
 			const notasParts: string[] = [];
 			if (typedFactura.notas) {
 				notasParts.push(typedFactura.notas);
 			}
 			if (numero_referencia) {
-				notasParts.push(`Número de referencia: ${numero_referencia}`);
+				notasParts.push(`[REFERENCIA] ${numero_referencia}`);
 			}
 			if (captura_pago_url) {
-				notasParts.push(`Captura de pago: ${captura_pago_url}`);
+				notasParts.push(`[CAPTURA] ${captura_pago_url}`);
 			}
 			updateData.notas = notasParts.join('\n');
 		}
@@ -162,26 +217,50 @@ export async function POST(
 		}
 
 		// Crear notificación para el médico si existe
+		// Si es PAGO_MOVIL con referencia y captura, crear notificación de verificación pendiente
 		if (typedFactura.doctor_id) {
 			try {
 				const appointment = Array.isArray(typedFactura.appointment) ? typedFactura.appointment[0] : typedFactura.appointment;
 				const doctor = appointment?.doctor && Array.isArray(appointment.doctor) ? appointment.doctor[0] : undefined;
 				const doctorName = doctor?.name || 'Médico';
-				await createNotification({
-					userId: typedFactura.doctor_id,
-					type: 'PAYMENT_RECEIVED',
-					title: 'Pago Recibido',
-					message: `El paciente ha pagado la factura de ${typedFactura.total} ${typedFactura.currency}`,
-					payload: {
-						facturaId: id,
-						patientId: patient.patientId,
-						total: typedFactura.total,
-						currency: typedFactura.currency,
-						metodoPago: metodo_pago,
-						facturaUrl: `/dashboard/medic/pagos/${id}`,
-					},
-					sendEmail: true,
-				});
+
+				if (tieneReferenciaYCaptura) {
+					// Notificación para verificación de pago
+					await createNotification({
+						userId: typedFactura.doctor_id,
+						type: 'PAYMENT_PENDING_VERIFICATION',
+						title: 'Pago Pendiente de Verificación',
+						message: `El paciente ha indicado que realizó un pago móvil de ${typedFactura.total} ${typedFactura.currency}. Número de referencia: ${numero_referencia}. Por favor, verifica el pago.`,
+						payload: {
+							facturaId: id,
+							patientId: patient.patientId,
+							total: typedFactura.total,
+							currency: typedFactura.currency,
+							metodoPago: metodo_pago,
+							numeroReferencia: numero_referencia,
+							capturaUrl: captura_pago_url,
+							facturaUrl: `/dashboard/medic/pagos/verificar`,
+						},
+						sendEmail: true,
+					});
+				} else {
+					// Notificación de pago recibido (efectivo o sin verificación)
+					await createNotification({
+						userId: typedFactura.doctor_id,
+						type: 'PAYMENT_RECEIVED',
+						title: 'Pago Recibido',
+						message: `El paciente ha pagado la factura de ${typedFactura.total} ${typedFactura.currency}`,
+						payload: {
+							facturaId: id,
+							patientId: patient.patientId,
+							total: typedFactura.total,
+							currency: typedFactura.currency,
+							metodoPago: metodo_pago,
+							facturaUrl: `/dashboard/medic/pagos/${id}`,
+						},
+						sendEmail: true,
+					});
+				}
 			} catch (notifError) {
 				console.error('[Patient Pay API] Error creando notificación:', notifError);
 				// No fallar el pago si la notificación falla

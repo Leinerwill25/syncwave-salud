@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Receipt, Calendar, CreditCard, Download, CheckCircle, XCircle, Clock, DollarSign } from 'lucide-react';
+import { Receipt, Calendar, CreditCard, Download, CheckCircle, XCircle, Clock, DollarSign, User } from 'lucide-react';
 import PaymentModal from '@/components/patient/PaymentModal';
 
 type Factura = {
@@ -19,7 +19,9 @@ type Factura = {
 	notas: string | null;
 	doctor_id?: string | null;
 	appointment: {
+		id: string;
 		scheduled_at: string;
+		status: string;
 		reason: string | null;
 		doctor: {
 			id: string;
@@ -166,20 +168,21 @@ export default function PagosPage() {
 				) : (
 					<div className="space-y-4">
 						{facturas.map((factura) => (
-							<div key={factura.id} className="bg-white rounded-xl shadow-lg p-6">
-								<div className="flex items-start justify-between mb-4">
+							<div key={factura.id} className="bg-white rounded-xl shadow-lg p-6 hover:shadow-xl transition-shadow">
+								<div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
 									<div className="flex-1">
-										<div className="flex items-center gap-3 mb-2">
+										{/* Header con icono y número de factura */}
+										<div className="flex items-center gap-3 mb-4">
 											<div className="p-3 bg-green-100 rounded-lg">
 												<Receipt className="w-6 h-6 text-green-600" />
 											</div>
-											<div>
+											<div className="flex-1">
 												<h3 className="text-lg font-semibold text-gray-900">
 													{factura.numero_factura || `Factura #${factura.id.slice(0, 8)}`}
 												</h3>
-												<p className="text-gray-600 flex items-center gap-2 mt-1">
+												<p className="text-gray-600 flex items-center gap-2 mt-1 text-sm">
 													<Calendar className="w-4 h-4" />
-													{new Date(factura.fecha_emision).toLocaleDateString('es-ES', {
+													Emitida: {new Date(factura.fecha_emision).toLocaleDateString('es-ES', {
 														year: 'numeric',
 														month: 'long',
 														day: 'numeric',
@@ -188,44 +191,73 @@ export default function PagosPage() {
 											</div>
 										</div>
 
+										{/* Información de la cita */}
 										{factura.appointment && (
-											<div className="ml-12 mb-4 space-y-2">
-												{factura.appointment.doctor && (
-													<p className="text-gray-700">
-														<span className="font-medium">Médico: </span>
-														Dr. {factura.appointment.doctor.name || 'Médico'}
-													</p>
-												)}
+											<div className="bg-blue-50 rounded-lg p-4 mb-4 border border-blue-100">
+												<div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+													{factura.appointment.scheduled_at && (
+														<div className="flex items-center gap-2">
+															<Calendar className="w-4 h-4 text-blue-600" />
+															<div>
+																<p className="text-xs text-gray-600">Fecha de la Cita</p>
+																<p className="text-sm font-semibold text-gray-900">
+																	{new Date(factura.appointment.scheduled_at).toLocaleDateString('es-ES', {
+																		weekday: 'long',
+																		year: 'numeric',
+																		month: 'long',
+																		day: 'numeric',
+																		hour: '2-digit',
+																		minute: '2-digit',
+																	})}
+																</p>
+															</div>
+														</div>
+													)}
+													{factura.appointment.doctor && (
+														<div className="flex items-center gap-2">
+															<User className="w-4 h-4 text-blue-600" />
+															<div>
+																<p className="text-xs text-gray-600">Médico</p>
+																<p className="text-sm font-semibold text-gray-900">
+																	Dr. {factura.appointment.doctor.name || 'Médico'}
+																</p>
+															</div>
+														</div>
+													)}
+												</div>
 												{factura.appointment.reason && (
-													<p className="text-gray-700">
-														<span className="font-medium">Motivo: </span>
-														{factura.appointment.reason}
-													</p>
+													<div className="mt-3 pt-3 border-t border-blue-200">
+														<p className="text-xs text-gray-600 mb-1">Motivo</p>
+														<p className="text-sm text-gray-900">{factura.appointment.reason}</p>
+													</div>
 												)}
 												{factura.organization && (
-													<p className="text-gray-700">
-														<span className="font-medium">Organización: </span>
-														{factura.organization.name}
-													</p>
+													<div className="mt-2">
+														<p className="text-xs text-gray-600">
+															<span className="font-medium">Organización: </span>
+															{factura.organization.name}
+														</p>
+													</div>
 												)}
 											</div>
 										)}
 
-										<div className="ml-12 grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-											<div>
-												<p className="text-sm text-gray-600 mb-1">Subtotal</p>
+										{/* Montos */}
+										<div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+											<div className="bg-gray-50 rounded-lg p-3">
+												<p className="text-xs text-gray-600 mb-1">Subtotal</p>
 												<p className="text-lg font-semibold text-gray-900">
 													{formatCurrency(factura.subtotal, factura.currency)}
 												</p>
 											</div>
-											<div>
-												<p className="text-sm text-gray-600 mb-1">Impuestos</p>
+											<div className="bg-gray-50 rounded-lg p-3">
+												<p className="text-xs text-gray-600 mb-1">Impuestos</p>
 												<p className="text-lg font-semibold text-gray-900">
 													{formatCurrency(factura.impuestos, factura.currency)}
 												</p>
 											</div>
-											<div>
-												<p className="text-sm text-gray-600 mb-1">Total</p>
+											<div className="bg-green-50 rounded-lg p-3 border-2 border-green-200">
+												<p className="text-xs text-gray-600 mb-1">Total</p>
 												<p className="text-2xl font-bold text-green-600 flex items-center gap-2">
 													<DollarSign className="w-5 h-5" />
 													{formatCurrency(factura.total, factura.currency)}
@@ -233,7 +265,8 @@ export default function PagosPage() {
 											</div>
 										</div>
 
-										<div className="ml-12 flex items-center gap-4">
+										{/* Estado y método de pago */}
+										<div className="flex flex-wrap items-center gap-3 mb-4">
 											<span
 												className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold ${getPaymentStatusColor(
 													factura.estado_pago
@@ -255,24 +288,41 @@ export default function PagosPage() {
 											)}
 										</div>
 
-										{factura.notas && (
-											<div className="ml-12 mt-4">
-												<p className="font-semibold text-gray-900 mb-1">Notas</p>
-												<p className="text-gray-700 bg-gray-50 rounded-lg p-3">{factura.notas}</p>
+										{/* Mensaje de espera o botón de pago */}
+										{factura.estado_pago === 'pendiente' && (
+											<div className="mb-4">
+												{factura.appointment && factura.appointment.status !== 'CONFIRMADA' && factura.appointment.status !== 'CONFIRMED' ? (
+													<div className="bg-yellow-50 border-l-4 border-yellow-400 rounded-r-lg p-4">
+														<div className="flex items-start gap-3">
+															<Clock className="w-5 h-5 text-yellow-600 flex-shrink-0 mt-0.5" />
+															<div>
+																<p className="font-semibold text-yellow-900 mb-1">Esperando Confirmación</p>
+																<p className="text-sm text-yellow-800">
+																	El pago estará disponible una vez que el especialista confirme tu cita.
+																</p>
+															</div>
+														</div>
+													</div>
+												) : null}
 											</div>
 										)}
 									</div>
 
-									<div className="flex flex-col gap-2">
+									{/* Botones de acción */}
+									<div className="flex flex-col gap-2 md:min-w-[200px]">
 										{factura.estado_pago === 'pendiente' && (
-											<button
-												onClick={() => handlePayment(factura)}
-												disabled={processingPayment === factura.id}
-												className="px-4 py-2 bg-gradient-to-r from-teal-600 to-cyan-600 text-white rounded-lg font-medium hover:from-teal-700 hover:to-cyan-700 transition-all shadow-md flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-											>
-												<CreditCard className="w-4 h-4" />
-												{processingPayment === factura.id ? 'Procesando...' : 'Pagar'}
-											</button>
+											<>
+												{factura.appointment && (factura.appointment.status === 'CONFIRMADA' || factura.appointment.status === 'CONFIRMED') ? (
+													<button
+														onClick={() => handlePayment(factura)}
+														disabled={processingPayment === factura.id}
+														className="px-4 py-2 bg-gradient-to-r from-teal-600 to-cyan-600 text-white rounded-lg font-medium hover:from-teal-700 hover:to-cyan-700 transition-all shadow-md flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+													>
+														<CreditCard className="w-4 h-4" />
+														{processingPayment === factura.id ? 'Procesando...' : 'Pagar'}
+													</button>
+												) : null}
+											</>
 										)}
 										<button className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg font-medium hover:bg-gray-200 transition-colors flex items-center gap-2">
 											<Download className="w-4 h-4" />

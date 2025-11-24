@@ -43,6 +43,7 @@ export async function GET(request: Request) {
 				appointment:appointment!fk_facturacion_appointment (
 					id,
 					scheduled_at,
+					status,
 					reason,
 					doctor:User!fk_appointment_doctor (
 						id,

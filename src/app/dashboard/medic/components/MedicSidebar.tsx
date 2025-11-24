@@ -3,8 +3,9 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { LayoutDashboard, CalendarDays, User, ClipboardList, FileText, Settings, MessageCircle, CheckSquare, Folder, ChevronRight, ChevronDown, Search, FileCheck } from 'lucide-react';
+import { LayoutDashboard, CalendarDays, User, ClipboardList, FileText, Settings, MessageCircle, CheckSquare, Folder, ChevronRight, ChevronDown, Search, FileCheck, CreditCard } from 'lucide-react';
 import type { MedicConfig } from '@/types/medic-config';
+import PaymentsModal from '@/components/medic/PaymentsModal';
 
 type IconComponent = React.ComponentType<React.SVGProps<SVGSVGElement>>;
 
@@ -89,6 +90,7 @@ export default function MedicSidebar() {
 	const [openMenus, setOpenMenus] = useState<string[]>([]);
 	const [medicConfig, setMedicConfig] = useState<MedicConfig | null>(null);
 	const [loadingConfig, setLoadingConfig] = useState(true);
+	const [paymentsModalOpen, setPaymentsModalOpen] = useState(false);
 
 	useEffect(() => {
 		loadMedicConfig();
@@ -291,6 +293,17 @@ export default function MedicSidebar() {
 						<ul className="flex flex-col gap-1">{LINKS.map(renderLink)}</ul>
 					</nav>
 
+					{/* Pagos Efectuados Button */}
+					<div className="mt-3 pt-2 border-t border-blue-100">
+						<button
+							onClick={() => setPaymentsModalOpen(true)}
+							className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-slate-700 hover:bg-blue-50 transition-colors group"
+						>
+							<CreditCard className="w-5 h-5 text-teal-600 group-hover:text-teal-700" />
+							<span>Pagos Efectuados</span>
+						</button>
+					</div>
+
 					{/* Footer */}
 					<div className="mt-3 pt-2 border-t border-blue-100 flex items-center justify-between text-xs text-slate-500">
 						<div>Soporte</div>
@@ -300,6 +313,12 @@ export default function MedicSidebar() {
 					</div>
 				</div>
 			</div>
+
+			{/* Payments Modal */}
+			<PaymentsModal
+				isOpen={paymentsModalOpen}
+				onClose={() => setPaymentsModalOpen(false)}
+			/>
 		</aside>
 	);
 }
