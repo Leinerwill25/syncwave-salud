@@ -233,8 +233,8 @@ export default function SidebarPatient() {
 	};
 
 	return (
-		<aside className="hidden md:block w-full md:w-64 lg:w-68" aria-label="Barra lateral del panel del paciente">
-			<div className="sticky top-[calc(var(--navbar-height,64px)+1rem)] md:top-[calc(var(--navbar-height,64px)+1.25rem)]" style={{ zIndex: 30 }}>
+		<aside className="hidden md:block w-full md:w-64 lg:w-68 self-start" aria-label="Barra lateral del panel del paciente">
+			<div className="sticky top-4 md:top-6" style={{ zIndex: 30 }}>
 				<div className="flex flex-col gap-3 sm:gap-4 bg-white/90 backdrop-blur-md rounded-xl sm:rounded-2xl p-3 sm:p-4 shadow-lg ring-1 ring-slate-100 border border-slate-50">
 					{/* Brand */}
 					<div className="flex items-center gap-2 sm:gap-3">

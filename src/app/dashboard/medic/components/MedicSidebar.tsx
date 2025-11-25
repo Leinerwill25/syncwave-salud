@@ -270,8 +270,8 @@ export default function MedicSidebar() {
 	};
 
 	return (
-		<aside className="hidden md:block w-68" aria-label="Barra lateral del panel médico">
-			<div className="sticky top-[calc(var(--navbar-height,64px)+1.25rem)]" style={{ zIndex: 30 }}>
+		<aside className="hidden md:block w-68 self-start" aria-label="Barra lateral del panel médico">
+			<div className="sticky top-4 md:top-6" style={{ zIndex: 30 }}>
 				<div className="flex flex-col gap-4 bg-white/90 backdrop-blur-md rounded-2xl p-4 shadow-lg ring-1 ring-blue-100 border border-blue-50">
 					{/* Brand */}
 					<div className="flex items-center gap-3">
