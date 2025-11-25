@@ -133,7 +133,7 @@ export default function PublicNavBar() {
 	];
 
 	return (
-		<header className="sticky top-0 z-50 w-full max-w-full overflow-x-hidden">
+		<header className="sticky top-0 z-[100] w-full max-w-full overflow-x-hidden">
 			{/* Animated gradient halo */}
 			<div
 				aria-hidden
@@ -188,13 +188,13 @@ export default function PublicNavBar() {
 								<AnimatePresence>
 									{orgMenuOpen && (
 										<>
-											<div className="fixed inset-0 z-40" onClick={() => setOrgMenuOpen(false)} aria-hidden="true" />
+											<div className="fixed inset-0 z-[110]" onClick={() => setOrgMenuOpen(false)} aria-hidden="true" />
 											<motion.div
 												initial={{ opacity: 0, y: 10, scale: 0.95 }}
 												animate={{ opacity: 1, y: 0, scale: 1 }}
 												exit={{ opacity: 0, y: 10, scale: 0.95 }}
 												transition={{ duration: 0.2 }}
-												className="absolute top-full left-0 mt-2 w-80 bg-white rounded-2xl shadow-2xl border border-slate-200 overflow-hidden z-50"
+												className="absolute top-full left-0 mt-2 w-80 bg-white rounded-2xl shadow-2xl border border-slate-200 overflow-hidden z-[120]"
 											>
 												<div className="p-2">
 													{organizations.map((org, index) => (
@@ -246,13 +246,13 @@ export default function PublicNavBar() {
 								<AnimatePresence>
 									{patientMenuOpen && (
 										<>
-											<div className="fixed inset-0 z-40" onClick={() => setPatientMenuOpen(false)} aria-hidden="true" />
+											<div className="fixed inset-0 z-[110]" onClick={() => setPatientMenuOpen(false)} aria-hidden="true" />
 											<motion.div
 												initial={{ opacity: 0, y: 10, scale: 0.95 }}
 												animate={{ opacity: 1, y: 0, scale: 1 }}
 												exit={{ opacity: 0, y: 10, scale: 0.95 }}
 												transition={{ duration: 0.2 }}
-												className="absolute top-full left-0 mt-2 w-96 bg-white rounded-2xl shadow-2xl border border-slate-200 overflow-hidden z-50"
+												className="absolute top-full left-0 mt-2 w-96 bg-white rounded-2xl shadow-2xl border border-slate-200 overflow-hidden z-[120]"
 											>
 												<div className="p-4 bg-gradient-to-r from-teal-50 to-cyan-50 border-b border-slate-200">
 													<div className="flex items-center gap-3">
@@ -326,13 +326,13 @@ export default function PublicNavBar() {
 								<AnimatePresence>
 									{contactMenuOpen && (
 										<>
-											<div className="fixed inset-0 z-40" onClick={() => setContactMenuOpen(false)} aria-hidden="true" />
+											<div className="fixed inset-0 z-[110]" onClick={() => setContactMenuOpen(false)} aria-hidden="true" />
 											<motion.div
 												initial={{ opacity: 0, y: 10, scale: 0.95 }}
 												animate={{ opacity: 1, y: 0, scale: 1 }}
 												exit={{ opacity: 0, y: 10, scale: 0.95 }}
 												transition={{ duration: 0.2 }}
-												className="absolute top-full left-0 mt-2 w-80 bg-white rounded-2xl shadow-2xl border border-slate-200 overflow-hidden z-50"
+												className="absolute top-full left-0 mt-2 w-80 bg-white rounded-2xl shadow-2xl border border-slate-200 overflow-hidden z-[120]"
 											>
 												<div className="p-4 bg-gradient-to-r from-teal-50 to-cyan-50 border-b border-slate-200">
 													<div className="flex items-center gap-3">
@@ -432,14 +432,14 @@ export default function PublicNavBar() {
 				<AnimatePresence>
 					{open && (
 						<>
-							<div className="fixed inset-0 bg-black/20 backdrop-blur-sm z-40 lg:hidden" onClick={() => setOpen(false)} aria-hidden="true" />
+							<div className="fixed inset-0 bg-black/20 backdrop-blur-sm z-[110] lg:hidden" onClick={() => setOpen(false)} aria-hidden="true" />
 							<motion.div
 								ref={mobileRef}
 								initial={{ opacity: 0, y: -20, scale: 0.95 }}
 								animate={{ opacity: 1, y: 0, scale: 1 }}
 								exit={{ opacity: 0, y: -20, scale: 0.95 }}
 								transition={{ duration: 0.2 }}
-								className="lg:hidden fixed inset-x-4 top-24 z-50 bg-white rounded-2xl shadow-2xl border border-slate-200 overflow-hidden"
+								className="lg:hidden fixed inset-x-4 top-24 z-[120] bg-white rounded-2xl shadow-2xl border border-slate-200 overflow-hidden"
 								aria-hidden={!open}
 							>
 								<div className="max-h-[calc(100vh-8rem)] overflow-y-auto">
