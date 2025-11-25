@@ -7,6 +7,17 @@
 /* En lugar de @tailwind utilities */
 @import 'tailwindcss/utilities';
 
+/* Prevenir overflow horizontal global */
+* {
+	box-sizing: border-box;
+}
+
+html, body {
+	width: 100%;
+	max-width: 100vw;
+	overflow-x: hidden;
+}
+
 /* Estilos para Leaflet - Controlar z-index para que no se superponga con otros componentes */
 .leaflet-container {
 	z-index: 1 !important;

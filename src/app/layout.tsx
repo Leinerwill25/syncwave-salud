@@ -23,8 +23,8 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
 	return (
-		<html lang="es" className={`${geistSans.variable} ${geistMono.variable}`}>
-			<body className="antialiased bg-[#F5F7FA] text-[#2C3E50] overflow-x-hidden">
+		<html lang="es" className={`${geistSans.variable} ${geistMono.variable} overflow-x-hidden`}>
+			<body className="antialiased bg-[#F5F7FA] text-[#2C3E50] overflow-x-hidden w-full max-w-full">
 				{/* Navbar dinámico */}
 				<NavbarSwitcher />
 

@@ -9,7 +9,7 @@ export default function PatientLayout({
 }) {
 	return (
 		<ServerDashboardGuard allowedRoles={['PACIENTE']}>
-			<div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 w-full overflow-x-hidden">
+			<div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 w-full max-w-full overflow-x-hidden">
 				{/* Menú Hamburger para móviles */}
 				<PatientHamburgerMenu />
 

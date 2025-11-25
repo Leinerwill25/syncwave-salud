@@ -12,7 +12,7 @@ export const metadata = {
 export default function MedicLayout({ children }: { children: React.ReactNode }) {
 	return (
 		<ServerDashboardGuard allowedRoles={['MEDICO']}>
-			<div className="min-h-screen rounded-2xl bg-gradient-to-br from-blue-50 via-cyan-50 to-teal-50 w-full overflow-x-hidden">
+			<div className="min-h-screen rounded-2xl bg-gradient-to-br from-blue-50 via-cyan-50 to-teal-50 w-full max-w-full overflow-x-hidden">
 				{/* Menú Hamburger para móviles */}
 				<MedicHamburgerMenu />
 

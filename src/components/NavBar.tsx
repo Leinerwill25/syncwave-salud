@@ -133,19 +133,19 @@ export default function PublicNavBar() {
 	];
 
 	return (
-		<header className="sticky top-0 z-50">
+		<header className="sticky top-0 z-50 w-full max-w-full overflow-x-hidden">
 			{/* Animated gradient halo */}
 			<div
 				aria-hidden
-				className="pointer-events-none absolute left-1/2 -translate-x-1/2 top-0 w-[1200px] h-24 -z-10 rounded-3xl blur-3xl opacity-20"
+				className="pointer-events-none absolute left-1/2 -translate-x-1/2 top-0 w-full max-w-[1200px] h-24 -z-10 rounded-3xl blur-3xl opacity-20"
 				style={{
 					background: 'linear-gradient(90deg, rgba(20,184,166,0.3) 0%, rgba(6,182,212,0.25) 50%, rgba(59,130,246,0.2) 100%)',
 				}}
 			/>
 
 			{/* Navbar surface */}
-			<div className="backdrop-blur-md bg-white/80 border-b border-slate-200/60 shadow-sm">
-				<div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+			<div className="backdrop-blur-md bg-white/80 border-b border-slate-200/60 shadow-sm w-full max-w-full overflow-x-hidden">
+				<div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full">
 					<div className="flex h-20 items-center justify-between">
 						{/* Logo */}
 						<Link href="/" className="flex items-center gap-3 no-underline group" aria-label="Inicio - Syncwave Salud">

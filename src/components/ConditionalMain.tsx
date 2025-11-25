@@ -16,7 +16,7 @@ export default function ConditionalMain({ children }: { children: React.ReactNod
 	const paddingClass = (isDashboard || isLanding || isLoginOrRegister) ? '' : 'pt-16';
 	
 	return (
-		<main className={`min-h-screen ${paddingClass} overflow-x-hidden`}>
+		<main className={`min-h-screen ${paddingClass} overflow-x-hidden w-full max-w-full`}>
 			{children}
 		</main>
 	);
