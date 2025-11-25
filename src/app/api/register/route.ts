@@ -142,13 +142,74 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 		const roleRaw = account.role ? String(account.role) : 'ADMIN';
 		const role: UserRoleLocal = USER_ROLES.includes(roleRaw as UserRoleLocal) ? (roleRaw as UserRoleLocal) : 'ADMIN';
 
-		// Prevent duplicates
+		// Prevent duplicates - Email
 		const existing = await prisma.user.findUnique({ where: { email: account.email } });
 		if (existing) {
 			return NextResponse.json({ ok: false, message: 'Ya existe un usuario con ese email' }, { status: 409 });
 		}
 
-		// Supabase create user (opcional)
+		// Validar cédula única ANTES de crear usuario en Supabase (solo para pacientes)
+		if (role === 'PACIENTE' && patient && patient.identifier) {
+			const identifier = String(patient.identifier).trim();
+			
+			if (!identifier || identifier.length === 0) {
+				return NextResponse.json(
+					{
+						ok: false,
+						message: 'La cédula de identidad es obligatoria para el registro de pacientes.',
+					},
+					{ status: 400 }
+				);
+			}
+
+			// Verificar en pacientes registrados (tabla Patient)
+			const existingRegistered = await prisma.patient.findFirst({
+				where: { identifier: identifier },
+			});
+
+			if (existingRegistered) {
+				return NextResponse.json(
+					{
+						ok: false,
+						message: `La cédula de identidad "${identifier}" ya está registrada en el sistema. Por favor, verifique su cédula o contacte al administrador si cree que esto es un error.`,
+					},
+					{ status: 409 }
+				);
+			}
+
+			// Verificar en pacientes no registrados usando Supabase
+			if (supabaseAdmin) {
+				const { data: existingUnregistered, error: unregisteredCheckError } = await supabaseAdmin
+					.from('unregisteredpatients')
+					.select('id, identification')
+					.eq('identification', identifier)
+					.maybeSingle();
+
+				if (unregisteredCheckError) {
+					console.error('Error verificando cédula en unregisteredpatients:', unregisteredCheckError);
+					// Si hay error en la verificación, no permitir el registro por seguridad
+					return NextResponse.json(
+						{
+							ok: false,
+							message: 'Error al verificar la cédula de identidad. Por favor, intente nuevamente o contacte al administrador.',
+						},
+						{ status: 500 }
+					);
+				} else if (existingUnregistered) {
+					return NextResponse.json(
+						{
+							ok: false,
+							message: `La cédula de identidad "${identifier}" ya está registrada en el sistema. Por favor, verifique su cédula o contacte al administrador si cree que esto es un error.`,
+						},
+						{ status: 409 }
+					);
+				}
+			}
+		}
+
+		const referredOrgIdFromForm = (patient && isObject(patient) && patient.organizationId ? String(patient.organizationId) : body.selectedOrganizationId ?? null) ?? null;
+
+		// Supabase create user (opcional) - Solo después de validar cédula
 		let supabaseUserId: string | null = null;
 		let supabaseUserEmail: string | null = null;
 		let supabaseCreated = false;
@@ -170,50 +231,6 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 				}
 			} catch (err: unknown) {
 				console.error('Error calling supabaseAdmin.createUser:', err);
-			}
-		}
-
-		const referredOrgIdFromForm = (patient && isObject(patient) && patient.organizationId ? String(patient.organizationId) : body.selectedOrganizationId ?? null) ?? null;
-
-		// Validar cédula única antes de la transacción (si se proporciona)
-		if (patient && patient.identifier) {
-			const identifier = String(patient.identifier).trim();
-
-			// Verificar en pacientes registrados
-			const existingRegistered = await prisma.patient.findFirst({
-				where: { identifier: identifier },
-			});
-
-			if (existingRegistered) {
-				return NextResponse.json(
-					{
-						ok: false,
-						message: `La cédula de identidad "${identifier}" ya está registrada para un paciente en el sistema.`,
-					},
-					{ status: 409 }
-				);
-			}
-
-			// Verificar en pacientes no registrados usando Supabase
-			if (supabaseAdmin) {
-				const { data: existingUnregistered, error: unregisteredCheckError } = await supabaseAdmin
-					.from('unregisteredpatients')
-					.select('id, identification')
-					.eq('identification', identifier)
-					.maybeSingle();
-
-				if (unregisteredCheckError) {
-					console.error('Error verificando cédula en unregisteredpatients:', unregisteredCheckError);
-					// Continuar aunque haya error en la verificación, pero loguearlo
-				} else if (existingUnregistered) {
-					return NextResponse.json(
-						{
-							ok: false,
-							message: `La cédula de identidad "${identifier}" ya está registrada para un paciente no registrado. Considere buscarlo en la lista de pacientes no registrados.`,
-						},
-						{ status: 409 }
-					);
-				}
 			}
 		}
 
