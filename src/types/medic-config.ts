@@ -82,6 +82,7 @@ export interface MedicConfig {
 	user: MedicUser;
 	isAffiliated: boolean;
 	organizationType: string | null; // 'CLINICA', 'CONSULTORIO', 'HOSPITAL', etc.
+	isProfileComplete: boolean; // Indica si el perfil está completo
 	clinicProfile: ClinicProfile | null;
 	config: MedicConfigData;
 }

@@ -5,13 +5,7 @@ import { Upload, Camera, FileText, Award, Building2, Stethoscope, X, Check, User
 import type { MedicConfig, MedicCredentials, MedicService, CreditHistory, PaymentMethod } from '@/types/medic-config';
 import { PRIVATE_SPECIALTIES } from '@/lib/constants/specialties';
 
-export default function ProfessionalProfile({ 
-	config, 
-	onUpdate 
-}: { 
-	config: MedicConfig; 
-	onUpdate: () => void;
-}) {
+export default function ProfessionalProfile({ config, onUpdate }: { config: MedicConfig; onUpdate: () => void }) {
 	const [loading, setLoading] = useState(false);
 	const [success, setSuccess] = useState<string | null>(null);
 	const [error, setError] = useState<string | null>(null);
@@ -53,6 +47,12 @@ export default function ProfessionalProfile({
 			expirationDate: '',
 			credentialFiles: [] as string[],
 		},
+		creditHistory: config.config.creditHistory || {
+			university: '',
+			degree: '',
+			graduationYear: '',
+			certifications: [],
+		},
 		paymentMethods: config.config.paymentMethods || [],
 	});
 
@@ -69,9 +69,9 @@ export default function ProfessionalProfile({
 		const reader = new FileReader();
 		reader.onloadend = () => {
 			if (config.isAffiliated) {
-				setAffiliatedForm(prev => ({ ...prev, photo: reader.result as string }));
+				setAffiliatedForm((prev) => ({ ...prev, photo: reader.result as string }));
 			} else {
-				setPrivateForm(prev => ({ ...prev, photo: reader.result as string }));
+				setPrivateForm((prev) => ({ ...prev, photo: reader.result as string }));
 			}
 		};
 		reader.readAsDataURL(file);
@@ -85,9 +85,9 @@ export default function ProfessionalProfile({
 		const reader = new FileReader();
 		reader.onloadend = () => {
 			if (config.isAffiliated) {
-				setAffiliatedForm(prev => ({ ...prev, signature: reader.result as string }));
+				setAffiliatedForm((prev) => ({ ...prev, signature: reader.result as string }));
 			} else {
-				setPrivateForm(prev => ({ ...prev, signature: reader.result as string }));
+				setPrivateForm((prev) => ({ ...prev, signature: reader.result as string }));
 			}
 		};
 		reader.readAsDataURL(file);
@@ -111,7 +111,7 @@ export default function ProfessionalProfile({
 		}
 
 		if (config.isAffiliated) {
-			setAffiliatedForm(prev => ({
+			setAffiliatedForm((prev) => ({
 				...prev,
 				credentials: {
 					...prev.credentials,
@@ -119,7 +119,7 @@ export default function ProfessionalProfile({
 				},
 			}));
 		} else {
-			setPrivateForm(prev => ({
+			setPrivateForm((prev) => ({
 				...prev,
 				credentials: {
 					...prev.credentials,
@@ -154,6 +154,7 @@ export default function ProfessionalProfile({
 						privateSpecialty: privateForm.privateSpecialty,
 						services: privateForm.services,
 						credentials: privateForm.credentials,
+						creditHistory: privateForm.creditHistory,
 						paymentMethods: privateForm.paymentMethods,
 				  };
 
@@ -181,53 +182,49 @@ export default function ProfessionalProfile({
 	};
 
 	const addServiceAffiliated = () => {
-		setAffiliatedForm(prev => ({
+		setAffiliatedForm((prev) => ({
 			...prev,
 			services: [...prev.services, { name: '', description: '', price: '', currency: 'USD' }],
 		}));
 	};
 
 	const removeServiceAffiliated = (index: number) => {
-		setAffiliatedForm(prev => ({
+		setAffiliatedForm((prev) => ({
 			...prev,
 			services: prev.services.filter((_, i) => i !== index),
 		}));
 	};
 
 	const updateServiceAffiliated = (index: number, field: string, value: string) => {
-		setAffiliatedForm(prev => ({
+		setAffiliatedForm((prev) => ({
 			...prev,
-			services: prev.services.map((s, i) =>
-				i === index ? { ...s, [field]: value } : s
-			),
+			services: prev.services.map((s, i) => (i === index ? { ...s, [field]: value } : s)),
 		}));
 	};
 
 	const addService = () => {
-		setPrivateForm(prev => ({
+		setPrivateForm((prev) => ({
 			...prev,
 			services: [...prev.services, { name: '', description: '', price: '', currency: 'USD' }],
 		}));
 	};
 
 	const removeService = (index: number) => {
-		setPrivateForm(prev => ({
+		setPrivateForm((prev) => ({
 			...prev,
 			services: prev.services.filter((_, i) => i !== index),
 		}));
 	};
 
 	const updateService = (index: number, field: string, value: string) => {
-		setPrivateForm(prev => ({
+		setPrivateForm((prev) => ({
 			...prev,
-			services: prev.services.map((s, i) =>
-				i === index ? { ...s, [field]: value } : s
-			),
+			services: prev.services.map((s, i) => (i === index ? { ...s, [field]: value } : s)),
 		}));
 	};
 
 	const addCertification = () => {
-		setAffiliatedForm(prev => ({
+		setAffiliatedForm((prev) => ({
 			...prev,
 			creditHistory: {
 				...prev.creditHistory,
@@ -237,7 +234,7 @@ export default function ProfessionalProfile({
 	};
 
 	const removeCertification = (index: number) => {
-		setAffiliatedForm(prev => ({
+		setAffiliatedForm((prev) => ({
 			...prev,
 			creditHistory: {
 				...prev.creditHistory,
@@ -247,21 +244,17 @@ export default function ProfessionalProfile({
 	};
 
 	const updateCertification = (index: number, field: string, value: string) => {
-		setAffiliatedForm(prev => ({
+		setAffiliatedForm((prev) => ({
 			...prev,
 			creditHistory: {
 				...prev.creditHistory,
-				certifications: (prev.creditHistory.certifications || []).map((c, i) =>
-					i === index ? { ...c, [field]: value } : c
-				),
+				certifications: (prev.creditHistory.certifications || []).map((c, i) => (i === index ? { ...c, [field]: value } : c)),
 			},
 		}));
 	};
 
 	const clinicSpecialties = config.clinicProfile?.specialties || [];
-	const specialtyOptions = clinicSpecialties.map((s) => 
-		typeof s === 'string' ? s : String(s)
-	);
+	const specialtyOptions = clinicSpecialties.map((s) => (typeof s === 'string' ? s : String(s)));
 
 	return (
 		<form onSubmit={handleSubmit} className="space-y-6">
@@ -287,17 +280,15 @@ export default function ProfessionalProfile({
 				</h3>
 				<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
 					<div>
-						<label className="block text-sm font-medium text-gray-700 mb-2">
-							Nombre Completo
-						</label>
+						<label className="block text-sm font-medium text-gray-700 mb-2">Nombre Completo</label>
 						<input
 							type="text"
 							value={config.isAffiliated ? affiliatedForm.name : privateForm.name}
 							onChange={(e) => {
 								if (config.isAffiliated) {
-									setAffiliatedForm(prev => ({ ...prev, name: e.target.value }));
+									setAffiliatedForm((prev) => ({ ...prev, name: e.target.value }));
 								} else {
-									setPrivateForm(prev => ({ ...prev, name: e.target.value }));
+									setPrivateForm((prev) => ({ ...prev, name: e.target.value }));
 								}
 							}}
 							className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
@@ -305,15 +296,8 @@ export default function ProfessionalProfile({
 						/>
 					</div>
 					<div>
-						<label className="block text-sm font-medium text-gray-700 mb-2">
-							Email
-						</label>
-						<input
-							type="email"
-							value={config.user.email || ''}
-							disabled
-							className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-100 text-gray-600"
-						/>
+						<label className="block text-sm font-medium text-gray-700 mb-2">Email</label>
+						<input type="email" value={config.user.email || ''} disabled className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-100 text-gray-600" />
 					</div>
 				</div>
 			</div>
@@ -327,11 +311,7 @@ export default function ProfessionalProfile({
 				<div className="flex items-center gap-6">
 					<div className="relative">
 						{(config.isAffiliated ? affiliatedForm.photo : privateForm.photo) ? (
-							<img
-								src={config.isAffiliated ? affiliatedForm.photo : privateForm.photo}
-								alt="Foto de perfil"
-								className="w-32 h-32 rounded-full object-cover border-4 border-indigo-200"
-							/>
+							<img src={config.isAffiliated ? affiliatedForm.photo : privateForm.photo} alt="Foto de perfil" className="w-32 h-32 rounded-full object-cover border-4 border-indigo-200" />
 						) : (
 							<div className="w-32 h-32 rounded-full bg-gray-200 flex items-center justify-center border-4 border-indigo-200">
 								<Camera className="w-8 h-8 text-gray-400" />
@@ -339,18 +319,8 @@ export default function ProfessionalProfile({
 						)}
 					</div>
 					<div>
-						<input
-							ref={photoInputRef}
-							type="file"
-							accept="image/*"
-							onChange={handlePhotoUpload}
-							className="hidden"
-						/>
-						<button
-							type="button"
-							onClick={() => photoInputRef.current?.click()}
-							className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors flex items-center gap-2"
-						>
+						<input ref={photoInputRef} type="file" accept="image/*" onChange={handlePhotoUpload} className="hidden" />
+						<button type="button" onClick={() => photoInputRef.current?.click()} className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors flex items-center gap-2">
 							<Upload className="w-4 h-4" />
 							Subir Foto
 						</button>
@@ -368,15 +338,8 @@ export default function ProfessionalProfile({
 							Especialidad en la Clínica
 						</h3>
 						<div>
-							<label className="block text-sm font-medium text-gray-700 mb-2">
-								Seleccionar Especialidad
-							</label>
-							<select
-								value={affiliatedForm.specialty}
-								onChange={(e) => setAffiliatedForm(prev => ({ ...prev, specialty: e.target.value }))}
-								className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-								required
-							>
+							<label className="block text-sm font-medium text-gray-700 mb-2">Seleccionar Especialidad</label>
+							<select value={affiliatedForm.specialty} onChange={(e) => setAffiliatedForm((prev) => ({ ...prev, specialty: e.target.value }))} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent" required>
 								<option value="">Seleccione una especialidad</option>
 								{specialtyOptions.map((spec, idx) => (
 									<option key={idx} value={spec}>
@@ -384,9 +347,7 @@ export default function ProfessionalProfile({
 									</option>
 								))}
 							</select>
-							<p className="mt-2 text-sm text-gray-500">
-								Seleccione la especialidad que ejerce en {config.clinicProfile?.name}
-							</p>
+							<p className="mt-2 text-sm text-gray-500">Seleccione la especialidad que ejerce en {config.clinicProfile?.name}</p>
 						</div>
 					</div>
 
@@ -400,53 +361,23 @@ export default function ProfessionalProfile({
 							{affiliatedForm.services.map((service, idx) => (
 								<div key={idx} className="p-4 bg-white rounded-lg border border-gray-200">
 									<div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-										<input
-											type="text"
-											placeholder="Nombre del servicio"
-											value={service.name || ''}
-											onChange={(e) => updateServiceAffiliated(idx, 'name', e.target.value)}
-											className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-										/>
-										<input
-											type="text"
-											placeholder="Descripción"
-											value={service.description || ''}
-											onChange={(e) => updateServiceAffiliated(idx, 'description', e.target.value)}
-											className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-										/>
+										<input type="text" placeholder="Nombre del servicio" value={service.name || ''} onChange={(e) => updateServiceAffiliated(idx, 'name', e.target.value)} className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent" />
+										<input type="text" placeholder="Descripción" value={service.description || ''} onChange={(e) => updateServiceAffiliated(idx, 'description', e.target.value)} className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent" />
 										<div className="flex items-center gap-2">
-											<input
-												type="text"
-												placeholder="Precio"
-												value={service.price || ''}
-												onChange={(e) => updateServiceAffiliated(idx, 'price', e.target.value)}
-												className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-											/>
-											<select
-												value={service.currency || 'USD'}
-												onChange={(e) => updateServiceAffiliated(idx, 'currency', e.target.value)}
-												className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-											>
+											<input type="text" placeholder="Precio" value={service.price || ''} onChange={(e) => updateServiceAffiliated(idx, 'price', e.target.value)} className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent" />
+											<select value={service.currency || 'USD'} onChange={(e) => updateServiceAffiliated(idx, 'currency', e.target.value)} className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
 												<option value="USD">USD</option>
 												<option value="VES">VES</option>
 												<option value="EUR">EUR</option>
 											</select>
 										</div>
-										<button
-											type="button"
-											onClick={() => removeServiceAffiliated(idx)}
-											className="p-2 text-red-600 hover:bg-red-50 rounded-lg"
-										>
+										<button type="button" onClick={() => removeServiceAffiliated(idx)} className="p-2 text-red-600 hover:bg-red-50 rounded-lg">
 											<X className="w-4 h-4" />
 										</button>
 									</div>
 								</div>
 							))}
-							<button
-								type="button"
-								onClick={addServiceAffiliated}
-								className="w-full px-4 py-2 border-2 border-dashed border-gray-300 rounded-lg text-gray-600 hover:border-indigo-400 hover:text-indigo-600 transition-colors"
-							>
+							<button type="button" onClick={addServiceAffiliated} className="w-full px-4 py-2 border-2 border-dashed border-gray-300 rounded-lg text-gray-600 hover:border-indigo-400 hover:text-indigo-600 transition-colors">
 								+ Agregar Servicio
 							</button>
 						</div>
@@ -462,80 +393,83 @@ export default function ProfessionalProfile({
 							<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
 								<div>
 									<label className="block text-sm font-medium text-gray-700 mb-2">
-										Licencia Médica
+										Licencia Médica <span className="text-red-500">*</span>
 									</label>
 									<input
 										type="text"
 										value={affiliatedForm.credentials.license || ''}
-										onChange={(e) => setAffiliatedForm(prev => ({
-											...prev,
-											credentials: { ...prev.credentials, license: e.target.value },
-										}))}
+										onChange={(e) =>
+											setAffiliatedForm((prev) => ({
+												...prev,
+												credentials: { ...prev.credentials, license: e.target.value },
+											}))
+										}
 										className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+										required
 									/>
 								</div>
 								<div>
 									<label className="block text-sm font-medium text-gray-700 mb-2">
-										Número de Licencia
+										Número de Licencia <span className="text-red-500">*</span>
 									</label>
 									<input
 										type="text"
 										value={affiliatedForm.credentials.licenseNumber || ''}
-										onChange={(e) => setAffiliatedForm(prev => ({
-											...prev,
-											credentials: { ...prev.credentials, licenseNumber: e.target.value },
-										}))}
+										onChange={(e) =>
+											setAffiliatedForm((prev) => ({
+												...prev,
+												credentials: { ...prev.credentials, licenseNumber: e.target.value },
+											}))
+										}
 										className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+										required
 									/>
 								</div>
 							</div>
 							<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
 								<div>
 									<label className="block text-sm font-medium text-gray-700 mb-2">
-										Emitida por
+										Emitida por <span className="text-red-500">*</span>
 									</label>
 									<input
 										type="text"
 										value={affiliatedForm.credentials.issuedBy || ''}
-										onChange={(e) => setAffiliatedForm(prev => ({
-											...prev,
-											credentials: { ...prev.credentials, issuedBy: e.target.value },
-										}))}
+										onChange={(e) =>
+											setAffiliatedForm((prev) => ({
+												...prev,
+												credentials: { ...prev.credentials, issuedBy: e.target.value },
+											}))
+										}
 										className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+										placeholder="Ej: Colegio de Médicos de Venezuela"
+										required
 									/>
 								</div>
 								<div>
 									<label className="block text-sm font-medium text-gray-700 mb-2">
-										Fecha de Expiración
+										Fecha de Expiración <span className="text-red-500">*</span>
 									</label>
 									<input
 										type="date"
 										value={affiliatedForm.credentials.expirationDate || ''}
-										onChange={(e) => setAffiliatedForm(prev => ({
-											...prev,
-											credentials: { ...prev.credentials, expirationDate: e.target.value },
-										}))}
+										onChange={(e) =>
+											setAffiliatedForm((prev) => ({
+												...prev,
+												credentials: { ...prev.credentials, expirationDate: e.target.value },
+											}))
+										}
 										className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+										required
 									/>
 								</div>
 							</div>
 							<div>
 								<label className="block text-sm font-medium text-gray-700 mb-2">
-									Documentos de Credenciales
+									Documentos de Credenciales <span className="text-red-500">*</span>
 								</label>
-								<input
-									ref={credentialInputRef}
-									type="file"
-									accept=".pdf,.jpg,.jpeg,.png"
-									multiple
-									onChange={handleCredentialUpload}
-									className="hidden"
-								/>
-								<button
-									type="button"
-									onClick={() => credentialInputRef.current?.click()}
-									className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors flex items-center gap-2"
-								>
+								<p className="text-xs text-gray-500 mb-2">Debe subir al menos un documento que valide su licencia médica (PDF, JPG, PNG)</p>
+								<input ref={credentialInputRef} type="file" accept=".pdf,.jpg,.jpeg,.png" multiple onChange={handleCredentialUpload} className="hidden" />
+								<button type="button" onClick={() => credentialInputRef.current?.click()} className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors flex items-center gap-2">
 									<FileText className="w-4 h-4" />
 									Subir Documentos
 								</button>
@@ -563,89 +497,75 @@ export default function ProfessionalProfile({
 							<div className="grid grid-cols-1 md:grid-cols-3 gap-4">
 								<div>
 									<label className="block text-sm font-medium text-gray-700 mb-2">
-										Universidad
+										Universidad <span className="text-red-500">*</span>
 									</label>
 									<input
 										type="text"
 										value={affiliatedForm.creditHistory.university || ''}
-										onChange={(e) => setAffiliatedForm(prev => ({
-											...prev,
-											creditHistory: { ...prev.creditHistory, university: e.target.value },
-										}))}
+										onChange={(e) =>
+											setAffiliatedForm((prev) => ({
+												...prev,
+												creditHistory: { ...prev.creditHistory, university: e.target.value },
+											}))
+										}
 										className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+										required
 									/>
 								</div>
 								<div>
 									<label className="block text-sm font-medium text-gray-700 mb-2">
-										Título
+										Título <span className="text-red-500">*</span>
 									</label>
 									<input
 										type="text"
 										value={affiliatedForm.creditHistory.degree || ''}
-										onChange={(e) => setAffiliatedForm(prev => ({
-											...prev,
-											creditHistory: { ...prev.creditHistory, degree: e.target.value },
-										}))}
+										onChange={(e) =>
+											setAffiliatedForm((prev) => ({
+												...prev,
+												creditHistory: { ...prev.creditHistory, degree: e.target.value },
+											}))
+										}
 										className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+										placeholder="Ej: Médico Cirujano"
+										required
 									/>
 								</div>
 								<div>
 									<label className="block text-sm font-medium text-gray-700 mb-2">
-										Año de Graduación
+										Año de Graduación <span className="text-red-500">*</span>
 									</label>
 									<input
 										type="number"
 										value={affiliatedForm.creditHistory.graduationYear || ''}
-										onChange={(e) => setAffiliatedForm(prev => ({
-											...prev,
-											creditHistory: { ...prev.creditHistory, graduationYear: e.target.value },
-										}))}
+										onChange={(e) =>
+											setAffiliatedForm((prev) => ({
+												...prev,
+												creditHistory: { ...prev.creditHistory, graduationYear: e.target.value },
+											}))
+										}
 										className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+										placeholder="Ej: 2010"
+										min="1950"
+										max={new Date().getFullYear()}
+										required
 									/>
 								</div>
 							</div>
 							<div>
 								<div className="flex items-center justify-between mb-2">
-									<label className="block text-sm font-medium text-gray-700">
-										Certificaciones
-									</label>
-									<button
-										type="button"
-										onClick={addCertification}
-										className="text-sm text-indigo-600 hover:text-indigo-700 font-medium"
-									>
+									<label className="block text-sm font-medium text-gray-700">Certificaciones</label>
+									<button type="button" onClick={addCertification} className="text-sm text-indigo-600 hover:text-indigo-700 font-medium">
 										+ Agregar Certificación
 									</button>
 								</div>
 								{(affiliatedForm.creditHistory.certifications || []).map((cert, idx) => (
 									<div key={idx} className="mb-3 p-4 bg-white rounded-lg border border-gray-200">
 										<div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-											<input
-												type="text"
-												placeholder="Nombre de la certificación"
-												value={cert.name || ''}
-												onChange={(e) => updateCertification(idx, 'name', e.target.value)}
-												className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-											/>
-											<input
-												type="text"
-												placeholder="Emisor"
-												value={cert.issuer || ''}
-												onChange={(e) => updateCertification(idx, 'issuer', e.target.value)}
-												className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-											/>
+											<input type="text" placeholder="Nombre de la certificación" value={cert.name || ''} onChange={(e) => updateCertification(idx, 'name', e.target.value)} className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent" />
+											<input type="text" placeholder="Emisor" value={cert.issuer || ''} onChange={(e) => updateCertification(idx, 'issuer', e.target.value)} className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent" />
 											<div className="flex items-center gap-2">
-												<input
-													type="date"
-													value={cert.date || ''}
-													onChange={(e) => updateCertification(idx, 'date', e.target.value)}
-													className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-												/>
-												<button
-													type="button"
-													onClick={() => removeCertification(idx)}
-													className="p-2 text-red-600 hover:bg-red-50 rounded-lg"
-												>
+												<input type="date" value={cert.date || ''} onChange={(e) => updateCertification(idx, 'date', e.target.value)} className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent" />
+												<button type="button" onClick={() => removeCertification(idx)} className="p-2 text-red-600 hover:bg-red-50 rounded-lg">
 													<X className="w-4 h-4" />
 												</button>
 											</div>
@@ -668,12 +588,7 @@ export default function ProfessionalProfile({
 							<label className="block text-sm font-medium text-gray-700 mb-2">
 								Seleccionar Especialidad <span className="text-red-500">*</span>
 							</label>
-							<select
-								value={privateForm.privateSpecialty}
-								onChange={(e) => setPrivateForm(prev => ({ ...prev, privateSpecialty: e.target.value }))}
-								className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent bg-white"
-								required
-							>
+							<select value={privateForm.privateSpecialty} onChange={(e) => setPrivateForm((prev) => ({ ...prev, privateSpecialty: e.target.value }))} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent bg-white" required>
 								<option value="">Seleccione una especialidad</option>
 								{PRIVATE_SPECIALTIES.map((specialty) => (
 									<option key={specialty} value={specialty}>
@@ -681,9 +596,7 @@ export default function ProfessionalProfile({
 									</option>
 								))}
 							</select>
-							<p className="mt-2 text-sm text-gray-500">
-								Seleccione la especialidad médica que ejerce en su consultorio privado. Esta información será visible para los pacientes en las búsquedas.
-							</p>
+							<p className="mt-2 text-sm text-gray-500">Seleccione la especialidad médica que ejerce en su consultorio privado. Esta información será visible para los pacientes en las búsquedas.</p>
 						</div>
 					</div>
 
@@ -697,53 +610,23 @@ export default function ProfessionalProfile({
 							{privateForm.services.map((service, idx) => (
 								<div key={idx} className="p-4 bg-white rounded-lg border border-gray-200">
 									<div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-										<input
-											type="text"
-											placeholder="Nombre del servicio"
-											value={service.name || ''}
-											onChange={(e) => updateService(idx, 'name', e.target.value)}
-											className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-										/>
-										<input
-											type="text"
-											placeholder="Descripción"
-											value={service.description || ''}
-											onChange={(e) => updateService(idx, 'description', e.target.value)}
-											className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-										/>
+										<input type="text" placeholder="Nombre del servicio" value={service.name || ''} onChange={(e) => updateService(idx, 'name', e.target.value)} className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent" />
+										<input type="text" placeholder="Descripción" value={service.description || ''} onChange={(e) => updateService(idx, 'description', e.target.value)} className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent" />
 										<div className="flex items-center gap-2">
-											<input
-												type="text"
-												placeholder="Precio"
-												value={service.price || ''}
-												onChange={(e) => updateService(idx, 'price', e.target.value)}
-												className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-											/>
-											<select
-												value={service.currency || 'USD'}
-												onChange={(e) => updateService(idx, 'currency', e.target.value)}
-												className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-											>
+											<input type="text" placeholder="Precio" value={service.price || ''} onChange={(e) => updateService(idx, 'price', e.target.value)} className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent" />
+											<select value={service.currency || 'USD'} onChange={(e) => updateService(idx, 'currency', e.target.value)} className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
 												<option value="USD">USD</option>
 												<option value="VES">VES</option>
 												<option value="EUR">EUR</option>
 											</select>
 										</div>
-										<button
-											type="button"
-											onClick={() => removeService(idx)}
-											className="p-2 text-red-600 hover:bg-red-50 rounded-lg"
-										>
+										<button type="button" onClick={() => removeService(idx)} className="p-2 text-red-600 hover:bg-red-50 rounded-lg">
 											<X className="w-4 h-4" />
 										</button>
 									</div>
 								</div>
 							))}
-							<button
-								type="button"
-								onClick={addService}
-								className="w-full px-4 py-2 border-2 border-dashed border-gray-300 rounded-lg text-gray-600 hover:border-indigo-400 hover:text-indigo-600 transition-colors"
-							>
+							<button type="button" onClick={addService} className="w-full px-4 py-2 border-2 border-dashed border-gray-300 rounded-lg text-gray-600 hover:border-indigo-400 hover:text-indigo-600 transition-colors">
 								+ Agregar Servicio
 							</button>
 						</div>
@@ -753,66 +636,167 @@ export default function ProfessionalProfile({
 					<div className="bg-gray-50 rounded-xl p-6">
 						<h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
 							<Award className="w-5 h-5 text-indigo-600" />
-							Credenciales
+							Credenciales y Validación
 						</h3>
 						<div className="space-y-4">
 							<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
 								<div>
 									<label className="block text-sm font-medium text-gray-700 mb-2">
-										Licencia Médica
+										Licencia Médica <span className="text-red-500">*</span>
 									</label>
 									<input
 										type="text"
 										value={privateForm.credentials.license || ''}
-										onChange={(e) => setPrivateForm(prev => ({
-											...prev,
-											credentials: { ...prev.credentials, license: e.target.value },
-										}))}
+										onChange={(e) =>
+											setPrivateForm((prev) => ({
+												...prev,
+												credentials: { ...prev.credentials, license: e.target.value },
+											}))
+										}
 										className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+										required
 									/>
 								</div>
 								<div>
 									<label className="block text-sm font-medium text-gray-700 mb-2">
-										Número de Licencia
+										Número de Licencia <span className="text-red-500">*</span>
 									</label>
 									<input
 										type="text"
 										value={privateForm.credentials.licenseNumber || ''}
-										onChange={(e) => setPrivateForm(prev => ({
-											...prev,
-											credentials: { ...prev.credentials, licenseNumber: e.target.value },
-										}))}
+										onChange={(e) =>
+											setPrivateForm((prev) => ({
+												...prev,
+												credentials: { ...prev.credentials, licenseNumber: e.target.value },
+											}))
+										}
 										className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+										required
 									/>
 								</div>
 							</div>
 							<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
 								<div>
 									<label className="block text-sm font-medium text-gray-700 mb-2">
-										Emitida por
+										Emitida por <span className="text-red-500">*</span>
 									</label>
 									<input
 										type="text"
 										value={privateForm.credentials.issuedBy || ''}
-										onChange={(e) => setPrivateForm(prev => ({
-											...prev,
-											credentials: { ...prev.credentials, issuedBy: e.target.value },
-										}))}
+										onChange={(e) =>
+											setPrivateForm((prev) => ({
+												...prev,
+												credentials: { ...prev.credentials, issuedBy: e.target.value },
+											}))
+										}
 										className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+										placeholder="Ej: Colegio de Médicos de Venezuela"
+										required
 									/>
 								</div>
 								<div>
 									<label className="block text-sm font-medium text-gray-700 mb-2">
-										Fecha de Expiración
+										Fecha de Expiración <span className="text-red-500">*</span>
 									</label>
 									<input
 										type="date"
 										value={privateForm.credentials.expirationDate || ''}
-										onChange={(e) => setPrivateForm(prev => ({
-											...prev,
-											credentials: { ...prev.credentials, expirationDate: e.target.value },
-										}))}
+										onChange={(e) =>
+											setPrivateForm((prev) => ({
+												...prev,
+												credentials: { ...prev.credentials, expirationDate: e.target.value },
+											}))
+										}
 										className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+										required
+									/>
+								</div>
+							</div>
+							<div>
+								<label className="block text-sm font-medium text-gray-700 mb-2">
+									Documentos de Credenciales <span className="text-red-500">*</span>
+								</label>
+								<p className="text-xs text-gray-500 mb-2">Debe subir al menos un documento que valide su licencia médica (PDF, JPG, PNG)</p>
+								<input ref={credentialInputRef} type="file" accept=".pdf,.jpg,.jpeg,.png" multiple onChange={handleCredentialUpload} className="hidden" />
+								<button type="button" onClick={() => credentialInputRef.current?.click()} className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors flex items-center gap-2">
+									<FileText className="w-4 h-4" />
+									Subir Documentos
+								</button>
+								{privateForm.credentials.credentialFiles && privateForm.credentials.credentialFiles.length > 0 && (
+									<div className="mt-2 space-y-2">
+										{privateForm.credentials.credentialFiles.map((file, idx) => (
+											<div key={idx} className="flex items-center gap-2 text-sm text-gray-600">
+												<FileText className="w-4 h-4" />
+												<span>Documento {idx + 1}</span>
+											</div>
+										))}
+									</div>
+								)}
+							</div>
+						</div>
+					</div>
+
+					{/* Historial Crediticio para consultorio privado */}
+					<div className="bg-gray-50 rounded-xl p-6">
+						<h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+							<Award className="w-5 h-5 text-indigo-600" />
+							Historial Crediticio
+						</h3>
+						<div className="space-y-4">
+							<div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+								<div>
+									<label className="block text-sm font-medium text-gray-700 mb-2">
+										Universidad <span className="text-red-500">*</span>
+									</label>
+									<input
+										type="text"
+										value={privateForm.creditHistory?.university || ''}
+										onChange={(e) =>
+											setPrivateForm((prev) => ({
+												...prev,
+												creditHistory: { ...(prev.creditHistory || {}), university: e.target.value },
+											}))
+										}
+										className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+										required
+									/>
+								</div>
+								<div>
+									<label className="block text-sm font-medium text-gray-700 mb-2">
+										Título <span className="text-red-500">*</span>
+									</label>
+									<input
+										type="text"
+										value={privateForm.creditHistory?.degree || ''}
+										onChange={(e) =>
+											setPrivateForm((prev) => ({
+												...prev,
+												creditHistory: { ...(prev.creditHistory || {}), degree: e.target.value },
+											}))
+										}
+										className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+										placeholder="Ej: Médico Cirujano"
+										required
+									/>
+								</div>
+								<div>
+									<label className="block text-sm font-medium text-gray-700 mb-2">
+										Año de Graduación <span className="text-red-500">*</span>
+									</label>
+									<input
+										type="number"
+										value={privateForm.creditHistory?.graduationYear || ''}
+										onChange={(e) =>
+											setPrivateForm((prev) => ({
+												...prev,
+												creditHistory: { ...(prev.creditHistory || {}), graduationYear: e.target.value },
+											}))
+										}
+										className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+										placeholder="Ej: 2010"
+										min="1950"
+										max={new Date().getFullYear()}
+										required
 									/>
 								</div>
 							</div>
@@ -830,11 +814,7 @@ export default function ProfessionalProfile({
 				<div className="space-y-4">
 					{(config.isAffiliated ? affiliatedForm.signature : privateForm.signature) ? (
 						<div className="border-2 border-gray-300 rounded-lg p-4 bg-white">
-							<img
-								src={config.isAffiliated ? affiliatedForm.signature : privateForm.signature}
-								alt="Firma digital"
-								className="max-h-32 mx-auto"
-							/>
+							<img src={config.isAffiliated ? affiliatedForm.signature : privateForm.signature} alt="Firma digital" className="max-h-32 mx-auto" />
 						</div>
 					) : (
 						<div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center">
@@ -842,18 +822,8 @@ export default function ProfessionalProfile({
 							<p className="text-gray-500">No hay firma digital cargada</p>
 						</div>
 					)}
-					<input
-						ref={signatureInputRef}
-						type="file"
-						accept="image/*"
-						onChange={handleSignatureUpload}
-						className="hidden"
-					/>
-					<button
-						type="button"
-						onClick={() => signatureInputRef.current?.click()}
-						className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors flex items-center gap-2"
-					>
+					<input ref={signatureInputRef} type="file" accept="image/*" onChange={handleSignatureUpload} className="hidden" />
+					<button type="button" onClick={() => signatureInputRef.current?.click()} className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors flex items-center gap-2">
 						<Upload className="w-4 h-4" />
 						{config.isAffiliated ? affiliatedForm.signature : privateForm.signature ? 'Cambiar Firma' : 'Subir Firma'}
 					</button>
@@ -866,10 +836,8 @@ export default function ProfessionalProfile({
 					<CreditCard className="w-5 h-5 text-indigo-600" />
 					Métodos de Pago
 				</h3>
-				<p className="text-sm text-gray-600 mb-4">
-					Configure los métodos de pago que acepta para recibir pagos de sus pacientes.
-				</p>
-				
+				<p className="text-sm text-gray-600 mb-4">Configure los métodos de pago que acepta para recibir pagos de sus pacientes.</p>
+
 				{/* Pago Móvil */}
 				<div className="bg-white rounded-lg border border-gray-200 p-6 mb-4">
 					<div className="flex items-center justify-between mb-4">
@@ -885,25 +853,18 @@ export default function ProfessionalProfile({
 						<label className="relative inline-flex items-center cursor-pointer">
 							<input
 								type="checkbox"
-								checked={
-									(config.isAffiliated 
-										? affiliatedForm.paymentMethods 
-										: privateForm.paymentMethods
-									).find(pm => pm.type === 'pago_movil')?.enabled || false
-								}
+								checked={(config.isAffiliated ? affiliatedForm.paymentMethods : privateForm.paymentMethods).find((pm) => pm.type === 'pago_movil')?.enabled || false}
 								onChange={(e) => {
-									const currentMethods = config.isAffiliated 
-										? affiliatedForm.paymentMethods 
-										: privateForm.paymentMethods;
-									const existingIndex = currentMethods.findIndex(pm => pm.type === 'pago_movil');
-									
+									const currentMethods = config.isAffiliated ? affiliatedForm.paymentMethods : privateForm.paymentMethods;
+									const existingIndex = currentMethods.findIndex((pm) => pm.type === 'pago_movil');
+
 									if (existingIndex >= 0) {
 										const updated = [...currentMethods];
 										updated[existingIndex] = { ...updated[existingIndex], enabled: e.target.checked };
 										if (config.isAffiliated) {
-											setAffiliatedForm(prev => ({ ...prev, paymentMethods: updated }));
+											setAffiliatedForm((prev) => ({ ...prev, paymentMethods: updated }));
 										} else {
-											setPrivateForm(prev => ({ ...prev, paymentMethods: updated }));
+											setPrivateForm((prev) => ({ ...prev, paymentMethods: updated }));
 										}
 									} else {
 										const newMethod: PaymentMethod = {
@@ -917,9 +878,9 @@ export default function ProfessionalProfile({
 											},
 										};
 										if (config.isAffiliated) {
-											setAffiliatedForm(prev => ({ ...prev, paymentMethods: [...prev.paymentMethods, newMethod] }));
+											setAffiliatedForm((prev) => ({ ...prev, paymentMethods: [...prev.paymentMethods, newMethod] }));
 										} else {
-											setPrivateForm(prev => ({ ...prev, paymentMethods: [...prev.paymentMethods, newMethod] }));
+											setPrivateForm((prev) => ({ ...prev, paymentMethods: [...prev.paymentMethods, newMethod] }));
 										}
 									}
 								}}
@@ -928,11 +889,8 @@ export default function ProfessionalProfile({
 							<div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-indigo-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
 						</label>
 					</div>
-					
-					{(config.isAffiliated 
-						? affiliatedForm.paymentMethods 
-						: privateForm.paymentMethods
-					).find(pm => pm.type === 'pago_movil')?.enabled && (
+
+					{(config.isAffiliated ? affiliatedForm.paymentMethods : privateForm.paymentMethods).find((pm) => pm.type === 'pago_movil')?.enabled && (
 						<div className="space-y-4 mt-4 pt-4 border-t border-gray-200">
 							<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
 								<div>
@@ -942,22 +900,11 @@ export default function ProfessionalProfile({
 									<input
 										type="text"
 										placeholder="Ej: V-12345678 o J-12345678-9"
-										value={
-											(config.isAffiliated 
-												? affiliatedForm.paymentMethods 
-												: privateForm.paymentMethods
-											).find(pm => pm.type === 'pago_movil')?.data?.cedula || 
-											(config.isAffiliated 
-												? affiliatedForm.paymentMethods 
-												: privateForm.paymentMethods
-											).find(pm => pm.type === 'pago_movil')?.data?.rif || ''
-										}
+										value={(config.isAffiliated ? affiliatedForm.paymentMethods : privateForm.paymentMethods).find((pm) => pm.type === 'pago_movil')?.data?.cedula || (config.isAffiliated ? affiliatedForm.paymentMethods : privateForm.paymentMethods).find((pm) => pm.type === 'pago_movil')?.data?.rif || ''}
 										onChange={(e) => {
-											const currentMethods = config.isAffiliated 
-												? affiliatedForm.paymentMethods 
-												: privateForm.paymentMethods;
-											const existingIndex = currentMethods.findIndex(pm => pm.type === 'pago_movil');
-											
+											const currentMethods = config.isAffiliated ? affiliatedForm.paymentMethods : privateForm.paymentMethods;
+											const existingIndex = currentMethods.findIndex((pm) => pm.type === 'pago_movil');
+
 											if (existingIndex >= 0) {
 												const updated = [...currentMethods];
 												const value = e.target.value;
@@ -982,36 +929,27 @@ export default function ProfessionalProfile({
 													};
 												}
 												if (config.isAffiliated) {
-													setAffiliatedForm(prev => ({ ...prev, paymentMethods: updated }));
+													setAffiliatedForm((prev) => ({ ...prev, paymentMethods: updated }));
 												} else {
-													setPrivateForm(prev => ({ ...prev, paymentMethods: updated }));
+													setPrivateForm((prev) => ({ ...prev, paymentMethods: updated }));
 												}
 											}
 										}}
 										className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
 										required
 									/>
-									<p className="mt-1 text-xs text-gray-500">
-										Ingrese su cédula (V-12345678) o RIF (J-12345678-9)
-									</p>
+									<p className="mt-1 text-xs text-gray-500">Ingrese su cédula (V-12345678) o RIF (J-12345678-9)</p>
 								</div>
 								<div>
 									<label className="block text-sm font-medium text-gray-700 mb-2">
 										Banco <span className="text-red-500">*</span>
 									</label>
 									<select
-										value={
-											(config.isAffiliated 
-												? affiliatedForm.paymentMethods 
-												: privateForm.paymentMethods
-											).find(pm => pm.type === 'pago_movil')?.data?.banco || ''
-										}
+										value={(config.isAffiliated ? affiliatedForm.paymentMethods : privateForm.paymentMethods).find((pm) => pm.type === 'pago_movil')?.data?.banco || ''}
 										onChange={(e) => {
-											const currentMethods = config.isAffiliated 
-												? affiliatedForm.paymentMethods 
-												: privateForm.paymentMethods;
-											const existingIndex = currentMethods.findIndex(pm => pm.type === 'pago_movil');
-											
+											const currentMethods = config.isAffiliated ? affiliatedForm.paymentMethods : privateForm.paymentMethods;
+											const existingIndex = currentMethods.findIndex((pm) => pm.type === 'pago_movil');
+
 											if (existingIndex >= 0) {
 												const updated = [...currentMethods];
 												updated[existingIndex] = {
@@ -1022,15 +960,14 @@ export default function ProfessionalProfile({
 													},
 												};
 												if (config.isAffiliated) {
-													setAffiliatedForm(prev => ({ ...prev, paymentMethods: updated }));
+													setAffiliatedForm((prev) => ({ ...prev, paymentMethods: updated }));
 												} else {
-													setPrivateForm(prev => ({ ...prev, paymentMethods: updated }));
+													setPrivateForm((prev) => ({ ...prev, paymentMethods: updated }));
 												}
 											}
 										}}
 										className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-										required
-									>
+										required>
 										<option value="">Seleccione un banco</option>
 										<option value="Banesco">Banesco</option>
 										<option value="Mercantil">Mercantil</option>
@@ -1063,18 +1000,11 @@ export default function ProfessionalProfile({
 								<input
 									type="tel"
 									placeholder="Ej: 0412-1234567"
-									value={
-										(config.isAffiliated 
-											? affiliatedForm.paymentMethods 
-											: privateForm.paymentMethods
-										).find(pm => pm.type === 'pago_movil')?.data?.telefono || ''
-									}
+									value={(config.isAffiliated ? affiliatedForm.paymentMethods : privateForm.paymentMethods).find((pm) => pm.type === 'pago_movil')?.data?.telefono || ''}
 									onChange={(e) => {
-										const currentMethods = config.isAffiliated 
-											? affiliatedForm.paymentMethods 
-											: privateForm.paymentMethods;
-										const existingIndex = currentMethods.findIndex(pm => pm.type === 'pago_movil');
-										
+										const currentMethods = config.isAffiliated ? affiliatedForm.paymentMethods : privateForm.paymentMethods;
+										const existingIndex = currentMethods.findIndex((pm) => pm.type === 'pago_movil');
+
 										if (existingIndex >= 0) {
 											const updated = [...currentMethods];
 											updated[existingIndex] = {
@@ -1085,18 +1015,16 @@ export default function ProfessionalProfile({
 												},
 											};
 											if (config.isAffiliated) {
-												setAffiliatedForm(prev => ({ ...prev, paymentMethods: updated }));
+												setAffiliatedForm((prev) => ({ ...prev, paymentMethods: updated }));
 											} else {
-												setPrivateForm(prev => ({ ...prev, paymentMethods: updated }));
+												setPrivateForm((prev) => ({ ...prev, paymentMethods: updated }));
 											}
 										}
 									}}
 									className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
 									required
 								/>
-								<p className="mt-1 text-xs text-gray-500">
-									Ingrese el número de teléfono asociado a su cuenta de pago móvil
-								</p>
+								<p className="mt-1 text-xs text-gray-500">Ingrese el número de teléfono asociado a su cuenta de pago móvil</p>
 							</div>
 						</div>
 					)}
@@ -1105,22 +1033,13 @@ export default function ProfessionalProfile({
 
 			{/* Botón de guardar */}
 			<div className="flex justify-end gap-4 pt-6 border-t border-gray-200">
-				<button
-					type="button"
-					onClick={() => window.location.reload()}
-					className="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
-				>
+				<button type="button" onClick={() => window.location.reload()} className="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors">
 					Cancelar
 				</button>
-				<button
-					type="submit"
-					disabled={loading}
-					className="px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-				>
+				<button type="submit" disabled={loading} className="px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2">
 					{loading ? 'Guardando...' : 'Guardar Cambios'}
 				</button>
 			</div>
 		</form>
 	);
 }
-

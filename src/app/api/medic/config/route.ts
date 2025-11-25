@@ -268,6 +268,51 @@ export async function GET(request: Request) {
 		// Los consultorios privados (CONSULTORIO) no se consideran afiliados
 		const isAffiliated = organizationType === 'CLINICA' || organizationType === 'HOSPITAL';
 
+		// Verificar si el perfil está completo
+		// Un perfil se considera completo si tiene:
+		// 1. Nombre completo
+		// 2. Especialidad (specialty para afiliados o privateSpecialty para consultorios privados)
+		// 3. Licencia médica completa (license, licenseNumber, issuedBy, expirationDate válida)
+		// 4. Al menos un documento de credenciales subido
+		// 5. Historial crediticio básico (universidad, título, año de graduación)
+		const hasName = !!appUser.name && appUser.name.trim().length > 0;
+		const hasSpecialty = isAffiliated 
+			? !!(profile?.specialty && profile.specialty.trim().length > 0)
+			: !!(profile?.private_specialty && profile.private_specialty.trim().length > 0);
+		
+		// Validar credenciales de licencia médica (usando credentials ya parseado)
+		const hasLicense = !!(credentials.license && String(credentials.license).trim().length > 0);
+		const hasLicenseNumber = !!(credentials.licenseNumber && String(credentials.licenseNumber).trim().length > 0);
+		const hasIssuedBy = !!(credentials.issuedBy && String(credentials.issuedBy).trim().length > 0);
+		const hasExpirationDate = !!(credentials.expirationDate && String(credentials.expirationDate).trim().length > 0);
+		
+		// Verificar que la fecha de expiración no esté vencida
+		let isExpirationDateValid = false;
+		if (hasExpirationDate) {
+			try {
+				const expirationDate = new Date(String(credentials.expirationDate));
+				const today = new Date();
+				today.setHours(0, 0, 0, 0);
+				isExpirationDateValid = expirationDate >= today;
+			} catch {
+				isExpirationDateValid = false;
+			}
+		}
+		
+		// Verificar que tenga al menos un documento de credenciales
+		const credentialFiles = Array.isArray(credentials.credentialFiles) ? credentials.credentialFiles : [];
+		const hasCredentialFiles = credentialFiles.length > 0;
+		
+		// Validar historial crediticio básico (usando creditHistory ya parseado)
+		const hasUniversity = !!(creditHistory.university && String(creditHistory.university).trim().length > 0);
+		const hasDegree = !!(creditHistory.degree && String(creditHistory.degree).trim().length > 0);
+		const hasGraduationYear = !!(creditHistory.graduationYear && String(creditHistory.graduationYear).trim().length > 0);
+		
+		const hasCompleteCredentials = hasLicense && hasLicenseNumber && hasIssuedBy && hasExpirationDate && isExpirationDateValid && hasCredentialFiles;
+		const hasCompleteCreditHistory = hasUniversity && hasDegree && hasGraduationYear;
+		
+		const isProfileComplete = hasName && hasSpecialty && hasCompleteCredentials && hasCompleteCreditHistory;
+
 		return NextResponse.json({
 			user: {
 				id: appUser.id,
@@ -277,6 +322,7 @@ export async function GET(request: Request) {
 			},
 			isAffiliated: isAffiliated,
 			organizationType: organizationType,
+			isProfileComplete: isProfileComplete,
 			clinicProfile: clinicProfile ? {
 				name: clinicProfile.trade_name || clinicProfile.legal_name,
 				specialties: clinicSpecialties,

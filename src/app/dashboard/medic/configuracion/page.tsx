@@ -98,6 +98,52 @@ export default function MedicConfigurationPage() {
 	return (
 		<div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-purple-50 p-4 sm:p-6">
 			<div className="max-w-7xl mx-auto">
+				{/* Alerta si el perfil no está completo */}
+				{!config.isProfileComplete && (
+					<div className="mb-4 sm:mb-6 p-4 bg-amber-50 border-l-4 border-amber-400 rounded-lg shadow-sm">
+						<div className="flex items-start">
+							<div className="flex-shrink-0">
+								<Settings className="w-5 h-5 text-amber-600" />
+							</div>
+							<div className="ml-3 flex-1">
+								<h3 className="text-sm font-semibold text-amber-800">
+									Completa tu perfil profesional
+								</h3>
+								<div className="mt-2 text-sm text-amber-700">
+									<p className="mb-2">
+										Para acceder a todas las funcionalidades del sistema, necesitas completar tu perfil profesional con la siguiente información:
+									</p>
+									<ul className="list-disc list-inside space-y-1 ml-2">
+										<li>Nombre completo</li>
+										<li>Especialidad {config.isAffiliated ? 'en la clínica' : 'privada'}</li>
+										<li>
+											<strong>Licencia médica completa:</strong>
+											<ul className="list-circle list-inside ml-4 mt-1 space-y-0.5">
+												<li>Tipo de licencia</li>
+												<li>Número de licencia</li>
+												<li>Emitida por (organismo emisor)</li>
+												<li>Fecha de expiración (no vencida)</li>
+												<li>Al menos un documento de credenciales subido</li>
+											</ul>
+										</li>
+										<li>
+											<strong>Historial crediticio básico:</strong>
+											<ul className="list-circle list-inside ml-4 mt-1 space-y-0.5">
+												<li>Universidad</li>
+												<li>Título obtenido</li>
+												<li>Año de graduación</li>
+											</ul>
+										</li>
+									</ul>
+									<p className="mt-3 font-medium">
+										Esta información es necesaria para validar que eres un especialista legalmente titulado.
+									</p>
+								</div>
+							</div>
+						</div>
+					</div>
+				)}
+
 				{/* Header */}
 				<div className="mb-4 sm:mb-6">
 					<div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-3 mb-2">

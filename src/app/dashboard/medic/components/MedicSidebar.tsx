@@ -96,6 +96,13 @@ export default function MedicSidebar() {
 		loadMedicConfig();
 	}, []);
 
+	// Recargar configuración cuando cambia la ruta (por si se completó el perfil)
+	useEffect(() => {
+		if (pathname?.includes('/configuracion')) {
+			loadMedicConfig();
+		}
+	}, [pathname]);
+
 	const loadMedicConfig = async () => {
 		try {
 			const res = await fetch('/api/medic/config', {
@@ -133,6 +140,17 @@ export default function MedicSidebar() {
 	const renderLink = (link: LinkItem) => {
 		const isActive = !!link.href && isPathActive(link.href);
 		const isComing = !!link.comingSoon;
+
+		// Si el perfil no está completo, solo mostrar Configuración
+		if (!loadingConfig && medicConfig && !medicConfig.isProfileComplete) {
+			// Si es Configuración, mostrarlo normalmente
+			if (link.label === 'Configuración') {
+				// Continuar con el render normal
+			} else {
+				// Ocultar todos los demás links
+				return null;
+			}
+		}
 
 		// Submenu
 		if (link.submenu) {
