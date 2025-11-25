@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import Link from 'next/link';
 import Image from 'next/image';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -31,10 +32,19 @@ export default function PublicNavBar() {
 	const [orgMenuOpen, setOrgMenuOpen] = useState(false);
 	const [patientMenuOpen, setPatientMenuOpen] = useState(false);
 	const [contactMenuOpen, setContactMenuOpen] = useState(false);
+	const [mounted, setMounted] = useState(false);
 	const mobileRef = useRef<HTMLDivElement | null>(null);
 	const orgMenuRef = useRef<HTMLDivElement | null>(null);
+	const orgButtonRef = useRef<HTMLButtonElement | null>(null);
 	const patientMenuRef = useRef<HTMLDivElement | null>(null);
+	const patientButtonRef = useRef<HTMLButtonElement | null>(null);
 	const contactMenuRef = useRef<HTMLDivElement | null>(null);
+	const contactButtonRef = useRef<HTMLButtonElement | null>(null);
+
+	// Para portales
+	useEffect(() => {
+		setMounted(true);
+	}, []);
 
 	// Close mobile menu on outside click or ESC
 	useEffect(() => {
@@ -133,7 +143,7 @@ export default function PublicNavBar() {
 	];
 
 	return (
-		<header className="sticky top-0 z-[100] w-full max-w-full overflow-x-hidden">
+		<header className="sticky top-0 z-[100] w-full max-w-full">
 			{/* Animated gradient halo */}
 			<div
 				aria-hidden
@@ -144,7 +154,7 @@ export default function PublicNavBar() {
 			/>
 
 			{/* Navbar surface */}
-			<div className="backdrop-blur-md bg-white/80 border-b border-slate-200/60 shadow-sm w-full max-w-full overflow-x-hidden">
+			<div className="backdrop-blur-md bg-white/80 border-b border-slate-200/60 shadow-sm w-full max-w-full">
 				<div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full">
 					<div className="flex h-20 items-center justify-between">
 						{/* Logo */}
@@ -172,6 +182,7 @@ export default function PublicNavBar() {
 							{/* Organizaciones Dropdown */}
 							<div className="relative" ref={orgMenuRef}>
 								<button
+									ref={orgButtonRef}
 									onClick={() => {
 										setOrgMenuOpen(!orgMenuOpen);
 										setPatientMenuOpen(false);
@@ -185,17 +196,22 @@ export default function PublicNavBar() {
 									<ChevronDown className={`w-4 h-4 transition-transform duration-200 ${orgMenuOpen ? 'rotate-180' : ''}`} />
 								</button>
 
-								<AnimatePresence>
-									{orgMenuOpen && (
-										<>
-											<div className="fixed inset-0 z-[110]" onClick={() => setOrgMenuOpen(false)} aria-hidden="true" />
-											<motion.div
-												initial={{ opacity: 0, y: 10, scale: 0.95 }}
-												animate={{ opacity: 1, y: 0, scale: 1 }}
-												exit={{ opacity: 0, y: 10, scale: 0.95 }}
-												transition={{ duration: 0.2 }}
-												className="absolute top-full left-0 mt-2 w-80 bg-white rounded-2xl shadow-2xl border border-slate-200 overflow-hidden z-[120]"
-											>
+								{mounted && createPortal(
+									<AnimatePresence>
+										{orgMenuOpen && (
+											<>
+												<div className="fixed inset-0 z-[110]" onClick={() => setOrgMenuOpen(false)} aria-hidden="true" />
+												<motion.div
+													initial={{ opacity: 0, y: 10, scale: 0.95 }}
+													animate={{ opacity: 1, y: 0, scale: 1 }}
+													exit={{ opacity: 0, y: 10, scale: 0.95 }}
+													transition={{ duration: 0.2 }}
+													className="fixed w-80 bg-white rounded-2xl shadow-2xl border border-slate-200 overflow-hidden z-[120]"
+													style={{
+														top: orgButtonRef.current ? `${orgButtonRef.current.getBoundingClientRect().bottom + 8}px` : '80px',
+														left: orgButtonRef.current ? `${orgButtonRef.current.getBoundingClientRect().left}px` : '0px',
+													}}
+												>
 												<div className="p-2">
 													{organizations.map((org, index) => (
 														<motion.div
@@ -221,15 +237,18 @@ export default function PublicNavBar() {
 														</motion.div>
 													))}
 												</div>
-											</motion.div>
-										</>
-									)}
-								</AnimatePresence>
+												</motion.div>
+											</>
+										)}
+									</AnimatePresence>,
+									document.body
+								)}
 							</div>
 
 							{/* Pacientes Dropdown */}
 							<div className="relative" ref={patientMenuRef}>
 								<button
+									ref={patientButtonRef}
 									onClick={() => {
 										setPatientMenuOpen(!patientMenuOpen);
 										setOrgMenuOpen(false);
@@ -243,17 +262,22 @@ export default function PublicNavBar() {
 									<ChevronDown className={`w-4 h-4 transition-transform duration-200 ${patientMenuOpen ? 'rotate-180' : ''}`} />
 								</button>
 
-								<AnimatePresence>
-									{patientMenuOpen && (
-										<>
-											<div className="fixed inset-0 z-[110]" onClick={() => setPatientMenuOpen(false)} aria-hidden="true" />
-											<motion.div
-												initial={{ opacity: 0, y: 10, scale: 0.95 }}
-												animate={{ opacity: 1, y: 0, scale: 1 }}
-												exit={{ opacity: 0, y: 10, scale: 0.95 }}
-												transition={{ duration: 0.2 }}
-												className="absolute top-full left-0 mt-2 w-96 bg-white rounded-2xl shadow-2xl border border-slate-200 overflow-hidden z-[120]"
-											>
+								{mounted && createPortal(
+									<AnimatePresence>
+										{patientMenuOpen && (
+											<>
+												<div className="fixed inset-0 z-[110]" onClick={() => setPatientMenuOpen(false)} aria-hidden="true" />
+												<motion.div
+													initial={{ opacity: 0, y: 10, scale: 0.95 }}
+													animate={{ opacity: 1, y: 0, scale: 1 }}
+													exit={{ opacity: 0, y: 10, scale: 0.95 }}
+													transition={{ duration: 0.2 }}
+													className="fixed w-96 bg-white rounded-2xl shadow-2xl border border-slate-200 overflow-hidden z-[120]"
+													style={{
+														top: patientButtonRef.current ? `${patientButtonRef.current.getBoundingClientRect().bottom + 8}px` : '80px',
+														left: patientButtonRef.current ? `${patientButtonRef.current.getBoundingClientRect().left}px` : '0px',
+													}}
+												>
 												<div className="p-4 bg-gradient-to-r from-teal-50 to-cyan-50 border-b border-slate-200">
 													<div className="flex items-center gap-3">
 														<div className="w-10 h-10 rounded-xl bg-gradient-to-br from-teal-500 to-cyan-500 flex items-center justify-center">
@@ -301,15 +325,18 @@ export default function PublicNavBar() {
 														</Link>
 													</div>
 												</div>
-											</motion.div>
-										</>
-									)}
-								</AnimatePresence>
+												</motion.div>
+											</>
+										)}
+									</AnimatePresence>,
+									document.body
+								)}
 							</div>
 
 							{/* Contacto Dropdown */}
 							<div className="relative" ref={contactMenuRef}>
 								<button
+									ref={contactButtonRef}
 									onClick={() => {
 										setContactMenuOpen(!contactMenuOpen);
 										setOrgMenuOpen(false);
@@ -323,17 +350,22 @@ export default function PublicNavBar() {
 									<ChevronDown className={`w-4 h-4 transition-transform duration-200 ${contactMenuOpen ? 'rotate-180' : ''}`} />
 								</button>
 
-								<AnimatePresence>
-									{contactMenuOpen && (
-										<>
-											<div className="fixed inset-0 z-[110]" onClick={() => setContactMenuOpen(false)} aria-hidden="true" />
-											<motion.div
-												initial={{ opacity: 0, y: 10, scale: 0.95 }}
-												animate={{ opacity: 1, y: 0, scale: 1 }}
-												exit={{ opacity: 0, y: 10, scale: 0.95 }}
-												transition={{ duration: 0.2 }}
-												className="absolute top-full left-0 mt-2 w-80 bg-white rounded-2xl shadow-2xl border border-slate-200 overflow-hidden z-[120]"
-											>
+								{mounted && createPortal(
+									<AnimatePresence>
+										{contactMenuOpen && (
+											<>
+												<div className="fixed inset-0 z-[110]" onClick={() => setContactMenuOpen(false)} aria-hidden="true" />
+												<motion.div
+													initial={{ opacity: 0, y: 10, scale: 0.95 }}
+													animate={{ opacity: 1, y: 0, scale: 1 }}
+													exit={{ opacity: 0, y: 10, scale: 0.95 }}
+													transition={{ duration: 0.2 }}
+													className="fixed w-80 bg-white rounded-2xl shadow-2xl border border-slate-200 overflow-hidden z-[120]"
+													style={{
+														top: contactButtonRef.current ? `${contactButtonRef.current.getBoundingClientRect().bottom + 8}px` : '80px',
+														left: contactButtonRef.current ? `${contactButtonRef.current.getBoundingClientRect().left}px` : '0px',
+													}}
+												>
 												<div className="p-4 bg-gradient-to-r from-teal-50 to-cyan-50 border-b border-slate-200">
 													<div className="flex items-center gap-3">
 														<div className="w-10 h-10 rounded-xl bg-gradient-to-br from-teal-500 to-cyan-500 flex items-center justify-center">
@@ -390,10 +422,12 @@ export default function PublicNavBar() {
 														</div>
 													</a>
 												</div>
-											</motion.div>
-										</>
-									)}
-								</AnimatePresence>
+												</motion.div>
+											</>
+										)}
+									</AnimatePresence>,
+									document.body
+								)}
 							</div>
 						</nav>
 
@@ -429,19 +463,20 @@ export default function PublicNavBar() {
 				</div>
 
 				{/* Mobile Menu */}
-				<AnimatePresence>
-					{open && (
-						<>
-							<div className="fixed inset-0 bg-black/20 backdrop-blur-sm z-[110] lg:hidden" onClick={() => setOpen(false)} aria-hidden="true" />
-							<motion.div
-								ref={mobileRef}
-								initial={{ opacity: 0, y: -20, scale: 0.95 }}
-								animate={{ opacity: 1, y: 0, scale: 1 }}
-								exit={{ opacity: 0, y: -20, scale: 0.95 }}
-								transition={{ duration: 0.2 }}
-								className="lg:hidden fixed inset-x-4 top-24 z-[120] bg-white rounded-2xl shadow-2xl border border-slate-200 overflow-hidden"
-								aria-hidden={!open}
-							>
+				{mounted && (
+					<AnimatePresence>
+						{open && createPortal(
+							<>
+								<div className="fixed inset-0 bg-black/20 backdrop-blur-sm z-[110] lg:hidden" onClick={() => setOpen(false)} aria-hidden="true" />
+								<motion.div
+									ref={mobileRef}
+									initial={{ opacity: 0, y: -20, scale: 0.95 }}
+									animate={{ opacity: 1, y: 0, scale: 1 }}
+									exit={{ opacity: 0, y: -20, scale: 0.95 }}
+									transition={{ duration: 0.2 }}
+									className="lg:hidden fixed inset-x-4 top-24 z-[120] bg-white rounded-2xl shadow-2xl border border-slate-200 overflow-hidden"
+									aria-hidden={!open}
+								>
 								<div className="max-h-[calc(100vh-8rem)] overflow-y-auto">
 									<div className="p-4 space-y-1">
 										{/* Mobile Inicio Link */}
@@ -620,10 +655,12 @@ export default function PublicNavBar() {
 										</div>
 									</div>
 								</div>
-							</motion.div>
-						</>
-					)}
-				</AnimatePresence>
+								</motion.div>
+							</>,
+							document.body
+						)}
+					</AnimatePresence>
+				)}
 			</div>
 		</header>
 	);
