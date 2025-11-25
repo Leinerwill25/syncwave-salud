@@ -103,6 +103,18 @@ export default function MedicSidebar() {
 		}
 	}, [pathname]);
 
+	// Escuchar evento personalizado para recargar configuración después de guardar
+	useEffect(() => {
+		const handleConfigUpdate = () => {
+			loadMedicConfig();
+		};
+
+		window.addEventListener('medicConfigUpdated', handleConfigUpdate);
+		return () => {
+			window.removeEventListener('medicConfigUpdated', handleConfigUpdate);
+		};
+	}, []);
+
 	const loadMedicConfig = async () => {
 		try {
 			const res = await fetch('/api/medic/config', {

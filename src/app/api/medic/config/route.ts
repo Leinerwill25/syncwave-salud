@@ -172,42 +172,51 @@ export async function GET(request: Request) {
 			return NextResponse.json({ error: 'Acceso denegado: solo médicos' }, { status: 403 });
 		}
 
-		// Obtener perfil de clínica y tipo de organización si está afiliado
+		// Obtener perfil de clínica y tipo de organización
+		// IMPORTANTE: No asumir que tener organizationId significa ser consultorio privado
+		// Se debe validar el tipo de organización en la tabla Organization
 		let clinicProfile: { legal_name: string | null; trade_name: string | null; specialties: unknown } | null = null;
 		let clinicSpecialties: string[] = [];
 		let organizationType: string | null = null;
 		
 		if (appUser.organizationId) {
-			// Obtener tipo de organización
+			// Obtener tipo de organización desde la tabla Organization
+			// Esto es crítico para determinar si es consultorio privado (CONSULTORIO) o clínica (CLINICA/HOSPITAL)
 			const { data: organization, error: orgError } = await supabase
 				.from('Organization')
 				.select('type')
 				.eq('id', appUser.organizationId)
 				.maybeSingle();
 
-			if (!orgError && organization) {
-				organizationType = organization.type;
+			if (orgError) {
+				console.error('[Medic Config API] Error obteniendo tipo de organización:', orgError);
+			} else if (organization && organization.type) {
+				organizationType = String(organization.type).toUpperCase();
 			}
 
-			const { data: clinic, error: clinicError } = await supabase
-				.from('clinic_profile')
-				.select('specialties, legal_name, trade_name')
-				.eq('organization_id', appUser.organizationId)
-				.maybeSingle();
+			// Solo obtener clinic_profile si es una CLINICA o HOSPITAL
+			// Los consultorios privados (CONSULTORIO) no tienen clinic_profile
+			if (organizationType === 'CLINICA' || organizationType === 'HOSPITAL') {
+				const { data: clinic, error: clinicError } = await supabase
+					.from('clinic_profile')
+					.select('specialties, legal_name, trade_name')
+					.eq('organization_id', appUser.organizationId)
+					.maybeSingle();
 
-			if (!clinicError && clinic) {
-				clinicProfile = clinic;
-				try {
-					const parsed = Array.isArray(clinic.specialties) 
-						? clinic.specialties 
-						: typeof clinic.specialties === 'string' 
-							? JSON.parse(clinic.specialties) 
+				if (!clinicError && clinic) {
+					clinicProfile = clinic;
+					try {
+						const parsed = Array.isArray(clinic.specialties) 
+							? clinic.specialties 
+							: typeof clinic.specialties === 'string' 
+								? JSON.parse(clinic.specialties) 
+								: [];
+						clinicSpecialties = Array.isArray(parsed) 
+							? parsed.map((s) => typeof s === 'string' ? s : String(s))
 							: [];
-					clinicSpecialties = Array.isArray(parsed) 
-						? parsed.map((s) => typeof s === 'string' ? s : String(s))
-						: [];
-				} catch {
-					clinicSpecialties = [];
+					} catch {
+						clinicSpecialties = [];
+					}
 				}
 			}
 		}
@@ -255,8 +264,35 @@ export async function GET(request: Request) {
 		};
 
 		const services = parseJsonField<Array<Record<string, unknown>>>(profile?.services, []);
-		const credentials = parseJsonField<Record<string, unknown>>(profile?.credentials, {});
-		const creditHistory = parseJsonField<Record<string, unknown>>(profile?.credit_history, {});
+		
+		// Tipar explícitamente credentials y creditHistory para validación
+		type CredentialsType = {
+			license?: string;
+			licenseNumber?: string;
+			issuedBy?: string;
+			expirationDate?: string;
+			credentialFiles?: string[];
+		};
+		type CreditHistoryType = {
+			university?: string;
+			degree?: string;
+			graduationYear?: string;
+			certifications?: unknown[];
+		};
+		
+		const credentials = parseJsonField<CredentialsType>(profile?.credentials, {
+			license: '',
+			licenseNumber: '',
+			issuedBy: '',
+			expirationDate: '',
+			credentialFiles: [],
+		});
+		const creditHistory = parseJsonField<CreditHistoryType>(profile?.credit_history, {
+			university: '',
+			degree: '',
+			graduationYear: '',
+			certifications: [],
+		});
 		const availability = parseJsonField<Record<string, unknown>>(profile?.availability, {});
 		const notifications = parseJsonField<{ email: boolean; whatsapp: boolean; push: boolean }>(
 			profile?.notifications,
@@ -265,8 +301,13 @@ export async function GET(request: Request) {
 		const paymentMethods = parseJsonField<Array<Record<string, unknown>>>(profile?.payment_methods, []);
 
 		// Un médico está "afiliado" si tiene una organización de tipo CLINICA o HOSPITAL
-		// Los consultorios privados (CONSULTORIO) no se consideran afiliados
+		// Los consultorios privados (CONSULTORIO) NO se consideran afiliados
+		// IMPORTANTE: No asumir que tener organizationId significa ser consultorio privado
+		// Se debe validar explícitamente el tipo de organización
 		const isAffiliated = organizationType === 'CLINICA' || organizationType === 'HOSPITAL';
+		
+		// Si tiene organizationId pero el tipo no es CLINICA ni HOSPITAL, es consultorio privado o tipo desconocido
+		// En ambos casos, isAffiliated será false
 
 		// Verificar si el perfil está completo
 		// Un perfil se considera completo si tiene:

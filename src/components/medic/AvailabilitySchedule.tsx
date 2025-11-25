@@ -146,6 +146,11 @@ export default function AvailabilitySchedule({
 			setSuccess('✅ Horarios guardados correctamente');
 			onUpdate();
 			
+			// Disparar evento personalizado para notificar al sidebar que debe recargar
+			if (typeof window !== 'undefined') {
+				window.dispatchEvent(new CustomEvent('medicConfigUpdated'));
+			}
+			
 			// Mantener el mensaje visible por más tiempo
 			setTimeout(() => setSuccess(null), 5000);
 		} catch (err) {

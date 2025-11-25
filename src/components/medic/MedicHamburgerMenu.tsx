@@ -104,6 +104,18 @@ export default function MedicHamburgerMenu() {
 		}
 	}, [pathname]);
 
+	// Escuchar evento personalizado para recargar configuración después de guardar
+	useEffect(() => {
+		const handleConfigUpdate = () => {
+			loadMedicConfig();
+		};
+
+		window.addEventListener('medicConfigUpdated', handleConfigUpdate);
+		return () => {
+			window.removeEventListener('medicConfigUpdated', handleConfigUpdate);
+		};
+	}, []);
+
 	// Cerrar menú cuando cambia la ruta
 	useEffect(() => {
 		setIsOpen(false);

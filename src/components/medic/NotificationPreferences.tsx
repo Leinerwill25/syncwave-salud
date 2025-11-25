@@ -59,6 +59,12 @@ export default function NotificationPreferences({
 
 			setSuccess('Preferencias guardadas correctamente');
 			onUpdate();
+			
+			// Disparar evento personalizado para notificar al sidebar que debe recargar
+			if (typeof window !== 'undefined') {
+				window.dispatchEvent(new CustomEvent('medicConfigUpdated'));
+			}
+			
 			setTimeout(() => setSuccess(null), 3000);
 		} catch (err) {
 			const errorMessage = err instanceof Error ? err.message : 'Error al guardar las preferencias';

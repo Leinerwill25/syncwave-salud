@@ -172,6 +172,12 @@ export default function ProfessionalProfile({ config, onUpdate }: { config: Medi
 
 			setSuccess('Configuración guardada correctamente');
 			onUpdate();
+
+			// Disparar evento personalizado para notificar al sidebar que debe recargar
+			if (typeof window !== 'undefined') {
+				window.dispatchEvent(new CustomEvent('medicConfigUpdated'));
+			}
+
 			setTimeout(() => setSuccess(null), 3000);
 		} catch (err) {
 			const errorMessage = err instanceof Error ? err.message : 'Error al guardar la configuración';
