@@ -216,10 +216,11 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
 		if (supabaseAdmin) {
 			try {
+				// Usar el rol validado (role) en lugar de roleRaw para asegurar consistencia
 				const payload = {
 					email: account.email,
 					password: account.password,
-					user_metadata: { fullName: account.fullName, role: roleRaw },
+					user_metadata: { fullName: account.fullName, role: role },
 					email_confirm: true,
 				};
 				const createResp = await supabaseAdmin.auth.admin.createUser(payload as unknown as Record<string, unknown>);

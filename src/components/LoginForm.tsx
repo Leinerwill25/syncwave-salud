@@ -117,12 +117,19 @@ export default function LoginFormAdvanced(): React.ReactElement {
 				}
 			}
 
-			const metadataRole = (user.user_metadata as any)?.role as Role | undefined;
-			let roleToUse: Role | null = metadataRole ?? null;
-
-			if (!roleToUse && user.id) {
+			// Siempre obtener el rol desde la base de datos para asegurar que sea el correcto
+			// El user_metadata puede estar desactualizado o incorrecto
+			let roleToUse: Role | null = null;
+			
+			if (user.id) {
 				const fromServer = await fetchRoleFromServer(user.id);
-				if (fromServer) roleToUse = fromServer;
+				if (fromServer) {
+					roleToUse = fromServer;
+				} else {
+					// Fallback a user_metadata solo si no se puede obtener de la BD
+					const metadataRole = (user.user_metadata as any)?.role as Role | undefined;
+					roleToUse = metadataRole ?? null;
+				}
 			}
 
 			setDetectedRole(roleToUse ?? 'UNKNOWN');
