@@ -21,7 +21,9 @@ export default function RegisterForm(): React.ReactElement {
 	const [fullName, setFullName] = useState('');
 	const [email, setEmail] = useState('');
 	const [password, setPassword] = useState('');
+	const [confirmPassword, setConfirmPassword] = useState('');
 	const [showPassword, setShowPassword] = useState(false);
+	const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
 	// Organización (para creación)
 	const [orgName, setOrgName] = useState('');
@@ -270,17 +272,24 @@ export default function RegisterForm(): React.ReactElement {
 	}
 
 	// Validaciones de pasos
-	const step1Valid = fullName.trim().length > 2 && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) && password.length >= 6;
+	const fullNameValid = fullName.trim().length > 2;
+	const emailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+	const passwordValid = password.length >= 8;
+	const passwordsMatch = confirmPassword.length > 0 && confirmPassword === password;
+	const step1Valid = fullNameValid && emailValid && passwordValid && passwordsMatch;
 	// para orgs normales requerimos orgName y specialistCount >=1; para MEDICO requerimos orgName (puede ser su consultorio) pero no specialistCount
 	const step2OrgValid = orgName.trim().length > 2 && (role === 'MEDICO' ? true : specialistCount >= 1);
 	const step2PatientValid = firstName.trim().length > 1 && lastName.trim().length > 1 && identifier.trim().length > 3;
 	const finalValid = role === 'PACIENTE' ? step1Valid && step2PatientValid : step1Valid && step2OrgValid;
 
 	// Navegación entre pasos
+	const [step1Touched, setStep1Touched] = useState(false);
+
 	function next() {
 		setErrorMsg(null);
 		if (step === 1 && !step1Valid) {
-			setErrorMsg('Completa los datos básicos (nombre, email y contraseña ≥ 6 caracteres).');
+			setStep1Touched(true);
+			setErrorMsg('Revisa tu nombre, un correo válido y que ambas contraseñas coincidan (mínimo 8 caracteres).');
 			return;
 		}
 		if (step === 2) {
@@ -589,7 +598,18 @@ export default function RegisterForm(): React.ReactElement {
 									Email
 								</span>
 							</span>
-							<input aria-label="Email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} className={inputClass} placeholder="tu@ejemplo.com" required />
+							<input
+								aria-label="Email"
+								type="email"
+								value={email}
+								onChange={(e) => setEmail(e.target.value)}
+								className={inputClass}
+								placeholder="tu@ejemplo.com"
+								required
+							/>
+							{step1Touched && !emailValid && (
+								<p className="mt-1.5 text-xs text-rose-600">Ingresa un correo electrónico válido (ej. usuario@dominio.com).</p>
+							)}
 						</label>
 
 						{/* Contraseña mejorada: ojo + barra de fortaleza + checklist */}
@@ -604,7 +624,16 @@ export default function RegisterForm(): React.ReactElement {
 									</span>
 								</span>
 								<div className="relative">
-									<input aria-label="Contraseña" type={showPassword ? 'text' : 'password'} value={password} onChange={(e) => setPassword(e.target.value)} className={`${inputClass} pr-12`} placeholder="Mínimo 8 caracteres, incluye mayúsculas y números" required minLength={6} />
+									<input
+										aria-label="Contraseña"
+										type={showPassword ? 'text' : 'password'}
+										value={password}
+										onChange={(e) => setPassword(e.target.value)}
+										className={`${inputClass} pr-12`}
+										placeholder="Mínimo 8 caracteres, incluye mayúsculas y números"
+										required
+										minLength={8}
+									/>
 									<button type="button" onClick={() => setShowPassword((s) => !s)} aria-label={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'} className="absolute right-3 top-1/2 -translate-y-1/2 p-2 rounded-lg hover:bg-slate-100 transition-colors focus:outline-none focus:ring-2 focus:ring-teal-500/50">
 										{showPassword ? (
 											<svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-slate-500 hover:text-slate-700" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -660,6 +689,57 @@ export default function RegisterForm(): React.ReactElement {
 										<span>Caracter especial (p. ej. !@#)</span>
 									</li>
 								</ul>
+							</label>
+						</div>
+
+						{/* Confirmar contraseña */}
+						<div className="md:col-span-2">
+							<label className="block group">
+								<span className={labelClass}>
+									<span className="inline-flex items-center gap-2">
+										<svg className="w-4 h-4 text-teal-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+											<path
+												strokeLinecap="round"
+												strokeLinejoin="round"
+												strokeWidth={2}
+												d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
+											/>
+										</svg>
+										Confirmar contraseña
+									</span>
+								</span>
+								<div className="relative">
+									<input
+										aria-label="Confirmar contraseña"
+										type={showConfirmPassword ? 'text' : 'password'}
+										value={confirmPassword}
+										onChange={(e) => setConfirmPassword(e.target.value)}
+										className={`${inputClass} pr-12`}
+										placeholder="Repite la misma contraseña"
+										required
+										minLength={8}
+									/>
+									<button
+										type="button"
+										onClick={() => setShowConfirmPassword((s) => !s)}
+										aria-label={showConfirmPassword ? 'Ocultar confirmación de contraseña' : 'Mostrar confirmación de contraseña'}
+										className="absolute right-3 top-1/2 -translate-y-1/2 p-2 rounded-lg hover:bg-slate-100 transition-colors focus:outline-none focus:ring-2 focus:ring-teal-500/50"
+									>
+										{showConfirmPassword ? (
+											<svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-slate-500 hover:text-slate-700" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+												<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-5.523 0-10-4.477-10-10 0-1.02.153-2.006.44-2.941M3 3l18 18M9.88 9.88a3 3 0 004.24 4.24" />
+											</svg>
+										) : (
+											<svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-slate-500 hover:text-slate-700" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+												<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+												<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.477 0 8.268 2.943 9.542 7-1.274 4.057-5.065 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+											</svg>
+										)}
+									</button>
+								</div>
+								{step1Touched && !passwordsMatch && confirmPassword.length > 0 && (
+									<p className="mt-2 text-xs text-rose-600">Las contraseñas no coinciden. Verifícalas antes de continuar.</p>
+								)}
 							</label>
 						</div>
 
