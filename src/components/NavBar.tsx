@@ -393,6 +393,19 @@ export default function PublicNavBar() {
 															<div className="text-xs text-slate-500 mt-0.5">04242070878</div>
 														</div>
 													</a>
+													<Link
+														href="/politicas-privacidad"
+														onClick={() => setContactMenuOpen(false)}
+														className="group flex items-center gap-3 p-3 rounded-xl hover:bg-gradient-to-r hover:from-teal-50 hover:to-cyan-50 transition-all duration-200"
+													>
+														<div className="flex-shrink-0 w-12 h-12 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center shadow-md group-hover:scale-110 transition-transform">
+															<Shield className="w-6 h-6 text-white" />
+														</div>
+														<div className="flex-1 min-w-0">
+															<div className="font-semibold text-slate-900 group-hover:text-teal-600 transition-colors">Políticas de Privacidad</div>
+															<div className="text-xs text-slate-500 mt-0.5">Conoce cómo protegemos tus datos</div>
+														</div>
+													</Link>
 													<a
 														href="mailto:syncwaveagency@gmail.com"
 														onClick={() => setContactMenuOpen(false)}
@@ -617,6 +630,17 @@ export default function PublicNavBar() {
 																<Mail className="w-4 h-4 text-blue-600" />
 																<span>syncwaveagency@gmail.com</span>
 															</a>
+															<Link
+																href="/politicas-privacidad"
+																onClick={() => {
+																	setOpen(false);
+																	setContactMenuOpen(false);
+																}}
+																className="flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm text-slate-600 hover:bg-teal-50 hover:text-teal-600 transition-colors"
+															>
+																<Shield className="w-4 h-4 text-indigo-600" />
+																<span>Políticas de Privacidad</span>
+															</Link>
 															<a
 																href="https://instagram.com/syncwave_agency"
 																target="_blank"

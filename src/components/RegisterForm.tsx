@@ -1330,7 +1330,7 @@ export default function RegisterForm(): React.ReactElement {
 			<div className="bg-slate-50 px-4 sm:px-6 md:px-8 py-3 sm:py-4 border-t border-slate-200">
 				<p className="text-[10px] sm:text-xs text-slate-500 text-center leading-relaxed">
 					Al registrarte aceptas nuestra{' '}
-					<a href="/privacy" className="text-teal-600 hover:text-teal-700 font-medium underline">
+					<a href="/politicas-privacidad" target="_blank" rel="noopener noreferrer" className="text-teal-600 hover:text-teal-700 font-medium underline">
 						Política de Privacidad
 					</a>
 					. Los datos médicos se almacenan cifrados y solo son accesibles por los profesionales autorizados.
