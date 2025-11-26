@@ -520,6 +520,209 @@ export default function HomePage() {
 				</div>
 			</section>
 
+			{/* Premio Banco de Venezuela & Automatización */}
+			<section className="py-16 sm:py-20 md:py-24 bg-slate-900 text-white relative overflow-hidden">
+				<div className="absolute inset-0">
+					<div className="absolute top-0 left-0 w-72 h-72 bg-emerald-500/20 rounded-full blur-3xl" />
+					<div className="absolute bottom-0 right-0 w-72 h-72 bg-cyan-500/20 rounded-full blur-3xl" />
+				</div>
+				<div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+					<div className="grid grid-cols-1 lg:grid-cols-3 gap-8 sm:gap-10 items-stretch">
+						{/* Premio Banco de Venezuela */}
+						<div className="lg:col-span-1 bg-white/5 border border-emerald-400/40 rounded-3xl p-6 sm:p-8 shadow-xl backdrop-blur-md flex flex-col justify-between">
+							<div className="flex items-center gap-3 mb-4">
+								<div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-emerald-400 to-teal-500 flex items-center justify-center shadow-lg">
+									<Star className="w-5 h-5 text-white" />
+								</div>
+								<p className="text-sm font-semibold text-emerald-300 uppercase tracking-wide">
+									Reconocimiento Nacional
+								</p>
+							</div>
+							<h2 className="text-2xl sm:text-3xl font-bold mb-3">
+								Proyecto Más Innovador — Banco de Venezuela
+							</h2>
+							<p className="text-sm sm:text-base text-slate-200 leading-relaxed mb-4">
+								Syncwave Salud fue reconocido como uno de los proyectos más innovadores en el ecosistema fintech y salud 
+								en el Pitch Day del Banco de Venezuela, validando nuestra visión de transformar la atención médica en el país.
+							</p>
+							<p className="text-xs sm:text-sm text-slate-400">
+								Este reconocimiento respalda la solidez tecnológica, el impacto social y el potencial de escalabilidad de la plataforma.
+							</p>
+						</div>
+
+						{/* Módulos del Ecosistema */}
+						<div className="lg:col-span-1 bg-white/5 border border-white/10 rounded-3xl p-6 sm:p-8 shadow-xl backdrop-blur-md">
+							<h3 className="text-xl sm:text-2xl font-bold mb-4 flex items-center gap-2">
+								<span>Módulos del Ecosistema</span>
+							</h3>
+							<p className="text-sm sm:text-base text-slate-200 mb-4">
+								Un solo ecosistema para todos los actores del sector salud en Venezuela.
+							</p>
+							<div className="grid grid-cols-2 gap-3 text-sm sm:text-base">
+								<div className="flex items-center gap-2">
+									<div className="w-6 h-6 rounded-lg bg-emerald-500/20 flex items-center justify-center">
+										<Stethoscope className="w-4 h-4 text-emerald-300" />
+									</div>
+									<span>Módulo Médico</span>
+								</div>
+								<div className="flex items-center gap-2">
+									<div className="w-6 h-6 rounded-lg bg-cyan-500/20 flex items-center justify-center">
+										<Building2 className="w-4 h-4 text-cyan-300" />
+									</div>
+									<span>Clínicas</span>
+								</div>
+								<div className="flex items-center gap-2">
+									<div className="w-6 h-6 rounded-lg bg-teal-500/20 flex items-center justify-center">
+										<Users className="w-4 h-4 text-teal-300" />
+									</div>
+									<span>Portal del Paciente</span>
+								</div>
+								<div className="flex items-center gap-2">
+									<div className="w-6 h-6 rounded-lg bg-purple-500/20 flex items-center justify-center">
+										<Pill className="w-4 h-4 text-purple-200" />
+									</div>
+									<span>Farmacias</span>
+								</div>
+								<div className="flex items-center gap-2">
+									<div className="w-6 h-6 rounded-lg bg-orange-500/20 flex items-center justify-center">
+										<FlaskConical className="w-4 h-4 text-orange-200" />
+									</div>
+									<span>Laboratorios</span>
+								</div>
+								<div className="flex items-center gap-2">
+									<div className="w-6 h-6 rounded-lg bg-blue-500/20 flex items-center justify-center">
+										<BarChart3 className="w-4 h-4 text-blue-200" />
+									</div>
+									<span>Reportes &amp; Gestión</span>
+								</div>
+							</div>
+						</div>
+
+						{/* Automatización y Flujos */}
+						<div className="lg:col-span-1 bg-white/5 border border-white/10 rounded-3xl p-6 sm:p-8 shadow-xl backdrop-blur-md">
+							<h3 className="text-xl sm:text-2xl font-bold mb-4 flex items-center gap-2">
+								<Zap className="w-5 h-5 text-emerald-300" />
+								<span>Automatización Clínica</span>
+							</h3>
+							<p className="text-sm sm:text-base text-slate-200 mb-4">
+								Automatizamos los flujos clave para que el equipo de salud se concentre en lo más importante: el paciente.
+							</p>
+							<ul className="space-y-3 text-sm sm:text-base">
+								<li className="flex items-start gap-2">
+									<div className="mt-1 w-5 h-5 rounded-full bg-emerald-500/30 flex items-center justify-center">
+										<CheckCircle2 className="w-3 h-3 text-white" />
+									</div>
+									<span>Notificaciones automáticas de citas, pagos pendientes y resultados listos.</span>
+								</li>
+								<li className="flex items-start gap-2">
+									<div className="mt-1 w-5 h-5 rounded-full bg-cyan-500/30 flex items-center justify-center">
+										<CheckCircle2 className="w-3 h-3 text-white" />
+									</div>
+									<span>Recetas electrónicas conectadas con farmacias adheridas.</span>
+								</li>
+								<li className="flex items-start gap-2">
+									<div className="mt-1 w-5 h-5 rounded-full bg-blue-500/30 flex items-center justify-center">
+										<CheckCircle2 className="w-3 h-3 text-white" />
+									</div>
+									<span>Resultados de laboratorio enviados automáticamente a médicos y pacientes.</span>
+								</li>
+							</ul>
+						</div>
+					</div>
+				</div>
+			</section>
+
+			{/* Testimonios & Confianza */}
+			<section className="py-16 sm:py-20 md:py-24 bg-white relative overflow-hidden">
+				<div className="absolute inset-0 bg-[linear-gradient(to_right,#80808008_1px,transparent_1px),linear-gradient(to_bottom,#80808008_1px,transparent_1px)] bg-[size:24px_24px]" />
+				<div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+					<div className="grid grid-cols-1 lg:grid-cols-2 gap-12 sm:gap-16 items-start">
+						{/* Testimonios */}
+						<div>
+							<div className="inline-flex items-center gap-2 px-4 py-2 bg-teal-50 rounded-full mb-4">
+								<Star className="w-4 h-4 text-yellow-500 fill-yellow-500" />
+								<span className="text-sm font-semibold text-teal-700">Historias Reales</span>
+							</div>
+							<h2 className="text-3xl sm:text-4xl font-bold text-slate-900 mb-4">
+								Lo que dicen los profesionales y pacientes
+							</h2>
+							<p className="text-sm sm:text-base text-slate-600 mb-6">
+								Comentarios representativos de cómo Syncwave Salud está cambiando la forma de trabajar y de recibir atención médica.
+							</p>
+							<div className="space-y-4">
+								<div className="bg-white rounded-2xl p-5 shadow-md border border-slate-100">
+									<p className="text-sm text-slate-700 mb-3">
+										“Desde que comenzamos a usar Syncwave Salud, redujimos significativamente el ausentismo y tenemos toda la información
+										de nuestros pacientes organizada y accesible en segundos.”
+									</p>
+									<p className="text-xs font-semibold text-slate-900">Dra. Ana Rodríguez — Médico Internista</p>
+								</div>
+								<div className="bg-white rounded-2xl p-5 shadow-md border border-slate-100">
+									<p className="text-sm text-slate-700 mb-3">
+										“Como paciente, por primera vez tengo mis recetas, resultados y citas en un solo lugar. Me siento más en control de mi salud.”
+									</p>
+									<p className="text-xs font-semibold text-slate-900">Luis Martínez — Paciente</p>
+								</div>
+								<div className="bg-white rounded-2xl p-5 shadow-md border border-slate-100">
+									<p className="text-sm text-slate-700 mb-3">
+										“Para la clínica, Syncwave nos permitió estandarizar procesos, reducir papel y mejorar la comunicación entre médicos,
+										laboratorio y farmacia.”
+									</p>
+									<p className="text-xs font-semibold text-slate-900">Dirección Médica — Centro Clínico Privado</p>
+								</div>
+							</div>
+						</div>
+
+						{/* Por qué confiar / Seguridad */}
+						<div className="bg-slate-900 text-white rounded-3xl p-6 sm:p-8 shadow-2xl border border-slate-800">
+							<div className="inline-flex items-center gap-2 px-4 py-2 bg-white/10 rounded-full mb-4">
+								<Shield className="w-4 h-4 text-emerald-300" />
+								<span className="text-xs sm:text-sm font-semibold text-emerald-100">Seguridad y Confianza</span>
+							</div>
+							<h3 className="text-2xl sm:text-3xl font-bold mb-4">
+								¿Por qué confiar en Syncwave Salud?
+							</h3>
+							<p className="text-sm sm:text-base text-slate-200 mb-6">
+								Diseñamos la plataforma siguiendo las mejores prácticas internacionales de protección de datos de salud, 
+								inspiradas en estándares como GDPR y marcos de privacidad médica.
+							</p>
+							<ul className="space-y-3 text-sm sm:text-base">
+								<li className="flex items-start gap-2">
+									<div className="mt-1 w-5 h-5 rounded-full bg-emerald-500/30 flex items-center justify-center">
+										<CheckCircle2 className="w-3 h-3 text-white" />
+									</div>
+									<span>Cifrado de datos en tránsito y en reposo mediante tecnologías modernas.</span>
+								</li>
+								<li className="flex items-start gap-2">
+									<div className="mt-1 w-5 h-5 rounded-full bg-cyan-500/30 flex items-center justify-center">
+										<CheckCircle2 className="w-3 h-3 text-white" />
+									</div>
+									<span>Gestión de acceso basada en roles (médico, clínica, farmacia, laboratorio, paciente).</span>
+								</li>
+								<li className="flex items-start gap-2">
+									<div className="mt-1 w-5 h-5 rounded-full bg-blue-500/30 flex items-center justify-center">
+										<CheckCircle2 className="w-3 h-3 text-white" />
+									</div>
+									<span>Registro de auditoría para trazabilidad de accesos y acciones sensibles.</span>
+								</li>
+								<li className="flex items-start gap-2">
+									<div className="mt-1 w-5 h-5 rounded-full bg-emerald-500/30 flex items-center justify-center">
+										<CheckCircle2 className="w-3 h-3 text-white" />
+									</div>
+									<span>Infraestructura en la nube confiable y escalable, con backups y monitoreo continuo.</span>
+								</li>
+								<li className="flex items-start gap-2">
+									<div className="mt-1 w-5 h-5 rounded-full bg-cyan-500/30 flex items-center justify-center">
+										<CheckCircle2 className="w-3 h-3 text-white" />
+									</div>
+									<span>Políticas claras de privacidad y control total del paciente sobre su información.</span>
+								</li>
+							</ul>
+						</div>
+					</div>
+				</div>
+			</section>
+
 			{/* Stats Section */}
 			<section className="py-16 sm:py-20 md:py-24 bg-gradient-to-br from-slate-900 via-blue-900 to-teal-900 text-white relative overflow-hidden">
 				<div className="absolute inset-0">
@@ -566,6 +769,103 @@ export default function HomePage() {
 								<div className="text-sm sm:text-base text-slate-300">{stat.label}</div>
 							</motion.div>
 						))}
+					</div>
+				</div>
+			</section>
+
+			{/* FAQ & Planes Simples */}
+			<section className="py-16 sm:py-20 md:py-24 bg-white relative overflow-hidden">
+				<div className="absolute inset-0 bg-[linear-gradient(to_right,#80808008_1px,transparent_1px),linear-gradient(to_bottom,#80808008_1px,transparent_1px)] bg-[size:24px_24px]" />
+				<div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+					<div className="grid grid-cols-1 lg:grid-cols-3 gap-10 sm:gap-12 items-start">
+						{/* Planes / CTA simple */}
+						<div className="lg:col-span-1 bg-white rounded-3xl p-6 sm:p-8 shadow-xl border border-slate-100">
+							<div className="inline-flex items-center gap-2 px-4 py-2 bg-teal-50 rounded-full mb-4">
+								<Sparkles className="w-4 h-4 text-teal-600" />
+								<span className="text-xs sm:text-sm font-semibold text-teal-700">Planes Simples</span>
+							</div>
+							<h3 className="text-2xl font-bold text-slate-900 mb-3">
+								Un modelo para cada tipo de usuario
+							</h3>
+							<p className="text-sm sm:text-base text-slate-600 mb-5">
+								Syncwave Salud nace con una visión clara: que pacientes y profesionales puedan empezar rápido, 
+								y que clínicas, farmacias y laboratorios tengan una solución escalable.
+							</p>
+							<ul className="space-y-3 text-sm sm:text-base">
+								<li>
+									<strong className="text-slate-900">Pacientes:</strong>{' '}
+									<span className="text-emerald-600 font-semibold">Acceso gratuito</span> al portal del paciente.
+								</li>
+								<li>
+									<strong className="text-slate-900">Médico Individual / Consultorio:</strong>{' '}
+									modelo de suscripción simple, pensado para consultorios privados.
+								</li>
+								<li>
+									<strong className="text-slate-900">Clínicas, Farmacias y Laboratorios:</strong>{' '}
+									planes personalizados según volumen y necesidades de integración.
+								</li>
+							</ul>
+							<div className="mt-6 flex flex-col gap-3">
+								<Link
+									href="/register"
+									className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-2xl bg-gradient-to-r from-teal-600 to-cyan-600 text-white font-semibold shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-300 text-sm sm:text-base"
+								>
+									Crear cuenta gratuita
+									<ArrowRight className="w-4 h-4" />
+								</Link>
+								<p className="text-xs text-slate-500">
+									Para organizaciones (clínicas, farmacias, laboratorios), contáctanos para recibir una propuesta adaptada.
+								</p>
+							</div>
+						</div>
+
+						{/* FAQ */}
+						<div className="lg:col-span-2">
+							<div className="mb-6 sm:mb-8">
+								<h3 className="text-2xl sm:text-3xl font-bold text-slate-900 mb-2">Preguntas Frecuentes</h3>
+								<p className="text-sm sm:text-base text-slate-600">
+									Resolvemos las dudas más comunes antes de que des el siguiente paso.
+								</p>
+							</div>
+							<div className="space-y-4">
+								<div className="bg-white rounded-2xl p-4 sm:p-5 shadow-md border border-slate-100">
+									<h4 className="text-sm sm:text-base font-semibold text-slate-900 mb-1">
+										¿Syncwave Salud es gratis para pacientes?
+									</h4>
+									<p className="text-xs sm:text-sm text-slate-600">
+										Sí. El portal del paciente está pensado para ser accesible de forma gratuita, permitiendo que cualquier persona
+										gestione su salud digital sin barreras de entrada.
+									</p>
+								</div>
+								<div className="bg-white rounded-2xl p-4 sm:p-5 shadow-md border border-slate-100">
+									<h4 className="text-sm sm:text-base font-semibold text-slate-900 mb-1">
+										¿Necesito instalar algo en mi computadora?
+									</h4>
+									<p className="text-xs sm:text-sm text-slate-600">
+										No. Syncwave Salud es una plataforma 100% web. Solo necesitas un navegador moderno y conexión a internet, 
+										desde computadora, tablet o teléfono.
+									</p>
+								</div>
+								<div className="bg-white rounded-2xl p-4 sm:p-5 shadow-md border border-slate-100">
+									<h4 className="text-sm sm:text-base font-semibold text-slate-900 mb-1">
+										¿Cómo se protegen mis datos y mi historial médico?
+									</h4>
+									<p className="text-xs sm:text-sm text-slate-600">
+										Utilizamos cifrado, controles de acceso por rol y auditoría de acciones. Solo los profesionales autorizados y tú 
+										pueden acceder a tu información, siguiendo criterios similares a marcos como GDPR.
+									</p>
+								</div>
+								<div className="bg-white rounded-2xl p-4 sm:p-5 shadow-md border border-slate-100">
+									<h4 className="text-sm sm:text-base font-semibold text-slate-900 mb-1">
+										Soy clínica / farmacia / laboratorio, ¿cómo empiezo?
+									</h4>
+									<p className="text-xs sm:text-sm text-slate-600">
+										Puedes iniciar el registro directamente desde la plataforma y luego coordinaremos contigo para adaptar la configuración
+										y la integración según tus procesos internos.
+									</p>
+								</div>
+							</div>
+						</div>
 					</div>
 				</div>
 			</section>
