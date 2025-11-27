@@ -1,5 +1,15 @@
 /**
  * Cron job que verifica citas y consultas con pagos pendientes
+ * 
+ * NOTA: Este endpoint está deshabilitado para el plan gratuito de Vercel (Hobby)
+ * que solo permite 2 cron jobs por cuenta. En su lugar, se usa polling desde el cliente
+ * en el componente PendingPaymentAlerts que se ejecuta cada 5 minutos cuando el usuario
+ * está activo en el dashboard.
+ * 
+ * Para habilitar este cron job en el futuro (plan Pro):
+ * 1. Agregar a vercel.json: { "path": "/api/cron/check-pending-payments", "schedule": "0 * * * *" }
+ * 2. El endpoint ya está listo para funcionar
+ * 
  * Se ejecuta cada hora para notificar a los médicos sobre citas/consultas que requieren validación
  */
 

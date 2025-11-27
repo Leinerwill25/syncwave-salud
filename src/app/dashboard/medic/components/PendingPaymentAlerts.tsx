@@ -34,9 +34,24 @@ export default function PendingPaymentAlerts() {
 
 	useEffect(() => {
 		fetchAlerts();
-		// Refrescar cada 5 minutos
+		
+		// Refrescar automáticamente cada 5 minutos cuando el usuario está activo
+		// Esto reemplaza el cron job y funciona en el plan gratuito de Vercel
 		const interval = setInterval(fetchAlerts, 5 * 60 * 1000);
-		return () => clearInterval(interval);
+		
+		// También refrescar cuando la ventana vuelve a estar visible (usuario regresa a la pestaña)
+		const handleVisibilityChange = () => {
+			if (!document.hidden) {
+				fetchAlerts();
+			}
+		};
+		
+		document.addEventListener('visibilitychange', handleVisibilityChange);
+		
+		return () => {
+			clearInterval(interval);
+			document.removeEventListener('visibilitychange', handleVisibilityChange);
+		};
 	}, []);
 
 	const fetchAlerts = async () => {
