@@ -191,7 +191,8 @@ export async function GET(request: Request) {
 						specialties,
 						location,
 						photos,
-						profile_photo
+						profile_photo,
+						has_cashea
 					)
 				`
 				)
@@ -229,7 +230,8 @@ export async function GET(request: Request) {
 							private_specialty,
 							specialty,
 							services,
-							photo_url
+							photo_url,
+							has_cashea
 						)
 					`
 					)
@@ -323,6 +325,7 @@ export async function GET(request: Request) {
 						location,
 						photos,
 						profile_photo: consultorio.clinic_profile?.profile_photo,
+						has_cashea: consultorio.clinic_profile?.has_cashea ?? false,
 						doctor: doctor
 							? {
 									id: doctor.id,

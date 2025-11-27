@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Search, Building2, ShoppingBag, FlaskConical, Stethoscope, MapPin, Phone, Clock } from 'lucide-react';
+import { Search, Building2, ShoppingBag, FlaskConical, Stethoscope, MapPin, Phone, Clock, CheckCircle2, X } from 'lucide-react';
+import Image from 'next/image';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { PRIVATE_SPECIALTIES } from '@/lib/constants/specialties';
@@ -16,6 +17,7 @@ type ExploreResult = {
 	specialties?: any[];
 	services?: any[];
 	specialty?: string;
+	has_cashea?: boolean;
 	organization?: {
 		id: string;
 		name: string;
@@ -267,6 +269,26 @@ export default function ExplorePage() {
 													<span className="truncate">{result.phone}</span>
 												</div>
 											)}
+											{/* Cashea */}
+											<div className="flex items-center gap-2 sm:gap-3 text-xs sm:text-sm text-slate-700 pt-1 sm:pt-2 border-t border-purple-100">
+												<div className="flex items-center gap-2">
+													<Image 
+														src="/descarga.png" 
+														alt="Cashea" 
+														width={24} 
+														height={24} 
+														className="flex-shrink-0"
+													/>
+													{result.has_cashea ? (
+														<CheckCircle2 className="w-4 h-4 sm:w-5 sm:h-5 text-green-600 flex-shrink-0" />
+													) : (
+														<X className="w-4 h-4 sm:w-5 sm:h-5 text-red-600 flex-shrink-0" />
+													)}
+												</div>
+												<span className="text-slate-600">
+													{result.has_cashea ? 'Cuenta con Cashea' : 'No cuenta con Cashea'}
+												</span>
+											</div>
 										</div>
 
 										{/* Servicios disponibles (si existen) */}

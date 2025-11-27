@@ -342,6 +342,7 @@ export async function PUT(req: Request) {
 			sanitary_license: body.sanitary_license || null,
 			liability_insurance_number: body.liability_insurance_number || null,
 			offices_count: body.offices_count || 0,
+			has_cashea: body.has_cashea !== undefined ? Boolean(body.has_cashea) : false,
 			updated_at: new Date().toISOString(),
 		};
 

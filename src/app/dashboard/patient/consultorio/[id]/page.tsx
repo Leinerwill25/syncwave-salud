@@ -6,6 +6,7 @@ import { Stethoscope, MapPin, Phone, Mail, Globe, Calendar, Clock, User, ArrowLe
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
 import LeafletMapViewer from '@/components/clinic/LeafletMapViewer';
+import Image from 'next/image';
 
 type ConsultorioDetail = {
 	id: string;
@@ -25,6 +26,7 @@ type ConsultorioDetail = {
 	photos?: string[] | null;
 	profile_photo?: string | null;
 	location?: any;
+	has_cashea?: boolean;
 	doctors: Array<{
 		id: string;
 		name: string | null;
@@ -330,6 +332,33 @@ export default function ConsultorioDetailPage() {
 										</div>
 									</div>
 								)}
+								{/* Cashea */}
+								<div className="flex gap-2 sm:gap-3 md:gap-4 pb-3 sm:pb-4 border-b border-gray-100 last:border-0 last:pb-0">
+									<div className="flex-shrink-0">
+										<div className="w-8 h-8 sm:w-9 sm:h-9 md:w-10 md:h-10 rounded-lg bg-gray-100 flex items-center justify-center">
+											<Image 
+												src="/descarga.png" 
+												alt="Cashea" 
+												width={24} 
+												height={24} 
+												className="flex-shrink-0"
+											/>
+										</div>
+									</div>
+									<div className="flex-1 min-w-0 flex items-center gap-2">
+										{consultorio.has_cashea ? (
+											<CheckCircle2 className="w-4 h-4 sm:w-5 sm:h-5 text-green-600 flex-shrink-0" />
+										) : (
+											<X className="w-4 h-4 sm:w-5 sm:h-5 text-red-600 flex-shrink-0" />
+										)}
+										<div>
+											<p className="font-semibold text-gray-900 mb-0.5 sm:mb-1 text-xs sm:text-sm md:text-base">Cashea</p>
+											<p className="text-gray-600 text-xs sm:text-sm md:text-base">
+												{consultorio.has_cashea ? 'Cuenta con Cashea' : 'No cuenta con Cashea'}
+											</p>
+										</div>
+									</div>
+								</div>
 								{(consultorio.social_facebook || consultorio.social_instagram) && (
 									<div className="flex gap-2 sm:gap-3 md:gap-4">
 										<div className="flex-shrink-0">

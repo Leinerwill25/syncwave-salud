@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Stethoscope, MapPin, Phone, Search, Calendar, Star, CheckCircle2, Shield } from 'lucide-react';
+import { Stethoscope, MapPin, Phone, Search, Calendar, Star, CheckCircle2, Shield, X } from 'lucide-react';
+import Image from 'next/image';
 import Link from 'next/link';
 import { PRIVATE_SPECIALTIES } from '@/lib/constants/specialties';
 
@@ -13,6 +14,7 @@ type Consultorio = {
 	email?: string | null;
 	specialty?: string | null;
 	photo?: string | null;
+	has_cashea?: boolean;
 	organization: {
 		id: string;
 		name: string;
@@ -193,6 +195,26 @@ export default function ConsultoriosPage() {
 														<span className="truncate">{consultorio.phone}</span>
 													</div>
 												)}
+												{/* Cashea */}
+												<div className="flex items-center gap-2 sm:gap-2.5 text-xs sm:text-sm text-gray-700 pt-2 sm:pt-2.5 border-t border-gray-200">
+													<div className="flex items-center gap-2">
+														<Image 
+															src="/descarga.png" 
+															alt="Cashea" 
+															width={20} 
+															height={20} 
+															className="flex-shrink-0"
+														/>
+														{consultorio.has_cashea ? (
+															<CheckCircle2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-green-600 flex-shrink-0" />
+														) : (
+															<X className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-red-600 flex-shrink-0" />
+														)}
+													</div>
+													<span className="text-gray-600">
+														{consultorio.has_cashea ? 'Cuenta con Cashea' : 'No cuenta con Cashea'}
+													</span>
+												</div>
 											</div>
 
 											{/* Footer con CTA */}

@@ -4,7 +4,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Save, Building2, AlertCircle, MapPin, Image, X, Camera, CheckCircle, Upload } from 'lucide-react';
+import { Save, Building2, AlertCircle, MapPin, Image, X, Camera, CheckCircle, Upload, CreditCard } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import type { MedicConfig } from '@/types/medic-config';
 import LeafletMapPicker from '@/components/clinic/LeafletMapPicker';
@@ -70,6 +70,7 @@ export default function ConsultorioConfigPage() {
 		location: null as { lat: number; lng: number; address: string } | null,
 		photos: [] as string[],
 		profile_photo: null as string | null,
+		has_cashea: false,
 	});
 	const [profilePhotoPreview, setProfilePhotoPreview] = useState<string | null>(null);
 
@@ -178,6 +179,7 @@ export default function ConsultorioConfigPage() {
 						location,
 						photos,
 						profile_photo: data.profile.profile_photo || null,
+						has_cashea: data.profile.has_cashea ?? false,
 					});
 
 					// Convertir profile_photo a URL pública si es un path de Supabase Storage
@@ -229,6 +231,7 @@ export default function ConsultorioConfigPage() {
 				opening_hours: formData.opening_hours.length > 0 ? JSON.stringify(formData.opening_hours) : null,
 				specialties: formData.specialties.length > 0 ? JSON.stringify(formData.specialties) : null,
 				profile_photo: formData.profile_photo || null,
+				has_cashea: formData.has_cashea || false,
 			};
 
 			const res = await fetch('/api/clinic/profile', {
@@ -243,6 +246,7 @@ export default function ConsultorioConfigPage() {
 				console.error('Error del servidor:', errorData);
 				throw new Error(errorData.error || errorData.details || 'Error al guardar configuración');
 			}
+
 
 			const savedData = await res.json();
 			console.log('Datos guardados exitosamente:', savedData);
@@ -557,6 +561,23 @@ export default function ConsultorioConfigPage() {
 								placeholder="Número de seguro de responsabilidad"
 								className="w-full px-4 py-3 border-2 border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500 bg-white text-slate-900 shadow-sm transition-all"
 							/>
+						</div>
+
+						<div className="md:col-span-2">
+							<div className="flex items-center gap-3 p-4 border-2 border-slate-200 rounded-xl bg-white hover:border-teal-300 transition-all">
+								<input
+									type="checkbox"
+									id="has_cashea"
+									checked={formData.has_cashea}
+									onChange={(e) => setFormData({ ...formData, has_cashea: e.target.checked })}
+									className="w-5 h-5 text-teal-600 border-2 border-slate-300 rounded focus:ring-2 focus:ring-teal-500 focus:ring-offset-2 cursor-pointer"
+								/>
+								<label htmlFor="has_cashea" className="flex items-center gap-2 text-sm font-bold text-slate-900 cursor-pointer">
+									<CreditCard className="w-5 h-5 text-teal-600" />
+									<span>¿Su Establecimiento cuenta con Cashea?</span>
+								</label>
+							</div>
+							<p className="text-xs text-slate-500 mt-2 ml-8">Marque esta opción si su consultorio tiene un cajero automático o punto de pago Cashea disponible para los pacientes.</p>
 						</div>
 					</div>
 				</div>
