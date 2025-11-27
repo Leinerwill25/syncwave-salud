@@ -230,13 +230,25 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 			return NextResponse.json({ error: 'Error al agregar el usuario al rol' }, { status: 500 });
 		}
 
+		// Obtener nombre del usuario desde la tabla User
+		const { data: userData } = await supabase
+			.from('User')
+			.select('name')
+			.eq('id', user.userId)
+			.maybeSingle();
+
+		const userName = userData?.name || 'Usuario';
+		const nameParts = userName.split(' ');
+		const firstName = nameParts[0] || 'Usuario';
+		const lastName = nameParts.slice(1).join(' ') || '';
+
 		// Registrar en auditoría
 		await supabase.from('consultorio_role_audit_log').insert({
 			organization_id: user.organizationId,
 			role_id: roleId,
 			role_user_id: newRoleUser.id,
-			user_first_name: user.name?.split(' ')[0] || 'Usuario',
-			user_last_name: user.name?.split(' ').slice(1).join(' ') || '',
+			user_first_name: firstName,
+			user_last_name: lastName,
 			user_identifier: '',
 			action_type: 'create',
 			module: 'roles',
