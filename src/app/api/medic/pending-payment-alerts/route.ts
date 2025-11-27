@@ -119,14 +119,14 @@ export async function GET() {
 			}
 		});
 
-		// Procesar consultas
-		(consultations || []).forEach((cons: any) => {
+		// Procesar consultas (usar for...of para await)
+		for (const cons of consultations || []) {
 			// Buscar facturación asociada
 			let facturacion = facturacionesPendientes.find((f: any) => f.appointment_id === cons.appointment_id);
 
 			// Si no hay facturación por appointment, buscar por paciente
 			if (!facturacion) {
-				const query = supabase
+				let query = supabase
 					.from('facturacion')
 					.select('id, estado_pago, total, currency, fecha_emision')
 					.eq('doctor_id', user.userId)
@@ -135,12 +135,12 @@ export async function GET() {
 					.limit(1);
 
 				if (cons.patient_id) {
-					query.eq('patient_id', cons.patient_id);
+					query = query.eq('patient_id', cons.patient_id);
 				} else if (cons.unregistered_patient_id) {
-					query.eq('unregistered_patient_id', cons.unregistered_patient_id);
+					query = query.eq('unregistered_patient_id', cons.unregistered_patient_id);
 				}
 
-				const { data: facturacionData } = query.maybeSingle();
+				const { data: facturacionData } = await query.maybeSingle();
 				if (facturacionData) {
 					facturacion = facturacionData;
 				}
@@ -168,7 +168,7 @@ export async function GET() {
 					url: `/dashboard/medic/consultas/${cons.id}`,
 				});
 			}
-		});
+		}
 
 		// Ordenar por fecha (más recientes primero)
 		alerts.sort((a, b) => {
