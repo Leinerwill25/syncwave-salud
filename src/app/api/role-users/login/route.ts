@@ -58,9 +58,17 @@ export async function POST(request: NextRequest) {
 			return NextResponse.json({ error: 'Debe proporcionar cédula o email' }, { status: 400 });
 		}
 
+		// Validar que userEmail no sea null
+		if (!userEmail) {
+			return NextResponse.json({ error: 'No se pudo determinar el email del usuario' }, { status: 400 });
+		}
+
+		// TypeScript narrowing: después de la validación, userEmail es definitivamente string
+		const emailForAuth: string = userEmail;
+
 		// Intentar login con Supabase Auth usando email y contraseña
 		const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
-			email: userEmail,
+			email: emailForAuth,
 			password: password,
 		});
 
