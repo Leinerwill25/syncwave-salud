@@ -1,0 +1,13 @@
+{
+	"crons": [
+		{
+			"path": "/api/cron/update-currency-rate",
+			"schedule": "1 18 * * *"
+		},
+		{
+			"path": "/api/cron/check-pending-payments",
+			"schedule": "0 * * * *"
+		}
+	]
+}
+

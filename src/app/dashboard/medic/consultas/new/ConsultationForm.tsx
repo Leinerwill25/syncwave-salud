@@ -2,8 +2,10 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { FileText, Loader2, Stethoscope, Calendar, UserCheck, UserPlus } from 'lucide-react';
+import { FileText, Loader2, Stethoscope, Calendar, UserCheck, UserPlus, CheckCircle } from 'lucide-react';
 import { createSupabaseBrowserClient } from '@/app/adapters/client'; // lo dejé por si lo necesitas en otras partes
+import CurrencyDisplay from '@/components/CurrencyDisplay';
+import axios from 'axios';
 
 /* ------------------------- UI primitives (estilizados) ------------------------- */
 
@@ -208,6 +210,21 @@ export default function ConsultationForm() {
 	const [unregisteredCurrentMedication, setUnregisteredCurrentMedication] = useState('');
 	const [unregisteredFamilyHistory, setUnregisteredFamilyHistory] = useState('');
 
+	// Servicios del consultorio
+	type ClinicService = {
+		id: string;
+		name: string;
+		description?: string | null;
+		price: number;
+		currency: string;
+		is_active?: boolean;
+	};
+
+	const [services, setServices] = useState<ClinicService[]>([]);
+	const [selectedServices, setSelectedServices] = useState<string[]>([]); // IDs de servicios seleccionados
+	const [loadingServices, setLoadingServices] = useState(false);
+	const IVA_VE_GENERAL = 0.16;
+
 	// Inicializar fecha con la fecha actual
 	useEffect(() => {
 		const now = new Date();
@@ -276,6 +293,28 @@ export default function ConsultationForm() {
 		}
 		fetchDoctorAndOrg();
 	}, []);
+
+	// Cargar servicios del consultorio
+	useEffect(() => {
+		if (!doctorId) return;
+
+		async function loadServices() {
+			try {
+				setLoadingServices(true);
+				const res = await axios.get('/api/medic/services?active=true', { withCredentials: true });
+				if (res.data?.success && Array.isArray(res.data.services)) {
+					setServices(res.data.services);
+				}
+			} catch (err) {
+				console.error('Error cargando servicios:', err);
+				setServices([]);
+			} finally {
+				setLoadingServices(false);
+			}
+		}
+
+		loadServices();
+	}, [doctorId]);
 
 	const handlePatientSelect = (patient: Patient) => {
 		setSelectedPatient(patient);
@@ -440,13 +479,59 @@ export default function ConsultationForm() {
 				body: JSON.stringify(payload),
 			});
 			const data = await res.json().catch(() => ({}));
-			setLoading(false);
 			if (!res.ok) {
+				setLoading(false);
 				console.error('Error creando consulta', res.status, data);
 				return setError(data.error || 'Error al crear consulta.');
 			}
+
+			const consultationId = data?.data?.id || data?.id;
+			if (!consultationId) {
+				setLoading(false);
+				return setError('Error: no se obtuvo el ID de la consulta creada.');
+			}
+
+			// Crear facturación si hay servicios seleccionados
+			if (selectedServices.length > 0) {
+				try {
+					const selectedServicesData = services.filter((s) => selectedServices.includes(s.id));
+					const subtotal = selectedServicesData.reduce((sum, s) => sum + Number(s.price), 0);
+					const impuestos = subtotal * IVA_VE_GENERAL;
+					const total = subtotal + impuestos;
+					const currency = selectedServicesData[0]?.currency || 'USD';
+
+					const billingPayload: any = {
+						consultation_id: consultationId,
+						patient_id: patientType === 'registered' ? patientId : null,
+						unregistered_patient_id: patientType === 'unregistered' ? finalUnregisteredPatientId : null,
+						doctor_id: doctorId,
+						organization_id: organizationId,
+						subtotal: subtotal,
+						impuestos: impuestos,
+						total: total,
+						currency: currency,
+						estado_pago: 'pendiente',
+					};
+
+					const billingRes = await fetch('/api/facturacion', {
+						method: 'POST',
+						headers: { 'Content-Type': 'application/json' },
+						body: JSON.stringify(billingPayload),
+					});
+
+					if (!billingRes.ok) {
+						console.warn('Error creando facturación:', await billingRes.json().catch(() => ({})));
+						// No bloqueamos la creación de la consulta si falla la facturación
+					}
+				} catch (billingErr) {
+					console.error('Error al crear facturación:', billingErr);
+					// No bloqueamos la creación de la consulta si falla la facturación
+				}
+			}
+
+			setLoading(false);
 			// redirigir a la consulta creada
-			router.push(`/dashboard/medic/consultas/${data?.data?.id || data?.id}`);
+			router.push(`/dashboard/medic/consultas/${consultationId}`);
 		} catch (err: any) {
 			console.error(err);
 			setError(err?.message ?? 'Error al crear consulta.');
@@ -921,6 +1006,121 @@ export default function ConsultationForm() {
 				)}
 
 				{/* Otras especialidades pueden agregarse aquí siguiendo el mismo patrón */}
+			</Card>
+
+			{/* SERVICIOS DEL CONSULTORIO */}
+			<Card>
+				<div className="space-y-4">
+					<div>
+						<Label>Servicios del Consultorio</Label>
+						<p className="text-xs text-slate-600 mt-1">Selecciona los servicios para esta consulta (opcional)</p>
+					</div>
+
+					{loadingServices ? (
+						<div className="flex items-center justify-center py-8">
+							<Loader2 className="w-5 h-5 animate-spin text-slate-400" />
+							<span className="text-xs text-slate-500 ml-2">Cargando servicios...</span>
+						</div>
+					) : services.length === 0 ? (
+						<div className="text-center py-6 text-xs text-slate-500 bg-slate-50 rounded-lg border border-slate-200">
+							<p>No hay servicios disponibles.</p>
+							<p className="mt-1">Configura los servicios en Configuración → Perfil Profesional</p>
+						</div>
+					) : (
+						<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+							{services.map((service) => {
+								const isSelected = selectedServices.includes(service.id);
+								return (
+									<button
+										key={service.id}
+										type="button"
+										onClick={() => {
+											setSelectedServices((prev) =>
+												isSelected ? prev.filter((id) => id !== service.id) : [...prev, service.id]
+											);
+										}}
+										className={`w-full p-4 rounded-lg border-2 text-left transition-all ${
+											isSelected
+												? 'border-teal-500 bg-teal-50 shadow-sm'
+												: 'border-slate-200 bg-white hover:border-slate-300 hover:shadow-sm'
+										}`}>
+										<div className="flex items-start justify-between gap-2">
+											<div className="flex-1 min-w-0">
+												<div className="flex items-center gap-2 mb-2">
+													{isSelected && <CheckCircle className="w-5 h-5 text-teal-600 shrink-0" />}
+													<h4 className={`text-sm font-semibold ${isSelected ? 'text-teal-900' : 'text-slate-900'}`}>
+														{service.name}
+													</h4>
+												</div>
+												{service.description && (
+													<p className="text-xs text-slate-600 mb-3 line-clamp-2">{service.description}</p>
+												)}
+												<div className="mt-2">
+													<CurrencyDisplay
+														amount={Number(service.price)}
+														currency={service.currency as 'USD' | 'EUR'}
+														showBoth={true}
+														primaryCurrency="USD"
+														size="sm"
+													/>
+												</div>
+											</div>
+										</div>
+									</button>
+								);
+							})}
+						</div>
+					)}
+
+					{/* Resumen de facturación */}
+					{selectedServices.length > 0 && (
+						<div className="p-4 border border-slate-200 rounded-lg bg-white">
+							<h4 className="text-sm font-semibold text-slate-900 mb-3">Resumen de Facturación</h4>
+							<div className="space-y-2">
+								<div className="flex justify-between text-xs text-slate-600">
+									<span>Servicios seleccionados:</span>
+									<strong>{selectedServices.length}</strong>
+								</div>
+								{(() => {
+									const selectedServicesData = services.filter((s) => selectedServices.includes(s.id));
+									const subtotal = selectedServicesData.reduce((sum, s) => sum + Number(s.price), 0);
+									const impuestos = subtotal * IVA_VE_GENERAL;
+									const total = subtotal + impuestos;
+									const currency = selectedServicesData[0]?.currency || 'USD';
+
+									return (
+										<>
+											<div className="flex justify-between text-sm text-slate-700 pt-2 border-t border-slate-200">
+												<span>Subtotal ({currency})</span>
+												<strong>{subtotal.toFixed(2)}</strong>
+											</div>
+											<div className="flex justify-between text-sm text-slate-700">
+												<span>Impuestos ({currency})</span>
+												<strong>{impuestos.toFixed(2)}</strong>
+											</div>
+											<div className="flex justify-between items-center pt-2 border-t border-slate-200">
+												<span className="font-semibold text-base">Total ({currency})</span>
+												<strong className="text-lg text-teal-700 font-bold">{total.toFixed(2)}</strong>
+											</div>
+											<div className="mt-3 pt-3 border-t border-slate-200">
+												<CurrencyDisplay
+													amount={total}
+													currency={currency as 'USD' | 'EUR'}
+													showBoth={true}
+													primaryCurrency="USD"
+													size="md"
+												/>
+											</div>
+											<p className="text-xs text-slate-500 mt-3 italic bg-blue-50 p-2 rounded border border-blue-100">
+												💡 Esta factura se creará automáticamente como pendiente de pago para el paciente
+											</p>
+										</>
+									);
+								})()}
+							</div>
+						</div>
+					)}
+				</div>
 			</Card>
 
 			{/* Actions */}

@@ -5,6 +5,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Users, CalendarDays, DollarSign, Calendar as CalendarIcon } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
+import CurrencyDisplay from '@/components/CurrencyDisplay';
 
 type KpiTitle = 'Pacientes Atendidos' | 'Citas Programadas' | 'Ingresos Generados';
 type PeriodType = 'day' | 'week' | 'month';
@@ -155,7 +156,19 @@ export default function KPISection() {
 
 								<div className="flex flex-col justify-center min-w-0 flex-1">
 									<h3 className="text-[10px] sm:text-xs font-semibold text-gray-500 uppercase tracking-wide truncate">{kpi.title}</h3>
-									<p className="text-2xl sm:text-3xl font-extrabold text-gray-900 mt-1 leading-none">{kpi.value}</p>
+									{kpi.title === 'Ingresos Generados' && typeof kpi.value === 'number' ? (
+										<div className="text-2xl sm:text-3xl font-extrabold text-gray-900 mt-1 leading-none">
+											<CurrencyDisplay
+												amount={kpi.value}
+												currency="USD"
+												showBoth={true}
+												primaryCurrency="USD"
+												size="lg"
+											/>
+										</div>
+									) : (
+										<p className="text-2xl sm:text-3xl font-extrabold text-gray-900 mt-1 leading-none">{kpi.value}</p>
+									)}
 									<p className={`text-xs sm:text-sm mt-2 font-semibold ${kpi.trend === 'up' ? 'text-emerald-600' : kpi.trend === 'down' ? 'text-red-600' : 'text-gray-500'}`}>{kpi.change}</p>
 								</div>
 							</CardContent>

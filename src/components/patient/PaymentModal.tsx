@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, CreditCard, CheckCircle, Loader2, Receipt, DollarSign, Calendar, User, Building2, Smartphone, Upload, FileImage, Clock } from 'lucide-react';
+import CurrencyDisplay from '@/components/CurrencyDisplay';
 
 type Factura = {
 	id: string;
@@ -329,22 +330,39 @@ export default function PaymentModal({ isOpen, onClose, factura, onPaymentSucces
 											<div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 pt-3 sm:pt-4 border-t border-blue-200">
 												<div>
 													<p className="text-[10px] sm:text-xs text-gray-600 mb-0.5 sm:mb-1">Subtotal</p>
-													<p className="text-base sm:text-lg font-semibold text-gray-900">
-														{formatCurrency(factura.subtotal, factura.currency)}
-													</p>
+													<div className="text-base sm:text-lg font-semibold text-gray-900">
+														<CurrencyDisplay
+															amount={factura.subtotal}
+															currency={factura.currency as 'USD' | 'EUR'}
+															showBoth={true}
+															primaryCurrency="USD"
+															size="md"
+														/>
+													</div>
 												</div>
 												<div>
 													<p className="text-[10px] sm:text-xs text-gray-600 mb-0.5 sm:mb-1">Impuestos</p>
-													<p className="text-base sm:text-lg font-semibold text-gray-900">
-														{formatCurrency(factura.impuestos, factura.currency)}
-													</p>
+													<div className="text-base sm:text-lg font-semibold text-gray-900">
+														<CurrencyDisplay
+															amount={factura.impuestos}
+															currency={factura.currency as 'USD' | 'EUR'}
+															showBoth={true}
+															primaryCurrency="USD"
+															size="md"
+														/>
+													</div>
 												</div>
 												<div>
 													<p className="text-[10px] sm:text-xs text-gray-600 mb-0.5 sm:mb-1">Total a Pagar</p>
-													<p className="text-xl sm:text-2xl font-bold text-teal-600 flex items-center gap-1">
-														<DollarSign className="w-4 h-4 sm:w-5 sm:h-5 flex-shrink-0" />
-														<span className="break-words">{formatCurrency(factura.total, factura.currency)}</span>
-													</p>
+													<div className="text-xl sm:text-2xl font-bold text-teal-600">
+														<CurrencyDisplay
+															amount={factura.total}
+															currency={factura.currency as 'USD' | 'EUR'}
+															showBoth={true}
+															primaryCurrency="USD"
+															size="lg"
+														/>
+													</div>
 												</div>
 											</div>
 										</div>

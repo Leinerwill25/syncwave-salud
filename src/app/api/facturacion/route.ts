@@ -17,6 +17,7 @@ export async function POST(req: NextRequest) {
 			appointment_id,
 			consultation_id, // opcional, para obtener datos si no hay appointment_id
 			patient_id,
+			unregistered_patient_id,
 			doctor_id,
 			organization_id,
 			subtotal,
@@ -34,10 +35,15 @@ export async function POST(req: NextRequest) {
 		} = body || {};
 
 		// Validaciones básicas
-		if (!patient_id) return NextResponse.json({ error: 'patient_id es obligatorio' }, { status: 400 });
+		if (!patient_id && !unregistered_patient_id) {
+			return NextResponse.json({ error: 'patient_id o unregistered_patient_id es obligatorio' }, { status: 400 });
+		}
 		if (subtotal === undefined || subtotal === null) return NextResponse.json({ error: 'subtotal es obligatorio' }, { status: 400 });
 		if (total === undefined || total === null) return NextResponse.json({ error: 'total es obligatorio' }, { status: 400 });
-		if (!metodo_pago) return NextResponse.json({ error: 'metodo_pago es obligatorio' }, { status: 400 });
+		// metodo_pago solo es obligatorio si estado_pago es 'pagado'
+		if (estado_pago === 'pagado' && !metodo_pago) {
+			return NextResponse.json({ error: 'metodo_pago es obligatorio cuando el estado de pago es "pagado"' }, { status: 400 });
+		}
 
 		let appointmentIdToUse: string | null = appointment_id || null;
 		let doctorIdToUse: string | null = doctor_id || null;
@@ -63,7 +69,7 @@ export async function POST(req: NextRequest) {
 		// Si no hay appointment_id pero hay consultation_id, intentar obtener o crear appointment
 		if (!appointmentIdToUse && consultation_id) {
 			// Obtener la consulta para ver si tiene appointment_id
-			const { data: consultation, error: consultationErr } = await supabase.from('consultation').select('appointment_id, patient_id, doctor_id, organization_id, started_at, created_at').eq('id', consultation_id).single();
+			const { data: consultation, error: consultationErr } = await supabase.from('consultation').select('appointment_id, patient_id, unregistered_patient_id, doctor_id, organization_id, started_at, created_at').eq('id', consultation_id).single();
 
 			if (consultationErr) {
 				console.error('Error buscando consultation:', consultationErr);
@@ -81,19 +87,20 @@ export async function POST(req: NextRequest) {
 					// Si no hay appointment_id, crear uno nuevo
 					const scheduledAt = consultation.started_at ? new Date(consultation.started_at) : consultation.created_at ? new Date(consultation.created_at) : new Date();
 
+					const appointmentPayload: any = {
+						patient_id: consultation.patient_id || null,
+						unregistered_patient_id: consultation.unregistered_patient_id || null,
+						doctor_id: consultation.doctor_id || doctorIdToUse,
+						organization_id: consultation.organization_id || organizationIdToUse,
+						scheduled_at: scheduledAt.toISOString(),
+						duration_minutes: 30,
+						status: 'COMPLETED',
+						reason: 'Consulta completada',
+					};
+
 					const { data: newAppointment, error: appointmentErr } = await supabase
 						.from('appointment')
-						.insert([
-							{
-								patient_id: consultation.patient_id,
-								doctor_id: consultation.doctor_id || doctorIdToUse,
-								organization_id: consultation.organization_id || organizationIdToUse,
-								scheduled_at: scheduledAt.toISOString(),
-								duration_minutes: 30,
-								status: 'COMPLETED',
-								reason: 'Consulta completada',
-							},
-						])
+						.insert([appointmentPayload])
 						.select('id')
 						.single();
 
@@ -134,7 +141,9 @@ export async function POST(req: NextRequest) {
 		// Preparar payload de inserción
 		const insertPayload: any = {
 			appointment_id: appointmentIdToUse,
-			patient_id,
+			consultation_id: consultation_id || null, // Agregar consultation_id si está disponible
+			patient_id: patient_id || null,
+			unregistered_patient_id: unregistered_patient_id || null,
 			doctor_id: doctorIdToUse,
 			organization_id: organizationIdToUse,
 			subtotal: Number(subtotal) || 0,
@@ -159,29 +168,34 @@ export async function POST(req: NextRequest) {
 			return NextResponse.json({ error: insertErr.message || 'Error al crear facturación' }, { status: 500 });
 		}
 
-		// Crear notificación y enviar email al paciente
+		// Crear notificación y enviar email al paciente (solo para pacientes registrados)
 		try {
-			// Obtener información del paciente
-			const { data: patientData } = await supabase
-				.from('Patient')
-				.select('firstName, lastName')
-				.eq('id', patient_id)
-				.maybeSingle();
-
-			const patientName = patientData ? `${patientData.firstName} ${patientData.lastName}` : undefined;
-
-			// Obtener userId del paciente
+			let patientName: string | undefined;
 			let patientUserId: string | null = null;
-			try {
-				const { data: patientUser } = await supabase
-					.from('User')
-					.select('id')
-					.eq('patientProfileId', patient_id)
+
+			if (patient_id) {
+				// Obtener información del paciente registrado
+				const { data: patientData } = await supabase
+					.from('Patient')
+					.select('firstName, lastName')
+					.eq('id', patient_id)
 					.maybeSingle();
-				patientUserId = patientUser?.id || null;
-			} catch {
-				// Ignorar error
+
+				patientName = patientData ? `${patientData.firstName} ${patientData.lastName}` : undefined;
+
+				// Obtener userId del paciente
+				try {
+					const { data: patientUser } = await supabase
+						.from('User')
+						.select('id')
+						.eq('patientProfileId', patient_id)
+						.maybeSingle();
+					patientUserId = patientUser?.id || null;
+				} catch {
+					// Ignorar error
+				}
 			}
+			// Para pacientes no registrados, no enviamos notificaciones por ahora
 
 			const invoiceUrl = `${process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_VERCEL_URL ? `https://${process.env.NEXT_PUBLIC_VERCEL_URL}` : 'http://localhost:3000'}/dashboard/patient/pagos`;
 			const dueDate = insertData.fecha_pago 

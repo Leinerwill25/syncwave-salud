@@ -4,6 +4,7 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { BarChart3, TrendingUp, DollarSign, FileText, AlertTriangle } from 'lucide-react';
+import CurrencyDisplay from '@/components/CurrencyDisplay';
 
 interface ReportData {
 	appointmentsByMonth: Array<{ month: string; count: number }>;
@@ -130,9 +131,15 @@ export default function ReportesPage() {
 						<h3 className="text-xs sm:text-sm font-medium text-slate-600">Ingresos</h3>
 						<DollarSign className="w-4 h-4 sm:w-5 sm:h-5 text-green-600" />
 					</div>
-					<p className="text-xl sm:text-2xl lg:text-3xl font-bold text-slate-900">
-						${(data?.totalIncome || 0).toLocaleString('es-ES', { minimumFractionDigits: 2 })}
-					</p>
+					<div className="text-xl sm:text-2xl lg:text-3xl font-bold text-slate-900">
+						<CurrencyDisplay
+							amount={data?.totalIncome || 0}
+							currency="USD"
+							showBoth={true}
+							primaryCurrency="USD"
+							size="lg"
+						/>
+					</div>
 				</motion.div>
 
 				<motion.div

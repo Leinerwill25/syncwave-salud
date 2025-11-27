@@ -76,6 +76,7 @@ const LINKS: LinkItem[] = [
 		submenu: [
 			{ href: '/dashboard/medic/configuracion', label: 'Perfil Profesional' },
 			{ href: '/dashboard/medic/configuracion/consultorio', label: 'Consultorio', showOnlyForOrgType: 'CONSULTORIO' },
+			{ href: '/dashboard/medic/configuracion/roles', label: 'Crear Rol', showOnlyForOrgType: 'CONSULTORIO' },
 		],
 	},
 	{

@@ -24,7 +24,7 @@ export async function GET(req: Request) {
 		const startIso = startOfDay.toISOString().replace('Z', '+00:00');
 		const endIso = endOfDay.toISOString().replace('Z', '+00:00');
 
-		// 🩺 3️⃣ Consultar citas entre ese rango
+		// 🩺 3️⃣ Consultar citas entre ese rango (incluyendo unregistered_patient_id)
 		const { data, error } = await supabase
 			.from('appointment')
 			.select(
@@ -35,10 +35,13 @@ export async function GET(req: Request) {
 				status,
 				reason,
 				location,
+				patient_id,
+				unregistered_patient_id,
 				patient:patient_id (
 					id,
 					firstName,
-					lastName
+					lastName,
+					identifier
 				)
 				`
 			)
@@ -55,7 +58,25 @@ export async function GET(req: Request) {
 			return NextResponse.json([], { status: 200 });
 		}
 
-		// 🧮 4️⃣ Formatear resultados
+		// 🧮 4️⃣ Formatear resultados y obtener datos de pacientes no registrados
+		// Obtener todos los IDs de pacientes no registrados de una vez
+		const unregisteredPatientIds = [...new Set(data.map((cita: any) => cita.unregistered_patient_id).filter(Boolean))];
+		
+		let unregisteredPatientsMap: Map<string, { first_name: string; last_name: string }> = new Map();
+		
+		if (unregisteredPatientIds.length > 0) {
+			const { data: unregisteredPatients } = await supabase
+				.from('unregisteredpatients')
+				.select('id, first_name, last_name')
+				.in('id', unregisteredPatientIds);
+
+			if (unregisteredPatients) {
+				unregisteredPatients.forEach((up: any) => {
+					unregisteredPatientsMap.set(up.id, { first_name: up.first_name, last_name: up.last_name });
+				});
+			}
+		}
+
 		const citas = data.map((cita: any) => {
 			const start = new Date(cita.scheduled_at);
 			const startTime = start.toLocaleTimeString('es-ES', {
@@ -74,9 +95,26 @@ export async function GET(req: Request) {
 				});
 			}
 
+			// Determinar el nombre del paciente
+			let patientName = 'Paciente no identificado';
+			let isUnregistered = false;
+
+			if (cita.unregistered_patient_id) {
+				// Es un paciente no registrado
+				const unregisteredPatient = unregisteredPatientsMap.get(cita.unregistered_patient_id);
+				if (unregisteredPatient) {
+					patientName = `${unregisteredPatient.first_name} ${unregisteredPatient.last_name}`;
+					isUnregistered = true;
+				}
+			} else if (cita.patient) {
+				// Es un paciente registrado
+				patientName = `${cita.patient.firstName} ${cita.patient.lastName}`;
+			}
+
 			return {
 				id: cita.id,
-				patient: cita.patient ? `${cita.patient.firstName} ${cita.patient.lastName}` : 'Paciente no identificado',
+				patient: patientName,
+				isUnregistered,
 				time: endTime ? `${startTime} - ${endTime}` : startTime,
 				status: cita.status ?? 'SCHEDULED',
 				reason: cita.reason ?? '',

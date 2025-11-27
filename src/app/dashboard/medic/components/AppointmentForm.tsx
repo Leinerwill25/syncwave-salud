@@ -1,15 +1,19 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import { motion, AnimatePresence } from 'framer-motion';
 import { createClient } from '@supabase/supabase-js';
+import { UserCheck, UserPlus, CheckCircle, Loader2 } from 'lucide-react';
+import CurrencyDisplay from '@/components/CurrencyDisplay';
 
 type Patient = {
 	id: string;
 	firstName: string;
 	lastName: string;
-	identifier: string;
+	identifier?: string;
+	is_unregistered?: boolean;
+	type?: string;
 };
 
 const HEADER_OFFSET = 120;
@@ -25,12 +29,78 @@ export default function AppointmentForm() {
 	const [sessionError, setSessionError] = useState<string | null>(null);
 	const [loadingSession, setLoadingSession] = useState(true);
 
+	// ---------------------------
+	// Tipo de paciente y selección
+	// ---------------------------
+	const [patientType, setPatientType] = useState<'registered' | 'unregistered'>('registered');
+	const [identifier, setIdentifier] = useState('');
+	const [patients, setPatients] = useState<Patient[]>([]);
+	const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
+	const [selectedUnregisteredPatientId, setSelectedUnregisteredPatientId] = useState<string | null>(null);
+
+	// Datos del paciente no registrado (si se crea uno nuevo)
+	const [unregisteredFirstName, setUnregisteredFirstName] = useState('');
+	const [unregisteredLastName, setUnregisteredLastName] = useState('');
+	const [unregisteredIdentification, setUnregisteredIdentification] = useState('');
+	const [unregisteredPhone, setUnregisteredPhone] = useState('');
+	const [unregisteredEmail, setUnregisteredEmail] = useState('');
+	const [unregisteredBirthDate, setUnregisteredBirthDate] = useState('');
+	const [unregisteredSex, setUnregisteredSex] = useState<'M' | 'F' | 'OTHER' | ''>('');
+	const [unregisteredAddress, setUnregisteredAddress] = useState('');
+
+	// Cita
+	const [scheduledAt, setScheduledAt] = useState('');
+	const [durationMinutes, setDurationMinutes] = useState<number | ''>(30);
+	const [reason, setReason] = useState('');
+	const [location, setLocation] = useState('');
+
+	// Servicios del consultorio (desde medic_profile.services)
+	type ClinicService = {
+		id: string;
+		name: string;
+		description?: string | null;
+		price: number;
+		currency: string;
+		is_active?: boolean;
+	};
+
+	const [services, setServices] = useState<ClinicService[]>([]);
+	const [selectedServices, setSelectedServices] = useState<string[]>([]); // IDs de servicios seleccionados
+	const [loadingServices, setLoadingServices] = useState(false);
+
+	// Facturación calculada desde servicios
+	const [taxMode] = useState<'VE' | 'NONE'>('VE');
+	const IVA_VE_GENERAL = 0.16;
+
+	const [submitting, setSubmitting] = useState(false);
+	const searchDebounceRef = useRef<number | null>(null);
+
+	// Cargar servicios del consultorio
+	useEffect(() => {
+		if (!organizationId) return;
+
+		async function loadServices() {
+			try {
+				setLoadingServices(true);
+				const res = await axios.get('/api/medic/services', { withCredentials: true });
+				if (res.data?.success && Array.isArray(res.data.services)) {
+					setServices(res.data.services);
+				}
+			} catch (err) {
+				console.error('Error cargando servicios:', err);
+			} finally {
+				setLoadingServices(false);
+			}
+		}
+
+		loadServices();
+	}, [organizationId]);
+
 	useEffect(() => {
 		let mounted = true;
 
 		async function fetchSession() {
 			try {
-				// 1) Intento preferido: llamar al servidor esperando que la cookie httpOnly exista
 				try {
 					const res = await axios.get('/api/auth/me', { withCredentials: true });
 					if (res.status === 200 && res.data?.id) {
@@ -51,7 +121,6 @@ export default function AppointmentForm() {
 					}
 				}
 
-				// 2) Recovery: intentar crear cookie server-side si tenemos tokens client-side
 				try {
 					const { data: sessionData, error: sessionErrorLocal } = await supabase.auth.getSession();
 					if (sessionErrorLocal) {
@@ -128,32 +197,23 @@ export default function AppointmentForm() {
 		};
 	}, []);
 
-	// ---------------------------
-	// Pacientes / búsqueda
-	// ---------------------------
-	const [identifier, setIdentifier] = useState('');
-	const [patients, setPatients] = useState<Patient[]>([]);
-	const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
-
-	// Cita
-	const [scheduledAt, setScheduledAt] = useState('');
-	const [durationMinutes, setDurationMinutes] = useState<number | ''>(30);
-	const [reason, setReason] = useState('');
-	const [location, setLocation] = useState('');
-
-	// Facturación
-	const [subtotalStr, setSubtotalStr] = useState('0.00');
-	const [impuestosStr, setImpuestosStr] = useState('0.00');
-	const [totalStr, setTotalStr] = useState('0.00');
-
-	const [taxMode, setTaxMode] = useState<'VE' | 'NONE'>('VE');
-	const [autoCalcTaxes, setAutoCalcTaxes] = useState(true);
-	const IVA_VE_GENERAL = 0.16;
-
-	const [currency, setCurrency] = useState<'USD' | 'EUR'>('USD');
-
-	const [showBilling, setShowBilling] = useState(true);
-	const [submitting, setSubmitting] = useState(false);
+	// Resetear selección cuando cambia el tipo de paciente
+	useEffect(() => {
+		setIdentifier('');
+		setPatients([]);
+		setSelectedPatient(null);
+		setSelectedUnregisteredPatientId(null);
+		if (patientType === 'unregistered') {
+			setUnregisteredFirstName('');
+			setUnregisteredLastName('');
+			setUnregisteredIdentification('');
+			setUnregisteredPhone('');
+			setUnregisteredEmail('');
+			setUnregisteredBirthDate('');
+			setUnregisteredSex('');
+			setUnregisteredAddress('');
+		}
+	}, [patientType]);
 
 	// ---------------------------
 	// AUTOCOMPLETADO PACIENTES
@@ -164,18 +224,28 @@ export default function AppointmentForm() {
 			return;
 		}
 
-		const t = setTimeout(async () => {
+		if (searchDebounceRef.current) window.clearTimeout(searchDebounceRef.current);
+
+		searchDebounceRef.current = window.setTimeout(async () => {
 			try {
 				const res = await axios.get(`/api/patients/search?identifier=${encodeURIComponent(identifier)}`);
-				setPatients(res.data || []);
+				const allPatients = res.data || [];
+				// Filtrar según el tipo de paciente seleccionado
+				const filtered = allPatients.filter((p: Patient) => {
+					const isUnregistered = p.is_unregistered === true || p.type === 'unregistered';
+					return patientType === 'unregistered' ? isUnregistered : !isUnregistered;
+				});
+				setPatients(filtered);
 			} catch (err) {
 				console.error('Error buscando pacientes', err);
 				setPatients([]);
 			}
 		}, 300);
 
-		return () => clearTimeout(t);
-	}, [identifier]);
+		return () => {
+			if (searchDebounceRef.current) window.clearTimeout(searchDebounceRef.current);
+		};
+	}, [identifier, patientType]);
 
 	// ---------------------------
 	// PARSE / FORMAT
@@ -212,17 +282,6 @@ export default function AppointmentForm() {
 		return (Math.round((n + Number.EPSILON) * 100) / 100).toFixed(2);
 	};
 
-	// ---------------------------
-	// RE-CALCULAR IMPUESTOS/TOTAL
-	// ---------------------------
-	useEffect(() => {
-		const subtotal = parseNumber(subtotalStr || '0');
-		let impuestos = autoCalcTaxes ? (taxMode === 'VE' ? subtotal * IVA_VE_GENERAL : 0) : parseNumber(impuestosStr || '0');
-		impuestos = Math.round((impuestos + Number.EPSILON) * 100) / 100;
-		const total = Math.round((subtotal + impuestos + Number.EPSILON) * 100) / 100;
-		setImpuestosStr(formatMoney(impuestos));
-		setTotalStr(formatMoney(total));
-	}, [subtotalStr, impuestosStr, taxMode, autoCalcTaxes]);
 
 	// ---------------------------
 	// HANDLE SUBMIT
@@ -232,60 +291,139 @@ export default function AppointmentForm() {
 
 		if (sessionError) return alert('No hay sesión activa. Por favor, inicia sesión nuevamente.');
 		if (!userId || !organizationId) return alert('Datos de usuario no disponibles.');
-		if (!selectedPatient) return alert('Seleccione un paciente antes de continuar.');
 		if (!scheduledAt) return alert('Ingrese fecha y hora de la cita.');
 
-		// ✅ Validación: garantizar valores numéricos válidos
-		const subtotal = parseNumber(subtotalStr || '0');
-		const impuestos = parseNumber(impuestosStr || '0');
-		const total = parseNumber(totalStr || '0');
-
-		if (subtotal < 0 || impuestos < 0 || total < 0) return alert('Los valores de facturación no pueden ser negativos.');
-
-		const computedTotal = Math.round((subtotal + impuestos + Number.EPSILON) * 100) / 100;
-		if (total > 0 && Math.abs(computedTotal - total) > 0.01) {
-			const ok = confirm(`El total (${total.toFixed(2)}) no coincide con subtotal + impuestos (${computedTotal.toFixed(2)}). ¿Desea continuar?`);
-			if (!ok) return;
+		if (patientType === 'registered') {
+			if (!selectedPatient) return alert('Seleccione un paciente antes de continuar.');
+		} else {
+			if (!selectedUnregisteredPatientId && (!unregisteredFirstName || !unregisteredLastName || !unregisteredPhone)) {
+				return alert('Debe completar al menos nombre, apellido y teléfono del paciente, o seleccionar un paciente existente.');
+			}
 		}
+
+		// Validar cédula no duplicada si es paciente nuevo no registrado
+		if (patientType === 'unregistered' && !selectedUnregisteredPatientId && unregisteredIdentification) {
+			try {
+				const checkRes = await fetch(`/api/patients/search?identifier=${encodeURIComponent(unregisteredIdentification.trim())}`);
+				const existingPatients = await checkRes.json();
+				if (Array.isArray(existingPatients) && existingPatients.length > 0) {
+					const exists = existingPatients.some(
+						(p: any) =>
+							(p.identifier && p.identifier.trim().toLowerCase() === unregisteredIdentification.trim().toLowerCase()) ||
+							(p.identification && p.identification.trim().toLowerCase() === unregisteredIdentification.trim().toLowerCase())
+					);
+					if (exists) {
+						return alert(`La cédula "${unregisteredIdentification}" ya está registrada. Por favor, busca al paciente en la lista.`);
+					}
+				}
+			} catch (checkErr) {
+				console.warn('Error verificando cédula antes de crear:', checkErr);
+			}
+		}
+
+		// Validar que se haya seleccionado al menos un servicio
+		if (selectedServices.length === 0) {
+			return alert('Debe seleccionar al menos un servicio para la cita.');
+		}
+
+		// Calcular facturación desde servicios seleccionados
+		const selectedServicesData = services.filter((s) => selectedServices.includes(s.id));
+		const subtotal = selectedServicesData.reduce((sum, s) => sum + Number(s.price), 0);
+		const impuestos = taxMode === 'VE' ? subtotal * IVA_VE_GENERAL : 0;
+		const total = subtotal + impuestos;
+		const currency = selectedServicesData[0]?.currency || 'USD'; // Usar la moneda del primer servicio
 
 		setSubmitting(true);
 		try {
-			const res = await axios.post(
-				'/api/appointments',
-				{
-					patientId: selectedPatient.id,
-					doctorId: userId,
-					organizationId,
-					scheduledAt,
-					durationMinutes: typeof durationMinutes === 'number' ? durationMinutes : Number(durationMinutes),
-					reason,
-					location,
-					billing: {
-						subtotal: subtotal || 0,
-						impuestos: impuestos || 0,
-						total: total || subtotal + impuestos,
-						currency,
-						taxMode,
-					},
+			let finalUnregisteredPatientId = selectedUnregisteredPatientId;
+
+			// Si es paciente no registrado y no hay ID, crear el paciente primero
+			if (patientType === 'unregistered' && !selectedUnregisteredPatientId) {
+				const patientPayload: any = {
+					first_name: unregisteredFirstName,
+					last_name: unregisteredLastName,
+					phone: unregisteredPhone,
+					identification: unregisteredIdentification || null,
+					birth_date: unregisteredBirthDate || null,
+					sex: unregisteredSex || null,
+					email: unregisteredEmail || null,
+					address: unregisteredAddress || null,
+				};
+
+				const patientRes = await fetch('/api/unregistered-patients', {
+					method: 'POST',
+					headers: { 'Content-Type': 'application/json' },
+					credentials: 'include',
+					body: JSON.stringify(patientPayload),
+				});
+
+				const patientData = await patientRes.json().catch(() => ({}));
+				if (!patientRes.ok) {
+					setSubmitting(false);
+					if (patientRes.status === 409) {
+						return alert(patientData.error || 'Esta cédula de identidad ya está registrada en el sistema.');
+					}
+					return alert(patientData.error || 'Error al crear el paciente no registrado.');
+				}
+
+				finalUnregisteredPatientId = patientData.id || patientData.data?.id;
+				if (!finalUnregisteredPatientId) {
+					setSubmitting(false);
+					return alert('Error: no se obtuvo el ID del paciente creado.');
+				}
+			}
+
+			// Crear la cita
+			const appointmentPayload: any = {
+				doctorId: userId,
+				organizationId,
+				scheduledAt,
+				durationMinutes: typeof durationMinutes === 'number' ? durationMinutes : Number(durationMinutes),
+				reason,
+				location,
+				billing: {
+					subtotal: subtotal || 0,
+					impuestos: impuestos || 0,
+					total: total || subtotal + impuestos,
+					currency,
+					taxMode,
 				},
-				{ withCredentials: true }
-			);
+			};
+
+			if (patientType === 'registered') {
+				appointmentPayload.patientId = selectedPatient!.id;
+			} else {
+				appointmentPayload.unregisteredPatientId = finalUnregisteredPatientId;
+			}
+
+			const res = await axios.post('/api/appointments', appointmentPayload, { withCredentials: true });
 
 			if (res.data?.success) {
-				alert('Cita registrada correctamente.');
+				alert('Cita registrada correctamente. La facturación se ha creado como pendiente de pago.');
 				setReason('');
 				setLocation('');
-				setSubtotalStr('0.00');
-				setImpuestosStr('0.00');
-				setTotalStr('0.00');
 				setSelectedPatient(null);
+				setSelectedUnregisteredPatientId(null);
 				setIdentifier('');
+				setSelectedServices([]);
+				// Resetear formulario de paciente no registrado
+				setUnregisteredFirstName('');
+				setUnregisteredLastName('');
+				setUnregisteredIdentification('');
+				setUnregisteredPhone('');
+				setUnregisteredEmail('');
+				setUnregisteredBirthDate('');
+				setUnregisteredSex('');
+				setUnregisteredAddress('');
+				// Recargar la página o cerrar el modal
+				window.location.reload();
 			} else {
 				alert('Ocurrió un error al registrar la cita.');
 			}
-		} catch (err) {
+		} catch (err: any) {
 			console.error(err);
-			alert('Error al registrar la cita. Revisa la consola.');
+			const errorMsg = err?.response?.data?.error || err?.message || 'Error al registrar la cita. Revisa la consola.';
+			alert(errorMsg);
 		} finally {
 			setSubmitting(false);
 		}
@@ -332,11 +470,41 @@ export default function AppointmentForm() {
 				</div>
 			</div>
 
-			<div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-				{/* LEFT */}
-				<section className="lg:col-span-2 space-y-3">
+			<div className="space-y-4">
+				{/* FORMULARIO DE LA CITA */}
+				<section className="space-y-3">
+					{/* Selector de tipo de paciente */}
+					<div className="p-3 border border-gray-200 rounded-md bg-gray-50">
+						<label className={labelClass}>Tipo de Paciente</label>
+						<div className="grid grid-cols-2 gap-2 mt-2">
+							<button
+								type="button"
+								onClick={() => setPatientType('registered')}
+								className={`flex items-center justify-center gap-2 px-3 py-2 rounded-md border-2 transition-all ${
+									patientType === 'registered'
+										? 'border-teal-500 bg-teal-50 text-teal-700 shadow-sm'
+										: 'border-gray-200 bg-white text-gray-700 hover:border-gray-300'
+								}`}>
+								<UserCheck size={16} />
+								<span className="text-xs font-semibold">Registrado</span>
+							</button>
+							<button
+								type="button"
+								onClick={() => setPatientType('unregistered')}
+								className={`flex items-center justify-center gap-2 px-3 py-2 rounded-md border-2 transition-all ${
+									patientType === 'unregistered'
+										? 'border-orange-500 bg-orange-50 text-orange-700 shadow-sm'
+										: 'border-gray-200 bg-white text-gray-700 hover:border-gray-300'
+								}`}>
+								<UserPlus size={16} />
+								<span className="text-xs font-semibold">No Registrado</span>
+							</button>
+						</div>
+					</div>
+
+					{/* Buscar paciente */}
 					<div className="relative">
-						<label className={labelClass}>Buscar paciente</label>
+						<label className={labelClass}>Buscar {patientType === 'registered' ? 'paciente registrado' : 'paciente no registrado'}</label>
 						<input
 							type="text"
 							placeholder="Cédula o nombre"
@@ -344,6 +512,7 @@ export default function AppointmentForm() {
 							onChange={(e) => {
 								setIdentifier(e.target.value);
 								setSelectedPatient(null);
+								setSelectedUnregisteredPatientId(null);
 							}}
 							className={inputNeutral}
 							aria-label="Buscar paciente"
@@ -354,20 +523,165 @@ export default function AppointmentForm() {
 									<li
 										key={p.id}
 										onClick={() => {
-											setSelectedPatient(p);
-											setIdentifier(`${p.firstName} ${p.lastName} (${p.identifier})`);
+											if (patientType === 'registered') {
+												setSelectedPatient(p);
+												setIdentifier(`${p.firstName} ${p.lastName} ${p.identifier ? `(${p.identifier})` : ''}`);
+											} else {
+												setSelectedUnregisteredPatientId(p.id);
+												setUnregisteredFirstName(p.firstName);
+												setUnregisteredLastName(p.lastName);
+												setUnregisteredIdentification(p.identifier || '');
+												setIdentifier(`${p.firstName} ${p.lastName} ${p.identifier ? `(${p.identifier})` : ''}`);
+											}
 											setPatients([]);
 										}}
 										className={patientItemClass}>
 										<div className="font-medium text-gray-800">
 											{p.firstName} {p.lastName}
 										</div>
-										<div className="text-xs text-gray-500">{p.identifier}</div>
+										{p.identifier && <div className="text-xs text-gray-500">{p.identifier}</div>}
+										{patientType === 'unregistered' && (
+											<div className="text-xs text-orange-600 mt-0.5">No registrado</div>
+										)}
 									</li>
 								))}
 							</ul>
 						)}
 					</div>
+
+					{/* Formulario de paciente no registrado (si no se seleccionó uno existente) */}
+					{patientType === 'unregistered' && !selectedUnregisteredPatientId && (
+						<div className="p-3 border border-orange-200 rounded-md bg-orange-50/50">
+							<h3 className="text-xs font-semibold text-gray-800 mb-3 flex items-center gap-2">
+								<UserPlus size={14} />
+								Datos del Paciente No Registrado
+							</h3>
+							<div className="grid grid-cols-2 gap-2">
+								<div>
+									<label className={labelClass}>Nombre *</label>
+									<input
+										type="text"
+										value={unregisteredFirstName}
+										onChange={(e) => setUnregisteredFirstName(e.target.value)}
+										placeholder="Nombre"
+										className={inputNeutral}
+									/>
+								</div>
+								<div>
+									<label className={labelClass}>Apellido *</label>
+									<input
+										type="text"
+										value={unregisteredLastName}
+										onChange={(e) => setUnregisteredLastName(e.target.value)}
+										placeholder="Apellido"
+										className={inputNeutral}
+									/>
+								</div>
+								<div>
+									<label className={labelClass}>Cédula</label>
+									<input
+										type="text"
+										value={unregisteredIdentification}
+										onChange={(e) => setUnregisteredIdentification(e.target.value)}
+										placeholder="V-12345678"
+										className={inputNeutral}
+									/>
+								</div>
+								<div>
+									<label className={labelClass}>Teléfono *</label>
+									<input
+										type="tel"
+										value={unregisteredPhone}
+										onChange={(e) => setUnregisteredPhone(e.target.value)}
+										placeholder="0412-1234567"
+										className={inputNeutral}
+									/>
+								</div>
+								<div>
+									<label className={labelClass}>Email</label>
+									<input
+										type="email"
+										value={unregisteredEmail}
+										onChange={(e) => setUnregisteredEmail(e.target.value)}
+										placeholder="email@ejemplo.com"
+										className={inputNeutral}
+									/>
+								</div>
+								<div>
+									<label className={labelClass}>Fecha de Nacimiento</label>
+									<input
+										type="date"
+										value={unregisteredBirthDate}
+										onChange={(e) => setUnregisteredBirthDate(e.target.value)}
+										className={inputNeutral}
+									/>
+								</div>
+								<div>
+									<label className={labelClass}>Sexo</label>
+									<select
+										value={unregisteredSex}
+										onChange={(e) => setUnregisteredSex(e.target.value as 'M' | 'F' | 'OTHER' | '')}
+										className={inputNeutral}
+									>
+										<option value="">Seleccionar...</option>
+										<option value="M">Masculino</option>
+										<option value="F">Femenino</option>
+										<option value="OTHER">Otro</option>
+									</select>
+								</div>
+								<div>
+									<label className={labelClass}>Dirección</label>
+									<input
+										type="text"
+										value={unregisteredAddress}
+										onChange={(e) => setUnregisteredAddress(e.target.value)}
+										placeholder="Dirección"
+										className={inputNeutral}
+									/>
+								</div>
+							</div>
+						</div>
+					)}
+
+					{/* Paciente seleccionado */}
+					{((patientType === 'registered' && selectedPatient) || (patientType === 'unregistered' && selectedUnregisteredPatientId)) && (
+						<div className="p-3 border border-green-200 rounded-md bg-green-50">
+							<div className="flex items-center justify-between">
+								<div>
+									<label className={labelClass}>Paciente Seleccionado</label>
+									<div className="text-sm font-medium text-gray-900">
+										{patientType === 'registered' && selectedPatient
+											? `${selectedPatient.firstName} ${selectedPatient.lastName}`
+											: `${unregisteredFirstName} ${unregisteredLastName}`}
+									</div>
+									{(patientType === 'registered' && selectedPatient?.identifier) || unregisteredIdentification ? (
+										<div className="text-xs text-gray-600 mt-0.5">
+											Cédula: {patientType === 'registered' && selectedPatient ? selectedPatient.identifier : unregisteredIdentification}
+										</div>
+									) : null}
+									<div className={`text-xs mt-1 ${patientType === 'registered' ? 'text-green-600' : 'text-orange-600'}`}>
+										{patientType === 'registered' ? 'Paciente Registrado' : 'Paciente No Registrado'}
+									</div>
+								</div>
+								<button
+									type="button"
+									onClick={() => {
+										if (patientType === 'registered') {
+											setSelectedPatient(null);
+										} else {
+											setSelectedUnregisteredPatientId(null);
+											setUnregisteredFirstName('');
+											setUnregisteredLastName('');
+											setUnregisteredIdentification('');
+										}
+										setIdentifier('');
+									}}
+									className="text-xs text-gray-600 hover:text-gray-900 px-2 py-1 border border-gray-300 rounded">
+									Cambiar
+								</button>
+							</div>
+						</div>
+					)}
 
 					<div className="grid grid-cols-2 gap-3">
 						<div>
@@ -392,78 +706,132 @@ export default function AppointmentForm() {
 					</div>
 				</section>
 
-				{/* RIGHT - FACTURACIÓN */}
-				<aside className="space-y-3">
-					<div className="p-3 border border-gray-100 rounded-md bg-gray-50 top-4">
-						<div className="flex items-center justify-between mb-2">
-							<h3 className={sectionTitle}>Facturación</h3>
-							<button type="button" aria-expanded={showBilling} onClick={() => setShowBilling((s) => !s)} className="text-xs text-gray-600 hover:text-violet-600">
-								{showBilling ? 'Ocultar' : 'Mostrar'}
-							</button>
-						</div>
+				{/* SERVICIOS DEL CONSULTORIO - Ahora en la parte inferior */}
+				<section className="space-y-3 border-t border-gray-200 pt-4">
+					<div className="p-4 border border-gray-100 rounded-md bg-gray-50">
+						<h3 className={sectionTitle}>Servicios del Consultorio</h3>
+						<p className="text-xs text-gray-600 mt-1 mb-4">Selecciona los servicios para esta cita</p>
 
-						<AnimatePresence initial={false}>
-							{showBilling && (
-								<motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }}>
-									<label className="flex items-center gap-2 text-xs mb-2">
-										<input type="checkbox" checked={autoCalcTaxes} onChange={(e) => setAutoCalcTaxes(e.target.checked)} className="w-3 h-3" />
-										<span className="text-xs text-gray-700">Calcular impuestos (VE {Math.round(IVA_VE_GENERAL * 100)}%)</span>
-									</label>
-
-									<div className="grid grid-cols-1 gap-2">
-										<div>
-											<label className={labelClass}>Subtotal (divisa)</label>
-											<input inputMode="decimal" placeholder="0.00" value={subtotalStr} onChange={(e) => setSubtotalStr(e.target.value)} className={inputNeutral} />
-										</div>
-
-										<div>
-											<label className={labelClass}>Impuestos</label>
-											<input inputMode="decimal" placeholder="0.00" value={impuestosStr} onChange={(e) => setImpuestosStr(e.target.value)} className={`${inputNeutral} ${autoCalcTaxes ? 'bg-gray-100 cursor-not-allowed' : ''}`} readOnly={autoCalcTaxes} />
-										</div>
-
-										<div>
-											<label className={labelClass}>Total (divisa)</label>
-											<input inputMode="decimal" placeholder="0.00" value={totalStr} onChange={(e) => setTotalStr(e.target.value)} className={`${inputNeutral} ${autoCalcTaxes ? 'bg-gray-100 cursor-not-allowed' : ''}`} readOnly={autoCalcTaxes} />
-										</div>
-
-										<div className="flex gap-2">
-											<select value={currency} onChange={(e) => setCurrency(e.target.value as 'USD' | 'EUR')} className={inputNeutral}>
-												<option value="USD">USD</option>
-												<option value="EUR">EUR</option>
-											</select>
-
-											<select value={taxMode} onChange={(e) => setTaxMode(e.target.value === 'VE' ? 'VE' : 'NONE')} className={inputNeutral}>
-												<option value="VE">Venezuela</option>
-												<option value="NONE">Sin impuestos</option>
-											</select>
-										</div>
-									</div>
-								</motion.div>
-							)}
-						</AnimatePresence>
+						{loadingServices ? (
+							<div className="flex items-center justify-center py-8">
+								<Loader2 className="w-5 h-5 animate-spin text-gray-400" />
+								<span className="text-xs text-gray-500 ml-2">Cargando servicios...</span>
+							</div>
+						) : services.length === 0 ? (
+							<div className="text-center py-6 text-xs text-gray-500">
+								<p>No hay servicios disponibles.</p>
+								<p className="mt-1">Configura los servicios en Configuración → Perfil Profesional</p>
+							</div>
+						) : (
+							<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+								{services
+									.filter((service) => service.is_active !== false) // Filtrar solo servicios activos
+									.map((service) => {
+										const isSelected = selectedServices.includes(service.id);
+										return (
+											<button
+												key={service.id}
+												type="button"
+												onClick={() => {
+													setSelectedServices((prev) =>
+														isSelected ? prev.filter((id) => id !== service.id) : [...prev, service.id]
+													);
+												}}
+												className={`w-full p-4 rounded-lg border-2 text-left transition-all ${
+													isSelected
+														? 'border-teal-500 bg-teal-50 shadow-sm'
+														: 'border-gray-200 bg-white hover:border-gray-300 hover:shadow-sm'
+												}`}>
+												<div className="flex items-start justify-between gap-2">
+													<div className="flex-1 min-w-0">
+														<div className="flex items-center gap-2 mb-2">
+															{isSelected && <CheckCircle className="w-5 h-5 text-teal-600 shrink-0" />}
+															<h4 className={`text-sm font-semibold ${isSelected ? 'text-teal-900' : 'text-gray-900'}`}>
+																{service.name}
+															</h4>
+														</div>
+														{service.description && (
+															<p className="text-xs text-gray-600 mb-3 line-clamp-2">{service.description}</p>
+														)}
+														<div className="mt-2">
+															<CurrencyDisplay
+																amount={Number(service.price)}
+																currency={service.currency as 'USD' | 'EUR'}
+																showBoth={true}
+																primaryCurrency="USD"
+																size="sm"
+															/>
+														</div>
+													</div>
+												</div>
+											</button>
+										);
+									})}
+							</div>
+						)}
 					</div>
 
-					<div className="p-3 border border-gray-100 rounded-md text-sm">
-						<div className="flex justify-between text-xs text-gray-600">
-							<span>Subtotal ({currency})</span>
-							<strong>{subtotalStr ? formatMoney(parseNumber(subtotalStr)) : '0.00'}</strong>
-						</div>
-						<div className="flex justify-between text-xs text-gray-600 mt-1">
-							<span>Impuestos ({currency})</span>
-							<strong>{impuestosStr ? formatMoney(parseNumber(impuestosStr)) : '0.00'}</strong>
-						</div>
-						<div className="border-t pt-2 mt-2 flex justify-between items-center">
-							<span className="font-medium">Total ({currency})</span>
-							<strong className="text-sm">{totalStr ? formatMoney(parseNumber(totalStr)) : '0.00'}</strong>
-						</div>
-					</div>
+					{/* Resumen de facturación */}
+					{selectedServices.length > 0 && (
+						<div className="p-4 border border-gray-100 rounded-md bg-white">
+							<h4 className="text-sm font-semibold text-gray-900 mb-3">Resumen de Facturación</h4>
+							<div className="space-y-2">
+								<div className="flex justify-between text-xs text-gray-600">
+									<span>Servicios seleccionados:</span>
+									<strong>{selectedServices.length}</strong>
+								</div>
+								{(() => {
+									const selectedServicesData = services.filter((s) => selectedServices.includes(s.id));
+									const subtotal = selectedServicesData.reduce((sum, s) => sum + Number(s.price), 0);
+									const impuestos = taxMode === 'VE' ? subtotal * IVA_VE_GENERAL : 0;
+									const total = subtotal + impuestos;
+									const currency = selectedServicesData[0]?.currency || 'USD';
 
-					<div>
-						<button type="submit" disabled={submitting || loadingSession || !!sessionError} className="w-full py-2 bg-linear-to-r from-violet-600 to-indigo-600 text-white rounded-md text-sm font-semibold shadow-sm disabled:opacity-60">
-							{submitting ? 'Registrando...' : 'Registrar cita'}
-						</button>
-					</div>
-				</aside>
+									return (
+										<>
+											<div className="flex justify-between text-sm text-gray-700 pt-2 border-t border-gray-200">
+												<span>Subtotal ({currency})</span>
+												<strong>{subtotal.toFixed(2)}</strong>
+											</div>
+											{taxMode === 'VE' && (
+												<div className="flex justify-between text-sm text-gray-700">
+													<span>Impuestos ({currency})</span>
+													<strong>{impuestos.toFixed(2)}</strong>
+												</div>
+											)}
+											<div className="flex justify-between items-center pt-2 border-t border-gray-200">
+												<span className="font-semibold text-base">Total ({currency})</span>
+												<strong className="text-lg text-teal-700 font-bold">{total.toFixed(2)}</strong>
+											</div>
+											<div className="mt-3 pt-3 border-t border-gray-200">
+												<CurrencyDisplay
+													amount={total}
+													currency={currency as 'USD' | 'EUR'}
+													showBoth={true}
+													primaryCurrency="USD"
+													size="md"
+												/>
+											</div>
+											<p className="text-xs text-gray-500 mt-3 italic bg-blue-50 p-2 rounded border border-blue-100">
+												💡 Esta factura se creará automáticamente como pendiente de pago para el paciente
+											</p>
+										</>
+									);
+								})()}
+							</div>
+						</div>
+					)}
+				</section>
+
+				{/* Botón de envío */}
+				<div className="pt-4 border-t border-gray-200">
+					<button type="submit" disabled={submitting || loadingSession || !!sessionError || selectedServices.length === 0} className="w-full py-3 bg-linear-to-r from-violet-600 to-indigo-600 text-white rounded-md text-sm font-semibold shadow-sm disabled:opacity-60 disabled:cursor-not-allowed hover:from-violet-700 hover:to-indigo-700 transition-all">
+						{submitting ? 'Registrando...' : 'Registrar cita'}
+					</button>
+					{selectedServices.length === 0 && (
+						<p className="text-xs text-amber-600 mt-2 text-center">Debe seleccionar al menos un servicio para continuar</p>
+					)}
+				</div>
 			</div>
 		</form>
 	);

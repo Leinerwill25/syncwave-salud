@@ -7,6 +7,7 @@ import QuickFacts from '@/app/dashboard/medic/components/QuickFacts';
 import ConsultationDataDisplay from '@/app/dashboard/medic/consultas/components/ConsultationDataDisplay';
 import PatientSelector from '@/app/dashboard/medic/consultas/[id]/components/PatientSelector';
 import PatientHistoryLink from '@/app/dashboard/medic/consultas/[id]/components/PatientHistoryLink';
+import ApproveAttendanceButton from '@/app/dashboard/medic/consultas/[id]/components/ApproveAttendanceButton';
 
 type Props = { params: Promise<{ id?: string }> };
 
@@ -64,6 +65,49 @@ export default async function ConsultationDetail({ params }: Props) {
 			)
 			.eq('id', id)
 			.single();
+
+		// Obtener facturación asociada para verificar si hay pago pendiente
+		let facturacionId: string | null = null;
+		let hasPendingPayment = false;
+
+		if (data) {
+			// Buscar facturación por appointment_id si existe
+			if (data.appointment_id) {
+				const { data: facturacionByAppointment } = await supabase
+					.from('facturacion')
+					.select('id, estado_pago')
+					.eq('appointment_id', data.appointment_id)
+					.eq('doctor_id', data.doctor_id)
+					.maybeSingle();
+
+				if (facturacionByAppointment) {
+					facturacionId = facturacionByAppointment.id;
+					hasPendingPayment = facturacionByAppointment.estado_pago === 'pendiente' || facturacionByAppointment.estado_pago === 'pendiente_verificacion';
+				}
+			}
+
+			// Si no hay facturación por appointment, buscar por patient_id o unregistered_patient_id
+			if (!facturacionId) {
+				const query = supabase
+					.from('facturacion')
+					.select('id, estado_pago')
+					.eq('doctor_id', data.doctor_id)
+					.order('fecha_emision', { ascending: false })
+					.limit(1);
+
+				if (data.patient_id) {
+					query.eq('patient_id', data.patient_id);
+				} else if (data.unregistered_patient_id) {
+					query.eq('unregistered_patient_id', data.unregistered_patient_id);
+				}
+
+				const { data: facturacionByPatient } = await query.maybeSingle();
+				if (facturacionByPatient) {
+					facturacionId = facturacionByPatient.id;
+					hasPendingPayment = facturacionByPatient.estado_pago === 'pendiente' || facturacionByPatient.estado_pago === 'pendiente_verificacion';
+				}
+			}
+		}
 
 		if (error || !data) {
 			return <ErrorCard message={`No se encontró la consulta o hubo un error: ${error?.message ?? 'Consulta no encontrada.'}`} />;
@@ -163,7 +207,10 @@ export default async function ConsultationDetail({ params }: Props) {
 								</span>
 							</div>
 
-							<div className="flex items-center gap-3">
+							<div className="flex items-center gap-3 flex-wrap">
+								{hasPendingPayment && (
+									<ApproveAttendanceButton consultationId={c.id} facturacionId={facturacionId} hasPendingPayment={hasPendingPayment} />
+								)}
 								<Link href={`/dashboard/medic/consultas/${c.id}/edit`} className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-gradient-to-r from-teal-600 to-cyan-600 text-white hover:from-teal-700 hover:to-cyan-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-teal-400">
 									Editar
 								</Link>

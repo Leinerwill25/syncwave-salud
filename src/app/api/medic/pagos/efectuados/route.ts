@@ -31,6 +31,8 @@ export async function GET() {
 				fecha_emision,
 				fecha_pago,
 				notas,
+				patient_id,
+				unregistered_patient_id,
 				appointment:appointment_id (
 					id,
 					scheduled_at,
@@ -41,6 +43,12 @@ export async function GET() {
 						firstName,
 						lastName,
 						identifier
+					),
+					unregisteredPatient:unregistered_patient_id (
+						id,
+						first_name,
+						last_name,
+						identification
 					)
 				),
 				patient:patient_id (
@@ -48,6 +56,12 @@ export async function GET() {
 					firstName,
 					lastName,
 					identifier
+				),
+				unregisteredPatient:unregistered_patient_id (
+					id,
+					first_name,
+					last_name,
+					identification
 				)
 			`)
 			.eq('doctor_id', user.userId)
@@ -66,16 +80,50 @@ export async function GET() {
 			return factura.notas.includes('[REFERENCIA]') || factura.notas.includes('[CAPTURA]');
 		});
 
-		// Para cada pago, obtener las consultas asociadas al appointment
+		// Para cada pago, obtener las consultas asociadas al appointment y normalizar pacientes
 		const pagosConConsultas = await Promise.all(
-			pagosConReferencia.map(async (pago) => {
+			pagosConReferencia.map(async (pago: any) => {
 				// Supabase puede devolver appointment como array o objeto, normalizar a objeto
 				const appointment = Array.isArray(pago.appointment) ? pago.appointment[0] : pago.appointment;
+				
+				// Normalizar paciente (puede ser registrado o no registrado)
+				let patient = Array.isArray(pago.patient) ? pago.patient[0] : pago.patient;
+				let unregisteredPatient = Array.isArray(pago.unregisteredPatient) ? pago.unregisteredPatient[0] : pago.unregisteredPatient;
+
+				// Si no hay patient pero hay unregisteredPatient, usar ese
+				if (!patient && unregisteredPatient) {
+					patient = {
+						id: unregisteredPatient.id,
+						firstName: unregisteredPatient.first_name,
+						lastName: unregisteredPatient.last_name,
+						identifier: unregisteredPatient.identification,
+						isUnregistered: true,
+					};
+				}
+
+				// Normalizar paciente en appointment si existe
+				if (appointment) {
+					const aptPatient = Array.isArray(appointment.patient) ? appointment.patient[0] : appointment.patient;
+					const aptUnregisteredPatient = Array.isArray(appointment.unregisteredPatient) ? appointment.unregisteredPatient[0] : appointment.unregisteredPatient;
+
+					if (!aptPatient && aptUnregisteredPatient) {
+						appointment.patient = {
+							id: aptUnregisteredPatient.id,
+							firstName: aptUnregisteredPatient.first_name,
+							lastName: aptUnregisteredPatient.last_name,
+							identifier: aptUnregisteredPatient.identification,
+							isUnregistered: true,
+						};
+					} else if (aptPatient) {
+						appointment.patient = aptPatient;
+					}
+				}
 				
 				if (!appointment?.id) {
 					return {
 						...pago,
 						appointment: null,
+						patient,
 					};
 				}
 
@@ -92,6 +140,7 @@ export async function GET() {
 						...appointment,
 						consultations: consultas || [],
 					},
+					patient,
 				};
 			})
 		);

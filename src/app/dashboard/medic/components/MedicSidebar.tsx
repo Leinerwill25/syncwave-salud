@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { LayoutDashboard, CalendarDays, User, ClipboardList, FileText, Settings, MessageCircle, CheckSquare, Folder, ChevronRight, ChevronDown, Search, FileCheck, CreditCard } from 'lucide-react';
+import { LayoutDashboard, CalendarDays, User, ClipboardList, FileText, Settings, MessageCircle, CheckSquare, Folder, ChevronRight, ChevronDown, Search, FileCheck, CreditCard, DollarSign, Users } from 'lucide-react';
 import type { MedicConfig } from '@/types/medic-config';
 import PaymentsModal from '@/components/medic/PaymentsModal';
 
@@ -27,7 +27,10 @@ const LINKS: LinkItem[] = [
 	{
 		label: 'Pacientes',
 		icon: User,
-		submenu: [{ href: '/dashboard/medic/pacientes', label: 'Listado de pacientes' }],
+		submenu: [
+			{ href: '/dashboard/medic/pacientes', label: 'Listado de pacientes' },
+			{ href: '/dashboard/medic/pacientes-frecuentes', label: 'Pacientes Frecuentes', icon: Users },
+		],
 	},
 	{
 		label: 'Consultas',
@@ -76,6 +79,8 @@ const LINKS: LinkItem[] = [
 		submenu: [
 			{ href: '/dashboard/medic/configuracion', label: 'Perfil Profesional' },
 			{ href: '/dashboard/medic/configuracion/consultorio', label: 'Consultorio', showOnlyForOrgType: 'CONSULTORIO' },
+			{ href: '/dashboard/medic/configuracion/roles', label: 'Crear Rol', showOnlyForOrgType: 'CONSULTORIO' },
+			{ href: '/dashboard/medic/configuracion/moneda', label: 'Configuración de Moneda', icon: DollarSign },
 		],
 	},
 	{

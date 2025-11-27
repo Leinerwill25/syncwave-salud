@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import KPISection from './components/KPISection';
 import DayAgenda from './components/DayAgenda';
 import DayAppointments from './components/DayAppointments';
+import PendingPaymentAlerts from './components/PendingPaymentAlerts';
 import { Button } from '@/components/ui/button';
 import { motion, AnimatePresence } from 'framer-motion';
 import AppointmentForm from './components/AppointmentForm';
@@ -60,6 +61,13 @@ export default function MedicDashboardPage() {
 			{/* KPIs */}
 			<motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6, ease: 'easeOut' }}>
 				<KPISection />
+			</motion.div>
+
+			{/* Alertas de Pagos Pendientes */}
+			<motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6, ease: 'easeOut', delay: 0.1 }}>
+				<div className="bg-white rounded-xl shadow-md border border-amber-100 p-4 sm:p-6">
+					<PendingPaymentAlerts />
+				</div>
 			</motion.div>
 
 			{/* Agenda y Citas */}

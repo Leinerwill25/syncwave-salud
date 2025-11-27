@@ -35,7 +35,12 @@ export default function LoginFormAdvanced(): React.ReactElement {
 		return false;
 	});
 
-	function routeForRole(role?: Role) {
+	function routeForRole(role?: Role, isRoleUser?: boolean) {
+		// Si es un usuario de rol, redirigir al dashboard de usuarios de rol
+		if (isRoleUser) {
+			return '/dashboard/role-user';
+		}
+
 		switch ((role || '').toString().toUpperCase()) {
 			case 'ADMIN':
 			case 'CLINICA':
@@ -46,6 +51,10 @@ export default function LoginFormAdvanced(): React.ReactElement {
 				return '/dashboard/pharmacy';
 			case 'PACIENTE':
 				return '/dashboard/patient';
+			case 'RECEPCION':
+				// Si es RECEPCION y tiene isRoleUser, ir al dashboard de roles
+				// Si no, redirigir al login de usuarios de rol
+				return '/login/role-user';
 			default:
 				return '/dashboard';
 		}
@@ -120,6 +129,7 @@ export default function LoginFormAdvanced(): React.ReactElement {
 			// Siempre obtener el rol desde la base de datos para asegurar que sea el correcto
 			// El user_metadata puede estar desactualizado o incorrecto
 			let roleToUse: Role | null = null;
+			const isRoleUser = (user.user_metadata as any)?.isRoleUser === true;
 			
 			if (user.id) {
 				const fromServer = await fetchRoleFromServer(user.id);
@@ -132,11 +142,19 @@ export default function LoginFormAdvanced(): React.ReactElement {
 				}
 			}
 
+			// Si es un usuario de rol, redirigir al dashboard de usuarios de rol
+			if (isRoleUser) {
+				setDetectedRole(roleToUse ?? 'UNKNOWN');
+				await new Promise((r) => setTimeout(r, 400));
+				router.push('/dashboard/role-user');
+				return;
+			}
+
 			setDetectedRole(roleToUse ?? 'UNKNOWN');
 
 			// breve pausa visual para que el usuario identifique el role
 			await new Promise((r) => setTimeout(r, 400));
-			router.push(routeForRole(roleToUse ?? ''));
+			router.push(routeForRole(roleToUse ?? '', isRoleUser));
 		} catch (err: any) {
 			console.error('Login error', err);
 			setErrorMsg(err?.message || 'Error inesperado');

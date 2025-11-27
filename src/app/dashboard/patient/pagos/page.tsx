@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { Receipt, Calendar, CreditCard, Download, CheckCircle, XCircle, Clock, DollarSign, User } from 'lucide-react';
 import PaymentModal from '@/components/patient/PaymentModal';
+import CurrencyDisplay from '@/components/CurrencyDisplay';
 
 type Factura = {
 	id: string;
@@ -268,22 +269,39 @@ export default function PagosPage() {
 										<div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-3 md:gap-4 mb-3 sm:mb-4">
 											<div className="bg-gray-50 rounded-lg p-2 sm:p-2.5 md:p-3">
 												<p className="text-[9px] sm:text-[10px] md:text-xs text-gray-600 mb-0.5 sm:mb-1">Subtotal</p>
-												<p className="text-sm sm:text-base md:text-lg font-semibold text-gray-900">
-													{formatCurrency(factura.subtotal, factura.currency)}
-												</p>
+												<div className="text-sm sm:text-base md:text-lg font-semibold text-gray-900">
+													<CurrencyDisplay
+														amount={factura.subtotal}
+														currency={factura.currency as 'USD' | 'EUR'}
+														showBoth={true}
+														primaryCurrency="USD"
+														size="md"
+													/>
+												</div>
 											</div>
 											<div className="bg-gray-50 rounded-lg p-2 sm:p-2.5 md:p-3">
 												<p className="text-[9px] sm:text-[10px] md:text-xs text-gray-600 mb-0.5 sm:mb-1">Impuestos</p>
-												<p className="text-sm sm:text-base md:text-lg font-semibold text-gray-900">
-													{formatCurrency(factura.impuestos, factura.currency)}
-												</p>
+												<div className="text-sm sm:text-base md:text-lg font-semibold text-gray-900">
+													<CurrencyDisplay
+														amount={factura.impuestos}
+														currency={factura.currency as 'USD' | 'EUR'}
+														showBoth={true}
+														primaryCurrency="USD"
+														size="md"
+													/>
+												</div>
 											</div>
 											<div className="bg-green-50 rounded-lg p-2 sm:p-2.5 md:p-3 border-2 border-green-200">
 												<p className="text-[9px] sm:text-[10px] md:text-xs text-gray-600 mb-0.5 sm:mb-1">Total</p>
-												<p className="text-lg sm:text-xl md:text-2xl font-bold text-green-600 flex items-center gap-1 sm:gap-1.5 md:gap-2">
-													<DollarSign className="w-3.5 h-3.5 sm:w-4 sm:h-4 md:w-5 md:h-5 flex-shrink-0" />
-													<span className="break-words">{formatCurrency(factura.total, factura.currency)}</span>
-												</p>
+												<div className="text-lg sm:text-xl md:text-2xl font-bold text-green-600">
+													<CurrencyDisplay
+														amount={factura.total}
+														currency={factura.currency as 'USD' | 'EUR'}
+														showBoth={true}
+														primaryCurrency="USD"
+														size="lg"
+													/>
+												</div>
 											</div>
 										</div>
 
