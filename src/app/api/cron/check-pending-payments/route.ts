@@ -192,20 +192,37 @@ export async function GET(req: NextRequest) {
 			const totalPending = doctorData.appointments.length + doctorData.consultations.length;
 			
 			if (totalPending > 0) {
+				// Helper para normalizar datos de Supabase
+				const normalizePatient = (patient: any) => {
+					if (!patient) return null;
+					return Array.isArray(patient) ? patient[0] : patient;
+				};
+
+				const normalizeUnregisteredPatient = (unregisteredPatient: any) => {
+					if (!unregisteredPatient) return null;
+					return Array.isArray(unregisteredPatient) ? unregisteredPatient[0] : unregisteredPatient;
+				};
+
 				const patientNames = [
 					...doctorData.appointments.map((apt: any) => {
-						if (apt.patient) {
-							return `${apt.patient.firstName} ${apt.patient.lastName}`;
-						} else if (apt.unregisteredPatient) {
-							return `${apt.unregisteredPatient.first_name} ${apt.unregisteredPatient.last_name}`;
+						const patient = normalizePatient(apt.patient);
+						const unregisteredPatient = normalizeUnregisteredPatient(apt.unregisteredPatient);
+						
+						if (patient) {
+							return `${patient.firstName} ${patient.lastName}`;
+						} else if (unregisteredPatient) {
+							return `${unregisteredPatient.first_name} ${unregisteredPatient.last_name}`;
 						}
 						return 'Paciente';
 					}),
 					...doctorData.consultations.map((cons: any) => {
-						if (cons.patient) {
-							return `${cons.patient.firstName} ${cons.patient.lastName}`;
-						} else if (cons.unregisteredPatient) {
-							return `${cons.unregisteredPatient.first_name} ${cons.unregisteredPatient.last_name}`;
+						const patient = normalizePatient(cons.patient);
+						const unregisteredPatient = normalizeUnregisteredPatient(cons.unregisteredPatient);
+						
+						if (patient) {
+							return `${patient.firstName} ${patient.lastName}`;
+						} else if (unregisteredPatient) {
+							return `${unregisteredPatient.first_name} ${unregisteredPatient.last_name}`;
 						}
 						return 'Paciente';
 					}),

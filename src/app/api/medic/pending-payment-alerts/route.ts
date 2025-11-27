@@ -90,14 +90,28 @@ export async function GET() {
 		// Combinar citas y consultas con sus facturaciones
 		const alerts: any[] = [];
 
+		// Helper para normalizar datos de Supabase (pueden venir como array o objeto)
+		const normalizePatient = (patient: any) => {
+			if (!patient) return null;
+			return Array.isArray(patient) ? patient[0] : patient;
+		};
+
+		const normalizeUnregisteredPatient = (unregisteredPatient: any) => {
+			if (!unregisteredPatient) return null;
+			return Array.isArray(unregisteredPatient) ? unregisteredPatient[0] : unregisteredPatient;
+		};
+
 		// Procesar citas
 		(appointments || []).forEach((apt: any) => {
 			const facturacion = facturacionesPendientes.find((f: any) => f.appointment_id === apt.id);
 			if (facturacion) {
-				const patientName = apt.patient
-					? `${apt.patient.firstName} ${apt.patient.lastName}`
-					: apt.unregisteredPatient
-					? `${apt.unregisteredPatient.first_name} ${apt.unregisteredPatient.last_name}`
+				const patient = normalizePatient(apt.patient);
+				const unregisteredPatient = normalizeUnregisteredPatient(apt.unregisteredPatient);
+				
+				const patientName = patient
+					? `${patient.firstName} ${patient.lastName}`
+					: unregisteredPatient
+					? `${unregisteredPatient.first_name} ${unregisteredPatient.last_name}`
 					: 'Paciente';
 
 				alerts.push({
@@ -147,10 +161,13 @@ export async function GET() {
 			}
 
 			if (facturacion) {
-				const patientName = cons.patient
-					? `${cons.patient.firstName} ${cons.patient.lastName}`
-					: cons.unregisteredPatient
-					? `${cons.unregisteredPatient.first_name} ${cons.unregisteredPatient.last_name}`
+				const patient = normalizePatient(cons.patient);
+				const unregisteredPatient = normalizeUnregisteredPatient(cons.unregisteredPatient);
+				
+				const patientName = patient
+					? `${patient.firstName} ${patient.lastName}`
+					: unregisteredPatient
+					? `${unregisteredPatient.first_name} ${unregisteredPatient.last_name}`
 					: 'Paciente';
 
 				alerts.push({

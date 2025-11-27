@@ -107,8 +107,11 @@ export async function GET(req: Request) {
 					isUnregistered = true;
 				}
 			} else if (cita.patient) {
-				// Es un paciente registrado
-				patientName = `${cita.patient.firstName} ${cita.patient.lastName}`;
+				// Es un paciente registrado - normalizar (puede venir como array)
+				const patient = Array.isArray(cita.patient) ? cita.patient[0] : cita.patient;
+				if (patient) {
+					patientName = `${patient.firstName} ${patient.lastName}`;
+				}
 			}
 
 			return {
