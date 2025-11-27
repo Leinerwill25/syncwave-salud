@@ -10,7 +10,7 @@ import { Loader2 } from 'lucide-react';
 
 interface CurrencyDisplayProps {
 	amount: number;
-	currency?: 'USD' | 'EUR';
+	currency?: 'USD' | 'EUR' | 'BS';
 	showBoth?: boolean; // Si true, muestra ambas monedas
 	primaryCurrency?: 'USD' | 'BS'; // Moneda principal a mostrar
 	className?: string;
@@ -27,8 +27,8 @@ export default function CurrencyDisplay({
 }: CurrencyDisplayProps) {
 	const { rate, loading, convertUSDToBs, rateDate } = useCurrencyConversion();
 
-	const bsAmount = currency === 'USD' ? convertUSDToBs(amount) : amount * (rate || 0);
-	const usdAmount = currency === 'BS' ? amount / (rate || 1) : amount;
+	const bsAmount = currency === 'USD' ? convertUSDToBs(amount) : currency === 'BS' ? amount : amount * (rate || 0);
+	const usdAmount = currency === 'BS' ? amount / (rate || 1) : currency === 'USD' ? amount : amount / (rate || 1);
 
 	const sizeClasses = {
 		sm: 'text-sm',
@@ -49,7 +49,7 @@ export default function CurrencyDisplay({
 		return (
 			<div className={`flex items-center gap-2 ${className}`}>
 				<span className={`text-slate-400 ${sizeClasses[size]}`}>
-					{currency === 'USD' ? `$${amount.toFixed(2)}` : `${amount.toFixed(2)} Bs`}
+					{currency === 'USD' || currency === 'EUR' ? `$${amount.toFixed(2)}` : `${amount.toFixed(2)} Bs`}
 				</span>
 			</div>
 		);
