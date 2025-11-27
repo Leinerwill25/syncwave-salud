@@ -44,6 +44,7 @@ export async function GET(
 				profile_photo,
 				sanitary_license,
 				liability_insurance_number,
+				has_cashea,
 				organization:Organization!clinic_profile_org_fk (
 					id,
 					name,
@@ -119,7 +120,8 @@ export async function GET(
 						photos,
 						profile_photo,
 						sanitary_license,
-						liability_insurance_number
+						liability_insurance_number,
+						has_cashea
 					)
 				`)
 				.eq('id', consultorioId)
@@ -196,6 +198,7 @@ export async function GET(
 						profile_photo: null,
 						sanitary_license: null,
 						liability_insurance_number: null,
+						has_cashea: false,
 						organization: [{
 							id: organization.id,
 							name: organization.name,
@@ -303,7 +306,7 @@ export async function GET(
 		// Asegurar que sanitary_license y liability_insurance_number se devuelvan
 		const sanitaryLicense = clinic.sanitary_license || null;
 		const liabilityInsurance = clinic.liability_insurance_number || null;
-		const hasCashea = clinic.has_cashea ?? false;
+		const hasCashea = (clinic as any)?.has_cashea ?? false;
 
 		// Parsear información adicional de los médicos
 		const doctorsWithParsedData = (doctors || []).map((doctor: any) => {
