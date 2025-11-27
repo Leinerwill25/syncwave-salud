@@ -239,16 +239,16 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 
 		const userName = userData?.name || 'Usuario';
 		const nameParts = userName.split(' ');
-		const firstName = nameParts[0] || 'Usuario';
-		const lastName = nameParts.slice(1).join(' ') || '';
+		const auditFirstName = nameParts[0] || 'Usuario';
+		const auditLastName = nameParts.slice(1).join(' ') || '';
 
 		// Registrar en auditoría
 		await supabase.from('consultorio_role_audit_log').insert({
 			organization_id: user.organizationId,
 			role_id: roleId,
 			role_user_id: newRoleUser.id,
-			user_first_name: firstName,
-			user_last_name: lastName,
+			user_first_name: auditFirstName,
+			user_last_name: auditLastName,
 			user_identifier: '',
 			action_type: 'create',
 			module: 'roles',
@@ -256,8 +256,8 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 			entity_id: newRoleUser.id,
 			action_details: {
 				description: `Usuario ${firstName} ${lastName} (${identifier}) agregado al rol "${role.role_name}". Usuario creado en sistema de autenticación y tabla User.`,
-				user_first_name: firstName,
-				user_last_name: lastName,
+				user_first_name: auditFirstName,
+				user_last_name: auditLastName,
 				user_identifier: identifier,
 				user_email: email.trim(),
 				app_user_id: appUserId,
