@@ -107,10 +107,11 @@ export default function CurrencyDisplay({
 			if (preferredRate && effectivePrimaryCurrency === 'EUR') {
 				// EUR/Bs disponible, convertir USD -> BS -> EUR
 				preferredAmount = bsAmount / Number(preferredRate.rate);
-			} else {
-				// Fallback: usar tasa aproximada
-				preferredAmount = bsAmount / (originalCurrencyRate ? Number(originalCurrencyRate.rate) * 1.1 : usdRate * 1.1 || 1);
-			}
+						} else {
+							// Fallback: usar tasa aproximada
+							const fallbackRate = originalCurrencyRate ? Number(originalCurrencyRate.rate) * 1.1 : (usdRate ? usdRate * 1.1 : 1);
+							preferredAmount = bsAmount / fallbackRate;
+						}
 		} else {
 			preferredAmount = bsAmount;
 		}

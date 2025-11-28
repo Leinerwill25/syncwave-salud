@@ -10,8 +10,11 @@ export async function GET() {
 			return NextResponse.json({ error: 'Cliente de tasas no configurado' }, { status: 500 });
 		}
 
+		// Guardar referencia en una constante local no-null para TypeScript
+		const client = ratesSupabase;
+
 		// Obtener todos los códigos únicos de monedas
-		const { data: uniqueCodes, error: codesError } = await ratesSupabase
+		const { data: uniqueCodes, error: codesError } = await client
 			.from('rates')
 			.select('code')
 			.order('code', { ascending: true });
@@ -28,7 +31,7 @@ export async function GET() {
 		// Para cada código, obtener la tasa más reciente
 		const currenciesWithRates = await Promise.all(
 			codes.map(async (code: string) => {
-				const { data: latestRate, error: rateError } = await ratesSupabase
+				const { data: latestRate, error: rateError } = await client
 					.from('rates')
 					.select('code, rate, rate_datetime, curr_date')
 					.eq('code', code)

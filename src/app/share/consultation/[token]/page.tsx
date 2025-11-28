@@ -171,10 +171,20 @@ export default async function ConsultationSharePage({ params }: Props) {
 		prescriptionFiles = files || [];
 	}
 
+	// Normalizar datos que pueden venir como arrays desde Supabase
+	const normalizedDoctor = Array.isArray(consultation.doctor) 
+		? (consultation.doctor[0] || null)
+		: consultation.doctor;
+	const normalizedAppointment = Array.isArray(consultation.appointment)
+		? (consultation.appointment[0] || null)
+		: consultation.appointment;
+
 	return (
 		<ConsultationShareView
 			consultation={{
 				...consultation,
+				doctor: normalizedDoctor,
+				appointment: normalizedAppointment,
 				attachments: consultationAttachments,
 			}}
 			patient={{

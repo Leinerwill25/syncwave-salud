@@ -365,6 +365,12 @@ export async function GET(req: Request) {
 		let historicalRates: any[] = [];
 		if (ratesSupabase && paidInvoices.length > 0) {
 			try {
+				// Guardar referencia en constante local para TypeScript
+				const client = ratesSupabase;
+				if (!client) {
+					throw new Error('Cliente de tasas no disponible');
+				}
+
 				// Obtener fechas únicas de las facturas pagadas
 				// Prioridad: fecha_pago > fecha_emision > created_at
 				const uniqueDates = new Set<string>();
@@ -392,8 +398,8 @@ export async function GET(req: Request) {
 				const ratesPromises: Promise<any>[] = [];
 				Array.from(uniqueDates).forEach((dateStr) => {
 					Array.from(uniqueCurrencies).forEach((currencyCode) => {
-						ratesPromises.push(
-							ratesSupabase
+						const promise = Promise.resolve(
+							client
 								.from('rates')
 								.select('*')
 								.eq('code', currencyCode)
@@ -401,14 +407,14 @@ export async function GET(req: Request) {
 								.order('rate_datetime', { ascending: false })
 								.limit(1)
 								.maybeSingle()
-								.then(({ data, error }) => {
-									if (error) {
-										console.error(`[Medic Reportes API] Error obteniendo tasa ${currencyCode} para ${dateStr}:`, error);
-										return null;
-									}
-									return data ? { date: dateStr, currency: currencyCode, rate: Number(data.rate) || 0, ...data } : null;
-								})
-						);
+						).then(({ data, error }) => {
+							if (error) {
+								console.error(`[Medic Reportes API] Error obteniendo tasa ${currencyCode} para ${dateStr}:`, error);
+								return null;
+							}
+							return data ? { date: dateStr, currency: currencyCode, rate: Number(data.rate) || 0, ...data } : null;
+						});
+						ratesPromises.push(promise);
 					});
 				});
 
@@ -566,9 +572,9 @@ export async function GET(req: Request) {
 				// Extraer la fecha del breakdownKey (formato: "YYYY-MM-DD_CURRENCY")
 				const dateStr = key.split('_')[0];
 				return {
+					...data,
 					date: dateStr,
 					currency: data.currency || 'USD',
-					...data,
 				};
 			})
 			.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
