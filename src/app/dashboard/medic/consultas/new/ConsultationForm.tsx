@@ -1060,7 +1060,6 @@ export default function ConsultationForm() {
 														amount={Number(service.price)}
 														currency={service.currency as 'USD' | 'EUR'}
 														showBoth={true}
-														primaryCurrency="USD"
 														size="sm"
 													/>
 												</div>
@@ -1107,7 +1106,6 @@ export default function ConsultationForm() {
 													amount={total}
 													currency={currency as 'USD' | 'EUR'}
 													showBoth={true}
-													primaryCurrency="USD"
 													size="md"
 												/>
 											</div>

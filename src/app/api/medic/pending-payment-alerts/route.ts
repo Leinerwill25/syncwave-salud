@@ -54,7 +54,7 @@ export async function GET() {
 		if (appointmentIds.length > 0) {
 			const { data: facturaciones, error: facturacionesError } = await supabase
 				.from('facturacion')
-				.select('id, appointment_id, estado_pago, total, currency, fecha_emision')
+				.select('id, appointment_id, consultation_id, estado_pago, total, currency, fecha_emision')
 				.in('appointment_id', appointmentIds)
 				.in('estado_pago', ['pendiente', 'pendiente_verificacion']);
 
@@ -88,7 +88,8 @@ export async function GET() {
 		}
 
 		// Combinar citas y consultas con sus facturaciones
-		const alerts: any[] = [];
+		// Usar un Map para deduplicar por facturacion.id (cada facturación debe aparecer solo una vez)
+		const alertsMap = new Map<string, any>();
 
 		// Helper para normalizar datos de Supabase (pueden venir como array o objeto)
 		const normalizePatient = (patient: any) => {
@@ -102,9 +103,37 @@ export async function GET() {
 		};
 
 		// Procesar citas
-		(appointments || []).forEach((apt: any) => {
+		// Usar for...of para poder hacer await al buscar consultas asociadas
+		for (const apt of appointments || []) {
 			const facturacion = facturacionesPendientes.find((f: any) => f.appointment_id === apt.id);
 			if (facturacion) {
+				// Verificar que la facturación realmente esté pendiente (doble verificación)
+				if (facturacion.estado_pago !== 'pendiente' && facturacion.estado_pago !== 'pendiente_verificacion') {
+					console.log(`[Pending Payment Alerts API] Facturación ${facturacion.id} no está pendiente (estado: ${facturacion.estado_pago}), omitiendo para cita ${apt.id}`);
+					continue;
+				}
+
+				// Si esta facturación ya fue procesada, omitir (duplicado)
+				if (alertsMap.has(facturacion.id)) {
+					console.log(`[Pending Payment Alerts API] Facturación duplicada detectada y omitida: ${facturacion.id} para cita ${apt.id}`);
+					continue;
+				}
+
+				// Buscar si existe una consulta asociada a esta cita
+				let consultationId: string | null = null;
+				const { data: consultationData } = await supabase
+					.from('consultation')
+					.select('id')
+					.eq('appointment_id', apt.id)
+					.eq('doctor_id', user.userId)
+					.order('created_at', { ascending: false })
+					.limit(1)
+					.maybeSingle();
+
+				if (consultationData) {
+					consultationId = consultationData.id;
+				}
+
 				const patient = normalizePatient(apt.patient);
 				const unregisteredPatient = normalizeUnregisteredPatient(apt.unregisteredPatient);
 				
@@ -114,9 +143,14 @@ export async function GET() {
 					? `${unregisteredPatient.first_name} ${unregisteredPatient.last_name}`
 					: 'Paciente';
 
-				alerts.push({
+				// Si hay una consulta asociada, usar su ID; si no, usar el ID de la cita pero redirigir a citas
+				const url = consultationId 
+					? `/dashboard/medic/consultas/${consultationId}`
+					: `/dashboard/medic/citas?appointment_id=${apt.id}`;
+
+				alertsMap.set(facturacion.id, {
 					type: 'appointment',
-					id: apt.id,
+					id: consultationId || apt.id, // Usar ID de consulta si existe, sino el de la cita
 					patientName,
 					scheduledAt: apt.scheduled_at,
 					status: apt.status,
@@ -128,39 +162,73 @@ export async function GET() {
 						currency: facturacion.currency,
 						estado_pago: facturacion.estado_pago,
 					},
-					url: `/dashboard/medic/consultas/${apt.id}`,
+					url,
 				});
 			}
-		});
+		}
 
 		// Procesar consultas (usar for...of para await)
+		// Las consultas tienen prioridad sobre las citas, así que si una facturación ya fue procesada
+		// por una cita, la reemplazamos con la consulta (que es más específica)
 		for (const cons of consultations || []) {
 			// Buscar facturación asociada
 			let facturacion = facturacionesPendientes.find((f: any) => f.appointment_id === cons.appointment_id);
 
-			// Si no hay facturación por appointment, buscar por paciente
+			// Si no hay facturación por appointment, buscar por consultation_id primero (más específico)
 			if (!facturacion) {
 				let query = supabase
 					.from('facturacion')
-					.select('id, estado_pago, total, currency, fecha_emision')
+					.select('id, estado_pago, total, currency, fecha_emision, appointment_id, consultation_id')
 					.eq('doctor_id', user.userId)
 					.in('estado_pago', ['pendiente', 'pendiente_verificacion'])
-					.order('fecha_emision', { ascending: false })
-					.limit(1);
+					.order('fecha_emision', { ascending: false });
 
-				if (cons.patient_id) {
-					query = query.eq('patient_id', cons.patient_id);
-				} else if (cons.unregistered_patient_id) {
-					query = query.eq('unregistered_patient_id', cons.unregistered_patient_id);
-				}
+				// Prioridad 1: Buscar por consultation_id (más específico)
+				query = query.eq('consultation_id', cons.id);
 
-				const { data: facturacionData } = await query.maybeSingle();
-				if (facturacionData) {
-					facturacion = facturacionData;
+				const { data: facturacionByConsultation } = await query.maybeSingle();
+				if (facturacionByConsultation) {
+					facturacion = facturacionByConsultation;
+				} else {
+					// Prioridad 2: Si no hay facturación por consultation_id, buscar por appointment_id
+					// (solo si la consulta tiene appointment_id)
+					if (cons.appointment_id) {
+						const { data: facturacionByAppointment } = await supabase
+							.from('facturacion')
+							.select('id, estado_pago, total, currency, fecha_emision, appointment_id, consultation_id')
+							.eq('doctor_id', user.userId)
+							.eq('appointment_id', cons.appointment_id)
+							.in('estado_pago', ['pendiente', 'pendiente_verificacion'])
+							.order('fecha_emision', { ascending: false })
+							.limit(1)
+							.maybeSingle();
+						
+						if (facturacionByAppointment) {
+							facturacion = facturacionByAppointment;
+						}
+					}
 				}
 			}
 
 			if (facturacion) {
+				// Verificar que la facturación realmente esté pendiente (doble verificación)
+				if (facturacion.estado_pago !== 'pendiente' && facturacion.estado_pago !== 'pendiente_verificacion') {
+					console.log(`[Pending Payment Alerts API] Facturación ${facturacion.id} no está pendiente (estado: ${facturacion.estado_pago}), omitiendo para consulta ${cons.id}`);
+					continue;
+				}
+
+				// Si esta facturación ya fue procesada por una cita, reemplazarla con la consulta
+				// (las consultas tienen prioridad porque son más específicas)
+				if (alertsMap.has(facturacion.id)) {
+					const existingAlert = alertsMap.get(facturacion.id);
+					if (existingAlert?.type === 'appointment') {
+						console.log(`[Pending Payment Alerts API] Reemplazando alerta de cita con consulta para facturación ${facturacion.id}`);
+					} else {
+						console.log(`[Pending Payment Alerts API] Facturación duplicada detectada y omitida: ${facturacion.id} para consulta ${cons.id}`);
+						continue;
+					}
+				}
+
 				const patient = normalizePatient(cons.patient);
 				const unregisteredPatient = normalizeUnregisteredPatient(cons.unregisteredPatient);
 				
@@ -170,7 +238,7 @@ export async function GET() {
 					? `${unregisteredPatient.first_name} ${unregisteredPatient.last_name}`
 					: 'Paciente';
 
-				alerts.push({
+				alertsMap.set(facturacion.id, {
 					type: 'consultation',
 					id: cons.id,
 					patientName,
@@ -186,6 +254,9 @@ export async function GET() {
 				});
 			}
 		}
+
+		// Convertir el Map a array
+		const alerts = Array.from(alertsMap.values());
 
 		// Ordenar por fecha (más recientes primero)
 		alerts.sort((a, b) => {

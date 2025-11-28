@@ -2,6 +2,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createNotification } from '@/lib/notifications';
 import createSupabaseServerClient from '@/app/adapters/server';
+import { getExchangeRateForCurrency } from '@/lib/currency-utils';
 
 export async function POST(req: NextRequest) {
 	try {
@@ -24,7 +25,7 @@ export async function POST(req: NextRequest) {
 			impuestos,
 			total,
 			currency = 'USD',
-			tipo_cambio = 1,
+			tipo_cambio, // Si no se proporciona, se obtendrá automáticamente
 			billing_series,
 			numero_factura,
 			estado_factura = 'emitida',
@@ -33,6 +34,13 @@ export async function POST(req: NextRequest) {
 			fecha_pago,
 			notas,
 		} = body || {};
+
+		// Obtener la tasa de cambio de la moneda especificada desde la base de datos rates
+		let exchangeRate = tipo_cambio ? Number(tipo_cambio) : null;
+		if (!exchangeRate || exchangeRate === 1) {
+			// Si no se proporciona tipo_cambio o es 1 (por defecto), obtener la tasa real
+			exchangeRate = await getExchangeRateForCurrency(currency);
+		}
 
 		// Validaciones básicas
 		if (!patient_id && !unregistered_patient_id) {
@@ -150,7 +158,7 @@ export async function POST(req: NextRequest) {
 			impuestos: Number(impuestos) || 0,
 			total: Number(total) || 0,
 			currency: currency || 'USD',
-			tipo_cambio: tipo_cambio ? Number(tipo_cambio) : 1,
+			tipo_cambio: exchangeRate,
 			billing_series: billing_series || null,
 			numero_factura: numero_factura || null,
 			estado_factura: estado_factura || 'emitida',

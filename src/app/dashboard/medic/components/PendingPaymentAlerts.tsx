@@ -99,110 +99,124 @@ export default function PendingPaymentAlerts() {
 		);
 	}
 
-	if (alerts.length === 0) {
-		return null;
-	}
-
 	return (
 		<div className="space-y-3">
 			<div className="flex items-center justify-between">
 				<h3 className="text-sm font-semibold text-slate-900 flex items-center gap-2">
 					<AlertCircle className="w-5 h-5 text-amber-500" />
-					Pagos Pendientes de Validación ({alerts.length})
+					Pagos Pendientes de Validación {alerts.length > 0 && `(${alerts.length})`}
 				</h3>
 			</div>
 
-			<AnimatePresence>
-				{alerts.map((alert) => (
-					<motion.div
-						key={alert.id}
-						initial={{ opacity: 0, y: -10 }}
-						animate={{ opacity: 1, y: 0 }}
-						exit={{ opacity: 0, y: -10 }}
-						className="bg-amber-50 border-2 border-amber-200 rounded-lg p-4 shadow-sm"
-					>
-						<div className="flex items-start justify-between gap-3">
-							<div className="flex-1 min-w-0">
-								<div className="flex items-center gap-2 mb-2">
-									{alert.type === 'appointment' ? (
-										<Clock className="w-4 h-4 text-amber-600 shrink-0" />
-									) : (
-										<CheckCircle className="w-4 h-4 text-amber-600 shrink-0" />
-									)}
-									<span className="text-sm font-semibold text-slate-900 truncate">
-										{alert.patientName}
-									</span>
-									<span className="text-xs px-2 py-0.5 bg-amber-200 text-amber-800 rounded-full">
-										{alert.type === 'appointment' ? 'Cita' : 'Consulta'}
-									</span>
-								</div>
+			{alerts.length === 0 ? (
+				<div className="bg-gradient-to-br from-amber-50 to-yellow-50 border-2 border-amber-200 rounded-lg p-6 shadow-sm">
+					<div className="flex flex-col items-center justify-center text-center space-y-3">
+						<div className="p-3 bg-amber-100 rounded-full">
+							<CheckCircle className="w-8 h-8 text-amber-600" />
+						</div>
+						<div>
+							<h4 className="text-base font-semibold text-amber-900 mb-1">
+								No hay pagos pendientes de validación
+							</h4>
+							<p className="text-sm text-amber-700">
+								Todos los pagos han sido procesados correctamente. Cuando haya pagos pendientes de verificación, aparecerán aquí.
+							</p>
+						</div>
+					</div>
+				</div>
+			) : (
 
-								<div className="space-y-1 text-xs text-slate-600">
-									{alert.scheduledAt && (
-										<div className="flex items-center gap-1">
-											<Clock className="w-3 h-3" />
-											<span>
-												{format(new Date(alert.scheduledAt), 'dd/MM/yyyy HH:mm')}
-											</span>
-										</div>
-									)}
-									{alert.startedAt && (
-										<div className="flex items-center gap-1">
-											<Clock className="w-3 h-3" />
-											<span>
-												{format(new Date(alert.startedAt), 'dd/MM/yyyy HH:mm')}
-											</span>
-										</div>
-									)}
-									{alert.reason && (
-										<div className="truncate">
-											<span className="font-medium">Motivo:</span> {alert.reason}
-										</div>
-									)}
-									{alert.chiefComplaint && (
-										<div className="truncate">
-											<span className="font-medium">Motivo:</span> {alert.chiefComplaint}
-										</div>
-									)}
-								</div>
+				<AnimatePresence>
+					{alerts.map((alert) => (
+						<motion.div
+							key={alert.id}
+							initial={{ opacity: 0, y: -10 }}
+							animate={{ opacity: 1, y: 0 }}
+							exit={{ opacity: 0, y: -10 }}
+							className="bg-amber-50 border-2 border-amber-200 rounded-lg p-4 shadow-sm"
+						>
+							<div className="flex items-start justify-between gap-3">
+								<div className="flex-1 min-w-0">
+									<div className="flex items-center gap-2 mb-2">
+										{alert.type === 'appointment' ? (
+											<Clock className="w-4 h-4 text-amber-600 shrink-0" />
+										) : (
+											<CheckCircle className="w-4 h-4 text-amber-600 shrink-0" />
+										)}
+										<span className="text-sm font-semibold text-slate-900 truncate">
+											{alert.patientName}
+										</span>
+										<span className="text-xs px-2 py-0.5 bg-amber-200 text-amber-800 rounded-full">
+											{alert.type === 'appointment' ? 'Cita' : 'Consulta'}
+										</span>
+									</div>
 
-								<div className="mt-3 flex items-center gap-2">
-									<DollarSign className="w-4 h-4 text-amber-600" />
+									<div className="space-y-1 text-xs text-slate-600">
+										{alert.scheduledAt && (
+											<div className="flex items-center gap-1">
+												<Clock className="w-3 h-3" />
+												<span>
+													{format(new Date(alert.scheduledAt), 'dd/MM/yyyy HH:mm')}
+												</span>
+											</div>
+										)}
+										{alert.startedAt && (
+											<div className="flex items-center gap-1">
+												<Clock className="w-3 h-3" />
+												<span>
+													{format(new Date(alert.startedAt), 'dd/MM/yyyy HH:mm')}
+												</span>
+											</div>
+										)}
+										{alert.reason && (
+											<div className="truncate">
+												<span className="font-medium">Motivo:</span> {alert.reason}
+											</div>
+										)}
+										{alert.chiefComplaint && (
+											<div className="truncate">
+												<span className="font-medium">Motivo:</span> {alert.chiefComplaint}
+											</div>
+										)}
+									</div>
+
+									<div className="mt-3 flex items-center gap-2">
+										<DollarSign className="w-4 h-4 text-amber-600" />
 									<CurrencyDisplay
 										amount={alert.facturacion.total}
 										currency={alert.facturacion.currency as 'USD' | 'EUR'}
 										showBoth={true}
-										primaryCurrency="USD"
 										size="sm"
 										className="font-semibold text-amber-700"
 									/>
-									<span className="text-xs px-2 py-0.5 bg-amber-200 text-amber-800 rounded-full">
-										{alert.facturacion.estado_pago === 'pendiente_verificacion'
-											? 'Pendiente Verificación'
-											: 'Pendiente'}
-									</span>
+										<span className="text-xs px-2 py-0.5 bg-amber-200 text-amber-800 rounded-full">
+											{alert.facturacion.estado_pago === 'pendiente_verificacion'
+												? 'Pendiente Verificación'
+												: 'Pendiente'}
+										</span>
+									</div>
+								</div>
+
+								<div className="flex items-start gap-2 shrink-0">
+									<Link
+										href={alert.url}
+										className="px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white text-xs font-medium rounded-lg transition-colors"
+									>
+										Validar
+									</Link>
+									<button
+										onClick={() => handleDismiss(alert.id)}
+										className="p-1 text-slate-400 hover:text-slate-600 transition-colors"
+										title="Descartar"
+									>
+										<X className="w-4 h-4" />
+									</button>
 								</div>
 							</div>
-
-							<div className="flex items-start gap-2 shrink-0">
-								<Link
-									href={alert.url}
-									className="px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white text-xs font-medium rounded-lg transition-colors"
-								>
-									Validar
-								</Link>
-								<button
-									onClick={() => handleDismiss(alert.id)}
-									className="p-1 text-slate-400 hover:text-slate-600 transition-colors"
-									title="Descartar"
-								>
-									<X className="w-4 h-4" />
-								</button>
-							</div>
-						</div>
-					</motion.div>
-				))}
-			</AnimatePresence>
+						</motion.div>
+					))}
+				</AnimatePresence>
+			)}
 		</div>
 	);
 }

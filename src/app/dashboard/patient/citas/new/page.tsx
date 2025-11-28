@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { Calendar, Clock, User, Building2, Search, ChevronLeft, CheckCircle, AlertCircle, DollarSign } from 'lucide-react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import AlertModal from '@/components/ui/AlertModal';
 
@@ -39,9 +39,11 @@ type Organization = {
 
 export default function NewAppointmentPage() {
 	const router = useRouter();
+	const searchParams = useSearchParams();
 	const [loading, setLoading] = useState(false);
 	const [submitting, setSubmitting] = useState(false);
 	const [step, setStep] = useState<'organization' | 'doctor' | 'schedule' | 'confirm'>('organization');
+	const [clinicIdFromUrl, setClinicIdFromUrl] = useState<string | null>(null);
 
 	// Form data
 	const [selectedOrganization, setSelectedOrganization] = useState<Organization | null>(null);
@@ -91,6 +93,14 @@ export default function NewAppointmentPage() {
 		return org.id;
 	};
 
+	// Leer clinic_id de la URL al cargar
+	useEffect(() => {
+		const clinicId = searchParams.get('clinic_id');
+		if (clinicId) {
+			setClinicIdFromUrl(clinicId);
+		}
+	}, [searchParams]);
+
 	useEffect(() => {
 		loadOrganizations();
 	}, []);
@@ -100,6 +110,25 @@ export default function NewAppointmentPage() {
 			loadDoctors();
 		}
 	}, [selectedOrganization]);
+
+	// Efecto para preseleccionar cuando se carga clinic_id de la URL
+	useEffect(() => {
+		if (clinicIdFromUrl && organizations.length > 0 && !selectedOrganization) {
+			const foundOrg = organizations.find((org) => {
+				const orgId = getOrganizationId(org);
+				return orgId === clinicIdFromUrl;
+			});
+
+			if (foundOrg) {
+				setSelectedOrganization(foundOrg);
+				setStep('doctor'); // Avanzar directamente al paso de selección de médico
+			} else if (clinicIdFromUrl && organizations.length > 0) {
+				// Si no se encuentra el consultorio, mostrar un mensaje
+				console.warn(`Consultorio con ID ${clinicIdFromUrl} no encontrado en la lista`);
+			}
+		}
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [clinicIdFromUrl, organizations, selectedOrganization]);
 
 	useEffect(() => {
 		if (selectedDoctor) {
@@ -135,34 +164,45 @@ export default function NewAppointmentPage() {
 			// Procesar consultorios privados
 			if (consultoriosRes.ok) {
 				const consultoriosData = await consultoriosRes.json();
-				// Usar un Set para evitar duplicados basados en organization_id
-				const seenIds = new Set<string>();
+				// Usar un Map para evitar duplicados basados en organization_id
+				// El Map nos permite mantener solo el último/mejor registro por organización
+				const orgsMap = new Map<string, Organization>();
 
-				const consultorios = (consultoriosData.data || [])
-					.filter((consultorio: any) => {
-						const orgId = consultorio.organization?.id || consultorio.id;
-						if (!orgId || seenIds.has(orgId)) {
-							return false;
-						}
-						seenIds.add(orgId);
-						return true;
-					})
-					.map((consultorio: any, index: number) => {
-						const orgId = consultorio.organization?.id || consultorio.id;
-						// Crear un ID único combinando organization_id con un índice para evitar duplicados
-						return {
-							id: `${orgId}-consultorio-${index}`,
-							organization_id: orgId, // Mantener el organization_id real para usar en otras llamadas
-							name: consultorio.name || consultorio.organization?.name || consultorio.trade_name || consultorio.legal_name,
-							type: 'CONSULTORIO',
-							clinic_profile: {
-								trade_name: consultorio.trade_name || consultorio.name || consultorio.organization?.name,
-								specialties: Array.isArray(consultorio.specialties) ? consultorio.specialties : consultorio.specialty ? [consultorio.specialty] : [],
-								address_operational: consultorio.address_operational || consultorio.address,
-							},
-						};
-					});
-				allOrgs.push(...consultorios);
+				(consultoriosData.data || []).forEach((consultorio: any) => {
+					// Usar organization.id como clave única (no el clinic_profile.id)
+					const orgId = consultorio.organization?.id || consultorio.id;
+					if (!orgId) return;
+
+					// Si ya existe esta organización, no agregarla de nuevo
+					if (orgsMap.has(orgId)) {
+						console.log(`[Citas New] Consultorio duplicado detectado y omitido: ${orgId} - ${consultorio.name || consultorio.organization?.name}`);
+						return;
+					}
+
+					// Crear el objeto de organización
+					const org: Organization = {
+						id: orgId, // Usar directamente el organization_id como id
+						organization_id: orgId, // Mantener el organization_id real para usar en otras llamadas
+						name: consultorio.name || consultorio.organization?.name || consultorio.trade_name || consultorio.legal_name,
+						type: 'CONSULTORIO',
+						clinic_profile: {
+							trade_name: consultorio.trade_name || consultorio.name || consultorio.organization?.name,
+							specialties: Array.isArray(consultorio.specialties) 
+								? consultorio.specialties 
+								: consultorio.specialty 
+									? [consultorio.specialty] 
+									: Array.isArray(consultorio.organization?.specialties)
+										? consultorio.organization.specialties
+										: [],
+							address_operational: consultorio.address_operational || consultorio.address || consultorio.organization?.address,
+						},
+					};
+
+					orgsMap.set(orgId, org);
+				});
+
+				// Convertir el Map a array
+				allOrgs.push(...Array.from(orgsMap.values()));
 			}
 
 			setOrganizations(allOrgs);

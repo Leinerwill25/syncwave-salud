@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { FileText, User, Calendar, Stethoscope, Heart, Thermometer, Activity, Download, Pill, FileCheck, Image, File } from 'lucide-react';
+import { FileText, User, Calendar, Stethoscope, Heart, Thermometer, Activity, Download, Pill, FileCheck, Image, File, Share2, Copy, Check } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 type PrescriptionItem = {
@@ -57,6 +57,9 @@ export default function HistorialPage() {
 	const [consultations, setConsultations] = useState<Consultation[]>([]);
 	const [medicalRecords, setMedicalRecords] = useState<MedicalRecord[]>([]);
 	const [activeTab, setActiveTab] = useState<'consultations' | 'records'>('consultations');
+	const [sharing, setSharing] = useState<Set<string>>(new Set());
+	const [shareLinks, setShareLinks] = useState<Record<string, string>>({});
+	const [copied, setCopied] = useState<string | null>(null);
 
 	useEffect(() => {
 		loadHistorial();
@@ -100,6 +103,45 @@ export default function HistorialPage() {
 			// ignore
 		}
 		return `Documento ${index + 1}`;
+	};
+
+	const handleShareConsultation = async (consultationId: string) => {
+		if (sharing.has(consultationId)) return;
+
+		try {
+			setSharing((prev) => new Set(prev).add(consultationId));
+
+			const res = await fetch(`/api/patient/consultations/${consultationId}/share`, {
+				method: 'POST',
+				credentials: 'include',
+			});
+
+			if (!res.ok) {
+				const error = await res.json();
+				throw new Error(error.error || 'Error al generar enlace');
+			}
+
+			const data = await res.json();
+			setShareLinks((prev) => ({ ...prev, [consultationId]: data.shareUrl }));
+		} catch (err: any) {
+			alert(err.message || 'Error al generar enlace compartido');
+		} finally {
+			setSharing((prev) => {
+				const next = new Set(prev);
+				next.delete(consultationId);
+				return next;
+			});
+		}
+	};
+
+	const handleCopyLink = async (link: string, consultationId: string) => {
+		try {
+			await navigator.clipboard.writeText(link);
+			setCopied(consultationId);
+			setTimeout(() => setCopied(null), 2000);
+		} catch (err) {
+			alert('Error al copiar enlace');
+		}
 	};
 
 	const renderConsultationCard = (consultation: Consultation) => {
@@ -148,6 +190,48 @@ export default function HistorialPage() {
 								<User className="w-3 h-3 sm:w-3.5 sm:h-3.5 md:w-4 md:h-4 flex-shrink-0" />
 								<span className="font-semibold break-words">Dr. {consultation.doctor.name || 'Médico'}</span>
 							</p>
+						)}
+					</div>
+					<div className="flex items-center gap-2 ml-2">
+						{shareLinks[consultation.id] ? (
+							<div className="flex items-center gap-2">
+								<input
+									type="text"
+									value={shareLinks[consultation.id]}
+									readOnly
+									className="text-xs px-2 py-1 border border-gray-300 rounded bg-gray-50 text-gray-700 max-w-[200px] sm:max-w-[300px]"
+								/>
+								<button
+									onClick={() => handleCopyLink(shareLinks[consultation.id], consultation.id)}
+									className="p-1.5 sm:p-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex-shrink-0"
+									title="Copiar enlace"
+								>
+									{copied === consultation.id ? (
+										<Check className="w-3 h-3 sm:w-4 sm:h-4" />
+									) : (
+										<Copy className="w-3 h-3 sm:w-4 sm:h-4" />
+									)}
+								</button>
+							</div>
+						) : (
+							<button
+								onClick={() => handleShareConsultation(consultation.id)}
+								disabled={sharing.has(consultation.id)}
+								className="flex items-center gap-1.5 sm:gap-2 px-2 sm:px-3 py-1.5 sm:py-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-lg hover:from-blue-700 hover:to-indigo-700 transition-colors text-xs sm:text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0"
+								title="Compartir consulta"
+							>
+								{sharing.has(consultation.id) ? (
+									<>
+										<div className="w-3 h-3 sm:w-4 sm:h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+										<span className="hidden sm:inline">Generando...</span>
+									</>
+								) : (
+									<>
+										<Share2 className="w-3 h-3 sm:w-4 sm:h-4" />
+										<span className="hidden sm:inline">Compartir</span>
+									</>
+								)}
+							</button>
 						)}
 					</div>
 				</div>

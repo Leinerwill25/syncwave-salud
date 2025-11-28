@@ -22,6 +22,7 @@ import {
 	Search as SearchIcon,
 	Menu,
 	X,
+	Bell,
 } from 'lucide-react';
 
 type IconComponent = React.ComponentType<React.SVGProps<SVGSVGElement>>;
@@ -71,6 +72,11 @@ const LINKS: LinkItem[] = [
 		href: '/dashboard/patient/recetas',
 		label: 'Recetas',
 		icon: Pill,
+	},
+	{
+		href: '/dashboard/patient/recordatorios',
+		label: 'Recordatorios',
+		icon: Bell,
 	},
 	{
 		href: '/dashboard/patient/pagos',

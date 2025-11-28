@@ -462,7 +462,7 @@ export default function AppointmentForm() {
 	// FORMULARIO PRINCIPAL
 	// ---------------------------
 	return (
-		<form onSubmit={handleSubmit} style={{ maxHeight: `calc(100vh - ${HEADER_OFFSET}px)` }} className="mx-auto bg-white rounded-xl shadow-md p-4 overflow-auto min-w-0">
+		<form onSubmit={handleSubmit} style={{ maxHeight: `calc(100vh - ${HEADER_OFFSET}px)` }} className="mx-auto bg-white rounded-xl shadow-md p-4 overflow-auto min-w-0 w-full max-w-full">
 			<div className="flex items-start justify-between mb-3">
 				<div>
 					<h2 className="text-lg font-semibold text-gray-900">Registrar Cita</h2>
@@ -556,72 +556,72 @@ export default function AppointmentForm() {
 								<UserPlus size={14} />
 								Datos del Paciente No Registrado
 							</h3>
-							<div className="grid grid-cols-2 gap-2">
-								<div>
+							<div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+								<div className="min-w-0">
 									<label className={labelClass}>Nombre *</label>
 									<input
 										type="text"
 										value={unregisteredFirstName}
 										onChange={(e) => setUnregisteredFirstName(e.target.value)}
 										placeholder="Nombre"
-										className={inputNeutral}
+										className={`${inputNeutral} min-w-0`}
 									/>
 								</div>
-								<div>
+								<div className="min-w-0">
 									<label className={labelClass}>Apellido *</label>
 									<input
 										type="text"
 										value={unregisteredLastName}
 										onChange={(e) => setUnregisteredLastName(e.target.value)}
 										placeholder="Apellido"
-										className={inputNeutral}
+										className={`${inputNeutral} min-w-0`}
 									/>
 								</div>
-								<div>
+								<div className="min-w-0">
 									<label className={labelClass}>Cédula</label>
 									<input
 										type="text"
 										value={unregisteredIdentification}
 										onChange={(e) => setUnregisteredIdentification(e.target.value)}
 										placeholder="V-12345678"
-										className={inputNeutral}
+										className={`${inputNeutral} min-w-0`}
 									/>
 								</div>
-								<div>
+								<div className="min-w-0">
 									<label className={labelClass}>Teléfono *</label>
 									<input
 										type="tel"
 										value={unregisteredPhone}
 										onChange={(e) => setUnregisteredPhone(e.target.value)}
 										placeholder="0412-1234567"
-										className={inputNeutral}
+										className={`${inputNeutral} min-w-0`}
 									/>
 								</div>
-								<div>
+								<div className="min-w-0">
 									<label className={labelClass}>Email</label>
 									<input
 										type="email"
 										value={unregisteredEmail}
 										onChange={(e) => setUnregisteredEmail(e.target.value)}
 										placeholder="email@ejemplo.com"
-										className={inputNeutral}
+										className={`${inputNeutral} min-w-0`}
 									/>
 								</div>
-								<div>
+								<div className="min-w-0">
 									<label className={labelClass}>Fecha de Nacimiento</label>
 									<input
 										type="date"
 										value={unregisteredBirthDate}
 										onChange={(e) => setUnregisteredBirthDate(e.target.value)}
-										className={inputNeutral}
+										className={`${inputNeutral} min-w-0`}
 									/>
 								</div>
-								<div>
+								<div className="min-w-0">
 									<label className={labelClass}>Sexo</label>
 									<select
 										value={unregisteredSex}
 										onChange={(e) => setUnregisteredSex(e.target.value as 'M' | 'F' | 'OTHER' | '')}
-										className={inputNeutral}
+										className={`${inputNeutral} min-w-0`}
 									>
 										<option value="">Seleccionar...</option>
 										<option value="M">Masculino</option>
@@ -629,14 +629,14 @@ export default function AppointmentForm() {
 										<option value="OTHER">Otro</option>
 									</select>
 								</div>
-								<div>
+								<div className="min-w-0">
 									<label className={labelClass}>Dirección</label>
 									<input
 										type="text"
 										value={unregisteredAddress}
 										onChange={(e) => setUnregisteredAddress(e.target.value)}
 										placeholder="Dirección"
-										className={inputNeutral}
+										className={`${inputNeutral} min-w-0`}
 									/>
 								</div>
 							</div>
@@ -683,25 +683,25 @@ export default function AppointmentForm() {
 						</div>
 					)}
 
-					<div className="grid grid-cols-2 gap-3">
-						<div>
+					<div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+						<div className="min-w-0">
 							<label className={labelClass}>Fecha y hora</label>
-							<input type="datetime-local" value={scheduledAt} onChange={(e) => setScheduledAt(e.target.value)} className={inputNeutral} />
+							<input type="datetime-local" value={scheduledAt} onChange={(e) => setScheduledAt(e.target.value)} className={`${inputNeutral} min-w-0`} />
 						</div>
-						<div>
+						<div className="min-w-0">
 							<label className={labelClass}>Duración (min)</label>
-							<input type="number" min={1} value={durationMinutes} onChange={(e) => setDurationMinutes(e.target.value === '' ? '' : Number(e.target.value))} className={inputNeutral} />
+							<input type="number" min={1} value={durationMinutes} onChange={(e) => setDurationMinutes(e.target.value === '' ? '' : Number(e.target.value))} className={`${inputNeutral} min-w-0`} />
 						</div>
 					</div>
 
-					<div className="grid grid-cols-2 gap-3">
-						<div>
+					<div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+						<div className="min-w-0">
 							<label className={labelClass}>Ubicación</label>
-							<input type="text" value={location} onChange={(e) => setLocation(e.target.value)} className={inputNeutral} />
+							<input type="text" value={location} onChange={(e) => setLocation(e.target.value)} className={`${inputNeutral} min-w-0`} />
 						</div>
-						<div>
+						<div className="min-w-0">
 							<label className={labelClass}>Motivo / Razón</label>
-							<input type="text" value={reason} onChange={(e) => setReason(e.target.value)} className={inputNeutral} />
+							<input type="text" value={reason} onChange={(e) => setReason(e.target.value)} className={`${inputNeutral} min-w-0`} />
 						</div>
 					</div>
 				</section>
@@ -723,7 +723,7 @@ export default function AppointmentForm() {
 								<p className="mt-1">Configura los servicios en Configuración → Perfil Profesional</p>
 							</div>
 						) : (
-							<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+							<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 w-full min-w-0">
 								{services
 									.filter((service) => service.is_active !== false) // Filtrar solo servicios activos
 									.map((service) => {
@@ -758,7 +758,6 @@ export default function AppointmentForm() {
 																amount={Number(service.price)}
 																currency={service.currency as 'USD' | 'EUR'}
 																showBoth={true}
-																primaryCurrency="USD"
 																size="sm"
 															/>
 														</div>
@@ -808,7 +807,6 @@ export default function AppointmentForm() {
 													amount={total}
 													currency={currency as 'USD' | 'EUR'}
 													showBoth={true}
-													primaryCurrency="USD"
 													size="md"
 												/>
 											</div>

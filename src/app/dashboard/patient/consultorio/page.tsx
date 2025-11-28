@@ -55,8 +55,26 @@ export default function ConsultoriosPage() {
 			if (!res.ok) throw new Error('Error al cargar consultorios');
 
 			const data = await res.json();
-			setConsultorios(data.data || []);
-			setTotal(data.meta?.total || 0);
+			const rawConsultorios = data.data || [];
+			
+			// Deduplicar consultorios usando organization_id como clave única
+			const consultoriosMap = new Map<string, Consultorio>();
+			
+			rawConsultorios.forEach((consultorio: Consultorio) => {
+				const orgId = consultorio.organization?.id || consultorio.id;
+				
+				// Si este organization_id ya existe en el mapa, omitirlo (duplicado)
+				if (consultoriosMap.has(orgId)) {
+					console.log(`[Consultorios] Consultorio duplicado detectado y omitido: ${orgId} - ${consultorio.name}`);
+					return;
+				}
+				
+				consultoriosMap.set(orgId, consultorio);
+			});
+			
+			const uniqueConsultorios = Array.from(consultoriosMap.values());
+			setConsultorios(uniqueConsultorios);
+			setTotal(uniqueConsultorios.length); // Actualizar total con los únicos
 		} catch (err) {
 			console.error('Error:', err);
 		} finally {

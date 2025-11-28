@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { Pool } from 'pg';
 import { createNotification } from '@/lib/notifications';
 import { createClient } from '@supabase/supabase-js';
+import { getExchangeRateForCurrency } from '@/lib/currency-utils';
 
 // 🔹 Configurar pool de conexión
 const pool = new Pool({
@@ -29,6 +30,9 @@ export async function POST(req: NextRequest) {
 		const impuestos = typeof billing?.impuestos === 'number' ? billing.impuestos : parseFloat(billing?.impuestos) || 0;
 		const total = typeof billing?.total === 'number' ? billing.total : parseFloat(billing?.total) || 0;
 		const currency = billing?.currency ?? 'USD';
+		
+		// Obtener la tasa de cambio de la moneda especificada desde la base de datos rates
+		const tipoCambio = await getExchangeRateForCurrency(currency);
 
 		// 🔹 Validaciones básicas
 		const isUUID = (str: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(str);
@@ -123,14 +127,14 @@ export async function POST(req: NextRequest) {
 
 			// 🔹 Insertar facturación asociada como PENDIENTE DE PAGO
 			// La facturación se crea automáticamente cuando se crea la cita con servicios seleccionados
-			// Incluir unregistered_patient_id si aplica
+			// Incluir unregistered_patient_id si aplica y tipo_cambio
 			await client.query(
 				`
         INSERT INTO public.facturacion
-          (appointment_id, patient_id, unregistered_patient_id, doctor_id, organization_id, subtotal, impuestos, total, currency, estado_pago, estado_factura, fecha_emision)
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+          (appointment_id, patient_id, unregistered_patient_id, doctor_id, organization_id, subtotal, impuestos, total, currency, tipo_cambio, estado_pago, estado_factura, fecha_emision)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
       `,
-				[appointmentId, finalPatientId, finalUnregisteredPatientId, doctorId, organizationId, subtotal, impuestos, total, currency, 'pendiente', 'emitida', new Date().toISOString()]
+				[appointmentId, finalPatientId, finalUnregisteredPatientId, doctorId, organizationId, subtotal, impuestos, total, currency, tipoCambio, 'pendiente', 'emitida', new Date().toISOString()]
 			);
 
 			await client.query('COMMIT');

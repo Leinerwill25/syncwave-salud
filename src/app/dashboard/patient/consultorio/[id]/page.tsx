@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { Stethoscope, MapPin, Phone, Mail, Globe, Calendar, Clock, User, ArrowLeft, Shield, Award, Image as ImageIcon, CheckCircle2, Building2, Instagram, Facebook, Verified, ExternalLink, X, Star } from 'lucide-react';
+import { Stethoscope, MapPin, Phone, Mail, Globe, Calendar, Clock, User, ArrowLeft, Shield, Award, Image as ImageIcon, CheckCircle2, Building2, Instagram, Facebook, Verified, ExternalLink, X, Star, FileText, Download, Maximize2 } from 'lucide-react';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
 import LeafletMapViewer from '@/components/clinic/LeafletMapViewer';
@@ -56,6 +56,7 @@ export default function ConsultorioDetailPage() {
 	const [loading, setLoading] = useState(true);
 	const [consultorio, setConsultorio] = useState<ConsultorioDetail | null>(null);
 	const [selectedImage, setSelectedImage] = useState<string | null>(null);
+	const [selectedCredentialFile, setSelectedCredentialFile] = useState<string | null>(null);
 
 	useEffect(() => {
 		if (params.id) {
@@ -90,6 +91,11 @@ export default function ConsultorioDetailPage() {
 	const isValidImageUrl = (url: any): boolean => {
 		if (!url || typeof url !== 'string') return false;
 		return url.startsWith('http') || url.startsWith('/') || url.startsWith('data:');
+	};
+
+	const isPdf = (url: string): boolean => {
+		if (!url || typeof url !== 'string') return false;
+		return url.toLowerCase().endsWith('.pdf');
 	};
 
 	if (loading) {
@@ -244,6 +250,44 @@ export default function ConsultorioDetailPage() {
 									(e.target as HTMLImageElement).style.display = 'none';
 								}}
 							/>
+						</motion.div>
+					)}
+				</AnimatePresence>
+
+				{/* Modal de Archivo de Credencial */}
+				<AnimatePresence>
+					{selectedCredentialFile && (
+						<motion.div 
+							initial={{ opacity: 0 }} 
+							animate={{ opacity: 1 }} 
+							exit={{ opacity: 0 }} 
+							className="fixed inset-0 bg-black/90 z-50 flex items-center justify-center p-2 sm:p-4" 
+							onClick={() => setSelectedCredentialFile(null)}
+						>
+							<button 
+								className="absolute top-2 right-2 sm:top-4 sm:right-4 text-white hover:text-gray-300 p-1.5 sm:p-2 rounded-full bg-black/50 hover:bg-black/70 transition-colors z-10" 
+								onClick={() => setSelectedCredentialFile(null)}
+							>
+								<X className="w-5 h-5 sm:w-6 sm:h-6" />
+							</button>
+							{isPdf(selectedCredentialFile) ? (
+								<iframe
+									src={selectedCredentialFile}
+									className="max-w-full max-h-full w-full h-full rounded-lg"
+									onClick={(e) => e.stopPropagation()}
+									title="Vista de PDF"
+								/>
+							) : (
+								<img
+									src={selectedCredentialFile}
+									alt="Vista ampliada de credencial"
+									className="max-w-full max-h-full object-contain rounded-lg"
+									onClick={(e) => e.stopPropagation()}
+									onError={(e) => {
+										(e.target as HTMLImageElement).style.display = 'none';
+									}}
+								/>
+							)}
 						</motion.div>
 					)}
 				</AnimatePresence>
@@ -513,34 +557,135 @@ export default function ConsultorioDetailPage() {
 												)}
 
 												{/* Credenciales */}
-												{hasCredentials && (
-													<div className="pt-3 sm:pt-4 border-t border-gray-200">
-														<p className="font-semibold text-gray-900 mb-2 sm:mb-3 flex items-center gap-1.5 sm:gap-2 text-xs sm:text-sm md:text-base">
-															<Award className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-gray-600 flex-shrink-0" />
-															<span>Credenciales y Certificaciones</span>
-														</p>
-														<div className="space-y-1.5 sm:space-y-2">
-															{Object.entries(credentials).map(([key, value]: [string, any]) => {
-																if (!value || (typeof value === 'string' && value.trim() === '')) return null;
+												{hasCredentials && (() => {
+													const credentialFiles = Array.isArray(credentials.credentialFiles) 
+														? credentials.credentialFiles 
+														: credentials.credentialFiles 
+															? [credentials.credentialFiles] 
+															: [];
+													
+													const otherCredentials = Object.entries(credentials).filter(
+														([key]) => key !== 'credentialFiles'
+													);
 
-																const label = key
-																	.split('_')
-																	.map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-																	.join(' ');
+													const hasCredentialFiles = credentialFiles.length > 0;
+													const hasOtherCredentials = otherCredentials.some(
+														([, value]) => value && (typeof value === 'string' ? value.trim() !== '' : true)
+													);
 
-																return (
-																	<div key={key} className="flex items-start gap-1.5 sm:gap-2 text-xs sm:text-sm">
-																		<CheckCircle2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-green-600 flex-shrink-0 mt-0.5" />
-																		<div className="flex-1 min-w-0">
-																			<span className="font-medium text-gray-700">{label}:</span>
-																			<span className="text-gray-600 ml-1 sm:ml-2 break-words">{typeof value === 'string' ? value : JSON.stringify(value)}</span>
-																		</div>
+													if (!hasCredentialFiles && !hasOtherCredentials) return null;
+
+													const isImage = (url: string) => {
+														if (!url || typeof url !== 'string') return false;
+														const ext = url.toLowerCase().split('.').pop();
+														return ['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(ext || '');
+													};
+
+													const isPdf = (url: string) => {
+														if (!url || typeof url !== 'string') return false;
+														return url.toLowerCase().endsWith('.pdf');
+													};
+
+													const getFileName = (url: string) => {
+														try {
+															const parts = url.split('/');
+															return parts[parts.length - 1] || 'Documento';
+														} catch {
+															return 'Documento';
+														}
+													};
+
+													return (
+														<div className="pt-3 sm:pt-4 border-t border-gray-200">
+															<p className="font-semibold text-gray-900 mb-2 sm:mb-3 flex items-center gap-1.5 sm:gap-2 text-xs sm:text-sm md:text-base">
+																<Award className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-gray-600 flex-shrink-0" />
+																<span>Credenciales y Certificaciones</span>
+															</p>
+															
+															{/* Archivos de Credenciales */}
+															{hasCredentialFiles && (
+																<div className="mb-3 sm:mb-4">
+																	<p className="text-xs sm:text-sm font-medium text-gray-700 mb-2 sm:mb-3">Documentos de Credenciales</p>
+																	<div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 sm:gap-3">
+																		{credentialFiles.map((fileUrl: string, idx: number) => {
+																			if (!fileUrl || typeof fileUrl !== 'string') return null;
+																			
+																			const isImg = isImage(fileUrl);
+																			const isPdfFile = isPdf(fileUrl);
+																			const fileName = getFileName(fileUrl);
+
+																			return (
+																				<div key={idx} className="relative group">
+																					{isImg ? (
+																						<button
+																							onClick={() => setSelectedCredentialFile(fileUrl)}
+																							className="w-full aspect-square rounded-lg overflow-hidden border-2 border-gray-200 hover:border-blue-400 transition-colors cursor-pointer bg-gray-50"
+																						>
+																							<img
+																								src={fileUrl}
+																								alt={`Credencial ${idx + 1}`}
+																								className="w-full h-full object-cover"
+																								onError={(e) => {
+																									(e.target as HTMLImageElement).style.display = 'none';
+																								}}
+																							/>
+																							<div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors flex items-center justify-center">
+																								<Maximize2 className="w-5 h-5 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
+																							</div>
+																						</button>
+																					) : (
+																						<a
+																							href={fileUrl}
+																							target="_blank"
+																							rel="noopener noreferrer"
+																							className="flex flex-col items-center justify-center p-3 sm:p-4 bg-gray-50 rounded-lg border-2 border-gray-200 hover:border-blue-400 hover:bg-gray-100 transition-colors group"
+																						>
+																							{isPdfFile ? (
+																								<FileText className="w-8 h-8 sm:w-10 sm:h-10 text-red-600 mb-2" />
+																							) : (
+																								<FileText className="w-8 h-8 sm:w-10 sm:h-10 text-gray-600 mb-2" />
+																							)}
+																							<p className="text-[10px] sm:text-xs font-medium text-gray-700 text-center truncate w-full" title={fileName}>
+																								{fileName.length > 20 ? `${fileName.substring(0, 20)}...` : fileName}
+																							</p>
+																							<Download className="w-3 h-3 sm:w-4 sm:h-4 text-gray-400 group-hover:text-blue-600 mt-1" />
+																						</a>
+																					)}
+																				</div>
+																			);
+																		})}
 																	</div>
-																);
-															})}
+																</div>
+															)}
+
+															{/* Otras Credenciales (texto) */}
+															{hasOtherCredentials && (
+																<div className="space-y-1.5 sm:space-y-2">
+																	{otherCredentials.map(([key, value]: [string, any]) => {
+																		if (!value || (typeof value === 'string' && value.trim() === '')) return null;
+
+																		const label = key
+																			.split('_')
+																			.map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+																			.join(' ');
+
+																		return (
+																			<div key={key} className="flex items-start gap-1.5 sm:gap-2 text-xs sm:text-sm">
+																				<CheckCircle2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-green-600 flex-shrink-0 mt-0.5" />
+																				<div className="flex-1 min-w-0">
+																					<span className="font-medium text-gray-700">{label}:</span>
+																					<span className="text-gray-600 ml-1 sm:ml-2 break-words">
+																						{typeof value === 'string' ? value : JSON.stringify(value)}
+																					</span>
+																				</div>
+																			</div>
+																		);
+																	})}
+																</div>
+															)}
 														</div>
-													</div>
-												)}
+													);
+												})()}
 											</div>
 										);
 									})}

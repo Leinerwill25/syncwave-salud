@@ -256,8 +256,17 @@ export async function GET(request: Request) {
 					});
 				}
 
+				// Usar un Map para deduplicar consultorios por organization_id
+				const consultoriosMap = new Map<string, any>();
+
 				consultorios.forEach((consultorio: any) => {
 					console.log(`[Patient Explore API] Procesando consultorio: ${consultorio.name} (ID: ${consultorio.id})`);
+
+					// Si este organization_id ya existe en el mapa, omitirlo (duplicado)
+					if (consultoriosMap.has(consultorio.id)) {
+						console.log(`[Patient Explore API] Consultorio duplicado detectado y omitido: ${consultorio.id} - ${consultorio.name}`);
+						return;
+					}
 
 					// Obtener el médico asociado al consultorio desde el mapa
 					const orgUsers = usersByOrg.get(consultorio.id) || [];
@@ -336,7 +345,12 @@ export async function GET(request: Request) {
 					};
 
 					console.log(`[Patient Explore API] Agregando consultorio a resultados: ${resultItem.name}`);
-					results.push(resultItem);
+					consultoriosMap.set(consultorio.id, resultItem);
+				});
+
+				// Agregar todos los consultorios únicos a results
+				consultoriosMap.forEach((consultorio) => {
+					results.push(consultorio);
 				});
 			} else {
 				console.log('[Patient Explore API] No se encontraron consultorios o el array está vacío');
