@@ -624,7 +624,7 @@ export async function PATCH(req: Request) {
 								hint: insertErr.hint,
 								consultation_id,
 								file_name: f.name,
-								path: consultationFilePath,
+								path: prescriptionFilePath,
 							});
 						} else {
 							console.log('✅ Archivo guardado exitosamente en consultation_files (PATCH):', {
