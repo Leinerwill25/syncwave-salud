@@ -57,8 +57,8 @@ export async function GET() {
 		const bucketInfo = {
 			name: prescriptionsBucket.name,
 			public: prescriptionsBucket.public,
-			fileSizeLimit: prescriptionsBucket.fileSizeLimit,
-			allowedMimeTypes: prescriptionsBucket.allowedMimeTypes,
+			file_size_limit: (prescriptionsBucket as any).file_size_limit ?? (prescriptionsBucket as any).fileSizeLimit ?? null,
+			allowed_mime_types: (prescriptionsBucket as any).allowed_mime_types ?? (prescriptionsBucket as any).allowedMimeTypes ?? null,
 			created_at: prescriptionsBucket.created_at,
 			updated_at: prescriptionsBucket.updated_at,
 		};
@@ -69,7 +69,7 @@ export async function GET() {
 			fileCount: files?.length || 0,
 			sampleFiles: files?.map((f) => ({
 				name: f.name,
-				size: f.size,
+				size: (f as any).size ?? (f as any).metadata?.size ?? null,
 				updated_at: f.updated_at,
 			})),
 			error: filesError ? filesError.message : null,
