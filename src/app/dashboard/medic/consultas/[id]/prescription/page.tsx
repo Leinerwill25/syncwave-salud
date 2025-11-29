@@ -61,13 +61,93 @@ export default async function Page({ params }: Props) {
 		);
 	}
 
-	// Normalizar relaciones (Supabase devuelve arrays en select(...) para joins)
+	// Obtener prescripciones existentes para esta consulta
+	let existingPrescription: any = null;
+	let prescriptionFiles: any[] = [];
+	try {
+		const { data: prescriptions, error: presError } = await supabase
+			.from('prescription')
+			.select(`
+				id,
+				notes,
+				valid_until,
+				status,
+				issued_at,
+				created_at,
+				prescription_item:prescription_item!fk_prescriptionitem_prescription (
+					id,
+					name,
+					dosage,
+					form,
+					frequency,
+					duration,
+					quantity,
+					instructions
+				)
+			`)
+			.eq('consultation_id', (consultation as any).id)
+			.order('created_at', { ascending: false })
+			.limit(1)
+			.maybeSingle();
+
+		if (!presError && prescriptions) {
+			existingPrescription = prescriptions;
+			
+			// Cargar archivos de la prescripción desde prescription_files
+			if (prescriptions.id) {
+				const { data: files, error: filesError } = await supabase
+					.from('prescription_files')
+					.select('id, file_name, path, url, size, content_type')
+					.eq('prescription_id', prescriptions.id);
+				
+				if (!filesError && files && files.length > 0) {
+					// Generar URLs públicas si no existen
+					for (const file of files) {
+						let fileUrl = file.url;
+						if (!fileUrl && file.path) {
+							try {
+								// Intentar con bucket prescriptions (donde están los archivos reales)
+								const { data: urlData } = supabase.storage
+									.from('prescriptions')
+									.getPublicUrl(file.path);
+								fileUrl = urlData?.publicUrl || null;
+							} catch (err) {
+								console.warn('Error generando URL para archivo:', err);
+							}
+						}
+						if (fileUrl) {
+							prescriptionFiles.push({
+								id: file.id,
+								name: file.file_name,
+								url: fileUrl,
+								type: file.content_type,
+								size: file.size,
+								path: file.path,
+							});
+						}
+					}
+				}
+			}
+		}
+	} catch (err) {
+		console.warn('Error obteniendo prescripción existente:', err);
+	}
+
+	// Agregar archivos a la prescripción existente
+	if (existingPrescription && prescriptionFiles.length > 0) {
+		existingPrescription.files = prescriptionFiles;
+	}
 
 	return (
 		<main className="min-h-screen bg-gradient-to-br from-blue-50 via-cyan-50 to-teal-50 p-8">
 			<div className="max-w-4xl mx-auto">
 				{/* Client-side prescription form */}
-				<PrescriptionForm consultationId={(consultation as any).id} patientId={(consultation as any).patient_id} doctorId={(consultation as any).doctor_id} />
+				<PrescriptionForm 
+					consultationId={(consultation as any).id} 
+					patientId={(consultation as any).patient_id} 
+					doctorId={(consultation as any).doctor_id}
+					existingPrescription={existingPrescription}
+				/>
 			</div>
 		</main>
 	);

@@ -1,6 +1,6 @@
 'use client';
 
-import { FileText, User, Calendar, Stethoscope, Pill, FileCheck, Download, AlertCircle, Clock, Heart, Thermometer, Activity, Image, File } from 'lucide-react';
+import { FileText, User, Calendar, Stethoscope, Pill, FileCheck, Download, AlertCircle, Clock, Heart, Thermometer, Activity, Image, File, Eye, ExternalLink } from 'lucide-react';
 import { format } from 'date-fns';
 
 type Patient = {
@@ -30,6 +30,12 @@ type Consultation = {
 	notes: string | null;
 	vitals: any;
 	attachments?: string[];
+	attachmentsDetailed?: Array<{
+		url: string;
+		name: string;
+		type?: string;
+		size?: number;
+	}>;
 	created_at: string;
 	updated_at: string;
 	doctor: {
@@ -425,78 +431,125 @@ export default function ConsultationShareView({ consultation, patient, prescript
 				)}
 
 				{/* Archivos Adjuntos de la Consulta */}
-				{consultation.attachments && consultation.attachments.length > 0 && (
-					<div className="bg-white rounded-xl shadow-lg p-6">
-						<h2 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
-							<Download className="w-5 h-5 text-blue-600" />
-							Archivos Adjuntos de la Consulta
-						</h2>
-						<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-							{consultation.attachments.map((attachment, idx) => {
-								const isImage = /\.(jpg|jpeg|png|gif|webp)$/i.test(attachment);
-								return (
-									<a
-										key={idx}
-										href={attachment}
-										target="_blank"
-										rel="noopener noreferrer"
-										className="flex items-center gap-3 p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors border border-gray-200"
-									>
-										{isImage ? (
-											<Image className="w-8 h-8 text-blue-600" />
-										) : (
-											<File className="w-8 h-8 text-blue-600" />
-										)}
-										<div className="flex-1 min-w-0">
-											<p className="text-sm font-medium text-gray-900 truncate">
-												{attachment.split('/').pop() || `Archivo ${idx + 1}`}
-											</p>
-											<p className="text-xs text-gray-600">Haz clic para descargar</p>
-										</div>
-										<Download className="w-4 h-4 text-gray-400" />
-									</a>
-								);
-							})}
-						</div>
-					</div>
-				)}
+				{(() => {
+					const allAttachments = consultation.attachmentsDetailed || 
+						(consultation.attachments?.map((url: string) => ({ 
+							url, 
+							name: url.split('/').pop() || 'Archivo adjunto' 
+						})) || []);
+					
+					if (!allAttachments || allAttachments.length === 0) {
+						return null;
+					}
 
-				{/* Archivos de Prescripciones */}
-				{prescriptionFiles.length > 0 && (
-					<div className="bg-white rounded-xl shadow-lg p-6">
-						<h2 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
-							<FileCheck className="w-5 h-5 text-blue-600" />
-							Archivos de Prescripciones
-						</h2>
-						<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-							{prescriptionFiles.map((file: any, idx: number) => {
-								const isImage = /\.(jpg|jpeg|png|gif|webp)$/i.test(file.url || '');
-								return (
-									<a
-										key={idx}
-										href={file.url}
-										target="_blank"
-										rel="noopener noreferrer"
-										className="flex items-center gap-3 p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors border border-gray-200"
-									>
-										{isImage ? (
-											<Image className="w-8 h-8 text-blue-600" />
-										) : (
-											<File className="w-8 h-8 text-blue-600" />
-										)}
-										<div className="flex-1 min-w-0">
-											<p className="text-sm font-medium text-gray-900 truncate">
-												{file.file_name || file.url?.split('/').pop() || `Archivo ${idx + 1}`}
-											</p>
-											<p className="text-xs text-gray-600">Haz clic para descargar</p>
-										</div>
-										<Download className="w-4 h-4 text-gray-400" />
-									</a>
-								);
-							})}
+					return (
+						<div className="bg-white rounded-xl shadow-lg p-6">
+							<h2 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
+								<Download className="w-5 h-5 text-blue-600" />
+								Archivos Adjuntos de la Consulta
+							</h2>
+							<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+								{allAttachments.map((attachment: any, idx: number) => {
+									const attachmentUrl = typeof attachment === 'string' ? attachment : attachment.url;
+									const attachmentName = typeof attachment === 'string' 
+										? attachment.split('/').pop() || `Archivo ${idx + 1}` 
+										: attachment.name || attachmentUrl.split('/').pop() || `Archivo ${idx + 1}`;
+									const attachmentType = typeof attachment === 'object' ? attachment.type : undefined;
+									
+									// Detectar tipo de archivo por extensión o content_type
+									const urlLower = attachmentUrl.toLowerCase();
+									const isImage = attachmentType?.startsWith('image/') || 
+										/\.(jpg|jpeg|png|gif|webp|bmp|svg)$/i.test(urlLower);
+									const isPDF = attachmentType === 'application/pdf' || /\.pdf$/i.test(urlLower);
+									const isDoc = /\.(doc|docx)$/i.test(urlLower);
+									const isVideo = attachmentType?.startsWith('video/') || 
+										/\.(mp4|avi|mov|wmv|flv|webm)$/i.test(urlLower);
+									
+									if (!attachmentUrl) return null;
+
+									return (
+										<a
+											key={idx}
+											href={attachmentUrl}
+											target="_blank"
+											rel="noopener noreferrer"
+											className="flex flex-col gap-3 p-4 bg-gradient-to-br from-gray-50 to-blue-50 rounded-xl hover:from-blue-50 hover:to-indigo-50 transition-all border-2 border-gray-200 hover:border-blue-400 hover:shadow-lg group"
+										>
+											<div className="flex items-start gap-3">
+												<div className="p-3 bg-white rounded-lg shadow-md group-hover:shadow-lg transition-shadow shrink-0">
+													{isImage ? (
+														<Image className="w-7 h-7 text-blue-600" />
+													) : isPDF ? (
+														<FileText className="w-7 h-7 text-red-600" />
+													) : isDoc ? (
+														<FileText className="w-7 h-7 text-blue-700" />
+													) : isVideo ? (
+														<File className="w-7 h-7 text-purple-600" />
+													) : (
+														<File className="w-7 h-7 text-gray-600" />
+													)}
+												</div>
+												<div className="flex-1 min-w-0">
+													<p className="text-sm font-semibold text-gray-900 line-clamp-2 group-hover:text-blue-700 transition-colors break-words">
+														{attachmentName}
+													</p>
+													{typeof attachment === 'object' && attachment.size && (
+														<p className="text-xs text-gray-500 mt-1">
+															{attachment.size >= 1024 * 1024 
+																? `${(attachment.size / 1024 / 1024).toFixed(2)} MB`
+																: `${(attachment.size / 1024).toFixed(2)} KB`}
+														</p>
+													)}
+													{attachmentType && (
+														<p className="text-xs text-gray-400 mt-1 capitalize">
+															{attachmentType.split('/')[1] || attachmentType}
+														</p>
+													)}
+												</div>
+											</div>
+											
+											{/* Preview de imagen */}
+											{isImage && (
+												<div className="w-full h-48 rounded-lg overflow-hidden border-2 border-gray-200 bg-gray-100 relative group/image">
+													<img 
+														src={attachmentUrl} 
+														alt={attachmentName}
+														className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+														loading="lazy"
+														crossOrigin="anonymous"
+														onError={(e) => {
+															console.error('Error cargando imagen:', attachmentUrl, e);
+															const target = e.target as HTMLImageElement;
+															target.style.display = 'none';
+															if (target.parentElement) {
+																target.parentElement.innerHTML = 
+																	'<div class="w-full h-full flex items-center justify-center text-gray-400"><p class="text-sm">Error al cargar imagen. URL: ' + attachmentUrl.substring(0, 50) + '...</p></div>';
+															}
+														}}
+													/>
+													<div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 transition-all duration-300 flex items-center justify-center">
+														<Eye className="w-8 h-8 text-white opacity-0 group-hover/image:opacity-100 transition-opacity" />
+													</div>
+												</div>
+											)}
+											
+											<div className="flex items-center justify-between pt-3 border-t border-gray-300">
+												<p className="text-xs font-medium text-gray-600">
+													{isImage ? 'Ver imagen' : isPDF ? 'Ver PDF' : isDoc ? 'Ver documento' : 'Descargar archivo'}
+												</p>
+												<div className="flex items-center gap-2">
+													<ExternalLink className="w-3 h-3 text-gray-400 group-hover:text-blue-600 transition-colors" />
+													<Download className="w-4 h-4 text-gray-400 group-hover:text-blue-600 transition-colors shrink-0" />
+												</div>
+											</div>
+										</a>
+									);
+								})}
+							</div>
 						</div>
-					</div>
-				)}
+					);
+				})()}
+
 
 				{/* Footer */}
 				<div className="bg-white rounded-xl shadow-lg p-6 text-center">

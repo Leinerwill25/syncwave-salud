@@ -14,10 +14,30 @@ type Item = {
 	instructions?: string;
 };
 
+type ExistingPrescription = {
+	id: string;
+	notes: string | null;
+	valid_until: string | null;
+	status: string;
+	issued_at: string;
+	created_at: string;
+	prescription_item?: Array<{
+		id: string;
+		name: string;
+		dosage: string | null;
+		form: string | null;
+		frequency: string | null;
+		duration: string | null;
+		quantity: number | null;
+		instructions: string | null;
+	}>;
+};
+
 type Props = {
 	consultationId: string;
 	patientId?: string;
 	doctorId?: string;
+	existingPrescription?: ExistingPrescription | null;
 };
 
 function uid(prefix = '') {
@@ -297,7 +317,7 @@ function PrescriptionItemsEditor({ items, setItems }: { items: Item[]; setItems:
    PrescriptionForm (principal)
    - layout with clear visual hierarchy
    ------------------------- */
-export default function PrescriptionForm({ consultationId, patientId, doctorId }: Props) {
+export default function PrescriptionForm({ consultationId, patientId, doctorId, existingPrescription }: Props) {
 	const [items, setItems] = useState<Item[]>([]);
 	const [notes, setNotes] = useState('');
 	const [validUntil, setValidUntil] = useState<string>('');
@@ -306,6 +326,30 @@ export default function PrescriptionForm({ consultationId, patientId, doctorId }
 	const router = useRouter();
 	const [error, setError] = useState<string | null>(null);
 	const [success, setSuccess] = useState<string | null>(null);
+	const [isEditMode, setIsEditMode] = useState(false);
+
+	// Cargar datos existentes si hay prescripción
+	useEffect(() => {
+		if (existingPrescription) {
+			setIsEditMode(true);
+			setNotes(existingPrescription.notes || '');
+			setValidUntil(existingPrescription.valid_until ? new Date(existingPrescription.valid_until).toISOString().split('T')[0] : '');
+			
+			// Cargar items existentes
+			if (existingPrescription.prescription_item && Array.isArray(existingPrescription.prescription_item)) {
+				const loadedItems: Item[] = existingPrescription.prescription_item.map((item) => ({
+					id: item.id,
+					name: item.name || '',
+					dosage: item.dosage || '',
+					frequency: item.frequency || '',
+					duration: item.duration || '',
+					quantity: item.quantity || 1,
+					instructions: item.instructions || '',
+				}));
+				setItems(loadedItems);
+			}
+		}
+	}, [existingPrescription]);
 
 	async function handleSubmit(e: React.FormEvent) {
 		e.preventDefault();
@@ -324,31 +368,60 @@ export default function PrescriptionForm({ consultationId, patientId, doctorId }
 		setLoading(true);
 
 		try {
-			const form = new FormData();
-			form.append('consultation_id', consultationId);
-			form.append('patient_id', String(patientId));
-			form.append('doctor_id', String(doctorId));
-			form.append('notes', notes ?? '');
-			if (validUntil) form.append('valid_until', validUntil);
-			form.append('items', JSON.stringify(items));
+			// Si estamos en modo edición, actualizar la prescripción existente
+			if (isEditMode && existingPrescription) {
+				const form = new FormData();
+				form.append('prescription_id', existingPrescription.id);
+				form.append('consultation_id', consultationId);
+				form.append('patient_id', String(patientId));
+				form.append('doctor_id', String(doctorId));
+				form.append('notes', notes ?? '');
+				if (validUntil) form.append('valid_until', validUntil);
+				form.append('items', JSON.stringify(items));
 
-			files.forEach((f) => form.append('files', f, f.name));
+				files.forEach((f) => form.append('files', f, f.name));
 
-			const res = await fetch('/api/prescriptions', {
-				method: 'POST',
-				body: form,
-			});
+				const res = await fetch('/api/prescriptions', {
+					method: 'PATCH',
+					body: form,
+				});
 
-			const data = await res.json();
-			if (!res.ok) throw new Error(data?.error || 'Error creando prescripción');
+				const data = await res.json();
+				if (!res.ok) throw new Error(data?.error || 'Error actualizando prescripción');
 
-			setSuccess('Prescripción creada correctamente.');
-			setLoading(false);
+				setSuccess('Prescripción actualizada correctamente.');
+				setLoading(false);
 
-			// navigate back to consultation or to prescription detail if available
-			setTimeout(() => {
-				router.push(`/dashboard/medic/consultas/${consultationId}`);
-			}, 800);
+				setTimeout(() => {
+					router.push(`/dashboard/medic/consultas/${consultationId}`);
+				}, 800);
+			} else {
+				// Crear nueva prescripción
+				const form = new FormData();
+				form.append('consultation_id', consultationId);
+				form.append('patient_id', String(patientId));
+				form.append('doctor_id', String(doctorId));
+				form.append('notes', notes ?? '');
+				if (validUntil) form.append('valid_until', validUntil);
+				form.append('items', JSON.stringify(items));
+
+				files.forEach((f) => form.append('files', f, f.name));
+
+				const res = await fetch('/api/prescriptions', {
+					method: 'POST',
+					body: form,
+				});
+
+				const data = await res.json();
+				if (!res.ok) throw new Error(data?.error || 'Error creando prescripción');
+
+				setSuccess('Prescripción creada correctamente.');
+				setLoading(false);
+
+				setTimeout(() => {
+					router.push(`/dashboard/medic/consultas/${consultationId}`);
+				}, 800);
+			}
 		} catch (err: any) {
 			setError(err?.message ?? String(err));
 			setLoading(false);
@@ -361,8 +434,28 @@ export default function PrescriptionForm({ consultationId, patientId, doctorId }
 			<div className="rounded-2xl bg-gradient-to-r from-white to-blue-50 border border-blue-100 p-5 shadow-sm">
 				<div className="flex items-start justify-between gap-4">
 					<div>
-						<h2 className="text-xl md:text-2xl font-semibold text-slate-900">Crear Prescripción Médica</h2>
-						<p className="mt-1 text-sm text-slate-800">Registra los medicamentos prescritos y adjunta el <strong>informe médico</strong> y la <strong>receta médica</strong> para que el paciente tenga constancia digital de su consulta.</p>
+						<h2 className="text-xl md:text-2xl font-semibold text-slate-900">
+							{isEditMode ? 'Editar Prescripción Médica' : 'Crear Prescripción Médica'}
+						</h2>
+						<p className="mt-1 text-sm text-slate-800">
+							{isEditMode 
+								? 'Actualiza los medicamentos prescritos y adjunta documentos adicionales si es necesario.'
+								: 'Registra los medicamentos prescritos y adjunta el <strong>informe médico</strong> y la <strong>receta médica</strong> para que el paciente tenga constancia digital de su consulta.'
+							}
+						</p>
+						{isEditMode && existingPrescription && (
+							<div className="mt-2 px-3 py-1.5 bg-blue-100 border border-blue-200 rounded-lg">
+								<p className="text-xs text-blue-800">
+									<strong>Prescripción creada:</strong> {new Date(existingPrescription.created_at).toLocaleDateString('es-ES', {
+										year: 'numeric',
+										month: 'long',
+										day: 'numeric',
+										hour: '2-digit',
+										minute: '2-digit'
+									})}
+								</p>
+							</div>
+						)}
 					</div>
 
 					<div className="text-right">
@@ -400,7 +493,7 @@ export default function PrescriptionForm({ consultationId, patientId, doctorId }
 			{/* Actions */}
 			<div className="flex items-center gap-3">
 				<button type="submit" disabled={loading} className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-gradient-to-r from-teal-600 to-cyan-600 text-white font-semibold shadow hover:from-teal-700 hover:to-cyan-700 hover:scale-[1.01] transition disabled:opacity-50">
-					{loading ? <Loader2 className="animate-spin" /> : <span>Crea prescripción</span>}
+					{loading ? <Loader2 className="animate-spin" /> : <span>{isEditMode ? 'Actualizar prescripción' : 'Crear prescripción'}</span>}
 				</button>
 
 				<button type="button" onClick={() => router.back()} className="px-4 py-2 rounded-lg border border-blue-200 bg-white text-slate-800 hover:bg-blue-50 transition">
