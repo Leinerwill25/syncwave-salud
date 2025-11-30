@@ -116,7 +116,7 @@ export async function POST(request: Request) {
 		// Buscar si ya existe un resultado para esta consulta
 		const { data: existingResult } = await supabase
 			.from('lab_result')
-			.select('id, attachments')
+			.select('id, attachments, result_type')
 			.eq('consultation_id', consultationId)
 			.eq('patient_id', patient.patientId)
 			.maybeSingle();
