@@ -3,25 +3,7 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import {
-	LayoutDashboard,
-	CalendarDays,
-	Building2,
-	ShoppingBag,
-	FlaskConical,
-	Search,
-	FileText,
-	Pill,
-	Receipt,
-	MessageCircle,
-	Settings,
-	Users,
-	Shield,
-	ChevronRight,
-	ChevronDown,
-	Search as SearchIcon,
-	Bell,
-} from 'lucide-react';
+import { LayoutDashboard, CalendarDays, Building2, ShoppingBag, FlaskConical, Search, FileText, Pill, Receipt, MessageCircle, Settings, Users, Shield, ChevronRight, ChevronDown, Search as SearchIcon, Bell } from 'lucide-react';
 
 type IconComponent = React.ComponentType<React.SVGProps<SVGSVGElement>>;
 
@@ -89,7 +71,6 @@ const LINKS: LinkItem[] = [
 	{
 		label: 'Grupo Familiar',
 		icon: Users,
-		comingSoon: true,
 		submenu: [
 			{ href: '/dashboard/patient/family', label: 'Mi Grupo' },
 			{ href: '/dashboard/patient/family/codes', label: 'Códigos de Acceso' },
@@ -143,9 +124,7 @@ export default function SidebarPatient() {
 							${isActive ? 'bg-indigo-100 text-indigo-700' : 'text-slate-400 bg-slate-50'}`}>
 							{link.icon && <link.icon className="w-4 h-4 sm:w-5 sm:h-5 flex-shrink-0" />}
 							<span className="truncate flex-1">{link.label}</span>
-							<span className="ml-auto inline-flex items-center px-1.5 sm:px-2 py-0.5 text-[9px] sm:text-[11px] font-medium rounded-full bg-slate-100 text-slate-600 border border-slate-200 whitespace-nowrap flex-shrink-0">
-								Próximamente
-							</span>
+							<span className="ml-auto inline-flex items-center px-1.5 sm:px-2 py-0.5 text-[9px] sm:text-[11px] font-medium rounded-full bg-slate-100 text-slate-600 border border-slate-200 whitespace-nowrap flex-shrink-0">Próximamente</span>
 						</div>
 					</li>
 				);
@@ -181,9 +160,7 @@ export default function SidebarPatient() {
 											className={`group flex items-center gap-2 sm:gap-3 w-full px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-lg text-xs sm:text-sm font-medium cursor-not-allowed opacity-80
 											${subActive ? 'bg-indigo-100 text-indigo-700' : 'text-slate-400 bg-slate-50'}`}>
 											<span className="truncate">{sub.label}</span>
-											<span className="ml-auto inline-flex items-center px-1.5 sm:px-2 py-0.5 text-[9px] sm:text-[11px] font-medium rounded-full bg-slate-100 text-slate-600 border border-slate-200 whitespace-nowrap flex-shrink-0">
-												Próximamente
-											</span>
+											<span className="ml-auto inline-flex items-center px-1.5 sm:px-2 py-0.5 text-[9px] sm:text-[11px] font-medium rounded-full bg-slate-100 text-slate-600 border border-slate-200 whitespace-nowrap flex-shrink-0">Próximamente</span>
 										</div>
 									</li>
 								);
@@ -216,9 +193,7 @@ export default function SidebarPatient() {
 						${isActive ? 'bg-indigo-100 text-indigo-700' : 'text-slate-400 bg-slate-50'}`}>
 						{link.icon && <link.icon className="w-4 h-4 sm:w-5 sm:h-5 flex-shrink-0" />}
 						<span className="truncate flex-1">{link.label}</span>
-						<span className="ml-auto inline-flex items-center px-1.5 sm:px-2 py-0.5 text-[9px] sm:text-[11px] font-medium rounded-full bg-slate-100 text-slate-600 border border-slate-200 whitespace-nowrap flex-shrink-0">
-							Próximamente
-						</span>
+						<span className="ml-auto inline-flex items-center px-1.5 sm:px-2 py-0.5 text-[9px] sm:text-[11px] font-medium rounded-full bg-slate-100 text-slate-600 border border-slate-200 whitespace-nowrap flex-shrink-0">Próximamente</span>
 					</div>
 				</li>
 			);
@@ -244,9 +219,7 @@ export default function SidebarPatient() {
 				<div className="flex flex-col gap-3 sm:gap-4 bg-white/90 backdrop-blur-md rounded-xl sm:rounded-2xl p-3 sm:p-4 shadow-lg ring-1 ring-slate-100 border border-slate-50">
 					{/* Brand */}
 					<div className="flex items-center gap-2 sm:gap-3">
-						<div className="w-10 h-10 sm:w-12 sm:h-12 rounded-lg sm:rounded-xl bg-gradient-to-br from-indigo-600 to-purple-600 flex items-center justify-center text-white font-bold text-base sm:text-lg shadow-md ring-1 ring-white/20 flex-shrink-0">
-							PT
-						</div>
+						<div className="w-10 h-10 sm:w-12 sm:h-12 rounded-lg sm:rounded-xl bg-gradient-to-br from-indigo-600 to-purple-600 flex items-center justify-center text-white font-bold text-base sm:text-lg shadow-md ring-1 ring-white/20 flex-shrink-0">PT</div>
 						<div className="min-w-0">
 							<div className="text-xs sm:text-sm font-semibold text-slate-900 truncate">Syncwave Salud</div>
 							<div className="text-[10px] sm:text-[12px] text-slate-500 truncate">Panel del Paciente</div>
@@ -255,11 +228,7 @@ export default function SidebarPatient() {
 
 					{/* Search */}
 					<div className="relative">
-						<input 
-							placeholder="Buscar sección..." 
-							aria-label="Buscar sección" 
-							className="w-full px-2.5 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm rounded-lg border border-slate-100 bg-slate-50 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-200 transition" 
-						/>
+						<input placeholder="Buscar sección..." aria-label="Buscar sección" className="w-full px-2.5 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm rounded-lg border border-slate-100 bg-slate-50 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-200 transition" />
 						<SearchIcon className="absolute right-2.5 sm:right-3 top-1.5 sm:top-2.5 w-3.5 h-3.5 sm:w-4 sm:h-4 text-slate-400" aria-hidden />
 					</div>
 
@@ -280,4 +249,3 @@ export default function SidebarPatient() {
 		</aside>
 	);
 }
-

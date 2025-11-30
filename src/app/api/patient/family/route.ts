@@ -1,6 +1,6 @@
 // app/api/patient/family/route.ts
 import { NextResponse } from 'next/server';
-import { getAuthenticatedPatient, hasFamilyPlan } from '@/lib/patient-auth';
+import { getAuthenticatedPatient } from '@/lib/patient-auth';
 import { createSupabaseServerClient } from '@/app/adapters/server';
 import { cookies } from 'next/headers';
 
@@ -9,15 +9,6 @@ export async function GET() {
 		const patient = await getAuthenticatedPatient();
 		if (!patient) {
 			return NextResponse.json({ error: 'No autenticado' }, { status: 401 });
-		}
-
-		// Verificar plan familiar
-		const hasPlan = await hasFamilyPlan(patient.patientId);
-		if (!hasPlan) {
-			return NextResponse.json({
-				hasFamilyPlan: false,
-				message: 'Debes actualizar tu plan para usar el Grupo Familiar',
-			});
 		}
 
 		const cookieStore = await cookies();
@@ -59,7 +50,7 @@ export async function GET() {
 				.eq('id', membership.familyGroupId)
 				.maybeSingle();
 
-			// Obtener miembros del grupo
+			// Obtener miembros del grupo con conteo de consultas
 			const { data: members } = await supabase
 				.from('FamilyGroupMember')
 				.select(`
@@ -78,16 +69,38 @@ export async function GET() {
 				`)
 				.eq('familyGroupId', membership.familyGroupId);
 
+			// Obtener conteo de consultas para cada miembro
+			const membersWithConsultationCount = await Promise.all(
+				(members || []).map(async (member) => {
+					const { count } = await supabase
+						.from('consultation')
+						.select('*', { count: 'exact', head: true })
+						.eq('patient_id', member.patientId);
+					return {
+						...member,
+						consultationCount: count || 0,
+					};
+				})
+			);
+
+			// Obtener conteo de consultas del owner
+			const { count: ownerConsultationCount } = await supabase
+				.from('consultation')
+				.select('*', { count: 'exact', head: true })
+				.eq('patient_id', memberGroup?.ownerId || '');
+
 			return NextResponse.json({
 				hasFamilyPlan: true,
 				hasGroup: true,
 				isOwner: false,
 				group: memberGroup,
-				members: members || [],
+				members: membersWithConsultationCount || [],
+				ownerConsultationCount: ownerConsultationCount || 0,
+				ownerId: memberGroup?.ownerId || null,
 			});
 		}
 
-		// Obtener miembros del grupo
+		// Obtener miembros del grupo con conteo de consultas
 		const { data: members, error: membersError } = await supabase
 			.from('FamilyGroupMember')
 			.select(`
@@ -106,16 +119,38 @@ export async function GET() {
 			`)
 			.eq('familyGroupId', familyGroup.id);
 
+		// Obtener conteo de consultas para cada miembro
+		const membersWithConsultationCount = await Promise.all(
+			(members || []).map(async (member) => {
+				const { count } = await supabase
+					.from('consultation')
+					.select('*', { count: 'exact', head: true })
+					.eq('patient_id', member.patientId);
+				return {
+					...member,
+					consultationCount: count || 0,
+				};
+			})
+		);
+
 		if (membersError) {
 			console.error('[Patient Family API] Error obteniendo miembros:', membersError);
 		}
+
+		// Obtener conteo de consultas del owner
+		const { count: ownerConsultationCount } = await supabase
+			.from('consultation')
+			.select('*', { count: 'exact', head: true })
+			.eq('patient_id', patient.patientId);
 
 		return NextResponse.json({
 			hasFamilyPlan: true,
 			hasGroup: true,
 			isOwner: true,
 			group: familyGroup,
-			members: members || [],
+			members: membersWithConsultationCount || [],
+			ownerConsultationCount: ownerConsultationCount || 0,
+			ownerId: patient.patientId,
 		});
 	} catch (err: any) {
 		console.error('[Patient Family API] Error:', err);
@@ -128,11 +163,6 @@ export async function POST(request: Request) {
 		const patient = await getAuthenticatedPatient();
 		if (!patient) {
 			return NextResponse.json({ error: 'No autenticado' }, { status: 401 });
-		}
-
-		const hasPlan = await hasFamilyPlan(patient.patientId);
-		if (!hasPlan) {
-			return NextResponse.json({ error: 'Plan familiar no activo' }, { status: 403 });
 		}
 
 		const cookieStore = await cookies();

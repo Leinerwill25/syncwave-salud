@@ -41,7 +41,14 @@ export default function FamilySettingsPage() {
 		gender: '' as 'M' | 'F' | 'O' | '',
 		phone: '',
 		address: '',
+		bloodType: '',
+		allergies: '',
+		hasDisability: false,
+		disability: '',
+		hasElderlyConditions: false,
+		elderlyConditions: '',
 		roleInGroup: 'MIEMBRO',
+		relationship: '' as 'PADRE' | 'MADRE' | 'REPRESENTANTE_LEGAL' | '',
 	});
 
 	useEffect(() => {
@@ -129,11 +136,47 @@ export default function FamilySettingsPage() {
 		}
 	};
 
+	const calculateAge = (dob: string): number | null => {
+		if (!dob) return null;
+		try {
+			const birthDate = new Date(dob);
+			const today = new Date();
+			let age = today.getFullYear() - birthDate.getFullYear();
+			const monthDiff = today.getMonth() - birthDate.getMonth();
+			if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+				age--;
+			}
+			return age >= 0 ? age : null;
+		} catch {
+			return null;
+		}
+	};
+
 	const handleRegisterMember = async (e: React.FormEvent) => {
 		e.preventDefault();
 		
 		if (!formData.firstName.trim() || !formData.lastName.trim()) {
 			setError('Nombre y apellido son requeridos');
+			return;
+		}
+
+		// Validar parentesco para menores de edad
+		const age = calculateAge(formData.dob);
+		if (age !== null && age < 18) {
+			if (!formData.relationship) {
+				setError('Debe indicar el parentesco con el menor de edad (padre, madre o representante legal)');
+				return;
+			}
+		}
+
+		// Validar campos condicionales
+		if (formData.hasDisability && !formData.disability.trim()) {
+			setError('Debe describir la discapacidad si el paciente presenta alguna');
+			return;
+		}
+
+		if (formData.hasElderlyConditions && !formData.elderlyConditions.trim()) {
+			setError('Debe describir las condiciones de tercera edad si el paciente las presenta');
 			return;
 		}
 
@@ -167,7 +210,14 @@ export default function FamilySettingsPage() {
 				gender: '',
 				phone: '',
 				address: '',
+				bloodType: '',
+				allergies: '',
+				hasDisability: false,
+				disability: '',
+				hasElderlyConditions: false,
+				elderlyConditions: '',
 				roleInGroup: 'MIEMBRO',
+				relationship: '',
 			});
 			setShowRegisterForm(false);
 			loadFamilyData();
@@ -316,6 +366,19 @@ export default function FamilySettingsPage() {
 
 					{showRegisterForm && (
 						<form onSubmit={handleRegisterMember} className="space-y-4 sm:space-y-5 md:space-y-6 mt-4 sm:mt-5 md:mt-6">
+							{/* Advertencia sobre quién debe registrarse */}
+							<div className="bg-blue-50 border border-blue-200 rounded-lg p-3 sm:p-4">
+								<div className="flex items-start gap-2 sm:gap-3">
+									<AlertCircle className="w-4 h-4 sm:w-5 sm:h-5 text-blue-600 mt-0.5 flex-shrink-0" />
+									<div className="text-xs sm:text-sm text-blue-800">
+										<p className="font-semibold mb-1">Recomendación:</p>
+										<p className="break-words">
+											Se recomienda registrar en el plan familiar a menores de edad, personas de la tercera edad, o personas con discapacidad que no puedan realizar la gestión médica por su cuenta.
+										</p>
+									</div>
+								</div>
+							</div>
+
 							{/* Información Personal */}
 							<div className="border-t border-gray-200 pt-4 sm:pt-5 md:pt-6">
 								<h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-3 sm:mb-4 flex items-center gap-1.5 sm:gap-2">
@@ -351,14 +414,14 @@ export default function FamilySettingsPage() {
 									</div>
 									<div>
 										<label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1.5 sm:mb-2">
-											Identificador / Cédula
+											Identificador / Cédula <span className="text-gray-400 text-xs">(Opcional)</span>
 										</label>
 										<input
 											type="text"
 											value={formData.identifier}
 											onChange={(e) => setFormData({ ...formData, identifier: e.target.value })}
 											className="w-full px-3 sm:px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm sm:text-base"
-											placeholder="V-12345678"
+											placeholder="V-12345678 (Los niños pueden no tener cédula)"
 										/>
 									</div>
 									<div>
@@ -369,7 +432,16 @@ export default function FamilySettingsPage() {
 										<input
 											type="date"
 											value={formData.dob}
-											onChange={(e) => setFormData({ ...formData, dob: e.target.value })}
+											onChange={(e) => {
+												const newDob = e.target.value;
+												const age = calculateAge(newDob);
+												// Si no es menor de edad, limpiar relationship
+												if (age !== null && age >= 18) {
+													setFormData({ ...formData, dob: newDob, relationship: '' });
+												} else {
+													setFormData({ ...formData, dob: newDob });
+												}
+											}}
 											className="w-full px-3 sm:px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm sm:text-base"
 										/>
 									</div>
@@ -391,14 +463,14 @@ export default function FamilySettingsPage() {
 									<div>
 										<label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1.5 sm:mb-2 flex items-center gap-1.5 sm:gap-2">
 											<Phone className="w-3.5 h-3.5 sm:w-4 sm:h-4 flex-shrink-0" />
-											<span>Teléfono</span>
+											<span>Teléfono <span className="text-gray-400 text-xs">(Opcional)</span></span>
 										</label>
 										<input
 											type="tel"
 											value={formData.phone}
 											onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
 											className="w-full px-3 sm:px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm sm:text-base"
-											placeholder="+58 412 1234567"
+											placeholder="+58 412 1234567 (Los niños pueden no tener teléfono)"
 										/>
 									</div>
 								</div>
@@ -416,6 +488,180 @@ export default function FamilySettingsPage() {
 									/>
 								</div>
 							</div>
+
+							{/* Información Médica */}
+							<div className="border-t border-gray-200 pt-4 sm:pt-5 md:pt-6">
+								<h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-3 sm:mb-4 flex items-center gap-1.5 sm:gap-2">
+									<AlertCircle className="w-4 h-4 sm:w-5 sm:h-5 text-indigo-600 flex-shrink-0" />
+									<span>Información Médica</span>
+								</h3>
+								<div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
+									<div>
+										<label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1.5 sm:mb-2">
+											Tipo de Sangre
+										</label>
+										<select
+											value={formData.bloodType}
+											onChange={(e) => setFormData({ ...formData, bloodType: e.target.value })}
+											className="w-full px-3 sm:px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm sm:text-base"
+										>
+											<option value="">Seleccionar</option>
+											<option value="A+">A+</option>
+											<option value="A-">A-</option>
+											<option value="B+">B+</option>
+											<option value="B-">B-</option>
+											<option value="AB+">AB+</option>
+											<option value="AB-">AB-</option>
+											<option value="O+">O+</option>
+											<option value="O-">O-</option>
+										</select>
+									</div>
+									<div className="md:col-span-2">
+										<label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1.5 sm:mb-2">
+											Alergias
+										</label>
+										<textarea
+											value={formData.allergies}
+											onChange={(e) => setFormData({ ...formData, allergies: e.target.value })}
+											rows={3}
+											className="w-full px-3 sm:px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm sm:text-base resize-none"
+											placeholder="Liste las alergias conocidas (medicamentos, alimentos, etc.)"
+										/>
+									</div>
+								</div>
+							</div>
+
+							{/* Discapacidad */}
+							<div className="border-t border-gray-200 pt-4 sm:pt-5 md:pt-6">
+								<h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-3 sm:mb-4 flex items-center gap-1.5 sm:gap-2">
+									<AlertCircle className="w-4 h-4 sm:w-5 sm:h-5 text-indigo-600 flex-shrink-0" />
+									<span>Discapacidad</span>
+								</h3>
+								<div className="mb-3 sm:mb-4">
+									<label className="flex items-center gap-2 sm:gap-3 cursor-pointer">
+										<input
+											type="checkbox"
+											checked={formData.hasDisability}
+											onChange={(e) => {
+												setFormData({
+													...formData,
+													hasDisability: e.target.checked,
+													disability: e.target.checked ? formData.disability : '',
+												});
+											}}
+											className="w-4 h-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"
+										/>
+										<span className="text-xs sm:text-sm font-medium text-gray-700">
+											El paciente presenta alguna discapacidad
+										</span>
+									</label>
+								</div>
+								{formData.hasDisability && (
+									<div>
+										<label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1.5 sm:mb-2">
+											Descripción de la discapacidad <span className="text-red-500">*</span>
+										</label>
+										<textarea
+											required
+											value={formData.disability}
+											onChange={(e) => setFormData({ ...formData, disability: e.target.value })}
+											rows={3}
+											className="w-full px-3 sm:px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm sm:text-base resize-none"
+											placeholder="Describa la discapacidad que presenta el paciente"
+										/>
+									</div>
+								)}
+							</div>
+
+							{/* Condiciones de Tercera Edad */}
+							{(() => {
+								const age = calculateAge(formData.dob);
+								const isElderly = age !== null && age >= 65;
+								return isElderly ? (
+									<div className="border-t border-gray-200 pt-4 sm:pt-5 md:pt-6">
+										<h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-3 sm:mb-4 flex items-center gap-1.5 sm:gap-2">
+											<AlertCircle className="w-4 h-4 sm:w-5 sm:h-5 text-indigo-600 flex-shrink-0" />
+											<span>Condiciones de Tercera Edad</span>
+										</h3>
+										<div className="mb-3 sm:mb-4">
+											<label className="flex items-center gap-2 sm:gap-3 cursor-pointer">
+												<input
+													type="checkbox"
+													checked={formData.hasElderlyConditions}
+													onChange={(e) => {
+														setFormData({
+															...formData,
+															hasElderlyConditions: e.target.checked,
+															elderlyConditions: e.target.checked ? formData.elderlyConditions : '',
+														});
+													}}
+													className="w-4 h-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"
+												/>
+												<span className="text-xs sm:text-sm font-medium text-gray-700">
+													El paciente presenta condiciones especiales de tercera edad
+												</span>
+											</label>
+										</div>
+										{formData.hasElderlyConditions && (
+											<div>
+												<label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1.5 sm:mb-2">
+													Descripción de las condiciones <span className="text-red-500">*</span>
+												</label>
+												<textarea
+													required
+													value={formData.elderlyConditions}
+													onChange={(e) => setFormData({ ...formData, elderlyConditions: e.target.value })}
+													rows={3}
+													className="w-full px-3 sm:px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm sm:text-base resize-none"
+													placeholder="Describa las condiciones de tercera edad que presenta el paciente (ej: movilidad reducida, problemas de memoria, etc.)"
+												/>
+											</div>
+										)}
+									</div>
+								) : null;
+							})()}
+
+							{/* Parentesco para menores de edad */}
+							{(() => {
+								const age = calculateAge(formData.dob);
+								const isMinor = age !== null && age < 18;
+								return isMinor ? (
+									<div className="border-t border-gray-200 pt-4 sm:pt-5 md:pt-6">
+										<h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-3 sm:mb-4 flex items-center gap-1.5 sm:gap-2">
+											<AlertCircle className="w-4 h-4 sm:w-5 sm:h-5 text-red-600 flex-shrink-0" />
+											<span>Parentesco con el Menor de Edad</span>
+										</h3>
+										<div className="bg-red-50 border-2 border-red-200 rounded-lg p-3 sm:p-4 mb-3 sm:mb-4">
+											<div className="flex items-start gap-2 sm:gap-3">
+												<AlertCircle className="w-4 h-4 sm:w-5 sm:h-5 text-red-600 mt-0.5 flex-shrink-0" />
+												<div className="text-xs sm:text-sm text-red-800">
+													<p className="font-semibold mb-1">ADVERTENCIA LEGAL:</p>
+													<p className="break-words mb-2">
+														Solo puede registrar a un menor de edad si usted es el padre, madre o representante legal del mismo. 
+														Si no cumple con esta condición, debe abstenerse de registrar al menor, ya que esta práctica será considerada ilegal dentro de la plataforma y podrá acarrear cargos legales.
+													</p>
+												</div>
+											</div>
+										</div>
+										<div>
+											<label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1.5 sm:mb-2">
+												Parentesco <span className="text-red-500">*</span>
+											</label>
+											<select
+												required
+												value={formData.relationship}
+												onChange={(e) => setFormData({ ...formData, relationship: e.target.value as 'PADRE' | 'MADRE' | 'REPRESENTANTE_LEGAL' | '' })}
+												className="w-full px-3 sm:px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm sm:text-base"
+											>
+												<option value="">Seleccionar parentesco</option>
+												<option value="PADRE">Padre</option>
+												<option value="MADRE">Madre</option>
+												<option value="REPRESENTANTE_LEGAL">Representante Legal</option>
+											</select>
+										</div>
+									</div>
+								) : null;
+							})()}
 
 							{/* Rol en el Grupo */}
 							<div className="border-t border-gray-200 pt-4 sm:pt-5 md:pt-6">
@@ -465,7 +711,14 @@ export default function FamilySettingsPage() {
 											gender: '',
 											phone: '',
 											address: '',
+											bloodType: '',
+											allergies: '',
+											hasDisability: false,
+											disability: '',
+											hasElderlyConditions: false,
+											elderlyConditions: '',
 											roleInGroup: 'MIEMBRO',
+											relationship: '',
 										});
 									}}
 									className="w-full sm:w-auto px-4 sm:px-5 md:px-6 py-2 border border-gray-300 rounded-lg font-semibold text-gray-700 hover:bg-gray-50 transition-colors text-xs sm:text-sm md:text-base"

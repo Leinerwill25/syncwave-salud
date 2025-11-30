@@ -23,7 +23,14 @@ export async function POST(request: Request) {
 			gender,
 			phone,
 			address,
+			bloodType,
+			allergies,
+			hasDisability,
+			disability,
+			hasElderlyConditions,
+			elderlyConditions,
 			roleInGroup,
+			relationship,
 		} = body;
 
 		// Validar campos requeridos
@@ -63,6 +70,12 @@ export async function POST(request: Request) {
 				gender: gender || null,
 				phone: phone?.trim() || null,
 				address: address?.trim() || null,
+				blood_type: bloodType?.trim() || null,
+				allergies: allergies?.trim() || null,
+				has_disability: hasDisability || false,
+				disability: hasDisability && disability?.trim() ? disability.trim() : null,
+				has_elderly_conditions: hasElderlyConditions || false,
+				elderly_conditions: hasElderlyConditions && elderlyConditions?.trim() ? elderlyConditions.trim() : null,
 			})
 			.select()
 			.single();
@@ -76,12 +89,14 @@ export async function POST(request: Request) {
 		}
 
 		// Agregar automáticamente al grupo familiar
+		// Si hay relationship, usarlo como roleInGroup para menores de edad
+		const finalRoleInGroup = relationship || roleInGroup || 'MIEMBRO';
 		const { data: newMember, error: addError } = await supabase
 			.from('FamilyGroupMember')
 			.insert({
 				familyGroupId: familyGroup.id,
 				patientId: newPatient.id,
-				roleInGroup: roleInGroup || 'MIEMBRO',
+				roleInGroup: finalRoleInGroup,
 			})
 			.select(`
 				id,

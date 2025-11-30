@@ -24,7 +24,7 @@ export async function GET(req: Request) {
 		const startIso = startOfDay.toISOString().replace('Z', '+00:00');
 		const endIso = endOfDay.toISOString().replace('Z', '+00:00');
 
-		// 🩺 3️⃣ Consultar citas entre ese rango (incluyendo unregistered_patient_id)
+		// 🩺 3️⃣ Consultar citas entre ese rango (incluyendo unregistered_patient_id y booked_by_patient_id)
 		const { data, error } = await supabase
 			.from('appointment')
 			.select(
@@ -37,7 +37,14 @@ export async function GET(req: Request) {
 				location,
 				patient_id,
 				unregistered_patient_id,
+				booked_by_patient_id,
 				patient:patient_id (
+					id,
+					firstName,
+					lastName,
+					identifier
+				),
+				booked_by_patient:booked_by_patient_id (
 					id,
 					firstName,
 					lastName,
@@ -114,6 +121,19 @@ export async function GET(req: Request) {
 				}
 			}
 
+			// Determinar quién reservó la cita (si es diferente del paciente)
+			let bookedBy = null;
+			if (cita.booked_by_patient_id && cita.booked_by_patient_id !== cita.patient_id) {
+				const bookedByPatient = Array.isArray(cita.booked_by_patient) ? cita.booked_by_patient[0] : cita.booked_by_patient;
+				if (bookedByPatient) {
+					bookedBy = {
+						id: bookedByPatient.id,
+						name: `${bookedByPatient.firstName} ${bookedByPatient.lastName}`,
+						identifier: bookedByPatient.identifier,
+					};
+				}
+			}
+
 			return {
 				id: cita.id,
 				patient: patientName,
@@ -122,6 +142,7 @@ export async function GET(req: Request) {
 				status: cita.status ?? 'SCHEDULED',
 				reason: cita.reason ?? '',
 				location: cita.location ?? '',
+				bookedBy, // Información de quién reservó la cita (si es diferente del paciente)
 			};
 		});
 

@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { LayoutDashboard, CalendarDays, User, ClipboardList, FileText, Settings, MessageCircle, CheckSquare, Folder, ChevronRight, ChevronDown, Search, FileCheck, CreditCard, Menu, X } from 'lucide-react';
@@ -93,8 +94,10 @@ export default function MedicHamburgerMenu() {
 	const [medicConfig, setMedicConfig] = useState<MedicConfig | null>(null);
 	const [loadingConfig, setLoadingConfig] = useState(true);
 	const [paymentsModalOpen, setPaymentsModalOpen] = useState(false);
+	const [mounted, setMounted] = useState(false);
 
 	useEffect(() => {
+		setMounted(true);
 		loadMedicConfig();
 	}, []);
 
@@ -323,30 +326,33 @@ export default function MedicHamburgerMenu() {
 	return (
 		<>
 			{/* Botón Hamburger - Solo visible en móviles */}
-			<button
-				onClick={() => setIsOpen(!isOpen)}
-				className="md:hidden fixed top-20 left-4 z-50 p-2 rounded-lg bg-white shadow-lg border border-blue-100 text-teal-600 hover:bg-blue-50 transition-colors"
-				aria-label="Abrir menú"
-				aria-expanded={isOpen}
-			>
-				{isOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
-			</button>
-
-			{/* Overlay de fondo */}
-			{isOpen && (
-				<div
-					className="fixed inset-0 bg-black/50 backdrop-blur-sm z-40 md:hidden"
-					onClick={() => setIsOpen(false)}
-					aria-hidden="true"
-				/>
+			{mounted && createPortal(
+				<button
+					onClick={() => setIsOpen(!isOpen)}
+					className="md:hidden fixed top-20 left-4 z-[9999] p-2 rounded-lg bg-white shadow-lg border border-blue-100 text-teal-600 hover:bg-blue-50 transition-colors"
+					aria-label="Abrir menú"
+					aria-expanded={isOpen}
+				>
+					{isOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+				</button>,
+				document.body
 			)}
 
-			{/* Menú lateral */}
-			<aside
-				className={`fixed top-0 left-0 h-full w-80 max-w-[85vw] bg-white shadow-2xl z-50 transform transition-transform duration-300 ease-in-out md:hidden overflow-y-auto
-				${isOpen ? 'translate-x-0' : '-translate-x-full'}`}
-				aria-label="Menú de navegación móvil"
-			>
+			{/* Overlay y Menú lateral usando portal */}
+			{mounted && isOpen && createPortal(
+				<>
+					{/* Overlay de fondo */}
+					<div
+						className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[9998] md:hidden"
+						onClick={() => setIsOpen(false)}
+						aria-hidden="true"
+					/>
+
+					{/* Menú lateral */}
+					<aside
+						className="fixed top-0 left-0 h-full w-80 max-w-[85vw] bg-white shadow-2xl z-[9999] transform transition-transform duration-300 ease-in-out md:hidden overflow-y-auto translate-x-0"
+						aria-label="Menú de navegación móvil"
+					>
 				<div className="flex flex-col gap-4 p-4 h-full">
 					{/* Header */}
 					<div className="flex items-center justify-between mb-2">
@@ -399,7 +405,10 @@ export default function MedicHamburgerMenu() {
 						</a>
 					</div>
 				</div>
-			</aside>
+					</aside>
+				</>,
+				document.body
+			)}
 
 			{/* Payments Modal */}
 			<PaymentsModal

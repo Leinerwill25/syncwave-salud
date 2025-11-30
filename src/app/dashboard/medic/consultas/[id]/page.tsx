@@ -2,7 +2,7 @@
 import { format } from 'date-fns';
 import createSupabaseServerClient from '@/app/adapters/server';
 import Link from 'next/link';
-import { User, Stethoscope, Calendar, Clock, FileText, ClipboardList, DollarSign } from 'lucide-react';
+import { User, Stethoscope, Calendar, Clock, FileText, ClipboardList, DollarSign, Users } from 'lucide-react';
 import QuickFacts from '@/app/dashboard/medic/components/QuickFacts';
 import ConsultationDataDisplay from '@/app/dashboard/medic/consultas/components/ConsultationDataDisplay';
 import PatientSelector from '@/app/dashboard/medic/consultas/[id]/components/PatientSelector';
@@ -69,6 +69,26 @@ export default async function ConsultationDetail({ params }: Props) {
 		// Obtener facturación asociada para verificar si hay pago pendiente
 		let facturacionId: string | null = null;
 		let hasPendingPayment = false;
+
+		// Obtener información de la cita si existe (para mostrar quién reservó)
+		let appointmentInfo: any = null;
+		if (data?.appointment_id) {
+			const { data: appointment } = await supabase
+				.from('appointment')
+				.select(`
+					id,
+					booked_by_patient_id,
+					booked_by_patient:booked_by_patient_id (
+						id,
+						firstName,
+						lastName,
+						identifier
+					)
+				`)
+				.eq('id', data.appointment_id)
+				.maybeSingle();
+			appointmentInfo = appointment;
+		}
 
 		if (data) {
 			// Buscar facturación por appointment_id si existe
@@ -190,6 +210,31 @@ export default async function ConsultationDetail({ params }: Props) {
 								</div>
 							</div>
 						</div>
+
+						{/* Información de quién reservó la cita (si aplica) */}
+						{appointmentInfo?.booked_by_patient_id && appointmentInfo.booked_by_patient_id !== data.patient_id && (
+							<div className="bg-blue-50 border-l-4 border-blue-500 p-3 sm:p-4 mx-4 sm:mx-6 mb-4">
+								<div className="flex items-start gap-2 sm:gap-3">
+									<Users className="w-4 h-4 sm:w-5 sm:h-5 text-blue-600 mt-0.5 flex-shrink-0" />
+									<div className="flex-1 min-w-0">
+										<p className="text-xs sm:text-sm font-semibold text-blue-900 mb-1">Cita Reservada por Grupo Familiar</p>
+										{(() => {
+											const bookedBy = Array.isArray(appointmentInfo.booked_by_patient) 
+												? appointmentInfo.booked_by_patient[0] 
+												: appointmentInfo.booked_by_patient;
+											return bookedBy ? (
+												<p className="text-xs sm:text-sm text-blue-800 break-words">
+													Esta cita fue reservada por <span className="font-semibold">{bookedBy.firstName} {bookedBy.lastName}</span> 
+													{bookedBy.identifier && ` (ID: ${bookedBy.identifier})`} del grupo familiar.
+												</p>
+											) : (
+												<p className="text-xs sm:text-sm text-blue-800">Esta cita fue reservada por un miembro del grupo familiar.</p>
+											);
+										})()}
+									</div>
+								</div>
+							</div>
+						)}
 
 						{/* Meta row */}
 						<div className="bg-white p-4 flex flex-col md:flex-row items-start md:items-center justify-between gap-3 border-t border-blue-100">

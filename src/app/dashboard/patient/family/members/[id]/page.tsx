@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { User, Calendar, Stethoscope, Pill, FlaskConical, Receipt, ArrowLeft, FileText } from 'lucide-react';
+import { User, Calendar, Stethoscope, Pill, FlaskConical, Receipt, ArrowLeft, FileText, Bell, CheckCircle2 } from 'lucide-react';
 import Link from 'next/link';
 
 type MemberData = {
@@ -20,6 +20,7 @@ type MemberData = {
 	labResults: any[];
 	appointments: any[];
 	facturas: any[];
+	tasks: any[];
 };
 
 export default function FamilyMemberPage() {
@@ -27,7 +28,7 @@ export default function FamilyMemberPage() {
 	const router = useRouter();
 	const [loading, setLoading] = useState(true);
 	const [memberData, setMemberData] = useState<MemberData | null>(null);
-	const [activeTab, setActiveTab] = useState<'overview' | 'consultations' | 'prescriptions' | 'labs' | 'appointments' | 'billing'>('overview');
+	const [activeTab, setActiveTab] = useState<'overview' | 'consultations' | 'prescriptions' | 'labs' | 'appointments' | 'billing' | 'reminders'>('overview');
 
 	useEffect(() => {
 		if (params.id) {
@@ -123,6 +124,7 @@ export default function FamilyMemberPage() {
 								{ id: 'labs', label: `Laboratorios (${memberData.labResults.length})`, icon: FlaskConical },
 								{ id: 'appointments', label: `Citas (${memberData.appointments.length})`, icon: Calendar },
 								{ id: 'billing', label: `Facturas (${memberData.facturas.length})`, icon: Receipt },
+								{ id: 'reminders', label: `Recordatorios (${memberData.tasks.length})`, icon: Bell },
 							].map((tab) => {
 								const Icon = tab.icon;
 								return (
@@ -146,7 +148,7 @@ export default function FamilyMemberPage() {
 
 					{/* Contenido de tabs */}
 					{activeTab === 'overview' && (
-						<div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3 md:gap-4">
+						<div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-2 sm:gap-3 md:gap-4">
 							<div className="p-3 sm:p-4 bg-blue-50 rounded-lg">
 								<p className="text-xs sm:text-sm text-gray-600 mb-0.5 sm:mb-1">Consultas</p>
 								<p className="text-xl sm:text-2xl font-bold text-blue-600">{memberData.consultations.length}</p>
@@ -162,6 +164,10 @@ export default function FamilyMemberPage() {
 							<div className="p-3 sm:p-4 bg-green-50 rounded-lg">
 								<p className="text-xs sm:text-sm text-gray-600 mb-0.5 sm:mb-1">Citas</p>
 								<p className="text-xl sm:text-2xl font-bold text-green-600">{memberData.appointments.length}</p>
+							</div>
+							<div className="p-3 sm:p-4 bg-orange-50 rounded-lg">
+								<p className="text-xs sm:text-sm text-gray-600 mb-0.5 sm:mb-1">Recordatorios</p>
+								<p className="text-xl sm:text-2xl font-bold text-orange-600">{memberData.tasks.length}</p>
 							</div>
 						</div>
 					)}
@@ -313,6 +319,55 @@ export default function FamilyMemberPage() {
 											<span className="font-medium">Estado: </span>
 											{factura.estado_pago}
 										</p>
+									</div>
+								))
+							)}
+						</div>
+					)}
+
+					{activeTab === 'reminders' && (
+						<div className="space-y-3 sm:space-y-4">
+							{memberData.tasks.length === 0 ? (
+								<p className="text-gray-600 text-center py-6 sm:py-8 text-xs sm:text-sm md:text-base">No hay recordatorios registrados</p>
+							) : (
+								memberData.tasks.map((task: any) => (
+									<div key={task.id} className={`p-3 sm:p-4 rounded-lg ${task.completed ? 'bg-green-50 border border-green-200' : 'bg-yellow-50 border border-yellow-200'}`}>
+										<div className="flex items-start justify-between gap-2 mb-1.5 sm:mb-2">
+											<div className="flex items-start gap-2 flex-1 min-w-0">
+												{task.completed ? (
+													<CheckCircle2 className="w-4 h-4 sm:w-5 sm:h-5 text-green-600 mt-0.5 flex-shrink-0" />
+												) : (
+													<Bell className="w-4 h-4 sm:w-5 sm:h-5 text-yellow-600 mt-0.5 flex-shrink-0" />
+												)}
+												<div className="min-w-0 flex-1">
+													<p className={`font-semibold text-sm sm:text-base mb-0.5 sm:mb-1 ${task.completed ? 'text-green-900 line-through' : 'text-gray-900'}`}>
+														{task.title}
+													</p>
+													{task.description && (
+														<p className="text-xs sm:text-sm text-gray-700 break-words mb-1">
+															{task.description}
+														</p>
+													)}
+													{task.due_at && (
+														<p className="text-xs sm:text-sm text-gray-600 flex items-center gap-1">
+															<Calendar className="w-3 h-3 sm:w-3.5 sm:h-3.5 flex-shrink-0" />
+															{new Date(task.due_at).toLocaleDateString('es-ES', {
+																year: 'numeric',
+																month: 'long',
+																day: 'numeric',
+																hour: '2-digit',
+																minute: '2-digit',
+															})}
+														</p>
+													)}
+												</div>
+											</div>
+											{task.completed && (
+												<span className="px-2 py-1 bg-green-600 text-white text-[9px] sm:text-[10px] md:text-xs font-semibold rounded flex-shrink-0">
+													Completado
+												</span>
+											)}
+										</div>
 									</div>
 								))
 							)}

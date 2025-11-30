@@ -9,6 +9,11 @@ type Appointment = {
 	time: string;
 	status: 'CONFIRMADA' | 'EN_ESPERA' | 'EN_CURSO' | 'COMPLETADA' | 'CANCELADA' | 'SCHEDULED';
 	location?: string;
+	bookedBy?: {
+		id: string;
+		name: string;
+		identifier?: string | null;
+	} | null;
 };
 
 const fetcher = (url: string) => fetch(url).then((res) => res.json());

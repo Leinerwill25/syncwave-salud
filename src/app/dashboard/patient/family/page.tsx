@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Users, Plus, X, Shield, AlertCircle, User, Calendar } from 'lucide-react';
+import { Users, Plus, X, Shield, AlertCircle, User, Calendar, Stethoscope } from 'lucide-react';
 import Link from 'next/link';
 
 type FamilyGroup = {
@@ -16,6 +16,7 @@ type FamilyMember = {
 	patientId: string;
 	roleInGroup: string | null;
 	addedAt: string;
+	consultationCount?: number;
 	patient: {
 		id: string;
 		firstName: string;
@@ -32,6 +33,8 @@ type FamilyData = {
 	isOwner: boolean;
 	group: FamilyGroup | null;
 	members: FamilyMember[];
+	ownerConsultationCount?: number;
+	ownerId?: string;
 };
 
 export default function FamilyPage() {
@@ -127,27 +130,6 @@ export default function FamilyPage() {
 		);
 	}
 
-	if (!familyData || !familyData.hasFamilyPlan) {
-		return (
-			<div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-pink-50 p-3 sm:p-4 md:p-6">
-				<div className="max-w-7xl mx-auto">
-					<div className="bg-white rounded-xl sm:rounded-2xl shadow-lg p-8 sm:p-10 md:p-12 text-center">
-						<AlertCircle className="w-12 h-12 sm:w-14 sm:h-14 md:w-16 md:h-16 text-yellow-500 mx-auto mb-3 sm:mb-4" />
-						<h1 className="text-xl sm:text-2xl font-bold text-gray-900 mb-1 sm:mb-2">Plan Familiar No Activo</h1>
-						<p className="text-xs sm:text-sm md:text-base text-gray-600 mb-4 sm:mb-5 md:mb-6">
-							Debes actualizar tu plan para usar el Grupo Familiar
-						</p>
-						<Link
-							href="/dashboard/patient/configuracion"
-							className="inline-block px-4 sm:px-5 md:px-6 py-2 sm:py-2.5 md:py-3 bg-indigo-600 text-white rounded-lg font-semibold hover:bg-indigo-700 transition-colors text-xs sm:text-sm md:text-base"
-						>
-							Actualizar Plan
-						</Link>
-					</div>
-				</div>
-			</div>
-		);
-	}
 
 	if (!familyData.hasGroup) {
 		return (
@@ -283,22 +265,35 @@ export default function FamilyPage() {
 
 					<div className="space-y-3 sm:space-y-4">
 						{/* Owner */}
-						<div className="p-3 sm:p-4 bg-purple-50 rounded-lg border-2 border-purple-200">
-							<div className="flex items-center justify-between gap-2">
-								<div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
-									<div className="p-1.5 sm:p-2 bg-purple-100 rounded-lg flex-shrink-0">
-										<User className="w-4 h-4 sm:w-5 sm:h-5 text-purple-600" />
+						{familyData.ownerId && (
+							<Link
+								href={`/dashboard/patient/family/members/${familyData.ownerId}`}
+								className="block p-3 sm:p-4 bg-purple-50 rounded-lg border-2 border-purple-200 hover:border-purple-300 transition-colors"
+							>
+								<div className="flex items-center justify-between gap-2">
+									<div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
+										<div className="p-1.5 sm:p-2 bg-purple-100 rounded-lg flex-shrink-0">
+											<User className="w-4 h-4 sm:w-5 sm:h-5 text-purple-600" />
+										</div>
+										<div className="min-w-0 flex-1">
+											<p className="font-semibold text-gray-900 text-sm sm:text-base truncate">Dueño del Grupo</p>
+											<div className="flex flex-col sm:flex-row items-start sm:items-center gap-1 sm:gap-2 md:gap-4 text-xs sm:text-sm text-gray-600">
+												<span>Tú</span>
+												{familyData.ownerConsultationCount !== undefined && (
+													<span className="flex items-center gap-1">
+														<Stethoscope className="w-3 h-3 flex-shrink-0" />
+														{familyData.ownerConsultationCount} consulta{(familyData.ownerConsultationCount !== 1 ? 's' : '')}
+													</span>
+												)}
+											</div>
+										</div>
 									</div>
-									<div className="min-w-0 flex-1">
-										<p className="font-semibold text-gray-900 text-sm sm:text-base truncate">Dueño del Grupo</p>
-										<p className="text-xs sm:text-sm text-gray-600">Tú</p>
-									</div>
+									<span className="px-2 sm:px-3 py-0.5 sm:py-1 bg-purple-600 text-white text-[9px] sm:text-[10px] md:text-xs font-semibold rounded-full flex-shrink-0">
+										Dueño
+									</span>
 								</div>
-								<span className="px-2 sm:px-3 py-0.5 sm:py-1 bg-purple-600 text-white text-[9px] sm:text-[10px] md:text-xs font-semibold rounded-full flex-shrink-0">
-									Dueño
-								</span>
-							</div>
-						</div>
+							</Link>
+						)}
 
 						{/* Miembros */}
 						{familyData.members.map((member) => (
@@ -325,6 +320,10 @@ export default function FamilyPage() {
 														{new Date(member.patient.dob).toLocaleDateString('es-ES')}
 													</span>
 												)}
+												<span className="flex items-center gap-1">
+													<Stethoscope className="w-3 h-3 flex-shrink-0" />
+													{member.consultationCount || 0} consulta{(member.consultationCount || 0) !== 1 ? 's' : ''}
+												</span>
 											</div>
 										</div>
 									</Link>

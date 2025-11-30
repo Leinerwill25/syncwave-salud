@@ -132,6 +132,12 @@ model Patient {
   gender     String?
   phone      String?
   address    String?
+  bloodType  String?          @map("blood_type")
+  allergies  String?
+  hasDisability Boolean?       @default(false) @map("has_disability")
+  disability String?
+  hasElderlyConditions Boolean? @default(false) @map("has_elderly_conditions")
+  elderlyConditions String?    @map("elderly_conditions")
   records    MedicalRecord[]
   createdAt  DateTime        @default(now()) @map("createdAt")
   updatedAt  DateTime        @updatedAt @map("updatedAt")
@@ -148,6 +154,7 @@ model Patient {
 
   // Opposite relation fields added to satisfy Prisma introspection
   appointments     Appointment[]     @relation("PatientAppointments")
+  bookedAppointments Appointment[]   @relation("BookedByPatientAppointments")
   consultations    Consultation[]    @relation("PatientConsultations")
   labResults       LabResult[]       @relation("PatientLabResults")
   messages         Message[]         @relation("PatientMessages")
@@ -324,6 +331,8 @@ model Appointment {
   status          String        @default("SCHEDULED")
   reason          String?
   location        String?
+  bookedByPatientId String?     @map("booked_by_patient_id")
+  bookedByPatient Patient?      @relation("BookedByPatientAppointments", fields: [bookedByPatientId], references: [id])
   createdAt       DateTime      @default(now()) @map("created_at")
   updatedAt       DateTime      @default(now()) @map("updated_at")
 

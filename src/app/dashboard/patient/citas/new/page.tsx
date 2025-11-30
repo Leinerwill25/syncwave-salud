@@ -65,6 +65,27 @@ export default function NewAppointmentPage() {
 	const [searchOrg, setSearchOrg] = useState('');
 	const [searchDoctor, setSearchDoctor] = useState('');
 
+	// Family group data
+	const [familyData, setFamilyData] = useState<{
+		hasGroup: boolean;
+		isOwner: boolean;
+		members: Array<{
+			id: string;
+			patientId: string;
+			patient: {
+				id: string;
+				firstName: string;
+				lastName: string;
+				identifier: string | null;
+				dob: string | null;
+			} | null;
+		}>;
+		ownerId?: string;
+	} | null>(null);
+	const [selectedPatientId, setSelectedPatientId] = useState<string | null>(null); // null = para mí mismo
+	const [hasSelectedPatient, setHasSelectedPatient] = useState(false); // Indica si el usuario ha hecho una selección
+	const [loadingFamily, setLoadingFamily] = useState(false);
+
 	// Modal state
 	const [modal, setModal] = useState<{
 		isOpen: boolean;
@@ -103,7 +124,57 @@ export default function NewAppointmentPage() {
 
 	useEffect(() => {
 		loadOrganizations();
+		loadFamilyData();
 	}, []);
+
+	const loadFamilyData = async () => {
+		try {
+			setLoadingFamily(true);
+			const res = await fetch('/api/patient/family', {
+				credentials: 'include',
+			});
+
+			if (res.ok) {
+				const data = await res.json();
+				console.log('[Citas New] Datos del grupo familiar recibidos:', {
+					hasGroup: data.hasGroup,
+					isOwner: data.isOwner,
+					membersCount: (data.members || []).length,
+					ownerId: data.ownerId,
+					fullData: data,
+				});
+
+				if (data.hasGroup && data.isOwner) {
+					const familyInfo = {
+						hasGroup: data.hasGroup,
+						isOwner: data.isOwner,
+						members: data.members || [],
+						ownerId: data.ownerId,
+					};
+					setFamilyData(familyInfo);
+					// Si es dueño del grupo, inicializar selectedPatientId como null (para mí)
+					// El usuario puede cambiar esto en el paso de confirmación
+					setSelectedPatientId(null);
+					setHasSelectedPatient(false); // Aún no ha hecho una selección explícita
+					console.log('[Citas New] Grupo familiar configurado:', familyInfo);
+				} else {
+					// Si no es dueño o no tiene grupo, limpiar los datos
+					setFamilyData(null);
+					setSelectedPatientId(null);
+					console.log('[Citas New] Usuario no es dueño de grupo familiar. hasGroup:', data.hasGroup, 'isOwner:', data.isOwner);
+				}
+			} else {
+				const errorText = await res.text();
+				console.warn('[Citas New] Error al cargar grupo familiar:', res.status, errorText);
+				setFamilyData(null);
+			}
+		} catch (err) {
+			console.error('[Citas New] Error cargando grupo familiar:', err);
+			setFamilyData(null);
+		} finally {
+			setLoadingFamily(false);
+		}
+	};
 
 	useEffect(() => {
 		if (selectedOrganization) {
@@ -162,47 +233,40 @@ export default function NewAppointmentPage() {
 			const allOrgs: Organization[] = [];
 
 			// Procesar consultorios privados
+			// La API ahora garantiza un solo registro por organización, así que no necesitamos deduplicar
 			if (consultoriosRes.ok) {
 				const consultoriosData = await consultoriosRes.json();
-				// Usar un Map para evitar duplicados basados en organization_id
-				// El Map nos permite mantener solo el último/mejor registro por organización
-				const orgsMap = new Map<string, Organization>();
+				const consultorios = consultoriosData.data || [];
 
-				(consultoriosData.data || []).forEach((consultorio: any) => {
-					// Usar organization.id como clave única (no el clinic_profile.id)
+				consultorios.forEach((consultorio: any) => {
+					// La API ya consolidó los datos por organización
+					// Usar organization.id como identificador único (garantizado por la API)
 					const orgId = consultorio.organization?.id || consultorio.id;
-					if (!orgId) return;
-
-					// Si ya existe esta organización, no agregarla de nuevo
-					if (orgsMap.has(orgId)) {
-						console.log(`[Citas New] Consultorio duplicado detectado y omitido: ${orgId} - ${consultorio.name || consultorio.organization?.name}`);
+					if (!orgId) {
+						console.warn(`[Citas New] Consultorio sin ID válido omitido:`, consultorio);
 						return;
 					}
 
-					// Crear el objeto de organización
+					// Crear el objeto de organización con los datos consolidados de la API
 					const org: Organization = {
-						id: orgId, // Usar directamente el organization_id como id
-						organization_id: orgId, // Mantener el organization_id real para usar en otras llamadas
-						name: consultorio.name || consultorio.organization?.name || consultorio.trade_name || consultorio.legal_name,
+						id: orgId, // organization.id - identificador único
+						organization_id: orgId, // Mantener el organization_id para uso en otras llamadas
+						name: consultorio.name || consultorio.organization?.name,
 						type: 'CONSULTORIO',
 						clinic_profile: {
-							trade_name: consultorio.trade_name || consultorio.name || consultorio.organization?.name,
-							specialties: Array.isArray(consultorio.specialties) 
-								? consultorio.specialties 
-								: consultorio.specialty 
-									? [consultorio.specialty] 
-									: Array.isArray(consultorio.organization?.specialties)
-										? consultorio.organization.specialties
-										: [],
-							address_operational: consultorio.address_operational || consultorio.address || consultorio.organization?.address,
+							trade_name: consultorio.name || consultorio.organization?.name,
+							specialties: Array.isArray(consultorio.specialties) ? consultorio.specialties : consultorio.specialty ? [consultorio.specialty] : [],
+							address_operational: consultorio.address || consultorio.organization?.address,
 						},
 					};
 
-					orgsMap.set(orgId, org);
+					allOrgs.push(org);
 				});
 
-				// Convertir el Map a array
-				allOrgs.push(...Array.from(orgsMap.values()));
+				// Ordenar por nombre para mejor experiencia de usuario
+				allOrgs.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+
+				console.log(`[Citas New] Consultorios cargados desde API: ${allOrgs.length}`);
 			}
 
 			setOrganizations(allOrgs);
@@ -398,6 +462,9 @@ export default function NewAppointmentPage() {
 			return;
 		}
 
+		// Si es dueño de grupo familiar y aún no ha seleccionado un paciente, no hacer nada
+		// La selección se hace en el paso de confirmación
+
 		try {
 			setSubmitting(true);
 			const scheduledAt = `${selectedDate}T${selectedTime}:00`;
@@ -408,6 +475,21 @@ export default function NewAppointmentPage() {
 				showModal('error', 'Error de Configuración', 'No se pudo obtener el ID de la organización. Por favor intenta nuevamente.');
 				return;
 			}
+
+			// Determinar el patient_id y booked_by_patient_id
+			// Si selectedPatientId es null, la cita es para el usuario mismo (patient_id = null, la API usará el autenticado)
+			// Si selectedPatientId tiene valor, la cita es para ese miembro del grupo familiar
+			// booked_by_patient_id siempre será el dueño del grupo (el usuario autenticado) cuando se reserva para otro miembro
+			let finalPatientId: string | null = null; // null = usar el paciente autenticado
+			let bookedByPatientId: string | null = null;
+
+			// Si es dueño del grupo familiar y seleccionó un paciente diferente
+			if (familyData?.isOwner && familyData.ownerId && selectedPatientId !== null) {
+				// Cita para un miembro del grupo - usar el member patient_id y el owner como booked_by
+				finalPatientId = selectedPatientId;
+				bookedByPatientId = familyData.ownerId;
+			}
+			// Si selectedPatientId es null, la cita es para el usuario mismo (no necesita booked_by_patient_id)
 
 			const res = await fetch('/api/patient/appointments/new', {
 				method: 'POST',
@@ -428,6 +510,8 @@ export default function NewAppointmentPage() {
 								currency: selectedService.currency,
 						  }
 						: null,
+					patient_id: finalPatientId, // Si es null, la API usará el paciente autenticado
+					booked_by_patient_id: bookedByPatientId, // ID del dueño del grupo que reservó la cita
 				}),
 			});
 
@@ -457,13 +541,17 @@ export default function NewAppointmentPage() {
 	};
 
 	// Filtrar solo consultorios y aplicar búsqueda
-	const filteredOrgs = organizations.filter((org) => {
-		// Asegurar que solo sean consultorios
-		if (org.type !== 'CONSULTORIO') return false;
-		// Aplicar búsqueda
-		const searchLower = searchOrg.toLowerCase();
-		return org.name.toLowerCase().includes(searchLower) || org.clinic_profile?.trade_name?.toLowerCase().includes(searchLower);
-	});
+	// La API ya garantiza un solo registro por organización, pero mantenemos el filtro por seguridad
+	const filteredOrgs = organizations
+		.filter((org) => {
+			// Asegurar que solo sean consultorios
+			if (org.type !== 'CONSULTORIO') return false;
+
+			// Aplicar búsqueda
+			const searchLower = searchOrg.toLowerCase();
+			return org.name.toLowerCase().includes(searchLower) || org.clinic_profile?.trade_name?.toLowerCase().includes(searchLower);
+		})
+		.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
 
 	const filteredDoctors = doctors.filter((doctor) => doctor.name?.toLowerCase().includes(searchDoctor.toLowerCase()));
 
@@ -544,13 +632,7 @@ export default function NewAppointmentPage() {
 
 					<div className="relative mb-4 sm:mb-6">
 						<Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 sm:w-5 sm:h-5 text-gray-400" />
-						<input 
-							type="text" 
-							placeholder="Buscar consultorio..." 
-							value={searchOrg} 
-							onChange={(e) => setSearchOrg(e.target.value)} 
-							className="w-full pl-9 sm:pl-10 pr-4 py-2.5 sm:py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm sm:text-base" 
-						/>
+						<input type="text" placeholder="Buscar consultorio..." value={searchOrg} onChange={(e) => setSearchOrg(e.target.value)} className="w-full pl-9 sm:pl-10 pr-4 py-2.5 sm:py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm sm:text-base" />
 					</div>
 
 					{loading ? (
@@ -596,13 +678,7 @@ export default function NewAppointmentPage() {
 
 					<div className="relative mb-4 sm:mb-6">
 						<Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 sm:w-5 sm:h-5 text-gray-400" />
-						<input 
-							type="text" 
-							placeholder="Buscar médico..." 
-							value={searchDoctor} 
-							onChange={(e) => setSearchDoctor(e.target.value)} 
-							className="w-full pl-9 sm:pl-10 pr-4 py-2.5 sm:py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm sm:text-base" 
-						/>
+						<input type="text" placeholder="Buscar médico..." value={searchDoctor} onChange={(e) => setSearchDoctor(e.target.value)} className="w-full pl-9 sm:pl-10 pr-4 py-2.5 sm:py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm sm:text-base" />
 					</div>
 
 					{loading ? (
@@ -804,13 +880,7 @@ export default function NewAppointmentPage() {
 
 					<div className="mb-4 sm:mb-6">
 						<label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1 sm:mb-2">Motivo de la consulta</label>
-						<textarea 
-							value={reason} 
-							onChange={(e) => setReason(e.target.value)} 
-							placeholder="Describe el motivo de tu consulta..." 
-							rows={3} 
-							className="w-full px-3 sm:px-4 py-2 sm:py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm sm:text-base resize-none" 
-						/>
+						<textarea value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Describe el motivo de tu consulta..." rows={3} className="w-full px-3 sm:px-4 py-2 sm:py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm sm:text-base resize-none" />
 					</div>
 
 					<div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
@@ -831,6 +901,63 @@ export default function NewAppointmentPage() {
 						<CheckCircle className="w-5 h-5 sm:w-6 sm:h-6 text-green-600 flex-shrink-0" />
 						<span>Confirmar Cita</span>
 					</h2>
+
+					{/* Selección de paciente para grupo familiar */}
+					{loadingFamily ? (
+						<div className="bg-blue-50 border border-blue-200 rounded-xl p-4 sm:p-6 mb-4 sm:mb-6">
+							<div className="flex items-center justify-center py-4">
+								<div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
+								<span className="ml-2 text-sm text-blue-700">Cargando información del grupo familiar...</span>
+							</div>
+						</div>
+					) : familyData && familyData.hasGroup && familyData.isOwner ? (
+						<div className="bg-blue-50 border border-blue-200 rounded-xl p-4 sm:p-6 mb-4 sm:mb-6">
+							<h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-3 sm:mb-4 flex items-center gap-2">
+								<User className="w-4 h-4 sm:w-5 sm:h-5 text-blue-600 flex-shrink-0" />
+								<span>¿Para quién es esta cita?</span>
+							</h3>
+							<div className="space-y-2 sm:space-y-3">
+								<button
+									type="button"
+									onClick={() => {
+										setSelectedPatientId(null);
+										setHasSelectedPatient(true);
+									}}
+									className={`w-full p-3 sm:p-4 rounded-lg border-2 transition-all text-left ${selectedPatientId === null && hasSelectedPatient ? 'border-blue-600 bg-blue-100 shadow-md' : 'border-gray-200 hover:border-blue-300 hover:bg-blue-50'}`}>
+									<div className="flex items-center gap-2 sm:gap-3">
+										<div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${selectedPatientId === null && hasSelectedPatient ? 'border-blue-600 bg-blue-600' : 'border-gray-400'}`}>{selectedPatientId === null && hasSelectedPatient && <div className="w-2 h-2 rounded-full bg-white"></div>}</div>
+										<div className="flex-1">
+											<p className="font-semibold text-gray-900 text-sm sm:text-base">Para mí</p>
+											<p className="text-xs sm:text-sm text-gray-600">Cita para mi atención médica</p>
+										</div>
+									</div>
+								</button>
+								{familyData.members.map((member) => (
+									<button
+										key={member.id}
+										type="button"
+										onClick={() => {
+											setSelectedPatientId(member.patientId);
+											setHasSelectedPatient(true);
+										}}
+										className={`w-full p-3 sm:p-4 rounded-lg border-2 transition-all text-left ${selectedPatientId === member.patientId ? 'border-blue-600 bg-blue-100 shadow-md' : 'border-gray-200 hover:border-blue-300 hover:bg-blue-50'}`}>
+										<div className="flex items-center gap-2 sm:gap-3">
+											<div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${selectedPatientId === member.patientId ? 'border-blue-600 bg-blue-600' : 'border-gray-400'}`}>{selectedPatientId === member.patientId && <div className="w-2 h-2 rounded-full bg-white"></div>}</div>
+											<div className="flex-1 min-w-0">
+												<p className="font-semibold text-gray-900 text-sm sm:text-base truncate">
+													{member.patient?.firstName} {member.patient?.lastName}
+												</p>
+												<div className="flex flex-col sm:flex-row items-start sm:items-center gap-1 sm:gap-2 text-xs sm:text-sm text-gray-600">
+													{member.patient?.identifier && <span className="truncate">ID: {member.patient.identifier}</span>}
+													{member.patient?.dob && <span>{new Date(member.patient.dob).toLocaleDateString('es-ES')}</span>}
+												</div>
+											</div>
+										</div>
+									</button>
+								))}
+							</div>
+						</div>
+					) : null}
 
 					<div className="bg-gray-50 rounded-xl p-4 sm:p-6 mb-4 sm:mb-6 space-y-3 sm:space-y-4">
 						<div className="flex items-start gap-2 sm:gap-3">
@@ -883,6 +1010,27 @@ export default function NewAppointmentPage() {
 								</div>
 							</div>
 						)}
+						{familyData && familyData.hasGroup && familyData.isOwner && selectedPatientId && (
+							<div className="flex items-start gap-2 sm:gap-3">
+								<User className="w-4 h-4 sm:w-5 sm:h-5 text-blue-600 flex-shrink-0 mt-0.5" />
+								<div className="min-w-0 flex-1">
+									<p className="text-xs sm:text-sm text-gray-600">Paciente de la Cita</p>
+									{(() => {
+										const selectedMember = familyData.members.find((m) => m.patientId === selectedPatientId);
+										return selectedMember?.patient ? (
+											<>
+												<p className="font-semibold text-gray-900 text-sm sm:text-base break-words">
+													{selectedMember.patient.firstName} {selectedMember.patient.lastName}
+												</p>
+												{selectedMember.patient.identifier && <p className="text-xs sm:text-sm text-gray-500 mt-1">ID: {selectedMember.patient.identifier}</p>}
+											</>
+										) : (
+											<p className="font-semibold text-gray-900 text-sm sm:text-base">Para mí</p>
+										);
+									})()}
+								</div>
+							</div>
+						)}
 					</div>
 
 					<div className="bg-blue-50 border border-blue-200 rounded-xl p-3 sm:p-4 mb-4 sm:mb-6 flex items-start gap-2 sm:gap-3">
@@ -894,13 +1042,12 @@ export default function NewAppointmentPage() {
 						<button onClick={() => setStep('schedule')} className="w-full sm:w-auto px-4 sm:px-6 py-2 sm:py-3 border border-gray-300 rounded-lg font-semibold hover:bg-gray-50 transition-colors text-sm sm:text-base">
 							Anterior
 						</button>
-						<button onClick={handleSubmit} disabled={submitting || (selectedDoctor?.medic_profile?.services && Array.isArray(selectedDoctor.medic_profile.services) && selectedDoctor.medic_profile.services.length > 0 ? !selectedService : false)} className="flex-1 px-4 sm:px-6 py-2 sm:py-3 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-lg font-semibold hover:from-indigo-700 hover:to-purple-700 transition-all shadow-lg disabled:opacity-50 disabled:cursor-not-allowed text-sm sm:text-base">
+						<button onClick={handleSubmit} disabled={submitting || (selectedDoctor?.medic_profile?.services && Array.isArray(selectedDoctor.medic_profile.services) && selectedDoctor.medic_profile.services.length > 0 ? !selectedService : false) || (familyData?.hasGroup && familyData?.isOwner && !hasSelectedPatient)} className="flex-1 px-4 sm:px-6 py-2 sm:py-3 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-lg font-semibold hover:from-indigo-700 hover:to-purple-700 transition-all shadow-lg disabled:opacity-50 disabled:cursor-not-allowed text-sm sm:text-base">
 							{submitting ? 'Creando cita...' : 'Confirmar y Crear Cita'}
 						</button>
 					</div>
-					{selectedDoctor?.medic_profile?.services && Array.isArray(selectedDoctor.medic_profile.services) && selectedDoctor.medic_profile.services.length > 0 && !selectedService && (
-						<p className="text-xs sm:text-sm text-red-600 mt-2">Por favor selecciona un servicio para continuar</p>
-					)}
+					{selectedDoctor?.medic_profile?.services && Array.isArray(selectedDoctor.medic_profile.services) && selectedDoctor.medic_profile.services.length > 0 && !selectedService && <p className="text-xs sm:text-sm text-red-600 mt-2">Por favor selecciona un servicio para continuar</p>}
+					{familyData?.hasGroup && familyData?.isOwner && !hasSelectedPatient && <p className="text-xs sm:text-sm text-red-600 mt-2">Por favor selecciona para quién es esta cita</p>}
 				</div>
 			)}
 

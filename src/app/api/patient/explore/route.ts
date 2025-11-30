@@ -171,31 +171,10 @@ export async function GET(request: Request) {
 		// Buscar consultorios privados (Organizations con type CONSULTORIO)
 		// Solo buscar consultorios privados por ahora
 		if (type === 'CONSULTORIO' || type === 'CONSULTORIO_PRIVADO' || !type) {
-			// Primero obtener las organizaciones con type CONSULTORIO
+			// PASO 1: Obtener las organizaciones únicas con type CONSULTORIO
 			let orgQuery = supabase
 				.from('Organization')
-				.select(
-					`
-					id,
-					name,
-					type,
-					contactEmail,
-					phone,
-					address,
-					clinic_profile:clinic_profile!clinic_profile_org_fk (
-						id,
-						trade_name,
-						legal_name,
-						address_operational,
-						phone_mobile,
-						specialties,
-						location,
-						photos,
-						profile_photo,
-						has_cashea
-					)
-				`
-				)
+				.select('id, name, type, contactEmail, phone, address')
 				.eq('type', 'CONSULTORIO')
 				.range(offset, offset + perPage - 1);
 
@@ -203,21 +182,41 @@ export async function GET(request: Request) {
 				orgQuery = orgQuery.or(`name.ilike.%${query}%,address.ilike.%${query}%`);
 			}
 
-			const { data: consultorios, error: consultoriosError } = await orgQuery;
+			const { data: organizations, error: orgsError } = await orgQuery;
 
-			if (consultoriosError) {
-				console.error('[Patient Explore API] Error al buscar consultorios:', consultoriosError);
+			if (orgsError) {
+				console.error('[Patient Explore API] Error al buscar organizaciones:', orgsError);
 			} else {
-				console.log(`[Patient Explore API] Consultorios encontrados: ${consultorios?.length || 0}`);
+				console.log(`[Patient Explore API] Organizaciones encontradas: ${organizations?.length || 0}`);
 			}
 
-			if (consultorios && consultorios.length > 0) {
-				console.log(`[Patient Explore API] Procesando ${consultorios.length} consultorios`);
+			if (!organizations || organizations.length === 0) {
+				console.log('[Patient Explore API] No se encontraron organizaciones');
+			} else {
+				// PASO 2: Obtener todos los IDs de organizaciones
+				const orgIds = organizations.map((org: any) => org.id);
 
-				// Obtener todos los IDs de organizaciones para buscar usuarios
-				const orgIds = consultorios.map((c: any) => c.id);
+				// PASO 3: Obtener los perfiles de clínica asociados (one-to-one relationship)
+				const { data: clinicProfiles, error: profilesError } = await supabase
+					.from('clinic_profile')
+					.select('id, organization_id, trade_name, legal_name, address_operational, phone_mobile, specialties, location, photos, profile_photo, has_cashea')
+					.in('organization_id', orgIds);
 
-				// Buscar usuarios asociados a estas organizaciones
+				if (profilesError) {
+					console.error('[Patient Explore API] Error al buscar perfiles de clínica:', profilesError);
+				}
+
+				// Crear un mapa de organization_id -> clinic_profile
+				const profileByOrgId = new Map<string, any>();
+				if (clinicProfiles) {
+					clinicProfiles.forEach((profile: any) => {
+						if (profile.organization_id) {
+							profileByOrgId.set(profile.organization_id, profile);
+						}
+					});
+				}
+
+				// PASO 4: Buscar todos los médicos asociados a estas organizaciones
 				const { data: users, error: usersError } = await supabase
 					.from('User')
 					.select(
@@ -242,43 +241,45 @@ export async function GET(request: Request) {
 					console.error('[Patient Explore API] Error al buscar usuarios:', usersError);
 				}
 
-				// Crear un mapa de organizationId -> usuarios
-				const usersByOrg = new Map<string, any[]>();
+				// Crear un mapa de organizationId -> array de médicos
+				const doctorsByOrg = new Map<string, any[]>();
 				if (users) {
 					users.forEach((user: any) => {
 						if (user.organizationId) {
 							const orgId = user.organizationId;
-							if (!usersByOrg.has(orgId)) {
-								usersByOrg.set(orgId, []);
+							if (!doctorsByOrg.has(orgId)) {
+								doctorsByOrg.set(orgId, []);
 							}
-							usersByOrg.get(orgId)!.push(user);
+							doctorsByOrg.get(orgId)!.push(user);
 						}
 					});
 				}
 
-				// Usar un Map para deduplicar consultorios por organization_id
+				// PASO 5: Consolidar datos por organización (una organización = un resultado)
 				const consultoriosMap = new Map<string, any>();
 
-				consultorios.forEach((consultorio: any) => {
-					console.log(`[Patient Explore API] Procesando consultorio: ${consultorio.name} (ID: ${consultorio.id})`);
-
-					// Si este organization_id ya existe en el mapa, omitirlo (duplicado)
-					if (consultoriosMap.has(consultorio.id)) {
-						console.log(`[Patient Explore API] Consultorio duplicado detectado y omitido: ${consultorio.id} - ${consultorio.name}`);
+				organizations.forEach((org: any) => {
+					// Si ya procesamos esta organización, omitir (no debería pasar, pero por seguridad)
+					if (consultoriosMap.has(org.id)) {
+						console.warn(`[Patient Explore API] Organización duplicada detectada: ${org.id} - ${org.name}`);
 						return;
 					}
 
-					// Obtener el médico asociado al consultorio desde el mapa
-					const orgUsers = usersByOrg.get(consultorio.id) || [];
-					const doctor = orgUsers.find((d: any) => d.medic_profile) || orgUsers[0];
+					// Obtener el perfil de clínica asociado
+					const clinicProfile = profileByOrgId.get(org.id);
 
-					const doctorSpecialty = doctor?.medic_profile?.private_specialty || doctor?.medic_profile?.specialty;
-					const specialties = parseSpecialties(consultorio.clinic_profile?.specialties);
+					// Obtener todos los médicos de esta organización
+					const orgDoctors = doctorsByOrg.get(org.id) || [];
+					// Seleccionar el primer médico con perfil médico como doctor principal
+					const primaryDoctor = orgDoctors.find((d: any) => d.medic_profile) || orgDoctors[0];
+
+					// Obtener especialidades
+					const doctorSpecialty = primaryDoctor?.medic_profile?.private_specialty || primaryDoctor?.medic_profile?.specialty;
+					const specialties = parseSpecialties(clinicProfile?.specialties);
 
 					// Filtrar por especialidad si se proporciona
 					if (specialty) {
 						const searchSpecialtyLower = specialty.toLowerCase().trim();
-						// Comparación exacta o parcial para private_specialty
 						const hasSpecialty =
 							(doctorSpecialty && doctorSpecialty.toLowerCase().trim() === searchSpecialtyLower) ||
 							(doctorSpecialty && doctorSpecialty.toLowerCase().trim().includes(searchSpecialtyLower)) ||
@@ -287,16 +288,16 @@ export async function GET(request: Request) {
 								return specName.toLowerCase().trim() === searchSpecialtyLower || specName.toLowerCase().trim().includes(searchSpecialtyLower);
 							});
 						if (!hasSpecialty) {
-							console.log(`[Patient Explore API] Consultorio ${consultorio.name} no coincide con especialidad ${specialty}`);
+							console.log(`[Patient Explore API] Consultorio ${org.name} no coincide con especialidad ${specialty}`);
 							return;
 						}
 					}
 
 					// Parsear location si existe
 					let location = null;
-					if (consultorio.clinic_profile?.location) {
+					if (clinicProfile?.location) {
 						try {
-							location = typeof consultorio.clinic_profile.location === 'string' ? JSON.parse(consultorio.clinic_profile.location) : consultorio.clinic_profile.location;
+							location = typeof clinicProfile.location === 'string' ? JSON.parse(clinicProfile.location) : clinicProfile.location;
 						} catch {
 							location = null;
 						}
@@ -304,56 +305,74 @@ export async function GET(request: Request) {
 
 					// Parsear photos si existe
 					let photos: string[] = [];
-					if (consultorio.clinic_profile?.photos) {
+					if (clinicProfile?.photos) {
 						try {
-							photos = Array.isArray(consultorio.clinic_profile.photos) ? consultorio.clinic_profile.photos : typeof consultorio.clinic_profile.photos === 'string' ? JSON.parse(consultorio.clinic_profile.photos) : [];
+							photos = Array.isArray(clinicProfile.photos) ? clinicProfile.photos : typeof clinicProfile.photos === 'string' ? JSON.parse(clinicProfile.photos) : [];
 						} catch {
 							photos = [];
 						}
 					}
 
-					// Usar organization.id como identificador principal para consultorios privados
-					// Esto asegura que la redirección funcione correctamente
+					// Consolidar todos los servicios de todos los médicos de la organización
+					const allServices: any[] = [];
+					orgDoctors.forEach((doctor: any) => {
+						if (doctor.medic_profile?.services) {
+							const docServices = Array.isArray(doctor.medic_profile.services) 
+								? doctor.medic_profile.services 
+								: typeof doctor.medic_profile.services === 'string' 
+									? (() => { try { return JSON.parse(doctor.medic_profile.services); } catch { return []; } })()
+									: [];
+							allServices.push(...docServices);
+						}
+					});
+
+					// Crear el resultado consolidado por organización
 					const resultItem = {
 						type: 'CONSULTORIO_PRIVADO',
-						id: consultorio.id, // organization.id - usado para redirección
-						clinicProfileId: consultorio.clinic_profile?.id || null, // clinic_profile.id si existe
-						name: consultorio.clinic_profile?.trade_name || consultorio.clinic_profile?.legal_name || consultorio.name,
+						id: org.id, // organization.id - identificador único principal
+						clinicProfileId: clinicProfile?.id || null,
+						name: clinicProfile?.trade_name || clinicProfile?.legal_name || org.name,
 						organization: {
-							id: consultorio.id,
-							name: consultorio.name,
-							type: consultorio.type,
+							id: org.id,
+							name: org.name,
+							type: org.type,
 						},
-						address: consultorio.clinic_profile?.address_operational || consultorio.address,
-						phone: consultorio.clinic_profile?.phone_mobile || consultorio.phone,
-						email: consultorio.contactEmail,
-						// Solo incluir specialty, no specialties para evitar duplicación
+						address: clinicProfile?.address_operational || org.address,
+						phone: clinicProfile?.phone_mobile || org.phone,
+						email: org.contactEmail,
 						specialty: doctorSpecialty || (specialties.length > 0 ? (typeof specialties[0] === 'string' ? specialties[0] : specialties[0]?.name || specialties[0]?.specialty || null) : null),
-						services: doctor?.medic_profile?.services || [],
-						photo: consultorio.clinic_profile?.profile_photo || doctor?.medic_profile?.photo_url,
+						specialties: specialties, // Incluir todas las especialidades
+						services: allServices, // Consolidar servicios de todos los médicos
+						photo: clinicProfile?.profile_photo || primaryDoctor?.medic_profile?.photo_url,
 						location,
 						photos,
-						profile_photo: consultorio.clinic_profile?.profile_photo,
-						has_cashea: consultorio.clinic_profile?.has_cashea ?? false,
-						doctor: doctor
+						profile_photo: clinicProfile?.profile_photo,
+						has_cashea: clinicProfile?.has_cashea ?? false,
+						doctor: primaryDoctor
 							? {
-									id: doctor.id,
-									name: doctor.name,
-									email: doctor.email,
+									id: primaryDoctor.id,
+									name: primaryDoctor.name,
+									email: primaryDoctor.email,
 							  }
 							: null,
+						doctors: orgDoctors.map((d: any) => ({
+							id: d.id,
+							name: d.name,
+							email: d.email,
+							specialty: d.medic_profile?.private_specialty || d.medic_profile?.specialty,
+						})), // Incluir todos los médicos de la organización
 					};
 
-					console.log(`[Patient Explore API] Agregando consultorio a resultados: ${resultItem.name}`);
-					consultoriosMap.set(consultorio.id, resultItem);
+					console.log(`[Patient Explore API] Agregando consultorio consolidado: ${resultItem.name} (Org ID: ${org.id})`);
+					consultoriosMap.set(org.id, resultItem);
 				});
 
-				// Agregar todos los consultorios únicos a results
+				// PASO 6: Agregar todos los consultorios únicos a results
 				consultoriosMap.forEach((consultorio) => {
 					results.push(consultorio);
 				});
-			} else {
-				console.log('[Patient Explore API] No se encontraron consultorios o el array está vacío');
+
+				console.log(`[Patient Explore API] Total de consultorios únicos agregados: ${consultoriosMap.size}`);
 			}
 		}
 

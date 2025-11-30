@@ -3,27 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import {
-	LayoutDashboard,
-	CalendarDays,
-	Building2,
-	ShoppingBag,
-	FlaskConical,
-	Search,
-	FileText,
-	Pill,
-	Receipt,
-	MessageCircle,
-	Settings,
-	Users,
-	Shield,
-	ChevronRight,
-	ChevronDown,
-	Search as SearchIcon,
-	Menu,
-	X,
-	Bell,
-} from 'lucide-react';
+import { LayoutDashboard, CalendarDays, Building2, ShoppingBag, FlaskConical, Search, FileText, Pill, Receipt, MessageCircle, Settings, Users, Shield, ChevronRight, ChevronDown, Search as SearchIcon, Menu, X, Bell } from 'lucide-react';
 
 type IconComponent = React.ComponentType<React.SVGProps<SVGSVGElement>>;
 
@@ -91,7 +71,6 @@ const LINKS: LinkItem[] = [
 	{
 		label: 'Grupo Familiar',
 		icon: Users,
-		comingSoon: true,
 		submenu: [
 			{ href: '/dashboard/patient/family', label: 'Mi Grupo' },
 			{ href: '/dashboard/patient/family/codes', label: 'Códigos de Acceso' },
@@ -258,30 +237,18 @@ export default function PatientHamburgerMenu() {
 	return (
 		<>
 			{/* Botón Hamburger - Solo visible en móviles */}
-			<button
-				onClick={() => setIsOpen(!isOpen)}
-				className="md:hidden fixed top-20 left-4 z-50 p-2 rounded-lg bg-white shadow-lg border border-indigo-100 text-indigo-600 hover:bg-indigo-50 transition-colors"
-				aria-label="Abrir menú"
-				aria-expanded={isOpen}
-			>
+			<button onClick={() => setIsOpen(!isOpen)} className="md:hidden fixed top-20 left-4 z-[9999] p-2 rounded-lg bg-white shadow-lg border border-indigo-100 text-indigo-600 hover:bg-indigo-50 transition-colors" aria-label="Abrir menú" aria-expanded={isOpen}>
 				{isOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
 			</button>
 
 			{/* Overlay de fondo */}
-			{isOpen && (
-				<div
-					className="fixed inset-0 bg-black/50 backdrop-blur-sm z-40 md:hidden"
-					onClick={() => setIsOpen(false)}
-					aria-hidden="true"
-				/>
-			)}
+			{isOpen && <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[9998] md:hidden" onClick={() => setIsOpen(false)} aria-hidden="true" />}
 
 			{/* Menú lateral */}
 			<aside
-				className={`fixed top-0 left-0 h-full w-80 max-w-[85vw] bg-white shadow-2xl z-50 transform transition-transform duration-300 ease-in-out md:hidden overflow-y-auto
+				className={`fixed top-0 left-0 h-full w-80 max-w-[85vw] bg-white shadow-2xl z-[9999] transform transition-transform duration-300 ease-in-out md:hidden overflow-y-auto
 				${isOpen ? 'translate-x-0' : '-translate-x-full'}`}
-				aria-label="Menú de navegación móvil"
-			>
+				aria-label="Menú de navegación móvil">
 				<div className="flex flex-col gap-4 p-4 h-full">
 					{/* Header */}
 					<div className="flex items-center justify-between mb-2">
@@ -292,11 +259,7 @@ export default function PatientHamburgerMenu() {
 								<div className="text-[12px] text-slate-500">Panel del Paciente</div>
 							</div>
 						</div>
-						<button
-							onClick={() => setIsOpen(false)}
-							className="p-2 rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-colors"
-							aria-label="Cerrar menú"
-						>
+						<button onClick={() => setIsOpen(false)} className="p-2 rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-colors" aria-label="Cerrar menú">
 							<X className="w-5 h-5" />
 						</button>
 					</div>
@@ -324,4 +287,3 @@ export default function PatientHamburgerMenu() {
 		</>
 	);
 }
-

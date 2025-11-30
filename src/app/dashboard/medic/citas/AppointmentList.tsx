@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Clock, MapPin, Loader2, ChevronDown } from 'lucide-react';
+import { Clock, MapPin, Loader2, ChevronDown, Users } from 'lucide-react';
 import { useAppointments } from '@/app/hooks/useAppointments';
 
 interface Props {
@@ -62,6 +62,12 @@ export default function AppointmentList({ selectedDate }: Props) {
 				<motion.div key={appt.id} whileHover={{ y: -3 }} className="rounded-xl sm:rounded-2xl bg-white/90 backdrop-blur-sm border border-gray-100 shadow-sm hover:shadow-lg transition-all p-3 sm:p-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-4 w-full min-w-0">
 					<div className="flex-1 min-w-0 w-full sm:w-auto">
 						<h3 className="text-sm sm:text-base font-semibold text-gray-800 truncate">{appt.patient}</h3>
+						{appt.bookedBy && (
+							<p className="text-xs sm:text-sm text-blue-600 mt-0.5 sm:mt-1 flex items-center gap-1">
+								<Users className="w-3 h-3 sm:w-3.5 sm:h-3.5 flex-shrink-0" />
+								<span>Reservada por: {appt.bookedBy.name}</span>
+							</p>
+						)}
 						<p className="text-xs sm:text-sm text-gray-500 truncate">{appt.reason}</p>
 						<div className="flex flex-wrap gap-2 sm:gap-3 mt-2 text-gray-400 text-[10px] sm:text-xs">
 							<span className="flex items-center gap-1">

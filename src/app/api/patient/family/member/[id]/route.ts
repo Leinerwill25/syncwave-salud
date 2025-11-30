@@ -70,7 +70,7 @@ export async function GET(
 		}
 
 		// Obtener todos los datos médicos
-		const [consultationsRes, prescriptionsRes, labResultsRes, appointmentsRes, facturasRes] = await Promise.all([
+		const [consultationsRes, prescriptionsRes, labResultsRes, appointmentsRes, facturasRes, tasksRes] = await Promise.all([
 			supabase
 				.from('consultation')
 				.select(`
@@ -120,6 +120,11 @@ export async function GET(
 				.select('id, numero_factura, total, currency, estado_pago, fecha_emision')
 				.eq('patient_id', memberPatientId)
 				.order('fecha_emision', { ascending: false }),
+			supabase
+				.from('task')
+				.select('id, title, description, due_at, completed, created_at')
+				.eq('patient_id', memberPatientId)
+				.order('created_at', { ascending: false }),
 		]);
 
 		return NextResponse.json({
@@ -129,6 +134,7 @@ export async function GET(
 			labResults: labResultsRes.data || [],
 			appointments: appointmentsRes.data || [],
 			facturas: facturasRes.data || [],
+			tasks: tasksRes.data || [],
 		});
 	} catch (err: any) {
 		console.error('[Family Member API] Error:', err);
