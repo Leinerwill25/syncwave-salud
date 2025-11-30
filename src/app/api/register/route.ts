@@ -62,6 +62,16 @@ type PatientInput = {
 	phone?: string | null;
 	address?: string | null;
 	organizationId?: string | null;
+	bloodType?: string | null;
+	hasDisability?: boolean | null;
+	disability?: string | null;
+	allergies?: string | null;
+	chronicConditions?: string | null;
+	currentMedications?: string | null;
+	insuranceProvider?: string | null;
+	insuranceNumber?: string | null;
+	emergencyContactName?: string | null;
+	emergencyContactPhone?: string | null;
 };
 
 type PlanInput = {
@@ -263,6 +273,12 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 						gender: patient.gender ?? null,
 						phone: patient.phone ?? null,
 						address: patient.address ?? null,
+						bloodType: patient.bloodType ? String(patient.bloodType).trim() : null,
+						hasDisability: patient.hasDisability ?? false,
+						disability: patient.hasDisability && patient.disability ? String(patient.disability).trim() : null,
+						allergies: patient.allergies ? String(patient.allergies).trim() : null,
+						chronicConditions: patient.chronicConditions ? String(patient.chronicConditions).trim() : null,
+						currentMedications: patient.currentMedications ? String(patient.currentMedications).trim() : null,
 					},
 				});
 

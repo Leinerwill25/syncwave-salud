@@ -48,6 +48,9 @@ export default function RegisterForm(): React.ReactElement {
 	const [currentMedications, setCurrentMedications] = useState('');
 	const [insuranceProvider, setInsuranceProvider] = useState('');
 	const [insuranceNumber, setInsuranceNumber] = useState('');
+	const [bloodType, setBloodType] = useState('');
+	const [hasDisability, setHasDisability] = useState(false);
+	const [disability, setDisability] = useState('');
 
 	// NUEVO: organizations list + selection
 	const [organizations, setOrganizations] = useState<OrgItem[]>([]);
@@ -377,17 +380,20 @@ export default function RegisterForm(): React.ReactElement {
 					firstName,
 					lastName,
 					identifier,
-					dob,
-					gender,
-					phone,
-					address,
-					emergencyContactName,
-					emergencyContactPhone,
-					allergies,
-					chronicConditions,
-					currentMedications,
-					insuranceProvider,
-					insuranceNumber,
+					dob: dob || undefined,
+					gender: gender || undefined,
+					phone: phone || undefined,
+					address: address || undefined,
+					emergencyContactName: emergencyContactName || undefined,
+					emergencyContactPhone: emergencyContactPhone || undefined,
+					allergies: allergies || undefined,
+					chronicConditions: chronicConditions || undefined,
+					currentMedications: currentMedications || undefined,
+					insuranceProvider: insuranceProvider || undefined,
+					insuranceNumber: insuranceNumber || undefined,
+					bloodType: bloodType || undefined,
+					hasDisability: hasDisability || false,
+					disability: hasDisability && disability ? disability : undefined,
 					// si el paciente eligió una clínica, la asociamos
 					organizationId: selectedOrganizationId ?? undefined,
 				};
@@ -1176,6 +1182,76 @@ export default function RegisterForm(): React.ReactElement {
 							<textarea value={currentMedications} onChange={(e) => setCurrentMedications(e.target.value)} className={textareaClass} rows={2} placeholder="Medicamento — dosis — frecuencia" />
 						</label>
 
+						{/* Tipo de Sangre */}
+						<label className="block group">
+							<span className={labelClass}>
+								<span className="inline-flex items-center gap-2">
+									<svg className="w-4 h-4 text-teal-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+										<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+									</svg>
+									Tipo de Sangre
+								</span>
+							</span>
+							<select
+								value={bloodType}
+								onChange={(e) => setBloodType(e.target.value)}
+								className={selectClass}
+								aria-label="Tipo de sangre"
+							>
+								<option value="">Seleccionar tipo de sangre</option>
+								<option value="A+">A+</option>
+								<option value="A-">A-</option>
+								<option value="B+">B+</option>
+								<option value="B-">B-</option>
+								<option value="AB+">AB+</option>
+								<option value="AB-">AB-</option>
+								<option value="O+">O+</option>
+								<option value="O-">O-</option>
+								<option value="Desconocido">Desconocido</option>
+							</select>
+							<p className="mt-1.5 text-xs text-slate-500">Esta información es importante para emergencias médicas</p>
+						</label>
+
+						{/* Discapacidad */}
+						<div className="block group">
+							<label className="flex items-center gap-3 mb-3">
+								<input
+									type="checkbox"
+									checked={hasDisability}
+									onChange={(e) => {
+										setHasDisability(e.target.checked);
+										if (!e.target.checked) {
+											setDisability('');
+										}
+									}}
+									className="w-5 h-5 rounded border-2 border-slate-300 text-teal-600 focus:ring-2 focus:ring-teal-500 focus:ring-offset-2 cursor-pointer"
+								/>
+								<span className={labelClass}>
+									<span className="inline-flex items-center gap-2">
+										<svg className="w-4 h-4 text-teal-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+											<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+										</svg>
+										¿Tiene alguna discapacidad?
+									</span>
+								</span>
+							</label>
+							{hasDisability && (
+								<div className="mt-2">
+									<label className="block text-xs sm:text-sm font-medium text-slate-700 mb-2">
+										Descripción de la discapacidad
+									</label>
+									<textarea
+										value={disability}
+										onChange={(e) => setDisability(e.target.value)}
+										className={textareaClass}
+										rows={3}
+										placeholder="Describe el tipo de discapacidad y cualquier información relevante para la atención médica..."
+									/>
+									<p className="mt-1.5 text-xs text-slate-500">Esta información ayuda a los profesionales de la salud a brindar una mejor atención</p>
+								</div>
+							)}
+						</div>
+
 						<label className="block group">
 							<span className={labelClass}>
 								<span className="inline-flex items-center gap-2">
@@ -1345,6 +1421,12 @@ export default function RegisterForm(): React.ReactElement {
 								</div>
 								<div className="text-xs sm:text-sm text-slate-700">
 									<span className="font-semibold">Medicaciones:</span> {currentMedications || '—'}
+								</div>
+								<div className="text-xs sm:text-sm text-slate-700">
+									<span className="font-semibold">Tipo de Sangre:</span> {bloodType || '—'}
+								</div>
+								<div className="text-xs sm:text-sm text-slate-700">
+									<span className="font-semibold">Discapacidad:</span> {hasDisability ? (disability || 'Sí (sin descripción)') : 'No'}
 								</div>
 								{selectedOrganizationId && (
 									<div className="mt-3 pt-3 border-t border-slate-200 text-xs sm:text-sm text-slate-700">
