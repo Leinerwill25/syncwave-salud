@@ -270,7 +270,7 @@ export default function LabResultDetailPage() {
 				);
 			})() : null}
 
-			{/* Archivos Adjuntos */}
+			{/* Archivos Adjuntos / Imágenes */}
 			{result.attachments && result.attachments.length > 0 && (
 				<motion.div
 					initial={{ opacity: 0, y: 10 }}
@@ -278,22 +278,75 @@ export default function LabResultDetailPage() {
 					transition={{ delay: 0.4 }}
 					className="bg-white rounded-2xl border border-blue-100 p-6"
 				>
-					<h2 className="text-lg font-semibold text-slate-900 mb-4">Archivos Adjuntos</h2>
-					<div className="space-y-2">
-						{result.attachments.map((attachment, idx) => (
-							<div
-								key={idx}
-								className="flex items-center justify-between p-3 bg-blue-50 rounded-xl border border-blue-100"
-							>
-								<div className="flex items-center gap-3">
-									<FileText className="w-5 h-5 text-teal-600" />
-									<span className="text-slate-900">{attachment}</span>
+					<h2 className="text-lg font-semibold text-slate-900 mb-4">Resultados de Laboratorio (Imágenes)</h2>
+					<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+						{result.attachments.map((attachment, idx) => {
+							// Verificar si es una URL de imagen
+							const isImage = /\.(jpg|jpeg|png|gif|webp)$/i.test(attachment) || attachment.startsWith('http');
+							
+							return (
+								<div
+									key={idx}
+									className="relative group border border-blue-200 rounded-xl overflow-hidden bg-blue-50"
+								>
+									{isImage ? (
+										<a
+											href={attachment}
+											target="_blank"
+											rel="noopener noreferrer"
+											className="block"
+										>
+											<img
+												src={attachment}
+												alt={`Resultado de laboratorio ${idx + 1}`}
+												className="w-full h-48 object-cover hover:opacity-90 transition-opacity"
+												onError={(e) => {
+													// Si la imagen falla al cargar, mostrar un placeholder
+													const target = e.target as HTMLImageElement;
+													target.style.display = 'none';
+													const parent = target.parentElement;
+													if (parent) {
+														parent.innerHTML = `
+															<div class="w-full h-48 flex items-center justify-center bg-gray-100">
+																<FileText class="w-12 h-12 text-gray-400" />
+															</div>
+														`;
+													}
+												}}
+											/>
+										</a>
+									) : (
+										<div className="p-4">
+											<div className="flex items-center justify-between">
+												<div className="flex items-center gap-3">
+													<FileText className="w-5 h-5 text-teal-600" />
+													<span className="text-sm text-slate-900 truncate">{attachment}</span>
+												</div>
+												<a
+													href={attachment}
+													target="_blank"
+													rel="noopener noreferrer"
+													className="text-teal-600 hover:text-teal-700"
+												>
+													<Download className="w-4 h-4" />
+												</a>
+											</div>
+										</div>
+									)}
+									<div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+										<a
+											href={attachment}
+											target="_blank"
+											rel="noopener noreferrer"
+											className="bg-white/90 backdrop-blur-sm rounded-full p-2 shadow-lg hover:bg-white transition-colors"
+											title="Ver en tamaño completo"
+										>
+											<Download className="w-4 h-4 text-teal-600" />
+										</a>
+									</div>
 								</div>
-								<Button variant="ghost" size="sm" className="text-teal-600">
-									<Download className="w-4 h-4" />
-								</Button>
-							</div>
-						))}
+							);
+						})}
 					</div>
 				</motion.div>
 			)}

@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { LayoutDashboard, CalendarDays, User, ClipboardList, FileText, Settings, MessageCircle, CheckSquare, Folder, ChevronRight, ChevronDown, Search, FileCheck, CreditCard, Menu, X } from 'lucide-react';
+import { LayoutDashboard, CalendarDays, User, ClipboardList, FileText, Settings, MessageCircle, CheckSquare, Folder, ChevronRight, ChevronDown, Search, FileCheck, CreditCard, Menu, X, FileType } from 'lucide-react';
 import type { MedicConfig } from '@/types/medic-config';
 import PaymentsModal from '@/components/medic/PaymentsModal';
 
@@ -84,6 +84,11 @@ const LINKS: LinkItem[] = [
 		href: '/dashboard/medic/reportes',
 		label: 'Reportes',
 		icon: FileText,
+	},
+	{
+		href: '/dashboard/medic/plantilla-informe',
+		label: 'Plantilla de Informe',
+		icon: FileType,
 	},
 ];
 

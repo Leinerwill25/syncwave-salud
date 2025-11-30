@@ -127,7 +127,7 @@ export default async function ConsultationSharePage({ params }: Props) {
 		`)
 		.eq('consultation_id', shareLink.consultation_id);
 
-	// Obtener órdenes médicas relacionadas
+	// Obtener órdenes médicas relacionadas (resultados de laboratorio)
 	const { data: orders } = await supabase
 		.from('lab_result')
 		.select(`
@@ -135,9 +135,10 @@ export default async function ConsultationSharePage({ params }: Props) {
 			patient_id,
 			consultation_id,
 			result_type,
-			status,
 			result,
+			attachments,
 			is_critical,
+			reported_at,
 			created_at
 		`)
 		.eq('consultation_id', shareLink.consultation_id)

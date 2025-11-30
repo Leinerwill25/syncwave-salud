@@ -74,9 +74,10 @@ type Order = {
 	patient_id: string;
 	consultation_id: string | null;
 	result_type: string;
-	status: string;
 	result: any;
+	attachments?: string[];
 	is_critical: boolean;
+	reported_at?: string;
 	created_at: string;
 };
 
@@ -386,42 +387,104 @@ export default function ConsultationShareView({ consultation, patient, prescript
 					</div>
 				)}
 
-				{/* Órdenes Médicas */}
+				{/* Órdenes Médicas / Resultados de Laboratorio */}
 				{orders.length > 0 && (
 					<div className="bg-white rounded-xl shadow-lg p-6">
 						<h2 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
 							<FileCheck className="w-5 h-5 text-blue-600" />
-							Órdenes Médicas
+							Resultados de Laboratorio
 						</h2>
-						<div className="space-y-3">
+						<div className="space-y-4">
 							{orders.map((order) => (
-								<div key={order.id} className="border border-gray-200 rounded-lg p-4">
-									<div className="flex items-center justify-between mb-2">
-										<p className="font-semibold text-gray-900">{order.result_type}</p>
-										<div className="flex items-center gap-2">
+								<div key={order.id} className={`border rounded-lg p-4 ${order.is_critical ? 'border-red-300 bg-red-50' : 'border-gray-200'}`}>
+									<div className="flex items-center justify-between mb-3">
+										<div className="flex items-center gap-3">
+											<p className="font-semibold text-gray-900">{order.result_type || 'Resultado de Laboratorio'}</p>
 											{order.is_critical && (
 												<span className="px-2 py-1 bg-red-100 text-red-700 rounded text-xs font-semibold">
 													Crítico
 												</span>
 											)}
-											<span className={`px-2 py-1 rounded text-xs font-semibold ${
-												order.status === 'completed' ? 'bg-green-100 text-green-700' :
-												order.status === 'processing' ? 'bg-yellow-100 text-yellow-700' :
-												'bg-gray-100 text-gray-700'
-											}`}>
-												{order.status}
-											</span>
 										</div>
+										<p className="text-sm text-gray-600">
+											{order.reported_at 
+												? format(new Date(order.reported_at), 'dd/MM/yyyy')
+												: format(new Date(order.created_at), 'dd/MM/yyyy')}
+										</p>
 									</div>
-									<p className="text-sm text-gray-600">
-										Fecha: {format(new Date(order.created_at), 'dd/MM/yyyy')}
-									</p>
-									{order.result && (
+									{order.result && Object.keys(order.result).length > 0 && (
 										<div className="mt-3 pt-3 border-t border-gray-200">
-											<p className="text-sm font-medium text-gray-700 mb-1">Resultado:</p>
-											<pre className="text-xs text-gray-900 bg-gray-50 p-3 rounded overflow-auto">
+											<p className="text-sm font-medium text-gray-700 mb-2">Resultado:</p>
+											<pre className="text-xs text-gray-900 bg-gray-50 p-3 rounded overflow-auto max-h-48">
 												{typeof order.result === 'string' ? order.result : JSON.stringify(order.result, null, 2)}
 											</pre>
+										</div>
+									)}
+									{/* Imágenes adjuntas por el paciente */}
+									{order.attachments && order.attachments.length > 0 && (
+										<div className="mt-4 pt-4 border-t border-gray-200">
+											<p className="text-sm font-medium text-gray-700 mb-3">Imágenes de Resultados:</p>
+											<div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+												{order.attachments.map((attachment, idx) => {
+													// Verificar si es una URL de imagen
+													const isImage = /\.(jpg|jpeg|png|gif|webp)$/i.test(attachment) || attachment.startsWith('http');
+													
+													return (
+														<div
+															key={idx}
+															className="relative group border border-gray-200 rounded-lg overflow-hidden bg-gray-50"
+														>
+															{isImage ? (
+																<a
+																	href={attachment}
+																	target="_blank"
+																	rel="noopener noreferrer"
+																	className="block"
+																>
+																	<img
+																		src={attachment}
+																		alt={`Resultado de laboratorio ${idx + 1}`}
+																		className="w-full h-32 object-cover hover:opacity-90 transition-opacity"
+																		onError={(e) => {
+																			// Si la imagen falla al cargar, mostrar un placeholder
+																			const target = e.target as HTMLImageElement;
+																			target.style.display = 'none';
+																			const parent = target.parentElement;
+																			if (parent) {
+																				parent.innerHTML = `
+																					<div class="w-full h-32 flex items-center justify-center bg-gray-100">
+																						<FileText class="w-8 h-8 text-gray-400" />
+																					</div>
+																				`;
+																			}
+																		}}
+																	/>
+																</a>
+															) : (
+																<a
+																	href={attachment}
+																	target="_blank"
+																	rel="noopener noreferrer"
+																	className="p-3 flex items-center justify-center h-32"
+																>
+																	<FileText className="w-8 h-8 text-gray-400" />
+																</a>
+															)}
+															<div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+																<a
+																	href={attachment}
+																	target="_blank"
+																	rel="noopener noreferrer"
+																	className="bg-white/90 backdrop-blur-sm rounded-full p-1.5 shadow-lg hover:bg-white transition-colors"
+																	title="Ver en tamaño completo"
+																>
+																	<Eye className="w-3.5 h-3.5 text-blue-600" />
+																</a>
+															</div>
+														</div>
+													);
+												})}
+											</div>
 										</div>
 									)}
 								</div>

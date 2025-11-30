@@ -46,7 +46,6 @@ const LINKS: LinkItem[] = [
 		href: '/dashboard/patient/resultados',
 		label: 'Resultados',
 		icon: FlaskConical,
-		comingSoon: true,
 	},
 	{
 		href: '/dashboard/patient/recetas',
