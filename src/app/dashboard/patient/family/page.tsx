@@ -131,7 +131,7 @@ export default function FamilyPage() {
 	}
 
 
-	if (!familyData.hasGroup) {
+	if (!familyData || !familyData.hasGroup) {
 		return (
 			<div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-pink-50 p-3 sm:p-4 md:p-6">
 				<div className="max-w-7xl mx-auto">
@@ -166,6 +166,11 @@ export default function FamilyPage() {
 				</div>
 			</div>
 		);
+	}
+
+	// TypeScript guard: después del return temprano, familyData no puede ser null
+	if (!familyData) {
+		return null;
 	}
 
 	const totalMembers = familyData.members.length + 1; // +1 por el owner
