@@ -279,7 +279,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 						allergies: patient.allergies ? String(patient.allergies).trim() : null,
 						chronicConditions: patient.chronicConditions ? String(patient.chronicConditions).trim() : null,
 						currentMedications: patient.currentMedications ? String(patient.currentMedications).trim() : null,
-					},
+					} as Prisma.PatientCreateInput,
 				});
 
 				if (plan?.selectedPlan === 'paciente-family') {
