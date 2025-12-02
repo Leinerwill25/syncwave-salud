@@ -138,6 +138,8 @@ model Patient {
   disability String?
   hasElderlyConditions Boolean? @default(false) @map("has_elderly_conditions")
   elderlyConditions String?    @map("elderly_conditions")
+  chronicConditions String?    @map("chronic_conditions")
+  currentMedications String?   @map("current_medication")
   records    MedicalRecord[]
   createdAt  DateTime        @default(now()) @map("createdAt")
   updatedAt  DateTime        @updatedAt @map("updatedAt")
