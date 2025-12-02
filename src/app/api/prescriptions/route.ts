@@ -18,6 +18,7 @@ export async function POST(req: Request) {
 
 		const consultation_id = (form.get('consultation_id') as string) ?? null;
 		const patient_id = (form.get('patient_id') as string) ?? null;
+		const unregistered_patient_id = (form.get('unregistered_patient_id') as string) ?? null;
 		const doctor_id = (form.get('doctor_id') as string) ?? null;
 		const notes = (form.get('notes') as string) ?? null;
 		const valid_until = (form.get('valid_until') as string) ?? null;
@@ -32,13 +33,13 @@ export async function POST(req: Request) {
 			items = [];
 		}
 
-		if (!consultation_id || !patient_id || !doctor_id) {
-			return NextResponse.json({ error: 'Faltan campos requeridos (consultation_id | patient_id | doctor_id).' }, { status: 400 });
+		// Validar que haya al menos un tipo de paciente (registrado o no registrado)
+		if (!consultation_id || (!patient_id && !unregistered_patient_id) || !doctor_id) {
+			return NextResponse.json({ error: 'Faltan campos requeridos (consultation_id | (patient_id o unregistered_patient_id) | doctor_id).' }, { status: 400 });
 		}
 
 		// 1) Crear la prescripción (usar issued_at/created_at defaults en DB)
 		const prescriptionPayload: any = {
-			patient_id,
 			doctor_id,
 			consultation_id,
 			notes,
@@ -46,6 +47,15 @@ export async function POST(req: Request) {
 			status: 'ACTIVE',
 			// avoid writing updated_at (no existe en tu schema). created_at y issued_at tienen default DB.
 		};
+
+		// Incluir patient_id o unregistered_patient_id según corresponda
+		// Si hay patient_id, incluirlo (puede ser null si es paciente no registrado)
+		prescriptionPayload.patient_id = patient_id || null;
+		
+		// Si hay unregistered_patient_id, incluirlo
+		if (unregistered_patient_id) {
+			prescriptionPayload.unregistered_patient_id = unregistered_patient_id;
+		}
 
 		const { data: presCreated, error: presErr } = await supabaseAdmin.from('prescription').insert([prescriptionPayload]).select().single();
 
@@ -367,6 +377,7 @@ export async function PATCH(req: Request) {
 		const prescription_id = (form.get('prescription_id') as string) ?? null;
 		const consultation_id = (form.get('consultation_id') as string) ?? null;
 		const patient_id = (form.get('patient_id') as string) ?? null;
+		const unregistered_patient_id = (form.get('unregistered_patient_id') as string) ?? null;
 		const doctor_id = (form.get('doctor_id') as string) ?? null;
 		const notes = (form.get('notes') as string) ?? null;
 		const valid_until = (form.get('valid_until') as string) ?? null;
@@ -391,6 +402,13 @@ export async function PATCH(req: Request) {
 		const updatePayload: any = {};
 		if (notes !== null) updatePayload.notes = notes;
 		if (valid_until !== null) updatePayload.valid_until = valid_until || null;
+		// Actualizar patient_id o unregistered_patient_id si se proporcionan
+		if (patient_id !== null) {
+			updatePayload.patient_id = patient_id || null;
+		}
+		if (unregistered_patient_id !== null) {
+			updatePayload.unregistered_patient_id = unregistered_patient_id || null;
+		}
 
 		if (Object.keys(updatePayload).length > 0) {
 			const { error: updateErr } = await supabaseAdmin

@@ -1,23 +1,8 @@
 // app/layout.tsx
 import type { Metadata } from 'next';
-import { Geist, Geist_Mono } from 'next/font/google';
 import '../../public/globals.css';
 import NavbarSwitcher from '@/components/NavbarSwitcher';
 import ConditionalMain from '@/components/ConditionalMain';
-
-const geistSans = Geist({
-	variable: '--font-geist-sans',
-	subsets: ['latin'],
-	display: 'swap',
-	fallback: ['system-ui', 'arial'],
-});
-
-const geistMono = Geist_Mono({
-	variable: '--font-geist-mono',
-	subsets: ['latin'],
-	display: 'swap',
-	fallback: ['monospace'],
-});
 
 export const metadata: Metadata = {
 	title: 'Syncwave Salud - Plataforma Integral de Salud para Venezuela',
@@ -27,7 +12,7 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
 	return (
-		<html lang="es" className={`${geistSans.variable} ${geistMono.variable} overflow-x-hidden`}>
+		<html lang="es" className="overflow-x-hidden">
 			<body className="antialiased bg-[#F5F7FA] text-[#2C3E50] overflow-x-hidden w-full max-w-full">
 				{/* Navbar dinámico */}
 				<NavbarSwitcher />

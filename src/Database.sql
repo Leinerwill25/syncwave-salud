@@ -85,6 +85,12 @@ CREATE TABLE public.Patient (
   address text,
   createdAt timestamp with time zone NOT NULL DEFAULT now(),
   updatedAt timestamp with time zone NOT NULL DEFAULT now(),
+  blood_type character varying,
+  allergies text,
+  has_disability boolean DEFAULT false,
+  disability text,
+  has_elderly_conditions boolean DEFAULT false,
+  elderly_conditions text,
   CONSTRAINT Patient_pkey PRIMARY KEY (id)
 );
 CREATE TABLE public.Plan (
@@ -130,6 +136,7 @@ CREATE TABLE public.User (
   patientProfileId uuid UNIQUE,
   authId text,
   used boolean NOT NULL DEFAULT true,
+  currency_preference character varying DEFAULT 'USD'::character varying,
   CONSTRAINT User_pkey PRIMARY KEY (id),
   CONSTRAINT fk_user_organization FOREIGN KEY (organizationId) REFERENCES public.Organization(id),
   CONSTRAINT fk_user_patientprofile FOREIGN KEY (patientProfileId) REFERENCES public.Patient(id)
@@ -157,6 +164,7 @@ CREATE TABLE public.appointment (
   updated_at timestamp with time zone NOT NULL DEFAULT now(),
   selected_service jsonb,
   unregistered_patient_id uuid,
+  booked_by_patient_id character varying,
   CONSTRAINT appointment_pkey PRIMARY KEY (id),
   CONSTRAINT fk_appointment_patient FOREIGN KEY (patient_id) REFERENCES public.Patient(id),
   CONSTRAINT fk_appointment_doctor FOREIGN KEY (doctor_id) REFERENCES public.User(id),
@@ -206,6 +214,7 @@ CREATE TABLE public.clinic_profile (
   location jsonb,
   photos jsonb DEFAULT '[]'::jsonb,
   profile_photo text,
+  has_cashea boolean DEFAULT false,
   CONSTRAINT clinic_profile_pkey PRIMARY KEY (id),
   CONSTRAINT clinic_profile_org_fk FOREIGN KEY (organization_id) REFERENCES public.Organization(id)
 );
@@ -225,12 +234,40 @@ CREATE TABLE public.consultation (
   updated_at timestamp with time zone NOT NULL DEFAULT now(),
   medical_record_id uuid,
   unregistered_patient_id uuid,
+  report_url text,
   CONSTRAINT consultation_pkey PRIMARY KEY (id),
   CONSTRAINT fk_consultation_patient FOREIGN KEY (patient_id) REFERENCES public.Patient(id),
   CONSTRAINT fk_consultation_doctor FOREIGN KEY (doctor_id) REFERENCES public.User(id),
   CONSTRAINT fk_consultation_appointment FOREIGN KEY (appointment_id) REFERENCES public.appointment(id),
   CONSTRAINT fk_consultation_medrec FOREIGN KEY (medical_record_id) REFERENCES public.MedicalRecord(id),
   CONSTRAINT consultation_unregistered_patient_id_fkey FOREIGN KEY (unregistered_patient_id) REFERENCES public.unregisteredpatients(id)
+);
+CREATE TABLE public.consultation_files (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  consultation_id uuid NOT NULL,
+  file_name text NOT NULL,
+  path text NOT NULL,
+  url text,
+  size bigint,
+  content_type text,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT consultation_files_pkey PRIMARY KEY (id),
+  CONSTRAINT consultation_files_fk_consultation FOREIGN KEY (consultation_id) REFERENCES public.consultation(id)
+);
+CREATE TABLE public.consultation_share_link (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  consultation_id uuid NOT NULL,
+  patient_id uuid NOT NULL,
+  token text NOT NULL UNIQUE,
+  created_by uuid,
+  expires_at timestamp with time zone,
+  is_active boolean DEFAULT true,
+  access_count integer DEFAULT 0,
+  last_accessed_at timestamp with time zone,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT consultation_share_link_pkey PRIMARY KEY (id),
+  CONSTRAINT fk_share_link_consultation FOREIGN KEY (consultation_id) REFERENCES public.consultation(id),
+  CONSTRAINT fk_share_link_patient FOREIGN KEY (patient_id) REFERENCES public.Patient(id)
 );
 CREATE TABLE public.consultorio_role_audit_log (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
@@ -365,6 +402,9 @@ CREATE TABLE public.medic_profile (
   created_at timestamp with time zone NOT NULL DEFAULT now(),
   updated_at timestamp with time zone NOT NULL DEFAULT now(),
   payment_methods jsonb DEFAULT '[]'::jsonb,
+  has_cashea boolean DEFAULT false,
+  report_template_url text,
+  report_template_name text,
   CONSTRAINT medic_profile_pkey PRIMARY KEY (id),
   CONSTRAINT fk_medic_profile_doctor FOREIGN KEY (doctor_id) REFERENCES public.User(id)
 );
@@ -391,6 +431,20 @@ CREATE TABLE public.medication (
   created_at timestamp with time zone NOT NULL DEFAULT now(),
   updated_at timestamp with time zone NOT NULL DEFAULT now(),
   CONSTRAINT medication_pkey PRIMARY KEY (id)
+);
+CREATE TABLE public.medication_dose (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  prescription_item_id uuid NOT NULL,
+  patient_id uuid NOT NULL,
+  doctor_id uuid NOT NULL,
+  prescription_id uuid NOT NULL,
+  taken_at timestamp with time zone NOT NULL DEFAULT now(),
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT medication_dose_pkey PRIMARY KEY (id),
+  CONSTRAINT fk_medication_dose_prescription_item FOREIGN KEY (prescription_item_id) REFERENCES public.prescription_item(id),
+  CONSTRAINT fk_medication_dose_patient FOREIGN KEY (patient_id) REFERENCES public.Patient(id),
+  CONSTRAINT fk_medication_dose_doctor FOREIGN KEY (doctor_id) REFERENCES public.User(id),
+  CONSTRAINT fk_medication_dose_prescription FOREIGN KEY (prescription_id) REFERENCES public.prescription(id)
 );
 CREATE TABLE public.message (
   id uuid NOT NULL DEFAULT gen_random_uuid(),

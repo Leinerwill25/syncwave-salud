@@ -8,7 +8,9 @@ type Item = {
 	id: string;
 	name: string;
 	dosage?: string;
-	frequency?: string;
+	frequency?: string; // Se genera automáticamente desde frequencyHours y frequencyDays
+	frequencyHours?: number | null; // Cada cuántas horas
+	frequencyDays?: number | null; // Por cuántos días
 	duration?: string;
 	quantity?: number | null;
 	instructions?: string;
@@ -35,7 +37,8 @@ type ExistingPrescription = {
 
 type Props = {
 	consultationId: string;
-	patientId?: string;
+	patientId?: string | null;
+	unregisteredPatientId?: string | null;
 	doctorId?: string;
 	existingPrescription?: ExistingPrescription | null;
 };
@@ -251,15 +254,61 @@ function FileUploader({ files, setFiles }: { files: File[]; setFiles: (f: File[]
    - clean grid
    - compact controls
    ------------------------- */
+// Helper para generar texto descriptivo de frecuencia
+function generateFrequencyText(hours: number | null | undefined, days: number | null | undefined): string {
+	if (!hours || !days) return '';
+	if (hours === 24) {
+		return `1 vez al día por ${days} día${days > 1 ? 's' : ''}`;
+	}
+	return `Cada ${hours} hora${hours > 1 ? 's' : ''} por ${days} día${days > 1 ? 's' : ''}`;
+}
+
+// Helper para parsear frecuencia antigua (ej: "8/8 hrs" o "cada 8 horas por 7 días")
+function parseOldFrequency(frequency: string | null | undefined): { hours: number | null; days: number | null } {
+	if (!frequency) return { hours: null, days: null };
+	
+	const freqLower = frequency.toLowerCase().trim();
+	
+	// Intentar parsear formato "8/8" o "8/8 hrs"
+	const slashMatch = freqLower.match(/(\d+)\s*\/\s*(\d+)/);
+	if (slashMatch) {
+		return { hours: parseInt(slashMatch[1], 10), days: parseInt(slashMatch[2], 10) };
+	}
+	
+	// Intentar parsear formato "cada X horas por Y días"
+	const cadaMatch = freqLower.match(/cada\s+(\d+)\s+horas?\s+por\s+(\d+)\s+d[ií]as?/);
+	if (cadaMatch) {
+		return { hours: parseInt(cadaMatch[1], 10), days: parseInt(cadaMatch[2], 10) };
+	}
+	
+	// Intentar parsear solo "cada X horas" (sin días)
+	const soloCadaMatch = freqLower.match(/cada\s+(\d+)\s+horas?/);
+	if (soloCadaMatch) {
+		return { hours: parseInt(soloCadaMatch[1], 10), days: null };
+	}
+	
+	return { hours: null, days: null };
+}
+
 function PrescriptionItemsEditor({ items, setItems }: { items: Item[]; setItems: (i: Item[]) => void }) {
 	function add() {
-		setItems([...items, { id: uid('it_'), name: '', dosage: '', frequency: '', duration: '', quantity: 1, instructions: '' }]);
+		setItems([...items, { id: uid('it_'), name: '', dosage: '', frequency: '', frequencyHours: null, frequencyDays: null, duration: '', quantity: 1, instructions: '' }]);
 	}
 	function remove(id: string) {
 		setItems(items.filter((it) => it.id !== id));
 	}
 	function update(id: string, patch: Partial<Item>) {
-		setItems(items.map((it) => (it.id === id ? { ...it, ...patch } : it)));
+		const updatedItem = { ...patch };
+		
+		// Si se actualizan frequencyHours o frequencyDays, generar el texto de frequency automáticamente
+		if ('frequencyHours' in patch || 'frequencyDays' in patch) {
+			const item = items.find((it) => it.id === id);
+			const hours = 'frequencyHours' in patch ? patch.frequencyHours : item?.frequencyHours;
+			const days = 'frequencyDays' in patch ? patch.frequencyDays : item?.frequencyDays;
+			updatedItem.frequency = generateFrequencyText(hours, days);
+		}
+		
+		setItems(items.map((it) => (it.id === id ? { ...it, ...updatedItem } : it)));
 	}
 
 	return (
@@ -286,9 +335,35 @@ function PrescriptionItemsEditor({ items, setItems }: { items: Item[]; setItems:
 							<input className="w-full mt-1 px-3 py-2 rounded-md border border-blue-200 bg-white text-slate-900" placeholder="500 mg" value={it.dosage} onChange={(e) => update(it.id, { dosage: e.target.value })} />
 						</div>
 
-						<div className="md:col-span-1">
-							<label className="text-xs text-slate-800 font-medium">Frecuencia</label>
-							<input className="w-full mt-1 px-3 py-2 rounded-md border border-blue-200 bg-white text-slate-900" placeholder="8/8 hrs" value={it.frequency} onChange={(e) => update(it.id, { frequency: e.target.value })} />
+						<div className="md:col-span-2 grid grid-cols-2 gap-2">
+							<div>
+								<label className="text-xs text-slate-800 font-medium">Cada cuántas horas</label>
+								<input 
+									type="number" 
+									min="1" 
+									max="24"
+									className="w-full mt-1 px-3 py-2 rounded-md border border-blue-200 bg-white text-slate-900" 
+									placeholder="Ej: 8" 
+									value={it.frequencyHours ?? ''} 
+									onChange={(e) => update(it.id, { frequencyHours: e.target.value ? parseInt(e.target.value, 10) : null })} 
+								/>
+							</div>
+							<div>
+								<label className="text-xs text-slate-800 font-medium">Por cuántos días</label>
+								<input 
+									type="number" 
+									min="1"
+									className="w-full mt-1 px-3 py-2 rounded-md border border-blue-200 bg-white text-slate-900" 
+									placeholder="Ej: 7" 
+									value={it.frequencyDays ?? ''} 
+									onChange={(e) => update(it.id, { frequencyDays: e.target.value ? parseInt(e.target.value, 10) : null })} 
+								/>
+							</div>
+							{it.frequency && (
+								<div className="col-span-2 text-xs text-slate-600 mt-1 italic">
+									{it.frequency}
+								</div>
+							)}
 						</div>
 
 						<div className="md:col-span-1 flex flex-col items-end gap-2">
@@ -317,7 +392,7 @@ function PrescriptionItemsEditor({ items, setItems }: { items: Item[]; setItems:
    PrescriptionForm (principal)
    - layout with clear visual hierarchy
    ------------------------- */
-export default function PrescriptionForm({ consultationId, patientId, doctorId, existingPrescription }: Props) {
+export default function PrescriptionForm({ consultationId, patientId, unregisteredPatientId, doctorId, existingPrescription }: Props) {
 	const [items, setItems] = useState<Item[]>([]);
 	const [notes, setNotes] = useState('');
 	const [validUntil, setValidUntil] = useState<string>('');
@@ -337,15 +412,21 @@ export default function PrescriptionForm({ consultationId, patientId, doctorId, 
 			
 			// Cargar items existentes
 			if (existingPrescription.prescription_item && Array.isArray(existingPrescription.prescription_item)) {
-				const loadedItems: Item[] = existingPrescription.prescription_item.map((item) => ({
-					id: item.id,
-					name: item.name || '',
-					dosage: item.dosage || '',
-					frequency: item.frequency || '',
-					duration: item.duration || '',
-					quantity: item.quantity || 1,
-					instructions: item.instructions || '',
-				}));
+				const loadedItems: Item[] = existingPrescription.prescription_item.map((item) => {
+					// Parsear frecuencia antigua si existe
+					const parsed = parseOldFrequency(item.frequency);
+					return {
+						id: item.id,
+						name: item.name || '',
+						dosage: item.dosage || '',
+						frequency: item.frequency || '',
+						frequencyHours: parsed.hours,
+						frequencyDays: parsed.days,
+						duration: item.duration || '',
+						quantity: item.quantity || 1,
+						instructions: item.instructions || '',
+					};
+				});
 				setItems(loadedItems);
 			}
 		}
@@ -356,7 +437,8 @@ export default function PrescriptionForm({ consultationId, patientId, doctorId, 
 		setError(null);
 		setSuccess(null);
 
-		if (!consultationId || !patientId || !doctorId) {
+		// Validar que haya al menos un tipo de paciente (registrado o no registrado)
+		if (!consultationId || (!patientId && !unregisteredPatientId) || !doctorId) {
 			setError('Faltan datos requeridos (consulta / paciente / doctor).');
 			return;
 		}
@@ -373,11 +455,25 @@ export default function PrescriptionForm({ consultationId, patientId, doctorId, 
 				const form = new FormData();
 				form.append('prescription_id', existingPrescription.id);
 				form.append('consultation_id', consultationId);
-				form.append('patient_id', String(patientId));
+				if (patientId) {
+					form.append('patient_id', String(patientId));
+				}
+				if (unregisteredPatientId) {
+					form.append('unregistered_patient_id', String(unregisteredPatientId));
+				}
 				form.append('doctor_id', String(doctorId));
 				form.append('notes', notes ?? '');
 				if (validUntil) form.append('valid_until', validUntil);
-				form.append('items', JSON.stringify(items));
+				// Preparar items para guardar: asegurar que frequency esté generado desde frequencyHours y frequencyDays
+				const itemsToSave = items.map((item) => {
+					const frequencyText = item.frequency || generateFrequencyText(item.frequencyHours, item.frequencyDays);
+					return {
+						...item,
+						frequency: frequencyText,
+						// No guardar frequencyHours y frequencyDays en la BD, solo frequency como texto
+					};
+				});
+				form.append('items', JSON.stringify(itemsToSave));
 
 				files.forEach((f) => form.append('files', f, f.name));
 
@@ -399,11 +495,25 @@ export default function PrescriptionForm({ consultationId, patientId, doctorId, 
 				// Crear nueva prescripción
 				const form = new FormData();
 				form.append('consultation_id', consultationId);
-				form.append('patient_id', String(patientId));
+				if (patientId) {
+					form.append('patient_id', String(patientId));
+				}
+				if (unregisteredPatientId) {
+					form.append('unregistered_patient_id', String(unregisteredPatientId));
+				}
 				form.append('doctor_id', String(doctorId));
 				form.append('notes', notes ?? '');
 				if (validUntil) form.append('valid_until', validUntil);
-				form.append('items', JSON.stringify(items));
+				// Preparar items para guardar: asegurar que frequency esté generado desde frequencyHours y frequencyDays
+				const itemsToSave = items.map((item) => {
+					const frequencyText = item.frequency || generateFrequencyText(item.frequencyHours, item.frequencyDays);
+					return {
+						...item,
+						frequency: frequencyText,
+						// No guardar frequencyHours y frequencyDays en la BD, solo frequency como texto
+					};
+				});
+				form.append('items', JSON.stringify(itemsToSave));
 
 				files.forEach((f) => form.append('files', f, f.name));
 

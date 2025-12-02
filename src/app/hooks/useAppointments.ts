@@ -9,6 +9,7 @@ type Appointment = {
 	time: string;
 	status: 'CONFIRMADA' | 'EN_ESPERA' | 'EN_CURSO' | 'COMPLETADA' | 'CANCELADA' | 'SCHEDULED';
 	location?: string;
+	isUnregistered?: boolean;
 	bookedBy?: {
 		id: string;
 		name: string;
@@ -16,7 +17,18 @@ type Appointment = {
 	} | null;
 };
 
-const fetcher = (url: string) => fetch(url).then((res) => res.json());
+const fetcher = async (url: string) => {
+	const res = await fetch(url);
+	const data = await res.json();
+	
+	// Si hay un error en la respuesta, lanzar error
+	if (!res.ok) {
+		throw new Error(data.error || 'Error al obtener citas');
+	}
+	
+	// Asegurar que siempre devolvemos un array
+	return Array.isArray(data) ? data : [];
+};
 
 export function useAppointments(selectedDate?: Date) {
 	const dateParam = selectedDate ? selectedDate.toISOString().split('T')[0] : new Date().toISOString().split('T')[0];
@@ -50,7 +62,7 @@ export function useAppointments(selectedDate?: Date) {
 	};
 
 	return {
-		appointments: data || [],
+		appointments: Array.isArray(data) ? data : [],
 		isLoading,
 		isError: error,
 		createAppointment,

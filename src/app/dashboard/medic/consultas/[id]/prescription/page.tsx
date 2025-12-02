@@ -44,7 +44,7 @@ export default async function Page({ params }: Props) {
 
 	const { supabase } = createSupabaseServerClient();
 
-	const { data: consultation, error } = await supabase.from('consultation').select('id, appointment_id, patient_id, doctor_id, chief_complaint, diagnosis, created_at, patient:patient_id(firstName,lastName), doctor:doctor_id(id,name)').eq('id', id).single();
+	const { data: consultation, error } = await supabase.from('consultation').select('id, appointment_id, patient_id, unregistered_patient_id, doctor_id, chief_complaint, diagnosis, created_at, patient:patient_id(firstName,lastName), doctor:doctor_id(id,name)').eq('id', id).single();
 
 	if (error || !consultation) {
 		return (
@@ -144,7 +144,8 @@ export default async function Page({ params }: Props) {
 				{/* Client-side prescription form */}
 				<PrescriptionForm 
 					consultationId={(consultation as any).id} 
-					patientId={(consultation as any).patient_id} 
+					patientId={(consultation as any).patient_id || null} 
+					unregisteredPatientId={(consultation as any).unregistered_patient_id || null}
 					doctorId={(consultation as any).doctor_id}
 					existingPrescription={existingPrescription}
 				/>

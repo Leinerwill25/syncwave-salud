@@ -1,3 +1,12 @@
+/* Import Google Fonts via CSS to avoid Turbopack issues */
+@import url('https://fonts.googleapis.com/css2?family=Geist:wght@100;200;300;400;500;600;700;800;900&family=Geist+Mono:wght@100;200;300;400;500;600;700;800;900&display=swap');
+
+/* Define CSS variables for fonts */
+:root {
+	--font-geist-sans: 'Geist', system-ui, arial, sans-serif;
+	--font-geist-mono: 'Geist Mono', monospace;
+}
+
 /* En lugar de @tailwind base */
 @import 'tailwindcss/preflight';
 
@@ -12,10 +21,18 @@
 	box-sizing: border-box;
 }
 
-html, body {
+html {
 	width: 100%;
 	max-width: 100vw;
 	overflow-x: hidden;
+	font-family: var(--font-geist-sans);
+}
+
+body {
+	width: 100%;
+	max-width: 100vw;
+	overflow-x: hidden;
+	font-family: var(--font-geist-sans);
 }
 
 /* Estilos para Leaflet - Controlar z-index para que no se superponga con otros componentes */

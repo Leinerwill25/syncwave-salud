@@ -15,6 +15,7 @@ export async function GET(req: Request) {
 				`
         id,
         patient_id,
+        unregistered_patient_id,
         doctor_id,
         consultation_id,
         issued_at,
@@ -38,7 +39,10 @@ export async function GET(req: Request) {
 			)
 			.order('issued_at', { ascending: false });
 
-		if (patientId) query = query.eq('patient_id', patientId);
+		if (patientId) {
+			// Buscar por patient_id o unregistered_patient_id
+			query = query.or(`patient_id.eq.${patientId},unregistered_patient_id.eq.${patientId}`);
+		}
 
 		const { data, error } = await query;
 
@@ -63,7 +67,8 @@ export async function POST(req: Request) {
 		/**
 		 * Estructura esperada:
 		 * {
-		 *   patient_id: string,
+		 *   patient_id?: string,
+		 *   unregistered_patient_id?: string,
 		 *   consultation_id?: string,
 		 *   notes?: string,
 		 *   valid_until?: string (ISO),
@@ -74,8 +79,9 @@ export async function POST(req: Request) {
 		 * }
 		 */
 
-		if (!body?.patient_id || !Array.isArray(body.items)) {
-			return NextResponse.json({ error: 'El cuerpo de la solicitud es inválido. Se requiere patient_id e items[]' }, { status: 400 });
+		// Validar que haya al menos un tipo de paciente (registrado o no registrado)
+		if ((!body?.patient_id && !body?.unregistered_patient_id) || !Array.isArray(body.items)) {
+			return NextResponse.json({ error: 'El cuerpo de la solicitud es inválido. Se requiere (patient_id o unregistered_patient_id) e items[]' }, { status: 400 });
 		}
 
 		// Obtener sesión (usuario actual = doctor)
@@ -90,14 +96,21 @@ export async function POST(req: Request) {
 		if (!doctor_id) return NextResponse.json({ error: 'No se pudo determinar el doctor_id' }, { status: 401 });
 
 		// Crear receta principal
-		const prescriptionPayload = {
-			patient_id: body.patient_id,
+		const prescriptionPayload: any = {
 			doctor_id,
 			consultation_id: body.consultation_id ?? null,
 			notes: body.notes ?? null,
 			valid_until: body.valid_until ?? null,
 			status: body.status ?? 'ACTIVE',
 		};
+
+		// Incluir patient_id o unregistered_patient_id según corresponda
+		if (body.patient_id) {
+			prescriptionPayload.patient_id = body.patient_id;
+		}
+		if (body.unregistered_patient_id) {
+			prescriptionPayload.unregistered_patient_id = body.unregistered_patient_id;
+		}
 
 		const { data: prescription, error: insertError } = await supabase.from('prescription').insert(prescriptionPayload).select('id').single();
 
@@ -135,6 +148,7 @@ export async function POST(req: Request) {
 				`
         id,
         patient_id,
+        unregistered_patient_id,
         doctor_id,
         consultation_id,
         issued_at,
@@ -153,61 +167,68 @@ export async function POST(req: Request) {
 			return NextResponse.json({ error: fetchError.message }, { status: 500 });
 		}
 
-		// Crear notificación y enviar email al paciente
+		// Crear notificación y enviar email al paciente (solo si es paciente registrado)
 		try {
 			// Obtener información del paciente y doctor
-			const [patientRes, doctorRes] = await Promise.all([
-				supabase.from('Patient').select('firstName, lastName').eq('id', body.patient_id).maybeSingle(),
-				supabase.from('User').select('name, organizationId').eq('id', doctor_id).maybeSingle(),
-			]);
-
-			const patientName = patientRes.data ? `${patientRes.data.firstName} ${patientRes.data.lastName}` : undefined;
-			const doctorName = doctorRes.data?.name || undefined;
-			const organizationId = doctorRes.data?.organizationId || null;
-
-			const prescriptionDate = createdPrescription.issued_at 
-				? new Date(createdPrescription.issued_at).toLocaleDateString('es-ES', {
-					weekday: 'long',
-					year: 'numeric',
-					month: 'long',
-					day: 'numeric',
-				})
-				: new Date().toLocaleDateString('es-ES');
-
-			// Obtener userId del paciente (si existe en User table)
+			let patientName: string | undefined = undefined;
 			let patientUserId: string | null = null;
-			try {
-				const { data: patientUser } = await supabase
-					.from('User')
-					.select('id')
-					.eq('patientProfileId', body.patient_id)
-					.maybeSingle();
-				patientUserId = patientUser?.id || null;
-			} catch {
-				// Ignorar error
-			}
 
-			const prescriptionUrl = `${process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_VERCEL_URL ? `https://${process.env.NEXT_PUBLIC_VERCEL_URL}` : 'http://localhost:3000'}/dashboard/patient/recetas`;
+			if (body.patient_id) {
+				// Paciente registrado
+				const [patientRes, doctorRes] = await Promise.all([
+					supabase.from('Patient').select('firstName, lastName').eq('id', body.patient_id).maybeSingle(),
+					supabase.from('User').select('name, organizationId').eq('id', doctor_id).maybeSingle(),
+				]);
 
-			if (patientUserId) {
-				await createNotification({
-					userId: patientUserId,
-					organizationId,
-					type: 'PRESCRIPTION',
-					title: 'Nueva Receta Médica',
-					message: `El Dr./Dra. ${doctorName || 'tu médico'} ha emitido una nueva receta médica para ti.`,
-					payload: {
-						prescriptionId: prescription.id,
-						prescription_id: prescription.id,
-						patient_id: body.patient_id,
-						patientName,
-						doctorName,
-						prescriptionDate,
-						prescriptionUrl,
-					},
-					sendEmail: true,
-				});
+				patientName = patientRes.data ? `${patientRes.data.firstName} ${patientRes.data.lastName}` : undefined;
+				const doctorName = doctorRes.data?.name || undefined;
+				const organizationId = doctorRes.data?.organizationId || null;
+
+				const prescriptionDate = createdPrescription.issued_at 
+					? new Date(createdPrescription.issued_at).toLocaleDateString('es-ES', {
+						weekday: 'long',
+						year: 'numeric',
+						month: 'long',
+						day: 'numeric',
+					})
+					: new Date().toLocaleDateString('es-ES');
+
+				// Obtener userId del paciente (si existe en User table)
+				try {
+					const { data: patientUser } = await supabase
+						.from('User')
+						.select('id')
+						.eq('patientProfileId', body.patient_id)
+						.maybeSingle();
+					patientUserId = patientUser?.id || null;
+				} catch {
+					// Ignorar error
+				}
+
+				const prescriptionUrl = `${process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_VERCEL_URL ? `https://${process.env.NEXT_PUBLIC_VERCEL_URL}` : 'http://localhost:3000'}/dashboard/patient/recetas`;
+
+				if (patientUserId) {
+					await createNotification({
+						userId: patientUserId,
+						organizationId,
+						type: 'PRESCRIPTION',
+						title: 'Nueva Receta Médica',
+						message: `El Dr./Dra. ${doctorName || 'tu médico'} ha emitido una nueva receta médica para ti.`,
+						payload: {
+							prescriptionId: prescription.id,
+							prescription_id: prescription.id,
+							patient_id: body.patient_id,
+							patientName,
+							doctorName,
+							prescriptionDate,
+							prescriptionUrl,
+						},
+						sendEmail: true,
+					});
+				}
 			}
+			// Si es paciente no registrado, no se envía notificación (no tiene cuenta en el sistema)
+
 		} catch (notifErr) {
 			console.error('❌ Error creando notificación/email para receta:', notifErr);
 			// No fallar la creación de la receta si la notificación falla

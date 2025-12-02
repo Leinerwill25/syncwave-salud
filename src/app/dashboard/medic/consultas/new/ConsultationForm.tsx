@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useRef, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { FileText, Loader2, Stethoscope, Calendar, UserCheck, UserPlus, CheckCircle } from 'lucide-react';
 import { createSupabaseBrowserClient } from '@/app/adapters/client'; // lo dejé por si lo necesitas en otras partes
 import CurrencyDisplay from '@/components/CurrencyDisplay';
@@ -164,12 +164,14 @@ function PatientSearcher({ onSelect, patientType }: { onSelect: (p: Patient) => 
 
 export default function ConsultationForm() {
 	const router = useRouter();
+	const searchParams = useSearchParams();
 	const [doctorId, setDoctorId] = useState<string | null>(null);
 	const [organizationId, setOrganizationId] = useState<string | null>(null);
 	const [organizationName, setOrganizationName] = useState<string | null>(null);
 	const [patientType, setPatientType] = useState<'registered' | 'unregistered'>('registered');
 	const [patientId, setPatientId] = useState('');
 	const [unregisteredPatientId, setUnregisteredPatientId] = useState('');
+	const [appointmentId, setAppointmentId] = useState<string | null>(searchParams.get('appointmentId'));
 	const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
 	const [consultationDate, setConsultationDate] = useState('');
 	const [chiefComplaint, setChiefComplaint] = useState('');
@@ -294,6 +296,45 @@ export default function ConsultationForm() {
 		fetchDoctorAndOrg();
 	}, []);
 
+	// Cargar datos del appointment si se proporciona appointmentId
+	useEffect(() => {
+		if (!appointmentId) return;
+
+		async function loadAppointmentData() {
+			try {
+				const supabase = createSupabaseBrowserClient();
+				const { data: appointmentData, error } = await supabase
+					.from('appointment')
+					.select('patient_id, unregistered_patient_id, reason')
+					.eq('id', appointmentId)
+					.single();
+
+				if (error || !appointmentData) {
+					console.warn('No se pudo cargar datos del appointment:', appointmentId, error);
+					return;
+				}
+				
+				// Si el appointment tiene unregistered_patient_id, cargar esos datos
+				if (appointmentData.unregistered_patient_id) {
+					setPatientType('unregistered');
+					setUnregisteredPatientId(appointmentData.unregistered_patient_id);
+				} else if (appointmentData.patient_id) {
+					setPatientType('registered');
+					setPatientId(appointmentData.patient_id);
+				}
+
+				// Pre-llenar motivo de consulta si existe
+				if (appointmentData.reason) {
+					setChiefComplaint(appointmentData.reason);
+				}
+			} catch (err) {
+				console.error('Error cargando datos del appointment:', err);
+			}
+		}
+
+		loadAppointmentData();
+	}, [appointmentId]);
+
 	// Cargar servicios del consultorio
 	useEffect(() => {
 		if (!doctorId) return;
@@ -415,6 +456,11 @@ export default function ConsultationForm() {
 				diagnosis: diagnosis || null,
 				notes: notes || null,
 			};
+
+			// Si hay appointment_id, incluirlo para que el API pueda obtener el unregistered_patient_id automáticamente
+			if (appointmentId) {
+				payload.appointment_id = appointmentId;
+			}
 
 			if (patientType === 'registered') {
 				payload.patient_id = patientId;

@@ -3,17 +3,52 @@ import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { createSupabaseServerClient } from '@/app/adapters/server';
 
-async function getCurrentDoctorId(supabase: ReturnType<typeof createSupabaseServerClient>['supabase']): Promise<string | null> {
-	const { data: { user }, error: authError } = await supabase.auth.getUser();
+async function getCurrentDoctorId(supabase: ReturnType<typeof createSupabaseServerClient>['supabase'], request?: Request): Promise<string | null> {
+	// Intento primario: obtener usuario por cookie (session)
+	let { data: authData, error: authError } = await supabase.auth.getUser();
 	
-	if (authError || !user) {
+	// Si falla, intentar con token Bearer del header
+	if (authError || !authData?.user) {
+		if (request) {
+			const authHeader = request.headers.get('authorization') || request.headers.get('Authorization');
+			const maybeToken = authHeader?.startsWith('Bearer ') ? authHeader.slice('Bearer '.length) : null;
+			
+			if (maybeToken) {
+				const { data: authData2, error: authError2 } = await supabase.auth.getUser(maybeToken);
+				if (!authError2 && authData2?.user) {
+					authData = authData2;
+					authError = null;
+				}
+			}
+		}
+		
+		// Si aún falla, intentar restaurar desde cookies
+		if (authError || !authData?.user) {
+			try {
+				const cookieStore = await cookies();
+				const accessToken = cookieStore.get('sb-access-token')?.value ?? null;
+				
+				if (accessToken) {
+					const { data: authData3, error: authError3 } = await supabase.auth.getUser(accessToken);
+					if (!authError3 && authData3?.user) {
+						authData = authData3;
+						authError = null;
+					}
+				}
+			} catch (cookieErr) {
+				console.warn('[Report Template API] Error leyendo cookies:', cookieErr);
+			}
+		}
+	}
+	
+	if (authError || !authData?.user) {
 		return null;
 	}
 
 	const { data: appUser, error: userError } = await supabase
 		.from('User')
 		.select('id, role')
-		.eq('authId', user.id)
+		.eq('authId', authData.user.id)
 		.maybeSingle();
 
 	if (userError || !appUser || appUser.role !== 'MEDICO') {
@@ -28,7 +63,7 @@ export async function GET(request: Request) {
 		const cookieStore = await cookies();
 		const { supabase } = createSupabaseServerClient(cookieStore);
 
-		const doctorId = await getCurrentDoctorId(supabase);
+		const doctorId = await getCurrentDoctorId(supabase, request);
 		if (!doctorId) {
 			return NextResponse.json({ error: 'No autenticado o no es médico' }, { status: 401 });
 		}
@@ -60,7 +95,7 @@ export async function POST(request: NextRequest) {
 		const cookieStore = await cookies();
 		const { supabase } = createSupabaseServerClient(cookieStore);
 
-		const doctorId = await getCurrentDoctorId(supabase);
+		const doctorId = await getCurrentDoctorId(supabase, request);
 		if (!doctorId) {
 			return NextResponse.json({ error: 'No autenticado o no es médico' }, { status: 401 });
 		}

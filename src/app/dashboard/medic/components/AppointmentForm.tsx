@@ -4,7 +4,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import { motion, AnimatePresence } from 'framer-motion';
 import { createClient } from '@supabase/supabase-js';
-import { UserCheck, UserPlus, CheckCircle, Loader2 } from 'lucide-react';
+import { UserCheck, UserPlus, CheckCircle, Loader2, X, AlertCircle, CheckCircle2 } from 'lucide-react';
 import CurrencyDisplay from '@/components/CurrencyDisplay';
 
 type Patient = {
@@ -74,6 +74,39 @@ export default function AppointmentForm() {
 
 	const [submitting, setSubmitting] = useState(false);
 	const searchDebounceRef = useRef<number | null>(null);
+
+	// Estado para el modal de mensajes
+	const [modalMessage, setModalMessage] = useState<{
+		open: boolean;
+		type: 'success' | 'error' | 'warning';
+		title: string;
+		message: string;
+		onClose?: () => void;
+	}>({
+		open: false,
+		type: 'success',
+		title: '',
+		message: '',
+	});
+
+	// Función helper para mostrar mensajes
+	const showMessage = (type: 'success' | 'error' | 'warning', title: string, message: string, onClose?: () => void) => {
+		setModalMessage({
+			open: true,
+			type,
+			title,
+			message,
+			onClose,
+		});
+	};
+
+	// Función para cerrar el modal
+	const closeModal = () => {
+		setModalMessage((prev) => ({ ...prev, open: false }));
+		if (modalMessage.onClose) {
+			modalMessage.onClose();
+		}
+	};
 
 	// Cargar servicios del consultorio
 	useEffect(() => {
@@ -289,15 +322,23 @@ export default function AppointmentForm() {
 	const handleSubmit = async (e: React.FormEvent) => {
 		e.preventDefault();
 
-		if (sessionError) return alert('No hay sesión activa. Por favor, inicia sesión nuevamente.');
-		if (!userId || !organizationId) return alert('Datos de usuario no disponibles.');
-		if (!scheduledAt) return alert('Ingrese fecha y hora de la cita.');
+		if (sessionError) {
+			return showMessage('error', 'Error de Sesión', 'No hay sesión activa. Por favor, inicia sesión nuevamente.');
+		}
+		if (!userId || !organizationId) {
+			return showMessage('error', 'Error', 'Datos de usuario no disponibles.');
+		}
+		if (!scheduledAt) {
+			return showMessage('warning', 'Campo Requerido', 'Ingrese fecha y hora de la cita.');
+		}
 
 		if (patientType === 'registered') {
-			if (!selectedPatient) return alert('Seleccione un paciente antes de continuar.');
+			if (!selectedPatient) {
+				return showMessage('warning', 'Campo Requerido', 'Seleccione un paciente antes de continuar.');
+			}
 		} else {
 			if (!selectedUnregisteredPatientId && (!unregisteredFirstName || !unregisteredLastName || !unregisteredPhone)) {
-				return alert('Debe completar al menos nombre, apellido y teléfono del paciente, o seleccionar un paciente existente.');
+				return showMessage('warning', 'Campo Requerido', 'Debe completar al menos nombre, apellido y teléfono del paciente, o seleccionar un paciente existente.');
 			}
 		}
 
@@ -313,7 +354,7 @@ export default function AppointmentForm() {
 							(p.identification && p.identification.trim().toLowerCase() === unregisteredIdentification.trim().toLowerCase())
 					);
 					if (exists) {
-						return alert(`La cédula "${unregisteredIdentification}" ya está registrada. Por favor, busca al paciente en la lista.`);
+						return showMessage('warning', 'Cédula Duplicada', `La cédula "${unregisteredIdentification}" ya está registrada. Por favor, busca al paciente en la lista.`);
 					}
 				}
 			} catch (checkErr) {
@@ -323,7 +364,7 @@ export default function AppointmentForm() {
 
 		// Validar que se haya seleccionado al menos un servicio
 		if (selectedServices.length === 0) {
-			return alert('Debe seleccionar al menos un servicio para la cita.');
+			return showMessage('warning', 'Campo Requerido', 'Debe seleccionar al menos un servicio para la cita.');
 		}
 
 		// Calcular facturación desde servicios seleccionados
@@ -361,15 +402,15 @@ export default function AppointmentForm() {
 				if (!patientRes.ok) {
 					setSubmitting(false);
 					if (patientRes.status === 409) {
-						return alert(patientData.error || 'Esta cédula de identidad ya está registrada en el sistema.');
+						return showMessage('error', 'Error al Crear Paciente', patientData.error || 'Esta cédula de identidad ya está registrada en el sistema.');
 					}
-					return alert(patientData.error || 'Error al crear el paciente no registrado.');
+					return showMessage('error', 'Error al Crear Paciente', patientData.error || 'Error al crear el paciente no registrado.');
 				}
 
 				finalUnregisteredPatientId = patientData.id || patientData.data?.id;
 				if (!finalUnregisteredPatientId) {
 					setSubmitting(false);
-					return alert('Error: no se obtuvo el ID del paciente creado.');
+					return showMessage('error', 'Error', 'Error: no se obtuvo el ID del paciente creado.');
 				}
 			}
 
@@ -399,31 +440,39 @@ export default function AppointmentForm() {
 			const res = await axios.post('/api/appointments', appointmentPayload, { withCredentials: true });
 
 			if (res.data?.success) {
-				alert('Cita registrada correctamente. La facturación se ha creado como pendiente de pago.');
-				setReason('');
-				setLocation('');
-				setSelectedPatient(null);
-				setSelectedUnregisteredPatientId(null);
-				setIdentifier('');
-				setSelectedServices([]);
-				// Resetear formulario de paciente no registrado
-				setUnregisteredFirstName('');
-				setUnregisteredLastName('');
-				setUnregisteredIdentification('');
-				setUnregisteredPhone('');
-				setUnregisteredEmail('');
-				setUnregisteredBirthDate('');
-				setUnregisteredSex('');
-				setUnregisteredAddress('');
-				// Recargar la página o cerrar el modal
-				window.location.reload();
+				showMessage(
+					'success',
+					'¡Cita Registrada!',
+					'Cita registrada correctamente. La facturación se ha creado como pendiente de pago.',
+					() => {
+						setReason('');
+						setLocation('');
+						setSelectedPatient(null);
+						setSelectedUnregisteredPatientId(null);
+						setIdentifier('');
+						setSelectedServices([]);
+						// Resetear formulario de paciente no registrado
+						setUnregisteredFirstName('');
+						setUnregisteredLastName('');
+						setUnregisteredIdentification('');
+						setUnregisteredPhone('');
+						setUnregisteredEmail('');
+						setUnregisteredBirthDate('');
+						setUnregisteredSex('');
+						setUnregisteredAddress('');
+						// Recargar la página después de un breve delay
+						setTimeout(() => {
+							window.location.reload();
+						}, 1500);
+					}
+				);
 			} else {
-				alert('Ocurrió un error al registrar la cita.');
+				showMessage('error', 'Error al Registrar', 'Ocurrió un error al registrar la cita.');
 			}
 		} catch (err: any) {
 			console.error(err);
 			const errorMsg = err?.response?.data?.error || err?.message || 'Error al registrar la cita. Revisa la consola.';
-			alert(errorMsg);
+			showMessage('error', 'Error al Registrar', errorMsg);
 		} finally {
 			setSubmitting(false);
 		}
@@ -459,10 +508,90 @@ export default function AppointmentForm() {
 	}
 
 	// ---------------------------
+	// COMPONENTE MODAL DE MENSAJES
+	// ---------------------------
+	const MessageModal = () => {
+		if (!modalMessage.open) return null;
+
+		const iconColors = {
+			success: 'text-green-600',
+			error: 'text-red-600',
+			warning: 'text-amber-600',
+		};
+
+		const bgColors = {
+			success: 'bg-green-50 border-green-200',
+			error: 'bg-red-50 border-red-200',
+			warning: 'bg-amber-50 border-amber-200',
+		};
+
+		const buttonColors = {
+			success: 'bg-green-600 hover:bg-green-700',
+			error: 'bg-red-600 hover:bg-red-700',
+			warning: 'bg-amber-600 hover:bg-amber-700',
+		};
+
+		return (
+			<AnimatePresence>
+				{modalMessage.open && (
+					<>
+						<motion.div
+							initial={{ opacity: 0 }}
+							animate={{ opacity: 1 }}
+							exit={{ opacity: 0 }}
+							className="fixed inset-0 z-50 flex items-center justify-center p-4"
+							onClick={closeModal}>
+							<div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
+							<motion.div
+								initial={{ opacity: 0, scale: 0.95 }}
+								animate={{ opacity: 1, scale: 1 }}
+								exit={{ opacity: 0, scale: 0.95 }}
+								onClick={(e) => e.stopPropagation()}
+								className={`relative z-50 w-full max-w-md rounded-xl shadow-xl border-2 ${bgColors[modalMessage.type]}`}>
+								<div className="p-6">
+									<div className="flex items-start gap-4">
+										<div className={`flex-shrink-0 ${iconColors[modalMessage.type]}`}>
+											{modalMessage.type === 'success' ? (
+												<CheckCircle2 className="w-6 h-6" />
+											) : modalMessage.type === 'error' ? (
+												<AlertCircle className="w-6 h-6" />
+											) : (
+												<AlertCircle className="w-6 h-6" />
+											)}
+										</div>
+										<div className="flex-1 min-w-0">
+											<h3 className="text-lg font-semibold text-gray-900 mb-2">{modalMessage.title}</h3>
+											<p className="text-sm text-gray-700 whitespace-pre-wrap">{modalMessage.message}</p>
+										</div>
+										<button
+											onClick={closeModal}
+											className="flex-shrink-0 text-gray-400 hover:text-gray-600 transition-colors">
+											<X className="w-5 h-5" />
+										</button>
+									</div>
+									<div className="mt-6 flex justify-end">
+										<button
+											onClick={closeModal}
+											className={`px-4 py-2 rounded-md text-white text-sm font-medium transition-colors ${buttonColors[modalMessage.type]}`}>
+											{modalMessage.type === 'success' ? 'Aceptar' : 'Cerrar'}
+										</button>
+									</div>
+								</div>
+							</motion.div>
+						</motion.div>
+					</>
+				)}
+			</AnimatePresence>
+		);
+	};
+
+	// ---------------------------
 	// FORMULARIO PRINCIPAL
 	// ---------------------------
 	return (
-		<form onSubmit={handleSubmit} style={{ maxHeight: `calc(100vh - ${HEADER_OFFSET}px)` }} className="mx-auto bg-white rounded-xl shadow-md p-4 overflow-auto min-w-0 w-full max-w-full">
+		<>
+			<MessageModal />
+			<form onSubmit={handleSubmit} style={{ maxHeight: `calc(100vh - ${HEADER_OFFSET}px)` }} className="mx-auto bg-white rounded-xl shadow-md p-4 overflow-auto min-w-0 w-full max-w-full">
 			<div className="flex items-start justify-between mb-3">
 				<div>
 					<h2 className="text-lg font-semibold text-gray-900">Registrar Cita</h2>
@@ -832,5 +961,6 @@ export default function AppointmentForm() {
 				</div>
 			</div>
 		</form>
+		</>
 	);
 }

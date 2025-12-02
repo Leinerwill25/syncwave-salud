@@ -207,13 +207,14 @@ export async function POST(req: NextRequest) {
 			await client.query('ROLLBACK');
 			console.error('[DB ERROR]', error);
 			return NextResponse.json({ success: false, error: error.message || 'Error al crear la cita y facturación.' }, { status: 500 });
-		} finally {
-			client.release();
 		}
 	} catch (error: any) {
 		console.error('[API ERROR]', error);
 		return NextResponse.json({ success: false, error: error.message || 'Error en la solicitud al crear la cita.' }, { status: 400 });
 	} finally {
-		if (client) client.release();
+		// Solo liberar el cliente una vez, al final
+		if (client) {
+			client.release();
+		}
 	}
 }

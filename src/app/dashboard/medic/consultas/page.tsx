@@ -448,20 +448,29 @@ export default function ConsultationsPage() {
 													</div>
 												</td>
 												<td className="px-4 sm:px-6 py-4">
-													{c.patient ? (
+													{c.patient && (c.patient.firstName || c.patient.lastName) ? (
 														<div className="flex items-center gap-3">
-															<div className="flex-shrink-0 w-10 h-10 rounded-full bg-gradient-to-br from-teal-400 to-cyan-500 flex items-center justify-center text-white font-semibold text-sm shadow-md">
+															<div className={`flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center text-white font-semibold text-sm shadow-md ${
+																c.patient.isUnregistered 
+																	? 'bg-gradient-to-br from-amber-400 to-orange-500' 
+																	: 'bg-gradient-to-br from-teal-400 to-cyan-500'
+															}`}>
 																{(c.patient.firstName?.[0] || '') + (c.patient.lastName?.[0] || '')}
 															</div>
 															<div className="flex-1 min-w-0">
 																<div className="flex items-center gap-2 flex-wrap">
 																	<span className="text-sm font-semibold text-slate-900">
-																		{c.patient.firstName} {c.patient.lastName}
+																		{c.patient.firstName || ''} {c.patient.lastName || ''}
 																	</span>
-																	{c.patient.isUnregistered && (
+																	{c.patient.isUnregistered ? (
 																		<span className="inline-flex items-center gap-1 px-2 py-0.5 bg-amber-100 text-amber-800 rounded-full text-[10px] font-semibold border border-amber-200">
 																			<AlertCircle className="w-3 h-3" />
 																			No Registrado
+																		</span>
+																	) : (
+																		<span className="inline-flex items-center gap-1 px-2 py-0.5 bg-green-100 text-green-800 rounded-full text-[10px] font-semibold border border-green-200">
+																			<User className="w-3 h-3" />
+																			Registrado
 																		</span>
 																	)}
 																</div>
@@ -475,7 +484,7 @@ export default function ConsultationsPage() {
 													) : (
 														<div className="flex items-center gap-2 text-slate-400">
 															<User className="w-4 h-4" />
-															<span className="text-sm italic">Sin paciente asignado</span>
+															<span className="text-sm italic">Sin información de paciente</span>
 														</div>
 													)}
 												</td>

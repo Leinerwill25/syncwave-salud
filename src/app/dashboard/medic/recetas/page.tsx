@@ -9,19 +9,43 @@ import { PlusCircle, ClipboardList, Loader2, Pill, FileText } from 'lucide-react
 function NewPrescriptionForm({ patients, onCreated }: { patients: any[]; onCreated: (p: any) => void }) {
 	const [patientId, setPatientId] = useState('');
 	const [notes, setNotes] = useState('');
-	const [items, setItems] = useState([{ name: '', dosage: '', frequency: '', duration: '', quantity: 1 }]);
+	const [items, setItems] = useState([{ name: '', dosage: '', frequency: '', frequencyHours: null, frequencyDays: null, duration: '', quantity: 1 }]);
 	const [loading, setLoading] = useState(false);
 
 	useEffect(() => {
 		if (patients.length > 0) setPatientId(patients[0].id);
 	}, [patients]);
 
+	// Helper para generar texto descriptivo de frecuencia
+	function generateFrequencyText(hours: number | null | undefined, days: number | null | undefined): string {
+		if (!hours || !days) return '';
+		if (hours === 24) {
+			return `1 vez al día por ${days} día${days > 1 ? 's' : ''}`;
+		}
+		return `Cada ${hours} hora${hours > 1 ? 's' : ''} por ${days} día${days > 1 ? 's' : ''}`;
+	}
+
 	function updateItem(idx: number, key: string, value: any) {
-		setItems((arr) => arr.map((it, i) => (i === idx ? { ...it, [key]: value } : it)));
+		setItems((arr) => {
+			const updated = arr.map((it, i) => {
+				if (i === idx) {
+					const newItem = { ...it, [key]: value };
+					// Si se actualizan frequencyHours o frequencyDays, generar el texto de frequency automáticamente
+					if (key === 'frequencyHours' || key === 'frequencyDays') {
+						const hours = key === 'frequencyHours' ? value : it.frequencyHours;
+						const days = key === 'frequencyDays' ? value : it.frequencyDays;
+						newItem.frequency = generateFrequencyText(hours, days);
+					}
+					return newItem;
+				}
+				return it;
+			});
+			return updated;
+		});
 	}
 
 	function addItem() {
-		setItems((arr) => [...arr, { name: '', dosage: '', frequency: '', duration: '', quantity: 1 }]);
+		setItems((arr) => [...arr, { name: '', dosage: '', frequency: '', frequencyHours: null, frequencyDays: null, duration: '', quantity: 1 }]);
 	}
 
 	function removeItem(idx: number) {
@@ -33,11 +57,35 @@ function NewPrescriptionForm({ patients, onCreated }: { patients: any[]; onCreat
 		if (!patientId) return alert('Seleccione un paciente');
 		setLoading(true);
 
-		const payload = {
-			patient_id: patientId,
+		// Determinar si es paciente registrado o no registrado
+		const selectedPatient = patients.find((p: any) => p.id === patientId);
+		const isUnregistered = selectedPatient?.isUnregistered || false;
+
+		// Preparar items para guardar: asegurar que frequency esté generado desde frequencyHours y frequencyDays
+		const itemsToSave = items
+			.filter((it) => it.name.trim() !== '')
+			.map((item) => {
+				const frequencyText = item.frequency || generateFrequencyText(item.frequencyHours, item.frequencyDays);
+				return {
+					name: item.name,
+					dosage: item.dosage,
+					frequency: frequencyText,
+					duration: item.duration,
+					quantity: item.quantity,
+				};
+			});
+
+		const payload: any = {
 			notes,
-			items: items.filter((it) => it.name.trim() !== ''),
+			items: itemsToSave,
 		};
+
+		// Incluir patient_id o unregistered_patient_id según corresponda
+		if (isUnregistered) {
+			payload.unregistered_patient_id = patientId;
+		} else {
+			payload.patient_id = patientId;
+		}
 
 		const res = await fetch('/api/medic/prescriptions', {
 			method: 'POST',
@@ -51,7 +99,7 @@ function NewPrescriptionForm({ patients, onCreated }: { patients: any[]; onCreat
 		if (!res.ok) return alert('Error: ' + (data?.error ?? 'No se pudo crear la receta'));
 
 		setNotes('');
-		setItems([{ name: '', dosage: '', frequency: '', duration: '', quantity: 1 }]);
+		setItems([{ name: '', dosage: '', frequency: '', frequencyHours: null, frequencyDays: null, duration: '', quantity: 1 }]);
 		onCreated(data.prescription);
 	}
 
@@ -73,7 +121,7 @@ function NewPrescriptionForm({ patients, onCreated }: { patients: any[]; onCreat
 					<select value={patientId} onChange={(e) => setPatientId(e.target.value)} className="w-full p-2.5 rounded-lg border border-gray-200 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all text-sm">
 						{patients.map((p) => (
 							<option key={p.id} value={p.id}>
-								{p.firstName} {p.lastName} {p.identifier ? `• ${p.identifier}` : ''}
+								{p.firstName} {p.lastName} {p.identifier ? `• ${p.identifier}` : ''} {p.isUnregistered ? '(No Registrado)' : ''}
 							</option>
 						))}
 					</select>
@@ -96,23 +144,49 @@ function NewPrescriptionForm({ patients, onCreated }: { patients: any[]; onCreat
 
 					{items.map((it, idx) => (
 						<motion.div key={idx} initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }} className="p-3 border border-gray-100 rounded-xl bg-gray-50/60 grid grid-cols-12 gap-2">
-							<div className="col-span-6">
+							<div className="col-span-12 md:col-span-5">
 								<label className="text-xs text-gray-600">Medicamento</label>
 								<input value={it.name} onChange={(e) => updateItem(idx, 'name', e.target.value)} required className="w-full p-2 rounded-md border border-gray-200 focus:ring-1 focus:ring-indigo-400 text-sm" />
 							</div>
-							<div className="col-span-2">
+							<div className="col-span-6 md:col-span-2">
 								<label className="text-xs text-gray-600">Dosis</label>
 								<input value={it.dosage} onChange={(e) => updateItem(idx, 'dosage', e.target.value)} className="w-full p-2 rounded-md border border-gray-200 focus:ring-1 focus:ring-indigo-400 text-sm" />
 							</div>
-							<div className="col-span-2">
-								<label className="text-xs text-gray-600">Frecuencia</label>
-								<input value={it.frequency} onChange={(e) => updateItem(idx, 'frequency', e.target.value)} className="w-full p-2 rounded-md border border-gray-200 focus:ring-1 focus:ring-indigo-400 text-sm" />
+							<div className="col-span-6 md:col-span-4 grid grid-cols-2 gap-2">
+								<div>
+									<label className="text-xs text-gray-600">Cada cuántas horas</label>
+									<input 
+										type="number" 
+										min="1" 
+										max="24"
+										value={it.frequencyHours ?? ''} 
+										onChange={(e) => updateItem(idx, 'frequencyHours', e.target.value ? parseInt(e.target.value, 10) : null)} 
+										className="w-full p-2 rounded-md border border-gray-200 focus:ring-1 focus:ring-indigo-400 text-sm" 
+										placeholder="Ej: 8"
+									/>
+								</div>
+								<div>
+									<label className="text-xs text-gray-600">Por cuántos días</label>
+									<input 
+										type="number" 
+										min="1"
+										value={it.frequencyDays ?? ''} 
+										onChange={(e) => updateItem(idx, 'frequencyDays', e.target.value ? parseInt(e.target.value, 10) : null)} 
+										className="w-full p-2 rounded-md border border-gray-200 focus:ring-1 focus:ring-indigo-400 text-sm" 
+										placeholder="Ej: 7"
+									/>
+								</div>
+								{it.frequency && (
+									<div className="col-span-2 text-xs text-gray-500 mt-1 italic">
+										{it.frequency}
+									</div>
+								)}
 							</div>
-							<div className="col-span-1">
+							<div className="col-span-6 md:col-span-1">
 								<label className="text-xs text-gray-600">Cant.</label>
 								<input type="number" min={1} value={it.quantity} onChange={(e) => updateItem(idx, 'quantity', Number(e.target.value))} className="w-full p-2 rounded-md border border-gray-200 focus:ring-1 focus:ring-indigo-400 text-sm" />
 							</div>
-							<div className="col-span-1 flex justify-center items-end">
+							<div className="col-span-6 md:col-span-1 flex justify-center items-end">
 								<button type="button" onClick={() => removeItem(idx)} className="text-sm text-red-500 hover:text-red-700 font-medium">
 									✕
 								</button>
@@ -144,23 +218,62 @@ export default function PrescriptionsPage() {
 
 	useEffect(() => {
 		const fetchData = async () => {
-			const [presRes, patRes] = await Promise.all([fetch('/api/medic/prescriptions'), supabase.from('Patient').select('id, firstName, lastName, identifier')]);
+			const [presRes, patRes, unregisteredRes] = await Promise.all([
+				fetch('/api/medic/prescriptions'),
+				supabase.from('Patient').select('id, firstName, lastName, identifier'),
+				supabase.from('unregisteredpatients').select('id, first_name, last_name, identification')
+			]);
 
 			const presData = await presRes.json();
-			setPrescriptions(presData.prescriptions ?? []);
-			setPatients(patRes.data ?? []);
+			const prescriptionsData = presData.prescriptions ?? [];
+			setPrescriptions(prescriptionsData);
+			
+			// Combinar pacientes registrados y no registrados
+			const registeredPatients = (patRes.data ?? []).map((p: any) => ({
+				...p,
+				isUnregistered: false
+			}));
+			const unregisteredPatients = (unregisteredRes.data ?? []).map((p: any) => ({
+				id: p.id,
+				firstName: p.first_name,
+				lastName: p.last_name,
+				identifier: p.identification,
+				isUnregistered: true
+			}));
+			
+			setPatients([...registeredPatients, ...unregisteredPatients]);
 			setLoading(false);
 		};
 		fetchData();
 	}, [supabase]);
 
 	const patientMap = useMemo(() => {
-		const map: Record<string, string> = {};
+		const map: Record<string, { name: string; isUnregistered: boolean }> = {};
 		patients.forEach((p) => {
-			map[p.id] = `${p.firstName} ${p.lastName}`;
+			map[p.id] = {
+				name: `${p.firstName} ${p.lastName}`,
+				isUnregistered: p.isUnregistered || false
+			};
 		});
 		return map;
 	}, [patients]);
+	
+	// Obtener información de pacientes no registrados desde las prescripciones
+	const unregisteredPatientMap = useMemo(() => {
+		const map: Record<string, { name: string }> = {};
+		prescriptions.forEach((prescription: any) => {
+			if (prescription.unregistered_patient_id && !map[prescription.unregistered_patient_id]) {
+				// Buscar en la lista de pacientes no registrados
+				const unregisteredPatient = patients.find((p: any) => p.id === prescription.unregistered_patient_id && p.isUnregistered);
+				if (unregisteredPatient) {
+					map[prescription.unregistered_patient_id] = {
+						name: `${unregisteredPatient.firstName} ${unregisteredPatient.lastName}`
+					};
+				}
+			}
+		});
+		return map;
+	}, [prescriptions, patients]);
 
 	if (loading) {
 		return (
@@ -201,7 +314,18 @@ export default function PrescriptionsPage() {
 									<motion.li key={r.id} whileHover={{ scale: 1.01 }} className="p-5 border border-gray-100 rounded-xl shadow-sm bg-gradient-to-r from-violet-50 to-indigo-50 hover:shadow-md transition">
 										<div className="flex justify-between">
 											<div>
-												<h4 className="font-semibold text-gray-800">Paciente: {patientMap[r.patient_id] || 'Desconocido'}</h4>
+												<h4 className="font-semibold text-gray-800">
+													Paciente: {
+														r.unregistered_patient_id 
+															? (unregisteredPatientMap[r.unregistered_patient_id]?.name || patientMap[r.unregistered_patient_id]?.name || 'Paciente No Registrado')
+															: (patientMap[r.patient_id]?.name || 'Desconocido')
+													}
+													{r.unregistered_patient_id && (
+														<span className="ml-2 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-orange-100 text-orange-800">
+															No Registrado
+														</span>
+													)}
+												</h4>
 												<p className="text-xs text-gray-500 mb-2">Emitida el {new Date(r.issued_at).toLocaleString()}</p>
 
 												{r.notes && <p className="text-sm text-gray-700 italic mb-2">“{r.notes}”</p>}

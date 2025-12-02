@@ -54,7 +54,10 @@ export default function AppointmentList({ selectedDate }: Props) {
 
 	if (isError) return <p className="text-red-500 text-sm mt-4">Error al cargar las citas del día.</p>;
 
-	if (!appointments || appointments.length === 0) return <p className="text-gray-500 text-sm">No hay citas para este día.</p>;
+	// Asegurar que appointments es un array antes de usar .map
+	if (!Array.isArray(appointments) || appointments.length === 0) {
+		return <p className="text-gray-500 text-sm">No hay citas para este día.</p>;
+	}
 
 	return (
 		<div className="space-y-3 sm:space-y-4 w-full min-w-0">
@@ -62,10 +65,10 @@ export default function AppointmentList({ selectedDate }: Props) {
 				<motion.div key={appt.id} whileHover={{ y: -3 }} className="rounded-xl sm:rounded-2xl bg-white/90 backdrop-blur-sm border border-gray-100 shadow-sm hover:shadow-lg transition-all p-3 sm:p-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-4 w-full min-w-0">
 					<div className="flex-1 min-w-0 w-full sm:w-auto">
 						<h3 className="text-sm sm:text-base font-semibold text-gray-800 truncate">{appt.patient}</h3>
-						{appt.bookedBy && (
-							<p className="text-xs sm:text-sm text-blue-600 mt-0.5 sm:mt-1 flex items-center gap-1">
+						{appt.isUnregistered && (
+							<p className="text-xs sm:text-sm text-orange-600 mt-0.5 sm:mt-1 flex items-center gap-1">
 								<Users className="w-3 h-3 sm:w-3.5 sm:h-3.5 flex-shrink-0" />
-								<span>Reservada por: {appt.bookedBy.name}</span>
+								<span>Paciente no registrado</span>
 							</p>
 						)}
 						<p className="text-xs sm:text-sm text-gray-500 truncate">{appt.reason}</p>
