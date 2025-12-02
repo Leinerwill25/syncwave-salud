@@ -5,6 +5,6 @@ const nextConfig: NextConfig = {
 		// Ignora ESLint durante el build en producción
 		ignoreDuringBuilds: true,
 	},
-};
+} as NextConfig;
 
 export default nextConfig;
