@@ -43,12 +43,6 @@ export async function GET(req: Request) {
 					firstName,
 					lastName,
 					identifier
-				),
-				booked_by_patient:booked_by_patient_id (
-					id,
-					firstName,
-					lastName,
-					identifier
 				)
 				`
 			)
@@ -65,7 +59,7 @@ export async function GET(req: Request) {
 			return NextResponse.json([], { status: 200 });
 		}
 
-		// 🧮 4️⃣ Formatear resultados y obtener datos de pacientes no registrados
+		// 🧮 4️⃣ Formatear resultados y obtener datos de pacientes no registrados y booked_by_patient
 		// Obtener todos los IDs de pacientes no registrados de una vez
 		const unregisteredPatientIds = [...new Set(data.map((cita: any) => cita.unregistered_patient_id).filter(Boolean))];
 		
@@ -80,6 +74,30 @@ export async function GET(req: Request) {
 			if (unregisteredPatients) {
 				unregisteredPatients.forEach((up: any) => {
 					unregisteredPatientsMap.set(up.id, { first_name: up.first_name, last_name: up.last_name });
+				});
+			}
+		}
+
+		// Obtener datos de pacientes que reservaron citas (booked_by_patient_id)
+		const bookedByPatientIds = [...new Set(data.map((cita: any) => cita.booked_by_patient_id).filter(Boolean))];
+		
+		let bookedByPatientsMap: Map<string, { id: string; firstName: string; lastName: string; identifier?: string }> = new Map();
+		
+		if (bookedByPatientIds.length > 0) {
+			// booked_by_patient_id puede ser UUID (string), así que intentamos obtener de Patient
+			const { data: bookedByPatients } = await supabase
+				.from('Patient')
+				.select('id, firstName, lastName, identifier')
+				.in('id', bookedByPatientIds);
+
+			if (bookedByPatients) {
+				bookedByPatients.forEach((bp: any) => {
+					bookedByPatientsMap.set(bp.id, {
+						id: bp.id,
+						firstName: bp.firstName || '',
+						lastName: bp.lastName || '',
+						identifier: bp.identifier || undefined,
+					});
 				});
 			}
 		}
@@ -124,7 +142,7 @@ export async function GET(req: Request) {
 			// Determinar quién reservó la cita (si es diferente del paciente)
 			let bookedBy = null;
 			if (cita.booked_by_patient_id && cita.booked_by_patient_id !== cita.patient_id) {
-				const bookedByPatient = Array.isArray(cita.booked_by_patient) ? cita.booked_by_patient[0] : cita.booked_by_patient;
+				const bookedByPatient = bookedByPatientsMap.get(cita.booked_by_patient_id);
 				if (bookedByPatient) {
 					bookedBy = {
 						id: bookedByPatient.id,
