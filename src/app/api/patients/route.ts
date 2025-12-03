@@ -216,7 +216,7 @@ export async function GET(request: Request) {
 
 			// Obtener appointments (citas), recetas y labs
 			// Filtrar TODOS por el doctor en sesión para mostrar solo lo que corresponde al especialista actual
-			// Para pacientes no registrados, solo buscamos en consultation (no hay appointments ni prescripciones/labs directamente vinculados)
+			// Para pacientes no registrados, también buscamos lab_results por unregistered_patient_id
 			const [appointmentRes, prescRes, labRes, consultationRes] = await Promise.all([
 				isRegistered
 					? supabase
@@ -256,13 +256,19 @@ export async function GET(request: Request) {
 							.eq('doctor_id', currentAppUserId)
 							.order('created_at', { ascending: false })
 					: Promise.resolve({ data: [], error: null }),
+				// lab_results: si es paciente registrado filtramos por patient_id,
+				// si es no registrado filtramos por unregistered_patient_id
 				isRegistered
 					? supabase
 							.from('lab_result')
-							.select('id,patient_id,consultation_id,result_type,result,is_critical,reported_at,created_at')
+							.select('id,patient_id,unregistered_patient_id,consultation_id,result_type,result,is_critical,reported_at,created_at')
 							.eq('patient_id', historyFor)
 							.order('created_at', { ascending: false })
-					: Promise.resolve({ data: [], error: null }),
+					: supabase
+							.from('lab_result')
+							.select('id,patient_id,unregistered_patient_id,consultation_id,result_type,result,is_critical,reported_at,created_at')
+							.eq('unregistered_patient_id', historyFor)
+							.order('created_at', { ascending: false }),
 				// Buscar consultas tanto por patient_id como por unregistered_patient_id
 				// Incluir appointment_id para detectar duplicados
 				supabase
@@ -281,18 +287,19 @@ export async function GET(request: Request) {
 
 			// Obtener IDs de consultas del doctor actual para filtrar lab_results
 			const consultationIds = (consultationRes.data ?? []).map((c: any) => c.id).filter(Boolean);
-			
+
 			// Filtrar lab_results para mostrar solo los que pertenecen a consultas del doctor actual
-			const filteredLabResults = isRegistered && consultationIds.length > 0
-				? (labRes.data ?? []).filter((lab: any) => {
-						// Si tiene consultation_id, verificar que pertenezca a una consultation del doctor
-						if (lab.consultation_id) {
-							return consultationIds.includes(lab.consultation_id);
-						}
-						// Si no tiene consultation_id, no mostrarlo (ya que no podemos verificar el doctor)
-						return false;
-				  })
-				: [];
+			const filteredLabResults =
+				consultationIds.length > 0
+					? (labRes.data ?? []).filter((lab: any) => {
+							// Si tiene consultation_id, verificar que pertenezca a una consultation del doctor
+							if (lab.consultation_id) {
+								return consultationIds.includes(lab.consultation_id);
+							}
+							// Si no tiene consultation_id, no mostrarlo (ya que no podemos verificar el doctor)
+							return false;
+					  })
+					: [];
 
 			const normalizeRows = (arr: any[], dates: string[]) =>
 				(arr ?? []).map((r) => ({
@@ -474,6 +481,44 @@ export async function GET(request: Request) {
 				return dateB - dateA; // Orden descendente (más reciente primero)
 			});
 
+			// Normalizar resultados de laboratorio para el frontend (PatientsGrid)
+			const normalizedLabResults = (filteredLabResults ?? []).map((lab: any) => {
+				const createdAt = normalizeDate(lab, 'created_at');
+				const reportedAt = normalizeDate(lab, 'reported_at');
+
+				const rawResult = lab.result;
+				let resultValue: any = null;
+				let unit: string | null = null;
+				let referenceRange: string | null = null;
+				let comment: string | null = null;
+				let status: string | null = null;
+
+				if (rawResult && typeof rawResult === 'object') {
+					const r = rawResult as any;
+					resultValue = r.value ?? r.result ?? null;
+					unit = (r.unit ?? r.units ?? null) as string | null;
+					referenceRange = (r.referenceRange ?? r.reference_range ?? null) as string | null;
+					comment = (r.comment ?? r.notes ?? null) as string | null;
+					status = (r.status ?? r.flag ?? null) as string | null;
+				} else {
+					resultValue = rawResult ?? null;
+				}
+
+				return {
+					id: lab.id,
+					testName: lab.result_type || 'Resultado de laboratorio',
+					date: reportedAt || createdAt,
+					collectedAt: reportedAt,
+					result: resultValue,
+					unit,
+					referenceRange,
+					comment,
+					status,
+					is_critical: lab.is_critical ?? false,
+					createdAt,
+				};
+			});
+
 			const history = {
 				patientId: historyFor,
 				summary: {
@@ -485,7 +530,7 @@ export async function GET(request: Request) {
 				organizations: [], // TODO: agregar si es necesario
 				consultations: allConsultations,
 				prescriptions: normalizedPrescriptions,
-				lab_results: normalizeRows(filteredLabResults, ['created_at', 'reported_at']),
+				lab_results: normalizedLabResults,
 				facturacion: [], // TODO: agregar si es necesario
 			};
 

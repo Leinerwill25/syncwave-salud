@@ -207,7 +207,10 @@ function PatientCard({ patient, onLoadReports, onViewHistory }: { patient: Patie
 					</h3>
 
 					<p className="text-sm text-gray-500 mt-0.5 truncate">
-						Cédula: {patient.identifier ?? '—'} • Género: {patient.gender ?? '—'} • Teléfono: {patient.phone ?? '—'}
+						Cédula:{' '}
+						{patient.identifier != null ? String(patient.identifier) : '—'} • Género:{' '}
+						{patient.gender != null ? String(patient.gender) : '—'} • Teléfono:{' '}
+						{patient.phone != null ? String(patient.phone) : '—'}
 					</p>
 
 					{/* Estadísticas */}
@@ -397,9 +400,21 @@ function PrescriptionCard({ item }: { item: Prescription }) {
 
 function LabResultCard({ item }: { item: LabResult }) {
 	const testName = item.testName ?? item.name ?? 'Resultado de laboratorio';
-	const result = item.result;
-	const unit = item.unit;
-	const status = item.status;
+
+	// Asegurar que nunca se renderice un objeto crudo como hijo de React
+	const rawResult = item.result;
+	const result =
+		rawResult === null || rawResult === undefined
+			? null
+			: typeof rawResult === 'object'
+				? JSON.stringify(rawResult)
+				: String(rawResult);
+
+	const unit = item.unit != null ? String(item.unit) : undefined;
+	const status = item.status != null ? String(item.status) : undefined;
+	const referenceRange = item.referenceRange != null ? String(item.referenceRange) : undefined;
+	const comment = item.comment != null ? String(item.comment) : undefined;
+
 	const isCritical = item.is_critical ?? false;
 
 	return (
@@ -442,17 +457,17 @@ function LabResultCard({ item }: { item: LabResult }) {
 				</div>
 			)}
 
-			{item.referenceRange && (
+			{referenceRange && (
 				<div className="mb-3 p-3 bg-gray-50 rounded-lg border border-gray-200">
 					<div className="text-xs font-semibold text-gray-700 mb-1 uppercase tracking-wide">Rango de Referencia</div>
-					<div className="text-sm text-gray-800 font-mono">{item.referenceRange}</div>
+					<div className="text-sm text-gray-800 font-mono">{referenceRange}</div>
 				</div>
 			)}
 
-			{item.comment && (
+			{comment && (
 				<div className="pt-3 border-t border-blue-100">
 					<div className="text-xs font-semibold text-gray-700 mb-1.5 uppercase tracking-wide">Comentarios</div>
-					<div className="text-sm text-gray-700 leading-relaxed bg-white/60 rounded-lg p-3 border border-blue-100">{item.comment}</div>
+					<div className="text-sm text-gray-700 leading-relaxed bg-white/60 rounded-lg p-3 border border-blue-100">{comment}</div>
 				</div>
 			)}
 		</div>
