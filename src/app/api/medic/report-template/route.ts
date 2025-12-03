@@ -147,7 +147,33 @@ export async function POST(request: NextRequest) {
 		// Subir archivo a Supabase Storage
 		const bucket = 'report-templates';
 		const fileExt = fileExtension;
-		const fileNameUnique = `${doctorId}/${Date.now()}-${templateFile.name}`;
+		
+		// Sanitizar el nombre del archivo para evitar caracteres inválidos en Supabase Storage
+		// Supabase Storage solo acepta: letras, números, guiones, guiones bajos, puntos y barras
+		// Reemplazar todos los caracteres no válidos con guión bajo
+		let sanitizedFileName = templateFile.name
+			.normalize('NFD') // Normalizar caracteres Unicode (é -> e + ´)
+			.replace(/[\u0300-\u036f]/g, '') // Eliminar diacríticos
+			.replace(/[^a-zA-Z0-9._-]/g, '_') // Reemplazar caracteres especiales con guión bajo
+			.replace(/\s+/g, '_') // Reemplazar espacios con guión bajo
+			.replace(/_{2,}/g, '_') // Reemplazar múltiples guiones bajos con uno solo
+			.replace(/^_+|_+$/g, ''); // Eliminar guiones bajos al inicio y final
+		
+		// Asegurar que el nombre no esté vacío
+		if (!sanitizedFileName || sanitizedFileName.length === 0) {
+			sanitizedFileName = `template_${Date.now()}${fileExtension}`;
+		}
+		
+		// Asegurar que tenga la extensión correcta
+		if (!sanitizedFileName.endsWith(fileExtension)) {
+			sanitizedFileName = sanitizedFileName.replace(/\.[^.]+$/, '') + fileExtension;
+		}
+		
+		const fileNameUnique = `${doctorId}/${Date.now()}-${sanitizedFileName}`;
+		
+		console.log('[Report Template API] Nombre original:', templateFile.name);
+		console.log('[Report Template API] Nombre sanitizado:', sanitizedFileName);
+		console.log('[Report Template API] Ruta completa:', fileNameUnique);
 
 		// Convertir File a Buffer con manejo robusto de errores
 		// Timeout ajustado según el tamaño del archivo (más tiempo para archivos grandes)
