@@ -52,9 +52,10 @@ export default function ReportTemplatePage() {
 			return;
 		}
 
-		// Validar tamaño (máximo 10MB)
-		if (selectedFile.size > 10 * 1024 * 1024) {
-			setError('El archivo es demasiado grande. El tamaño máximo es 10MB');
+		// Validar tamaño (máximo 50MB - permite plantillas con imágenes y mucho contenido)
+		const maxSizeBytes = 50 * 1024 * 1024; // 50MB
+		if (selectedFile.size > maxSizeBytes) {
+			setError(`El archivo es demasiado grande. El tamaño máximo es ${maxSizeBytes / (1024 * 1024)}MB`);
 			setFile(null);
 			return;
 		}
@@ -145,9 +146,11 @@ export default function ReportTemplatePage() {
 					<h3 className="text-sm font-semibold text-blue-900 mb-2">📋 Instrucciones:</h3>
 					<ul className="text-sm text-blue-800 space-y-1 list-disc list-inside">
 						<li>La plantilla debe estar en formato Word (.docx o .doc)</li>
-						<li>El tamaño máximo del archivo es 10MB</li>
+						<li>El tamaño máximo del archivo es 50MB (permite plantillas con imágenes, encabezados y mucho contenido)</li>
+						<li>Tu plantilla puede tener cualquier contenido adicional: encabezados, imágenes, texto, tablas, etc.</li>
 						<li>En tu plantilla, usa el marcador <code className="bg-blue-100 px-1 rounded">{"{{contenido}}"}</code> donde quieras que se inserte el texto del informe</li>
-						<li>Puedes usar otros marcadores como <code className="bg-blue-100 px-1 rounded">{"{{fecha}}"}</code>, <code className="bg-blue-100 px-1 rounded">{"{{paciente}}"}</code>, <code className="bg-blue-100 px-1 rounded">{"{{medico}}"}</code> para datos adicionales</li>
+						<li>Puedes usar otros marcadores como <code className="bg-blue-100 px-1 rounded">{"{{fecha}}"}</code>, <code className="bg-blue-100 px-1 rounded">{"{{paciente}}"}</code>, <code className="bg-blue-100 px-1 rounded">{"{{medico}}"}</code>, <code className="bg-blue-100 px-1 rounded">{"{{diagnostico}}"}</code>, <code className="bg-blue-100 px-1 rounded">{"{{motivo}}"}</code>, <code className="bg-blue-100 px-1 rounded">{"{{notas}}"}</code> para datos adicionales</li>
+						<li><strong>Importante:</strong> Solo se valida que el archivo sea .docx o .doc. El contenido interno puede ser cualquier cosa, siempre que incluya los marcadores necesarios.</li>
 					</ul>
 				</div>
 

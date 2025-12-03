@@ -108,23 +108,28 @@ export async function POST(request: NextRequest) {
 			return NextResponse.json({ error: 'No se proporcionó archivo' }, { status: 400 });
 		}
 
-		// Validar tipo de archivo
-		const validTypes = [
-			'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-			'application/msword',
-		];
+		// Validar solo la extensión del archivo (.docx o .doc)
+		// No validamos el contenido interno, solo que sea un archivo Word válido
 		const validExtensions = ['.docx', '.doc'];
 		const fileName = templateFile.name.toLowerCase();
 		const fileExtension = fileName.substring(fileName.lastIndexOf('.'));
 
-		if (!validExtensions.includes(fileExtension) && !validTypes.includes(templateFile.type)) {
+		if (!validExtensions.includes(fileExtension)) {
 			return NextResponse.json({ error: 'Formato de archivo no válido. Solo se permiten archivos Word (.docx, .doc)' }, { status: 400 });
 		}
 
-		// Validar tamaño (máximo 10MB)
-		if (templateFile.size > 10 * 1024 * 1024) {
-			return NextResponse.json({ error: 'El archivo es demasiado grande. Máximo 10MB' }, { status: 400 });
+		// Validar tamaño (máximo 50MB - límite global del proyecto)
+		// Esto permite plantillas con imágenes, encabezados, y mucho contenido
+		const maxSizeBytes = 50 * 1024 * 1024; // 50MB
+		if (templateFile.size > maxSizeBytes) {
+			return NextResponse.json({ 
+				error: `El archivo es demasiado grande. Máximo ${maxSizeBytes / (1024 * 1024)}MB` 
+			}, { status: 400 });
 		}
+
+		// No validamos el contenido interno de la plantilla
+		// La plantilla puede tener cualquier contenido: encabezados, imágenes, texto, etc.
+		// Solo se requiere que tenga los marcadores {{variable}} necesarios
 
 		// Crear cliente admin para subir archivo (bypass RLS)
 		const SUPABASE_URL = process.env.SUPABASE_URL ?? process.env.NEXT_PUBLIC_SUPABASE_URL ?? '';
@@ -145,21 +150,29 @@ export async function POST(request: NextRequest) {
 		const fileNameUnique = `${doctorId}/${Date.now()}-${templateFile.name}`;
 
 		// Convertir File a Buffer con manejo robusto de errores
+		// Timeout ajustado según el tamaño del archivo (más tiempo para archivos grandes)
 		let fileBuffer: Buffer;
 		try {
-			// Usar arrayBuffer con timeout para evitar que se cuelgue
+			// Calcular timeout dinámico: 1 segundo por MB, mínimo 30 segundos, máximo 120 segundos
+			const fileSizeMB = templateFile.size / (1024 * 1024);
+			const timeoutSeconds = Math.min(Math.max(fileSizeMB * 1000, 30000), 120000);
+			
+			console.log(`[Report Template API] Procesando archivo de ${fileSizeMB.toFixed(2)}MB con timeout de ${timeoutSeconds / 1000}s`);
+			
+			// Usar arrayBuffer con timeout dinámico
 			const arrayBuffer = await Promise.race([
 				templateFile.arrayBuffer(),
 				new Promise<never>((_, reject) => 
-					setTimeout(() => reject(new Error('Timeout al leer el archivo')), 30000) // 30 segundos para leer
+					setTimeout(() => reject(new Error('Timeout al leer el archivo')), timeoutSeconds)
 				)
 			]);
 			fileBuffer = Buffer.from(arrayBuffer);
+			console.log(`[Report Template API] Archivo convertido exitosamente, tamaño: ${fileBuffer.length} bytes`);
 		} catch (conversionError: any) {
 			console.error('[Report Template API] Error convirtiendo archivo:', conversionError);
 			return NextResponse.json({ 
 				error: conversionError?.message?.includes('Timeout') 
-					? 'El archivo tardó demasiado en procesarse. Intenta con un archivo más pequeño.' 
+					? 'El archivo tardó demasiado en procesarse. Intenta con un archivo más pequeño o verifica tu conexión.' 
 					: 'Error al procesar el archivo. Por favor, verifica que el archivo no esté corrupto e intenta nuevamente.' 
 			}, { status: 500 });
 		}
@@ -172,16 +185,27 @@ export async function POST(request: NextRequest) {
 
 		while (retryCount <= maxRetries && !uploadData) {
 			try {
+				// Determinar el content type basado en la extensión del archivo
+				// Esto evita problemas con detección incorrecta de MIME type
+				const contentType = fileExtension === '.docx' 
+					? 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+					: 'application/msword';
+
 				const uploadPromise = supabaseAdmin.storage
 					.from(bucket)
 					.upload(fileNameUnique, fileBuffer, {
-						contentType: templateFile.type || 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+						contentType: contentType,
 						upsert: false,
 					});
 
-				// Agregar timeout de 60 segundos
+				// Timeout dinámico para subida: más tiempo para archivos grandes
+				const fileSizeMB = fileBuffer.length / (1024 * 1024);
+				const uploadTimeout = Math.min(Math.max(fileSizeMB * 2000, 60000), 180000); // 2s por MB, min 60s, max 180s
+				
+				console.log(`[Report Template API] Subiendo archivo con timeout de ${uploadTimeout / 1000}s`);
+				
 				const timeoutPromise = new Promise<never>((_, reject) => 
-					setTimeout(() => reject(new Error('Upload timeout')), 60000)
+					setTimeout(() => reject(new Error('Upload timeout')), uploadTimeout)
 				);
 
 				const uploadResult = await Promise.race([uploadPromise, timeoutPromise]) as any;
