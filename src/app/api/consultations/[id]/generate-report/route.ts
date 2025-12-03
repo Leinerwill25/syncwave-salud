@@ -486,9 +486,19 @@ export async function POST(
 		const vitals = consultation.vitals || {};
 		const gyn = vitals.gynecology || {};
 
-		// Obtener datos del médico
-		const doctor = Array.isArray(consultation.doctor) ? consultation.doctor[0] : consultation.doctor;
-		const doctorName = doctor?.name || doctor?.email || 'Médico';
+		// Obtener datos del médico desde la tabla User usando doctor_id
+		let doctorName = 'Médico';
+		if (consultation.doctor_id) {
+			const { data: doctorData } = await supabase
+				.from('User')
+				.select('name, email')
+				.eq('id', consultation.doctor_id)
+				.single();
+			
+			if (doctorData) {
+				doctorName = doctorData.name || doctorData.email || 'Médico';
+			}
+		}
 
 		// Preparar datos para la plantilla
 		const consultationDate = consultation.started_at 
