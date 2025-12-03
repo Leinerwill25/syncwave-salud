@@ -3,76 +3,27 @@ import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { createSupabaseServerClient } from '@/app/adapters/server';
 import { createClient } from '@supabase/supabase-js';
-
-async function getCurrentDoctorId(supabase: ReturnType<typeof createSupabaseServerClient>['supabase'], request?: Request): Promise<string | null> {
-	// Intento primario: obtener usuario por cookie (session)
-	let { data: authData, error: authError } = await supabase.auth.getUser();
-	
-	// Si falla, intentar con token Bearer del header
-	if (authError || !authData?.user) {
-		if (request) {
-			const authHeader = request.headers.get('authorization') || request.headers.get('Authorization');
-			const maybeToken = authHeader?.startsWith('Bearer ') ? authHeader.slice('Bearer '.length) : null;
-			
-			if (maybeToken) {
-				const { data: authData2, error: authError2 } = await supabase.auth.getUser(maybeToken);
-				if (!authError2 && authData2?.user) {
-					authData = authData2;
-					authError = null;
-				}
-			}
-		}
-		
-		// Si aún falla, intentar restaurar desde cookies
-		if (authError || !authData?.user) {
-			try {
-				const cookieStore = await cookies();
-				const accessToken = cookieStore.get('sb-access-token')?.value ?? null;
-				
-				if (accessToken) {
-					const { data: authData3, error: authError3 } = await supabase.auth.getUser(accessToken);
-					if (!authError3 && authData3?.user) {
-						authData = authData3;
-						authError = null;
-					}
-				}
-			} catch (cookieErr) {
-				console.warn('[Report Template API] Error leyendo cookies:', cookieErr);
-			}
-		}
-	}
-	
-	if (authError || !authData?.user) {
-		return null;
-	}
-
-	const { data: appUser, error: userError } = await supabase
-		.from('User')
-		.select('id, role')
-		.eq('authId', authData.user.id)
-		.maybeSingle();
-
-	if (userError || !appUser || appUser.role !== 'MEDICO') {
-		return null;
-	}
-
-	return appUser.id;
-}
+import { apiRequireRole } from '@/lib/auth-guards';
 
 export async function GET(request: Request) {
 	try {
-		const cookieStore = await cookies();
-		const { supabase } = createSupabaseServerClient(cookieStore);
+		// 1️⃣ Autenticación usando apiRequireRole (maneja correctamente la restauración de sesión)
+		const authResult = await apiRequireRole(['MEDICO']);
+		if (authResult.response) return authResult.response;
 
-		const doctorId = await getCurrentDoctorId(supabase, request);
-		if (!doctorId) {
+		const user = authResult.user;
+		if (!user) {
 			return NextResponse.json({ error: 'No autenticado o no es médico' }, { status: 401 });
 		}
+
+		const doctorId = user.userId;
+		const cookieStore = await cookies();
+		const { supabase } = createSupabaseServerClient(cookieStore);
 
 		// Obtener plantilla del médico desde medic_profile
 		const { data: medicProfile, error: profileError } = await supabase
 			.from('medic_profile')
-			.select('report_template_url, report_template_name')
+			.select('report_template_url, report_template_name, report_template_text')
 			.eq('doctor_id', doctorId)
 			.maybeSingle();
 
@@ -84,6 +35,7 @@ export async function GET(request: Request) {
 		return NextResponse.json({
 			template_url: medicProfile?.report_template_url || null,
 			template_name: medicProfile?.report_template_name || null,
+			template_text: medicProfile?.report_template_text || null,
 		});
 	} catch (err) {
 		console.error('[Report Template API] Error:', err);
@@ -93,13 +45,18 @@ export async function GET(request: Request) {
 
 export async function POST(request: NextRequest) {
 	try {
-		const cookieStore = await cookies();
-		const { supabase } = createSupabaseServerClient(cookieStore);
+		// 1️⃣ Autenticación usando apiRequireRole (maneja correctamente la restauración de sesión)
+		const authResult = await apiRequireRole(['MEDICO']);
+		if (authResult.response) return authResult.response;
 
-		const doctorId = await getCurrentDoctorId(supabase, request);
-		if (!doctorId) {
+		const user = authResult.user;
+		if (!user) {
 			return NextResponse.json({ error: 'No autenticado o no es médico' }, { status: 401 });
 		}
+
+		const doctorId = user.userId;
+		const cookieStore = await cookies();
+		const { supabase } = createSupabaseServerClient(cookieStore);
 
 		const formData = await request.formData();
 		const templateFile = formData.get('template') as File | null;
@@ -289,12 +246,13 @@ export async function POST(request: NextRequest) {
 			.maybeSingle();
 
 		if (existingProfile) {
-			// Actualizar perfil existente
+			// Actualizar perfil existente (mantener report_template_text si existe)
 			const { error: updateError } = await supabase
 				.from('medic_profile')
 				.update({
 					report_template_url: templateUrl,
 					report_template_name: templateFile.name,
+					// No sobrescribir report_template_text si ya existe
 				})
 				.eq('doctor_id', doctorId);
 
@@ -326,6 +284,73 @@ export async function POST(request: NextRequest) {
 			success: true,
 			template_url: templateUrl,
 			template_name: templateFile.name,
+		});
+	} catch (err) {
+		console.error('[Report Template API] Error:', err);
+		return NextResponse.json({ error: 'Error interno' }, { status: 500 });
+	}
+}
+
+export async function PUT(request: NextRequest) {
+	try {
+		// 1️⃣ Autenticación usando apiRequireRole (maneja correctamente la restauración de sesión)
+		const authResult = await apiRequireRole(['MEDICO']);
+		if (authResult.response) return authResult.response;
+
+		const user = authResult.user;
+		if (!user) {
+			return NextResponse.json({ error: 'No autenticado o no es médico' }, { status: 401 });
+		}
+
+		const doctorId = user.userId;
+		const cookieStore = await cookies();
+		const { supabase } = createSupabaseServerClient(cookieStore);
+
+		const body = await request.json();
+		const { template_text } = body;
+
+		if (typeof template_text !== 'string') {
+			return NextResponse.json({ error: 'template_text debe ser una cadena de texto' }, { status: 400 });
+		}
+
+		// Actualizar o crear registro en medic_profile
+		const { data: existingProfile } = await supabase
+			.from('medic_profile')
+			.select('id')
+			.eq('doctor_id', doctorId)
+			.maybeSingle();
+
+		if (existingProfile) {
+			// Actualizar perfil existente
+			const { error: updateError } = await supabase
+				.from('medic_profile')
+				.update({
+					report_template_text: template_text,
+				})
+				.eq('doctor_id', doctorId);
+
+			if (updateError) {
+				console.error('[Report Template API] Error actualizando plantilla de texto:', updateError);
+				return NextResponse.json({ error: 'Error al guardar plantilla de texto' }, { status: 500 });
+			}
+		} else {
+			// Crear nuevo perfil
+			const { error: insertError } = await supabase
+				.from('medic_profile')
+				.insert({
+					doctor_id: doctorId,
+					report_template_text: template_text,
+				});
+
+			if (insertError) {
+				console.error('[Report Template API] Error creando perfil con plantilla de texto:', insertError);
+				return NextResponse.json({ error: 'Error al guardar plantilla de texto' }, { status: 500 });
+			}
+		}
+
+		return NextResponse.json({
+			success: true,
+			message: 'Plantilla de texto guardada exitosamente',
 		});
 	} catch (err) {
 		console.error('[Report Template API] Error:', err);

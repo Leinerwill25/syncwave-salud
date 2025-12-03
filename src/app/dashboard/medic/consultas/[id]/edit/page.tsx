@@ -60,6 +60,20 @@ export default async function EditConsultationPage({ params }: Props) {
 		.eq('id', id)
 		.single();
 
+	// Obtener la especialidad del doctor desde medic_profile
+	// Para consultorios privados, usar private_specialty; si no existe, usar specialty
+	let doctorSpecialty: string | null = null;
+	if (consultationRaw?.doctor_id) {
+		const { data: medicProfile } = await supabase
+			.from('medic_profile')
+			.select('specialty, private_specialty')
+			.eq('doctor_id', consultationRaw.doctor_id)
+			.maybeSingle();
+		
+		// Priorizar private_specialty si existe, sino usar specialty
+		doctorSpecialty = medicProfile?.private_specialty || medicProfile?.specialty || null;
+	}
+
 	if (error || !consultationRaw) {
 		return (
 			<main className="min-h-screen bg-gradient-to-br from-blue-50 via-cyan-50 to-teal-50 py-10 px-6">
@@ -251,7 +265,7 @@ export default async function EditConsultationPage({ params }: Props) {
 				</header>
 
 				{/* Form Section - No wrapper needed, form handles its own styling */}
-				<EditConsultationForm initial={consultation} patient={patient} doctor={doctor} />
+				<EditConsultationForm initial={consultation} patient={patient} doctor={doctor} doctorSpecialty={doctorSpecialty} />
 			</div>
 		</main>
 	);

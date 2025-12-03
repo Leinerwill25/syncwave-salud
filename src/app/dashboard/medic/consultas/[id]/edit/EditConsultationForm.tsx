@@ -39,8 +39,141 @@ function isNumericOrEmpty(s: string | number | null | undefined) {
 	return !Number.isNaN(Number(String(s).toString().replace(',', '.')));
 }
 
-export default function EditConsultationForm({ initial, patient, doctor }: { initial: ConsultationShape; patient?: any; doctor?: any }) {
+export default function EditConsultationForm({ initial, patient, doctor, doctorSpecialty }: { initial: ConsultationShape; patient?: any; doctor?: any; doctorSpecialty?: string | null }) {
 	const router = useRouter();
+
+	// Función para mapear el nombre de la especialidad al código interno
+	// Las especialidades vienen en español desde la base de datos (ej: "Ginecología", "Medicina General")
+	const mapSpecialtyNameToCode = (specialtyName: string | null | undefined): string | null => {
+		if (!specialtyName) {
+			console.log('[EditConsultationForm] No hay especialidad del doctor');
+			return null;
+		}
+
+		// Función auxiliar para normalizar texto (eliminar acentos, espacios extra, convertir a minúsculas)
+		const normalizeText = (text: string): string => {
+			return text
+				.toLowerCase()
+				.trim()
+				.replace(/\s+/g, ' ') // Reemplazar múltiples espacios con uno solo
+				.normalize('NFD') // Descomponer caracteres acentuados
+				.replace(/[\u0300-\u036f]/g, ''); // Eliminar diacríticos
+		};
+
+		const normalized = normalizeText(specialtyName);
+		console.log('[EditConsultationForm] Especialidad original:', specialtyName);
+		console.log('[EditConsultationForm] Especialidad normalizada:', normalized);
+
+		// Mapeo de nombres comunes de especialidades en español a códigos internos
+		// Las claves están normalizadas (sin tildes, minúsculas) para comparación flexible
+		const specialtyMap: Record<string, string | null> = {
+			// Ginecología (todas las variaciones normalizadas apuntan a 'gynecology')
+			ginecologia: 'gynecology',
+			ginecologo: 'gynecology',
+			ginecologa: 'gynecology',
+			// Cardiología
+			cardiologia: 'cardiology',
+			cardiologo: 'cardiology',
+			cardiologa: 'cardiology',
+			// Neumología
+			neumologia: 'pulmonology',
+			neumologo: 'pulmonology',
+			neumologa: 'pulmonology',
+			// Neurología
+			neurologia: 'neurology',
+			neurologo: 'neurology',
+			neurologa: 'neurology',
+			// Obstetricia
+			obstetricia: 'obstetrics',
+			obstetra: 'obstetrics',
+			obstetrica: 'obstetrics',
+			// Nutrición
+			nutricion: 'nutrition',
+			nutricionista: 'nutrition',
+			// Dermatología
+			dermatologia: 'dermatology',
+			dermatologo: 'dermatology',
+			dermatologa: 'dermatology',
+			// Psiquiatría
+			psiquiatria: 'psychiatry',
+			psiquiatra: 'psychiatry',
+			// Ortopedia
+			ortopedia: 'orthopedics',
+			ortopedica: 'orthopedics',
+			ortopedico: 'orthopedics',
+			// ORL / Otorrino
+			orl: 'ent',
+			otorrino: 'ent',
+			otorrinolaringologia: 'ent',
+			otorrinolaringologo: 'ent',
+			otorrinolaringologa: 'ent',
+			// Endocrinología
+			endocrinologia: 'endocrinology',
+			endocrinologo: 'endocrinology',
+			endocrinologa: 'endocrinology',
+			// Oftalmología
+			oftalmologia: 'ophthalmology',
+			oftalmologo: 'ophthalmology',
+			oftalmologa: 'ophthalmology',
+			// Medicina General (no tiene código interno, se mostrarán todas las especialidades)
+			'medicina general': null,
+		};
+
+		// Normalizar todas las claves del mapa para comparación
+		const normalizedMap: Record<string, string | null> = {};
+		for (const [key, value] of Object.entries(specialtyMap)) {
+			normalizedMap[normalizeText(key)] = value;
+		}
+
+		// Buscar coincidencia exacta primero
+		const exactMatch = normalizedMap[normalized];
+		if (exactMatch !== undefined) {
+			console.log('[EditConsultationForm] Coincidencia exacta encontrada:', normalized, '->', exactMatch);
+			return exactMatch; // Puede ser string o null
+		}
+
+		// Buscar coincidencia parcial (el nombre contiene la clave o viceversa)
+		// Priorizar coincidencias más largas para evitar falsos positivos
+		const matches: Array<{ key: string; value: string | null; length: number }> = [];
+		for (const [key, value] of Object.entries(normalizedMap)) {
+			if (normalized.includes(key) || key.includes(normalized)) {
+				matches.push({ key, value, length: key.length });
+			}
+		}
+
+		if (matches.length > 0) {
+			// Ordenar por longitud descendente para priorizar coincidencias más específicas
+			matches.sort((a, b) => b.length - a.length);
+			const bestMatch = matches[0];
+			console.log('[EditConsultationForm] Coincidencia parcial encontrada:', bestMatch.key, '->', bestMatch.value);
+			return bestMatch.value;
+		}
+
+		// Si no se encuentra coincidencia, retornar null (se mostrarán todas las especialidades)
+		console.warn('[EditConsultationForm] No se encontró coincidencia para:', normalized);
+		console.log('[EditConsultationForm] Claves disponibles en el mapa normalizado:', Object.keys(normalizedMap));
+		return null;
+	};
+
+	// Obtener el código de especialidad del doctor
+	const doctorSpecialtyCode = mapSpecialtyNameToCode(doctorSpecialty);
+
+	// Log para debugging
+	console.log('[EditConsultationForm] Especialidad del doctor:', doctorSpecialty);
+	console.log('[EditConsultationForm] Código de especialidad mapeado:', doctorSpecialtyCode);
+
+	// Función para verificar si una especialidad debe mostrarse
+	const shouldShowSpecialty = (specialtyCode: string): boolean => {
+		// Si no hay especialidad del doctor, mostrar todas
+		if (!doctorSpecialtyCode) {
+			console.log(`[EditConsultationForm] shouldShowSpecialty(${specialtyCode}): true (sin especialidad del doctor)`);
+			return true;
+		}
+		// Si hay especialidad del doctor, solo mostrar esa
+		const shouldShow = specialtyCode === doctorSpecialtyCode;
+		console.log(`[EditConsultationForm] shouldShowSpecialty(${specialtyCode}): ${shouldShow} (doctorSpecialtyCode: ${doctorSpecialtyCode})`);
+		return shouldShow;
+	};
 
 	// Core
 	const [chiefComplaint, setChiefComplaint] = useState(initial.chief_complaint ?? '');
@@ -159,6 +292,41 @@ export default function EditConsultationForm({ initial, patient, doctor }: { ini
 	const [contraceptiveUse, setContraceptiveUse] = useState<string>(initGyn.contraceptive ?? '');
 	const [cervicalExamNotes, setCervicalExamNotes] = useState<string>(initGyn.cervical_exam ?? '');
 
+	// Campos adicionales de la plantilla de ginecología
+	const [evaluationReason, setEvaluationReason] = useState<string>(initGyn.evaluation_reason ?? '');
+	const [allergies, setAllergies] = useState<string>(initGyn.allergies ?? 'NIEGA');
+	const [surgicalHistory, setSurgicalHistory] = useState<string>(initGyn.surgical_history ?? 'NIEGA');
+	const [familyHistoryMother, setFamilyHistoryMother] = useState<string>(initGyn.family_history_mother ?? 'VIVA SANA');
+	const [familyHistoryFather, setFamilyHistoryFather] = useState<string>(initGyn.family_history_father ?? 'VIVO SANO');
+	const [familyHistoryBreastCancer, setFamilyHistoryBreastCancer] = useState<string>(initGyn.family_history_breast_cancer ?? 'NIEGA');
+	const [its, setIts] = useState<string>(initGyn.its ?? 'NIEGA');
+	const [menstruationType, setMenstruationType] = useState<string>(initGyn.menstruation_type ?? 'REGULARES');
+	const [menstruationPattern, setMenstruationPattern] = useState<string>(initGyn.menstruation_pattern ?? '');
+	const [dysmenorrhea, setDysmenorrhea] = useState<string>(initGyn.dysmenorrhea ?? 'NO');
+	const [firstSexualRelation, setFirstSexualRelation] = useState<string>(initGyn.first_sexual_relation ?? '');
+	const [sexualPartners, setSexualPartners] = useState<string>(initGyn.sexual_partners ?? '');
+	const [generalConditions, setGeneralConditions] = useState<string>(initGyn.general_conditions ?? 'ESTABLES');
+	const [breastSize, setBreastSize] = useState<string>(initGyn.breast_size ?? 'MEDIANO TAMAÑO');
+	const [breastSymmetry, setBreastSymmetry] = useState<string>(initGyn.breast_symmetry ?? 'ASIMÉTRICAS');
+	const [breastCap, setBreastCap] = useState<string>(initGyn.breast_cap ?? 'SIN ALTERACIONES');
+	const [breastSecretion, setBreastSecretion] = useState<string>(initGyn.breast_secretion ?? 'NO SE EVIDENCIA SALIDA DE SECRECIÓN');
+	const [axillaryFossae, setAxillaryFossae] = useState<string>(initGyn.axillary_fossae ?? 'LIBRES');
+	const [abdomen, setAbdomen] = useState<string>(initGyn.abdomen ?? 'BLANDO, DEPRIMIBLE NO DOLOROSO A LA PALPACIÓN');
+	const [externalGenitals, setExternalGenitals] = useState<string>(initGyn.external_genitals ?? 'NORMOCONFIGURADOS');
+	const [speculumCervix, setSpeculumCervix] = useState<string>(initGyn.speculum_cervix ?? 'CUELLO MACROSCÓPICAMENTE SANO');
+	const [tactCervix, setTactCervix] = useState<string>(initGyn.tact_cervix ?? 'CUELLO RENITENTE NO DOLOROSO A LA MOVILIZACIÓN');
+	const [fundusSacs, setFundusSacs] = useState<string>(initGyn.fundus_sacs ?? 'LIBRES');
+	const [adnexa, setAdnexa] = useState<string>(initGyn.adnexa ?? 'NO PALPABLES');
+	const [hinselmannTest, setHinselmannTest] = useState<string>(initGyn.hinselmann_test ?? 'NEGATIVO');
+	const [schillerTest, setSchillerTest] = useState<string>(initGyn.schiller_test ?? 'NEGATIVO');
+	const [uterusDimensions, setUterusDimensions] = useState<string>(initGyn.uterus_dimensions ?? '');
+	const [endometrialInterface, setEndometrialInterface] = useState<string>(initGyn.endometrial_interface ?? '');
+	const [endometrialInterfaceType, setEndometrialInterfaceType] = useState<string>(initGyn.endometrial_interface_type ?? 'TRILAMINAR');
+	const [leftOvaryDimensions, setLeftOvaryDimensions] = useState<string>(initGyn.left_ovary_dimensions ?? '');
+	const [rightOvaryDimensions, setRightOvaryDimensions] = useState<string>(initGyn.right_ovary_dimensions ?? '');
+	const [fundusFluid, setFundusFluid] = useState<string>(initGyn.fundus_fluid ?? 'NO SE EVIDENCIA LÍQUIDO EN FONDO DE SACO');
+	const [ho, setHo] = useState<string>(initGyn.ho ?? '');
+
 	/* -------------------------
      Endocrinología
      ------------------------- */
@@ -191,6 +359,28 @@ export default function EditConsultationForm({ initial, patient, doctor }: { ini
 	useEffect(() => {
 		// placeholder behaviour kept intentionally simple
 	}, [computedBMI, bmiOverride]);
+
+	// Cargar contenido generado automáticamente cuando se abre la pestaña de informe
+	useEffect(() => {
+		if (activeTab === 'report' && !reportContent.trim()) {
+			// Cargar contenido generado automáticamente
+			const loadGeneratedContent = async () => {
+				try {
+					const res = await fetch(`/api/consultations/${initial.id}/generate-report-content`, {
+						credentials: 'include',
+					});
+					const data = await res.json();
+					if (res.ok && data.content) {
+						setReportContent(data.content);
+					}
+				} catch (err) {
+					// Silenciar errores, el usuario puede escribir manualmente
+					console.warn('No se pudo cargar contenido generado automáticamente:', err);
+				}
+			};
+			loadGeneratedContent();
+		}
+	}, [activeTab, initial.id]);
 
 	/* -------------------------
      Build vitals object
@@ -267,10 +457,46 @@ export default function EditConsultationForm({ initial, patient, doctor }: { ini
 		if (Object.keys(ent).length) out.ent = ent;
 
 		const gyn: Record<string, any> = {};
-		if (lmp) gyn.last_menstrual_period = lmp;
+		// LMP es obligatorio si hay datos de ginecología, así que siempre lo incluimos
+		gyn.last_menstrual_period = lmp || '';
 		if (contraceptiveUse) gyn.contraceptive = contraceptiveUse;
 		if (cervicalExamNotes) gyn.cervical_exam = cervicalExamNotes;
-		if (Object.keys(gyn).length) out.gynecology = gyn;
+		if (evaluationReason) gyn.evaluation_reason = evaluationReason;
+		if (allergies) gyn.allergies = allergies;
+		if (surgicalHistory) gyn.surgical_history = surgicalHistory;
+		if (familyHistoryMother) gyn.family_history_mother = familyHistoryMother;
+		if (familyHistoryFather) gyn.family_history_father = familyHistoryFather;
+		if (familyHistoryBreastCancer) gyn.family_history_breast_cancer = familyHistoryBreastCancer;
+		if (its) gyn.its = its;
+		if (menstruationType) gyn.menstruation_type = menstruationType;
+		if (menstruationPattern) gyn.menstruation_pattern = menstruationPattern;
+		if (dysmenorrhea) gyn.dysmenorrhea = dysmenorrhea;
+		if (firstSexualRelation) gyn.first_sexual_relation = firstSexualRelation;
+		if (sexualPartners) gyn.sexual_partners = sexualPartners;
+		if (generalConditions) gyn.general_conditions = generalConditions;
+		if (breastSize) gyn.breast_size = breastSize;
+		if (breastSymmetry) gyn.breast_symmetry = breastSymmetry;
+		if (breastCap) gyn.breast_cap = breastCap;
+		if (breastSecretion) gyn.breast_secretion = breastSecretion;
+		if (axillaryFossae) gyn.axillary_fossae = axillaryFossae;
+		if (abdomen) gyn.abdomen = abdomen;
+		if (externalGenitals) gyn.external_genitals = externalGenitals;
+		if (speculumCervix) gyn.speculum_cervix = speculumCervix;
+		if (tactCervix) gyn.tact_cervix = tactCervix;
+		if (fundusSacs) gyn.fundus_sacs = fundusSacs;
+		if (adnexa) gyn.adnexa = adnexa;
+		if (hinselmannTest) gyn.hinselmann_test = hinselmannTest;
+		if (schillerTest) gyn.schiller_test = schillerTest;
+		if (uterusDimensions) gyn.uterus_dimensions = uterusDimensions;
+		if (endometrialInterface) gyn.endometrial_interface = endometrialInterface;
+		if (endometrialInterfaceType) gyn.endometrial_interface_type = endometrialInterfaceType;
+		if (leftOvaryDimensions) gyn.left_ovary_dimensions = leftOvaryDimensions;
+		if (rightOvaryDimensions) gyn.right_ovary_dimensions = rightOvaryDimensions;
+		if (fundusFluid) gyn.fundus_fluid = fundusFluid;
+		if (ho) gyn.ho = ho;
+		// Solo agregar ginecología si hay al menos un campo con datos (además del LMP que siempre está)
+		const hasGynData = Object.keys(gyn).some((key) => key !== 'last_menstrual_period' && gyn[key] !== '' && gyn[key] !== null && gyn[key] !== undefined);
+		if (hasGynData || lmp) out.gynecology = gyn;
 
 		const endo: Record<string, any> = {};
 		if (tsh) endo.tsh = tsh;
@@ -423,8 +649,9 @@ export default function EditConsultationForm({ initial, patient, doctor }: { ini
 			}
 
 			setSuccess('Consulta actualizada correctamente.');
+			// Cambiar a la sección de "informe médico" después de guardar
 			setTimeout(() => {
-				router.push(`/dashboard/medic/consultas/${initial.id}`);
+				setActiveTab('report');
 			}, 700);
 		} catch (err: any) {
 			setError(err?.message ?? String(err));
@@ -515,16 +742,7 @@ export default function EditConsultationForm({ initial, patient, doctor }: { ini
 							const Icon = tab.icon;
 							const isActive = activeTab === tab.id;
 							return (
-								<button
-									key={tab.id}
-									type="button"
-									onClick={() => setActiveTab(tab.id as any)}
-									className={`flex items-center gap-2 px-6 py-4 text-sm font-medium transition-colors whitespace-nowrap border-b-2 ${
-										isActive
-											? 'border-teal-600 text-teal-600 bg-teal-50 dark:bg-teal-900/20 dark:text-teal-400 dark:border-teal-400'
-											: 'border-transparent text-slate-600 hover:text-slate-900 hover:bg-slate-50 dark:text-slate-400 dark:hover:text-slate-300 dark:hover:bg-slate-700/50'
-									}`}
-								>
+								<button key={tab.id} type="button" onClick={() => setActiveTab(tab.id as any)} className={`flex items-center gap-2 px-6 py-4 text-sm font-medium transition-colors whitespace-nowrap border-b-2 ${isActive ? 'border-teal-600 text-teal-600 bg-teal-50 dark:bg-teal-900/20 dark:text-teal-400 dark:border-teal-400' : 'border-transparent text-slate-600 hover:text-slate-900 hover:bg-slate-50 dark:text-slate-400 dark:hover:text-slate-300 dark:hover:bg-slate-700/50'}`}>
 									<Icon size={18} />
 									{tab.label}
 								</button>
@@ -543,40 +761,22 @@ export default function EditConsultationForm({ initial, patient, doctor }: { ini
 									<ClipboardList size={20} />
 									Información de la Consulta
 								</h2>
-								
+
 								<div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
 									<div className="lg:col-span-2 space-y-6">
 										<div>
 											<label className={labelClass}>Motivo de Consulta</label>
-											<textarea
-												value={chiefComplaint}
-												onChange={(e) => setChiefComplaint(e.target.value)}
-												rows={5}
-												className={`${inputBase} ${inputDark} resize-none`}
-												placeholder="Describa el motivo de consulta del paciente..."
-											/>
+											<textarea value={chiefComplaint} onChange={(e) => setChiefComplaint(e.target.value)} rows={5} className={`${inputBase} ${inputDark} resize-none`} placeholder="Describa el motivo de consulta del paciente..." />
 										</div>
 
 										<div>
 											<label className={labelClass}>Diagnóstico</label>
-											<textarea
-												value={diagnosis}
-												onChange={(e) => setDiagnosis(e.target.value)}
-												rows={4}
-												className={`${inputBase} ${inputDark} resize-none`}
-												placeholder="Ingrese el diagnóstico clínico..."
-											/>
+											<textarea value={diagnosis} onChange={(e) => setDiagnosis(e.target.value)} rows={4} className={`${inputBase} ${inputDark} resize-none`} placeholder="Ingrese el diagnóstico clínico..." />
 										</div>
 
 										<div>
 											<label className={labelClass}>Notas y Recomendaciones</label>
-											<textarea
-												value={notes}
-												onChange={(e) => setNotes(e.target.value)}
-												rows={4}
-												className={`${inputBase} ${inputDark} resize-none`}
-												placeholder="Notas adicionales, recomendaciones para el paciente..."
-											/>
+											<textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={4} className={`${inputBase} ${inputDark} resize-none`} placeholder="Notas adicionales, recomendaciones para el paciente..." />
 										</div>
 									</div>
 
@@ -586,21 +786,11 @@ export default function EditConsultationForm({ initial, patient, doctor }: { ini
 											<div className="space-y-4">
 												<div>
 													<label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1.5">Fecha / Hora Inicio</label>
-													<input
-														type="datetime-local"
-														value={startedAt}
-														onChange={(e) => setStartedAt(e.target.value)}
-														className={`${inputBase} ${inputDark}`}
-													/>
+													<input type="datetime-local" value={startedAt} onChange={(e) => setStartedAt(e.target.value)} className={`${inputBase} ${inputDark}`} />
 												</div>
 												<div>
 													<label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1.5">Fecha / Hora Fin</label>
-													<input
-														type="datetime-local"
-														value={endedAt}
-														onChange={(e) => setEndedAt(e.target.value)}
-														className={`${inputBase} ${inputDark}`}
-													/>
+													<input type="datetime-local" value={endedAt} onChange={(e) => setEndedAt(e.target.value)} className={`${inputBase} ${inputDark}`} />
 												</div>
 											</div>
 										</div>
@@ -611,9 +801,7 @@ export default function EditConsultationForm({ initial, patient, doctor }: { ini
 												<p className="text-sm text-slate-700 dark:text-slate-300">
 													{patient.firstName} {patient.lastName}
 												</p>
-												{patient.identifier && (
-													<p className="text-xs text-slate-500 dark:text-slate-400 mt-1">ID: {patient.identifier}</p>
-												)}
+												{patient.identifier && <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Cédula de Identidad: {patient.identifier}</p>}
 											</div>
 										)}
 									</aside>
@@ -634,16 +822,7 @@ export default function EditConsultationForm({ initial, patient, doctor }: { ini
 								<div>
 									<label className={labelClass}>Peso (kg)</label>
 									<div className="flex items-center gap-2">
-										<input
-											value={weight}
-											onChange={(e) => setWeight(e.target.value)}
-											placeholder="70"
-											className={`${inputBase} ${inputDark}`}
-											type="number"
-											inputMode="decimal"
-											step="0.1"
-											min="0"
-										/>
+										<input value={weight} onChange={(e) => setWeight(e.target.value)} placeholder="70" className={`${inputBase} ${inputDark}`} type="number" inputMode="decimal" step="0.1" min="0" />
 										<span className="text-xs text-slate-500 font-medium">kg</span>
 									</div>
 								</div>
@@ -651,16 +830,7 @@ export default function EditConsultationForm({ initial, patient, doctor }: { ini
 								<div>
 									<label className={labelClass}>Talla (cm)</label>
 									<div className="flex items-center gap-2">
-										<input
-											value={height}
-											onChange={(e) => setHeight(e.target.value)}
-											placeholder="175"
-											className={`${inputBase} ${inputDark}`}
-											type="number"
-											inputMode="decimal"
-											step="0.1"
-											min="0"
-										/>
+										<input value={height} onChange={(e) => setHeight(e.target.value)} placeholder="175" className={`${inputBase} ${inputDark}`} type="number" inputMode="decimal" step="0.1" min="0" />
 										<span className="text-xs text-slate-500 font-medium">cm</span>
 									</div>
 								</div>
@@ -668,13 +838,7 @@ export default function EditConsultationForm({ initial, patient, doctor }: { ini
 								<div>
 									<label className={labelClass}>IMC (BMI)</label>
 									<div className="flex items-center gap-2">
-										<input
-											value={bmiOverride || computedBMI}
-											onChange={(e) => setBmiOverride(e.target.value)}
-											placeholder={computedBMI || '—'}
-											className={`${inputBase} ${inputDark}`}
-											type="text"
-										/>
+										<input value={bmiOverride || computedBMI} onChange={(e) => setBmiOverride(e.target.value)} placeholder={computedBMI || '—'} className={`${inputBase} ${inputDark}`} type="text" />
 										<span className="text-xs text-slate-500 font-medium">kg/m²</span>
 									</div>
 									<p className="text-xs text-slate-400 mt-1">Calculado automáticamente</p>
@@ -683,117 +847,47 @@ export default function EditConsultationForm({ initial, patient, doctor }: { ini
 								<div>
 									<label className={labelClass}>Temperatura (°C)</label>
 									<div className="flex items-center gap-2">
-										<input
-											value={temperature}
-											onChange={(e) => setTemperature(e.target.value)}
-											placeholder="36.8"
-											className={`${inputBase} ${inputDark}`}
-											type="number"
-											inputMode="decimal"
-											step="0.1"
-											min="30"
-											max="45"
-										/>
+										<input value={temperature} onChange={(e) => setTemperature(e.target.value)} placeholder="36.8" className={`${inputBase} ${inputDark}`} type="number" inputMode="decimal" step="0.1" min="30" max="45" />
 										<span className="text-xs text-slate-500 font-medium">°C</span>
 									</div>
 								</div>
 
 								<div>
 									<label className={labelClass}>PA Sistólica</label>
-									<input
-										value={bpSystolic}
-										onChange={(e) => setBpSystolic(e.target.value)}
-										placeholder="120"
-										className={`${inputBase} ${inputDark}`}
-										type="number"
-										inputMode="numeric"
-										step="1"
-										min="0"
-									/>
+									<input value={bpSystolic} onChange={(e) => setBpSystolic(e.target.value)} placeholder="120" className={`${inputBase} ${inputDark}`} type="number" inputMode="numeric" step="1" min="0" />
 								</div>
 
 								<div>
 									<label className={labelClass}>PA Diastólica</label>
-									<input
-										value={bpDiastolic}
-										onChange={(e) => setBpDiastolic(e.target.value)}
-										placeholder="80"
-										className={`${inputBase} ${inputDark}`}
-										type="number"
-										inputMode="numeric"
-										step="1"
-										min="0"
-									/>
+									<input value={bpDiastolic} onChange={(e) => setBpDiastolic(e.target.value)} placeholder="80" className={`${inputBase} ${inputDark}`} type="number" inputMode="numeric" step="1" min="0" />
 								</div>
 
 								<div>
 									<label className={labelClass}>Pulso (bpm)</label>
-									<input
-										value={heartRate}
-										onChange={(e) => setHeartRate(e.target.value)}
-										placeholder="72"
-										className={`${inputBase} ${inputDark}`}
-										type="number"
-										inputMode="numeric"
-										step="1"
-										min="0"
-									/>
+									<input value={heartRate} onChange={(e) => setHeartRate(e.target.value)} placeholder="72" className={`${inputBase} ${inputDark}`} type="number" inputMode="numeric" step="1" min="0" />
 								</div>
 
 								<div>
 									<label className={labelClass}>Frecuencia Respiratoria</label>
-									<input
-										value={respiratoryRate}
-										onChange={(e) => setRespiratoryRate(e.target.value)}
-										placeholder="16"
-										className={`${inputBase} ${inputDark}`}
-										type="number"
-										inputMode="numeric"
-										step="1"
-										min="0"
-									/>
+									<input value={respiratoryRate} onChange={(e) => setRespiratoryRate(e.target.value)} placeholder="16" className={`${inputBase} ${inputDark}`} type="number" inputMode="numeric" step="1" min="0" />
 								</div>
 
 								<div>
 									<label className={labelClass}>SPO₂ (%)</label>
-									<input
-										value={spo2}
-										onChange={(e) => setSpo2(e.target.value)}
-										placeholder="98"
-										className={`${inputBase} ${inputDark}`}
-										type="number"
-										inputMode="numeric"
-										step="1"
-										min="0"
-										max="100"
-									/>
+									<input value={spo2} onChange={(e) => setSpo2(e.target.value)} placeholder="98" className={`${inputBase} ${inputDark}`} type="number" inputMode="numeric" step="1" min="0" max="100" />
 								</div>
 
 								<div className="sm:col-span-2">
 									<label className={labelClass}>Glucosa (mg/dL)</label>
 									<div className="flex items-center gap-2">
-										<input
-											value={glucose}
-											onChange={(e) => setGlucose(e.target.value)}
-											placeholder="110"
-											className={`${inputBase} ${inputDark}`}
-											type="number"
-											inputMode="decimal"
-											step="0.1"
-											min="0"
-										/>
+										<input value={glucose} onChange={(e) => setGlucose(e.target.value)} placeholder="110" className={`${inputBase} ${inputDark}`} type="number" inputMode="decimal" step="0.1" min="0" />
 										<span className="text-xs text-slate-500 font-medium">mg/dL</span>
 									</div>
 								</div>
 
 								<div className="sm:col-span-2 lg:col-span-4">
 									<label className={labelClass}>Notas de Signos Vitales</label>
-									<input
-										value={vitalsNotes}
-										onChange={(e) => setVitalsNotes(e.target.value)}
-										placeholder="Observaciones adicionales sobre los signos vitales..."
-										className={`${inputBase} ${inputDark}`}
-									/>
+									<input value={vitalsNotes} onChange={(e) => setVitalsNotes(e.target.value)} placeholder="Observaciones adicionales sobre los signos vitales..." className={`${inputBase} ${inputDark}`} />
 								</div>
 							</div>
 						</div>
@@ -807,340 +901,497 @@ export default function EditConsultationForm({ initial, patient, doctor }: { ini
 									<Stethoscope size={20} />
 									Signos Vitales por Especialidad
 								</h2>
-								<p className="text-sm text-slate-600 dark:text-slate-400 mb-6">
-									Expande las secciones relevantes para tu especialidad y completa los campos necesarios.
-								</p>
+								<p className="text-sm text-slate-600 dark:text-slate-400 mb-6">Expande las secciones relevantes para tu especialidad y completa los campos necesarios.</p>
 
 								{/* Cardiology */}
-								<div className="border border-slate-200 dark:border-slate-700 rounded-lg mb-4">
-									<button
-										type="button"
-										onClick={() => toggleSpecialty('cardiology')}
-										className="w-full flex items-center justify-between p-4 text-left hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors rounded-lg"
-									>
-										<span className="font-semibold text-slate-900 dark:text-slate-100">Cardiología</span>
-										{expandedSpecialties.has('cardiology') ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
-									</button>
-									{expandedSpecialties.has('cardiology') && (
-										<div className="p-4 pt-0 grid grid-cols-1 md:grid-cols-2 gap-4">
-											<div>
-												<label className={labelClass}>Ritmo ECG</label>
-												<input value={ekgRhythm} onChange={(e) => setEkgRhythm(e.target.value)} className={`${inputBase} ${inputDark}`} placeholder="Ritmo sinusal..." />
-											</div>
-											<div>
-												<label className={labelClass}>BNP (pg/mL)</label>
-												<input value={bnp} onChange={(e) => setBnp(e.target.value)} className={`${inputBase} ${inputDark}`} type="number" inputMode="decimal" />
-											</div>
-											<div>
-												<label className={labelClass}>Edema</label>
-												<div className="flex items-center gap-3 mt-2">
-													<label className="inline-flex items-center gap-2 text-sm">
-														<input type="checkbox" checked={edema} onChange={(e) => setEdema(e.target.checked)} className="form-checkbox" /> Presente
-													</label>
+								{shouldShowSpecialty('cardiology') && (
+									<div className="border border-slate-200 dark:border-slate-700 rounded-lg mb-4">
+										<button type="button" onClick={() => toggleSpecialty('cardiology')} className="w-full flex items-center justify-between p-4 text-left hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors rounded-lg">
+											<span className="font-semibold text-slate-900 dark:text-slate-100">Cardiología</span>
+											{expandedSpecialties.has('cardiology') ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
+										</button>
+										{expandedSpecialties.has('cardiology') && (
+											<div className="p-4 pt-0 grid grid-cols-1 md:grid-cols-2 gap-4">
+												<div>
+													<label className={labelClass}>Ritmo ECG</label>
+													<input value={ekgRhythm} onChange={(e) => setEkgRhythm(e.target.value)} className={`${inputBase} ${inputDark}`} placeholder="Ritmo sinusal..." />
+												</div>
+												<div>
+													<label className={labelClass}>BNP (pg/mL)</label>
+													<input value={bnp} onChange={(e) => setBnp(e.target.value)} className={`${inputBase} ${inputDark}`} type="number" inputMode="decimal" />
+												</div>
+												<div>
+													<label className={labelClass}>Edema</label>
+													<div className="flex items-center gap-3 mt-2">
+														<label className="inline-flex items-center gap-2 text-sm">
+															<input type="checkbox" checked={edema} onChange={(e) => setEdema(e.target.checked)} className="form-checkbox" /> Presente
+														</label>
+													</div>
+												</div>
+												<div>
+													<label className={labelClass}>Escala dolor torácico (0-10)</label>
+													<input value={chestPainScale} onChange={(e) => setChestPainScale(e.target.value)} className={`${inputBase} ${inputDark}`} type="number" inputMode="numeric" min="0" max="10" />
 												</div>
 											</div>
-											<div>
-												<label className={labelClass}>Escala dolor torácico (0-10)</label>
-												<input value={chestPainScale} onChange={(e) => setChestPainScale(e.target.value)} className={`${inputBase} ${inputDark}`} type="number" inputMode="numeric" min="0" max="10" />
-											</div>
-										</div>
-									)}
-								</div>
+										)}
+									</div>
+								)}
 
-								{/* Continue with other specialties in similar format... */}
-								{/* For brevity, I'll add a few more key ones */}
-								
 								{/* Pulmonology */}
-								<div className="border border-slate-200 dark:border-slate-700 rounded-lg mb-4">
-									<button
-										type="button"
-										onClick={() => toggleSpecialty('pulmonology')}
-										className="w-full flex items-center justify-between p-4 text-left hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors rounded-lg"
-									>
-										<span className="font-semibold text-slate-900 dark:text-slate-100">Neumología</span>
-										{expandedSpecialties.has('pulmonology') ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
-									</button>
-									{expandedSpecialties.has('pulmonology') && (
-										<div className="p-4 pt-0 grid grid-cols-1 md:grid-cols-3 gap-4">
-											<div>
-												<label className={labelClass}>FEV1 (L)</label>
-												<input value={fev1} onChange={(e) => setFev1(e.target.value)} className={`${inputBase} ${inputDark}`} type="number" inputMode="decimal" />
+								{shouldShowSpecialty('pulmonology') && (
+									<div className="border border-slate-200 dark:border-slate-700 rounded-lg mb-4">
+										<button type="button" onClick={() => toggleSpecialty('pulmonology')} className="w-full flex items-center justify-between p-4 text-left hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors rounded-lg">
+											<span className="font-semibold text-slate-900 dark:text-slate-100">Neumología</span>
+											{expandedSpecialties.has('pulmonology') ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
+										</button>
+										{expandedSpecialties.has('pulmonology') && (
+											<div className="p-4 pt-0 grid grid-cols-1 md:grid-cols-3 gap-4">
+												<div>
+													<label className={labelClass}>FEV1 (L)</label>
+													<input value={fev1} onChange={(e) => setFev1(e.target.value)} className={`${inputBase} ${inputDark}`} type="number" inputMode="decimal" />
+												</div>
+												<div>
+													<label className={labelClass}>FVC (L)</label>
+													<input value={fvc} onChange={(e) => setFvc(e.target.value)} className={`${inputBase} ${inputDark}`} type="number" inputMode="decimal" />
+												</div>
+												<div>
+													<label className={labelClass}>Peak Flow (L/min)</label>
+													<input value={peakFlow} onChange={(e) => setPeakFlow(e.target.value)} className={`${inputBase} ${inputDark}`} type="number" inputMode="decimal" />
+												</div>
+												<div className="md:col-span-3">
+													<label className={labelClass}>Observación / Sibilancias</label>
+													<input value={wheezeNote} onChange={(e) => setWheezeNote(e.target.value)} className={`${inputBase} ${inputDark}`} />
+												</div>
 											</div>
-											<div>
-												<label className={labelClass}>FVC (L)</label>
-												<input value={fvc} onChange={(e) => setFvc(e.target.value)} className={`${inputBase} ${inputDark}`} type="number" inputMode="decimal" />
-											</div>
-											<div>
-												<label className={labelClass}>Peak Flow (L/min)</label>
-												<input value={peakFlow} onChange={(e) => setPeakFlow(e.target.value)} className={`${inputBase} ${inputDark}`} type="number" inputMode="decimal" />
-											</div>
-											<div className="md:col-span-3">
-												<label className={labelClass}>Observación / Sibilancias</label>
-												<input value={wheezeNote} onChange={(e) => setWheezeNote(e.target.value)} className={`${inputBase} ${inputDark}`} />
-											</div>
-										</div>
-									)}
-								</div>
+										)}
+									</div>
+								)}
 
 								{/* Neurology */}
-								<div className="border border-slate-200 dark:border-slate-700 rounded-lg mb-4">
-									<button
-										type="button"
-										onClick={() => toggleSpecialty('neurology')}
-										className="w-full flex items-center justify-between p-4 text-left hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors rounded-lg"
-									>
-										<span className="font-semibold text-slate-900 dark:text-slate-100">Neurología</span>
-										{expandedSpecialties.has('neurology') ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
-									</button>
-									{expandedSpecialties.has('neurology') && (
-										<div className="p-4 pt-0 grid grid-cols-1 md:grid-cols-3 gap-4">
-											<div>
-												<label className={labelClass}>GCS Total</label>
-												<input value={gcsTotal} onChange={(e) => setGcsTotal(e.target.value)} className={`${inputBase} ${inputDark}`} type="number" inputMode="numeric" min="3" max="15" />
+								{shouldShowSpecialty('neurology') && (
+									<div className="border border-slate-200 dark:border-slate-700 rounded-lg mb-4">
+										<button type="button" onClick={() => toggleSpecialty('neurology')} className="w-full flex items-center justify-between p-4 text-left hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors rounded-lg">
+											<span className="font-semibold text-slate-900 dark:text-slate-100">Neurología</span>
+											{expandedSpecialties.has('neurology') ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
+										</button>
+										{expandedSpecialties.has('neurology') && (
+											<div className="p-4 pt-0 grid grid-cols-1 md:grid-cols-3 gap-4">
+												<div>
+													<label className={labelClass}>GCS Total</label>
+													<input value={gcsTotal} onChange={(e) => setGcsTotal(e.target.value)} className={`${inputBase} ${inputDark}`} type="number" inputMode="numeric" min="3" max="15" />
+												</div>
+												<div>
+													<label className={labelClass}>Reactividad Pupilar</label>
+													<input value={pupillaryReactivity} onChange={(e) => setPupillaryReactivity(e.target.value)} className={`${inputBase} ${inputDark}`} />
+												</div>
+												<div className="md:col-span-3">
+													<label className={labelClass}>Notas Neurológicas</label>
+													<input value={neuroNotes} onChange={(e) => setNeuroNotes(e.target.value)} className={`${inputBase} ${inputDark}`} />
+												</div>
 											</div>
-											<div>
-												<label className={labelClass}>Reactividad Pupilar</label>
-												<input value={pupillaryReactivity} onChange={(e) => setPupillaryReactivity(e.target.value)} className={`${inputBase} ${inputDark}`} />
-											</div>
-											<div className="md:col-span-3">
-												<label className={labelClass}>Notas Neurológicas</label>
-												<input value={neuroNotes} onChange={(e) => setNeuroNotes(e.target.value)} className={`${inputBase} ${inputDark}`} />
-											</div>
-										</div>
-									)}
-								</div>
+										)}
+									</div>
+								)}
 
 								{/* Obstetrics */}
-								<div className="border border-slate-200 dark:border-slate-700 rounded-lg mb-4">
-									<button
-										type="button"
-										onClick={() => toggleSpecialty('obstetrics')}
-										className="w-full flex items-center justify-between p-4 text-left hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors rounded-lg"
-									>
-										<span className="font-semibold text-slate-900 dark:text-slate-100">Obstetricia</span>
-										{expandedSpecialties.has('obstetrics') ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
-									</button>
-									{expandedSpecialties.has('obstetrics') && (
-										<div className="p-4 pt-0 grid grid-cols-1 md:grid-cols-4 gap-4">
-											<div>
-												<label className={labelClass}>Altura Uterina (cm)</label>
-												<input value={fundalHeight} onChange={(e) => setFundalHeight(e.target.value)} className={`${inputBase} ${inputDark}`} type="number" inputMode="decimal" />
+								{shouldShowSpecialty('obstetrics') && (
+									<div className="border border-slate-200 dark:border-slate-700 rounded-lg mb-4">
+										<button type="button" onClick={() => toggleSpecialty('obstetrics')} className="w-full flex items-center justify-between p-4 text-left hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors rounded-lg">
+											<span className="font-semibold text-slate-900 dark:text-slate-100">Obstetricia</span>
+											{expandedSpecialties.has('obstetrics') ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
+										</button>
+										{expandedSpecialties.has('obstetrics') && (
+											<div className="p-4 pt-0 grid grid-cols-1 md:grid-cols-4 gap-4">
+												<div>
+													<label className={labelClass}>Altura Uterina (cm)</label>
+													<input value={fundalHeight} onChange={(e) => setFundalHeight(e.target.value)} className={`${inputBase} ${inputDark}`} type="number" inputMode="decimal" />
+												</div>
+												<div>
+													<label className={labelClass}>FC Fetal (bpm)</label>
+													<input value={fetalHr} onChange={(e) => setFetalHr(e.target.value)} className={`${inputBase} ${inputDark}`} type="number" inputMode="numeric" />
+												</div>
+												<div>
+													<label className={labelClass}>Gravida</label>
+													<input value={gravida} onChange={(e) => setGravida(e.target.value)} className={`${inputBase} ${inputDark}`} type="number" inputMode="numeric" />
+												</div>
+												<div>
+													<label className={labelClass}>Para</label>
+													<input value={para} onChange={(e) => setPara(e.target.value)} className={`${inputBase} ${inputDark}`} type="number" inputMode="numeric" />
+												</div>
 											</div>
-											<div>
-												<label className={labelClass}>FC Fetal (bpm)</label>
-												<input value={fetalHr} onChange={(e) => setFetalHr(e.target.value)} className={`${inputBase} ${inputDark}`} type="number" inputMode="numeric" />
-											</div>
-											<div>
-												<label className={labelClass}>Gravida</label>
-												<input value={gravida} onChange={(e) => setGravida(e.target.value)} className={`${inputBase} ${inputDark}`} type="number" inputMode="numeric" />
-											</div>
-											<div>
-												<label className={labelClass}>Para</label>
-												<input value={para} onChange={(e) => setPara(e.target.value)} className={`${inputBase} ${inputDark}`} type="number" inputMode="numeric" />
-											</div>
-										</div>
-									)}
-								</div>
+										)}
+									</div>
+								)}
 
 								{/* Nutrition */}
-								<div className="border border-slate-200 dark:border-slate-700 rounded-lg mb-4">
-									<button
-										type="button"
-										onClick={() => toggleSpecialty('nutrition')}
-										className="w-full flex items-center justify-between p-4 text-left hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors rounded-lg"
-									>
-										<span className="font-semibold text-slate-900 dark:text-slate-100">Nutrición</span>
-										{expandedSpecialties.has('nutrition') ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
-									</button>
-									{expandedSpecialties.has('nutrition') && (
-										<div className="p-4 pt-0 grid grid-cols-1 md:grid-cols-3 gap-4">
-											<div>
-												<label className={labelClass}>Circunferencia Cintura (cm)</label>
-												<input value={waistCircumference} onChange={(e) => setWaistCircumference(e.target.value)} className={`${inputBase} ${inputDark}`} type="number" inputMode="decimal" />
+								{shouldShowSpecialty('nutrition') && (
+									<div className="border border-slate-200 dark:border-slate-700 rounded-lg mb-4">
+										<button type="button" onClick={() => toggleSpecialty('nutrition')} className="w-full flex items-center justify-between p-4 text-left hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors rounded-lg">
+											<span className="font-semibold text-slate-900 dark:text-slate-100">Nutrición</span>
+											{expandedSpecialties.has('nutrition') ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
+										</button>
+										{expandedSpecialties.has('nutrition') && (
+											<div className="p-4 pt-0 grid grid-cols-1 md:grid-cols-3 gap-4">
+												<div>
+													<label className={labelClass}>Circunferencia Cintura (cm)</label>
+													<input value={waistCircumference} onChange={(e) => setWaistCircumference(e.target.value)} className={`${inputBase} ${inputDark}`} type="number" inputMode="decimal" />
+												</div>
+												<div>
+													<label className={labelClass}>IMC (Override)</label>
+													<input value={bmiOverride} onChange={(e) => setBmiOverride(e.target.value)} placeholder={computedBMI || ''} className={`${inputBase} ${inputDark}`} />
+												</div>
 											</div>
-											<div>
-												<label className={labelClass}>IMC (Override)</label>
-												<input value={bmiOverride} onChange={(e) => setBmiOverride(e.target.value)} placeholder={computedBMI || ''} className={`${inputBase} ${inputDark}`} />
-											</div>
-										</div>
-									)}
-								</div>
+										)}
+									</div>
+								)}
 
 								{/* Dermatology */}
-								<div className="border border-slate-200 dark:border-slate-700 rounded-lg mb-4">
-									<button
-										type="button"
-										onClick={() => toggleSpecialty('dermatology')}
-										className="w-full flex items-center justify-between p-4 text-left hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors rounded-lg"
-									>
-										<span className="font-semibold text-slate-900 dark:text-slate-100">Dermatología</span>
-										{expandedSpecialties.has('dermatology') ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
-									</button>
-									{expandedSpecialties.has('dermatology') && (
-										<div className="p-4 pt-0 grid grid-cols-1 md:grid-cols-3 gap-4">
-											<div className="md:col-span-2">
-												<label className={labelClass}>Descripción Lesión</label>
-												<input value={lesionDesc} onChange={(e) => setLesionDesc(e.target.value)} className={`${inputBase} ${inputDark}`} />
+								{shouldShowSpecialty('dermatology') && (
+									<div className="border border-slate-200 dark:border-slate-700 rounded-lg mb-4">
+										<button type="button" onClick={() => toggleSpecialty('dermatology')} className="w-full flex items-center justify-between p-4 text-left hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors rounded-lg">
+											<span className="font-semibold text-slate-900 dark:text-slate-100">Dermatología</span>
+											{expandedSpecialties.has('dermatology') ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
+										</button>
+										{expandedSpecialties.has('dermatology') && (
+											<div className="p-4 pt-0 grid grid-cols-1 md:grid-cols-3 gap-4">
+												<div className="md:col-span-2">
+													<label className={labelClass}>Descripción Lesión</label>
+													<input value={lesionDesc} onChange={(e) => setLesionDesc(e.target.value)} className={`${inputBase} ${inputDark}`} />
+												</div>
+												<div>
+													<label className={labelClass}>Tamaño Lesión (cm)</label>
+													<input value={lesionSize} onChange={(e) => setLesionSize(e.target.value)} className={`${inputBase} ${inputDark}`} type="number" inputMode="decimal" />
+												</div>
 											</div>
-											<div>
-												<label className={labelClass}>Tamaño Lesión (cm)</label>
-												<input value={lesionSize} onChange={(e) => setLesionSize(e.target.value)} className={`${inputBase} ${inputDark}`} type="number" inputMode="decimal" />
-											</div>
-										</div>
-									)}
-								</div>
+										)}
+									</div>
+								)}
 
 								{/* Psychiatry */}
-								<div className="border border-slate-200 dark:border-slate-700 rounded-lg mb-4">
-									<button
-										type="button"
-										onClick={() => toggleSpecialty('psychiatry')}
-										className="w-full flex items-center justify-between p-4 text-left hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors rounded-lg"
-									>
-										<span className="font-semibold text-slate-900 dark:text-slate-100">Psiquiatría</span>
-										{expandedSpecialties.has('psychiatry') ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
-									</button>
-									{expandedSpecialties.has('psychiatry') && (
-										<div className="p-4 pt-0 grid grid-cols-1 md:grid-cols-3 gap-4">
-											<div>
-												<label className={labelClass}>Escala de Ánimo</label>
-												<input value={moodScale} onChange={(e) => setMoodScale(e.target.value)} className={`${inputBase} ${inputDark}`} />
+								{shouldShowSpecialty('psychiatry') && (
+									<div className="border border-slate-200 dark:border-slate-700 rounded-lg mb-4">
+										<button type="button" onClick={() => toggleSpecialty('psychiatry')} className="w-full flex items-center justify-between p-4 text-left hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors rounded-lg">
+											<span className="font-semibold text-slate-900 dark:text-slate-100">Psiquiatría</span>
+											{expandedSpecialties.has('psychiatry') ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
+										</button>
+										{expandedSpecialties.has('psychiatry') && (
+											<div className="p-4 pt-0 grid grid-cols-1 md:grid-cols-3 gap-4">
+												<div>
+													<label className={labelClass}>Escala de Ánimo</label>
+													<input value={moodScale} onChange={(e) => setMoodScale(e.target.value)} className={`${inputBase} ${inputDark}`} />
+												</div>
+												<div>
+													<label className={labelClass}>PHQ-9</label>
+													<input value={phq9} onChange={(e) => setPhq9(e.target.value)} className={`${inputBase} ${inputDark}`} type="number" inputMode="numeric" />
+												</div>
 											</div>
-											<div>
-												<label className={labelClass}>PHQ-9</label>
-												<input value={phq9} onChange={(e) => setPhq9(e.target.value)} className={`${inputBase} ${inputDark}`} type="number" inputMode="numeric" />
-											</div>
-										</div>
-									)}
-								</div>
+										)}
+									</div>
+								)}
 
 								{/* Orthopedics */}
-								<div className="border border-slate-200 dark:border-slate-700 rounded-lg mb-4">
-									<button
-										type="button"
-										onClick={() => toggleSpecialty('orthopedics')}
-										className="w-full flex items-center justify-between p-4 text-left hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors rounded-lg"
-									>
-										<span className="font-semibold text-slate-900 dark:text-slate-100">Ortopedia</span>
-										{expandedSpecialties.has('orthopedics') ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
-									</button>
-									{expandedSpecialties.has('orthopedics') && (
-										<div className="p-4 pt-0 grid grid-cols-1 md:grid-cols-3 gap-4">
-											<div className="md:col-span-2">
-												<label className={labelClass}>Rango de Movimiento (Notas)</label>
-												<input value={romNotes} onChange={(e) => setRomNotes(e.target.value)} className={`${inputBase} ${inputDark}`} />
+								{shouldShowSpecialty('orthopedics') && (
+									<div className="border border-slate-200 dark:border-slate-700 rounded-lg mb-4">
+										<button type="button" onClick={() => toggleSpecialty('orthopedics')} className="w-full flex items-center justify-between p-4 text-left hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors rounded-lg">
+											<span className="font-semibold text-slate-900 dark:text-slate-100">Ortopedia</span>
+											{expandedSpecialties.has('orthopedics') ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
+										</button>
+										{expandedSpecialties.has('orthopedics') && (
+											<div className="p-4 pt-0 grid grid-cols-1 md:grid-cols-3 gap-4">
+												<div className="md:col-span-2">
+													<label className={labelClass}>Rango de Movimiento (Notas)</label>
+													<input value={romNotes} onChange={(e) => setRomNotes(e.target.value)} className={`${inputBase} ${inputDark}`} />
+												</div>
+												<div>
+													<label className={labelClass}>Fuerza (0-5)</label>
+													<input value={limbStrength} onChange={(e) => setLimbStrength(e.target.value)} className={`${inputBase} ${inputDark}`} type="number" inputMode="numeric" min="0" max="5" />
+												</div>
 											</div>
-											<div>
-												<label className={labelClass}>Fuerza (0-5)</label>
-												<input value={limbStrength} onChange={(e) => setLimbStrength(e.target.value)} className={`${inputBase} ${inputDark}`} type="number" inputMode="numeric" min="0" max="5" />
-											</div>
-										</div>
-									)}
-								</div>
+										)}
+									</div>
+								)}
 
 								{/* ENT */}
-								<div className="border border-slate-200 dark:border-slate-700 rounded-lg mb-4">
-									<button
-										type="button"
-										onClick={() => toggleSpecialty('ent')}
-										className="w-full flex items-center justify-between p-4 text-left hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors rounded-lg"
-									>
-										<span className="font-semibold text-slate-900 dark:text-slate-100">ORL / Otorrino</span>
-										{expandedSpecialties.has('ent') ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
-									</button>
-									{expandedSpecialties.has('ent') && (
-										<div className="p-4 pt-0 grid grid-cols-1 md:grid-cols-3 gap-4">
-											<div>
-												<label className={labelClass}>Audición Izquierda (dB)</label>
-												<input value={hearingLeft} onChange={(e) => setHearingLeft(e.target.value)} className={`${inputBase} ${inputDark}`} type="number" inputMode="numeric" />
+								{shouldShowSpecialty('ent') && (
+									<div className="border border-slate-200 dark:border-slate-700 rounded-lg mb-4">
+										<button type="button" onClick={() => toggleSpecialty('ent')} className="w-full flex items-center justify-between p-4 text-left hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors rounded-lg">
+											<span className="font-semibold text-slate-900 dark:text-slate-100">ORL / Otorrino</span>
+											{expandedSpecialties.has('ent') ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
+										</button>
+										{expandedSpecialties.has('ent') && (
+											<div className="p-4 pt-0 grid grid-cols-1 md:grid-cols-3 gap-4">
+												<div>
+													<label className={labelClass}>Audición Izquierda (dB)</label>
+													<input value={hearingLeft} onChange={(e) => setHearingLeft(e.target.value)} className={`${inputBase} ${inputDark}`} type="number" inputMode="numeric" />
+												</div>
+												<div>
+													<label className={labelClass}>Audición Derecha (dB)</label>
+													<input value={hearingRight} onChange={(e) => setHearingRight(e.target.value)} className={`${inputBase} ${inputDark}`} type="number" inputMode="numeric" />
+												</div>
+												<div className="md:col-span-3">
+													<label className={labelClass}>Otoscopía / Observaciones</label>
+													<input value={otoscopyNotes} onChange={(e) => setOtoscopyNotes(e.target.value)} className={`${inputBase} ${inputDark}`} />
+												</div>
 											</div>
-											<div>
-												<label className={labelClass}>Audición Derecha (dB)</label>
-												<input value={hearingRight} onChange={(e) => setHearingRight(e.target.value)} className={`${inputBase} ${inputDark}`} type="number" inputMode="numeric" />
-											</div>
-											<div className="md:col-span-3">
-												<label className={labelClass}>Otoscopía / Observaciones</label>
-												<input value={otoscopyNotes} onChange={(e) => setOtoscopyNotes(e.target.value)} className={`${inputBase} ${inputDark}`} />
-											</div>
-										</div>
-									)}
-								</div>
+										)}
+									</div>
+								)}
 
 								{/* Gynecology */}
-								<div className="border border-slate-200 dark:border-slate-700 rounded-lg mb-4">
-									<button
-										type="button"
-										onClick={() => toggleSpecialty('gynecology')}
-										className="w-full flex items-center justify-between p-4 text-left hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors rounded-lg"
-									>
-										<span className="font-semibold text-slate-900 dark:text-slate-100">Ginecología</span>
-										{expandedSpecialties.has('gynecology') ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
-									</button>
-									{expandedSpecialties.has('gynecology') && (
-										<div className="p-4 pt-0 grid grid-cols-1 md:grid-cols-3 gap-4">
-											<div>
-												<label className={labelClass}>Fecha Última Regla (LMP)</label>
-												<input value={lmp} onChange={(e) => setLmp(e.target.value)} className={`${inputBase} ${inputDark}`} type="date" />
+								{shouldShowSpecialty('gynecology') && (
+									<div className="border border-slate-200 dark:border-slate-700 rounded-lg mb-4">
+										<button type="button" onClick={() => toggleSpecialty('gynecology')} className="w-full flex items-center justify-between p-4 text-left hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors rounded-lg">
+											<span className="font-semibold text-slate-900 dark:text-slate-100">Ginecología</span>
+											{expandedSpecialties.has('gynecology') ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
+										</button>
+										{expandedSpecialties.has('gynecology') && (
+											<div className="p-4 pt-0 space-y-6">
+												{/* Motivo de Consulta */}
+												<div>
+													<label className={labelClass}>Motivo de Evaluación / Consulta</label>
+													<textarea value={evaluationReason} onChange={(e) => setEvaluationReason(e.target.value)} className={`${inputBase} ${inputDark}`} rows={2} placeholder="Motivo por el cual la paciente acude a consulta" />
+												</div>
+
+												{/* Antecedentes Médicos */}
+												<div className="border-t border-slate-200 dark:border-slate-700 pt-4">
+													<h4 className="text-sm font-semibold text-slate-900 dark:text-slate-100 mb-3">Antecedentes Médicos</h4>
+													<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+														<div>
+															<label className={labelClass}>Alérgicos</label>
+															<input value={allergies} onChange={(e) => setAllergies(e.target.value)} className={`${inputBase} ${inputDark}`} placeholder="NIEGA o especificar" />
+														</div>
+														<div>
+															<label className={labelClass}>Quirúrgicos</label>
+															<input value={surgicalHistory} onChange={(e) => setSurgicalHistory(e.target.value)} className={`${inputBase} ${inputDark}`} placeholder="NIEGA o especificar" />
+														</div>
+													</div>
+												</div>
+
+												{/* Antecedentes Familiares */}
+												<div className="border-t border-slate-200 dark:border-slate-700 pt-4">
+													<h4 className="text-sm font-semibold text-slate-900 dark:text-slate-100 mb-3">Antecedentes Familiares</h4>
+													<div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+														<div>
+															<label className={labelClass}>Madre</label>
+															<input value={familyHistoryMother} onChange={(e) => setFamilyHistoryMother(e.target.value)} className={`${inputBase} ${inputDark}`} placeholder="VIVA SANA o especificar" />
+														</div>
+														<div>
+															<label className={labelClass}>Padre</label>
+															<input value={familyHistoryFather} onChange={(e) => setFamilyHistoryFather(e.target.value)} className={`${inputBase} ${inputDark}`} placeholder="VIVO SANO o especificar" />
+														</div>
+														<div>
+															<label className={labelClass}>Antecedentes de Cáncer de Mama</label>
+															<input value={familyHistoryBreastCancer} onChange={(e) => setFamilyHistoryBreastCancer(e.target.value)} className={`${inputBase} ${inputDark}`} placeholder="NIEGA o especificar" />
+														</div>
+													</div>
+												</div>
+
+												{/* Antecedentes Ginecológicos */}
+												<div className="border-t border-slate-200 dark:border-slate-700 pt-4">
+													<h4 className="text-sm font-semibold text-slate-900 dark:text-slate-100 mb-3">Antecedentes Ginecológicos</h4>
+													<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+														<div>
+															<label className={labelClass}>ITS</label>
+															<input value={its} onChange={(e) => setIts(e.target.value)} className={`${inputBase} ${inputDark}`} placeholder="NIEGA o especificar" />
+														</div>
+														<div>
+															<label className={labelClass}>Menstruaciones</label>
+															<input value={menstruationType} onChange={(e) => setMenstruationType(e.target.value)} className={`${inputBase} ${inputDark}`} placeholder="REGULARES o IRREGULARES" />
+														</div>
+														<div>
+															<label className={labelClass}>Tipo de Menstruación (ej: 5/28)</label>
+															<input value={menstruationPattern} onChange={(e) => setMenstruationPattern(e.target.value)} className={`${inputBase} ${inputDark}`} placeholder="5/28" />
+														</div>
+														<div>
+															<label className={labelClass}>Dismenorreica</label>
+															<select value={dysmenorrhea} onChange={(e) => setDysmenorrhea(e.target.value)} className={`${inputBase} ${inputDark}`}>
+																<option value="NO">NO</option>
+																<option value="SÍ">SÍ</option>
+															</select>
+														</div>
+														<div>
+															<label className={labelClass}>PRS (Primera Relación Sexual)</label>
+															<input value={firstSexualRelation} onChange={(e) => setFirstSexualRelation(e.target.value)} className={`${inputBase} ${inputDark}`} placeholder="Edad o fecha" />
+														</div>
+														<div>
+															<label className={labelClass}>PS (Parejas Sexuales)</label>
+															<input value={sexualPartners} onChange={(e) => setSexualPartners(e.target.value)} className={`${inputBase} ${inputDark}`} placeholder="Número" />
+														</div>
+														<div>
+															<label className={labelClass}>Fecha Última Regla (LMP)</label>
+															<input value={lmp} onChange={(e) => setLmp(e.target.value)} className={`${inputBase} ${inputDark}`} type="date" />
+														</div>
+														<div>
+															<label className={labelClass}>Método Anticonceptivo</label>
+															<input value={contraceptiveUse} onChange={(e) => setContraceptiveUse(e.target.value)} className={`${inputBase} ${inputDark}`} />
+														</div>
+														<div>
+															<label className={labelClass}>HO (Histerectomía Obstétrica / Hemorragia Obstétrica)</label>
+															<input value={ho} onChange={(e) => setHo(e.target.value)} className={`${inputBase} ${inputDark}`} placeholder="NIEGA o especificar" />
+														</div>
+													</div>
+												</div>
+
+												{/* Examen Físico */}
+												<div className="border-t border-slate-200 dark:border-slate-700 pt-4">
+													<h4 className="text-sm font-semibold text-slate-900 dark:text-slate-100 mb-3">Examen Físico</h4>
+													<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+														<div>
+															<label className={labelClass}>Condiciones Generales</label>
+															<input value={generalConditions} onChange={(e) => setGeneralConditions(e.target.value)} className={`${inputBase} ${inputDark}`} placeholder="ESTABLES" />
+														</div>
+														<div>
+															<label className={labelClass}>Mamas - Tamaño</label>
+															<input value={breastSize} onChange={(e) => setBreastSize(e.target.value)} className={`${inputBase} ${inputDark}`} placeholder="MEDIANO TAMAÑO" />
+														</div>
+														<div>
+															<label className={labelClass}>Mamas - Simetría</label>
+															<input value={breastSymmetry} onChange={(e) => setBreastSymmetry(e.target.value)} className={`${inputBase} ${inputDark}`} placeholder="ASIMÉTRICAS" />
+														</div>
+														<div>
+															<label className={labelClass}>Mamas - CAP</label>
+															<input value={breastCap} onChange={(e) => setBreastCap(e.target.value)} className={`${inputBase} ${inputDark}`} placeholder="SIN ALTERACIONES" />
+														</div>
+														<div>
+															<label className={labelClass}>Mamas - Secreción</label>
+															<input value={breastSecretion} onChange={(e) => setBreastSecretion(e.target.value)} className={`${inputBase} ${inputDark}`} placeholder="NO SE EVIDENCIA SALIDA DE SECRECIÓN" />
+														</div>
+														<div>
+															<label className={labelClass}>Fosas Axilares y Supraclaviculares</label>
+															<input value={axillaryFossae} onChange={(e) => setAxillaryFossae(e.target.value)} className={`${inputBase} ${inputDark}`} placeholder="LIBRES" />
+														</div>
+														<div>
+															<label className={labelClass}>Abdomen</label>
+															<input value={abdomen} onChange={(e) => setAbdomen(e.target.value)} className={`${inputBase} ${inputDark}`} placeholder="BLANDO, DEPRIMIBLE NO DOLOROSO A LA PALPACIÓN" />
+														</div>
+														<div>
+															<label className={labelClass}>Genitales Externos</label>
+															<input value={externalGenitals} onChange={(e) => setExternalGenitals(e.target.value)} className={`${inputBase} ${inputDark}`} placeholder="NORMOCONFIGURADOS" />
+														</div>
+														<div>
+															<label className={labelClass}>Especuloscopio - Cuello</label>
+															<input value={speculumCervix} onChange={(e) => setSpeculumCervix(e.target.value)} className={`${inputBase} ${inputDark}`} placeholder="CUELLO MACROSCÓPICAMENTE SANO" />
+														</div>
+														<div>
+															<label className={labelClass}>Tacto - Cuello</label>
+															<input value={tactCervix} onChange={(e) => setTactCervix(e.target.value)} className={`${inputBase} ${inputDark}`} placeholder="CUELLO RENITENTE NO DOLOROSO A LA MOVILIZACIÓN" />
+														</div>
+														<div>
+															<label className={labelClass}>Fondo de Sacos</label>
+															<input value={fundusSacs} onChange={(e) => setFundusSacs(e.target.value)} className={`${inputBase} ${inputDark}`} placeholder="LIBRES" />
+														</div>
+														<div>
+															<label className={labelClass}>Anexos</label>
+															<input value={adnexa} onChange={(e) => setAdnexa(e.target.value)} className={`${inputBase} ${inputDark}`} placeholder="NO PALPABLES" />
+														</div>
+													</div>
+												</div>
+
+												{/* Colposcopia */}
+												<div className="border-t border-slate-200 dark:border-slate-700 pt-4">
+													<h4 className="text-sm font-semibold text-slate-900 dark:text-slate-100 mb-3">Colposcopia</h4>
+													<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+														<div>
+															<label className={labelClass}>Test de Hinselmann</label>
+															<select value={hinselmannTest} onChange={(e) => setHinselmannTest(e.target.value)} className={`${inputBase} ${inputDark}`}>
+																<option value="NEGATIVO">NEGATIVO</option>
+																<option value="POSITIVO">POSITIVO</option>
+															</select>
+														</div>
+														<div>
+															<label className={labelClass}>Test de Schiller</label>
+															<select value={schillerTest} onChange={(e) => setSchillerTest(e.target.value)} className={`${inputBase} ${inputDark}`}>
+																<option value="NEGATIVO">NEGATIVO</option>
+																<option value="POSITIVO">POSITIVO</option>
+															</select>
+														</div>
+													</div>
+												</div>
+
+												{/* Ecografía Transvaginal */}
+												<div className="border-t border-slate-200 dark:border-slate-700 pt-4">
+													<h4 className="text-sm font-semibold text-slate-900 dark:text-slate-100 mb-3">Ecografía Transvaginal</h4>
+													<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+														<div>
+															<label className={labelClass}>Útero - Dimensiones (ej: 74X34X50 MM)</label>
+															<input value={uterusDimensions} onChange={(e) => setUterusDimensions(e.target.value)} className={`${inputBase} ${inputDark}`} placeholder="74X34X50 MM" />
+														</div>
+														<div>
+															<label className={labelClass}>Interfase Endometrial (mm)</label>
+															<input value={endometrialInterface} onChange={(e) => setEndometrialInterface(e.target.value)} className={`${inputBase} ${inputDark}`} placeholder="7 MM" type="number" step="0.1" />
+														</div>
+														<div>
+															<label className={labelClass}>Tipo de Interfase Endometrial</label>
+															<input value={endometrialInterfaceType} onChange={(e) => setEndometrialInterfaceType(e.target.value)} className={`${inputBase} ${inputDark}`} placeholder="TRILAMINAR" />
+														</div>
+														<div>
+															<label className={labelClass}>Ovario Izquierdo - Dimensiones (ej: 23X17X29 MM)</label>
+															<input value={leftOvaryDimensions} onChange={(e) => setLeftOvaryDimensions(e.target.value)} className={`${inputBase} ${inputDark}`} placeholder="23X17X29 MM" />
+														</div>
+														<div>
+															<label className={labelClass}>Ovario Derecho - Dimensiones (ej: 26X19X20 MM)</label>
+															<input value={rightOvaryDimensions} onChange={(e) => setRightOvaryDimensions(e.target.value)} className={`${inputBase} ${inputDark}`} placeholder="26X19X20 MM" />
+														</div>
+														<div>
+															<label className={labelClass}>Líquido en Fondo de Saco</label>
+															<input value={fundusFluid} onChange={(e) => setFundusFluid(e.target.value)} className={`${inputBase} ${inputDark}`} placeholder="NO SE EVIDENCIA LÍQUIDO EN FONDO DE SACO" />
+														</div>
+													</div>
+												</div>
+
+												{/* Examen Cervical / Observaciones */}
+												<div className="border-t border-slate-200 dark:border-slate-700 pt-4">
+													<label className={labelClass}>Examen Cervical / Observaciones Adicionales</label>
+													<textarea value={cervicalExamNotes} onChange={(e) => setCervicalExamNotes(e.target.value)} className={`${inputBase} ${inputDark}`} rows={3} placeholder="Observaciones adicionales del examen cervical" />
+												</div>
 											</div>
-											<div>
-												<label className={labelClass}>Método Anticonceptivo</label>
-												<input value={contraceptiveUse} onChange={(e) => setContraceptiveUse(e.target.value)} className={`${inputBase} ${inputDark}`} />
-											</div>
-											<div className="md:col-span-3">
-												<label className={labelClass}>Examen Cervical / Observaciones</label>
-												<input value={cervicalExamNotes} onChange={(e) => setCervicalExamNotes(e.target.value)} className={`${inputBase} ${inputDark}`} />
-											</div>
-										</div>
-									)}
-								</div>
+										)}
+									</div>
+								)}
 
 								{/* Endocrinology */}
-								<div className="border border-slate-200 dark:border-slate-700 rounded-lg mb-4">
-									<button
-										type="button"
-										onClick={() => toggleSpecialty('endocrinology')}
-										className="w-full flex items-center justify-between p-4 text-left hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors rounded-lg"
-									>
-										<span className="font-semibold text-slate-900 dark:text-slate-100">Endocrinología</span>
-										{expandedSpecialties.has('endocrinology') ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
-									</button>
-									{expandedSpecialties.has('endocrinology') && (
-										<div className="p-4 pt-0 grid grid-cols-1 md:grid-cols-3 gap-4">
-											<div>
-												<label className={labelClass}>TSH (mIU/L)</label>
-												<input value={tsh} onChange={(e) => setTsh(e.target.value)} className={`${inputBase} ${inputDark}`} type="number" inputMode="decimal" />
+								{shouldShowSpecialty('endocrinology') && (
+									<div className="border border-slate-200 dark:border-slate-700 rounded-lg mb-4">
+										<button type="button" onClick={() => toggleSpecialty('endocrinology')} className="w-full flex items-center justify-between p-4 text-left hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors rounded-lg">
+											<span className="font-semibold text-slate-900 dark:text-slate-100">Endocrinología</span>
+											{expandedSpecialties.has('endocrinology') ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
+										</button>
+										{expandedSpecialties.has('endocrinology') && (
+											<div className="p-4 pt-0 grid grid-cols-1 md:grid-cols-3 gap-4">
+												<div>
+													<label className={labelClass}>TSH (mIU/L)</label>
+													<input value={tsh} onChange={(e) => setTsh(e.target.value)} className={`${inputBase} ${inputDark}`} type="number" inputMode="decimal" />
+												</div>
+												<div>
+													<label className={labelClass}>HbA1c (%)</label>
+													<input value={hba1c} onChange={(e) => setHba1c(e.target.value)} className={`${inputBase} ${inputDark}`} type="number" inputMode="decimal" step="0.1" />
+												</div>
 											</div>
-											<div>
-												<label className={labelClass}>HbA1c (%)</label>
-												<input value={hba1c} onChange={(e) => setHba1c(e.target.value)} className={`${inputBase} ${inputDark}`} type="number" inputMode="decimal" step="0.1" />
-											</div>
-										</div>
-									)}
-								</div>
+										)}
+									</div>
+								)}
 
 								{/* Ophthalmology */}
-								<div className="border border-slate-200 dark:border-slate-700 rounded-lg mb-4">
-									<button
-										type="button"
-										onClick={() => toggleSpecialty('ophthalmology')}
-										className="w-full flex items-center justify-between p-4 text-left hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors rounded-lg"
-									>
-										<span className="font-semibold text-slate-900 dark:text-slate-100">Oftalmología</span>
-										{expandedSpecialties.has('ophthalmology') ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
-									</button>
-									{expandedSpecialties.has('ophthalmology') && (
-										<div className="p-4 pt-0 grid grid-cols-1 md:grid-cols-3 gap-4">
-											<div>
-												<label className={labelClass}>Agudeza Visual (p.ej. 20/20)</label>
-												<input value={visualAcuity} onChange={(e) => setVisualAcuity(e.target.value)} className={`${inputBase} ${inputDark}`} />
+								{shouldShowSpecialty('ophthalmology') && (
+									<div className="border border-slate-200 dark:border-slate-700 rounded-lg mb-4">
+										<button type="button" onClick={() => toggleSpecialty('ophthalmology')} className="w-full flex items-center justify-between p-4 text-left hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors rounded-lg">
+											<span className="font-semibold text-slate-900 dark:text-slate-100">Oftalmología</span>
+											{expandedSpecialties.has('ophthalmology') ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
+										</button>
+										{expandedSpecialties.has('ophthalmology') && (
+											<div className="p-4 pt-0 grid grid-cols-1 md:grid-cols-3 gap-4">
+												<div>
+													<label className={labelClass}>Agudeza Visual (p.ej. 20/20)</label>
+													<input value={visualAcuity} onChange={(e) => setVisualAcuity(e.target.value)} className={`${inputBase} ${inputDark}`} />
+												</div>
+												<div>
+													<label className={labelClass}>Presión Intraocular (mmHg)</label>
+													<input value={iop} onChange={(e) => setIop(e.target.value)} className={`${inputBase} ${inputDark}`} type="number" inputMode="decimal" />
+												</div>
 											</div>
-											<div>
-												<label className={labelClass}>Presión Intraocular (mmHg)</label>
-												<input value={iop} onChange={(e) => setIop(e.target.value)} className={`${inputBase} ${inputDark}`} type="number" inputMode="decimal" />
-											</div>
-										</div>
-									)}
-								</div>
+										)}
+									</div>
+								)}
 							</div>
 						</div>
 					)}
@@ -1154,12 +1405,7 @@ export default function EditConsultationForm({ initial, patient, doctor }: { ini
 									Generar Informe Médico
 								</h2>
 								{reportUrl && (
-									<a
-										href={reportUrl}
-										target="_blank"
-										rel="noopener noreferrer"
-										className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-emerald-600 text-white text-sm font-medium hover:bg-emerald-700 transition-colors shadow-sm"
-									>
+									<a href={reportUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-emerald-600 text-white text-sm font-medium hover:bg-emerald-700 transition-colors shadow-sm">
 										<Download size={16} />
 										Descargar Informe
 									</a>
@@ -1168,41 +1414,42 @@ export default function EditConsultationForm({ initial, patient, doctor }: { ini
 
 							<div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4 mb-6">
 								<p className="text-sm text-blue-800 dark:text-blue-200">
-									<strong>Instrucciones:</strong> Escribe el contenido del informe médico que se insertará en tu plantilla. 
-									El contenido se insertará en el marcador <code className="bg-blue-100 dark:bg-blue-900 px-1.5 py-0.5 rounded font-mono text-xs">{"{{contenido}}"}</code> de tu plantilla.
+									<strong>Instrucciones:</strong> El contenido del informe se genera automáticamente desde la plantilla de texto configurada. Puedes revisar y editar el contenido antes de generar el informe. El contenido se insertará en el marcador <code className="bg-blue-100 dark:bg-blue-900 px-1.5 py-0.5 rounded font-mono text-xs">{'{{contenido}}'}</code> de tu plantilla Word.
 								</p>
 							</div>
 
 							<div className="space-y-4">
-								<div>
+								<div className="flex items-center justify-between">
 									<label className={labelClass}>Contenido del Informe</label>
-									<textarea
-										value={reportContent}
-										onChange={(e) => setReportContent(e.target.value)}
-										rows={16}
-										className={`${inputBase} ${inputDark} resize-none font-mono text-sm`}
-										placeholder="Escribe aquí el contenido completo del informe médico. Este texto se insertará automáticamente en tu plantilla de informe..."
-									/>
+									<button
+										type="button"
+										onClick={async () => {
+											try {
+												const res = await fetch(`/api/consultations/${initial.id}/generate-report-content`, {
+													credentials: 'include',
+												});
+												const data = await res.json();
+												if (res.ok && data.content) {
+													setReportContent(data.content);
+													setReportSuccess('Contenido generado automáticamente desde la plantilla');
+												} else {
+													setReportError(data.error || 'Error al generar contenido automáticamente');
+												}
+											} catch (err: any) {
+												setReportError(err.message || 'Error al generar contenido automáticamente');
+											}
+										}}
+										className="px-4 py-2 rounded-lg bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-700 transition-colors">
+										🔄 Generar Automáticamente
+									</button>
 								</div>
+								<textarea value={reportContent} onChange={(e) => setReportContent(e.target.value)} rows={16} className={`${inputBase} ${inputDark} resize-none font-mono text-sm`} placeholder="El contenido se generará automáticamente desde la plantilla de texto. Haz clic en 'Generar Automáticamente' o escribe el contenido manualmente..." />
 
-								{reportError && (
-									<div className="rounded-lg bg-rose-50 dark:bg-rose-900/20 border border-rose-200 dark:border-rose-800 text-rose-700 dark:text-rose-300 p-4 text-sm">
-										{reportError}
-									</div>
-								)}
+								{reportError && <div className="rounded-lg bg-rose-50 dark:bg-rose-900/20 border border-rose-200 dark:border-rose-800 text-rose-700 dark:text-rose-300 p-4 text-sm">{reportError}</div>}
 
-								{reportSuccess && (
-									<div className="rounded-lg bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300 p-4 text-sm">
-										{reportSuccess}
-									</div>
-								)}
+								{reportSuccess && <div className="rounded-lg bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300 p-4 text-sm">{reportSuccess}</div>}
 
-								<button
-									type="button"
-									onClick={handleGenerateReport}
-									disabled={generatingReport || !reportContent.trim()}
-									className="inline-flex items-center gap-2 px-6 py-3 rounded-lg bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-semibold shadow-lg hover:shadow-xl hover:scale-[1.02] transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
-								>
+								<button type="button" onClick={handleGenerateReport} disabled={generatingReport || !reportContent.trim()} className="inline-flex items-center gap-2 px-6 py-3 rounded-lg bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-semibold shadow-lg hover:shadow-xl hover:scale-[1.02] transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100">
 									{generatingReport ? (
 										<>
 											<Loader2 className="w-5 h-5 animate-spin" />
@@ -1220,25 +1467,13 @@ export default function EditConsultationForm({ initial, patient, doctor }: { ini
 					)}
 
 					{/* Error and Success Messages */}
-					{error && (
-						<div className="rounded-lg bg-rose-50 dark:bg-rose-900/20 border border-rose-200 dark:border-rose-800 text-rose-700 dark:text-rose-300 p-4 whitespace-pre-line text-sm">
-							{error}
-						</div>
-					)}
-					{success && (
-						<div className="rounded-lg bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300 p-4 text-sm">
-							{success}
-						</div>
-					)}
+					{error && <div className="rounded-lg bg-rose-50 dark:bg-rose-900/20 border border-rose-200 dark:border-rose-800 text-rose-700 dark:text-rose-300 p-4 whitespace-pre-line text-sm">{error}</div>}
+					{success && <div className="rounded-lg bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300 p-4 text-sm">{success}</div>}
 
 					{/* Action Buttons */}
 					<div className="flex items-center justify-between pt-6 border-t border-slate-200 dark:border-slate-700">
 						<div className="flex items-center gap-3">
-							<button
-								type="submit"
-								disabled={loading}
-								className="inline-flex items-center gap-2 px-6 py-3 rounded-lg bg-gradient-to-r from-teal-600 to-cyan-600 text-white font-semibold shadow-lg hover:shadow-xl hover:scale-[1.02] transition-all disabled:opacity-50"
-							>
+							<button type="submit" disabled={loading} className="inline-flex items-center gap-2 px-6 py-3 rounded-lg bg-gradient-to-r from-teal-600 to-cyan-600 text-white font-semibold shadow-lg hover:shadow-xl hover:scale-[1.02] transition-all disabled:opacity-50">
 								{loading ? (
 									<>
 										<Loader2 className="w-5 h-5 animate-spin" />
@@ -1252,20 +1487,12 @@ export default function EditConsultationForm({ initial, patient, doctor }: { ini
 								)}
 							</button>
 
-							<button
-								type="button"
-								onClick={() => router.push(`/dashboard/medic/consultas/${initial.id}`)}
-								className="px-5 py-3 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors font-medium"
-							>
+							<button type="button" onClick={() => router.push(`/dashboard/medic/consultas/${initial.id}`)} className="px-5 py-3 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors font-medium">
 								Cancelar
 							</button>
 						</div>
 
-						<button
-							type="button"
-							onClick={handleDelete}
-							className="inline-flex items-center gap-2 px-5 py-3 rounded-lg bg-rose-600 text-white font-medium shadow-lg hover:bg-rose-700 hover:shadow-xl transition-all"
-						>
+						<button type="button" onClick={handleDelete} className="inline-flex items-center gap-2 px-5 py-3 rounded-lg bg-rose-600 text-white font-medium shadow-lg hover:bg-rose-700 hover:shadow-xl transition-all">
 							<Trash2 size={16} />
 							Eliminar
 						</button>

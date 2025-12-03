@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Upload, FileType, CheckCircle2, AlertCircle, Loader2 } from 'lucide-react';
+import { Upload, FileType, CheckCircle2, AlertCircle, Loader2, Download } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 
 export default function ReportTemplatePage() {
@@ -11,6 +11,8 @@ export default function ReportTemplatePage() {
 	const [error, setError] = useState<string | null>(null);
 	const [success, setSuccess] = useState<string | null>(null);
 	const [currentTemplate, setCurrentTemplate] = useState<{ url: string; name: string } | null>(null);
+	const [templateText, setTemplateText] = useState<string>('');
+	const [savingText, setSavingText] = useState(false);
 	const [loading, setLoading] = useState(true);
 
 	useEffect(() => {
@@ -29,6 +31,13 @@ export default function ReportTemplatePage() {
 						url: data.template_url,
 						name: data.template_name || 'Plantilla actual',
 					});
+				}
+				// Cargar plantilla de texto si existe (puede ser null, undefined o string vacío)
+				if (data.template_text && typeof data.template_text === 'string' && data.template_text.trim() !== '') {
+					setTemplateText(data.template_text);
+				} else {
+					// Si no hay plantilla guardada, mantener el estado vacío
+					setTemplateText('');
 				}
 			}
 		} catch (err) {
@@ -110,6 +119,35 @@ export default function ReportTemplatePage() {
 		}
 	};
 
+	const handleSaveTemplateText = async () => {
+		setSavingText(true);
+		setError(null);
+		setSuccess(null);
+
+		try {
+			const res = await fetch('/api/medic/report-template', {
+				method: 'PUT',
+				credentials: 'include',
+				headers: {
+					'Content-Type': 'application/json',
+				},
+				body: JSON.stringify({ template_text: templateText }),
+			});
+
+			const data = await res.json();
+
+			if (!res.ok) {
+				throw new Error(data.error || 'Error al guardar la plantilla de texto');
+			}
+
+			setSuccess('Plantilla de texto guardada exitosamente');
+		} catch (err: any) {
+			setError(err.message || 'Error al guardar la plantilla de texto');
+		} finally {
+			setSavingText(false);
+		}
+	};
+
 	if (loading) {
 		return (
 			<main className="min-h-screen bg-gradient-to-br from-blue-50 via-cyan-50 to-teal-50 py-10 px-6">
@@ -175,9 +213,98 @@ export default function ReportTemplatePage() {
 					</div>
 				)}
 
+				{/* Template Text Section */}
+				<div className="bg-white rounded-2xl border border-blue-100 shadow-lg p-6">
+					<div className="flex items-center justify-between mb-4">
+						<div className="flex items-center gap-3">
+							<h2 className="text-lg font-semibold text-slate-900">Plantilla de Texto del Informe</h2>
+							{templateText && templateText.trim() !== '' && (
+								<span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-green-100 text-green-700 text-xs font-medium">
+									<CheckCircle2 className="w-3.5 h-3.5" />
+									Plantilla guardada
+								</span>
+							)}
+						</div>
+						<button
+							onClick={() => {
+								// Descargar archivo de ejemplo
+								const link = document.createElement('a');
+								link.href = '/ejemplo-plantilla-informe.txt';
+								link.download = 'ejemplo-plantilla-informe.txt';
+								document.body.appendChild(link);
+								link.click();
+								document.body.removeChild(link);
+							}}
+							className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-700 transition-colors shadow-sm"
+						>
+							<Download size={16} />
+							Descargar Ejemplo
+						</button>
+					</div>
+					<p className="text-sm text-slate-600 mb-4">
+						Escribe aquí la estructura de texto que se usará para generar automáticamente el contenido del informe. 
+						Usa marcadores como {'{{paciente}}'}, {'{{edad}}'}, {'{{motivo_consulta}}'}, etc. para insertar los datos de la consulta.
+						Haz clic en "Descargar Ejemplo" para ver todas las variables disponibles y un ejemplo completo.
+						{templateText && templateText.trim() !== '' && (
+							<span className="block mt-2 text-xs text-green-600 font-medium">
+								✓ Hay una plantilla guardada. Puedes editarla aquí y guardar los cambios.
+							</span>
+						)}
+					</p>
+					
+					<div className="space-y-4">
+						<div>
+							<label htmlFor="template-text" className="block text-sm font-medium text-slate-700 mb-2">
+								Estructura del Informe
+							</label>
+							<textarea
+								id="template-text"
+								value={templateText}
+								onChange={(e) => setTemplateText(e.target.value)}
+								rows={20}
+								className="w-full px-4 py-3 rounded-lg border border-slate-300 bg-white text-slate-900 font-mono text-sm resize-none focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent"
+								placeholder={`PACIENTE FEMENINO DE {{edad}} AÑOS DE EDAD QUIEN ACUDE A CONSULTA GINECOLÓGICA REFIRIENDO, {{motivo_consulta}}.
+
+ANTECEDENTES MÉDICOS: ALERGICOS: {{alergicos}} QUIRÚRGICOS: {{quirurgicos}}
+
+ANTECEDENTES FAMILIARES: MADRE: {{antecedentes_madre}} PADRE: {{antecedentes_padre}} {{antecedentes_cancer_mama}} ANTECEDENTES DE CANCER DE MAMA.
+
+ANTECEDENTES GINECOLÓGICOS: ITS: {{its}} MENSTRUACIONES: {{tipo_menstruacion}}. TIPO: {{patron_menstruacion}} DISMENORREICA: {{dismenorrea}}. PRS: {{primera_relacion_sexual}} #PS: {{parejas_sexuales}}
+
+EXAMEN FÍSICO: SE EVALÚA PACIENTE EN {{condiciones_generales}} CONDICIONES GENERALES EUPNEICA AFEBRIL HIDRATADA. MAMAS DE {{tamano_mamas}}, {{simetria_mamas}}, CAP {{cap_mamas}}, {{secrecion_mamas}}, FOSAS AXILARES Y SUPRACLAVICULARES {{fosas_axilares}}. ABDOMEN: {{abdomen}}. GENITALES EXTERNOS: {{genitales_externos}}, ESPECULOSCOPIO: {{especuloscopia}}, TACTO: {{tacto_cervix}}, FONDO DE SACOS {{fondo_sacos}}, ANEXOS {{anexos}}. RESTO DENTRO DE LOS LÍMITES NORMALES.
+
+COLPOSCOPIA: TEST DE HINSELMANN ({{test_hinselmann}}) TEST DE SCHILLER ({{test_schiller}}).
+
+SE REALIZA ECOSONOGRAMA TRANSVAGINAL CON SONDA ENDOCAVITARIA DE 6.5 MHZ EN TIEMPO REAL DONDE SE EVIDENCIA UTERO EN AVF DE BORDES REGULARES MIOMETRIO HOMOGENEO, ÚTERO: DIMENSIONES: {{dimensiones_utero}} INTERFASE ENDOMETRIAL: {{interfase_endometrial}} {{tipo_interfase_endometrial}} OVARIO IZQUIERDO: DIMENSIONES: {{dimensiones_ovario_izquierdo}} SIN ALTERACIONES. OVARIO DERECHO: DIMENSIONES {{dimensiones_ovario_derecho}} SIN ALTERACIONES. {{liquido_fondo_saco}}.`}
+							/>
+							<p className="mt-2 text-xs text-slate-500">
+								Usa marcadores como {'{{paciente}}'}, {'{{edad}}'}, {'{{motivo_consulta}}'}, {'{{alergicos}}'}, etc. para insertar los datos automáticamente. Haz clic en "Descargar Ejemplo" arriba para ver todas las variables disponibles.
+							</p>
+						</div>
+
+						<button
+							onClick={handleSaveTemplateText}
+							disabled={savingText}
+							className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-lg bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-semibold shadow hover:scale-[1.01] transition disabled:opacity-50 disabled:cursor-not-allowed"
+						>
+							{savingText ? (
+								<>
+									<Loader2 className="w-5 h-5 animate-spin" />
+									Guardando...
+								</>
+							) : (
+								<>
+									<CheckCircle2 className="w-5 h-5" />
+									Guardar Plantilla de Texto
+								</>
+							)}
+						</button>
+					</div>
+				</div>
+
 				{/* Upload Section */}
 				<div className="bg-white rounded-2xl border border-blue-100 shadow-lg p-6">
-					<h2 className="text-lg font-semibold text-slate-900 mb-4">Cargar Plantilla</h2>
+					<h2 className="text-lg font-semibold text-slate-900 mb-4">Cargar Plantilla Word</h2>
 
 					<div className="space-y-4">
 						{/* File Input */}

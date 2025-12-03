@@ -3,8 +3,182 @@ import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { createSupabaseServerClient } from '@/app/adapters/server';
 import { createClient } from '@supabase/supabase-js';
+import { apiRequireRole } from '@/lib/auth-guards';
 import Docxtemplater from 'docxtemplater';
 import PizZip from 'pizzip';
+
+// Función para generar el contenido del informe desde la plantilla de texto
+async function generateReportContentFromTemplate(consultation: any, templateText: string, supabase: any): Promise<string> {
+	let content = templateText;
+	
+	// Función auxiliar para calcular edad desde fecha de nacimiento
+	function calculateAge(dob: string | Date | null | undefined): string {
+		if (!dob) {
+			console.log('[Generate Report] No hay fecha de nacimiento (dob es null/undefined)');
+			return '';
+		}
+		
+		try {
+			// Convertir a Date si es string
+			const birthDate = dob instanceof Date ? dob : new Date(dob);
+			
+			// Verificar que la fecha sea válida
+			if (isNaN(birthDate.getTime())) {
+				console.warn('[Generate Report] Fecha de nacimiento inválida:', dob);
+				return '';
+			}
+			
+			const today = new Date();
+			let age = today.getFullYear() - birthDate.getFullYear();
+			const monthDiff = today.getMonth() - birthDate.getMonth();
+			
+			// Ajustar si aún no ha cumplido años este año
+			if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+				age = age - 1;
+			}
+			
+			// Asegurar que la edad no sea negativa
+			if (age < 0) {
+				console.warn('[Generate Report] Edad calculada negativa, fecha de nacimiento:', dob);
+				return '';
+			}
+			
+			console.log('[Generate Report] Edad calculada:', { dob, age });
+			return String(age);
+		} catch (error) {
+			console.error('[Generate Report] Error calculando edad:', error, 'dob:', dob);
+			return '';
+		}
+	}
+	
+	// Obtener datos del paciente
+	let patientName = 'Paciente no registrado';
+	let patientAge = '';
+	let patientGender = '';
+	
+	// Obtener datos del paciente según si está registrado o no
+	if (consultation.patient_id) {
+		// Paciente registrado - obtener desde tabla Patient
+		const { data: patientData, error: patientError } = await supabase
+			.from('Patient')
+			.select('firstName, lastName, dob, gender')
+			.eq('id', consultation.patient_id)
+			.single();
+		
+		if (!patientError && patientData) {
+			patientName = `${patientData.firstName || ''} ${patientData.lastName || ''}`.trim() || 'Paciente';
+			patientAge = calculateAge(patientData.dob);
+			patientGender = patientData.gender || '';
+			console.log('[Generate Report] Paciente registrado:', {
+				name: patientName,
+				dob: patientData.dob,
+				calculatedAge: patientAge,
+				gender: patientGender
+			});
+		} else {
+			console.warn('[Generate Report] No se pudo obtener paciente registrado:', patientError);
+		}
+	} else if (consultation.unregistered_patient_id) {
+		// Paciente no registrado - obtener desde tabla unregisteredpatients
+		// Nota: la tabla usa birth_date (no dob) y sex (no gender)
+		const { data: unregisteredPatient, error: unregisteredError } = await supabase
+			.from('unregisteredpatients')
+			.select('first_name, last_name, birth_date, sex')
+			.eq('id', consultation.unregistered_patient_id)
+			.single();
+		
+		if (!unregisteredError && unregisteredPatient) {
+			patientName = `${unregisteredPatient.first_name || ''} ${unregisteredPatient.last_name || ''}`.trim() || 'Paciente no registrado';
+			patientAge = calculateAge(unregisteredPatient.birth_date);
+			patientGender = unregisteredPatient.sex || '';
+			console.log('[Generate Report] Paciente no registrado:', {
+				name: patientName,
+				birth_date: unregisteredPatient.birth_date,
+				calculatedAge: patientAge,
+				sex: patientGender
+			});
+		} else {
+			console.warn('[Generate Report] No se pudo obtener paciente no registrado:', unregisteredError);
+		}
+	} else {
+		console.warn('[Generate Report] No se encontró patient_id ni unregistered_patient_id en la consulta');
+	}
+	
+	// Obtener datos de vitals de ginecología
+	const vitals = consultation.vitals || {};
+	const gyn = vitals.gynecology || {};
+	
+	// Mapeo de marcadores a valores (todos en español para mejor entendimiento)
+	const replacements: Record<string, string> = {
+		// Datos básicos del paciente
+		paciente: patientName,
+		edad: patientAge || 'N/A',
+		genero: patientGender || 'N/A',
+		
+		// Antecedentes médicos
+		alergicos: gyn.allergies || 'NIEGA',
+		quirurgicos: gyn.surgical_history || 'NIEGA',
+		
+		// Antecedentes familiares
+		antecedentes_madre: gyn.family_history_mother || 'VIVA SANA',
+		antecedentes_padre: gyn.family_history_father || 'VIVO SANO',
+		antecedentes_cancer_mama: gyn.family_history_breast_cancer || 'NIEGA',
+		
+		// Antecedentes ginecológicos
+		motivo_consulta: gyn.evaluation_reason || consultation.chief_complaint || 'No especificado',
+		motivo_evaluacion: gyn.evaluation_reason || consultation.chief_complaint || 'No especificado',
+		its: gyn.its || 'NIEGA',
+		tipo_menstruacion: gyn.menstruation_type || 'REGULARES',
+		patron_menstruacion: gyn.menstruation_pattern || '',
+		dismenorrea: gyn.dysmenorrhea || 'NO',
+		primera_relacion_sexual: gyn.first_sexual_relation || '',
+		parejas_sexuales: gyn.sexual_partners || '',
+		ultima_regla: gyn.last_menstrual_period || '',
+		metodo_anticonceptivo: gyn.contraceptive || '',
+		
+		// Examen físico
+		condiciones_generales: gyn.general_conditions || 'ESTABLES',
+		tamano_mamas: gyn.breast_size || 'MEDIANO TAMAÑO',
+		simetria_mamas: gyn.breast_symmetry || 'ASIMÉTRICAS',
+		cap_mamas: gyn.breast_cap || 'SIN ALTERACIONES',
+		secrecion_mamas: gyn.breast_secretion || 'NO SE EVIDENCIA SALIDA DE SECRECIÓN',
+		fosas_axilares: gyn.axillary_fossae || 'LIBRES',
+		abdomen: gyn.abdomen || 'BLANDO, DEPRIMIBLE NO DOLOROSO A LA PALPACIÓN',
+		genitales_externos: gyn.external_genitals || 'NORMOCONFIGURADOS',
+		especuloscopia: gyn.speculum_cervix || 'CUELLO MACROSCÓPICAMENTE SANO',
+		tacto_cervix: gyn.tact_cervix || 'CUELLO RENITENTE NO DOLOROSO A LA MOVILIZACIÓN',
+		fondo_sacos: gyn.fundus_sacs || 'LIBRES',
+		anexos: gyn.adnexa || 'NO PALPABLES',
+		
+		// Colposcopia
+		test_hinselmann: gyn.hinselmann_test || 'NEGATIVO',
+		test_schiller: gyn.schiller_test || 'NEGATIVO',
+		
+		// Ecografía transvaginal
+		dimensiones_utero: gyn.uterus_dimensions || '',
+		interfase_endometrial: gyn.endometrial_interface || '',
+		tipo_interfase_endometrial: gyn.endometrial_interface_type || 'TRILAMINAR',
+		dimensiones_ovario_izquierdo: gyn.left_ovary_dimensions || '',
+		dimensiones_ovario_derecho: gyn.right_ovary_dimensions || '',
+		liquido_fondo_saco: gyn.fundus_fluid || 'NO SE EVIDENCIA LÍQUIDO EN FONDO DE SACO',
+		
+		// Examen cervical
+		examen_cervical: gyn.cervical_exam || '',
+		
+		// Datos generales de la consulta
+		diagnostico: consultation.diagnosis || 'No especificado',
+		motivo: consultation.chief_complaint || 'No especificado',
+		notas: consultation.notes || '',
+	};
+	
+	// Reemplazar todos los marcadores {{variable}} en la plantilla
+	content = content.replace(/\{\{(\w+)\}\}/g, (match, key) => {
+		const value = replacements[key.toLowerCase()] || replacements[key] || '';
+		return value || match; // Si no hay valor, dejar el marcador original
+	});
+	
+	return content;
+}
 
 async function getCurrentDoctorId(supabase: ReturnType<typeof createSupabaseServerClient>['supabase'], request?: Request): Promise<string | null> {
 	// Intento primario: obtener usuario por cookie (session)
@@ -67,15 +241,21 @@ export async function POST(
 ) {
 	try {
 		const { id } = await params;
-		const cookieStore = await cookies();
-		const { supabase } = createSupabaseServerClient(cookieStore);
+		
+		// 1️⃣ Autenticación usando apiRequireRole (maneja correctamente la restauración de sesión)
+		const authResult = await apiRequireRole(['MEDICO']);
+		if (authResult.response) return authResult.response;
 
-		const doctorId = await getCurrentDoctorId(supabase, request);
-		if (!doctorId) {
+		const user = authResult.user;
+		if (!user) {
 			return NextResponse.json({ error: 'No autenticado o no es médico' }, { status: 401 });
 		}
 
-		// Obtener datos de la consulta
+		const doctorId = user.userId;
+		const cookieStore = await cookies();
+		const { supabase } = createSupabaseServerClient(cookieStore);
+
+		// Obtener datos de la consulta (solo IDs, no los datos del paciente aún)
 		const { data: consultation, error: consultationError } = await supabase
 			.from('consultation')
 			.select(`
@@ -86,10 +266,9 @@ export async function POST(
 				chief_complaint,
 				diagnosis,
 				notes,
+				vitals,
 				started_at,
-				created_at,
-				patient:patient_id(firstName, lastName, identifier, dob),
-				doctor:doctor_id(name, email)
+				created_at
 			`)
 			.eq('id', id)
 			.single();
@@ -103,26 +282,36 @@ export async function POST(
 			return NextResponse.json({ error: 'No autorizado' }, { status: 403 });
 		}
 
-		// Obtener contenido del informe del body
+		console.log('[Generate Report API] Consulta obtenida:', {
+			id: consultation.id,
+			patient_id: consultation.patient_id,
+			unregistered_patient_id: consultation.unregistered_patient_id
+		});
+
+		// Obtener contenido del informe del body (puede venir del frontend o generarse automáticamente)
 		const body = await request.json();
-		const reportContent = body.content || '';
+		let reportContent = body.content || '';
 
-		console.log('[Generate Report API] Contenido recibido del frontend:', reportContent);
-		console.log('[Generate Report API] Longitud del contenido:', reportContent.length);
-
-		if (!reportContent.trim()) {
-			return NextResponse.json({ error: 'El contenido del informe no puede estar vacío' }, { status: 400 });
-		}
-
-		// Obtener plantilla del médico
+		// Obtener plantilla del médico (incluyendo plantilla de texto)
 		const { data: medicProfile, error: profileError } = await supabase
 			.from('medic_profile')
-			.select('report_template_url, report_template_name')
+			.select('report_template_url, report_template_name, report_template_text')
 			.eq('doctor_id', doctorId)
 			.maybeSingle();
 
 		if (profileError || !medicProfile?.report_template_url) {
 			return NextResponse.json({ error: 'No se encontró plantilla de informe. Por favor, carga una plantilla primero.' }, { status: 400 });
+		}
+
+		// Si existe plantilla de texto y no se proporcionó contenido, generar automáticamente
+		if (medicProfile.report_template_text && !reportContent.trim()) {
+			console.log('[Generate Report API] Generando contenido automáticamente desde plantilla de texto');
+			reportContent = await generateReportContentFromTemplate(consultation, medicProfile.report_template_text, supabase);
+			console.log('[Generate Report API] Contenido generado automáticamente:', reportContent.substring(0, 200) + '...');
+		}
+
+		if (!reportContent.trim()) {
+			return NextResponse.json({ error: 'El contenido del informe no puede estar vacío' }, { status: 400 });
 		}
 
 		// Crear cliente admin para descargar plantilla (bypass RLS)
@@ -236,25 +425,66 @@ export async function POST(
 			}
 		});
 
+		// Función auxiliar para calcular edad desde fecha de nacimiento
+		function calculateAge(dob: string | Date | null | undefined): string {
+			if (!dob) return 'N/A';
+			
+			try {
+				const birthDate = dob instanceof Date ? dob : new Date(dob);
+				if (isNaN(birthDate.getTime())) return 'N/A';
+				
+				const today = new Date();
+				let age = today.getFullYear() - birthDate.getFullYear();
+				const monthDiff = today.getMonth() - birthDate.getMonth();
+				
+				if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+					age = age - 1;
+				}
+				
+				return String(age);
+			} catch (error) {
+				console.error('[Generate Report API] Error calculando edad:', error);
+				return 'N/A';
+			}
+		}
+
 		// Obtener datos del paciente
 		let patientName = 'Paciente no registrado';
 		let patientId = 'N/A';
-		if (consultation.patient_id && consultation.patient) {
-			const patient = Array.isArray(consultation.patient) ? consultation.patient[0] : consultation.patient;
-			patientName = `${patient.firstName || ''} ${patient.lastName || ''}`.trim() || 'Paciente';
-			patientId = patient.identifier || 'N/A';
+		let patientPhone = 'N/A';
+		let patientAge = 'N/A';
+		if (consultation.patient_id) {
+			// Obtener datos del paciente registrado desde la tabla Patient
+			const { data: patientData, error: patientError } = await supabase
+				.from('Patient')
+				.select('firstName, lastName, identifier, phone, dob')
+				.eq('id', consultation.patient_id)
+				.single();
+			
+			if (!patientError && patientData) {
+				patientName = `${patientData.firstName || ''} ${patientData.lastName || ''}`.trim() || 'Paciente';
+				patientId = patientData.identifier || 'N/A';
+				patientPhone = patientData.phone || 'N/A';
+				patientAge = calculateAge(patientData.dob);
+			}
 		} else if (consultation.unregistered_patient_id) {
 			const { data: unregisteredPatient } = await supabase
 				.from('unregisteredpatients')
-				.select('first_name, last_name, identification')
+				.select('first_name, last_name, identification, phone, birth_date')
 				.eq('id', consultation.unregistered_patient_id)
 				.single();
 			
 			if (unregisteredPatient) {
 				patientName = `${unregisteredPatient.first_name || ''} ${unregisteredPatient.last_name || ''}`.trim() || 'Paciente no registrado';
 				patientId = unregisteredPatient.identification || 'N/A';
+				patientPhone = unregisteredPatient.phone || 'N/A';
+				patientAge = calculateAge(unregisteredPatient.birth_date);
 			}
 		}
+		
+		// Obtener datos de ginecología de los vitals
+		const vitals = consultation.vitals || {};
+		const gyn = vitals.gynecology || {};
 
 		// Obtener datos del médico
 		const doctor = Array.isArray(consultation.doctor) ? consultation.doctor[0] : consultation.doctor;
@@ -277,7 +507,7 @@ export async function POST(
 
 		// Preparar datos para la plantilla
 		// Nota: Los nombres de las claves deben coincidir EXACTAMENTE con los marcadores en la plantilla Word
-		// Por ejemplo, si en Word tienes {contenido}, aquí debe ser 'contenido'
+		// Por ejemplo, si en Word tienes {{edad}}, aquí debe ser 'edad'
 		const templateDataObj: Record<string, string> = {
 			contenido: reportContent,
 			content: reportContent, // Variante en inglés por si acaso
@@ -286,6 +516,12 @@ export async function POST(
 			date: consultationDate, // Variante en inglés
 			paciente: patientName,
 			patient: patientName, // Variante en inglés
+			edad: patientAge,
+			age: patientAge, // Variante en inglés
+			cedula: patientId,
+			identificacion: patientId,
+			telefono: patientPhone,
+			phone: patientPhone,
 			medico: doctorName,
 			doctor: doctorName, // Variante en inglés
 			diagnostico: consultation.diagnosis || 'No especificado',
@@ -294,6 +530,11 @@ export async function POST(
 			complaint: consultation.chief_complaint || 'No especificado', // Variante en inglés
 			notas: consultation.notes || '',
 			notes: consultation.notes || '', // Variante en inglés
+			// Datos de ginecología
+			ultima_regla: gyn.last_menstrual_period || '',
+			ho: gyn.ho || '',
+			metodo_anticonceptivo: gyn.contraceptive || '',
+			'método_anticonceptivo': gyn.contraceptive || '', // Con tilde para compatibilidad
 		};
 
 		console.log('[Generate Report API] Datos que se pasarán a la plantilla:', {
@@ -323,6 +564,54 @@ export async function POST(
 				error: 'Error al procesar plantilla. Verifica que los marcadores en la plantilla sean correctos.',
 				detail: error.message 
 			}, { status: 500 });
+		}
+
+		// Modificar formato del documento: tamaño de fuente 9 y alineación izquierda
+		try {
+			const zip = doc.getZip();
+			const documentXml = zip.files['word/document.xml'];
+			
+			if (documentXml) {
+				let xmlContent = documentXml.asText();
+				
+				// Cambiar tamaño de fuente a 9pt (en half-points: 9 * 2 = 18)
+				// Reemplazar todos los valores de w:sz a 18
+				xmlContent = xmlContent.replace(
+					/<w:sz\s+w:val="\d+"/g,
+					'<w:sz w:val="18"'
+				);
+				
+				// Si hay <w:rPr> sin <w:sz>, agregarlo
+				xmlContent = xmlContent.replace(
+					/(<w:rPr[^>]*>)(?![^<]*<w:sz)/g,
+					'$1<w:sz w:val="18"/>'
+				);
+				
+				// Cambiar alineación de justify (both) a left
+				xmlContent = xmlContent.replace(
+					/<w:jc\s+w:val="both"/g,
+					'<w:jc w:val="left"'
+				);
+				
+				// También cambiar otros valores de justificación a left
+				xmlContent = xmlContent.replace(
+					/<w:jc\s+w:val="(center|right|distribute|distributeAll)"/g,
+					'<w:jc w:val="left"'
+				);
+				
+				// Si hay <w:pPr> sin <w:jc>, agregarlo con valor left
+				xmlContent = xmlContent.replace(
+					/(<w:pPr[^>]*>)(?![^<]*<w:jc)/g,
+					'$1<w:jc w:val="left"/>'
+				);
+				
+				// Actualizar el XML en el ZIP
+				zip.file('word/document.xml', xmlContent);
+				console.log('[Generate Report API] Formato aplicado: fuente 9pt, alineación izquierda');
+			}
+		} catch (formatError: any) {
+			console.warn('[Generate Report API] Error aplicando formato (continuando sin formato):', formatError);
+			// Continuar sin formato si hay error
 		}
 
 		// Generar documento final
