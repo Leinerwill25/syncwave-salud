@@ -4,9 +4,10 @@ import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { LayoutDashboard, CalendarDays, User, ClipboardList, FileText, Settings, MessageCircle, CheckSquare, Folder, ChevronRight, ChevronDown, Search, FileCheck, CreditCard, Menu, X, FileType } from 'lucide-react';
+import { LayoutDashboard, CalendarDays, User, ClipboardList, FileText, Settings, MessageCircle, CheckSquare, Folder, ChevronRight, ChevronDown, Search, FileCheck, CreditCard, Menu, X, FileType, Users, DollarSign, Share2 } from 'lucide-react';
 import type { MedicConfig } from '@/types/medic-config';
 import PaymentsModal from '@/components/medic/PaymentsModal';
+import PublicLinkModal from '@/components/medic/PublicLinkModal';
 
 type IconComponent = React.ComponentType<React.SVGProps<SVGSVGElement>>;
 
@@ -28,7 +29,10 @@ const LINKS: LinkItem[] = [
 	{
 		label: 'Pacientes',
 		icon: User,
-		submenu: [{ href: '/dashboard/medic/pacientes', label: 'Listado de pacientes' }],
+		submenu: [
+			{ href: '/dashboard/medic/pacientes', label: 'Listado de pacientes' },
+			{ href: '/dashboard/medic/pacientes-frecuentes', label: 'Pacientes Frecuentes', icon: Users },
+		],
 	},
 	{
 		label: 'Consultas',
@@ -78,6 +82,7 @@ const LINKS: LinkItem[] = [
 			{ href: '/dashboard/medic/configuracion', label: 'Perfil Profesional' },
 			{ href: '/dashboard/medic/configuracion/consultorio', label: 'Consultorio', showOnlyForOrgType: 'CONSULTORIO' },
 			{ href: '/dashboard/medic/configuracion/roles', label: 'Crear Rol', showOnlyForOrgType: 'CONSULTORIO' },
+			{ href: '/dashboard/medic/configuracion/moneda', label: 'Configuración de Moneda', icon: DollarSign },
 		],
 	},
 	{
@@ -99,6 +104,7 @@ export default function MedicHamburgerMenu() {
 	const [medicConfig, setMedicConfig] = useState<MedicConfig | null>(null);
 	const [loadingConfig, setLoadingConfig] = useState(true);
 	const [paymentsModalOpen, setPaymentsModalOpen] = useState(false);
+	const [publicLinkModalOpen, setPublicLinkModalOpen] = useState(false);
 	const [mounted, setMounted] = useState(false);
 
 	useEffect(() => {
@@ -388,8 +394,24 @@ export default function MedicHamburgerMenu() {
 						<ul className="flex flex-col gap-1">{LINKS.map(renderLink)}</ul>
 					</nav>
 
-					{/* Pagos Efectuados Button */}
-					<div className="mt-3 pt-2 border-t border-blue-100">
+					{/* Action Buttons */}
+					<div className="mt-3 pt-2 border-t border-blue-100 space-y-2">
+						{/* Link Público Button - Solo para consultorios privados */}
+						{medicConfig?.organizationType === 'CONSULTORIO' && (medicConfig?.user?.organizationId || (medicConfig as any)?.organizationId) && (
+							<button
+								onClick={() => {
+									setPublicLinkModalOpen(true);
+									setIsOpen(false);
+								}}
+								className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-slate-700 hover:bg-gradient-to-r hover:from-teal-50 hover:to-cyan-50 transition-all group border border-teal-200 hover:border-teal-300"
+							>
+								<Share2 className="w-5 h-5 text-teal-600 group-hover:text-teal-700" />
+								<span>Link Público</span>
+								<span className="ml-auto px-2 py-0.5 text-[10px] font-semibold rounded-full bg-teal-100 text-teal-700 border border-teal-200">
+									Nuevo
+								</span>
+							</button>
+						)}
 						<button
 							onClick={() => {
 								setPaymentsModalOpen(true);
@@ -420,6 +442,15 @@ export default function MedicHamburgerMenu() {
 				isOpen={paymentsModalOpen}
 				onClose={() => setPaymentsModalOpen(false)}
 			/>
+
+			{/* Public Link Modal */}
+			{medicConfig?.organizationType === 'CONSULTORIO' && (medicConfig?.user?.organizationId || (medicConfig as any)?.organizationId) && (
+				<PublicLinkModal
+					isOpen={publicLinkModalOpen}
+					onClose={() => setPublicLinkModalOpen(false)}
+					organizationId={(medicConfig?.user?.organizationId || (medicConfig as any)?.organizationId) || null}
+				/>
+			)}
 		</>
 	);
 }

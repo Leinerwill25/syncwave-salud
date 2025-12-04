@@ -3,9 +3,10 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { LayoutDashboard, CalendarDays, User, ClipboardList, FileText, Settings, MessageCircle, CheckSquare, Folder, ChevronRight, ChevronDown, Search, FileCheck, CreditCard, DollarSign, Users, FileType } from 'lucide-react';
+import { LayoutDashboard, CalendarDays, User, ClipboardList, FileText, Settings, MessageCircle, CheckSquare, Folder, ChevronRight, ChevronDown, Search, FileCheck, CreditCard, DollarSign, Users, FileType, Share2 } from 'lucide-react';
 import type { MedicConfig } from '@/types/medic-config';
 import PaymentsModal from '@/components/medic/PaymentsModal';
+import PublicLinkModal from '@/components/medic/PublicLinkModal';
 
 type IconComponent = React.ComponentType<React.SVGProps<SVGSVGElement>>;
 
@@ -101,6 +102,7 @@ export default function MedicSidebar() {
 	const [medicConfig, setMedicConfig] = useState<MedicConfig | null>(null);
 	const [loadingConfig, setLoadingConfig] = useState(true);
 	const [paymentsModalOpen, setPaymentsModalOpen] = useState(false);
+	const [publicLinkModalOpen, setPublicLinkModalOpen] = useState(false);
 
 	useEffect(() => {
 		loadMedicConfig();
@@ -333,8 +335,21 @@ export default function MedicSidebar() {
 						<ul className="flex flex-col gap-1">{LINKS.map(renderLink)}</ul>
 					</nav>
 
-					{/* Pagos Efectuados Button */}
-					<div className="mt-3 pt-2 border-t border-blue-100">
+					{/* Action Buttons */}
+					<div className="mt-3 pt-2 border-t border-blue-100 space-y-2">
+						{/* Link Público Button - Solo para consultorios privados */}
+						{medicConfig?.organizationType === 'CONSULTORIO' && (medicConfig?.user?.organizationId || (medicConfig as any)?.organizationId) && (
+							<button
+								onClick={() => setPublicLinkModalOpen(true)}
+								className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-slate-700 hover:bg-gradient-to-r hover:from-teal-50 hover:to-cyan-50 transition-all group border border-teal-200 hover:border-teal-300"
+							>
+								<Share2 className="w-5 h-5 text-teal-600 group-hover:text-teal-700" />
+								<span>Link Público</span>
+								<span className="ml-auto px-2 py-0.5 text-[10px] font-semibold rounded-full bg-teal-100 text-teal-700 border border-teal-200">
+									Nuevo
+								</span>
+							</button>
+						)}
 						<button
 							onClick={() => setPaymentsModalOpen(true)}
 							className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-slate-700 hover:bg-blue-50 transition-colors group"
@@ -358,6 +373,13 @@ export default function MedicSidebar() {
 			<PaymentsModal
 				isOpen={paymentsModalOpen}
 				onClose={() => setPaymentsModalOpen(false)}
+			/>
+
+			{/* Public Link Modal */}
+			<PublicLinkModal
+				isOpen={publicLinkModalOpen}
+				onClose={() => setPublicLinkModalOpen(false)}
+				organizationId={(medicConfig?.user?.organizationId || (medicConfig as any)?.organizationId) || null}
 			/>
 		</aside>
 	);

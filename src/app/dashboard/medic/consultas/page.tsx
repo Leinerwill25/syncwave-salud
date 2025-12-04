@@ -185,13 +185,7 @@ export default function ConsultationsPage() {
 		setExporting(true);
 		try {
 			const header = ['Fecha', 'Paciente', 'Tipo', 'Motivo', 'Diagnóstico'];
-			const rows = consultations.map((c) => [
-				format(new Date(c.created_at), 'dd/MM/yyyy HH:mm'), 
-				c.patient ? `${c.patient.firstName} ${c.patient.lastName}` : 'Sin paciente', 
-				c.patient?.isUnregistered ? 'No Registrado' : (c.patient ? 'Registrado' : 'N/A'),
-				c.chief_complaint || '', 
-				c.diagnosis || ''
-			]);
+			const rows = consultations.map((c) => [format(new Date(c.created_at), 'dd/MM/yyyy HH:mm'), c.patient ? `${c.patient.firstName} ${c.patient.lastName}` : 'Sin paciente', c.patient?.isUnregistered ? 'No Registrado' : c.patient ? 'Registrado' : 'N/A', c.chief_complaint || '', c.diagnosis || '']);
 			const csv = [header, ...rows].map((r) => r.map((v) => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\n');
 			const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
 			const url = URL.createObjectURL(blob);
@@ -216,13 +210,7 @@ export default function ConsultationsPage() {
 		setExporting(true);
 		try {
 			const headers = ['Fecha', 'Paciente', 'Tipo', 'Motivo', 'Diagnóstico'];
-			const rows = consultations.map((c) => [
-				format(new Date(c.created_at), 'dd/MM/yyyy HH:mm'), 
-				c.patient ? `${c.patient.firstName} ${c.patient.lastName}` : 'Sin paciente', 
-				c.patient?.isUnregistered ? 'No Registrado' : (c.patient ? 'Registrado' : 'N/A'),
-				c.chief_complaint || '', 
-				c.diagnosis || ''
-			]);
+			const rows = consultations.map((c) => [format(new Date(c.created_at), 'dd/MM/yyyy HH:mm'), c.patient ? `${c.patient.firstName} ${c.patient.lastName}` : 'Sin paciente', c.patient?.isUnregistered ? 'No Registrado' : c.patient ? 'Registrado' : 'N/A', c.chief_complaint || '', c.diagnosis || '']);
 
 			let table = '<table>';
 			table += '<thead><tr>' + headers.map((h) => `<th style="background:#f4f6f8;padding:6px;border:1px solid #ddd">${h}</th>`).join('') + '</tr></thead>';
@@ -248,11 +236,7 @@ export default function ConsultationsPage() {
 		<main className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-cyan-50 p-4 sm:p-6 md:p-8">
 			<div className="max-w-7xl mx-auto space-y-6">
 				{/* Header Section - Mejorado */}
-				<motion.div 
-					initial={{ opacity: 0, y: -10 }} 
-					animate={{ opacity: 1, y: 0 }} 
-					className="bg-white/80 backdrop-blur-md rounded-2xl shadow-lg border border-slate-200/50 p-6 sm:p-8"
-				>
+				<motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="bg-white/80 backdrop-blur-md rounded-2xl shadow-lg border border-slate-200/50 p-6 sm:p-8">
 					<div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6">
 						<div className="flex-1">
 							<div className="flex items-center gap-3 mb-3">
@@ -297,12 +281,7 @@ export default function ConsultationsPage() {
 				</motion.div>
 
 				{/* Toolbar Section - Mejorado */}
-				<motion.div 
-					initial={{ opacity: 0, y: 10 }} 
-					animate={{ opacity: 1, y: 0 }}
-					transition={{ delay: 0.1 }}
-					className="bg-white/80 backdrop-blur-md rounded-2xl shadow-lg border border-slate-200/50 p-4 sm:p-6"
-				>
+				<motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="bg-white/80 backdrop-blur-md rounded-2xl shadow-lg border border-slate-200/50 p-4 sm:p-6">
 					<div className="flex flex-col lg:flex-row gap-4 items-stretch lg:items-center">
 						<div className="flex-1 w-full">
 							<SearchInput value={query} onChange={setQuery} />
@@ -335,12 +314,7 @@ export default function ConsultationsPage() {
 				</motion.div>
 
 				{/* Consultations Table - Mejorado */}
-				<motion.div 
-					initial={{ opacity: 0, y: 10 }} 
-					animate={{ opacity: 1, y: 0 }}
-					transition={{ delay: 0.2 }}
-					className="bg-white/80 backdrop-blur-md rounded-2xl shadow-lg border border-slate-200/50 overflow-hidden"
-				>
+				<motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="bg-white/80 backdrop-blur-md rounded-2xl shadow-lg border border-slate-200/50 overflow-hidden">
 					{loading ? (
 						<div className="p-8 sm:p-10">
 							<div className="flex items-center gap-3 text-slate-600 mb-6">
@@ -375,9 +349,7 @@ export default function ConsultationsPage() {
 								<FileText size={32} />
 							</div>
 							<p className="text-xl font-semibold text-slate-900 mb-2">No hay consultas registradas</p>
-							<p className="text-sm text-slate-600 mb-6 max-w-md mx-auto">
-								Comienza a crear consultas médicas para tus pacientes. Todas las consultas quedarán registradas en este historial.
-							</p>
+							<p className="text-sm text-slate-600 mb-6 max-w-md mx-auto">Comienza a crear consultas médicas para tus pacientes. Todas las consultas quedarán registradas en este historial.</p>
 							<Link href="/dashboard/medic/consultas/new">
 								<ActionButton variant="solid" leading={<PlusCircle size={18} />}>
 									Crear Primera Consulta
@@ -416,47 +388,25 @@ export default function ConsultationsPage() {
 													<span>Paciente</span>
 												</div>
 											</th>
-											<th className="px-4 sm:px-6 py-4 text-left text-xs font-semibold text-slate-700 uppercase tracking-wider hidden sm:table-cell">
-												Motivo de Consulta
-											</th>
-											<th className="px-4 sm:px-6 py-4 text-left text-xs font-semibold text-slate-700 uppercase tracking-wider hidden lg:table-cell">
-												Diagnóstico
-											</th>
-											<th className="px-4 sm:px-6 py-4 text-center text-xs font-semibold text-slate-700 uppercase tracking-wider">
-												Acciones
-											</th>
+											<th className="px-4 sm:px-6 py-4 text-left text-xs font-semibold text-slate-700 uppercase tracking-wider hidden sm:table-cell">Motivo de Consulta</th>
+											<th className="px-4 sm:px-6 py-4 text-left text-xs font-semibold text-slate-700 uppercase tracking-wider hidden lg:table-cell">Diagnóstico</th>
+											<th className="px-4 sm:px-6 py-4 text-center text-xs font-semibold text-slate-700 uppercase tracking-wider">Acciones</th>
 										</tr>
 									</thead>
 
 									<tbody className="bg-white divide-y divide-slate-100">
 										{consultations.map((c, index) => (
-											<motion.tr 
-												key={c.id} 
-												initial={{ opacity: 0, x: -20 }}
-												animate={{ opacity: 1, x: 0 }}
-												transition={{ delay: index * 0.05 }}
-												className="hover:bg-gradient-to-r hover:from-teal-50/50 hover:to-cyan-50/50 transition-all duration-200 group"
-											>
+											<motion.tr key={c.id} initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: index * 0.05 }} className="hover:bg-gradient-to-r hover:from-teal-50/50 hover:to-cyan-50/50 transition-all duration-200 group">
 												<td className="px-4 sm:px-6 py-4 whitespace-nowrap">
 													<div className="flex flex-col">
-														<span className="text-sm font-semibold text-slate-900">
-															{format(new Date(c.created_at), 'dd/MM/yyyy')}
-														</span>
-														<span className="text-xs text-slate-500 mt-0.5">
-															{format(new Date(c.created_at), 'HH:mm')}
-														</span>
+														<span className="text-sm font-semibold text-slate-900">{format(new Date(c.created_at), 'dd/MM/yyyy')}</span>
+														<span className="text-xs text-slate-500 mt-0.5">{format(new Date(c.created_at), 'HH:mm')}</span>
 													</div>
 												</td>
 												<td className="px-4 sm:px-6 py-4">
 													{c.patient && (c.patient.firstName || c.patient.lastName) ? (
 														<div className="flex items-center gap-3">
-															<div className={`flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center text-white font-semibold text-sm shadow-md ${
-																c.patient.isUnregistered 
-																	? 'bg-gradient-to-br from-amber-400 to-orange-500' 
-																	: 'bg-gradient-to-br from-teal-400 to-cyan-500'
-															}`}>
-																{(c.patient.firstName?.[0] || '') + (c.patient.lastName?.[0] || '')}
-															</div>
+															<div className={`flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center text-white font-semibold text-sm shadow-md ${c.patient.isUnregistered ? 'bg-gradient-to-br from-amber-400 to-orange-500' : 'bg-gradient-to-br from-teal-400 to-cyan-500'}`}>{(c.patient.firstName?.[0] || '') + (c.patient.lastName?.[0] || '')}</div>
 															<div className="flex-1 min-w-0">
 																<div className="flex items-center gap-2 flex-wrap">
 																	<span className="text-sm font-semibold text-slate-900">
@@ -474,11 +424,7 @@ export default function ConsultationsPage() {
 																		</span>
 																	)}
 																</div>
-																{c.patient.identifier && (
-																	<p className="text-xs text-slate-500 mt-0.5">
-																		ID: {c.patient.identifier}
-																	</p>
-																)}
+																{c.patient.identifier && <p className="text-xs text-slate-500 mt-0.5">C.I: {c.patient.identifier}</p>}
 															</div>
 														</div>
 													) : (
@@ -490,11 +436,7 @@ export default function ConsultationsPage() {
 												</td>
 												<td className="px-4 sm:px-6 py-4 hidden sm:table-cell">
 													<div className="max-w-xs">
-														<p className="text-sm text-slate-900 font-medium line-clamp-2">
-															{c.chief_complaint || (
-																<span className="text-slate-400 italic">Sin motivo registrado</span>
-															)}
-														</p>
+														<p className="text-sm text-slate-900 font-medium line-clamp-2">{c.chief_complaint || <span className="text-slate-400 italic">Sin motivo registrado</span>}</p>
 													</div>
 												</td>
 												<td className="px-4 sm:px-6 py-4 hidden lg:table-cell">
@@ -510,10 +452,7 @@ export default function ConsultationsPage() {
 													</div>
 												</td>
 												<td className="px-4 sm:px-6 py-4 text-center">
-													<Link 
-														href={`/dashboard/medic/consultas/${c.id}`} 
-														className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold text-white bg-gradient-to-r from-teal-600 to-cyan-600 hover:from-teal-700 hover:to-cyan-700 shadow-sm hover:shadow-md transition-all duration-200 transform hover:-translate-y-0.5 active:translate-y-0"
-													>
+													<Link href={`/dashboard/medic/consultas/${c.id}`} className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold text-white bg-gradient-to-r from-teal-600 to-cyan-600 hover:from-teal-700 hover:to-cyan-700 shadow-sm hover:shadow-md transition-all duration-200 transform hover:-translate-y-0.5 active:translate-y-0">
 														<FileText size={16} />
 														<span className="hidden sm:inline">Ver Detalle</span>
 														<span className="sm:hidden">Ver</span>
@@ -532,12 +471,7 @@ export default function ConsultationsPage() {
 								</div>
 								<div>
 									{hasMore ? (
-										<ActionButton 
-											onClick={loadMore} 
-											variant="ghost" 
-											leading={refreshing ? <Loader2 className="animate-spin w-4 h-4" /> : undefined} 
-											disabled={refreshing}
-										>
+										<ActionButton onClick={loadMore} variant="ghost" leading={refreshing ? <Loader2 className="animate-spin w-4 h-4" /> : undefined} disabled={refreshing}>
 											{refreshing ? 'Cargando...' : 'Cargar más consultas'}
 										</ActionButton>
 									) : (

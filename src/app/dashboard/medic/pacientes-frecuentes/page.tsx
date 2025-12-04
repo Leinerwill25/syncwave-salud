@@ -226,6 +226,114 @@ export default function PacientesFrecuentesPage() {
 							<span>Procesando archivo...</span>
 						</div>
 					)}
+
+					{/* Ejemplos de Formato */}
+					<div className="mt-6 p-5 bg-gradient-to-br from-amber-50 to-orange-50 border border-amber-200 rounded-xl">
+						<h3 className="text-lg font-semibold text-slate-800 mb-3 flex items-center gap-2">
+							<AlertCircle className="w-5 h-5 text-amber-600" />
+							Formato Requerido del Documento Excel
+						</h3>
+						<p className="text-sm text-slate-700 mb-4">
+							Para que la plataforma pueda leer correctamente el archivo Excel, asegúrate de que las columnas tengan estos nombres exactos (pueden estar en mayúsculas, minúsculas o mixtas):
+						</p>
+
+						{/* Tabla de ejemplo */}
+						<div className="overflow-x-auto mb-4">
+							<table className="w-full border-collapse border border-slate-300 bg-white text-sm">
+								<thead>
+									<tr className="bg-teal-600 text-white">
+										<th className="border border-slate-300 px-4 py-2 text-left font-semibold">Nombre</th>
+										<th className="border border-slate-300 px-4 py-2 text-left font-semibold">Apellido</th>
+										<th className="border border-slate-300 px-4 py-2 text-left font-semibold">Cédula</th>
+										<th className="border border-slate-300 px-4 py-2 text-left font-semibold">Teléfono</th>
+										<th className="border border-slate-300 px-4 py-2 text-left font-semibold">Email</th>
+									</tr>
+								</thead>
+								<tbody>
+									<tr className="bg-slate-50">
+										<td className="border border-slate-300 px-4 py-2">María</td>
+										<td className="border border-slate-300 px-4 py-2">González</td>
+										<td className="border border-slate-300 px-4 py-2">V-12345678</td>
+										<td className="border border-slate-300 px-4 py-2">0412-1234567</td>
+										<td className="border border-slate-300 px-4 py-2">maria.gonzalez@email.com</td>
+									</tr>
+									<tr>
+										<td className="border border-slate-300 px-4 py-2">Juan</td>
+										<td className="border border-slate-300 px-4 py-2">Pérez</td>
+										<td className="border border-slate-300 px-4 py-2">12345678</td>
+										<td className="border border-slate-300 px-4 py-2">0424-9876543</td>
+										<td className="border border-slate-300 px-4 py-2">juan.perez@email.com</td>
+									</tr>
+									<tr className="bg-slate-50">
+										<td className="border border-slate-300 px-4 py-2">Ana</td>
+										<td className="border border-slate-300 px-4 py-2">Rodríguez</td>
+										<td className="border border-slate-300 px-4 py-2">V-87654321</td>
+										<td className="border border-slate-300 px-4 py-2">0416-5551234</td>
+										<td className="border border-slate-300 px-4 py-2">ana.rodriguez@email.com</td>
+									</tr>
+								</tbody>
+							</table>
+						</div>
+
+						{/* Instrucciones detalladas */}
+						<div className="space-y-3 text-sm text-slate-700">
+							<div className="bg-white p-3 rounded-lg border border-amber-200">
+								<p className="font-semibold text-amber-800 mb-2">📋 Nombres de Columnas Aceptados:</p>
+								<ul className="list-disc list-inside space-y-1 ml-2">
+									<li><strong>Nombre:</strong> "Nombre", "nombre", "NOMBRE", "First Name", "first_name", "Primer Nombre"</li>
+									<li><strong>Apellido:</strong> "Apellido", "apellido", "APELLIDO", "Last Name", "last_name", "Segundo Nombre"</li>
+									<li><strong>Cédula:</strong> "Cédula", "cedula", "CÉDULA", "Cédula de Identidad", "CI", "ci", "Identification", "identification", "ID"</li>
+									<li><strong>Teléfono:</strong> "Teléfono", "telefono", "TELÉFONO", "Phone", "phone", "Celular", "celular"</li>
+									<li><strong>Email:</strong> "Email", "email", "EMAIL", "Correo", "correo", "Correo Electrónico", "E-mail"</li>
+								</ul>
+							</div>
+
+							<div className="bg-white p-3 rounded-lg border border-amber-200">
+								<p className="font-semibold text-amber-800 mb-2">📞 Formato de Teléfono:</p>
+								<ul className="list-disc list-inside space-y-1 ml-2">
+									<li>Con guión: <code className="bg-slate-100 px-1 rounded">0412-1234567</code></li>
+									<li>Sin guión: <code className="bg-slate-100 px-1 rounded">04121234567</code></li>
+									<li>Con código de país: <code className="bg-slate-100 px-1 rounded">+58-412-1234567</code></li>
+									<li><strong>Importante:</strong> El teléfono es obligatorio para guardar en la base de datos</li>
+								</ul>
+							</div>
+
+							<div className="bg-white p-3 rounded-lg border border-amber-200">
+								<p className="font-semibold text-amber-800 mb-2">🆔 Formato de Cédula de Identidad:</p>
+								<ul className="list-disc list-inside space-y-1 ml-2">
+									<li>Con prefijo V: <code className="bg-slate-100 px-1 rounded">V-12345678</code></li>
+									<li>Con prefijo V sin guión: <code className="bg-slate-100 px-1 rounded">V12345678</code></li>
+									<li>Sin prefijo: <code className="bg-slate-100 px-1 rounded">12345678</code></li>
+									<li>Con guiones: <code className="bg-slate-100 px-1 rounded">12.345.678</code> (se limpiará automáticamente)</li>
+								</ul>
+							</div>
+
+							<div className="bg-white p-3 rounded-lg border border-amber-200">
+								<p className="font-semibold text-amber-800 mb-2">✉️ Formato de Email:</p>
+								<ul className="list-disc list-inside space-y-1 ml-2">
+									<li>Formato estándar: <code className="bg-slate-100 px-1 rounded">nombre.apellido@email.com</code></li>
+									<li>El email es opcional pero recomendado</li>
+								</ul>
+							</div>
+
+							<div className="bg-white p-3 rounded-lg border border-amber-200">
+								<p className="font-semibold text-amber-800 mb-2">⚠️ Campos Obligatorios:</p>
+								<ul className="list-disc list-inside space-y-1 ml-2">
+									<li><strong>Nombre</strong> o <strong>Apellido</strong> (al menos uno debe estar presente)</li>
+									<li><strong>Teléfono</strong> (requerido al guardar en la base de datos)</li>
+									<li>Los demás campos son opcionales</li>
+								</ul>
+							</div>
+
+							<div className="bg-blue-50 p-3 rounded-lg border border-blue-200">
+								<p className="font-semibold text-blue-800 mb-1">💡 Consejo:</p>
+								<p className="text-blue-700">
+									La primera fila del Excel debe contener los nombres de las columnas. Las filas siguientes deben contener los datos de cada paciente.
+									Puedes editar los datos extraídos antes de guardarlos haciendo clic en las celdas de la tabla.
+								</p>
+							</div>
+						</div>
+					</div>
 				</motion.div>
 
 				{/* Extracted Patients Table */}
