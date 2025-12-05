@@ -243,7 +243,7 @@ Actúa ahora.
 export async function POST(request: Request) {
 	try {
 		// --- 1) Autenticación robusta con Supabase ---
-		const supabase = await createSupabaseServerClient();
+		let supabase = await createSupabaseServerClient();
 		let user: any = null;
 
 		try {
@@ -286,12 +286,6 @@ export async function POST(request: Request) {
 			const access = pick(['sb-access-token', 'sb:access-token', 'sb_access_token']);
 			const refresh = pick(['sb-refresh-token', 'sb-refresh-token', 'sb_refresh_token']);
 			if (access || refresh) {
-				const custom = createSupabaseServerClient({
-					get: (n: string) => (parsed[n] ? { value: parsed[n] } : undefined),
-					set: () => {},
-					delete: () => {},
-				} as any);
-				supabase = custom.supabase;
 				try {
 					const sessionObj: any = { access_token: String(access ?? ''), refresh_token: String(refresh ?? '') };
 					await supabase.auth.setSession(sessionObj as any);
