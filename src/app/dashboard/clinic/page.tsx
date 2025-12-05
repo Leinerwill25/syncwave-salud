@@ -99,8 +99,8 @@ async function fetchRecentPatientsForOrgViaSupabase(supabase: any, organizationI
 
 		// Obtener los IDs de perfil de paciente
 		const patientProfileIds = patientUsers
-			.map(u => u.patientProfileId)
-			.filter(id => id !== null);
+			.map((u: { patientProfileId: string | null }) => u.patientProfileId)
+			.filter((id): id is string => id !== null);
 
 		if (patientProfileIds.length === 0) {
 			return [];
