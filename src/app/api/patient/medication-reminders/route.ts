@@ -18,7 +18,7 @@ export async function GET(req: Request) {
 
 		const { patient } = patientAuth;
 		const cookieStore = await cookies();
-		const { supabase } = createSupabaseServerClient(cookieStore);
+		const supabase = await createSupabaseServerClient();
 
 		const now = new Date();
 		const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());

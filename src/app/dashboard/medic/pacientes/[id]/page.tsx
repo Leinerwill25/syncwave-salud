@@ -45,7 +45,7 @@ export default async function PatientHistory({ params }: Props) {
 
 	try {
 		const cookieStore = await cookies();
-		const { supabase } = createSupabaseServerClient(cookieStore);
+		const supabase = await createSupabaseServerClient();
 
 		// Verificar autenticación y rol
 		const authResult = await apiRequireRole(['MEDICO']);

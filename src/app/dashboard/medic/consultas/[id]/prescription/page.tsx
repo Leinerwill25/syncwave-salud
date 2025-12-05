@@ -42,7 +42,7 @@ export default async function Page({ params }: Props) {
 		);
 	}
 
-	const { supabase } = createSupabaseServerClient();
+	const supabase = await createSupabaseServerClient();
 
 	const { data: consultation, error } = await supabase.from('consultation').select('id, appointment_id, patient_id, unregistered_patient_id, doctor_id, chief_complaint, diagnosis, created_at, patient:patient_id(firstName,lastName), doctor:doctor_id(id,name)').eq('id', id).single();
 

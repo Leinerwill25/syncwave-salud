@@ -212,7 +212,7 @@ export async function GET(
 
 		const doctorId = user.userId;
 		const cookieStore = await cookies();
-		const { supabase } = createSupabaseServerClient(cookieStore);
+		const supabase = await createSupabaseServerClient();
 
 		// Obtener datos de la consulta (solo IDs, no los datos del paciente aún)
 		const { data: consultation, error: consultationError } = await supabase

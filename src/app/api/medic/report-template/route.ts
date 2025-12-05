@@ -18,7 +18,7 @@ export async function GET(request: Request) {
 
 		const doctorId = user.userId;
 		const cookieStore = await cookies();
-		const { supabase } = createSupabaseServerClient(cookieStore);
+		const supabase = await createSupabaseServerClient();
 
 		// Obtener plantilla del médico desde medic_profile
 		const { data: medicProfile, error: profileError } = await supabase
@@ -56,7 +56,7 @@ export async function POST(request: NextRequest) {
 
 		const doctorId = user.userId;
 		const cookieStore = await cookies();
-		const { supabase } = createSupabaseServerClient(cookieStore);
+		const supabase = await createSupabaseServerClient();
 
 		const formData = await request.formData();
 		const templateFile = formData.get('template') as File | null;
@@ -304,7 +304,7 @@ export async function PUT(request: NextRequest) {
 
 		const doctorId = user.userId;
 		const cookieStore = await cookies();
-		const { supabase } = createSupabaseServerClient(cookieStore);
+		const supabase = await createSupabaseServerClient();
 
 		const body = await request.json();
 		const { template_text } = body;

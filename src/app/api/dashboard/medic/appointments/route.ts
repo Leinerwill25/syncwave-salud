@@ -4,7 +4,7 @@ import createSupabaseServerClient from '@/app/adapters/server';
 
 export async function GET(req: Request) {
 	try {
-		const { supabase } = createSupabaseServerClient();
+		const supabase = await createSupabaseServerClient();
 		const { searchParams } = new URL(req.url);
 		const date = searchParams.get('date');
 

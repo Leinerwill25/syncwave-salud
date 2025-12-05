@@ -13,7 +13,7 @@ export async function POST(request: NextRequest) {
 		}
 
 		const cookieStore = await cookies();
-		const { supabase } = createSupabaseServerClient(cookieStore);
+		const supabase = await createSupabaseServerClient();
 
 		const body = await request.json();
 		const { organization_id, patient_id, unregistered_patient_id, chief_complaint, notes, consultation_date, scheduled_at, is_role_user } = body;

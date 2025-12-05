@@ -126,7 +126,7 @@ export async function getAuthenticatedPatient(): Promise<{
 } | null> {
 	try {
 		const cookieStore = await cookies();
-		const { supabase } = createSupabaseServerClient(cookieStore);
+		const supabase = await createSupabaseServerClient();
 
 		let accessTokenFromCookie: string | null = null;
 		try {
@@ -211,7 +211,7 @@ export async function getAuthenticatedPatient(): Promise<{
 export async function hasFamilyPlan(patientId: string): Promise<boolean> {
 	try {
 		const cookieStore = await cookies();
-		const { supabase } = createSupabaseServerClient(cookieStore);
+		const supabase = await createSupabaseServerClient();
 
 		const { data: subscription, error } = await supabase
 			.from('Subscription')

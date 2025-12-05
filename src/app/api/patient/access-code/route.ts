@@ -13,7 +13,7 @@ export async function GET(request: Request) {
 		}
 
 		const cookieStore = await cookies();
-		const { supabase } = createSupabaseServerClient(cookieStore);
+		const supabase = await createSupabaseServerClient();
 
 		// Obtener o crear código de acceso
 		const { data: accessKey, error: keyError } = await supabase
@@ -65,7 +65,7 @@ export async function POST(request: Request) {
 		}
 
 		const cookieStore = await cookies();
-		const { supabase } = createSupabaseServerClient(cookieStore);
+		const supabase = await createSupabaseServerClient();
 
 		const body = await request.json();
 		const { action } = body;

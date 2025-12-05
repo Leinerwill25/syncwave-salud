@@ -25,7 +25,7 @@ export async function POST(req: NextRequest) {
 		}
 
 		const cookieStore = await cookies();
-		const { supabase } = createSupabaseServerClient(cookieStore);
+		const supabase = await createSupabaseServerClient();
 
 		const body = await req.json();
 		const { patients } = body;

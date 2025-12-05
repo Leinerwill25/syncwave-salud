@@ -19,7 +19,7 @@ export async function POST(req: Request) {
 
 		const { patient } = patientAuth;
 		const cookieStore = await cookies();
-		const { supabase } = createSupabaseServerClient(cookieStore);
+		const supabase = await createSupabaseServerClient();
 
 		const body = await req.json();
 		const { prescription_item_id, prescription_id } = body;

@@ -25,7 +25,7 @@ export async function GET(
 
 		const { id } = await context.params;
 		const cookieStore = await cookies();
-		const { supabase } = createSupabaseServerClient(cookieStore);
+		const supabase = await createSupabaseServerClient();
 
 		const { data: order, error } = await supabase
 			.from('lab_result')
@@ -205,7 +205,7 @@ export async function PATCH(
 
 		const { id } = await context.params;
 		const cookieStore = await cookies();
-		const { supabase } = createSupabaseServerClient(cookieStore);
+		const supabase = await createSupabaseServerClient();
 
 		const body = await req.json();
 		const { attachments, result_type, is_critical } = body;

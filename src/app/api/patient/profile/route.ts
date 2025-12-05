@@ -35,7 +35,7 @@ export async function PATCH(request: Request) {
 		}
 
 		const cookieStore = await cookies();
-		const { supabase } = createSupabaseServerClient(cookieStore);
+		const supabase = await createSupabaseServerClient();
 
 		const body = await request.json();
 

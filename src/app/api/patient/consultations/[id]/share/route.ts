@@ -24,7 +24,7 @@ export async function POST(
 		const consultationId = id;
 
 		const cookieStore = await cookies();
-		const { supabase } = createSupabaseServerClient(cookieStore);
+		const supabase = await createSupabaseServerClient();
 
 		// Verificar que la consulta pertenece al paciente
 		const { data: consultation, error: consultationError } = await supabase
@@ -129,7 +129,7 @@ export async function DELETE(
 		const consultationId = id;
 
 		const cookieStore = await cookies();
-		const { supabase } = createSupabaseServerClient(cookieStore);
+		const supabase = await createSupabaseServerClient();
 
 		// Desactivar todos los enlaces activos para esta consulta
 		const { error: updateError } = await supabase

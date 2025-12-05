@@ -1,7 +1,7 @@
-import prisma from '@/lib/prisma';
 import InviteListPage from '@/components/InviteListPage';
+import { createSupabaseServerClient } from '@/app/adapters/server';
+import { tryRestoreSessionFromCookies } from '@/lib/auth-guards';
 import { cookies } from 'next/headers';
-import createSupabaseServerClient from '@/app/adapters/server'; // no pasamos cookies aquí
 
 type SerializedInvite = {
 	id: string;
@@ -13,44 +13,35 @@ type SerializedInvite = {
 	createdAt: string; // ISO string
 };
 
-export async function getCurrentOrganizationId(): Promise<string | null> {
+export async function getCurrentOrganizationId(supabase: any): Promise<string | null> {
 	try {
-		const { supabase } = createSupabaseServerClient();
+		let { data: { user }, error: authError } = await supabase.auth.getUser();
 
-		const sessionResp = await supabase.auth.getSession();
-		console.log('DEBUG supabase.auth.getSession ->', sessionResp);
-
-		let userResp = await supabase.auth.getUser();
-		console.log('DEBUG supabase.auth.getUser (initial) ->', userResp);
-
-		if (!userResp?.data?.user) {
-			try {
-				const cookieStore = await cookies();
-				const accessToken = cookieStore.get('sb-access-token')?.value ?? null;
-
-				if (accessToken) {
-					console.log('DEBUG: reintentando getUser con sb-access-token desde cookies');
-					userResp = await supabase.auth.getUser(accessToken);
-					console.log('DEBUG supabase.auth.getUser (from cookie) ->', userResp);
-				}
-			} catch (e) {
-				console.warn('DEBUG: error leyendo cookies para supabase token', e);
+		if (authError || !user) {
+			// Intentar restaurar sesión
+			const cookieStore = await cookies();
+			const restored = await tryRestoreSessionFromCookies(supabase, cookieStore);
+			
+			if (restored) {
+				const result = await supabase.auth.getUser();
+				user = result.data.user;
+				authError = result.error;
 			}
 		}
 
-		const user = (userResp as any)?.data?.user ?? null;
-
-		if (!user?.id) {
+		if (authError || !user) {
 			if (process.env.NODE_ENV !== 'production') console.log('No supabase session user found.');
 			return null;
 		}
 
-		const appUser = await prisma.user.findFirst({
-			where: { authId: user.id },
-			select: { organizationId: true },
-		});
+		const { data: appUser, error } = await supabase
+			.from('User')
+			.select('organizationId')
+			.eq('authId', user.id)
+			.limit(1)
+			.maybeSingle();
 
-		if (!appUser?.organizationId) {
+		if (error || !appUser?.organizationId) {
 			if (process.env.NODE_ENV !== 'production') console.warn('No app user or organizationId for authId=', user.id);
 			return null;
 		}
@@ -63,7 +54,8 @@ export async function getCurrentOrganizationId(): Promise<string | null> {
 }
 
 export default async function InvitesPage() {
-	const organizationId = await getCurrentOrganizationId();
+	const supabase = await createSupabaseServerClient();
+	const organizationId = await getCurrentOrganizationId(supabase);
 
 	if (!organizationId) {
 		return (
@@ -73,48 +65,31 @@ export default async function InvitesPage() {
 					<p className="mt-3 text-slate-600">
 						No se detectó la organización en la sesión. Asegúrate de que el usuario esté autenticado y que su <code>authId</code> esté guardado en la tabla <code>User.authId</code>.
 					</p>
-					<div className="mt-6 text-sm text-slate-500">
-						Revisa que las cookies de sesión de Supabase estén llegando al servidor y que exista la relación <code>User.authId</code> → <code>User</code> en la base de datos.
-					</div>
 				</div>
 			</div>
 		);
 	}
 
-	// Definimos localmente el tipo que corresponde a la selección hecha por prisma.findMany
-	type InviteSelect = {
-		id: string;
-		email: string | null;
-		token: string;
-		role: string;
-		used: boolean;
-		expiresAt: Date | null;
-		createdAt: Date;
-	};
+	const { data: invitesRaw, error } = await supabase
+		.from('invite')
+		.select('id, email, token, role, used, expiresAt, createdAt')
+		.eq('organizationId', organizationId)
+		.order('createdAt', { ascending: false });
 
-	const invitesRaw = (await prisma.invite.findMany({
-		where: { organizationId },
-		select: {
-			id: true,
-			email: true,
-			token: true,
-			role: true,
-			used: true,
-			expiresAt: true,
-			createdAt: true,
-		},
-		orderBy: { createdAt: 'desc' },
-	})) as InviteSelect[];
+	if (error) {
+		console.error('Error fetching invites:', error);
+		return <div>Error cargando invitaciones</div>;
+	}
 
-	// Mapeamos y serializamos (asegurando no-break si hay nulls)
-	const invites: SerializedInvite[] = invitesRaw.map((i) => ({
+	// Mapeamos y serializamos
+	const invites: SerializedInvite[] = (invitesRaw || []).map((i: any) => ({
 		id: i.id,
-		email: i.email ?? '', // evita nulls en la UI
+		email: i.email ?? '',
 		token: i.token,
 		role: i.role,
 		used: !!i.used,
-		expiresAt: i.expiresAt ? i.expiresAt.toISOString() : '',
-		createdAt: i.createdAt.toISOString(),
+		expiresAt: i.expiresAt ? new Date(i.expiresAt).toISOString() : '',
+		createdAt: i.createdAt ? new Date(i.createdAt).toISOString() : new Date().toISOString(),
 	}));
 
 	return (

@@ -4,7 +4,7 @@ import createSupabaseServerClient from '@/app/adapters/server';
 
 export async function POST(req: NextRequest) {
 	try {
-		const { supabase } = createSupabaseServerClient();
+		const supabase = await createSupabaseServerClient();
 		const formData = await req.formData();
 		const file = formData.get('file') as File;
 		const consultationId = formData.get('consultation_id') as string;
@@ -114,7 +114,7 @@ export async function POST(req: NextRequest) {
 
 export async function DELETE(req: NextRequest) {
 	try {
-		const { supabase } = createSupabaseServerClient();
+		const supabase = await createSupabaseServerClient();
 		const url = new URL(req.url);
 		const imageId = url.searchParams.get('id'); // imageId es el path en storage
 		const consultationId = url.searchParams.get('consultation_id');

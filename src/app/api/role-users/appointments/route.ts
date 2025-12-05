@@ -23,7 +23,7 @@ export async function POST(request: NextRequest) {
 		}
 
 		const cookieStore = await cookies();
-		const { supabase } = createSupabaseServerClient(cookieStore);
+		const supabase = await createSupabaseServerClient();
 
 		const body = await request.json();
 		const { patient_id, scheduled_at, duration_minutes = 30, status = 'SCHEDULED', reason, location } = body;
@@ -119,7 +119,7 @@ export async function GET(request: NextRequest) {
 		}
 
 		const cookieStore = await cookies();
-		const { supabase } = createSupabaseServerClient(cookieStore);
+		const supabase = await createSupabaseServerClient();
 
 		const { searchParams } = new URL(request.url);
 		const date = searchParams.get('date');

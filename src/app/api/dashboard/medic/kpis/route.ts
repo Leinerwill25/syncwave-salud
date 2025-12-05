@@ -96,7 +96,7 @@ export async function GET(req: NextRequest) {
 
 		// 3️⃣ Obtener cliente Supabase
 		const cookieStore = await cookies();
-		const { supabase } = createSupabaseServerClient(cookieStore);
+		const supabase = await createSupabaseServerClient();
 
 		const doctorId = user.userId;
 		console.log(`[KPI] Doctor encontrado: ${doctorId}, período: ${period}`);

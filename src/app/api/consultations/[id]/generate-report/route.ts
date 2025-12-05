@@ -180,7 +180,7 @@ async function generateReportContentFromTemplate(consultation: any, templateText
 	return content;
 }
 
-async function getCurrentDoctorId(supabase: ReturnType<typeof createSupabaseServerClient>['supabase'], request?: Request): Promise<string | null> {
+async function getCurrentDoctorId(supabase: any, request?: Request): Promise<string | null> {
 	// Intento primario: obtener usuario por cookie (session)
 	let { data: authData, error: authError } = await supabase.auth.getUser();
 	
@@ -253,7 +253,7 @@ export async function POST(
 
 		const doctorId = user.userId;
 		const cookieStore = await cookies();
-		const { supabase } = createSupabaseServerClient(cookieStore);
+		const supabase = await createSupabaseServerClient();
 
 		// Obtener datos de la consulta (solo IDs, no los datos del paciente aún)
 		const { data: consultation, error: consultationError } = await supabase

@@ -4,7 +4,7 @@ import createSupabaseServerClient from '@/app/adapters/server';
 
 export async function GET(req: NextRequest) {
 	try {
-		const { supabase } = createSupabaseServerClient();
+		const supabase = await createSupabaseServerClient();
 		const url = new URL(req.url);
 		const doctorId = url.searchParams.get('doctorId');
 		const patientId = url.searchParams.get('patientId');
@@ -225,7 +225,7 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
 	try {
-		const { supabase } = createSupabaseServerClient();
+		const supabase = await createSupabaseServerClient();
 
 		// Intentamos obtener el user desde la sesión server-side
 		const maybeUser = await supabase.auth.getUser();
@@ -246,11 +246,13 @@ export async function POST(req: NextRequest) {
 		let finalPatientId: string | null = patient_id || null;
 		let finalUnregisteredPatientId: string | null = unregistered_patient_id || null;
 		let finalAppointmentId: string | null = appointment_id || null;
+		let appointmentDoctorId: string | null = null;
+		let appointmentOrganizationId: string | null = null;
 
 		if (appointment_id) {
 			const { data: appointmentData, error: appointmentError } = await supabase
 				.from('appointment')
-				.select('patient_id, unregistered_patient_id')
+				.select('patient_id, unregistered_patient_id, doctor_id, organization_id')
 				.eq('id', appointment_id)
 				.single();
 
@@ -267,6 +269,10 @@ export async function POST(req: NextRequest) {
 				if (!finalUnregisteredPatientId && appointmentData.unregistered_patient_id) {
 					finalUnregisteredPatientId = appointmentData.unregistered_patient_id;
 				}
+				
+				// Guardar doctor_id y organization_id del appointment para usarlos como fallback
+				appointmentDoctorId = appointmentData.doctor_id || null;
+				appointmentOrganizationId = appointmentData.organization_id || null;
 			}
 		}
 
@@ -325,6 +331,16 @@ export async function POST(req: NextRequest) {
 			doctorIdToUse = providedDoctorId;
 		}
 
+		// Si no se pudo determinar el doctor_id de otra forma, usar el del appointment
+		if (!doctorIdToUse && appointmentDoctorId) {
+			doctorIdToUse = appointmentDoctorId;
+		}
+		
+		// Si no se pudo determinar la organización de otra forma, usar la del appointment
+		if (!organizationIdToUse && appointmentOrganizationId) {
+			organizationIdToUse = appointmentOrganizationId;
+		}
+
 		// Construir payload de inserción
 		// Usamos vitals (jsonb) para guardar tanto signos vitales como datos adicionales
 		interface VitalsPayload {
@@ -373,8 +389,7 @@ export async function POST(req: NextRequest) {
 			startedAt = now;
 		}
 
-		// Construir payload según el tipo de paciente
-		// IMPORTANTE: Si patient_id es NOT NULL en la BD, necesitamos un valor válido o usar SQL directo
+		// Construir payload - incluir ambos campos (patient_id y unregistered_patient_id) ya que ambos pueden ser nullable
 		interface InsertPayload {
 			doctor_id: string | null;
 			organization_id: string | null;
@@ -396,134 +411,14 @@ export async function POST(req: NextRequest) {
 			vitals: Object.keys(vitalsPayload).length > 0 ? JSON.stringify(vitalsPayload) : null,
 			started_at: startedAt.toISOString(),
 			appointment_id: finalAppointmentId,
+			patient_id: finalPatientId || null,
+			unregistered_patient_id: finalUnregisteredPatientId || null,
 		};
 
-		interface PostgresError {
-			code?: string;
-			column?: string;
-			message?: string;
-		}
-		let insertData: Record<string, unknown> | undefined;
-		let insertErr: Error | PostgresError | null = null;
-
-		if (finalPatientId) {
-			// Paciente registrado: incluir patient_id
-			insertPayload.patient_id = finalPatientId;
-			const result = await supabase.from('consultation').insert([insertPayload]).select('*').maybeSingle();
-			insertData = result.data;
-			insertErr = result.error;
-		} else if (finalUnregisteredPatientId) {
-			// Paciente no registrado: patient_id es NOT NULL pero necesitamos solo unregistered_patient_id
-			// NOTA: La tabla tiene patient_id como NOT NULL, lo cual es un problema de diseño
-			// Para solucionarlo, necesitamos usar SQL directo con un valor temporal o cambiar el esquema
-			// Por ahora, intentar insertar omitiendo patient_id - si falla, necesitarás modificar el esquema
-			const { Pool } = await import('pg');
-			const pool = new Pool({
-				connectionString: process.env.DATABASE_URL,
-			});
-
-			interface QueryResult {
-				rows: Array<Record<string, unknown>>;
-			}
-			let result: QueryResult | null = null;
-			try {
-				// Intentar insertar sin patient_id (fallará si es NOT NULL, pero lo intentamos)
-				result = await pool.query(
-					`
-					INSERT INTO consultation (
-						unregistered_patient_id,
-						appointment_id,
-						doctor_id,
-						organization_id,
-						chief_complaint,
-						diagnosis,
-						notes,
-						vitals,
-						started_at
-					) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-					RETURNING *
-				`,
-					[
-						finalUnregisteredPatientId,
-						finalAppointmentId,
-						doctorIdToUse,
-						organizationIdToUse,
-						chief_complaint,
-						diagnosis,
-						notes,
-						Object.keys(vitalsPayload).length > 0 ? JSON.stringify(vitalsPayload) : null,
-						startedAt.toISOString(),
-					]
-				);
-
-				insertData = result.rows[0] as Record<string, unknown>;
-				insertErr = null;
-			} catch (sqlError: unknown) {
-				console.error('Error con SQL directo para paciente no registrado:', sqlError);
-				
-				// Si el error es que patient_id es NOT NULL, intentar modificar el esquema automáticamente
-				const pgError = sqlError as PostgresError;
-				if (pgError.code === '23502' && (pgError.column === 'patient_id' || pgError.message?.includes('patient_id'))) {
-					try {
-						console.log('Intentando modificar el esquema para hacer patient_id nullable...');
-						// Intentar modificar el esquema para hacer patient_id nullable
-						await pool.query('ALTER TABLE consultation ALTER COLUMN patient_id DROP NOT NULL');
-						
-						// Reintentar la inserción después de modificar el esquema
-						result = await pool.query(
-							`
-							INSERT INTO consultation (
-								unregistered_patient_id,
-								appointment_id,
-								doctor_id,
-								organization_id,
-								chief_complaint,
-								diagnosis,
-								notes,
-								vitals,
-								started_at
-							) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-							RETURNING *
-						`,
-							[
-								finalUnregisteredPatientId,
-								finalAppointmentId,
-								doctorIdToUse,
-								organizationIdToUse,
-								chief_complaint,
-								diagnosis,
-								notes,
-								Object.keys(vitalsPayload).length > 0 ? JSON.stringify(vitalsPayload) : null,
-								startedAt.toISOString(),
-							]
-						);
-						
-						insertData = result.rows[0];
-						insertErr = null;
-						console.log('Esquema modificado exitosamente y consulta creada');
-					} catch (alterError: unknown) {
-						const alterErrorMessage = alterError instanceof Error ? alterError.message : 'Desconocido';
-						console.error('Error al modificar el esquema:', alterError);
-						insertErr = new Error(
-							'No se pudo modificar el esquema de la base de datos automáticamente. ' +
-							'Por favor, ejecuta manualmente: ALTER TABLE consultation ALTER COLUMN patient_id DROP NOT NULL; ' +
-							'Error: ' + alterErrorMessage
-						);
-					}
-				} else {
-					insertErr = pgError as PostgresError;
-				}
-			} finally {
-				try {
-					await pool.end();
-				} catch (e) {
-					// ignore
-				}
-			}
-		} else {
-			// No hay paciente especificado
-			insertErr = new Error('Debe proporcionar patient_id o unregistered_patient_id');
-		}
+		// Insertar la consulta con ambos campos (patient_id puede ser null si es paciente no registrado)
+		const result = await supabase.from('consultation').insert([insertPayload]).select('*').maybeSingle();
+		const insertData = result.data;
+		const insertErr = result.error;
 
 		if (insertErr) {
 			console.error('❌ Error insert consultation:', insertErr);

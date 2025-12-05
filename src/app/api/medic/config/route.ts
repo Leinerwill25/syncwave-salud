@@ -121,7 +121,7 @@ async function tryRestoreSessionFromCookies(supabase: ReturnType<typeof createSu
 export async function GET(request: Request) {
 	try {
 		const cookieStore = await cookies();
-		const { supabase } = createSupabaseServerClient(cookieStore);
+		const supabase = await createSupabaseServerClient();
 
 		let accessTokenFromCookie: string | null = null;
 		try {
@@ -396,7 +396,7 @@ export async function GET(request: Request) {
 export async function PATCH(request: Request) {
 	try {
 		const cookieStore = await cookies();
-		const { supabase } = createSupabaseServerClient(cookieStore);
+		const supabase = await createSupabaseServerClient();
 
 		let accessTokenFromCookie: string | null = null;
 		try {

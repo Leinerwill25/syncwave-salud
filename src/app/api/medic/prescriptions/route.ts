@@ -5,7 +5,7 @@ import { createNotification } from '@/lib/notifications';
 // ✅ GET — Lista todas las recetas (puede filtrarse por paciente)
 export async function GET(req: Request) {
 	try {
-		const { supabase } = createSupabaseServerClient();
+		const supabase = await createSupabaseServerClient();
 		const url = new URL(req.url);
 		const patientId = url.searchParams.get('patientId');
 
@@ -61,7 +61,7 @@ export async function GET(req: Request) {
 // ✅ POST — Crea una nueva receta con sus items
 export async function POST(req: Request) {
 	try {
-		const { supabase } = createSupabaseServerClient();
+		const supabase = await createSupabaseServerClient();
 		const body = await req.json();
 
 		/**

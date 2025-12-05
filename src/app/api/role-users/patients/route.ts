@@ -13,7 +13,7 @@ export async function GET(request: NextRequest) {
 		}
 
 		const cookieStore = await cookies();
-		const { supabase } = createSupabaseServerClient(cookieStore);
+		const supabase = await createSupabaseServerClient();
 
 		// Obtener todos los pacientes que tienen citas o consultas con esta organización
 		// Primero obtenemos las citas de la organización (todas las citas programadas y confirmadas)

@@ -14,7 +14,7 @@ export async function GET(request: Request) {
 		}
 
 		const cookieStore = await cookies();
-		const { supabase } = createSupabaseServerClient(cookieStore);
+		const supabase = await createSupabaseServerClient();
 
 		// Obtener todos los grants activos
 		const { data: grants, error: grantsError } = await supabase

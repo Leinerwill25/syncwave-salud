@@ -14,7 +14,7 @@ export async function GET(request: Request) {
 		}
 
 		const cookieStore = await cookies();
-		const { supabase } = createSupabaseServerClient(cookieStore);
+		const supabase = await createSupabaseServerClient();
 
 		// Obtener doctores con los que el paciente tiene citas programadas o completadas
 		const { data: appointments, error: aptError } = await supabase

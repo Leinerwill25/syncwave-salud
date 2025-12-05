@@ -12,7 +12,7 @@ export async function GET() {
 		}
 
 		const cookieStore = await cookies();
-		const { supabase } = createSupabaseServerClient(cookieStore);
+		const supabase = await createSupabaseServerClient();
 
 		// Obtener grupo familiar del paciente (como owner)
 		const { data: familyGroup, error: groupError } = await supabase
@@ -166,7 +166,7 @@ export async function POST(request: Request) {
 		}
 
 		const cookieStore = await cookies();
-		const { supabase } = createSupabaseServerClient(cookieStore);
+		const supabase = await createSupabaseServerClient();
 
 		const body = await request.json();
 		const { name } = body;

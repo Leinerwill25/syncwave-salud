@@ -32,8 +32,17 @@ const LINKS: LinkItem[] = [
 	{ href: '/dashboard/clinic', label: 'Resumen', icon: 'dashboard' },
 	{ href: '/dashboard/clinic/invites', label: 'Invitaciones', icon: 'invite' },
 	{ href: '/dashboard/clinic/specialists', label: 'Especialistas', icon: 'users' },
-	{ href: '/dashboard/clinic/billing', label: 'Facturación', icon: 'billing', comingSoon: true }, // <-- marca como próximamente
+	{ href: '/dashboard/clinic/billing', label: 'Facturación', icon: 'billing', comingSoon: true },
 	{ href: '/dashboard/clinic/settings', label: 'Configuración', icon: 'settings' },
+	// Analítica
+	{ href: '/dashboard/clinic/analytics/data', label: 'Analítica de Datos', icon: 'dashboard' }, // Reusing dashboard icon for now or add new one
+	{ href: '/dashboard/clinic/analytics/reports', label: 'Reportes', icon: 'dashboard' },
+	{ href: '/dashboard/clinic/analytics/kpis', label: 'KPIs', icon: 'dashboard' },
+	{ href: '/dashboard/clinic/analytics/specialists', label: 'Por Especialista', icon: 'users' },
+	{ href: '/dashboard/clinic/analytics/consultations', label: 'Consultas', icon: 'dashboard' },
+	{ href: '/dashboard/clinic/analytics/diagnoses', label: 'Diagnósticos', icon: 'dashboard' },
+	{ href: '/dashboard/clinic/analytics/followup', label: 'Seguimiento', icon: 'dashboard' },
+	{ href: '/dashboard/clinic/analytics/comparison', label: 'Citas vs Consultas', icon: 'dashboard' },
 ];
 
 export default function ClinicSidebar() {

@@ -20,7 +20,7 @@ function decodeJwtPayload(token: string) {
 }
 
 export default async function EspecialistasPage() {
-	const { supabase } = createSupabaseServerClient();
+	const supabase = await createSupabaseServerClient();
 
 	// 1) Intentamos reconstruir la session desde supabase.auth
 	const { data: sessionResp, error: sessionErr } = await supabase.auth.getSession();

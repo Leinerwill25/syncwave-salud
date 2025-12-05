@@ -6,7 +6,7 @@ import { getExchangeRateForCurrency } from '@/lib/currency-utils';
 
 export async function POST(req: NextRequest) {
 	try {
-		const { supabase } = createSupabaseServerClient();
+		const supabase = await createSupabaseServerClient();
 
 		// Intentamos obtener el user desde la sesión server-side
 		const maybeUser = await supabase.auth.getUser();
@@ -247,7 +247,7 @@ export async function POST(req: NextRequest) {
 
 export async function GET(req: NextRequest) {
 	try {
-		const { supabase } = createSupabaseServerClient();
+		const supabase = await createSupabaseServerClient();
 		const url = new URL(req.url);
 		const appointmentId = url.searchParams.get('appointment_id');
 		const consultationId = url.searchParams.get('consultation_id');

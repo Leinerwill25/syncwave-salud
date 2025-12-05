@@ -16,7 +16,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
 		}
 
 		const cookieStore = await cookies();
-		const { supabase } = createSupabaseServerClient(cookieStore);
+		const supabase = await createSupabaseServerClient();
 		if (user.role !== 'MEDICO') {
 			return NextResponse.json({ error: 'Acceso denegado: solo médicos' }, { status: 403 });
 		}
@@ -138,7 +138,7 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
 		}
 
 		const cookieStore = await cookies();
-		const { supabase } = createSupabaseServerClient(cookieStore);
+		const supabase = await createSupabaseServerClient();
 		if (user.role !== 'MEDICO') {
 			return NextResponse.json({ error: 'Acceso denegado: solo médicos' }, { status: 403 });
 		}

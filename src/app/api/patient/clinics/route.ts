@@ -13,7 +13,7 @@ export async function GET(request: Request) {
 		}
 
 		const cookieStore = await cookies();
-		const { supabase } = createSupabaseServerClient(cookieStore);
+		const supabase = await createSupabaseServerClient();
 
 		const url = new URL(request.url);
 		const page = parseInt(url.searchParams.get('page') || '1', 10);

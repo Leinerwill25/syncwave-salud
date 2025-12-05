@@ -21,7 +21,7 @@ export async function GET(
 ) {
 	try {
 		const cookieStore = await cookies();
-		const { supabase } = createSupabaseServerClient(cookieStore);
+		const supabase = await createSupabaseServerClient();
 
 		const url = new URL(request.url);
 		const token = url.searchParams.get('token');

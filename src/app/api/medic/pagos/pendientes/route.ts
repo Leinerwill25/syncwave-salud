@@ -17,7 +17,7 @@ export async function GET() {
 		}
 
 		const cookieStore = await cookies();
-		const { supabase } = createSupabaseServerClient(cookieStore);
+		const supabase = await createSupabaseServerClient();
 
 		// Obtener facturas con estado pendiente_verificacion del médico actual
 		const { data: facturas, error } = await supabase

@@ -18,7 +18,7 @@ export async function GET(req: Request) {
 		}
 
 		const cookieStore = await cookies();
-		const { supabase } = createSupabaseServerClient(cookieStore);
+		const supabase = await createSupabaseServerClient();
 
 		// Obtener conversaciones donde el médico es sender o recipient
 		const { data: conversations, error } = await supabase

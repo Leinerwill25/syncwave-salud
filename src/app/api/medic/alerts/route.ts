@@ -42,7 +42,7 @@ export async function GET(req: Request) {
 		}
 
 		const cookieStore = await cookies();
-		const { supabase } = createSupabaseServerClient(cookieStore);
+		const supabase = await createSupabaseServerClient();
 
 		const doctorId = user.userId;
 		const now = new Date();

@@ -71,7 +71,7 @@ async function tryRestoreSessionFromCookies(supabase: any, cookieStore: any): Pr
 
 export async function POST(req: NextRequest) {
 	try {
-		const { supabase } = createSupabaseServerClient();
+		const supabase = await createSupabaseServerClient();
 		const cookieStore = await cookies();
 		const body = await req.json();
 

@@ -19,7 +19,7 @@ export async function POST(
 
 		const { id } = await params;
 		const cookieStore = await cookies();
-		const { supabase } = createSupabaseServerClient(cookieStore);
+		const supabase = await createSupabaseServerClient();
 
 		const body = await request.json();
 		const { new_scheduled_at, reason } = body;

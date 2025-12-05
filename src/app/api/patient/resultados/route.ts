@@ -12,7 +12,7 @@ export async function GET(request: Request) {
 		}
 
 		const cookieStore = await cookies();
-		const { supabase } = createSupabaseServerClient(cookieStore);
+		const supabase = await createSupabaseServerClient();
 
 		const { data: labResults, error } = await supabase
 			.from('lab_result')

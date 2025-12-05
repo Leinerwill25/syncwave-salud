@@ -22,7 +22,7 @@ export async function GET(
 
 		const { id } = await context.params;
 		const cookieStore = await cookies();
-		const { supabase } = createSupabaseServerClient(cookieStore);
+		const supabase = await createSupabaseServerClient();
 
 		// Nota: Ya no usamos la relación Patient:patient_id porque patient_id puede ser de Patient o unregisteredpatients
 		const { data: task, error } = await supabase
@@ -160,7 +160,7 @@ export async function PATCH(
 
 		const { id } = await context.params;
 		const cookieStore = await cookies();
-		const { supabase } = createSupabaseServerClient(cookieStore);
+		const supabase = await createSupabaseServerClient();
 
 		// Verificar acceso
 		const { data: existingTask, error: checkError } = await supabase
@@ -236,7 +236,7 @@ export async function DELETE(
 
 		const { id } = await context.params;
 		const cookieStore = await cookies();
-		const { supabase } = createSupabaseServerClient(cookieStore);
+		const supabase = await createSupabaseServerClient();
 
 		// Verificar que es el creador
 		const { data: existingTask, error: checkError } = await supabase

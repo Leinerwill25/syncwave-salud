@@ -15,7 +15,7 @@ export async function POST(
 		}
 
 		const cookieStore = await cookies();
-		const { supabase } = createSupabaseServerClient(cookieStore);
+		const supabase = await createSupabaseServerClient();
 
 		const { id } = await params;
 		const appointmentId = id;

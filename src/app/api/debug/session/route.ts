@@ -21,7 +21,7 @@ export async function GET() {
 		}
 
 		// pasamos hdrs y ck a la factory (y await si la factory es async)
-		const { supabase } = createSupabaseServerClient();
+		const supabase = await createSupabaseServerClient();
 
 		const sessionResp = await supabase.auth.getSession();
 		const userResp = await supabase.auth.getUser();

@@ -68,7 +68,7 @@ export async function logRoleUserAction(params: {
 		const { cookies } = await import('next/headers');
 		const cookieStore = await cookies();
 		const { createSupabaseServerClient } = await import('@/app/adapters/server');
-		const { supabase } = createSupabaseServerClient(cookieStore);
+		const supabase = await createSupabaseServerClient();
 
 		// Obtener IP y User-Agent del request si es posible
 		const ipAddress = 'unknown'; // Se puede obtener del request si se pasa como parámetro

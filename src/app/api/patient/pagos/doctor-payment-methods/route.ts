@@ -21,7 +21,7 @@ export async function GET(request: Request) {
 		}
 
 		const cookieStore = await cookies();
-		const { supabase } = createSupabaseServerClient(cookieStore);
+		const supabase = await createSupabaseServerClient();
 
 		// Obtener métodos de pago del doctor desde medic_profile
 		const { data: medicProfile, error } = await supabase

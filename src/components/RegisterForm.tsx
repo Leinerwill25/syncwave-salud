@@ -75,6 +75,9 @@ export default function RegisterForm(): React.ReactElement {
 			setDisplaySpecialistCount('1');
 			// NUEVO: si es MEDICO forzamos el tipo de organización a CONSULTORIO
 			setOrgType('CONSULTORIO');
+		} else if (role === 'ADMIN') {
+			// Si es ADMIN (Clínica), sugerimos CLINICA por defecto
+			setOrgType('CLINICA');
 		}
 		// si cambia a otro role, no forzamos nada (el usuario puede editar el número)
 		// además, al cambiar role reiniciamos plan/billing a valores por defecto razonables
@@ -764,8 +767,8 @@ export default function RegisterForm(): React.ReactElement {
 									value={role}
 									onChange={(e) => {
 										const newRole = e.target.value as Role;
-										// Solo permitir MEDICO y PACIENTE
-										if (newRole !== 'MEDICO' && newRole !== 'PACIENTE') {
+										// Permitir MEDICO, PACIENTE y ADMIN
+										if (newRole !== 'MEDICO' && newRole !== 'PACIENTE' && newRole !== 'ADMIN') {
 											return;
 										}
 										setRole(newRole);
@@ -779,7 +782,7 @@ export default function RegisterForm(): React.ReactElement {
 									onBlur={() => setStep(1)}>
 									<option value="MEDICO">Médico/Especialista Independiente (Consultorio Privado)</option>
 									<option value="PACIENTE">Paciente</option>
-									<option value="ADMIN" disabled>Administrador / Clínica (Próximamente)</option>
+									<option value="ADMIN">Administrador / Clínica</option>
 									<option value="FARMACIA" disabled>Farmacia (Próximamente)</option>
 									<option value="LABORATORIO" disabled>Laboratorio (Próximamente)</option>
 								</select>
@@ -791,8 +794,8 @@ export default function RegisterForm(): React.ReactElement {
 										<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
 									</svg>
 									<p className="text-xs text-blue-800 leading-relaxed">
-										<strong>Nota:</strong> Actualmente solo está disponible el registro para <strong>Consultorios Privados</strong> y <strong>Pacientes</strong>. 
-										El registro para Clínicas, Farmacias y Laboratorios estará disponible próximamente.
+										<strong>Nota:</strong> Actualmente el registro está disponible para <strong>Consultorios Privados</strong>, <strong>Clínicas</strong> y <strong>Pacientes</strong>. 
+										El registro para Farmacias y Laboratorios estará disponible próximamente.
 									</p>
 								</div>
 							</div>
@@ -878,7 +881,7 @@ export default function RegisterForm(): React.ReactElement {
 							<select value={orgType} onChange={(e) => setOrgType(e.target.value as OrgType)} className={selectClass} disabled={role === 'MEDICO'}>
 								<option value="CONSULTORIO">Consultorio Privado</option>
 								<option value="HOSPITAL">Hospital</option>
-								<option value="CLINICA" disabled>Clínica (Próximamente)</option>
+								<option value="CLINICA">Clínica</option>
 								<option value="FARMACIA" disabled>Farmacia (Próximamente)</option>
 								<option value="LABORATORIO" disabled>Laboratorio (Próximamente)</option>
 							</select>

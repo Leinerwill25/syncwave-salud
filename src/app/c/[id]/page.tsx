@@ -7,7 +7,7 @@ import { parseSpecialties, parseOpeningHours } from '@/lib/safe-json-parse';
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
 	const { id } = await params;
 	const cookieStore = await cookies();
-	const { supabase } = createSupabaseServerClient(cookieStore);
+	const supabase = await createSupabaseServerClient();
 
 	try {
 		// Obtener datos del consultorio
@@ -70,7 +70,7 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
 export default async function ConsultorioPublicRoute({ params }: { params: Promise<{ id: string }> }) {
 	const { id } = await params;
 	const cookieStore = await cookies();
-	const { supabase } = createSupabaseServerClient(cookieStore);
+	const supabase = await createSupabaseServerClient();
 
 	try {
 		// Obtener datos del consultorio

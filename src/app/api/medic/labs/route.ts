@@ -21,7 +21,7 @@ export async function GET(req: Request) {
 		const authenticatedUser = user;
 
 		const cookieStore = await cookies();
-		const { supabase } = createSupabaseServerClient(cookieStore);
+		const supabase = await createSupabaseServerClient();
 
 		const url = new URL(req.url);
 		const patientId = url.searchParams.get('patientId');

@@ -5,7 +5,7 @@ import createSupabaseServerClient from '@/app/adapters/server';
 export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
 	try {
 		const { id } = await params;
-		const { supabase } = createSupabaseServerClient();
+		const supabase = await createSupabaseServerClient();
 
 		// Intentamos obtener el user desde la sesión server-side
 		const maybeUser = await supabase.auth.getUser();
@@ -114,7 +114,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
 	try {
 		const { id } = await params;
-		const { supabase } = createSupabaseServerClient();
+		const supabase = await createSupabaseServerClient();
 
 		const { data, error } = await supabase
 			.from('facturacion')

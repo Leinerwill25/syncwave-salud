@@ -18,7 +18,7 @@ export async function GET(req: Request) {
 		}
 
 		const cookieStore = await cookies();
-		const { supabase } = createSupabaseServerClient(cookieStore);
+		const supabase = await createSupabaseServerClient();
 
 		const url = new URL(req.url);
 		const patientId = url.searchParams.get('patientId');
@@ -160,7 +160,7 @@ export async function POST(req: Request) {
 		}
 
 		const cookieStore = await cookies();
-		const { supabase } = createSupabaseServerClient(cookieStore);
+		const supabase = await createSupabaseServerClient();
 
 		const body = await req.json();
 		const { title, description, assigned_to, patient_id, related_consultation_id, due_at } = body;

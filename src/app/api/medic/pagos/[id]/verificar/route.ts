@@ -29,7 +29,7 @@ export async function POST(
 		}
 
 		const cookieStore = await cookies();
-		const { supabase } = createSupabaseServerClient(cookieStore);
+		const supabase = await createSupabaseServerClient();
 
 		// Verificar que la factura existe y pertenece al médico
 		const { data: factura, error: fetchError } = await supabase

@@ -1,7 +1,6 @@
-// src/app/invite/[token]/page.tsx
 import React from 'react';
-import prisma from '@/lib/prisma';
 import InviteRegisterClient from '@/components/InviteRegisterClient';
+import { createSupabaseServerClient } from '@/app/adapters/server';
 
 type InviteRow = {
 	id: string;
@@ -18,28 +17,21 @@ type InviteRow = {
 async function getInviteByToken(token: string): Promise<InviteRow | null> {
 	if (!token) return null;
 
-	// Traemos la invitación junto con el nombre de la organización (si existe relación)
-	const invite = await prisma.invite.findUnique({
-		where: { token },
-		select: {
-			id: true,
-			email: true,
-			token: true,
-			role: true,
-			used: true,
-			expiresAt: true,
-			createdAt: true,
-			organizationId: true,
-			// suponiendo que la relación en Prisma se llama `organization`
-			organization: {
-				select: {
-					name: true,
-				},
-			},
-		},
-	});
+	const supabase = await createSupabaseServerClient();
 
-	if (!invite) return null;
+	// Traemos la invitación junto con el nombre de la organización
+	// Asumimos que la relación en Supabase se puede consultar así si existe FK
+	// Si no, habría que hacer dos queries. Intentaremos join primero.
+	const { data: invite, error } = await supabase
+		.from('invite')
+		.select('*, organization:organizationId (name)')
+		.eq('token', token)
+		.maybeSingle();
+
+	if (error || !invite) {
+		if (error) console.error('Error fetching invite:', error);
+		return null;
+	}
 
 	return {
 		id: invite.id,
@@ -47,15 +39,16 @@ async function getInviteByToken(token: string): Promise<InviteRow | null> {
 		token: invite.token,
 		role: invite.role,
 		used: invite.used,
-		expiresAt: invite.expiresAt,
-		createdAt: invite.createdAt,
+		expiresAt: new Date(invite.expiresAt),
+		createdAt: new Date(invite.createdAt),
 		organizationId: invite.organizationId,
 		organizationName: (invite as any).organization?.name ?? null,
 	};
 }
 
-export default async function InvitePage({ params }: { params: { token: string } }) {
-	const { token } = params;
+export default async function InvitePage({ params }: { params: Promise<{ token: string }> }) {
+	const { token } = await params;
+	
 	const invite = await getInviteByToken(token);
 
 	if (!invite) {
@@ -70,8 +63,8 @@ export default async function InvitePage({ params }: { params: { token: string }
 	const expired = invite.expiresAt < new Date();
 
 	return (
-		<div className="min-h-screen flex items-center justify-center bg-slate-50 py-12 px-4">
-			<div className="w-full max-w-2xl">
+		<div className="min-h-[calc(100vh-80px)] flex items-start justify-center bg-slate-50 pt-10 pb-12 px-4">
+			<div className="w-full max-w-2xl mt-8">
 				<div className="bg-white border border-slate-100 rounded-2xl shadow-md p-8">
 					<div className="mb-6">
 						<h1 className="text-2xl md:text-3xl font-semibold text-slate-900">

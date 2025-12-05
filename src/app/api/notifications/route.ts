@@ -9,7 +9,7 @@ export async function GET(req: Request) {
 		console.debug('[API/notifications] token present?', !!token);
 
 		// Crea el cliente server-side. Si tu helper acepta { req }, pásalo.
-		const { supabase } = createSupabaseServerClient();
+		const supabase = await createSupabaseServerClient();
 
 		// 1) Obtener usuario auth (desde token o cookies)
 		let userDataResp;

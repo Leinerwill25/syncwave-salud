@@ -23,9 +23,32 @@ export interface AuthenticatedUser {
 export async function getAuthenticatedUser(): Promise<AuthenticatedUser | null> {
 	try {
 		const cookieStore = await cookies();
-		const { supabase } = createSupabaseServerClient(cookieStore);
+		let supabase = await createSupabaseServerClient();
+		
+		// Fix defensivo: asegurar que supabase no sea una promesa pendiente (por si acaso)
+		if (supabase && typeof (supabase as any).then === 'function') {
+			supabase = await (supabase as any);
+		}
+
+		if (!supabase || !supabase.auth) {
+			console.error('[Auth Guard] CRITICAL: Supabase client is invalid or missing auth!', { 
+				type: typeof supabase, 
+				hasAuth: !!supabase?.auth,
+				keys: supabase ? Object.keys(supabase) : [] 
+			});
+			// Intentar recuperar creando un cliente básico si falla el adapter (fallback de emergencia)
+			// Esto ayuda si el problema es cookies() o algo en el adapter
+			if (!supabase?.auth) {
+				const { createClient } = await import('@supabase/supabase-js');
+				supabase = createClient(
+					process.env.NEXT_PUBLIC_SUPABASE_URL!,
+					process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+				) as any;
+			}
+		}
 
 		// Intentar obtener sesión primero
+
 		let { data: sessionData, error: sessionError } = await supabase.auth.getSession();
 
 		// Si no hay sesión, intentar restaurar desde cookies

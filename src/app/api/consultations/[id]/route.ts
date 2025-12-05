@@ -10,7 +10,7 @@ export async function GET(req: NextRequest, context: { params: Promise<{ id: str
 		const { id } = await context.params;
 		if (!id) return NextResponse.json({ error: 'No se proporcionó un ID' }, { status: 400 });
 
-		const { supabase } = createSupabaseServerClient();
+		const supabase = await createSupabaseServerClient();
 
 		const { data: consultation, error } = await supabase
 			.from('consultation')
@@ -55,7 +55,7 @@ export async function PATCH(req: NextRequest, context: { params: Promise<{ id: s
 		if (!id) return NextResponse.json({ error: 'Falta ID de consulta' }, { status: 400 });
 
 		const body = await req.json();
-		const { supabase } = createSupabaseServerClient();
+		const supabase = await createSupabaseServerClient();
 
 		const updatePayload: any = {
 			chief_complaint: body.chief_complaint ?? undefined,
@@ -115,7 +115,7 @@ export async function DELETE(req: NextRequest, context: { params: Promise<{ id: 
 		const { id } = await context.params;
 		if (!id) return NextResponse.json({ error: 'Falta ID de consulta' }, { status: 400 });
 
-		const { supabase } = createSupabaseServerClient();
+		const supabase = await createSupabaseServerClient();
 		const { error } = await supabase.from('consultation').delete().eq('id', id);
 
 		if (error) throw error;

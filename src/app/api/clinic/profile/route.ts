@@ -163,7 +163,7 @@ export async function GET(req: Request) {
 		}
 
 		const cookieStore = await cookies();
-		const { supabase } = createSupabaseServerClient(cookieStore);
+		const supabase = await createSupabaseServerClient();
 
 		// ---------------- clinic_profile ----------------
 		let clinicProfile: any = null;
@@ -313,7 +313,7 @@ export async function PUT(req: Request) {
 		}
 
 		const cookieStore = await cookies();
-		const { supabase } = createSupabaseServerClient(cookieStore);
+		const supabase = await createSupabaseServerClient();
 		const body = await req.json();
 
 		// encontrar tabla clinic_profile

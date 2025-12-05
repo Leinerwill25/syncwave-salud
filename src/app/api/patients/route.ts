@@ -166,7 +166,7 @@ export async function GET(request: Request) {
 		}
 
 		const cookieStore = await cookies();
-		const { supabase } = createSupabaseServerClient(cookieStore);
+		const supabase = await createSupabaseServerClient();
 
 		// Obtener authId del usuario autenticado
 		const authId = user.authId;
@@ -865,7 +865,7 @@ export async function POST(request: Request) {
 	try {
 		// Obtener cookie store explícitamente
 		const cookieStore = await cookies();
-		const { supabase } = createSupabaseServerClient(cookieStore);
+		const supabase = await createSupabaseServerClient();
 
 		// Intentar obtener access_token directamente de cookies primero
 		let accessTokenFromCookie: string | null = null;

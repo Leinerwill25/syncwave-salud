@@ -12,7 +12,7 @@ export default async function ConsultationSharePage({ params }: Props) {
 	const { token } = await params;
 
 	const cookieStore = await cookies();
-	const { supabase } = createSupabaseServerClient(cookieStore);
+	const supabase = await createSupabaseServerClient();
 
 	// Obtener el enlace compartido
 	const { data: shareLink, error: linkError } = await supabase

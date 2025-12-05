@@ -17,7 +17,7 @@ export async function GET() {
 		}
 
 		const cookieStore = await cookies();
-		const { supabase } = createSupabaseServerClient(cookieStore);
+		const supabase = await createSupabaseServerClient();
 
 		// Obtener facturas pagadas del médico actual que tengan número de referencia o captura
 		const { data: facturas, error } = await supabase

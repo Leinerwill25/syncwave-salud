@@ -29,7 +29,7 @@ export async function POST(
 		}
 
 		const cookieStore = await cookies();
-		const { supabase } = createSupabaseServerClient(cookieStore);
+		const supabase = await createSupabaseServerClient();
 
 		// Obtener la consulta
 		const { data: consultation, error: consultationError } = await supabase

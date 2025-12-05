@@ -41,7 +41,7 @@ export default async function Page({ params }: Props) {
 		);
 	}
 
-	const { supabase } = createSupabaseServerClient();
+	const supabase = await createSupabaseServerClient();
 
 	const { data: consultation, error } = await supabase
 		.from('consultation')

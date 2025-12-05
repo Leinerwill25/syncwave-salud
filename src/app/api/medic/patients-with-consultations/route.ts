@@ -17,7 +17,7 @@ export async function GET(req: NextRequest) {
 		}
 
 		const cookieStore = await cookies();
-		const { supabase } = createSupabaseServerClient(cookieStore);
+		const supabase = await createSupabaseServerClient();
 
 		const doctorId = user.userId;
 

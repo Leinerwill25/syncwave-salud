@@ -4,7 +4,7 @@ import createSupabaseServerClient from '@/app/adapters/server';
 
 export async function POST(req: Request) {
 	try {
-		const { supabase } = createSupabaseServerClient();
+		const supabase = await createSupabaseServerClient();
 		const body = await req.json();
 
 		const { patient_id, doctor_id, organization_id, scheduled_at, duration_minutes = 30, status = 'SCHEDULED', reason, location } = body;

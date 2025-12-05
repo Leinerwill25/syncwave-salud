@@ -18,7 +18,7 @@ export async function POST(request: NextRequest) {
 		}
 
 		const cookieStore = await cookies();
-		const { supabase } = createSupabaseServerClient(cookieStore);
+		const supabase = await createSupabaseServerClient();
 
 		let userEmail: string | null = null;
 		let roleUser: any = null;
@@ -230,7 +230,7 @@ export async function GET(request: NextRequest) {
 		const sessionData = JSON.parse(sessionCookie.value);
 
 		// Verificar que el usuario aún existe y está activo
-		const { supabase } = createSupabaseServerClient(cookieStore);
+		const supabase = await createSupabaseServerClient();
 		const { data: roleUser } = await supabase
 			.from('consultorio_role_users')
 			.select('*, consultorio_roles(*)')

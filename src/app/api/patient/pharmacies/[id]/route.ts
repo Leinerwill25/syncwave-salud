@@ -15,7 +15,7 @@ export async function GET(
 		}
 
 		const cookieStore = await cookies();
-		const { supabase } = createSupabaseServerClient(cookieStore);
+		const supabase = await createSupabaseServerClient();
 
 		const { id } = await params;
 		const pharmacyId = id;

@@ -17,9 +17,11 @@ interface BaseEmailData {
 /**
  * Template base para emails
  */
+/**
+ * Template base para emails con diseño Premium
+ */
 function getBaseTemplate(content: string, data?: BaseEmailData): string {
 	const appName = data?.appName || getAppName();
-	const appUrl = data?.appUrl || getAppUrl();
 	
 	return `
 <!DOCTYPE html>
@@ -28,74 +30,141 @@ function getBaseTemplate(content: string, data?: BaseEmailData): string {
 	<meta charset="UTF-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
 	<title>${appName}</title>
+	<!--[if mso]>
+	<noscript>
+	<xml>
+	<o:OfficeDocumentSettings>
+	<o:PixelsPerInch>96</o:PixelsPerInch>
+	</o:OfficeDocumentSettings>
+	</xml>
+	</noscript>
+	<![endif]-->
 	<style>
+		@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
 		body {
-			font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+			font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
 			line-height: 1.6;
-			color: #333;
-			max-width: 600px;
-			margin: 0 auto;
-			padding: 20px;
-			background-color: #f5f5f5;
+			color: #1e293b;
+			margin: 0;
+			padding: 0;
+			background-color: #f1f5f9;
+			-webkit-font-smoothing: antialiased;
+		}
+		.wrapper {
+			width: 100%;
+			background-color: #f1f5f9;
+			padding: 40px 0;
 		}
 		.container {
 			background-color: #ffffff;
-			border-radius: 8px;
-			padding: 30px;
-			box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+			border-radius: 16px;
+			max-width: 600px;
+			margin: 0 auto;
+			box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+			overflow: hidden;
 		}
 		.header {
+			background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+			padding: 32px 40px;
 			text-align: center;
-			margin-bottom: 30px;
-			padding-bottom: 20px;
-			border-bottom: 2px solid #4A90E2;
 		}
 		.logo {
 			font-size: 24px;
-			font-weight: bold;
-			color: #4A90E2;
-			margin-bottom: 10px;
+			font-weight: 700;
+			color: #ffffff;
+			letter-spacing: -0.5px;
+			text-decoration: none;
 		}
 		.content {
-			margin: 20px 0;
+			padding: 40px;
+		}
+		h1, h2, h3 {
+			color: #0f172a;
+			margin-top: 0;
+		}
+		p {
+			color: #475569;
+			font-size: 16px;
+			margin-bottom: 24px;
 		}
 		.button {
 			display: inline-block;
-			padding: 12px 24px;
-			background-color: #4A90E2;
-			color: #ffffff;
+			padding: 14px 32px;
+			background-color: #059669; /* Emerald 600 */
+			color: #ffffff !important;
 			text-decoration: none;
-			border-radius: 6px;
-			margin: 20px 0;
-		}
-		.footer {
-			margin-top: 30px;
-			padding-top: 20px;
-			border-top: 1px solid #e0e0e0;
-			font-size: 12px;
-			color: #666;
+			border-radius: 12px;
+			font-weight: 600;
+			font-size: 16px;
 			text-align: center;
+			transition: background-color 0.2s;
+			box-shadow: 0 4px 6px -1px rgba(5, 150, 105, 0.2);
+		}
+		.button:hover {
+			background-color: #047857;
 		}
 		.info-box {
-			background-color: #f0f7ff;
-			border-left: 4px solid #4A90E2;
-			padding: 15px;
-			margin: 20px 0;
-			border-radius: 4px;
+			background-color: #f8fafc;
+			border: 1px solid #e2e8f0;
+			border-radius: 12px;
+			padding: 24px;
+			margin: 24px 0;
+		}
+		.info-item {
+			margin-bottom: 12px;
+		}
+		.info-item:last-child {
+			margin-bottom: 0;
+		}
+		.info-label {
+			font-size: 12px;
+			text-transform: uppercase;
+			color: #64748b;
+			font-weight: 600;
+			letter-spacing: 0.5px;
+			display: block;
+			margin-bottom: 4px;
+		}
+		.info-value {
+			font-size: 16px;
+			color: #0f172a;
+			font-weight: 500;
+		}
+		.footer {
+			background-color: #f8fafc;
+			padding: 32px 40px;
+			text-align: center;
+			border-top: 1px solid #e2e8f0;
+		}
+		.footer p {
+			font-size: 13px;
+			color: #94a3b8;
+			margin-bottom: 8px;
+		}
+		.divider {
+			height: 1px;
+			background-color: #e2e8f0;
+			margin: 32px 0;
+		}
+		.highlight {
+			color: #059669;
+			font-weight: 600;
 		}
 	</style>
 </head>
 <body>
-	<div class="container">
-		<div class="header">
-			<div class="logo">${appName}</div>
-		</div>
-		<div class="content">
-			${content}
-		</div>
-		<div class="footer">
-			<p>Este es un correo automático de ${appName}. Por favor no responda a este mensaje.</p>
-			<p>&copy; ${new Date().getFullYear()} ${appName}. Todos los derechos reservados.</p>
+	<div class="wrapper">
+		<div class="container">
+			<div class="header">
+				<div class="logo">${appName}</div>
+			</div>
+			<div class="content">
+				${content}
+			</div>
+			<div class="footer">
+				<p>Este es un mensaje automático de ${appName}.</p>
+				<p>&copy; ${new Date().getFullYear()} ${appName}. Todos los derechos reservados.</p>
+			</div>
 		</div>
 	</div>
 </body>
@@ -111,20 +180,42 @@ export function getInviteEmailTemplate(data: {
 	organizationName?: string;
 	role?: string;
 }): string {
+	const orgName = data.organizationName || 'nuestra organización';
+	
 	const content = `
-		<h2>Invitación a unirse a ${data.organizationName || 'la organización'}</h2>
+		<h2 style="font-size: 24px; font-weight: 700; margin-bottom: 24px; text-align: center;">Invitación Profesional</h2>
+		
 		<p>Hola,</p>
-		<p>Has sido invitado a unirte a <strong>${data.organizationName || 'una organización'}</strong> en ${getAppName()} como <strong>${data.role || 'usuario'}</strong>.</p>
+		
+		<p>La clínica <strong>${orgName}</strong> te ha invitado a formar parte de su equipo médico en la plataforma <strong>${getAppName()}</strong>.</p>
+		
+		<p>Esta invitación te permitirá acceder al panel de especialistas, gestionar tus citas, pacientes y expedientes de manera integral.</p>
+
 		<div class="info-box">
-			<p><strong>¿Qué sigue?</strong></p>
-			<p>Haz clic en el botón siguiente para completar tu registro y aceptar la invitación:</p>
+			<div class="info-item">
+				<span class="info-label">Organización</span>
+				<span class="info-value">${orgName}</span>
+			</div>
+			<div class="info-item">
+				<span class="info-label">Rol Asignado</span>
+				<span class="info-value">${data.role || 'Especialista'}</span>
+			</div>
 		</div>
-		<div style="text-align: center;">
+
+		<div style="text-align: center; margin: 32px 0;">
 			<a href="${data.inviteUrl}" class="button">Aceptar Invitación</a>
 		</div>
-		<p>O copia y pega este enlace en tu navegador:</p>
-		<p style="word-break: break-all; color: #4A90E2;">${data.inviteUrl}</p>
-		<p><strong>Importante:</strong> Este enlace expirará en 7 días. Si no esperabas este correo, puedes ignorarlo de forma segura.</p>
+
+		<p style="font-size: 14px; color: #64748b; text-align: center;">
+			Este enlace es personal e intransferible. Caduca en 7 días.
+		</p>
+		
+		<div class="divider"></div>
+		
+		<p style="font-size: 13px; color: #94a3b8; margin-bottom: 0;">
+			Si tienes problemas con el botón, copia este enlace:<br>
+			<a href="${data.inviteUrl}" style="color: #059669; text-decoration: none; word-break: break-all;">${data.inviteUrl}</a>
+		</p>
 	`;
 	return getBaseTemplate(content);
 }

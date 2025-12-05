@@ -26,7 +26,7 @@ export async function createNotification(options: CreateNotificationOptions): Pr
 }> {
 	try {
 		const cookieStore = await cookies();
-		const { supabase } = createSupabaseServerClient(cookieStore);
+		const supabase = await createSupabaseServerClient();
 
 		// Crear notificación en la base de datos
 		const { data: notification, error: notifError } = await supabase

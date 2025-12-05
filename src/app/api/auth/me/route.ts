@@ -54,7 +54,7 @@ async function queryUserByAuthId(supabase: any, authId: string) {
 
 export async function GET(request: Request) {
 	try {
-		const { supabase } = await createSupabaseServerClient();
+		const supabase = await createSupabaseServerClient();
 
 		// Intento primario: obtener usuario por cookie (session)
 		const { data: authData, error: authError } = await supabase.auth.getUser();

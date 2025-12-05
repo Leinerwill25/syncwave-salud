@@ -7,7 +7,7 @@ import { authenticator } from 'otplib';
 export async function POST(request: Request) {
 	try {
 		const cookieStore = await cookies();
-		const { supabase } = createSupabaseServerClient(cookieStore);
+		const supabase = await createSupabaseServerClient();
 
 		const body = await request.json();
 		const { code } = body;

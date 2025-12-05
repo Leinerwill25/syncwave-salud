@@ -19,7 +19,7 @@ export async function POST(
 
 		const { id } = await params;
 		const cookieStore = await cookies();
-		const { supabase } = createSupabaseServerClient(cookieStore);
+		const supabase = await createSupabaseServerClient();
 
 		// Manejar FormData para captura de pantalla
 		let metodo_pago: string;

@@ -8,7 +8,7 @@ const supabaseAdmin = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, proces
 export async function PATCH(req: Request, context: { params: Promise<{ id: string }> }) {
 	try {
 		const { id } = await context.params;
-		const { supabase } = createSupabaseServerClient();
+		const supabase = await createSupabaseServerClient();
 		const body = await req.json();
 
 		if (!id) {

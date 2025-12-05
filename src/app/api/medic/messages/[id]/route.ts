@@ -22,7 +22,7 @@ export async function GET(
 
 		const { id } = await context.params;
 		const cookieStore = await cookies();
-		const { supabase } = createSupabaseServerClient(cookieStore);
+		const supabase = await createSupabaseServerClient();
 
 		// Verificar que el médico participa en la conversación
 		const { data: conversation, error: convError } = await supabase

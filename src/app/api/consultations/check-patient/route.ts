@@ -4,7 +4,7 @@ import createSupabaseServerClient from '@/app/adapters/server';
 
 export async function GET(req: NextRequest) {
 	try {
-		const { supabase } = createSupabaseServerClient();
+		const supabase = await createSupabaseServerClient();
 		const url = new URL(req.url);
 		const patientId = url.searchParams.get('patient_id');
 		const doctorId = url.searchParams.get('doctor_id');

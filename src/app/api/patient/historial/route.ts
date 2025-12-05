@@ -92,7 +92,7 @@ export async function GET(request: Request) {
 		}
 
 		const cookieStore = await cookies();
-		const { supabase } = createSupabaseServerClient(cookieStore);
+		const supabase = await createSupabaseServerClient();
 
 		// Obtener consultas con prescripciones y archivos adjuntos
 		const { data: consultations, error: consultationsError } = await supabase
