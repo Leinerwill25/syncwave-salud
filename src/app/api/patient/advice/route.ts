@@ -243,7 +243,7 @@ Actúa ahora.
 export async function POST(request: Request) {
 	try {
 		// --- 1) Autenticación robusta con Supabase ---
-		let { supabase } = createSupabaseServerClient();
+		const supabase = await createSupabaseServerClient();
 		let user: any = null;
 
 		try {
