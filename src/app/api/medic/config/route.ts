@@ -8,7 +8,7 @@ interface CookieStore {
 	get?: (name: string) => { value?: string } | undefined;
 }
 
-async function tryRestoreSessionFromCookies(supabase: ReturnType<typeof createSupabaseServerClient>['supabase'], cookieStore: CookieStore): Promise<boolean> {
+async function tryRestoreSessionFromCookies(supabase: any, cookieStore: CookieStore): Promise<boolean> {
 	if (!cookieStore) return false;
 
 	const cookieCandidates = ['sb-session', 'sb:token', 'supabase-auth-token', 'sb-access-token', 'sb-refresh-token'];
