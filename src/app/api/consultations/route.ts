@@ -1,18 +1,91 @@
 // app/api/consultations/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import createSupabaseServerClient from '@/app/adapters/server';
+import { apiRequireRole } from '@/lib/auth-guards';
 
 export async function GET(req: NextRequest) {
 	try {
+		// 1️⃣ Autenticación - requerir que el usuario esté autenticado
+		const authResult = await apiRequireRole(['MEDICO', 'CLINICA', 'ADMIN']);
+		if (authResult.response) return authResult.response;
+
+		const user = authResult.user;
+		if (!user) {
+			return NextResponse.json({ error: 'Usuario no autenticado' }, { status: 401 });
+		}
+
 		const supabase = await createSupabaseServerClient();
 		const url = new URL(req.url);
-		const doctorId = url.searchParams.get('doctorId');
+		const requestedDoctorId = url.searchParams.get('doctorId'); // ID solicitado (si lo hay)
 		const patientId = url.searchParams.get('patientId');
 		const q = url.searchParams.get('q') || '';
 		const page = Math.max(1, Number(url.searchParams.get('page') || '1'));
 		const pageSize = Math.max(1, Number(url.searchParams.get('pageSize') || '10'));
 		const from = url.searchParams.get('from'); // ISO date optional
 		const to = url.searchParams.get('to'); // ISO date optional
+
+		// 2️⃣ Determinar los filtros de seguridad según el rol del usuario
+		// REGLA CRÍTICA: Cada usuario solo puede ver datos de su propia organización/consultorio
+		let doctorIdToFilter: string | null = null;
+		let organizationIdToFilter: string | null = null;
+
+		if (user.role === 'MEDICO') {
+			// Médicos SOLO ven sus propias consultas Y deben tener organizationId válido
+			if (!user.userId) {
+				console.error('[Consultations API] Usuario MEDICO sin userId');
+				return NextResponse.json({ error: 'Usuario no válido' }, { status: 403 });
+			}
+			
+			// Validar que el médico tenga una organización asignada
+			if (!user.organizationId) {
+				console.warn('[Consultations API] Médico sin organizationId - denegando acceso por seguridad');
+				return NextResponse.json({ items: [], total: 0 }, { status: 200 });
+			}
+			
+			doctorIdToFilter = user.userId;
+			organizationIdToFilter = user.organizationId;
+			
+			// Validar que el médico realmente pertenezca a esa organización
+			const { data: doctorCheck } = await supabase
+				.from('User')
+				.select('id, organizationId')
+				.eq('id', user.userId)
+				.eq('organizationId', user.organizationId)
+				.maybeSingle();
+			
+			if (!doctorCheck) {
+				console.error('[Consultations API] Médico no pertenece a la organización especificada');
+				return NextResponse.json({ error: 'Error de validación de organización' }, { status: 403 });
+			}
+			
+		} else if (user.role === 'CLINICA' || user.role === 'ADMIN') {
+			// Clínicas y admins ven consultas de su organización
+			if (!user.organizationId) {
+				console.warn('[Consultations API] Usuario CLINICA/ADMIN sin organizationId - denegando acceso');
+				return NextResponse.json({ items: [], total: 0 }, { status: 200 });
+			}
+			
+			organizationIdToFilter = user.organizationId;
+			
+			// Si se solicita un doctor_id específico, validar que pertenezca a la misma organización
+			if (requestedDoctorId) {
+				const { data: requestedDoctor } = await supabase
+					.from('User')
+					.select('id, organizationId')
+					.eq('id', requestedDoctorId)
+					.maybeSingle();
+				
+				if (requestedDoctor && requestedDoctor.organizationId === user.organizationId) {
+					doctorIdToFilter = requestedDoctorId;
+				} else {
+					// Si el doctor no pertenece a la misma organización, solo filtrar por organización
+					doctorIdToFilter = null;
+				}
+			}
+		} else {
+			// Otros roles no tienen acceso
+			return NextResponse.json({ error: 'Rol no autorizado' }, { status: 403 });
+		}
 
 		const start = (page - 1) * pageSize;
 		const end = start + pageSize - 1;
@@ -42,7 +115,20 @@ export async function GET(req: NextRequest) {
 			)
 			.order('created_at', { ascending: false });
 
-		if (doctorId) query = query.eq('doctor_id', doctorId);
+		// 3️⃣ Aplicar filtros de seguridad - SIEMPRE filtrar por doctor_id Y organization_id
+		// Esto asegura que incluso si hay un error, los datos están aislados
+		if (doctorIdToFilter && organizationIdToFilter) {
+			// Filtrar por doctor Y organización para máxima seguridad
+			query = query.eq('doctor_id', doctorIdToFilter).eq('organization_id', organizationIdToFilter);
+		} else if (organizationIdToFilter) {
+			// Si solo hay organizationId, filtrar solo por eso
+			query = query.eq('organization_id', organizationIdToFilter);
+		} else {
+			// Si no hay filtros de seguridad válidos, no devolver nada (seguridad por defecto)
+			console.warn('[Consultations API] No hay filtros de seguridad válidos - denegando acceso');
+			return NextResponse.json({ items: [], total: 0 }, { status: 200 });
+		}
+
 		if (patientId) query = query.eq('patient_id', patientId);
 		if (from) query = query.gte('created_at', from);
 		if (to) query = query.lte('created_at', to);

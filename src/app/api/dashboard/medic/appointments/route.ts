@@ -1,9 +1,19 @@
 // app/api/appointments/list/route.ts
 import { NextResponse } from 'next/server';
 import createSupabaseServerClient from '@/app/adapters/server';
+import { apiRequireRole } from '@/lib/auth-guards';
 
 export async function GET(req: Request) {
 	try {
+		// 1️⃣ Autenticación - requerir que el usuario esté autenticado
+		const authResult = await apiRequireRole(['MEDICO', 'CLINICA', 'ADMIN']);
+		if (authResult.response) return authResult.response;
+
+		const user = authResult.user;
+		if (!user) {
+			return NextResponse.json({ error: 'Usuario no autenticado' }, { status: 401 });
+		}
+
 		const supabase = await createSupabaseServerClient();
 		const { searchParams } = new URL(req.url);
 		const date = searchParams.get('date');
@@ -24,8 +34,56 @@ export async function GET(req: Request) {
 		const startIso = startOfDay.toISOString().replace('Z', '+00:00');
 		const endIso = endOfDay.toISOString().replace('Z', '+00:00');
 
-		// 🩺 3️⃣ Consultar citas entre ese rango (incluyendo unregistered_patient_id y booked_by_patient_id)
-		const { data, error } = await supabase
+		// 2️⃣ Determinar filtros de seguridad según el rol del usuario
+		// REGLA CRÍTICA: Cada usuario solo puede ver datos de su propia organización/consultorio
+		let doctorIdToFilter: string | null = null;
+		let organizationIdToFilter: string | null = null;
+
+		if (user.role === 'MEDICO') {
+			// Médicos SOLO ven sus propias citas Y deben tener organizationId válido
+			if (!user.userId) {
+				console.error('[Appointments API] Usuario MEDICO sin userId');
+				return NextResponse.json({ error: 'Usuario no válido' }, { status: 403 });
+			}
+			
+			// Validar que el médico tenga una organización asignada
+			if (!user.organizationId) {
+				console.warn('[Appointments API] Médico sin organizationId - denegando acceso por seguridad');
+				return NextResponse.json([], { status: 200 });
+			}
+			
+			doctorIdToFilter = user.userId;
+			organizationIdToFilter = user.organizationId;
+			
+			// Validar que el médico realmente pertenezca a esa organización
+			const { data: doctorCheck } = await supabase
+				.from('User')
+				.select('id, organizationId')
+				.eq('id', user.userId)
+				.eq('organizationId', user.organizationId)
+				.maybeSingle();
+			
+			if (!doctorCheck) {
+				console.error('[Appointments API] Médico no pertenece a la organización especificada');
+				return NextResponse.json({ error: 'Error de validación de organización' }, { status: 403 });
+			}
+			
+		} else if (user.role === 'CLINICA' || user.role === 'ADMIN') {
+			// Clínicas y admins ven citas de su organización
+			if (!user.organizationId) {
+				console.warn('[Appointments API] Usuario CLINICA/ADMIN sin organizationId - denegando acceso');
+				return NextResponse.json([], { status: 200 });
+			}
+			
+			organizationIdToFilter = user.organizationId;
+			
+		} else {
+			// Para otros roles, no devolver nada por seguridad
+			return NextResponse.json([], { status: 200 });
+		}
+
+		// 3️⃣ Construir query con filtros de seguridad
+		let query = supabase
 			.from('appointment')
 			.select(
 				`
@@ -38,6 +96,8 @@ export async function GET(req: Request) {
 				patient_id,
 				unregistered_patient_id,
 				booked_by_patient_id,
+				doctor_id,
+				organization_id,
 				patient:patient_id (
 					id,
 					firstName,
@@ -47,8 +107,25 @@ export async function GET(req: Request) {
 				`
 			)
 			.gte('scheduled_at', startIso)
-			.lte('scheduled_at', endIso)
-			.order('scheduled_at', { ascending: true });
+			.lte('scheduled_at', endIso);
+
+		// 4️⃣ Aplicar filtros de seguridad - SIEMPRE filtrar por doctor_id Y organization_id
+		// Esto asegura que incluso si hay un error, los datos están aislados
+		if (doctorIdToFilter && organizationIdToFilter) {
+			// Filtrar por doctor Y organización para máxima seguridad
+			query = query.eq('doctor_id', doctorIdToFilter).eq('organization_id', organizationIdToFilter);
+		} else if (organizationIdToFilter) {
+			// Si solo hay organizationId, filtrar solo por eso
+			query = query.eq('organization_id', organizationIdToFilter);
+		} else {
+			// Si no hay filtros de seguridad válidos, no devolver nada (seguridad por defecto)
+			console.warn('[Appointments API] No hay filtros de seguridad válidos - denegando acceso');
+			return NextResponse.json([], { status: 200 });
+		}
+
+		query = query.order('scheduled_at', { ascending: true });
+
+		const { data, error } = await query;
 
 		if (error) {
 			console.error('❌ Error al obtener citas:', error.message);
