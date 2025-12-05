@@ -422,11 +422,15 @@ export async function POST(req: NextRequest) {
 
 		if (insertErr) {
 			console.error('❌ Error insert consultation:', insertErr);
-			const errorMessage = insertErr instanceof Error 
-				? insertErr.message 
-				: (typeof insertErr === 'object' && insertErr !== null && 'message' in insertErr)
-					? String(insertErr.message)
-					: 'Error al crear consulta';
+			let errorMessage = 'Error al crear consulta';
+			
+			if (insertErr instanceof Error) {
+				errorMessage = insertErr.message;
+			} else if (insertErr && typeof insertErr === 'object') {
+				const errObj = insertErr as { message?: string; details?: string; hint?: string };
+				errorMessage = errObj.message || errObj.details || errObj.hint || errorMessage;
+			}
+			
 			return NextResponse.json({ error: errorMessage }, { status: 500 });
 		}
 
