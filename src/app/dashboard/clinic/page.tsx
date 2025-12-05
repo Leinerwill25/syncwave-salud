@@ -121,7 +121,7 @@ async function fetchRecentPatientsForOrgViaSupabase(supabase: any, organizationI
 
 		// Mapear resultados
 		const patientToUserMap = new Map();
-		patientUsers.forEach(u => {
+		patientUsers.forEach((u: { patientProfileId: string | null; id: string; email: string | null; organizationId: string | null; role: string }) => {
 			if (u.patientProfileId) patientToUserMap.set(String(u.patientProfileId), u);
 		});
 
