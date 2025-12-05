@@ -424,7 +424,9 @@ export async function POST(req: NextRequest) {
 			console.error('❌ Error insert consultation:', insertErr);
 			const errorMessage = insertErr instanceof Error 
 				? insertErr.message 
-				: (insertErr as PostgresError).message || 'Error al crear consulta';
+				: (typeof insertErr === 'object' && insertErr !== null && 'message' in insertErr)
+					? String(insertErr.message)
+					: 'Error al crear consulta';
 			return NextResponse.json({ error: errorMessage }, { status: 500 });
 		}
 
