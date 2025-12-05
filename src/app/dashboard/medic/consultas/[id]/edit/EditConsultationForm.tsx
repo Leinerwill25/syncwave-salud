@@ -191,10 +191,25 @@ export default function EditConsultationForm({ initial, patient, doctor, doctorS
 
 	// UI State
 	const [activeTab, setActiveTab] = useState<'main' | 'vitals' | 'specialty' | 'report'>('main');
-	const [expandedSpecialties, setExpandedSpecialties] = useState<Set<string>>(new Set(['general']));
 
 	// init grouped vitals from initial.vitals
 	const initVitals = (initial.vitals ?? {}) as Record<string, any>;
+
+	// Inicializar expandedSpecialties con la especialidad del doctor
+	// Solo expandir automáticamente la especialidad del doctor y 'general'
+	// Las demás especialidades solo se validarán si el usuario las expande manualmente
+	const initialExpandedSpecialties = useMemo(() => {
+		const specialties = new Set<string>(['general']);
+
+		// Solo agregar la especialidad del doctor si existe
+		if (doctorSpecialtyCode) {
+			specialties.add(doctorSpecialtyCode);
+		}
+
+		return specialties;
+	}, [doctorSpecialtyCode]);
+
+	const [expandedSpecialties, setExpandedSpecialties] = useState<Set<string>>(initialExpandedSpecialties);
 	const initGeneral = initVitals.general ?? {};
 	const initCardio = initVitals.cardiology ?? {};
 	const initPulmo = initVitals.pulmonology ?? {};
@@ -534,8 +549,15 @@ export default function EditConsultationForm({ initial, patient, doctor, doctorS
 			general: ['weight', 'height', 'heart_rate', 'bp_systolic', 'bp_diastolic'],
 		};
 
+		// Solo validar especialidades que están expandidas/activas
 		for (const [section, reqs] of Object.entries(requiredMap)) {
 			const sectKey = section === 'gynecology' ? 'gynecology' : section;
+
+			// Si la especialidad no está expandida, no validarla
+			if (!expandedSpecialties.has(sectKey)) {
+				continue;
+			}
+
 			const sectionObj = (vitals as any)[sectKey];
 			if (!sectionObj) continue;
 			const hasAny = Object.values(sectionObj).some((v: any) => v !== '' && v !== null && v !== undefined && String(v).trim() !== '');
