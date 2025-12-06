@@ -129,7 +129,37 @@ export async function GET(req: NextRequest) {
 			return NextResponse.json({ items: [], total: 0 }, { status: 200 });
 		}
 
-		if (patientId) query = query.eq('patient_id', patientId);
+		// Si se filtra por patientId, también buscar consultas del unregistered_patient_id relacionado
+		let unregisteredPatientIdToInclude: string | null = null;
+		if (patientId) {
+			// Buscar el paciente registrado para obtener su unregisteredPatientId
+			try {
+				const { PrismaClient } = await import('@prisma/client');
+				const prisma = new PrismaClient();
+				const patientRecord = await prisma.patient.findUnique({
+					where: { id: patientId },
+					select: { unregisteredPatientId: true },
+				});
+				if (patientRecord?.unregisteredPatientId) {
+					unregisteredPatientIdToInclude = patientRecord.unregisteredPatientId;
+					console.log(`[Consultations API] Paciente ${patientId} tiene unregisteredPatientId: ${unregisteredPatientIdToInclude}. Se incluirán consultas de ambos.`);
+				}
+				await prisma.$disconnect();
+			} catch (prismaError) {
+				console.error('[Consultations API] Error obteniendo unregisteredPatientId del paciente:', prismaError);
+				// Continuar sin incluir consultas de unregistered_patient si hay error
+			}
+			
+			// Si hay unregisteredPatientId, usar OR para incluir ambas condiciones
+			if (unregisteredPatientIdToInclude) {
+				// Supabase no soporta OR directamente, así que haremos dos queries y las combinaremos
+				// Por ahora, filtramos solo por patient_id en la query principal
+				// Y luego agregaremos consultas del unregistered_patient_id
+				query = query.or(`patient_id.eq.${patientId},unregistered_patient_id.eq.${unregisteredPatientIdToInclude}`);
+			} else {
+				query = query.eq('patient_id', patientId);
+			}
+		}
 		if (from) query = query.gte('created_at', from);
 		if (to) query = query.lte('created_at', to);
 

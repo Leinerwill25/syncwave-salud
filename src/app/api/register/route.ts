@@ -158,6 +158,9 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 			return NextResponse.json({ ok: false, message: 'Ya existe un usuario con ese email' }, { status: 409 });
 		}
 
+		// Variable para almacenar el ID del paciente no registrado si se encuentra
+		let linkedUnregisteredPatientId: string | null = null;
+
 		// Validar cédula única ANTES de crear usuario en Supabase (solo para pacientes)
 		if (role === 'PACIENTE' && patient && patient.identifier) {
 			const identifier = String(patient.identifier).trim();
@@ -188,6 +191,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 			}
 
 			// Verificar en pacientes no registrados usando Supabase
+			// Si encontramos uno, lo vinculamos en lugar de rechazar el registro
 			if (supabaseAdmin) {
 				const { data: existingUnregistered, error: unregisteredCheckError } = await supabaseAdmin
 					.from('unregisteredpatients')
@@ -206,13 +210,9 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 						{ status: 500 }
 					);
 				} else if (existingUnregistered) {
-					return NextResponse.json(
-						{
-							ok: false,
-							message: `La cédula de identidad "${identifier}" ya está registrada en el sistema. Por favor, verifique su cédula o contacte al administrador si cree que esto es un error.`,
-						},
-						{ status: 409 }
-					);
+					// En lugar de rechazar, almacenamos el ID para vincular después
+					linkedUnregisteredPatientId = existingUnregistered.id;
+					console.log(`[Register API] Se encontró paciente no registrado con cédula ${identifier}. Se vinculará al registro nuevo. ID: ${linkedUnregisteredPatientId}`);
 				}
 			}
 		}
@@ -319,8 +319,15 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 						allergies: patient.allergies ? String(patient.allergies).trim() : null,
 						chronicConditions: patient.chronicConditions ? String(patient.chronicConditions).trim() : null,
 						currentMedications: patient.currentMedications ? String(patient.currentMedications).trim() : null,
+						// Vincular con paciente no registrado si se encontró uno con la misma cédula
+						unregisteredPatientId: linkedUnregisteredPatientId ?? null,
 					} as Prisma.PatientCreateInput,
 				});
+
+				// Log para confirmar la vinculación
+				if (linkedUnregisteredPatientId) {
+					console.log(`[Register API] Paciente creado con ID ${patientRecord.id} vinculado a unregistered_patient_id: ${linkedUnregisteredPatientId}`);
+				}
 
 				if (plan?.selectedPlan === 'paciente-family') {
 					await tx.familyGroup.create({
@@ -476,15 +483,24 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 		};
 
 		// Mensaje sobre verificación de email
-		const emailVerificationMessage = supabaseCreated 
+		let emailVerificationMessage = supabaseCreated 
 			? 'Se ha enviado un correo electrónico de verificación a tu dirección de email. Por favor, revisa tu bandeja de entrada (y la carpeta de spam) y haz clic en el enlace de verificación para activar tu cuenta. Es importante que tengas acceso a este correo electrónico.'
 			: null;
+
+		// Mensaje adicional si se vinculó con un paciente no registrado
+		if (linkedUnregisteredPatientId && role === 'PACIENTE') {
+			const historyMessage = '¡Bienvenido! Hemos encontrado un historial médico previo asociado a tu cédula. Todas tus consultas anteriores ahora estarán disponibles en tu cuenta.';
+			emailVerificationMessage = emailVerificationMessage 
+				? `${emailVerificationMessage}\n\n${historyMessage}`
+				: historyMessage;
+		}
 
 		return NextResponse.json({ 
 			ok: true, 
 			data: responsePayload, 
 			nextUrl: null,
 			emailVerificationRequired: supabaseCreated,
+			hasLinkedHistory: linkedUnregisteredPatientId !== null,
 			message: emailVerificationMessage || 'Registro exitoso'
 		});
 	} catch (err: unknown) {

@@ -140,6 +140,8 @@ model Patient {
   elderlyConditions String?    @map("elderly_conditions")
   chronicConditions String?    @map("chronic_conditions")
   currentMedications String?   @map("current_medication")
+  // Relación con paciente no registrado (cuando se registra alguien que ya tenía consultas previas como no registrado)
+  unregisteredPatientId String? @unique @map("unregistered_patient_id") // ID de la tabla unregisteredpatients en Supabase
   records    MedicalRecord[]
   createdAt  DateTime        @default(now()) @map("createdAt")
   updatedAt  DateTime        @updatedAt @map("updatedAt")

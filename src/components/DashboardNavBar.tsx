@@ -83,12 +83,8 @@ export default function DashboardNavBar(): React.ReactElement {
 
 					// Obtener rol del usuario desde la base de datos
 					try {
-						const { data: userData } = await supabaseClient
-							.from('User')
-							.select('role')
-							.eq('authId', u.id)
-							.maybeSingle();
-						
+						const { data: userData } = await supabaseClient.from('User').select('role').eq('authId', u.id).maybeSingle();
+
 						if (userData?.role) {
 							setUserRole(userData.role);
 						}
@@ -162,10 +158,10 @@ export default function DashboardNavBar(): React.ReactElement {
 					</div>
 
 					{/* Center: Bienvenido */}
-					<div className="flex-1 flex items-center justify-center">
-						<div className="flex flex-col items-center">
+					<div className="flex-1 flex items-center justify-center min-w-0">
+						<div className="flex flex-col items-center min-w-0 w-full px-2">
 							<span className="text-xs text-slate-500">Bienvenido</span>
-							<span className="text-sm md:text-lg font-semibold text-slate-900 truncate max-w-[46ch]" title={displayName}>
+							<span className="text-sm md:text-lg font-semibold text-slate-900 truncate w-full text-center" title={displayName}>
 								{loading ? 'Cargando...' : displayName}
 							</span>
 						</div>
@@ -173,33 +169,29 @@ export default function DashboardNavBar(): React.ReactElement {
 
 					{/* Right: Notificaciones + Perfil */}
 					<div className="flex items-center gap-3">
-						<UserNotificationsBell user={user} role={user?.role} />
+						<div className="relative z-[60]">
+							<UserNotificationsBell user={user} role={user?.role} />
+						</div>
 
-						<div className="relative" ref={menuRef}>
+						<div className="relative z-[50]" ref={menuRef}>
 							<button onClick={() => setMenuOpen((s) => !s)} aria-expanded={menuOpen} aria-haspopup="true" className="flex items-center gap-3 px-3 py-2 rounded-xl hover:bg-slate-50 transition" title="Cuenta">
-								<div className="h-9 w-9 rounded-full bg-linear-to-br from-sky-500 to-violet-600 flex items-center justify-center text-white font-semibold shadow">{user?.user_metadata?.avatar_url ? <img src={user.user_metadata.avatar_url} alt={displayName} className="h-9 w-9 rounded-full object-cover" /> : <span className="select-none text-sm">{initialsFromName(displayName)}</span>}</div>
+								<div className="hidden md:flex h-9 w-9 rounded-full bg-gradient-to-br from-sky-500 to-violet-600 items-center justify-center text-white font-semibold shadow">{user?.user_metadata?.avatar_url ? <img src={user.user_metadata.avatar_url} alt={displayName} className="h-9 w-9 rounded-full object-cover" /> : <span className="select-none text-sm">{initialsFromName(displayName)}</span>}</div>
 
 								<div className="hidden md:flex flex-col items-start">
 									<span className="text-sm font-semibold text-slate-900 leading-none">{displayName}</span>
 									<span className="text-xs text-slate-500 leading-none">Mi cuenta</span>
 								</div>
 
-								<ChevronDown className={`w-4 h-4 text-slate-500 transition-transform ${menuOpen ? 'rotate-180' : 'rotate-0'}`} />
+								<ChevronDown className={`hidden md:block w-4 h-4 text-slate-500 transition-transform ${menuOpen ? 'rotate-180' : 'rotate-0'}`} />
+								{/* Icono simple en móvil */}
+								<UserIcon className="md:hidden w-5 h-5 text-slate-600" />
 							</button>
 
-							<div role="menu" aria-hidden={!menuOpen} className={`absolute right-0 mt-2 w-56 rounded-lg bg-white border border-slate-100 shadow-lg py-2 transition-all duration-150 transform origin-top-right ${menuOpen ? 'opacity-100 scale-100' : 'opacity-0 pointer-events-none scale-95'}`}>
-								<Link 
-									href={getProfileUrl(userRole)} 
-									className="flex items-center gap-2 px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 transition-colors"
-									onClick={() => setMenuOpen(false)}
-								>
+							<div role="menu" aria-hidden={!menuOpen} className={`absolute right-0 mt-2 w-56 rounded-lg bg-white border border-slate-100 shadow-lg py-2 transition-all duration-150 transform origin-top-right z-[55] ${menuOpen ? 'opacity-100 scale-100' : 'opacity-0 pointer-events-none scale-95'}`}>
+								<Link href={getProfileUrl(userRole)} className="flex items-center gap-2 px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 transition-colors" onClick={() => setMenuOpen(false)}>
 									<UserIcon className="w-4 h-4 text-slate-500" /> Perfil
 								</Link>
-								<Link 
-									href={getSettingsUrl(userRole)} 
-									className="flex items-center gap-2 px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 transition-colors"
-									onClick={() => setMenuOpen(false)}
-								>
+								<Link href={getSettingsUrl(userRole)} className="flex items-center gap-2 px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 transition-colors" onClick={() => setMenuOpen(false)}>
 									<Settings className="w-4 h-4 text-slate-500" /> Configuración
 								</Link>
 								<div className="border-t border-slate-100 my-1" />

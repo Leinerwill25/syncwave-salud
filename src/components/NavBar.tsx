@@ -33,18 +33,86 @@ export default function PublicNavBar() {
 	const [patientMenuOpen, setPatientMenuOpen] = useState(false);
 	const [contactMenuOpen, setContactMenuOpen] = useState(false);
 	const [mounted, setMounted] = useState(false);
+	const [menuPositions, setMenuPositions] = useState<{
+		org: { top: number; left: number } | null;
+		patient: { top: number; left: number } | null;
+		contact: { top: number; left: number } | null;
+	}>({ org: null, patient: null, contact: null });
 	const mobileMenuRef = useRef<HTMLDivElement | null>(null);
 	const orgMenuRef = useRef<HTMLDivElement | null>(null);
 	const orgButtonRef = useRef<HTMLButtonElement | null>(null);
+	const orgMenuContentRef = useRef<HTMLDivElement | null>(null);
 	const patientMenuRef = useRef<HTMLDivElement | null>(null);
 	const patientButtonRef = useRef<HTMLButtonElement | null>(null);
+	const patientMenuContentRef = useRef<HTMLDivElement | null>(null);
 	const contactMenuRef = useRef<HTMLDivElement | null>(null);
 	const contactButtonRef = useRef<HTMLButtonElement | null>(null);
+	const contactMenuContentRef = useRef<HTMLDivElement | null>(null);
 
 	// Para portales
 	useEffect(() => {
 		setMounted(true);
 	}, []);
+
+	// Calcular posiciones de los menús cuando se abren (desplegándose hacia abajo)
+	useEffect(() => {
+		if (!mounted || typeof window === 'undefined') return;
+
+		const updatePositions = () => {
+			if (orgMenuOpen && orgButtonRef.current) {
+				const buttonRect = orgButtonRef.current.getBoundingClientRect();
+				setMenuPositions(prev => ({
+					...prev,
+					org: {
+						top: buttonRect.bottom + 8,
+						left: buttonRect.left,
+					}
+				}));
+			} else if (!orgMenuOpen) {
+				setMenuPositions(prev => ({ ...prev, org: null }));
+			}
+
+			if (patientMenuOpen && patientButtonRef.current) {
+				const buttonRect = patientButtonRef.current.getBoundingClientRect();
+				setMenuPositions(prev => ({
+					...prev,
+					patient: {
+						top: buttonRect.bottom + 8,
+						left: buttonRect.left,
+					}
+				}));
+			} else if (!patientMenuOpen) {
+				setMenuPositions(prev => ({ ...prev, patient: null }));
+			}
+
+			if (contactMenuOpen && contactButtonRef.current) {
+				const buttonRect = contactButtonRef.current.getBoundingClientRect();
+				setMenuPositions(prev => ({
+					...prev,
+					contact: {
+						top: buttonRect.bottom + 8,
+						left: buttonRect.left,
+					}
+				}));
+			} else if (!contactMenuOpen) {
+				setMenuPositions(prev => ({ ...prev, contact: null }));
+			}
+		};
+
+		// Usar requestAnimationFrame para asegurar que el DOM esté actualizado
+		const rafId = requestAnimationFrame(() => {
+			updatePositions();
+		});
+
+		window.addEventListener('resize', updatePositions);
+		window.addEventListener('scroll', updatePositions);
+		
+		return () => {
+			cancelAnimationFrame(rafId);
+			window.removeEventListener('resize', updatePositions);
+			window.removeEventListener('scroll', updatePositions);
+		};
+	}, [mounted, orgMenuOpen, patientMenuOpen, contactMenuOpen]);
 
 	// Prevenir scroll del body cuando el menú móvil está abierto
 	useEffect(() => {
@@ -215,16 +283,17 @@ export default function PublicNavBar() {
 									<AnimatePresence>
 										{orgMenuOpen && (
 											<>
-												<div className="hidden lg:block fixed inset-0 z-[110]" onClick={() => setOrgMenuOpen(false)} aria-hidden="true" />
+												<div className="hidden lg:block fixed inset-0 z-[9999]" onClick={() => setOrgMenuOpen(false)} aria-hidden="true" />
 												<motion.div
+													ref={orgMenuContentRef}
 													initial={{ opacity: 0, y: 10, scale: 0.95 }}
 													animate={{ opacity: 1, y: 0, scale: 1 }}
 													exit={{ opacity: 0, y: 10, scale: 0.95 }}
 													transition={{ duration: 0.2 }}
-													className="hidden lg:block fixed w-80 bg-white rounded-2xl shadow-2xl border border-slate-200 overflow-hidden z-[120]"
+													className="hidden lg:block fixed w-80 bg-white rounded-2xl shadow-2xl border border-slate-200 overflow-hidden z-[10000]"
 													style={{
-														top: orgButtonRef.current ? `${orgButtonRef.current.getBoundingClientRect().bottom + 8}px` : '80px',
-														left: orgButtonRef.current ? `${orgButtonRef.current.getBoundingClientRect().left}px` : '0px',
+														top: menuPositions.org ? `${menuPositions.org.top}px` : (orgButtonRef.current ? `${orgButtonRef.current.getBoundingClientRect().bottom + 8}px` : '88px'),
+														left: menuPositions.org ? `${menuPositions.org.left}px` : (orgButtonRef.current ? `${orgButtonRef.current.getBoundingClientRect().left}px` : '0px'),
 													}}
 												>
 												<div className="p-2">
@@ -282,16 +351,17 @@ export default function PublicNavBar() {
 									<AnimatePresence>
 										{patientMenuOpen && (
 											<>
-												<div className="hidden lg:block fixed inset-0 z-[110]" onClick={() => setPatientMenuOpen(false)} aria-hidden="true" />
+												<div className="hidden lg:block fixed inset-0 z-[9999]" onClick={() => setPatientMenuOpen(false)} aria-hidden="true" />
 												<motion.div
+													ref={patientMenuContentRef}
 													initial={{ opacity: 0, y: 10, scale: 0.95 }}
 													animate={{ opacity: 1, y: 0, scale: 1 }}
 													exit={{ opacity: 0, y: 10, scale: 0.95 }}
 													transition={{ duration: 0.2 }}
-													className="hidden lg:block fixed w-96 bg-white rounded-2xl shadow-2xl border border-slate-200 overflow-hidden z-[120]"
+													className="hidden lg:block fixed w-96 bg-white rounded-2xl shadow-2xl border border-slate-200 overflow-hidden z-[10000]"
 													style={{
-														top: patientButtonRef.current ? `${patientButtonRef.current.getBoundingClientRect().bottom + 8}px` : '80px',
-														left: patientButtonRef.current ? `${patientButtonRef.current.getBoundingClientRect().left}px` : '0px',
+														top: menuPositions.patient ? `${menuPositions.patient.top}px` : (patientButtonRef.current ? `${patientButtonRef.current.getBoundingClientRect().bottom + 8}px` : '88px'),
+														left: menuPositions.patient ? `${menuPositions.patient.left}px` : (patientButtonRef.current ? `${patientButtonRef.current.getBoundingClientRect().left}px` : '0px'),
 													}}
 												>
 												<div className="p-4 bg-gradient-to-r from-teal-50 to-cyan-50 border-b border-slate-200">
@@ -371,16 +441,17 @@ export default function PublicNavBar() {
 									<AnimatePresence>
 										{contactMenuOpen && (
 											<>
-												<div className="hidden lg:block fixed inset-0 z-[110]" onClick={() => setContactMenuOpen(false)} aria-hidden="true" />
+												<div className="hidden lg:block fixed inset-0 z-[9999]" onClick={() => setContactMenuOpen(false)} aria-hidden="true" />
 												<motion.div
+													ref={contactMenuContentRef}
 													initial={{ opacity: 0, y: 10, scale: 0.95 }}
 													animate={{ opacity: 1, y: 0, scale: 1 }}
 													exit={{ opacity: 0, y: 10, scale: 0.95 }}
 													transition={{ duration: 0.2 }}
-													className="hidden lg:block fixed w-80 bg-white rounded-2xl shadow-2xl border border-slate-200 overflow-hidden z-[120]"
+													className="hidden lg:block fixed w-80 bg-white rounded-2xl shadow-2xl border border-slate-200 overflow-hidden z-[10000]"
 													style={{
-														top: contactButtonRef.current ? `${contactButtonRef.current.getBoundingClientRect().bottom + 8}px` : '80px',
-														left: contactButtonRef.current ? `${contactButtonRef.current.getBoundingClientRect().left}px` : '0px',
+														top: menuPositions.contact ? `${menuPositions.contact.top}px` : (contactButtonRef.current ? `${contactButtonRef.current.getBoundingClientRect().bottom + 8}px` : '88px'),
+														left: menuPositions.contact ? `${menuPositions.contact.left}px` : (contactButtonRef.current ? `${contactButtonRef.current.getBoundingClientRect().left}px` : '0px'),
 													}}
 												>
 												<div className="p-4 bg-gradient-to-r from-teal-50 to-cyan-50 border-b border-slate-200">

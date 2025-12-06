@@ -39,6 +39,9 @@ export default function RegisterForm(): React.ReactElement {
 	const [firstName, setFirstName] = useState('');
 	const [lastName, setLastName] = useState('');
 	const [identifier, setIdentifier] = useState('');
+	const [identifierValidating, setIdentifierValidating] = useState(false);
+	const [identifierHistoryFound, setIdentifierHistoryFound] = useState(false);
+	const [identifierError, setIdentifierError] = useState<string | null>(null);
 	const [dob, setDob] = useState('');
 	const [gender, setGender] = useState<'M' | 'F' | 'O' | ''>('');
 	const [phone, setPhone] = useState('');
@@ -380,6 +383,45 @@ export default function RegisterForm(): React.ReactElement {
 		setStep((s) => Math.max(s - 1, 1));
 	}
 
+	// Función para verificar la cédula cuando el usuario sale del campo
+	async function checkIdentifier(identifierValue: string) {
+		if (!identifierValue || identifierValue.trim().length < 3) {
+			setIdentifierHistoryFound(false);
+			setIdentifierError(null);
+			return;
+		}
+
+		setIdentifierValidating(true);
+		setIdentifierError(null);
+		setIdentifierHistoryFound(false);
+
+		try {
+			const res = await fetch(`/api/register/check-identifier?identifier=${encodeURIComponent(identifierValue.trim())}`);
+			const data = await res.json();
+
+			if (!res.ok) {
+				setIdentifierError(data?.message || 'Error al verificar la cédula');
+				return;
+			}
+
+			if (!data.canRegister) {
+				setIdentifierError(data.message || 'No se puede registrar con esta cédula');
+				return;
+			}
+
+			if (data.hasHistory) {
+				setIdentifierHistoryFound(true);
+			} else {
+				setIdentifierHistoryFound(false);
+			}
+		} catch (err: any) {
+			console.error('Error verificando cédula:', err);
+			setIdentifierError('Error al verificar la cédula. Intenta nuevamente.');
+		} finally {
+			setIdentifierValidating(false);
+		}
+	}
+
 	// Fetch organizations on mount so patient can choose referring clinic
 	useEffect(() => {
 		let mounted = true;
@@ -496,14 +538,25 @@ export default function RegisterForm(): React.ReactElement {
 			}
 
 			// Si se requiere verificación de email, mostrar mensaje específico
+			let successMessage = '';
 			if (data?.emailVerificationRequired) {
-				setSuccessMsg(data?.message || 'Registro exitoso. Por favor, verifica tu correo electrónico antes de iniciar sesión.');
+				successMessage = data?.message || 'Registro exitoso. Por favor, verifica tu correo electrónico antes de iniciar sesión.';
+				// Si se vinculó con historial previo, agregar información adicional
+				if (data?.hasLinkedHistory) {
+					successMessage += '\n\n¡Bienvenido de nuevo! Se encontró un historial médico previo asociado a tu cédula. Al iniciar sesión, podrás acceder a todas tus consultas anteriores.';
+				}
+				setSuccessMsg(successMessage);
 				// Esperar 5 segundos antes de redirigir para que el usuario lea el mensaje
 				setTimeout(() => {
 					router.push('/login?verify-email=true');
 				}, 5000);
 			} else {
-				setSuccessMsg('Registro correcto. Serás redirigido...');
+				successMessage = 'Registro correcto. Serás redirigido...';
+				// Si se vinculó con historial previo, agregar información adicional
+				if (data?.hasLinkedHistory) {
+					successMessage = '¡Registro exitoso! Se encontró un historial médico previo asociado a tu cédula. Podrás acceder a todas tus consultas anteriores. Serás redirigido...';
+				}
+				setSuccessMsg(successMessage);
 				// Redirect (backend can return data.nextUrl for checkout)
 				router.push(data.nextUrl || '/login');
 			}
@@ -1118,7 +1171,56 @@ export default function RegisterForm(): React.ReactElement {
 									Cédula / Identificación
 								</span>
 							</span>
-							<input value={identifier} onChange={(e) => setIdentifier(e.target.value)} className={inputClass} required />
+							<div className="relative">
+								<input 
+									value={identifier} 
+									onChange={(e) => {
+										setIdentifier(e.target.value);
+										// Limpiar errores y mensajes cuando el usuario está escribiendo
+										if (identifierError) setIdentifierError(null);
+										if (identifierHistoryFound) setIdentifierHistoryFound(false);
+									}} 
+									onBlur={(e) => {
+										// Verificar cuando el usuario sale del campo
+										if (role === 'PACIENTE' && e.target.value.trim().length >= 3) {
+											checkIdentifier(e.target.value);
+										}
+									}}
+									className={inputClass} 
+									required 
+								/>
+								{identifierValidating && (
+									<div className="absolute right-3 top-1/2 -translate-y-1/2">
+										<svg className="animate-spin h-5 w-5 text-teal-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+											<circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+											<path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+										</svg>
+									</div>
+								)}
+							</div>
+							{identifierError && (
+								<p className="mt-1.5 text-xs text-rose-600 flex items-start gap-1.5">
+									<svg className="w-4 h-4 text-rose-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+										<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+									</svg>
+									<span>{identifierError}</span>
+								</p>
+							)}
+							{identifierHistoryFound && !identifierError && (
+								<div className="mt-2 p-3 bg-gradient-to-r from-blue-50 to-cyan-50 border border-blue-200 rounded-lg">
+									<div className="flex items-start gap-2">
+										<svg className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+											<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+										</svg>
+										<div className="flex-1">
+											<p className="text-sm font-semibold text-blue-900">¡Historial médico encontrado!</p>
+											<p className="text-xs text-blue-800 mt-1">
+												Se encontró un historial médico previo asociado a esta cédula. Al completar tu registro, podrás acceder a todas tus consultas, recetas y resultados de laboratorio anteriores.
+											</p>
+										</div>
+									</div>
+								</div>
+							)}
 						</label>
 
 						<label className="block group">
