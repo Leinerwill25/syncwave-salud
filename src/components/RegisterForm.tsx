@@ -2,6 +2,8 @@
 'use client';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import dynamic from 'next/dynamic';
+import 'leaflet/dist/leaflet.css';
 
 type OrgType = 'CLINICA' | 'HOSPITAL' | 'CONSULTORIO' | 'FARMACIA' | 'LABORATORIO';
 type Role = 'ADMIN' | 'MEDICO' | 'FARMACIA' | 'PACIENTE' | 'LABORATORIO';
@@ -41,6 +43,8 @@ export default function RegisterForm(): React.ReactElement {
 	const [gender, setGender] = useState<'M' | 'F' | 'O' | ''>('');
 	const [phone, setPhone] = useState('');
 	const [address, setAddress] = useState('');
+	const [locationLat, setLocationLat] = useState<number | null>(null);
+	const [locationLng, setLocationLng] = useState<number | null>(null);
 	const [emergencyContactName, setEmergencyContactName] = useState('');
 	const [emergencyContactPhone, setEmergencyContactPhone] = useState('');
 	const [allergies, setAllergies] = useState('');
@@ -145,13 +149,13 @@ export default function RegisterForm(): React.ReactElement {
 	const recommendedPlan = useMemo(() => {
 		if (plansLoading || plans.length === 0) {
 			// Valores por defecto mientras cargan
-			if (role === 'MEDICO') return { slug: 'medico', label: 'Plan Médico — Usuario individual', price: 14.99 };
+			if (role === 'MEDICO') return { slug: 'medico', label: 'Plan Médico — Usuario individual', price: 14.99, quarterlyPrice: null, annualPrice: null };
 			if (role === 'PACIENTE') {
 				return patientPlan === 'individual'
-					? { slug: 'paciente-individual', label: 'Paciente — Individual', price: 12.99 }
-					: { slug: 'paciente-family', label: 'Paciente — Plan Familiar', price: 29.99 };
+					? { slug: 'paciente-individual', label: 'Paciente — Individual', price: 12.99, quarterlyPrice: null, annualPrice: null }
+					: { slug: 'paciente-family', label: 'Paciente — Plan Familiar', price: 29.99, quarterlyPrice: null, annualPrice: null };
 			}
-			return { slug: 'small', label: 'Plan Básico', price: 29.99 };
+			return { slug: 'small', label: 'Plan Básico', price: 29.99, quarterlyPrice: null, annualPrice: null };
 		}
 
 		if (role === 'MEDICO') {
@@ -162,13 +166,15 @@ export default function RegisterForm(): React.ReactElement {
 					slug: medicoPlan.slug,
 					label: medicoPlan.name,
 					price: medicoPlan.monthlyPrice,
+					quarterlyPrice: medicoPlan.quarterlyPrice,
+					annualPrice: medicoPlan.annualPrice,
 				};
 			}
 		}
 
 		if (role === 'PACIENTE') {
 			// Pacientes tienen la plataforma gratuita, no hay plan de pago
-			return { slug: 'paciente-gratis', label: 'Plan Gratuito', price: 0 };
+			return { slug: 'paciente-gratis', label: 'Plan Gratuito', price: 0, quarterlyPrice: null, annualPrice: null };
 		}
 
 		// Para organizaciones (no médicos ni pacientes), buscar plan según número de especialistas
@@ -183,6 +189,8 @@ export default function RegisterForm(): React.ReactElement {
 					slug: orgPlan.slug,
 					label: orgPlan.name,
 					price: orgPlan.monthlyPrice,
+					quarterlyPrice: orgPlan.quarterlyPrice,
+					annualPrice: orgPlan.annualPrice,
 				};
 			}
 		}
@@ -194,10 +202,12 @@ export default function RegisterForm(): React.ReactElement {
 				slug: firstPlan.slug,
 				label: firstPlan.name,
 				price: firstPlan.monthlyPrice,
+				quarterlyPrice: firstPlan.quarterlyPrice,
+				annualPrice: firstPlan.annualPrice,
 			};
 		}
 
-		return { slug: 'default', label: 'Plan por defecto', price: 0 };
+		return { slug: 'default', label: 'Plan por defecto', price: 0, quarterlyPrice: null, annualPrice: null };
 	}, [plans, plansLoading, role, patientPlan, specialistCount]);
 
 	/**
@@ -207,9 +217,18 @@ export default function RegisterForm(): React.ReactElement {
 	 *   -> monthlyEquivalent = price / 12
 	 *   -> label indica pago anual.
 	 *
-	 * - Si isPatient === false: interpretamos `price` como monthly base (como antes).
+	 * - Si isPatient === false: interpretamos `price` como monthly base.
+	 *   - Si quarterlyPrice está disponible, lo usamos directamente para quarterly
+	 *   - Si annualPrice está disponible, lo usamos directamente para annual
+	 *   - Si no están disponibles, calculamos con descuentos sobre monthlyPrice
 	 */
-	function computeBilling(price: number, period: BillingPeriod, isPatient = false) {
+	function computeBilling(
+		price: number, 
+		period: BillingPeriod, 
+		isPatient = false, 
+		quarterlyPrice: number | null = null, 
+		annualPrice: number | null = null
+	) {
 		if (isPatient) {
 			// price = annual price
 			if (period === 'annual') {
@@ -240,7 +259,7 @@ export default function RegisterForm(): React.ReactElement {
 			return { months, discount: 0, total: monthlyEquivalent, monthlyEquivalent, label: 'Mensual (equivalente del plan anual)' };
 		}
 
-		// Non-patient (orgs / médicos): original behavior (price = monthly base)
+		// Non-patient (orgs / médicos): usar precios específicos del plan si están disponibles
 		if (period === 'monthly') {
 			return {
 				months: 1,
@@ -250,8 +269,25 @@ export default function RegisterForm(): React.ReactElement {
 				label: 'Mensual (sin descuento)',
 			};
 		}
+		
 		if (period === 'quarterly') {
 			const months = 3;
+			// Si hay un precio trimestral específico, usarlo
+			if (quarterlyPrice !== null && quarterlyPrice > 0) {
+				const total = quarterlyPrice;
+				const monthlyEquivalent = total / months;
+				// Calcular descuento real comparado con precio mensual
+				const subtotalSinDescuento = price * months;
+				const discount = subtotalSinDescuento > 0 ? (subtotalSinDescuento - total) / subtotalSinDescuento : 0;
+				return {
+					months,
+					discount,
+					total,
+					monthlyEquivalent,
+					label: 'Trimestral',
+				};
+			}
+			// Fallback: calcular con descuento del 5%
 			const subtotal = price * months;
 			const discount = 0.05;
 			const total = subtotal * (1 - discount);
@@ -263,17 +299,45 @@ export default function RegisterForm(): React.ReactElement {
 				label: 'Trimestral (5% descuento)',
 			};
 		}
+		
 		// annual
-		const months = 12;
-		const subtotal = price * months;
-		const discount = 0.15;
-		const total = subtotal * (1 - discount);
+		if (period === 'annual') {
+			const months = 12;
+			// Si hay un precio anual específico, usarlo
+			if (annualPrice !== null && annualPrice > 0) {
+				const total = annualPrice;
+				const monthlyEquivalent = total / months;
+				// Calcular descuento real comparado con precio mensual
+				const subtotalSinDescuento = price * months;
+				const discount = subtotalSinDescuento > 0 ? (subtotalSinDescuento - total) / subtotalSinDescuento : 0;
+				return {
+					months,
+					discount,
+					total,
+					monthlyEquivalent,
+					label: 'Anual',
+				};
+			}
+			// Fallback: calcular con descuento del 15%
+			const subtotal = price * months;
+			const discount = 0.15;
+			const total = subtotal * (1 - discount);
+			return {
+				months,
+				discount,
+				total,
+				monthlyEquivalent: total / months,
+				label: 'Anual (15% descuento)',
+			};
+		}
+		
+		// Default fallback (shouldn't reach here)
 		return {
-			months,
-			discount,
-			total,
-			monthlyEquivalent: total / months,
-			label: 'Anual (15% descuento)',
+			months: 1,
+			discount: 0,
+			total: price,
+			monthlyEquivalent: price,
+			label: 'Mensual',
 		};
 	}
 
@@ -367,7 +431,13 @@ export default function RegisterForm(): React.ReactElement {
 			if (role !== 'PACIENTE') {
 				// Calculamos el precio final que enviaremos al backend
 				const priceBase = recommendedPlan.price; // monthly price for orgs/medicos
-				const billing = computeBilling(priceBase, billingPeriod, false);
+				const billing = computeBilling(
+					priceBase, 
+					billingPeriod, 
+					false, 
+					recommendedPlan.quarterlyPrice ?? null, 
+					recommendedPlan.annualPrice ?? null
+				);
 
 				payload.plan = {
 					selectedPlan: recommendedPlan.slug,
@@ -387,6 +457,8 @@ export default function RegisterForm(): React.ReactElement {
 					gender: gender || undefined,
 					phone: phone || undefined,
 					address: address || undefined,
+					locationLat: locationLat ?? undefined,
+					locationLng: locationLng ?? undefined,
 					emergencyContactName: emergencyContactName || undefined,
 					emergencyContactPhone: emergencyContactPhone || undefined,
 					allergies: allergies || undefined,
@@ -423,14 +495,26 @@ export default function RegisterForm(): React.ReactElement {
 				return;
 			}
 
-			setSuccessMsg('Registro correcto. Serás redirigido...');
-			// Redirect (backend can return data.nextUrl for checkout)
-			router.push(data.nextUrl || '/login');
+			// Si se requiere verificación de email, mostrar mensaje específico
+			if (data?.emailVerificationRequired) {
+				setSuccessMsg(data?.message || 'Registro exitoso. Por favor, verifica tu correo electrónico antes de iniciar sesión.');
+				// Esperar 5 segundos antes de redirigir para que el usuario lea el mensaje
+				setTimeout(() => {
+					router.push('/login?verify-email=true');
+				}, 5000);
+			} else {
+				setSuccessMsg('Registro correcto. Serás redirigido...');
+				// Redirect (backend can return data.nextUrl for checkout)
+				router.push(data.nextUrl || '/login');
+			}
 		} catch (err: any) {
 			setLoading(false);
 			setErrorMsg(err?.message || 'Error inesperado');
 		}
 	}
+
+	// Componente de mapa para seleccionar ubicación (cargado dinámicamente para evitar SSR)
+	const LocationMapPicker = dynamic(() => import('@/components/LocationMapPicker'), { ssr: false });
 
 	// Step indicator component mejorado
 	const StepIndicator = ({ current }: { current: number }) => {
@@ -488,7 +572,8 @@ export default function RegisterForm(): React.ReactElement {
 	const inputClass = 'mt-2 w-full px-3 sm:px-4 py-2.5 sm:py-3.5 border-2 border-slate-200 rounded-lg sm:rounded-xl bg-white text-sm sm:text-base text-slate-900 placeholder:text-slate-400 shadow-sm transition-all duration-300 focus:outline-none focus:ring-2 sm:focus:ring-4 focus:ring-teal-500/20 focus:border-teal-500 hover:border-slate-300 hover:shadow-md';
 	const labelClass = 'block text-xs sm:text-sm font-semibold text-slate-800 mb-1.5';
 	const textareaClass = 'mt-2 w-full px-3 sm:px-4 py-2.5 sm:py-3.5 border-2 border-slate-200 rounded-lg sm:rounded-xl bg-white text-sm sm:text-base text-slate-900 placeholder:text-slate-400 shadow-sm transition-all duration-300 focus:outline-none focus:ring-2 sm:focus:ring-4 focus:ring-teal-500/20 focus:border-teal-500 hover:border-slate-300 hover:shadow-md resize-none';
-	const selectClass = 'mt-2 w-full px-3 sm:px-4 py-2.5 sm:py-3.5 border-2 border-slate-200 rounded-lg sm:rounded-xl bg-white text-sm sm:text-base text-slate-900 shadow-sm transition-all duration-300 focus:outline-none focus:ring-2 sm:focus:ring-4 focus:ring-teal-500/20 focus:border-teal-500 hover:border-slate-300 hover:shadow-md appearance-none bg-[url("data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' fill=\'none\' viewBox=\'0 0 20 20\'%3E%3Cpath stroke=\'%236b7280\' stroke-linecap=\'round\' stroke-linejoin=\'round\' stroke-width=\'1.5\' d=\'M6 8l4 4 4-4\'/%3E%3C/svg%3E")] bg-[length:1.2em_1.2em] sm:bg-[length:1.5em_1.5em] bg-[right_0.5rem_center] sm:bg-[right_0.75rem_center] bg-no-repeat pr-8 sm:pr-10';
+	// Clase para selects con flecha negra personalizada
+	const selectClass = 'mt-2 w-full px-3 sm:px-4 py-2.5 sm:py-3.5 border-2 border-slate-200 rounded-lg sm:rounded-xl bg-white text-sm sm:text-base text-slate-900 shadow-sm transition-all duration-300 focus:outline-none focus:ring-2 sm:focus:ring-4 focus:ring-teal-500/20 focus:border-teal-500 hover:border-slate-300 hover:shadow-md custom-select-arrow';
 
 	// Password strength calculation (returns score 0..4 and which criteria pass)
 	function evaluatePassword(pw: string) {
@@ -557,7 +642,13 @@ export default function RegisterForm(): React.ReactElement {
 			// Pacientes no tienen pago, retornar valores vacíos
 			return { months: 0, discount: 0, total: 0, monthlyEquivalent: 0, label: 'Gratuito' };
 		}
-		return computeBilling(recommendedPlan.price, billingPeriod, false);
+		return computeBilling(
+			recommendedPlan.price, 
+			billingPeriod, 
+			false, 
+			recommendedPlan.quarterlyPrice ?? null, 
+			recommendedPlan.annualPrice ?? null
+		);
 	}, [recommendedPlan, billingPeriod, role]);
 
 	return (
@@ -616,6 +707,12 @@ export default function RegisterForm(): React.ReactElement {
 								placeholder="tu@ejemplo.com"
 								required
 							/>
+							<p className="mt-1.5 text-xs text-amber-600 flex items-start gap-1.5">
+								<svg className="w-4 h-4 text-amber-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+									<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+								</svg>
+								<span>Importante: Se enviará un correo de verificación a esta dirección. Asegúrate de tener acceso a este correo electrónico para activar tu cuenta.</span>
+							</p>
 							{step1Touched && !emailValid && (
 								<p className="mt-1.5 text-xs text-rose-600">Ingresa un correo electrónico válido (ej. usuario@dominio.com).</p>
 							)}
@@ -811,7 +908,7 @@ export default function RegisterForm(): React.ReactElement {
 							) : orgsError ? (
 								<div className="mt-2 text-sm text-rose-600">{orgsError}</div>
 							) : (
-								<select value={selectedOrganizationId ?? ''} onChange={(e) => setSelectedOrganizationId(e.target.value === '' ? null : e.target.value)} className={inputClass} aria-label="Clínica que te recomendó (opcional)">
+								<select value={selectedOrganizationId ?? ''} onChange={(e) => setSelectedOrganizationId(e.target.value === '' ? null : e.target.value)} className={selectClass} aria-label="Clínica que te recomendó (opcional)">
 									<option value="">No fui referido / Ninguna</option>
 									{/* mostrarlas con nombre */}
 									{Array.isArray(organizations) &&
@@ -1072,10 +1169,21 @@ export default function RegisterForm(): React.ReactElement {
 										<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
 										<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
 									</svg>
-									Dirección
+									Ubicación
 								</span>
 							</span>
-							<input value={address} onChange={(e) => setAddress(e.target.value)} className={inputClass} />
+							<p className="mt-1 mb-3 text-xs text-slate-600">Haz clic en el mapa para seleccionar tu ubicación. También puedes escribir la dirección manualmente.</p>
+							<LocationMapPicker
+								lat={locationLat}
+								lng={locationLng}
+								address={address}
+								onLocationSelect={(lat, lng) => {
+									setLocationLat(lat);
+									setLocationLng(lng);
+								}}
+								onAddressChange={(addr) => setAddress(addr)}
+								inputClass={inputClass}
+							/>
 						</label>
 					</div>
 
@@ -1343,7 +1451,7 @@ export default function RegisterForm(): React.ReactElement {
 
 					<div className="mt-4">
 						<div className="text-xs sm:text-sm font-medium mb-2">Periodicidad</div>
-						<select value={billingPeriod} onChange={(e) => setBillingPeriod(e.target.value as BillingPeriod)} className={inputClass}>
+						<select value={billingPeriod} onChange={(e) => setBillingPeriod(e.target.value as BillingPeriod)} className={selectClass}>
 							<option value="monthly">Mensual</option>
 							<option value="quarterly">Trimestral — 5% descuento</option>
 							<option value="annual">Anual — 15% descuento</option>

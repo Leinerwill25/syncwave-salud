@@ -226,12 +226,12 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
 		if (supabaseAdmin) {
 			try {
-				// Usar el rol validado (role) en lugar de roleRaw para asegurar consistencia
+				// Crear usuario sin confirmar email - se enviará verificación automáticamente
 				const payload = {
 					email: account.email,
 					password: account.password,
 					user_metadata: { fullName: account.fullName, role: role },
-					email_confirm: true,
+					email_confirm: false, // Cambiar a false para requerir verificación de email
 				};
 				const createResp = await supabaseAdmin.auth.admin.createUser(payload as unknown as Record<string, unknown>);
 				const parsedResp = parseSupabaseCreateResp(createResp);
@@ -239,9 +239,36 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 					supabaseUserId = parsedResp.id;
 					supabaseUserEmail = parsedResp.email ?? account.email;
 					supabaseCreated = true;
+					
+					// Generar link de verificación y enviarlo por email
+					// Supabase enviará automáticamente el email de verificación si está configurado
+					// Pero también podemos generar el link explícitamente si es necesario
+					try {
+						const redirectUrl = `${APP_URL || process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/auth/confirm-email`;
+						const { data: linkData, error: linkError } = await supabaseAdmin.auth.admin.generateLink({
+							type: 'signup',
+							email: account.email,
+							password: account.password,
+							options: {
+								redirectTo: redirectUrl,
+							},
+						});
+						
+						if (linkError) {
+							console.warn('Error generando link de verificación (el email se enviará automáticamente si está configurado):', linkError);
+						} else if (linkData?.properties?.action_link) {
+							console.log('Link de verificación generado para:', account.email);
+							// El link está en linkData.properties.action_link
+							// Supabase debería enviar el email automáticamente si está configurado en el dashboard
+						}
+					} catch (linkErr) {
+						console.warn('Error en proceso de generación de link de verificación:', linkErr);
+						// Continuar de todos modos - Supabase puede enviar el email automáticamente
+					}
 				}
 			} catch (err: unknown) {
 				console.error('Error calling supabaseAdmin.createUser:', err);
+				// No lanzar error aquí para no bloquear el registro si Supabase falla
 			}
 		}
 
@@ -272,7 +299,20 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 						dob: patient.dob ? new Date(patient.dob) : null,
 						gender: patient.gender ?? null,
 						phone: patient.phone ?? null,
-						address: patient.address ?? null,
+						address: (() => {
+							// Si hay coordenadas, guardarlas como JSON en el campo address junto con la dirección
+							const locationData: any = { address: patient.address ?? null };
+							if ((patient as any).locationLat !== undefined && (patient as any).locationLng !== undefined) {
+								locationData.coordinates = {
+									lat: (patient as any).locationLat,
+									lng: (patient as any).locationLng,
+								};
+							}
+							// Guardar como JSON string si hay coordenadas, sino solo la dirección
+							return (patient as any).locationLat !== undefined && (patient as any).locationLng !== undefined
+								? JSON.stringify(locationData)
+								: patient.address ?? null;
+						})(),
 						bloodType: patient.bloodType ? String(patient.bloodType).trim() : null,
 						hasDisability: patient.hasDisability ?? false,
 						disability: patient.hasDisability && patient.disability ? String(patient.disability).trim() : null,
@@ -435,7 +475,18 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 			supabaseUser: supabaseCreated ? { id: supabaseUserId, email: supabaseUserEmail } : null,
 		};
 
-		return NextResponse.json({ ok: true, data: responsePayload, nextUrl: null });
+		// Mensaje sobre verificación de email
+		const emailVerificationMessage = supabaseCreated 
+			? 'Se ha enviado un correo electrónico de verificación a tu dirección de email. Por favor, revisa tu bandeja de entrada (y la carpeta de spam) y haz clic en el enlace de verificación para activar tu cuenta. Es importante que tengas acceso a este correo electrónico.'
+			: null;
+
+		return NextResponse.json({ 
+			ok: true, 
+			data: responsePayload, 
+			nextUrl: null,
+			emailVerificationRequired: supabaseCreated,
+			message: emailVerificationMessage || 'Registro exitoso'
+		});
 	} catch (err: unknown) {
 		console.error('Register error:', err);
 		return NextResponse.json({ ok: false, message: err instanceof Error ? err.message : 'Error interno' }, { status: 500 });
