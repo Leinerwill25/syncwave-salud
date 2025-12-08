@@ -93,15 +93,18 @@ export async function GET(req: NextRequest) {
 		const auth = await getAuthCredentials();
 
 		// API oficial de la OMS para CIE-11
+		// Release ID por defecto (se usará para obtener detalles)
+		const releaseId = '2024-05'; // Versión actual de CIE-11
+		
 		// Intentar diferentes formatos de endpoint y release IDs
 		const possibleReleaseIds = ['2024-05', '2024-01', '2023-01', 'latest'];
 		const possibleUrls: Array<{ url: string; method: 'GET' | 'POST' }> = [];
 		
 		// Generar URLs con diferentes formatos
-		for (const releaseId of possibleReleaseIds) {
+		for (const releaseIdOption of possibleReleaseIds) {
 			possibleUrls.push(
-				{ url: `https://id.who.int/icd/release/11/${releaseId}/${linearization}/search`, method: 'POST' },
-				{ url: `https://id.who.int/icd/release/11/${releaseId}/${linearization}/search`, method: 'GET' },
+				{ url: `https://id.who.int/icd/release/11/${releaseIdOption}/${linearization}/search`, method: 'POST' },
+				{ url: `https://id.who.int/icd/release/11/${releaseIdOption}/${linearization}/search`, method: 'GET' },
 			);
 		}
 		

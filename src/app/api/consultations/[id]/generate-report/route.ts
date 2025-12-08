@@ -308,8 +308,8 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 		const body = await request.json();
 		let reportContent = body.content || '';
 
-		// Obtener plantilla del médico (incluyendo plantilla de texto)
-		const { data: medicProfile, error: profileError } = await supabase.from('medic_profile').select('report_template_url, report_template_name, report_template_text').eq('doctor_id', doctorId).maybeSingle();
+		// Obtener plantilla del médico (incluyendo plantilla de texto y fuente)
+		const { data: medicProfile, error: profileError } = await supabase.from('medic_profile').select('report_template_url, report_template_name, report_template_text, report_font_family').eq('doctor_id', doctorId).maybeSingle();
 
 		if (profileError || !medicProfile?.report_template_url) {
 			return NextResponse.json({ error: 'No se encontró plantilla de informe. Por favor, carga una plantilla primero.' }, { status: 400 });
@@ -613,7 +613,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 			);
 		}
 
-		// Modificar formato del documento: tamaño de fuente 9 y alineación izquierda
+		// Modificar formato del documento: tamaño de fuente 9, alineación izquierda y fuente personalizada
 		try {
 			const zip = doc.getZip();
 			const documentXml = zip.files['word/document.xml'];
@@ -621,12 +621,22 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 			if (documentXml) {
 				let xmlContent = documentXml.asText();
 
+				// Obtener la fuente seleccionada (por defecto Arial)
+				const selectedFont = medicProfile?.report_font_family || 'Arial';
+				
 				// Cambiar tamaño de fuente a 9pt (en half-points: 9 * 2 = 18)
 				// Reemplazar todos los valores de w:sz a 18
 				xmlContent = xmlContent.replace(/<w:sz\s+w:val="\d+"/g, '<w:sz w:val="18"');
 
 				// Si hay <w:rPr> sin <w:sz>, agregarlo
 				xmlContent = xmlContent.replace(/(<w:rPr[^>]*>)(?![^<]*<w:sz)/g, '$1<w:sz w:val="18"/>');
+
+				// Aplicar la fuente seleccionada
+				// Reemplazar todas las fuentes existentes con la fuente seleccionada
+				xmlContent = xmlContent.replace(/<w:rFonts[^>]*>/g, `<w:rFonts w:ascii="${selectedFont}" w:hAnsi="${selectedFont}" w:cs="${selectedFont}"/>`);
+				
+				// Si hay <w:rPr> sin <w:rFonts>, agregarlo con la fuente seleccionada
+				xmlContent = xmlContent.replace(/(<w:rPr[^>]*>)(?![^<]*<w:rFonts)/g, `$1<w:rFonts w:ascii="${selectedFont}" w:hAnsi="${selectedFont}" w:cs="${selectedFont}"/>`);
 
 				// Cambiar alineación de justify (both) a left
 				xmlContent = xmlContent.replace(/<w:jc\s+w:val="both"/g, '<w:jc w:val="left"');
@@ -639,7 +649,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 
 				// Actualizar el XML en el ZIP
 				zip.file('word/document.xml', xmlContent);
-				console.log('[Generate Report API] Formato aplicado: fuente 9pt, alineación izquierda');
+				console.log(`[Generate Report API] Formato aplicado: fuente ${selectedFont}, tamaño 9pt, alineación izquierda`);
 			}
 		} catch (formatError: any) {
 			console.warn('[Generate Report API] Error aplicando formato (continuando sin formato):', formatError);

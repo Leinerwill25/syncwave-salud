@@ -205,6 +205,13 @@ async function generateReportContentFromTemplate(consultation: any, templateText
 		diagnostico: consultation.diagnosis || 'No especificado',
 		motivo: consultation.chief_complaint || 'No especificado',
 		notas: consultation.notes || '',
+		
+		// Fecha de consulta
+		fecha_consulta: consultation.started_at 
+			? new Date(consultation.started_at).toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: '2-digit' })
+			: consultation.created_at 
+				? new Date(consultation.created_at).toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: '2-digit' })
+				: new Date().toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: '2-digit' }),
 	};
 
 	// Reemplazar todos los marcadores {{variable}} en la plantilla

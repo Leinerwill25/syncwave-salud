@@ -203,6 +203,17 @@ export default function EditConsultationForm({ initial, patient, doctor, doctorS
 	const [reportError, setReportError] = useState<string | null>(null);
 	const [reportSuccess, setReportSuccess] = useState<string | null>(null);
 	const [reportUrl, setReportUrl] = useState<string | null>((initial as any).report_url || null);
+	const [fontFamily, setFontFamily] = useState<string>('Arial');
+	const [savingFont, setSavingFont] = useState(false);
+
+	// Fuentes profesionales disponibles (no similares a Times New Roman)
+	const availableFonts = [
+		{ value: 'Arial', label: 'Arial' },
+		{ value: 'Calibri', label: 'Calibri' },
+		{ value: 'Georgia', label: 'Georgia' },
+		{ value: 'Cambria', label: 'Cambria' },
+		{ value: 'Garamond', label: 'Garamond' },
+	];
 
 	// UI State
 	const [activeTab, setActiveTab] = useState<'main' | 'vitals' | 'specialty' | 'report'>('main');
@@ -444,25 +455,54 @@ export default function EditConsultationForm({ initial, patient, doctor, doctorS
 		// placeholder behaviour kept intentionally simple
 	}, [computedBMI, bmiOverride]);
 
-	// Cargar contenido generado automáticamente cuando se abre la pestaña de informe
+	// Sincronizar diagnóstico con CIE-11 cuando se carga la consulta
 	useEffect(() => {
-		if (activeTab === 'report' && !reportContent.trim()) {
+		if (icd11Code && icd11Title && !diagnosis) {
+			// Si hay CIE-11 pero no hay diagnóstico, establecer el diagnóstico con el CIE-11
+			setDiagnosis(`${icd11Code} - ${icd11Title}`);
+		} else if (icd11Code && icd11Title && diagnosis && !diagnosis.includes(icd11Code)) {
+			// Si hay CIE-11 y diagnóstico pero no coinciden, actualizar el diagnóstico
+			setDiagnosis(`${icd11Code} - ${icd11Title}`);
+		}
+	}, [icd11Code, icd11Title]); // Solo ejecutar cuando cambie el CIE-11
+
+	// Cargar contenido generado automáticamente y fuente cuando se abre la pestaña de informe
+	useEffect(() => {
+		if (activeTab === 'report') {
 			// Cargar contenido generado automáticamente
-			const loadGeneratedContent = async () => {
+			if (!reportContent.trim()) {
+				const loadGeneratedContent = async () => {
+					try {
+						const res = await fetch(`/api/consultations/${initial.id}/generate-report-content`, {
+							credentials: 'include',
+						});
+						const data = await res.json();
+						if (res.ok && data.content) {
+							setReportContent(data.content);
+						}
+					} catch (err) {
+						// Silenciar errores, el usuario puede escribir manualmente
+						console.warn('No se pudo cargar contenido generado automáticamente:', err);
+					}
+				};
+				loadGeneratedContent();
+			}
+
+			// Cargar fuente seleccionada
+			const loadFontFamily = async () => {
 				try {
-					const res = await fetch(`/api/consultations/${initial.id}/generate-report-content`, {
+					const res = await fetch('/api/medic/report-template', {
 						credentials: 'include',
 					});
 					const data = await res.json();
-					if (res.ok && data.content) {
-						setReportContent(data.content);
+					if (res.ok && data.font_family) {
+						setFontFamily(data.font_family);
 					}
 				} catch (err) {
-					// Silenciar errores, el usuario puede escribir manualmente
-					console.warn('No se pudo cargar contenido generado automáticamente:', err);
+					console.warn('No se pudo cargar la fuente seleccionada:', err);
 				}
 			};
-			loadGeneratedContent();
+			loadFontFamily();
 		}
 	}, [activeTab, initial.id]);
 
@@ -544,7 +584,7 @@ export default function EditConsultationForm({ initial, patient, doctor, doctorS
 		// LMP es obligatorio si hay datos de ginecología, así que siempre lo incluimos
 		gyn.last_menstrual_period = lmp || '';
 		if (contraceptiveUse) gyn.contraceptive = contraceptiveUse;
-		if (gynDiagnosis) gyn.diagnosis = gynDiagnosis;
+		// gynDiagnosis removido - ahora se usa solo el diagnóstico CIE-11
 		if (cervicalExamNotes) gyn.cervical_exam = cervicalExamNotes;
 		if (evaluationReason) gyn.evaluation_reason = evaluationReason;
 		if (currentIllnessHistory) gyn.current_illness_history = currentIllnessHistory;
@@ -1485,12 +1525,6 @@ export default function EditConsultationForm({ initial, patient, doctor, doctorS
 													</div>
 												</div>
 
-												{/* Diagnóstico */}
-												<div className="border-t border-slate-200 dark:border-slate-700 pt-4">
-													<label className={labelClass}>Diagnóstico</label>
-													<textarea value={gynDiagnosis} onChange={(e) => setGynDiagnosis(e.target.value)} className={`${inputBase} ${inputDark}`} rows={4} placeholder="Ingrese el diagnóstico ginecológico..." />
-												</div>
-
 												{/* Diagnóstico con CIE-11 */}
 												<div className="border-t border-slate-200 dark:border-slate-700 pt-4">
 													<label className={labelClass}>Diagnóstico (CIE-11)</label>
@@ -1498,13 +1532,14 @@ export default function EditConsultationForm({ initial, patient, doctor, doctorS
 														onSelect={(code) => {
 															setIcd11Code(code.code);
 															setIcd11Title(code.title);
+															// Guardar el código y título del CIE-11 como diagnóstico
+															setDiagnosis(`${code.code} - ${code.title}`);
 														}}
 														selectedCode={icd11Code && icd11Title ? { code: icd11Code, title: icd11Title } : null}
 														placeholder="Buscar código CIE-11 (ej: diabetes, hipertensión...)"
 														className="mb-3"
 													/>
-													<textarea value={diagnosis} onChange={(e) => setDiagnosis(e.target.value)} rows={4} className={`${inputBase} ${inputDark} resize-none`} placeholder="Descripción detallada del diagnóstico..." />
-													{icd11Code && (
+													{icd11Code && icd11Title && (
 														<p className="mt-2 text-xs text-slate-600 dark:text-slate-400">
 															<strong>Código CIE-11 seleccionado:</strong> {icd11Code} - {icd11Title}
 														</p>
@@ -1555,7 +1590,12 @@ export default function EditConsultationForm({ initial, patient, doctor, doctorS
 																	</div>
 																	<div>
 																		<label className={labelClass}>I. localizada en ectocérvix, totalmente visible</label>
-																		<input value={colposcopyEctocervix} onChange={(e) => setColposcopyEctocervix(e.target.value)} className={`${inputBase} ${inputDark}`} placeholder="I. localizada en ectocérvix, totalmente visible" />
+																		<select value={colposcopyEctocervix} onChange={(e) => setColposcopyEctocervix(e.target.value)} className={`${inputBase} ${inputDark}`}>
+																			<option value="">Seleccionar...</option>
+																			<option value="I. localizada en ectocérvix, totalmente visible.">I. localizada en ectocérvix, totalmente visible.</option>
+																			<option value="II. Con un componente endocervical totalmente visible.">II. Con un componente endocervical totalmente visible.</option>
+																			<option value="III. Sin evidencia de lesiones">III. Sin evidencia de lesiones</option>
+																		</select>
 																	</div>
 																</div>
 															</div>
@@ -1840,6 +1880,60 @@ export default function EditConsultationForm({ initial, patient, doctor, doctorS
 							</div>
 
 							<div className="space-y-4">
+								{/* Selector de Fuente */}
+								<div>
+									<label className={labelClass}>Fuente del Informe</label>
+									<div className="flex items-center gap-3">
+										<select
+											value={fontFamily}
+											onChange={async (e) => {
+												const newFont = e.target.value;
+												const previousFont = fontFamily; // Guardar valor anterior
+												setFontFamily(newFont);
+												setSavingFont(true);
+												setReportError(null);
+												setReportSuccess(null);
+
+												try {
+													const res = await fetch('/api/medic/report-template', {
+														method: 'PUT',
+														credentials: 'include',
+														headers: {
+															'Content-Type': 'application/json',
+														},
+														body: JSON.stringify({ font_family: newFont }),
+													});
+
+													const data = await res.json();
+													if (res.ok) {
+														setReportSuccess(`Fuente cambiada a ${newFont}. Se aplicará al generar el informe.`);
+													} else {
+														setReportError(data.error || 'Error al guardar la fuente');
+														// Revertir al valor anterior
+														setFontFamily(previousFont);
+													}
+												} catch (err: any) {
+													setReportError(err.message || 'Error al guardar la fuente');
+													// Revertir al valor anterior
+													setFontFamily(previousFont);
+												} finally {
+													setSavingFont(false);
+												}
+											}}
+											disabled={savingFont}
+											className={`${inputBase} ${inputDark} flex-1`}
+											style={{ fontFamily: fontFamily }}>
+											{availableFonts.map((font) => (
+												<option key={font.value} value={font.value} style={{ fontFamily: font.value }}>
+													{font.label}
+												</option>
+											))}
+										</select>
+										{savingFont && <Loader2 className="w-5 h-5 animate-spin text-slate-500" />}
+									</div>
+									<p className="mt-2 text-xs text-slate-500 dark:text-slate-400">La fuente seleccionada se aplicará automáticamente al generar el informe.</p>
+								</div>
+
 								<div className="flex items-center justify-between">
 									<label className={labelClass}>Contenido del Informe</label>
 									<button

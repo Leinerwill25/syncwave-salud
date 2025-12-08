@@ -23,7 +23,7 @@ export async function GET(request: Request) {
 		// Obtener plantilla del médico desde medic_profile
 		const { data: medicProfile, error: profileError } = await supabase
 			.from('medic_profile')
-			.select('report_template_url, report_template_name, report_template_text')
+			.select('report_template_url, report_template_name, report_template_text, report_font_family')
 			.eq('doctor_id', doctorId)
 			.maybeSingle();
 
@@ -36,6 +36,7 @@ export async function GET(request: Request) {
 			template_url: medicProfile?.report_template_url || null,
 			template_name: medicProfile?.report_template_name || null,
 			template_text: medicProfile?.report_template_text || null,
+			font_family: medicProfile?.report_font_family || 'Arial',
 		});
 	} catch (err) {
 		console.error('[Report Template API] Error:', err);
@@ -307,10 +308,20 @@ export async function PUT(request: NextRequest) {
 		const supabase = await createSupabaseServerClient();
 
 		const body = await request.json();
-		const { template_text } = body;
+		const { template_text, font_family } = body;
 
-		if (typeof template_text !== 'string') {
+		if (template_text !== undefined && typeof template_text !== 'string') {
 			return NextResponse.json({ error: 'template_text debe ser una cadena de texto' }, { status: 400 });
+		}
+
+		// Validar font_family si se proporciona
+		const validFonts = ['Arial', 'Calibri', 'Georgia', 'Cambria', 'Garamond'];
+		if (font_family !== undefined) {
+			if (typeof font_family !== 'string' || !validFonts.includes(font_family)) {
+				return NextResponse.json({ 
+					error: `font_family debe ser una de las siguientes: ${validFonts.join(', ')}` 
+				}, { status: 400 });
+			}
 		}
 
 		// Actualizar o crear registro en medic_profile
@@ -322,11 +333,17 @@ export async function PUT(request: NextRequest) {
 
 		if (existingProfile) {
 			// Actualizar perfil existente
+			const updateData: any = {};
+			if (template_text !== undefined) {
+				updateData.report_template_text = template_text;
+			}
+			if (font_family !== undefined) {
+				updateData.report_font_family = font_family;
+			}
+			
 			const { error: updateError } = await supabase
 				.from('medic_profile')
-				.update({
-					report_template_text: template_text,
-				})
+				.update(updateData)
 				.eq('doctor_id', doctorId);
 
 			if (updateError) {
@@ -335,12 +352,21 @@ export async function PUT(request: NextRequest) {
 			}
 		} else {
 			// Crear nuevo perfil
+			const insertData: any = {
+				doctor_id: doctorId,
+			};
+			if (template_text !== undefined) {
+				insertData.report_template_text = template_text;
+			}
+			if (font_family !== undefined) {
+				insertData.report_font_family = font_family;
+			} else {
+				insertData.report_font_family = 'Arial'; // Valor por defecto
+			}
+			
 			const { error: insertError } = await supabase
 				.from('medic_profile')
-				.insert({
-					doctor_id: doctorId,
-					report_template_text: template_text,
-				});
+				.insert(insertData);
 
 			if (insertError) {
 				console.error('[Report Template API] Error creando perfil con plantilla de texto:', insertError);

@@ -14,6 +14,16 @@ export default function ReportTemplatePage() {
 	const [templateText, setTemplateText] = useState<string>('');
 	const [savingText, setSavingText] = useState(false);
 	const [loading, setLoading] = useState(true);
+	const [fontFamily, setFontFamily] = useState<string>('Arial');
+	
+	// Fuentes profesionales disponibles (no similares a Times New Roman)
+	const availableFonts = [
+		{ value: 'Arial', label: 'Arial' },
+		{ value: 'Calibri', label: 'Calibri' },
+		{ value: 'Georgia', label: 'Georgia' },
+		{ value: 'Cambria', label: 'Cambria' },
+		{ value: 'Garamond', label: 'Garamond' },
+	];
 
 	useEffect(() => {
 		loadCurrentTemplate();
@@ -38,6 +48,12 @@ export default function ReportTemplatePage() {
 				} else {
 					// Si no hay plantilla guardada, mantener el estado vacío
 					setTemplateText('');
+				}
+				// Cargar fuente seleccionada
+				if (data.font_family && typeof data.font_family === 'string') {
+					setFontFamily(data.font_family);
+				} else {
+					setFontFamily('Arial'); // Valor por defecto
 				}
 			}
 		} catch (err) {
@@ -131,7 +147,10 @@ export default function ReportTemplatePage() {
 				headers: {
 					'Content-Type': 'application/json',
 				},
-				body: JSON.stringify({ template_text: templateText }),
+				body: JSON.stringify({ 
+					template_text: templateText,
+					font_family: fontFamily,
+				}),
 			});
 
 			const data = await res.json();
@@ -140,7 +159,7 @@ export default function ReportTemplatePage() {
 				throw new Error(data.error || 'Error al guardar la plantilla de texto');
 			}
 
-			setSuccess('Plantilla de texto guardada exitosamente');
+			setSuccess('Plantilla de texto y fuente guardadas exitosamente');
 		} catch (err: any) {
 			setError(err.message || 'Error al guardar la plantilla de texto');
 		} finally {
@@ -253,6 +272,29 @@ export default function ReportTemplatePage() {
 					</p>
 					
 					<div className="space-y-4">
+						{/* Selector de Fuente */}
+						<div>
+							<label htmlFor="font-family" className="block text-sm font-medium text-slate-700 mb-2">
+								Fuente del Informe
+							</label>
+							<select
+								id="font-family"
+								value={fontFamily}
+								onChange={(e) => setFontFamily(e.target.value)}
+								className="w-full px-4 py-3 rounded-lg border border-slate-300 bg-white text-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent"
+								style={{ fontFamily: fontFamily }}
+							>
+								{availableFonts.map((font) => (
+									<option key={font.value} value={font.value} style={{ fontFamily: font.value }}>
+										{font.label}
+									</option>
+								))}
+							</select>
+							<p className="mt-2 text-xs text-slate-500">
+								Selecciona la fuente que se aplicará a todos los informes generados. La fuente seleccionada se aplicará automáticamente al generar el informe.
+							</p>
+						</div>
+						
 						<div>
 							<label htmlFor="template-text" className="block text-sm font-medium text-slate-700 mb-2">
 								Estructura del Informe
