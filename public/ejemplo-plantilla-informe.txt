@@ -23,14 +23,16 @@ ANTECEDENTES FAMILIARES:
 
 ANTECEDENTES GINECOLÓGICOS:
 - {{motivo_consulta}} o {{motivo_evaluacion}} - Motivo de consulta/evaluación
+- {{historia_enfermedad_actual}} - Historia de la enfermedad actual
 - {{its}} - ITS (ej: NIEGA)
 - {{tipo_menstruacion}} - Tipo de menstruación (ej: REGULARES, IRREGULARES)
 - {{patron_menstruacion}} - Patrón de menstruación (ej: 5/28)
 - {{dismenorrea}} - Dismenorrea (ej: NO, SÍ)
 - {{primera_relacion_sexual}} - PRS (Primera Relación Sexual)
 - {{parejas_sexuales}} - PS (Parejas Sexuales)
-- {{ultima_regla}} - Última regla (LMP)
+- {{ultima_regla}} - Última regla (LMP) - Puede ser fecha o "Fecha Incierta"
 - {{metodo_anticonceptivo}} - Método anticonceptivo
+- {{ho}} - Historia obstétrica (HO)
 
 EXAMEN FÍSICO:
 - {{condiciones_generales}} - Condiciones generales (ej: ESTABLES)
@@ -41,6 +43,7 @@ EXAMEN FÍSICO:
 - {{fosas_axilares}} - Fosas axilares (ej: LIBRES)
 - {{abdomen}} - Abdomen
 - {{genitales_externos}} - Genitales externos (ej: NORMOCONFIGURADOS)
+- {{flujo_vaginal}} - Flujo vaginal (ej: sin secreciones)
 - {{especuloscopia}} - Especuloscopia (ej: CUELLO MACROSCÓPICAMENTE SANO)
 - {{tacto_cervix}} - Tacto de cervix
 - {{fondo_sacos}} - Fondo de sacos (ej: LIBRES)
@@ -53,7 +56,7 @@ COLPOSCOPIA:
 ECOGRAFÍA TRANSVAGINAL:
 - {{dimensiones_utero}} - Dimensiones del útero
 - {{interfase_endometrial}} - Interfase endometrial
-- {{tipo_interfase_endometrial}} - Tipo de interfase endometrial (ej: TRILAMINAR)
+- {{tipo_interfase_endometrial}} - Tipo de interfase endometrial (proliferativo, secretor, trilaminar, lineal)
 - {{dimensiones_ovario_izquierdo}} - Dimensiones del ovario izquierdo
 - {{dimensiones_ovario_derecho}} - Dimensiones del ovario derecho
 - {{liquido_fondo_saco}} - Líquido en fondo de saco
@@ -72,13 +75,15 @@ EJEMPLO DE PLANTILLA COMPLETA:
 
 PACIENTE FEMENINO DE {{edad}} AÑOS DE EDAD QUIEN ACUDE A CONSULTA GINECOLÓGICA REFIRIENDO, {{motivo_consulta}}.
 
+HISTORIA DE LA ENFERMEDAD ACTUAL: {{historia_enfermedad_actual}}
+
 ANTECEDENTES MÉDICOS: ALERGICOS: {{alergicos}} QUIRÚRGICOS: {{quirurgicos}}
 
 ANTECEDENTES FAMILIARES: MADRE: {{antecedentes_madre}} PADRE: {{antecedentes_padre}} {{antecedentes_cancer_mama}} ANTECEDENTES DE CANCER DE MAMA.
 
-ANTECEDENTES GINECOLÓGICOS: ITS: {{its}} MENSTRUACIONES: {{tipo_menstruacion}}. TIPO: {{patron_menstruacion}} DISMENORREICA: {{dismenorrea}}. PRS: {{primera_relacion_sexual}} #PS: {{parejas_sexuales}}
+ANTECEDENTES GINECOLÓGICOS: ITS: {{its}} MENSTRUACIONES: {{tipo_menstruacion}}. TIPO: {{patron_menstruacion}} DISMENORREICA: {{dismenorrea}}. PRS: {{primera_relacion_sexual}} #PS: {{parejas_sexuales}} ÚLTIMA REGLA: {{ultima_regla}} MÉTODO ANTICONCEPTIVO: {{metodo_anticonceptivo}} HO: {{ho}}
 
-EXAMEN FÍSICO: SE EVALÚA PACIENTE EN {{condiciones_generales}} CONDICIONES GENERALES EUPNEICA AFEBRIL HIDRATADA. MAMAS DE {{tamano_mamas}}, {{simetria_mamas}}, CAP {{cap_mamas}}, {{secrecion_mamas}}, FOSAS AXILARES Y SUPRACLAVICULARES {{fosas_axilares}}. ABDOMEN: {{abdomen}}. GENITALES EXTERNOS: {{genitales_externos}}, ESPECULOSCOPIO: {{especuloscopia}}, TACTO: {{tacto_cervix}}, FONDO DE SACOS {{fondo_sacos}}, ANEXOS {{anexos}}. RESTO DENTRO DE LOS LÍMITES NORMALES.
+EXAMEN FÍSICO: SE EVALÚA PACIENTE EN {{condiciones_generales}} CONDICIONES GENERALES EUPNEICA AFEBRIL HIDRATADA. MAMAS DE {{tamano_mamas}}, {{simetria_mamas}}, CAP {{cap_mamas}}, {{secrecion_mamas}}, FOSAS AXILARES Y SUPRACLAVICULARES {{fosas_axilares}}. ABDOMEN: {{abdomen}}. GENITALES EXTERNOS: {{genitales_externos}}, FLUJO VAGINAL: {{flujo_vaginal}}, ESPECULOSCOPIO: {{especuloscopia}}, TACTO: {{tacto_cervix}}, FONDO DE SACOS {{fondo_sacos}}, ANEXOS {{anexos}}. RESTO DENTRO DE LOS LÍMITES NORMALES.
 
 COLPOSCOPIA: TEST DE HINSELMANN ({{test_hinselmann}}) TEST DE SCHILLER ({{test_schiller}}).
 

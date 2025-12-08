@@ -54,7 +54,7 @@ export default async function EditConsultationPage({ params }: Props) {
 		.from('consultation')
 		.select(
 			`id, appointment_id, patient_id, unregistered_patient_id, doctor_id, chief_complaint, diagnosis, notes, vitals, started_at, ended_at, created_at,
-       patient:patient_id(firstName,lastName,dob,identifier),
+       patient:patient_id(id,firstName,lastName,dob,identifier),
        doctor:doctor_id(id,name,email)`
 		)
 		.eq('id', id)
@@ -64,12 +64,8 @@ export default async function EditConsultationPage({ params }: Props) {
 	// Para consultorios privados, usar private_specialty; si no existe, usar specialty
 	let doctorSpecialty: string | null = null;
 	if (consultationRaw?.doctor_id) {
-		const { data: medicProfile } = await supabase
-			.from('medic_profile')
-			.select('specialty, private_specialty')
-			.eq('doctor_id', consultationRaw.doctor_id)
-			.maybeSingle();
-		
+		const { data: medicProfile } = await supabase.from('medic_profile').select('specialty, private_specialty').eq('doctor_id', consultationRaw.doctor_id).maybeSingle();
+
 		// Priorizar private_specialty si existe, sino usar specialty
 		doctorSpecialty = medicProfile?.private_specialty || medicProfile?.specialty || null;
 	}
@@ -92,23 +88,39 @@ export default async function EditConsultationPage({ params }: Props) {
 	}
 
 	const consultation: any = consultationRaw;
-	
+
 	// Obtener datos del paciente (registrado o no registrado)
 	let patient: any = null;
 	let isUnregistered = false;
 
-	if (consultation.patient_id && consultation.patient) {
-		// Paciente registrado
-		patient = Array.isArray(consultation.patient) ? consultation.patient[0] : consultation.patient;
+	if (consultation.patient_id) {
+		// Paciente registrado - obtener datos directamente de la tabla Patient
+		const { data: fullPatientData } = await supabase.from('Patient').select('id, firstName, lastName, dob, identifier, phone, address, blood_type, allergies, chronic_conditions, current_medication').eq('id', consultation.patient_id).maybeSingle();
+
+		if (fullPatientData) {
+			patient = {
+				id: fullPatientData.id,
+				firstName: fullPatientData.firstName,
+				lastName: fullPatientData.lastName,
+				dob: fullPatientData.dob,
+				identifier: fullPatientData.identifier,
+				phone: fullPatientData.phone || null,
+				address: fullPatientData.address || null,
+				bloodType: (fullPatientData as any).blood_type || null,
+				allergies: fullPatientData.allergies || null,
+				chronicConditions: (fullPatientData as any).chronic_conditions || null,
+				currentMedications: (fullPatientData as any).current_medication || null,
+			};
+		} else {
+			// Fallback: usar datos básicos de la relación
+			const rawPatient = Array.isArray(consultation.patient) ? consultation.patient[0] : consultation.patient;
+			patient = rawPatient;
+		}
 	} else if (consultation.unregistered_patient_id) {
 		// Paciente no registrado
 		isUnregistered = true;
-		const { data: unregisteredPatientData } = await supabase
-			.from('unregisteredpatients')
-			.select('id, first_name, last_name, identification, phone, email, birth_date, sex, address, allergies, chronic_conditions, current_medication, family_history')
-			.eq('id', consultation.unregistered_patient_id)
-			.maybeSingle();
-		
+		const { data: unregisteredPatientData } = await supabase.from('unregisteredpatients').select('id, first_name, last_name, identification, phone, email, birth_date, sex, address, allergies, chronic_conditions, current_medication, family_history').eq('id', consultation.unregistered_patient_id).maybeSingle();
+
 		if (unregisteredPatientData) {
 			// Normalizar datos del paciente no registrado para que coincidan con la estructura esperada
 			patient = {
@@ -149,10 +161,7 @@ export default async function EditConsultationPage({ params }: Props) {
 					<div className="px-6 py-4">
 						{/* Breadcrumb */}
 						<nav className="mb-4">
-							<Link 
-								href="/dashboard/medic/consultas" 
-								className="inline-flex items-center gap-2 text-sm font-medium text-slate-600 dark:text-slate-400 hover:text-teal-600 dark:hover:text-teal-400 transition-colors"
-							>
+							<Link href="/dashboard/medic/consultas" className="inline-flex items-center gap-2 text-sm font-medium text-slate-600 dark:text-slate-400 hover:text-teal-600 dark:hover:text-teal-400 transition-colors">
 								<ArrowLeft size={16} />
 								Volver a Consultas
 							</Link>
@@ -167,9 +176,7 @@ export default async function EditConsultationPage({ params }: Props) {
 									</div>
 									Editar Consulta Médica
 								</h1>
-								<p className="text-sm text-slate-600 dark:text-slate-400 ml-13">
-									Modifica la información clínica, signos vitales y genera informes médicos
-								</p>
+								<p className="text-sm text-slate-600 dark:text-slate-400 ml-13">Modifica la información clínica, signos vitales y genera informes médicos</p>
 							</div>
 
 							{/* Quick Info Cards */}
@@ -183,7 +190,7 @@ export default async function EditConsultationPage({ params }: Props) {
 										</div>
 									</div>
 								)}
-								
+
 								{consultation.created_at && (
 									<div className="flex items-center gap-2 px-4 py-2 rounded-lg bg-slate-100 dark:bg-slate-700 border border-slate-200 dark:border-slate-600">
 										<Clock size={16} className="text-slate-600 dark:text-slate-400" />
@@ -202,34 +209,18 @@ export default async function EditConsultationPage({ params }: Props) {
 						<div className="flex flex-wrap items-center gap-4">
 							{/* Patient Card */}
 							{patient && (
-								<div className={`flex items-center gap-3 px-4 py-2.5 rounded-lg border shadow-sm transition-all hover:shadow-md ${
-									isUnregistered 
-										? 'bg-orange-50 dark:bg-orange-900/20 border-orange-200 dark:border-orange-800' 
-										: 'bg-teal-50 dark:bg-teal-900/20 border-teal-200 dark:border-teal-800'
-								}`}>
-									<div className={`w-10 h-10 rounded-lg flex items-center justify-center font-bold text-base shadow-sm ${
-										isUnregistered 
-											? 'bg-orange-200 dark:bg-orange-800 text-orange-800 dark:text-orange-200' 
-											: 'bg-teal-200 dark:bg-teal-800 text-teal-800 dark:text-teal-200'
-									}`}>
-										{initials(patient.firstName, patient.lastName)}
-									</div>
+								<div className={`flex items-center gap-3 px-4 py-2.5 rounded-lg border shadow-sm transition-all hover:shadow-md ${isUnregistered ? 'bg-orange-50 dark:bg-orange-900/20 border-orange-200 dark:border-orange-800' : 'bg-teal-50 dark:bg-teal-900/20 border-teal-200 dark:border-teal-800'}`}>
+									<div className={`w-10 h-10 rounded-lg flex items-center justify-center font-bold text-base shadow-sm ${isUnregistered ? 'bg-orange-200 dark:bg-orange-800 text-orange-800 dark:text-orange-200' : 'bg-teal-200 dark:bg-teal-800 text-teal-800 dark:text-teal-200'}`}>{initials(patient.firstName, patient.lastName)}</div>
 									<div className="flex flex-col min-w-0">
 										<div className="flex items-center gap-2">
 											<span className="font-semibold text-slate-900 dark:text-slate-100 truncate text-sm">
 												{patient.firstName} {patient.lastName}
 											</span>
-											{isUnregistered && (
-												<span className="text-xs px-2 py-0.5 rounded-full bg-orange-100 dark:bg-orange-800 text-orange-700 dark:text-orange-200 font-medium shrink-0">
-													No Registrado
-												</span>
-											)}
+											{isUnregistered && <span className="text-xs px-2 py-0.5 rounded-full bg-orange-100 dark:bg-orange-800 text-orange-700 dark:text-orange-200 font-medium shrink-0">No Registrado</span>}
 										</div>
 										<div className="flex items-center gap-2 mt-0.5">
 											<span className="text-xs text-slate-600 dark:text-slate-400">Paciente</span>
-											{patient.identifier && (
-												<span className="text-xs text-slate-500 dark:text-slate-500">• {patient.identifier}</span>
-											)}
+											{patient.identifier && <span className="text-xs text-slate-500 dark:text-slate-500">• {patient.identifier}</span>}
 										</div>
 									</div>
 								</div>

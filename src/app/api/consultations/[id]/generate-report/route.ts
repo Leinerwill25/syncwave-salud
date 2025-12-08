@@ -10,39 +10,39 @@ import PizZip from 'pizzip';
 // Función para generar el contenido del informe desde la plantilla de texto
 async function generateReportContentFromTemplate(consultation: any, templateText: string, supabase: any): Promise<string> {
 	let content = templateText;
-	
+
 	// Función auxiliar para calcular edad desde fecha de nacimiento
 	function calculateAge(dob: string | Date | null | undefined): string {
 		if (!dob) {
 			console.log('[Generate Report] No hay fecha de nacimiento (dob es null/undefined)');
 			return '';
 		}
-		
+
 		try {
 			// Convertir a Date si es string
 			const birthDate = dob instanceof Date ? dob : new Date(dob);
-			
+
 			// Verificar que la fecha sea válida
 			if (isNaN(birthDate.getTime())) {
 				console.warn('[Generate Report] Fecha de nacimiento inválida:', dob);
 				return '';
 			}
-			
+
 			const today = new Date();
 			let age = today.getFullYear() - birthDate.getFullYear();
 			const monthDiff = today.getMonth() - birthDate.getMonth();
-			
+
 			// Ajustar si aún no ha cumplido años este año
 			if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
 				age = age - 1;
 			}
-			
+
 			// Asegurar que la edad no sea negativa
 			if (age < 0) {
 				console.warn('[Generate Report] Edad calculada negativa, fecha de nacimiento:', dob);
 				return '';
 			}
-			
+
 			console.log('[Generate Report] Edad calculada:', { dob, age });
 			return String(age);
 		} catch (error) {
@@ -50,21 +50,17 @@ async function generateReportContentFromTemplate(consultation: any, templateText
 			return '';
 		}
 	}
-	
+
 	// Obtener datos del paciente
 	let patientName = 'Paciente no registrado';
 	let patientAge = '';
 	let patientGender = '';
-	
+
 	// Obtener datos del paciente según si está registrado o no
 	if (consultation.patient_id) {
 		// Paciente registrado - obtener desde tabla Patient
-		const { data: patientData, error: patientError } = await supabase
-			.from('Patient')
-			.select('firstName, lastName, dob, gender')
-			.eq('id', consultation.patient_id)
-			.single();
-		
+		const { data: patientData, error: patientError } = await supabase.from('Patient').select('firstName, lastName, dob, gender').eq('id', consultation.patient_id).single();
+
 		if (!patientError && patientData) {
 			patientName = `${patientData.firstName || ''} ${patientData.lastName || ''}`.trim() || 'Paciente';
 			patientAge = calculateAge(patientData.dob);
@@ -73,7 +69,7 @@ async function generateReportContentFromTemplate(consultation: any, templateText
 				name: patientName,
 				dob: patientData.dob,
 				calculatedAge: patientAge,
-				gender: patientGender
+				gender: patientGender,
 			});
 		} else {
 			console.warn('[Generate Report] No se pudo obtener paciente registrado:', patientError);
@@ -81,12 +77,8 @@ async function generateReportContentFromTemplate(consultation: any, templateText
 	} else if (consultation.unregistered_patient_id) {
 		// Paciente no registrado - obtener desde tabla unregisteredpatients
 		// Nota: la tabla usa birth_date (no dob) y sex (no gender)
-		const { data: unregisteredPatient, error: unregisteredError } = await supabase
-			.from('unregisteredpatients')
-			.select('first_name, last_name, birth_date, sex')
-			.eq('id', consultation.unregistered_patient_id)
-			.single();
-		
+		const { data: unregisteredPatient, error: unregisteredError } = await supabase.from('unregisteredpatients').select('first_name, last_name, birth_date, sex').eq('id', consultation.unregistered_patient_id).single();
+
 		if (!unregisteredError && unregisteredPatient) {
 			patientName = `${unregisteredPatient.first_name || ''} ${unregisteredPatient.last_name || ''}`.trim() || 'Paciente no registrado';
 			patientAge = calculateAge(unregisteredPatient.birth_date);
@@ -95,7 +87,7 @@ async function generateReportContentFromTemplate(consultation: any, templateText
 				name: patientName,
 				birth_date: unregisteredPatient.birth_date,
 				calculatedAge: patientAge,
-				sex: patientGender
+				sex: patientGender,
 			});
 		} else {
 			console.warn('[Generate Report] No se pudo obtener paciente no registrado:', unregisteredError);
@@ -103,27 +95,28 @@ async function generateReportContentFromTemplate(consultation: any, templateText
 	} else {
 		console.warn('[Generate Report] No se encontró patient_id ni unregistered_patient_id en la consulta');
 	}
-	
+
 	// Obtener datos de vitals de ginecología
 	const vitals = consultation.vitals || {};
 	const gyn = vitals.gynecology || {};
-	
+	const colposcopy = gyn.colposcopy || {};
+
 	// Mapeo de marcadores a valores (todos en español para mejor entendimiento)
 	const replacements: Record<string, string> = {
 		// Datos básicos del paciente
 		paciente: patientName,
 		edad: patientAge || 'N/A',
 		genero: patientGender || 'N/A',
-		
+
 		// Antecedentes médicos
 		alergicos: gyn.allergies || 'NIEGA',
 		quirurgicos: gyn.surgical_history || 'NIEGA',
-		
+
 		// Antecedentes familiares
 		antecedentes_madre: gyn.family_history_mother || 'VIVA SANA',
 		antecedentes_padre: gyn.family_history_father || 'VIVO SANO',
 		antecedentes_cancer_mama: gyn.family_history_breast_cancer || 'NIEGA',
-		
+
 		// Antecedentes ginecológicos
 		motivo_consulta: gyn.evaluation_reason || consultation.chief_complaint || 'No especificado',
 		motivo_evaluacion: gyn.evaluation_reason || consultation.chief_complaint || 'No especificado',
@@ -135,7 +128,7 @@ async function generateReportContentFromTemplate(consultation: any, templateText
 		parejas_sexuales: gyn.sexual_partners || '',
 		ultima_regla: gyn.last_menstrual_period || '',
 		metodo_anticonceptivo: gyn.contraceptive || '',
-		
+
 		// Examen físico
 		condiciones_generales: gyn.general_conditions || 'ESTABLES',
 		tamano_mamas: gyn.breast_size || 'MEDIANO TAMAÑO',
@@ -149,11 +142,39 @@ async function generateReportContentFromTemplate(consultation: any, templateText
 		tacto_cervix: gyn.tact_cervix || 'CUELLO RENITENTE NO DOLOROSO A LA MOVILIZACIÓN',
 		fondo_sacos: gyn.fundus_sacs || 'LIBRES',
 		anexos: gyn.adnexa || 'NO PALPABLES',
-		
-		// Colposcopia
+
+		// Colposcopia - Tests básicos
 		test_hinselmann: gyn.hinselmann_test || 'NEGATIVO',
 		test_schiller: gyn.schiller_test || 'NEGATIVO',
-		
+
+		// Colposcopia - Información General
+		colposcopia_acetico_5: colposcopy.acetic_5 || '',
+		colposcopia_ectocervix: colposcopy.ectocervix || '',
+		colposcopia_tipo: colposcopy.type || '',
+		colposcopia_extension: colposcopy.extension || '',
+		colposcopia_descripcion: colposcopy.description || '',
+		colposcopia_localizacion: colposcopy.location || '',
+
+		// Colposcopia - Epitelio Acetoblanco
+		colposcopia_acetowhite: colposcopy.acetowhite || '',
+		colposcopia_acetowhite_detalles: colposcopy.acetowhite_details || '',
+
+		// Colposcopia - Patrones de Vascularización
+		colposcopia_mosaico: colposcopy.mosaic || '',
+		colposcopia_punteado: colposcopy.punctation || '',
+		colposcopia_vasos_atipicos: colposcopy.atypical_vessels || '',
+
+		// Colposcopia - Características de la Lesión
+		colposcopia_carcinoma_invasivo: colposcopy.invasive_carcinoma || '',
+		colposcopia_bordes: colposcopy.borders || '',
+		colposcopia_situacion: colposcopy.situation || '',
+		colposcopia_elevacion: colposcopy.elevation || '',
+
+		// Colposcopia - Pruebas Complementarias
+		colposcopia_biopsia: colposcopy.biopsy || '',
+		colposcopia_biopsia_localizacion: colposcopy.biopsy_location || '',
+		colposcopia_lugol: colposcopy.lugol || '',
+
 		// Ecografía transvaginal
 		dimensiones_utero: gyn.uterus_dimensions || '',
 		interfase_endometrial: gyn.endometrial_interface || '',
@@ -161,35 +182,35 @@ async function generateReportContentFromTemplate(consultation: any, templateText
 		dimensiones_ovario_izquierdo: gyn.left_ovary_dimensions || '',
 		dimensiones_ovario_derecho: gyn.right_ovary_dimensions || '',
 		liquido_fondo_saco: gyn.fundus_fluid || 'NO SE EVIDENCIA LÍQUIDO EN FONDO DE SACO',
-		
+
 		// Examen cervical
 		examen_cervical: gyn.cervical_exam || '',
-		
+
 		// Datos generales de la consulta
 		diagnostico: consultation.diagnosis || 'No especificado',
 		motivo: consultation.chief_complaint || 'No especificado',
 		notas: consultation.notes || '',
 	};
-	
+
 	// Reemplazar todos los marcadores {{variable}} en la plantilla
 	content = content.replace(/\{\{(\w+)\}\}/g, (match, key) => {
 		const value = replacements[key.toLowerCase()] || replacements[key] || '';
 		return value || match; // Si no hay valor, dejar el marcador original
 	});
-	
+
 	return content;
 }
 
 async function getCurrentDoctorId(supabase: any, request?: Request): Promise<string | null> {
 	// Intento primario: obtener usuario por cookie (session)
 	let { data: authData, error: authError } = await supabase.auth.getUser();
-	
+
 	// Si falla, intentar con token Bearer del header
 	if (authError || !authData?.user) {
 		if (request) {
 			const authHeader = request.headers.get('authorization') || request.headers.get('Authorization');
 			const maybeToken = authHeader?.startsWith('Bearer ') ? authHeader.slice('Bearer '.length) : null;
-			
+
 			if (maybeToken) {
 				const { data: authData2, error: authError2 } = await supabase.auth.getUser(maybeToken);
 				if (!authError2 && authData2?.user) {
@@ -198,13 +219,13 @@ async function getCurrentDoctorId(supabase: any, request?: Request): Promise<str
 				}
 			}
 		}
-		
+
 		// Si aún falla, intentar restaurar desde cookies
 		if (authError || !authData?.user) {
 			try {
 				const cookieStore = await cookies();
 				const accessToken = cookieStore.get('sb-access-token')?.value ?? null;
-				
+
 				if (accessToken) {
 					const { data: authData3, error: authError3 } = await supabase.auth.getUser(accessToken);
 					if (!authError3 && authData3?.user) {
@@ -217,16 +238,12 @@ async function getCurrentDoctorId(supabase: any, request?: Request): Promise<str
 			}
 		}
 	}
-	
+
 	if (authError || !authData?.user) {
 		return null;
 	}
 
-	const { data: appUser, error: userError } = await supabase
-		.from('User')
-		.select('id, role')
-		.eq('authId', authData.user.id)
-		.maybeSingle();
+	const { data: appUser, error: userError } = await supabase.from('User').select('id, role').eq('authId', authData.user.id).maybeSingle();
 
 	if (userError || !appUser || appUser.role !== 'MEDICO') {
 		return null;
@@ -235,13 +252,10 @@ async function getCurrentDoctorId(supabase: any, request?: Request): Promise<str
 	return appUser.id;
 }
 
-export async function POST(
-	request: NextRequest,
-	{ params }: { params: Promise<{ id: string }> }
-) {
+export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
 	try {
 		const { id } = await params;
-		
+
 		// 1️⃣ Autenticación usando apiRequireRole (maneja correctamente la restauración de sesión)
 		const authResult = await apiRequireRole(['MEDICO']);
 		if (authResult.response) return authResult.response;
@@ -258,7 +272,8 @@ export async function POST(
 		// Obtener datos de la consulta (solo IDs, no los datos del paciente aún)
 		const { data: consultation, error: consultationError } = await supabase
 			.from('consultation')
-			.select(`
+			.select(
+				`
 				id,
 				patient_id,
 				unregistered_patient_id,
@@ -269,7 +284,8 @@ export async function POST(
 				vitals,
 				started_at,
 				created_at
-			`)
+			`
+			)
 			.eq('id', id)
 			.single();
 
@@ -285,7 +301,7 @@ export async function POST(
 		console.log('[Generate Report API] Consulta obtenida:', {
 			id: consultation.id,
 			patient_id: consultation.patient_id,
-			unregistered_patient_id: consultation.unregistered_patient_id
+			unregistered_patient_id: consultation.unregistered_patient_id,
 		});
 
 		// Obtener contenido del informe del body (puede venir del frontend o generarse automáticamente)
@@ -293,11 +309,7 @@ export async function POST(
 		let reportContent = body.content || '';
 
 		// Obtener plantilla del médico (incluyendo plantilla de texto)
-		const { data: medicProfile, error: profileError } = await supabase
-			.from('medic_profile')
-			.select('report_template_url, report_template_name, report_template_text')
-			.eq('doctor_id', doctorId)
-			.maybeSingle();
+		const { data: medicProfile, error: profileError } = await supabase.from('medic_profile').select('report_template_url, report_template_name, report_template_text').eq('doctor_id', doctorId).maybeSingle();
 
 		if (profileError || !medicProfile?.report_template_url) {
 			return NextResponse.json({ error: 'No se encontró plantilla de informe. Por favor, carga una plantilla primero.' }, { status: 400 });
@@ -324,18 +336,18 @@ export async function POST(
 		}
 
 		const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
-			auth: { persistSession: false }
+			auth: { persistSession: false },
 		});
 
 		// Descargar plantilla desde Supabase Storage
 		const templateUrl = medicProfile.report_template_url;
 		const bucket = 'report-templates';
-		
+
 		console.log('[Generate Report API] URL de plantilla:', templateUrl);
 		console.log('[Generate Report API] Es URL HTTP?', templateUrl.startsWith('http://') || templateUrl.startsWith('https://'));
-		
+
 		let templateBuffer: Buffer;
-		
+
 		// Si la URL es una URL HTTP completa (URL firmada), descargar directamente con fetch
 		if (templateUrl.startsWith('http://') || templateUrl.startsWith('https://')) {
 			console.log('[Generate Report API] Descargando plantilla desde URL firmada...');
@@ -350,27 +362,30 @@ export async function POST(
 				console.log('[Generate Report API] Plantilla descargada exitosamente, tamaño:', templateBuffer.length, 'bytes');
 			} catch (fetchError: any) {
 				console.error('[Generate Report API] Error descargando desde URL firmada:', fetchError);
-				return NextResponse.json({ 
-					error: 'Error al descargar plantilla. Verifica que la plantilla exista y que tengas permisos para acceder a ella.' 
-				}, { status: 500 });
+				return NextResponse.json(
+					{
+						error: 'Error al descargar plantilla. Verifica que la plantilla exista y que tengas permisos para acceder a ella.',
+					},
+					{ status: 500 }
+				);
 			}
 		} else {
 			// Si es un path, extraer el path correcto y usar el cliente admin
 			let filePath = templateUrl;
-			
+
 			// Si es una URL firmada de Supabase Storage (path con /storage/v1/object/)
 			if (templateUrl.includes('/storage/v1/object/')) {
 				const urlParts = templateUrl.split('/storage/v1/object/');
 				if (urlParts.length > 1) {
 					const pathWithQuery = urlParts[1];
 					const pathOnly = pathWithQuery.split('?')[0];
-					
+
 					// Remover "sign/" si existe
 					let cleanPath = pathOnly;
 					if (cleanPath.startsWith('sign/')) {
 						cleanPath = cleanPath.substring(5);
 					}
-					
+
 					// Remover el bucket del inicio
 					if (cleanPath.startsWith(bucket + '/')) {
 						filePath = cleanPath.substring(bucket.length + 1);
@@ -385,7 +400,7 @@ export async function POST(
 			} else {
 				filePath = templateUrl.split('?')[0];
 			}
-			
+
 			// Decodificar URL encoding
 			try {
 				filePath = decodeURIComponent(filePath);
@@ -394,11 +409,9 @@ export async function POST(
 			}
 
 			console.log('[Generate Report API] Descargando plantilla desde path:', filePath);
-			
+
 			// Descargar archivo usando cliente admin
-			const { data: templateData, error: downloadError } = await supabaseAdmin.storage
-				.from(bucket)
-				.download(filePath);
+			const { data: templateData, error: downloadError } = await supabaseAdmin.storage.from(bucket).download(filePath);
 
 			if (downloadError || !templateData) {
 				console.error('[Generate Report API] Error descargando plantilla:', downloadError);
@@ -413,7 +426,7 @@ export async function POST(
 
 		// Procesar plantilla con docxtemplater
 		const zip = new PizZip(templateBuffer);
-		
+
 		// Configurar delimitadores personalizados para soportar {{variable}} en lugar de {variable}
 		// Esto permite usar {{contenido}} en la plantilla de Word
 		const doc = new Docxtemplater(zip, {
@@ -421,26 +434,26 @@ export async function POST(
 			linebreaks: true,
 			delimiters: {
 				start: '{{',
-				end: '}}'
-			}
+				end: '}}',
+			},
 		});
 
 		// Función auxiliar para calcular edad desde fecha de nacimiento
 		function calculateAge(dob: string | Date | null | undefined): string {
 			if (!dob) return 'N/A';
-			
+
 			try {
 				const birthDate = dob instanceof Date ? dob : new Date(dob);
 				if (isNaN(birthDate.getTime())) return 'N/A';
-				
+
 				const today = new Date();
 				let age = today.getFullYear() - birthDate.getFullYear();
 				const monthDiff = today.getMonth() - birthDate.getMonth();
-				
+
 				if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
 					age = age - 1;
 				}
-				
+
 				return String(age);
 			} catch (error) {
 				console.error('[Generate Report API] Error calculando edad:', error);
@@ -455,12 +468,8 @@ export async function POST(
 		let patientAge = 'N/A';
 		if (consultation.patient_id) {
 			// Obtener datos del paciente registrado desde la tabla Patient
-			const { data: patientData, error: patientError } = await supabase
-				.from('Patient')
-				.select('firstName, lastName, identifier, phone, dob')
-				.eq('id', consultation.patient_id)
-				.single();
-			
+			const { data: patientData, error: patientError } = await supabase.from('Patient').select('firstName, lastName, identifier, phone, dob').eq('id', consultation.patient_id).single();
+
 			if (!patientError && patientData) {
 				patientName = `${patientData.firstName || ''} ${patientData.lastName || ''}`.trim() || 'Paciente';
 				patientId = patientData.identifier || 'N/A';
@@ -468,12 +477,8 @@ export async function POST(
 				patientAge = calculateAge(patientData.dob);
 			}
 		} else if (consultation.unregistered_patient_id) {
-			const { data: unregisteredPatient } = await supabase
-				.from('unregisteredpatients')
-				.select('first_name, last_name, identification, phone, birth_date')
-				.eq('id', consultation.unregistered_patient_id)
-				.single();
-			
+			const { data: unregisteredPatient } = await supabase.from('unregisteredpatients').select('first_name, last_name, identification, phone, birth_date').eq('id', consultation.unregistered_patient_id).single();
+
 			if (unregisteredPatient) {
 				patientName = `${unregisteredPatient.first_name || ''} ${unregisteredPatient.last_name || ''}`.trim() || 'Paciente no registrado';
 				patientId = unregisteredPatient.identification || 'N/A';
@@ -481,39 +486,36 @@ export async function POST(
 				patientAge = calculateAge(unregisteredPatient.birth_date);
 			}
 		}
-		
+
 		// Obtener datos de ginecología de los vitals
 		const vitals = consultation.vitals || {};
 		const gyn = vitals.gynecology || {};
+		const colposcopy = gyn.colposcopy || {};
 
 		// Obtener datos del médico desde la tabla User usando doctor_id
 		let doctorName = 'Médico';
 		if (consultation.doctor_id) {
-			const { data: doctorData } = await supabase
-				.from('User')
-				.select('name, email')
-				.eq('id', consultation.doctor_id)
-				.single();
-			
+			const { data: doctorData } = await supabase.from('User').select('name, email').eq('id', consultation.doctor_id).single();
+
 			if (doctorData) {
 				doctorName = doctorData.name || doctorData.email || 'Médico';
 			}
 		}
 
 		// Preparar datos para la plantilla
-		const consultationDate = consultation.started_at 
-			? new Date(consultation.started_at).toLocaleDateString('es-ES', { 
-				year: 'numeric', 
-				month: 'long', 
-				day: 'numeric' 
-			})
-			: consultation.created_at 
-				? new Date(consultation.created_at).toLocaleDateString('es-ES', { 
-					year: 'numeric', 
-					month: 'long', 
-					day: 'numeric' 
-				})
-				: new Date().toLocaleDateString('es-ES');
+		const consultationDate = consultation.started_at
+			? new Date(consultation.started_at).toLocaleDateString('es-ES', {
+					year: 'numeric',
+					month: 'long',
+					day: 'numeric',
+			  })
+			: consultation.created_at
+			? new Date(consultation.created_at).toLocaleDateString('es-ES', {
+					year: 'numeric',
+					month: 'long',
+					day: 'numeric',
+			  })
+			: new Date().toLocaleDateString('es-ES');
 
 		// Preparar datos para la plantilla
 		// Nota: Los nombres de las claves deben coincidir EXACTAMENTE con los marcadores en la plantilla Word
@@ -544,7 +546,39 @@ export async function POST(
 			ultima_regla: gyn.last_menstrual_period || '',
 			ho: gyn.ho || '',
 			metodo_anticonceptivo: gyn.contraceptive || '',
-			'método_anticonceptivo': gyn.contraceptive || '', // Con tilde para compatibilidad
+			método_anticonceptivo: gyn.contraceptive || '', // Con tilde para compatibilidad
+
+			// Colposcopia - Tests básicos
+			test_hinselmann: gyn.hinselmann_test || 'NEGATIVO',
+			test_schiller: gyn.schiller_test || 'NEGATIVO',
+
+			// Colposcopia - Información General
+			colposcopia_acetico_5: colposcopy.acetic_5 || '',
+			colposcopia_ectocervix: colposcopy.ectocervix || '',
+			colposcopia_tipo: colposcopy.type || '',
+			colposcopia_extension: colposcopy.extension || '',
+			colposcopia_descripcion: colposcopy.description || '',
+			colposcopia_localizacion: colposcopy.location || '',
+
+			// Colposcopia - Epitelio Acetoblanco
+			colposcopia_acetowhite: colposcopy.acetowhite || '',
+			colposcopia_acetowhite_detalles: colposcopy.acetowhite_details || '',
+
+			// Colposcopia - Patrones de Vascularización
+			colposcopia_mosaico: colposcopy.mosaic || '',
+			colposcopia_punteado: colposcopy.punctation || '',
+			colposcopia_vasos_atipicos: colposcopy.atypical_vessels || '',
+
+			// Colposcopia - Características de la Lesión
+			colposcopia_carcinoma_invasivo: colposcopy.invasive_carcinoma || '',
+			colposcopia_bordes: colposcopy.borders || '',
+			colposcopia_situacion: colposcopy.situation || '',
+			colposcopia_elevacion: colposcopy.elevation || '',
+
+			// Colposcopia - Pruebas Complementarias
+			colposcopia_biopsia: colposcopy.biopsy || '',
+			colposcopia_biopsia_localizacion: colposcopy.biopsy_location || '',
+			colposcopia_lugol: colposcopy.lugol || '',
 		};
 
 		console.log('[Generate Report API] Datos que se pasarán a la plantilla:', {
@@ -570,51 +604,39 @@ export async function POST(
 				name: error.name,
 				properties: error.properties,
 			});
-			return NextResponse.json({ 
-				error: 'Error al procesar plantilla. Verifica que los marcadores en la plantilla sean correctos.',
-				detail: error.message 
-			}, { status: 500 });
+			return NextResponse.json(
+				{
+					error: 'Error al procesar plantilla. Verifica que los marcadores en la plantilla sean correctos.',
+					detail: error.message,
+				},
+				{ status: 500 }
+			);
 		}
 
 		// Modificar formato del documento: tamaño de fuente 9 y alineación izquierda
 		try {
 			const zip = doc.getZip();
 			const documentXml = zip.files['word/document.xml'];
-			
+
 			if (documentXml) {
 				let xmlContent = documentXml.asText();
-				
+
 				// Cambiar tamaño de fuente a 9pt (en half-points: 9 * 2 = 18)
 				// Reemplazar todos los valores de w:sz a 18
-				xmlContent = xmlContent.replace(
-					/<w:sz\s+w:val="\d+"/g,
-					'<w:sz w:val="18"'
-				);
-				
+				xmlContent = xmlContent.replace(/<w:sz\s+w:val="\d+"/g, '<w:sz w:val="18"');
+
 				// Si hay <w:rPr> sin <w:sz>, agregarlo
-				xmlContent = xmlContent.replace(
-					/(<w:rPr[^>]*>)(?![^<]*<w:sz)/g,
-					'$1<w:sz w:val="18"/>'
-				);
-				
+				xmlContent = xmlContent.replace(/(<w:rPr[^>]*>)(?![^<]*<w:sz)/g, '$1<w:sz w:val="18"/>');
+
 				// Cambiar alineación de justify (both) a left
-				xmlContent = xmlContent.replace(
-					/<w:jc\s+w:val="both"/g,
-					'<w:jc w:val="left"'
-				);
-				
+				xmlContent = xmlContent.replace(/<w:jc\s+w:val="both"/g, '<w:jc w:val="left"');
+
 				// También cambiar otros valores de justificación a left
-				xmlContent = xmlContent.replace(
-					/<w:jc\s+w:val="(center|right|distribute|distributeAll)"/g,
-					'<w:jc w:val="left"'
-				);
-				
+				xmlContent = xmlContent.replace(/<w:jc\s+w:val="(center|right|distribute|distributeAll)"/g, '<w:jc w:val="left"');
+
 				// Si hay <w:pPr> sin <w:jc>, agregarlo con valor left
-				xmlContent = xmlContent.replace(
-					/(<w:pPr[^>]*>)(?![^<]*<w:jc)/g,
-					'$1<w:jc w:val="left"/>'
-				);
-				
+				xmlContent = xmlContent.replace(/(<w:pPr[^>]*>)(?![^<]*<w:jc)/g, '$1<w:jc w:val="left"/>');
+
 				// Actualizar el XML en el ZIP
 				zip.file('word/document.xml', xmlContent);
 				console.log('[Generate Report API] Formato aplicado: fuente 9pt, alineación izquierda');
@@ -635,39 +657,35 @@ export async function POST(
 		const reportFileName = `${id}/${Date.now()}-informe-${id}.docx`;
 
 		// Subir informe usando cliente admin (bypass RLS)
-		const { data: uploadData, error: uploadError } = await supabaseAdmin.storage
-			.from(reportsBucket)
-			.upload(reportFileName, generatedBuffer, {
-				contentType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-				upsert: false,
-			});
+		const { data: uploadData, error: uploadError } = await supabaseAdmin.storage.from(reportsBucket).upload(reportFileName, generatedBuffer, {
+			contentType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+			upsert: false,
+		});
 
 		if (uploadError) {
 			console.error('[Generate Report API] Error subiendo informe:', uploadError);
 			const statusCode = (uploadError as any)?.statusCode || (uploadError as any)?.status;
 			const errorMessage = uploadError.message || String(uploadError);
-			
+
 			// Si el error es porque el bucket no existe (404), informar al usuario
 			if (statusCode === '404' || statusCode === 404 || errorMessage.includes('not found') || errorMessage.includes('Bucket not found')) {
-				return NextResponse.json({ 
-					error: 'El bucket "consultation-reports" no está configurado. Por favor, crea el bucket en Supabase Storage Dashboard o contacta al administrador.' 
-				}, { status: 500 });
+				return NextResponse.json(
+					{
+						error: 'El bucket "consultation-reports" no está configurado. Por favor, crea el bucket en Supabase Storage Dashboard o contacta al administrador.',
+					},
+					{ status: 500 }
+				);
 			}
 			return NextResponse.json({ error: 'Error al guardar informe' }, { status: 500 });
 		}
 
 		// Obtener URL del informe usando cliente admin
-		const { data: urlData } = await supabaseAdmin.storage
-			.from(reportsBucket)
-			.createSignedUrl(reportFileName, 31536000); // 1 año de validez
+		const { data: urlData } = await supabaseAdmin.storage.from(reportsBucket).createSignedUrl(reportFileName, 31536000); // 1 año de validez
 
 		const reportUrl = urlData?.signedUrl || `/${reportsBucket}/${reportFileName}`;
 
 		// Actualizar consulta con URL del informe
-		const { error: updateError } = await supabase
-			.from('consultation')
-			.update({ report_url: reportUrl })
-			.eq('id', id);
+		const { error: updateError } = await supabase.from('consultation').update({ report_url: reportUrl }).eq('id', id);
 
 		if (updateError) {
 			console.error('[Generate Report API] Error actualizando consulta:', updateError);
@@ -681,10 +699,12 @@ export async function POST(
 		});
 	} catch (err) {
 		console.error('[Generate Report API] Error:', err);
-		return NextResponse.json({ 
-			error: 'Error interno al generar informe',
-			detail: err instanceof Error ? err.message : String(err)
-		}, { status: 500 });
+		return NextResponse.json(
+			{
+				error: 'Error interno al generar informe',
+				detail: err instanceof Error ? err.message : String(err),
+			},
+			{ status: 500 }
+		);
 	}
 }
-

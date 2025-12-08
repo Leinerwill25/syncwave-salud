@@ -182,6 +182,16 @@ export default function EditConsultationForm({ initial, patient, doctor, doctorS
 	const [startedAt, setStartedAt] = useState(initial.started_at ? toLocalDateTime(initial.started_at) : toLocalDateTime(initial.created_at));
 	const [endedAt, setEndedAt] = useState(initial.ended_at ? toLocalDateTime(initial.ended_at) : '');
 
+	// Información General del Paciente
+	const [patientFullName, setPatientFullName] = useState('');
+	const [patientPhone, setPatientPhone] = useState('');
+	const [patientAddress, setPatientAddress] = useState('');
+	const [patientBloodType, setPatientBloodType] = useState('');
+	const [patientAllergies, setPatientAllergies] = useState('');
+	const [patientChronicConditions, setPatientChronicConditions] = useState('');
+	const [patientCurrentMedications, setPatientCurrentMedications] = useState('');
+	const [patientFamilyHistory, setPatientFamilyHistory] = useState('');
+
 	// Report generation
 	const [reportContent, setReportContent] = useState('');
 	const [generatingReport, setGeneratingReport] = useState(false);
@@ -191,6 +201,7 @@ export default function EditConsultationForm({ initial, patient, doctor, doctorS
 
 	// UI State
 	const [activeTab, setActiveTab] = useState<'main' | 'vitals' | 'specialty' | 'report'>('main');
+	const [showColposcopySection, setShowColposcopySection] = useState(false);
 
 	// init grouped vitals from initial.vitals
 	const initVitals = (initial.vitals ?? {}) as Record<string, any>;
@@ -210,6 +221,33 @@ export default function EditConsultationForm({ initial, patient, doctor, doctorS
 	}, [doctorSpecialtyCode]);
 
 	const [expandedSpecialties, setExpandedSpecialties] = useState<Set<string>>(initialExpandedSpecialties);
+
+	// Cargar datos del paciente cuando cambie el prop
+	useEffect(() => {
+		if (!patient) return;
+
+		const isUnregistered = (patient as any).isUnregistered;
+
+		if (isUnregistered) {
+			// Paciente no registrado
+			setPatientFullName(`${patient.firstName || ''} ${patient.lastName || ''}`.trim());
+			setPatientPhone(patient.phone || '');
+			setPatientAddress(patient.address || '');
+			setPatientAllergies(patient.allergies || '');
+			setPatientChronicConditions(patient.chronicConditions || '');
+			setPatientCurrentMedications(patient.currentMedication || '');
+			setPatientFamilyHistory(patient.familyHistory || '');
+		} else {
+			// Paciente registrado
+			setPatientFullName(`${patient.firstName || ''} ${patient.lastName || ''}`.trim());
+			setPatientPhone(patient.phone || '');
+			setPatientAddress(patient.address || '');
+			setPatientBloodType(patient.bloodType || '');
+			setPatientAllergies(patient.allergies || '');
+			setPatientChronicConditions(patient.chronicConditions || '');
+			setPatientCurrentMedications(patient.currentMedications || '');
+		}
+	}, [patient]);
 	const initGeneral = initVitals.general ?? {};
 	const initCardio = initVitals.cardiology ?? {};
 	const initPulmo = initVitals.pulmonology ?? {};
@@ -305,10 +343,12 @@ export default function EditConsultationForm({ initial, patient, doctor, doctorS
      ------------------------- */
 	const [lmp, setLmp] = useState<string>(initGyn.last_menstrual_period ?? '');
 	const [contraceptiveUse, setContraceptiveUse] = useState<string>(initGyn.contraceptive ?? '');
+	const [gynDiagnosis, setGynDiagnosis] = useState<string>(initGyn.diagnosis ?? '');
 	const [cervicalExamNotes, setCervicalExamNotes] = useState<string>(initGyn.cervical_exam ?? '');
 
 	// Campos adicionales de la plantilla de ginecología
 	const [evaluationReason, setEvaluationReason] = useState<string>(initGyn.evaluation_reason ?? '');
+	const [currentIllnessHistory, setCurrentIllnessHistory] = useState<string>(initGyn.current_illness_history ?? '');
 	const [allergies, setAllergies] = useState<string>(initGyn.allergies ?? 'NIEGA');
 	const [surgicalHistory, setSurgicalHistory] = useState<string>(initGyn.surgical_history ?? 'NIEGA');
 	const [familyHistoryMother, setFamilyHistoryMother] = useState<string>(initGyn.family_history_mother ?? 'VIVA SANA');
@@ -328,6 +368,7 @@ export default function EditConsultationForm({ initial, patient, doctor, doctorS
 	const [axillaryFossae, setAxillaryFossae] = useState<string>(initGyn.axillary_fossae ?? 'LIBRES');
 	const [abdomen, setAbdomen] = useState<string>(initGyn.abdomen ?? 'BLANDO, DEPRIMIBLE NO DOLOROSO A LA PALPACIÓN');
 	const [externalGenitals, setExternalGenitals] = useState<string>(initGyn.external_genitals ?? 'NORMOCONFIGURADOS');
+	const [vaginalDischarge, setVaginalDischarge] = useState<string>(initGyn.vaginal_discharge ?? 'sin secreciones');
 	const [speculumCervix, setSpeculumCervix] = useState<string>(initGyn.speculum_cervix ?? 'CUELLO MACROSCÓPICAMENTE SANO');
 	const [tactCervix, setTactCervix] = useState<string>(initGyn.tact_cervix ?? 'CUELLO RENITENTE NO DOLOROSO A LA MOVILIZACIÓN');
 	const [fundusSacs, setFundusSacs] = useState<string>(initGyn.fundus_sacs ?? 'LIBRES');
@@ -336,11 +377,34 @@ export default function EditConsultationForm({ initial, patient, doctor, doctorS
 	const [schillerTest, setSchillerTest] = useState<string>(initGyn.schiller_test ?? 'NEGATIVO');
 	const [uterusDimensions, setUterusDimensions] = useState<string>(initGyn.uterus_dimensions ?? '');
 	const [endometrialInterface, setEndometrialInterface] = useState<string>(initGyn.endometrial_interface ?? '');
-	const [endometrialInterfaceType, setEndometrialInterfaceType] = useState<string>(initGyn.endometrial_interface_type ?? 'TRILAMINAR');
+	const [endometrialInterfaceType, setEndometrialInterfaceType] = useState<string>(initGyn.endometrial_interface_type ?? '');
 	const [leftOvaryDimensions, setLeftOvaryDimensions] = useState<string>(initGyn.left_ovary_dimensions ?? '');
 	const [rightOvaryDimensions, setRightOvaryDimensions] = useState<string>(initGyn.right_ovary_dimensions ?? '');
 	const [fundusFluid, setFundusFluid] = useState<string>(initGyn.fundus_fluid ?? 'NO SE EVIDENCIA LÍQUIDO EN FONDO DE SACO');
 	const [ho, setHo] = useState<string>(initGyn.ho ?? '');
+
+	/* -------------------------
+     Colposcopia - Estados
+     ------------------------- */
+	const initColposcopy = initGyn.colposcopy ?? {};
+	const [colposcopyAcetic5, setColposcopyAcetic5] = useState<string>(initColposcopy.acetic_5 ?? 'SATISFACTORIO');
+	const [colposcopyEctocervix, setColposcopyEctocervix] = useState<string>(initColposcopy.ectocervix ?? '');
+	const [colposcopyType, setColposcopyType] = useState<string>(initColposcopy.type ?? 'ALTERADA');
+	const [colposcopyExtension, setColposcopyExtension] = useState<string>(initColposcopy.extension ?? '');
+	const [colposcopyDescription, setColposcopyDescription] = useState<string>(initColposcopy.description ?? '');
+	const [colposcopyLocation, setColposcopyLocation] = useState<string>(initColposcopy.location ?? '');
+	const [colposcopyAcetowhite, setColposcopyAcetowhite] = useState<string>(initColposcopy.acetowhite ?? 'Negativo');
+	const [colposcopyAcetowhiteDetails, setColposcopyAcetowhiteDetails] = useState<string>(initColposcopy.acetowhite_details ?? '');
+	const [colposcopyMosaic, setColposcopyMosaic] = useState<string>(initColposcopy.mosaic ?? 'No');
+	const [colposcopyPunctation, setColposcopyPunctation] = useState<string>(initColposcopy.punctation ?? 'No');
+	const [colposcopyAtypicalVessels, setColposcopyAtypicalVessels] = useState<string>(initColposcopy.atypical_vessels ?? 'No');
+	const [colposcopyInvasiveCarcinoma, setColposcopyInvasiveCarcinoma] = useState<string>(initColposcopy.invasive_carcinoma ?? 'No');
+	const [colposcopyBorders, setColposcopyBorders] = useState<string>(initColposcopy.borders ?? 'No');
+	const [colposcopySituation, setColposcopySituation] = useState<string>(initColposcopy.situation ?? 'No');
+	const [colposcopyElevation, setColposcopyElevation] = useState<string>(initColposcopy.elevation ?? 'No');
+	const [colposcopyBiopsy, setColposcopyBiopsy] = useState<string>(initColposcopy.biopsy ?? 'No');
+	const [colposcopyBiopsyLocation, setColposcopyBiopsyLocation] = useState<string>(initColposcopy.biopsy_location ?? '');
+	const [colposcopyLugol, setColposcopyLugol] = useState<string>(initColposcopy.lugol ?? '');
 
 	/* -------------------------
      Endocrinología
@@ -475,8 +539,10 @@ export default function EditConsultationForm({ initial, patient, doctor, doctorS
 		// LMP es obligatorio si hay datos de ginecología, así que siempre lo incluimos
 		gyn.last_menstrual_period = lmp || '';
 		if (contraceptiveUse) gyn.contraceptive = contraceptiveUse;
+		if (gynDiagnosis) gyn.diagnosis = gynDiagnosis;
 		if (cervicalExamNotes) gyn.cervical_exam = cervicalExamNotes;
 		if (evaluationReason) gyn.evaluation_reason = evaluationReason;
+		if (currentIllnessHistory) gyn.current_illness_history = currentIllnessHistory;
 		if (allergies) gyn.allergies = allergies;
 		if (surgicalHistory) gyn.surgical_history = surgicalHistory;
 		if (familyHistoryMother) gyn.family_history_mother = familyHistoryMother;
@@ -496,6 +562,7 @@ export default function EditConsultationForm({ initial, patient, doctor, doctorS
 		if (axillaryFossae) gyn.axillary_fossae = axillaryFossae;
 		if (abdomen) gyn.abdomen = abdomen;
 		if (externalGenitals) gyn.external_genitals = externalGenitals;
+		if (vaginalDischarge) gyn.vaginal_discharge = vaginalDischarge;
 		if (speculumCervix) gyn.speculum_cervix = speculumCervix;
 		if (tactCervix) gyn.tact_cervix = tactCervix;
 		if (fundusSacs) gyn.fundus_sacs = fundusSacs;
@@ -509,6 +576,29 @@ export default function EditConsultationForm({ initial, patient, doctor, doctorS
 		if (rightOvaryDimensions) gyn.right_ovary_dimensions = rightOvaryDimensions;
 		if (fundusFluid) gyn.fundus_fluid = fundusFluid;
 		if (ho) gyn.ho = ho;
+
+		// Datos de colposcopia
+		const colposcopy: Record<string, any> = {};
+		if (colposcopyAcetic5) colposcopy.acetic_5 = colposcopyAcetic5;
+		if (colposcopyEctocervix) colposcopy.ectocervix = colposcopyEctocervix;
+		if (colposcopyType) colposcopy.type = colposcopyType;
+		if (colposcopyExtension) colposcopy.extension = colposcopyExtension;
+		if (colposcopyDescription) colposcopy.description = colposcopyDescription;
+		if (colposcopyLocation) colposcopy.location = colposcopyLocation;
+		if (colposcopyAcetowhite) colposcopy.acetowhite = colposcopyAcetowhite;
+		if (colposcopyAcetowhiteDetails) colposcopy.acetowhite_details = colposcopyAcetowhiteDetails;
+		if (colposcopyMosaic) colposcopy.mosaic = colposcopyMosaic;
+		if (colposcopyPunctation) colposcopy.punctation = colposcopyPunctation;
+		if (colposcopyAtypicalVessels) colposcopy.atypical_vessels = colposcopyAtypicalVessels;
+		if (colposcopyInvasiveCarcinoma) colposcopy.invasive_carcinoma = colposcopyInvasiveCarcinoma;
+		if (colposcopyBorders) colposcopy.borders = colposcopyBorders;
+		if (colposcopySituation) colposcopy.situation = colposcopySituation;
+		if (colposcopyElevation) colposcopy.elevation = colposcopyElevation;
+		if (colposcopyBiopsy) colposcopy.biopsy = colposcopyBiopsy;
+		if (colposcopyBiopsyLocation) colposcopy.biopsy_location = colposcopyBiopsyLocation;
+		if (colposcopyLugol) colposcopy.lugol = colposcopyLugol;
+		if (Object.keys(colposcopy).length) gyn.colposcopy = colposcopy;
+
 		// Solo agregar ginecología si hay al menos un campo con datos (además del LMP que siempre está)
 		const hasGynData = Object.keys(gyn).some((key) => key !== 'last_menstrual_period' && gyn[key] !== '' && gyn[key] !== null && gyn[key] !== undefined);
 		if (hasGynData || lmp) out.gynecology = gyn;
@@ -648,6 +738,8 @@ export default function EditConsultationForm({ initial, patient, doctor, doctorS
 		}
 
 		setLoading(true);
+		setError(null);
+		setSuccess(null);
 
 		try {
 			const payload: any = {
@@ -671,10 +763,17 @@ export default function EditConsultationForm({ initial, patient, doctor, doctorS
 			}
 
 			setSuccess('Consulta actualizada correctamente.');
+			setLoading(false); // Resetear loading después del éxito
+
 			// Cambiar a la sección de "informe médico" después de guardar
 			setTimeout(() => {
 				setActiveTab('report');
-			}, 700);
+				// Scroll suave hacia la parte superior de la sección de informe
+				const reportTab = document.querySelector('[data-tab="report"]');
+				if (reportTab) {
+					reportTab.scrollIntoView({ behavior: 'smooth', block: 'start' });
+				}
+			}, 300);
 		} catch (err: any) {
 			setError(err?.message ?? String(err));
 			setLoading(false);
@@ -748,7 +847,7 @@ export default function EditConsultationForm({ initial, patient, doctor, doctorS
 	const sectionCard = 'bg-white rounded-xl border border-slate-200 shadow-sm p-6 dark:bg-slate-800 dark:border-slate-700';
 
 	const tabs = [
-		{ id: 'main', label: 'Información Principal', icon: ClipboardList },
+		{ id: 'main', label: 'Información General', icon: ClipboardList },
 		{ id: 'vitals', label: 'Signos Vitales', icon: Activity },
 		{ id: 'specialty', label: 'Especialidades', icon: Stethoscope },
 		{ id: 'report', label: 'Informe Médico', icon: FileCheck },
@@ -775,58 +874,81 @@ export default function EditConsultationForm({ initial, patient, doctor, doctorS
 
 				{/* Tab Content */}
 				<div className="p-6 space-y-6">
-					{/* Main Information Tab */}
+					{/* Main Information Tab - Información General */}
 					{activeTab === 'main' && (
 						<div className="space-y-6">
 							<div className={sectionCard}>
 								<h2 className="text-xl font-bold text-slate-900 dark:text-slate-100 mb-6 flex items-center gap-2">
 									<ClipboardList size={20} />
-									Información de la Consulta
+									Información General del Paciente
 								</h2>
 
-								<div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-									<div className="lg:col-span-2 space-y-6">
-										<div>
-											<label className={labelClass}>Motivo de Consulta</label>
-											<textarea value={chiefComplaint} onChange={(e) => setChiefComplaint(e.target.value)} rows={5} className={`${inputBase} ${inputDark} resize-none`} placeholder="Describa el motivo de consulta del paciente..." />
-										</div>
-
-										<div>
-											<label className={labelClass}>Diagnóstico</label>
-											<textarea value={diagnosis} onChange={(e) => setDiagnosis(e.target.value)} rows={4} className={`${inputBase} ${inputDark} resize-none`} placeholder="Ingrese el diagnóstico clínico..." />
-										</div>
-
-										<div>
-											<label className={labelClass}>Notas y Recomendaciones</label>
-											<textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={4} className={`${inputBase} ${inputDark} resize-none`} placeholder="Notas adicionales, recomendaciones para el paciente..." />
-										</div>
+								<div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+									{/* Motivo de Consulta */}
+									<div className="lg:col-span-2">
+										<label className={labelClass}>Motivo de Consulta</label>
+										<textarea value={chiefComplaint} onChange={(e) => setChiefComplaint(e.target.value)} rows={5} className={`${inputBase} ${inputDark} resize-none`} placeholder="Describa el motivo de consulta del paciente..." />
 									</div>
 
-									<aside className="space-y-4">
-										<div className="bg-gradient-to-br from-teal-50 to-cyan-50 dark:from-teal-900/20 dark:to-cyan-900/20 border border-teal-200 dark:border-teal-800 p-4 rounded-xl">
-											<h3 className="text-sm font-bold text-teal-900 dark:text-teal-100 mb-3">Información de Tiempo</h3>
-											<div className="space-y-4">
-												<div>
-													<label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1.5">Fecha / Hora Inicio</label>
-													<input type="datetime-local" value={startedAt} onChange={(e) => setStartedAt(e.target.value)} className={`${inputBase} ${inputDark}`} />
-												</div>
-												<div>
-													<label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1.5">Fecha / Hora Fin</label>
-													<input type="datetime-local" value={endedAt} onChange={(e) => setEndedAt(e.target.value)} className={`${inputBase} ${inputDark}`} />
-												</div>
-											</div>
-										</div>
+									{/* Nombre Completo */}
+									<div>
+										<label className={labelClass}>Nombre Completo</label>
+										<input type="text" value={patientFullName} onChange={(e) => setPatientFullName(e.target.value)} className={`${inputBase} ${inputDark}`} placeholder="Nombre completo del paciente" />
+									</div>
 
-										{patient && (
-											<div className="bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 p-4 rounded-xl">
-												<h3 className="text-sm font-bold text-slate-900 dark:text-slate-100 mb-2">Paciente</h3>
-												<p className="text-sm text-slate-700 dark:text-slate-300">
-													{patient.firstName} {patient.lastName}
-												</p>
-												{patient.identifier && <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Cédula de Identidad: {patient.identifier}</p>}
-											</div>
-										)}
-									</aside>
+									{/* Número de Contacto */}
+									<div>
+										<label className={labelClass}>Número de Contacto</label>
+										<input type="tel" value={patientPhone} onChange={(e) => setPatientPhone(e.target.value)} className={`${inputBase} ${inputDark}`} placeholder="Teléfono o celular" />
+									</div>
+
+									{/* Dónde Vive */}
+									<div className="lg:col-span-2">
+										<label className={labelClass}>Dirección / Dónde Vive</label>
+										<textarea value={patientAddress} onChange={(e) => setPatientAddress(e.target.value)} rows={3} className={`${inputBase} ${inputDark} resize-none`} placeholder="Dirección completa del paciente" />
+									</div>
+
+									{/* Tipo de Sangre */}
+									<div>
+										<label className={labelClass}>Tipo de Sangre</label>
+										<select value={patientBloodType} onChange={(e) => setPatientBloodType(e.target.value)} className={`${inputBase} ${inputDark}`}>
+											<option value="">Seleccionar tipo de sangre</option>
+											<option value="A+">A+</option>
+											<option value="A-">A-</option>
+											<option value="B+">B+</option>
+											<option value="B-">B-</option>
+											<option value="AB+">AB+</option>
+											<option value="AB-">AB-</option>
+											<option value="O+">O+</option>
+											<option value="O-">O-</option>
+										</select>
+									</div>
+
+									{/* Alergias */}
+									<div className="lg:col-span-2">
+										<label className={labelClass}>Alergias</label>
+										<textarea value={patientAllergies} onChange={(e) => setPatientAllergies(e.target.value)} rows={3} className={`${inputBase} ${inputDark} resize-none`} placeholder="Lista de alergias conocidas (medicamentos, alimentos, etc.)" />
+									</div>
+
+									{/* Condiciones Crónicas */}
+									<div className="lg:col-span-2">
+										<label className={labelClass}>Condiciones Crónicas</label>
+										<textarea value={patientChronicConditions} onChange={(e) => setPatientChronicConditions(e.target.value)} rows={3} className={`${inputBase} ${inputDark} resize-none`} placeholder="Enfermedades o condiciones crónicas del paciente" />
+									</div>
+
+									{/* Medicamentos Actuales */}
+									<div className="lg:col-span-2">
+										<label className={labelClass}>Medicamentos Actuales</label>
+										<textarea value={patientCurrentMedications} onChange={(e) => setPatientCurrentMedications(e.target.value)} rows={3} className={`${inputBase} ${inputDark} resize-none`} placeholder="Medicamentos que el paciente está tomando actualmente" />
+									</div>
+
+									{/* Historia Familiar (solo para pacientes no registrados) */}
+									{(patient as any)?.isUnregistered && (
+										<div className="lg:col-span-2">
+											<label className={labelClass}>Historia Familiar</label>
+											<textarea value={patientFamilyHistory} onChange={(e) => setPatientFamilyHistory(e.target.value)} rows={3} className={`${inputBase} ${inputDark} resize-none`} placeholder="Antecedentes familiares de enfermedades relevantes" />
+										</div>
+									)}
 								</div>
 							</div>
 						</div>
@@ -1174,6 +1296,12 @@ export default function EditConsultationForm({ initial, patient, doctor, doctorS
 													<textarea value={evaluationReason} onChange={(e) => setEvaluationReason(e.target.value)} className={`${inputBase} ${inputDark}`} rows={2} placeholder="Motivo por el cual la paciente acude a consulta" />
 												</div>
 
+												{/* Historia de la enfermedad actual */}
+												<div>
+													<label className={labelClass}>Historia de la enfermedad actual</label>
+													<textarea value={currentIllnessHistory} onChange={(e) => setCurrentIllnessHistory(e.target.value)} className={`${inputBase} ${inputDark}`} rows={3} placeholder="Describir la historia de la enfermedad actual" />
+												</div>
+
 												{/* Antecedentes Médicos */}
 												<div className="border-t border-slate-200 dark:border-slate-700 pt-4">
 													<h4 className="text-sm font-semibold text-slate-900 dark:text-slate-100 mb-3">Antecedentes Médicos</h4>
@@ -1241,14 +1369,14 @@ export default function EditConsultationForm({ initial, patient, doctor, doctorS
 														</div>
 														<div>
 															<label className={labelClass}>Fecha Última Regla (LMP)</label>
-															<input value={lmp} onChange={(e) => setLmp(e.target.value)} className={`${inputBase} ${inputDark}`} type="date" />
+															<input value={lmp} onChange={(e) => setLmp(e.target.value)} className={`${inputBase} ${inputDark}`} type="text" placeholder="Ej: 2024-01-15 o Fecha Incierta" />
 														</div>
 														<div>
 															<label className={labelClass}>Método Anticonceptivo</label>
 															<input value={contraceptiveUse} onChange={(e) => setContraceptiveUse(e.target.value)} className={`${inputBase} ${inputDark}`} />
 														</div>
 														<div>
-															<label className={labelClass}>HO (Histerectomía Obstétrica / Hemorragia Obstétrica)</label>
+															<label className={labelClass}>Historia obstétrica (HO)</label>
 															<input value={ho} onChange={(e) => setHo(e.target.value)} className={`${inputBase} ${inputDark}`} placeholder="NIEGA o especificar" />
 														</div>
 													</div>
@@ -1291,6 +1419,10 @@ export default function EditConsultationForm({ initial, patient, doctor, doctorS
 															<input value={externalGenitals} onChange={(e) => setExternalGenitals(e.target.value)} className={`${inputBase} ${inputDark}`} placeholder="NORMOCONFIGURADOS" />
 														</div>
 														<div>
+															<label className={labelClass}>Flujo Vaginal</label>
+															<input value={vaginalDischarge} onChange={(e) => setVaginalDischarge(e.target.value)} className={`${inputBase} ${inputDark}`} placeholder="sin secreciones" />
+														</div>
+														<div>
 															<label className={labelClass}>Especuloscopio - Cuello</label>
 															<input value={speculumCervix} onChange={(e) => setSpeculumCervix(e.target.value)} className={`${inputBase} ${inputDark}`} placeholder="CUELLO MACROSCÓPICAMENTE SANO" />
 														</div>
@@ -1309,27 +1441,6 @@ export default function EditConsultationForm({ initial, patient, doctor, doctorS
 													</div>
 												</div>
 
-												{/* Colposcopia */}
-												<div className="border-t border-slate-200 dark:border-slate-700 pt-4">
-													<h4 className="text-sm font-semibold text-slate-900 dark:text-slate-100 mb-3">Colposcopia</h4>
-													<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-														<div>
-															<label className={labelClass}>Test de Hinselmann</label>
-															<select value={hinselmannTest} onChange={(e) => setHinselmannTest(e.target.value)} className={`${inputBase} ${inputDark}`}>
-																<option value="NEGATIVO">NEGATIVO</option>
-																<option value="POSITIVO">POSITIVO</option>
-															</select>
-														</div>
-														<div>
-															<label className={labelClass}>Test de Schiller</label>
-															<select value={schillerTest} onChange={(e) => setSchillerTest(e.target.value)} className={`${inputBase} ${inputDark}`}>
-																<option value="NEGATIVO">NEGATIVO</option>
-																<option value="POSITIVO">POSITIVO</option>
-															</select>
-														</div>
-													</div>
-												</div>
-
 												{/* Ecografía Transvaginal */}
 												<div className="border-t border-slate-200 dark:border-slate-700 pt-4">
 													<h4 className="text-sm font-semibold text-slate-900 dark:text-slate-100 mb-3">Ecografía Transvaginal</h4>
@@ -1344,7 +1455,13 @@ export default function EditConsultationForm({ initial, patient, doctor, doctorS
 														</div>
 														<div>
 															<label className={labelClass}>Tipo de Interfase Endometrial</label>
-															<input value={endometrialInterfaceType} onChange={(e) => setEndometrialInterfaceType(e.target.value)} className={`${inputBase} ${inputDark}`} placeholder="TRILAMINAR" />
+															<select value={endometrialInterfaceType} onChange={(e) => setEndometrialInterfaceType(e.target.value)} className={`${inputBase} ${inputDark}`}>
+																<option value="">Seleccionar...</option>
+																<option value="proliferativo">proliferativo</option>
+																<option value="secretor">secretor</option>
+																<option value="trilaminar">trilaminar</option>
+																<option value="lineal">lineal</option>
+															</select>
 														</div>
 														<div>
 															<label className={labelClass}>Ovario Izquierdo - Dimensiones (ej: 23X17X29 MM)</label>
@@ -1361,11 +1478,266 @@ export default function EditConsultationForm({ initial, patient, doctor, doctorS
 													</div>
 												</div>
 
-												{/* Examen Cervical / Observaciones */}
+												{/* Diagnóstico */}
 												<div className="border-t border-slate-200 dark:border-slate-700 pt-4">
-													<label className={labelClass}>Examen Cervical / Observaciones Adicionales</label>
+													<label className={labelClass}>Diagnóstico</label>
+													<textarea value={gynDiagnosis} onChange={(e) => setGynDiagnosis(e.target.value)} className={`${inputBase} ${inputDark}`} rows={4} placeholder="Ingrese el diagnóstico ginecológico..." />
+												</div>
+
+												{/* Observaciones Adicionales */}
+												<div className="border-t border-slate-200 dark:border-slate-700 pt-4">
+													<label className={labelClass}>Observaciones Adicionales</label>
 													<textarea value={cervicalExamNotes} onChange={(e) => setCervicalExamNotes(e.target.value)} className={`${inputBase} ${inputDark}`} rows={3} placeholder="Observaciones adicionales del examen cervical" />
 												</div>
+
+												{/* Botón para mostrar formulario de Colposcopia */}
+												<div className="border-t border-slate-200 dark:border-slate-700 pt-4 flex justify-end">
+													<button type="button" onClick={() => setShowColposcopySection(!showColposcopySection)} className="px-6 py-2.5 bg-gradient-to-r from-teal-600 to-cyan-600 hover:from-teal-700 hover:to-cyan-700 text-white font-semibold rounded-lg shadow-md hover:shadow-lg transition-all duration-200 flex items-center gap-2">
+														{showColposcopySection ? 'Ocultar' : 'Siguiente'} - Colposcopia
+														{showColposcopySection ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+													</button>
+												</div>
+
+												{/* Sección de Colposcopia */}
+												{showColposcopySection && (
+													<div className="border-t-2 border-teal-500 dark:border-teal-400 pt-6 mt-6">
+														{/* Header de la Sección */}
+														<div className="mb-6">
+															<h3 className="text-xl font-bold text-slate-900 dark:text-slate-100 mb-2 flex items-center gap-2">
+																<div className="w-1 h-6 bg-gradient-to-b from-teal-500 to-cyan-500 rounded-full"></div>
+																Informe Colposcópico
+															</h3>
+															<p className="text-sm text-slate-600 dark:text-slate-400 ml-3">Complete todos los campos del examen colposcópico según los hallazgos observados</p>
+														</div>
+
+														<div className="space-y-8">
+															{/* Sección 1: Información General y Preparación */}
+															<div className="bg-gradient-to-br from-slate-50 to-slate-100/50 dark:from-slate-800/50 dark:to-slate-700/30 rounded-xl p-6 border border-slate-200 dark:border-slate-700 shadow-sm">
+																<h4 className="text-base font-semibold text-slate-900 dark:text-slate-100 mb-4 flex items-center gap-2">
+																	<div className="w-2 h-2 bg-teal-500 rounded-full"></div>
+																	Información General
+																</h4>
+																<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+																	<div>
+																		<label className={labelClass}>Colposcopia Acetico 5%</label>
+																		<select value={colposcopyAcetic5} onChange={(e) => setColposcopyAcetic5(e.target.value)} className={`${inputBase} ${inputDark}`}>
+																			<option value="SATISFACTORIO">SATISFACTORIO</option>
+																			<option value="NO SATISFACTORIO">NO SATISFACTORIO</option>
+																			<option value="NORMAL">NORMAL</option>
+																		</select>
+																	</div>
+																	<div>
+																		<label className={labelClass}>I. localizada en ectocérvix, totalmente visible</label>
+																		<input value={colposcopyEctocervix} onChange={(e) => setColposcopyEctocervix(e.target.value)} className={`${inputBase} ${inputDark}`} placeholder="I. localizada en ectocérvix, totalmente visible" />
+																	</div>
+																</div>
+															</div>
+
+															{/* Sección 2: Resultado de la Colposcopia */}
+															<div className="bg-gradient-to-br from-blue-50 to-cyan-50/50 dark:from-blue-900/20 dark:to-cyan-900/10 rounded-xl p-6 border border-blue-200 dark:border-blue-800 shadow-sm">
+																<h4 className="text-base font-semibold text-slate-900 dark:text-slate-100 mb-4 flex items-center gap-2">
+																	<div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+																	Resultado de la Colposcopia
+																</h4>
+																<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+																	<div>
+																		<label className={labelClass}>COLPOSCOPIA</label>
+																		<select
+																			value={colposcopyType}
+																			onChange={(e) => {
+																				setColposcopyType(e.target.value);
+																				if (e.target.value === 'NORMAL') {
+																					setColposcopyExtension('');
+																				}
+																			}}
+																			className={`${inputBase} ${inputDark}`}>
+																			<option value="ALTERADA">ALTERADA</option>
+																			<option value="NORMAL">NORMAL</option>
+																		</select>
+																	</div>
+																	{colposcopyType === 'ALTERADA' && (
+																		<div>
+																			<label className={labelClass}>EXTENSIÓN</label>
+																			<select value={colposcopyExtension} onChange={(e) => setColposcopyExtension(e.target.value)} className={`${inputBase} ${inputDark}`}>
+																				<option value="">Seleccionar extensión</option>
+																				<option value="Extensión < 25%">Extensión &lt; 25%</option>
+																				<option value="Extensión 25-50%">Extensión 25-50%</option>
+																				<option value="Extensión 50-75%">Extensión 50-75%</option>
+																				<option value="Extensión > 75%">Extensión &gt; 75%</option>
+																			</select>
+																		</div>
+																	)}
+																</div>
+																<div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+																	<div>
+																		<label className={labelClass}>Descripción</label>
+																		<select value={colposcopyDescription} onChange={(e) => setColposcopyDescription(e.target.value)} className={`${inputBase} ${inputDark}`}>
+																			<option value="">Seleccionar descripción</option>
+																			<option value="NORMAL">NORMAL</option>
+																			<option value="CAMBIOS MENORES">CAMBIOS MENORES</option>
+																			<option value="CAMBIOS MAYORES">CAMBIOS MAYORES</option>
+																		</select>
+																	</div>
+																	<div>
+																		<label className={labelClass}>Localización</label>
+																		<input value={colposcopyLocation} onChange={(e) => setColposcopyLocation(e.target.value)} className={`${inputBase} ${inputDark}`} placeholder="Especificar localización..." />
+																	</div>
+																</div>
+															</div>
+
+															{/* Sección 3: Hallazgos del Epitelio Acetoblanco */}
+															<div className="bg-gradient-to-br from-purple-50 to-pink-50/50 dark:from-purple-900/20 dark:to-pink-900/10 rounded-xl p-6 border border-purple-200 dark:border-purple-800 shadow-sm">
+																<h4 className="text-base font-semibold text-slate-900 dark:text-slate-100 mb-4 flex items-center gap-2">
+																	<div className="w-2 h-2 bg-purple-500 rounded-full"></div>
+																	Epitelio Acetoblanco
+																</h4>
+																<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+																	<div>
+																		<label className={labelClass}>Epitelio acetoblanco</label>
+																		<select value={colposcopyAcetowhite} onChange={(e) => setColposcopyAcetowhite(e.target.value)} className={`${inputBase} ${inputDark}`}>
+																			<option value="Negativo">Negativo</option>
+																			<option value="Tenue">Tenue</option>
+																			<option value="Denso">Denso</option>
+																		</select>
+																	</div>
+																	<div>
+																		<label className={labelClass}>Detalles del Epitelio Acetoblanco</label>
+																		<select value={colposcopyAcetowhiteDetails} onChange={(e) => setColposcopyAcetowhiteDetails(e.target.value)} className={`${inputBase} ${inputDark}`}>
+																			<option value="">Seleccionar opción</option>
+																			<option value="Que aparece rápido y desaparece lento, blanco ostraceo">Que aparece rápido y desaparece lento, blanco ostraceo</option>
+																			<option value="Cambió acetoblanco débil que aparece TARDE y desaparece pronto">Cambió acetoblanco débil que aparece TARDE y desaparece pronto</option>
+																			<option value="Glandular acetoblanco denso sobre epitelio columnar">Glandular acetoblanco denso sobre epitelio columnar</option>
+																			<option value="Imagen de blanco sobre blanco, borde interno">Imagen de blanco sobre blanco, borde interno</option>
+																			<option value="SIN CAMBIOS ACENTOBLANCO">SIN CAMBIOS ACENTOBLANCO</option>
+																		</select>
+																	</div>
+																</div>
+															</div>
+
+															{/* Sección 4: Patrones de Vascularización */}
+															<div className="bg-gradient-to-br from-amber-50 to-orange-50/50 dark:from-amber-900/20 dark:to-orange-900/10 rounded-xl p-6 border border-amber-200 dark:border-amber-800 shadow-sm">
+																<h4 className="text-base font-semibold text-slate-900 dark:text-slate-100 mb-4 flex items-center gap-2">
+																	<div className="w-2 h-2 bg-amber-500 rounded-full"></div>
+																	Patrones
+																</h4>
+																<div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+																	<div>
+																		<label className={labelClass}>MOSAICO</label>
+																		<select value={colposcopyMosaic} onChange={(e) => setColposcopyMosaic(e.target.value)} className={`${inputBase} ${inputDark}`}>
+																			<option value="No">No</option>
+																			<option value="Fino">Fino</option>
+																			<option value="Grueso">Grueso</option>
+																			<option value="Mosaico ancho con losetas de distintos tamaños">Mosaico ancho con losetas de distintos tamaños</option>
+																		</select>
+																	</div>
+																	<div>
+																		<label className={labelClass}>PUNTEADO</label>
+																		<select value={colposcopyPunctation} onChange={(e) => setColposcopyPunctation(e.target.value)} className={`${inputBase} ${inputDark}`}>
+																			<option value="No">No</option>
+																			<option value="Fino">Fino</option>
+																			<option value="Grueso">Grueso</option>
+																		</select>
+																	</div>
+																	<div>
+																		<label className={labelClass}>VASOS ATÍPICOS</label>
+																		<select value={colposcopyAtypicalVessels} onChange={(e) => setColposcopyAtypicalVessels(e.target.value)} className={`${inputBase} ${inputDark}`}>
+																			<option value="No">No</option>
+																			<option value="Stops">Stops</option>
+																			<option value="Horquilla">Horquilla</option>
+																			<option value="Brusco cambio">Brusco cambio</option>
+																			<option value="Vasos de distintos calibres">Vasos de distintos calibres</option>
+																			<option value="Dilataciones">Dilataciones</option>
+																		</select>
+																	</div>
+																</div>
+															</div>
+
+															{/* Sección 5: Características de la Lesión */}
+															<div className="bg-gradient-to-br from-emerald-50 to-teal-50/50 dark:from-emerald-900/20 dark:to-teal-900/10 rounded-xl p-6 border border-emerald-200 dark:border-emerald-800 shadow-sm">
+																<h4 className="text-base font-semibold text-slate-900 dark:text-slate-100 mb-4 flex items-center gap-2">
+																	<div className="w-2 h-2 bg-emerald-500 rounded-full"></div>
+																	Características de la Lesión
+																</h4>
+																<div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+																	<div>
+																		<label className={labelClass}>Sugestiva de carcinoma invasivo</label>
+																		<select value={colposcopyInvasiveCarcinoma} onChange={(e) => setColposcopyInvasiveCarcinoma(e.target.value)} className={`${inputBase} ${inputDark}`}>
+																			<option value="No">No</option>
+																			<option value="Ulceración">Ulceración</option>
+																			<option value="Otros">Otros</option>
+																		</select>
+																	</div>
+																	<div>
+																		<label className={labelClass}>BORDES</label>
+																		<select value={colposcopyBorders} onChange={(e) => setColposcopyBorders(e.target.value)} className={`${inputBase} ${inputDark}`}>
+																			<option value="No">No</option>
+																			<option value="Irregular">Irregular</option>
+																			<option value="Regular">Regular</option>
+																		</select>
+																	</div>
+																	<div>
+																		<label className={labelClass}>SITUACIÓN</label>
+																		<select value={colposcopySituation} onChange={(e) => setColposcopySituation(e.target.value)} className={`${inputBase} ${inputDark}`}>
+																			<option value="No">No</option>
+																			<option value="Central">Central</option>
+																			<option value="Periférica">Periférica</option>
+																		</select>
+																	</div>
+																	<div>
+																		<label className={labelClass}>ELEVACIÓN</label>
+																		<select value={colposcopyElevation} onChange={(e) => setColposcopyElevation(e.target.value)} className={`${inputBase} ${inputDark}`}>
+																			<option value="No">No</option>
+																			<option value="Plano">Plano</option>
+																			<option value="Sobrelevado">Sobrelevado</option>
+																		</select>
+																	</div>
+																</div>
+															</div>
+
+															{/* Sección 6: Pruebas Complementarias y Biopsia */}
+															<div className="bg-gradient-to-br from-indigo-50 to-violet-50/50 dark:from-indigo-900/20 dark:to-violet-900/10 rounded-xl p-6 border border-indigo-200 dark:border-indigo-800 shadow-sm">
+																<h4 className="text-base font-semibold text-slate-900 dark:text-slate-100 mb-4 flex items-center gap-2">
+																	<div className="w-2 h-2 bg-indigo-500 rounded-full"></div>
+																	Pruebas Complementarias y Biopsia
+																</h4>
+																<div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+																	<div className="space-y-4">
+																		<div>
+																			<label className={labelClass}>Test de Hinselmann</label>
+																			<select value={hinselmannTest} onChange={(e) => setHinselmannTest(e.target.value)} className={`${inputBase} ${inputDark}`}>
+																				<option value="NEGATIVO">NEGATIVO</option>
+																				<option value="POSITIVO">POSITIVO</option>
+																			</select>
+																		</div>
+																		<div>
+																			<label className={labelClass}>LUGOL (Test Schiller)</label>
+																			<select value={colposcopyLugol} onChange={(e) => setColposcopyLugol(e.target.value)} className={`${inputBase} ${inputDark}`}>
+																				<option value="">Seleccionar opción</option>
+																				<option value="IODOPOSITIVO">IODOPOSITIVO</option>
+																				<option value="IODO PARCIALMENTE NEGATIVO (positividad débil, parcialmente moteado)">IODO PARCIALMENTE NEGATIVO (positividad débil, parcialmente moteado)</option>
+																				<option value="IODONEGATIVO (amarillo mostaza sobre epitelio acetoblanco)">IODONEGATIVO (amarillo mostaza sobre epitelio acetoblanco)</option>
+																				<option value="NO">NO</option>
+																			</select>
+																		</div>
+																	</div>
+																	<div className="space-y-4">
+																		<div>
+																			<label className={labelClass}>TOMA DE BIOPSIA</label>
+																			<select value={colposcopyBiopsy} onChange={(e) => setColposcopyBiopsy(e.target.value)} className={`${inputBase} ${inputDark}`}>
+																				<option value="No">No</option>
+																				<option value="Si">Si</option>
+																			</select>
+																		</div>
+																		<div>
+																			<label className={labelClass}>LOCALIZACIÓN (Biopsia)</label>
+																			<input value={colposcopyBiopsyLocation} onChange={(e) => setColposcopyBiopsyLocation(e.target.value)} className={`${inputBase} ${inputDark}`} placeholder="Especificar localización de la biopsia..." disabled={colposcopyBiopsy === 'No'} />
+																		</div>
+																	</div>
+																</div>
+															</div>
+														</div>
+													</div>
+												)}
 											</div>
 										)}
 									</div>
@@ -1420,7 +1792,7 @@ export default function EditConsultationForm({ initial, patient, doctor, doctorS
 
 					{/* Report Generation Tab */}
 					{activeTab === 'report' && (
-						<div className={sectionCard}>
+						<div className={sectionCard} data-tab="report">
 							<div className="flex items-center justify-between mb-6">
 								<h2 className="text-xl font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
 									<FileCheck size={20} />

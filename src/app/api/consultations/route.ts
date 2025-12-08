@@ -138,10 +138,9 @@ export async function GET(req: NextRequest) {
 				const prisma = new PrismaClient();
 				const patientRecord = await prisma.patient.findUnique({
 					where: { id: patientId },
-					select: { unregisteredPatientId: true },
 				});
-				if (patientRecord?.unregisteredPatientId) {
-					unregisteredPatientIdToInclude = patientRecord.unregisteredPatientId;
+				if (patientRecord && 'unregisteredPatientId' in patientRecord && patientRecord.unregisteredPatientId) {
+					unregisteredPatientIdToInclude = patientRecord.unregisteredPatientId as string;
 					console.log(`[Consultations API] Paciente ${patientId} tiene unregisteredPatientId: ${unregisteredPatientIdToInclude}. Se incluirán consultas de ambos.`);
 				}
 				await prisma.$disconnect();
