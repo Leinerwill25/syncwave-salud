@@ -51,7 +51,6 @@ export default function AppointmentForm() {
 	// Cita
 	const [scheduledAt, setScheduledAt] = useState('');
 	const [durationMinutes, setDurationMinutes] = useState<number | ''>(30);
-	const [reason, setReason] = useState('');
 	const [location, setLocation] = useState('');
 
 	// Servicios del consultorio (desde medic_profile.services)
@@ -420,7 +419,6 @@ export default function AppointmentForm() {
 				organizationId,
 				scheduledAt,
 				durationMinutes: typeof durationMinutes === 'number' ? durationMinutes : Number(durationMinutes),
-				reason,
 				location,
 				billing: {
 					subtotal: subtotal || 0,
@@ -445,7 +443,6 @@ export default function AppointmentForm() {
 					'¡Cita Registrada!',
 					'Cita registrada correctamente. La facturación se ha creado como pendiente de pago.',
 					() => {
-						setReason('');
 						setLocation('');
 						setSelectedPatient(null);
 						setSelectedUnregisteredPatientId(null);
@@ -827,10 +824,6 @@ export default function AppointmentForm() {
 						<div className="min-w-0">
 							<label className={labelClass}>Ubicación</label>
 							<input type="text" value={location} onChange={(e) => setLocation(e.target.value)} className={`${inputNeutral} min-w-0`} />
-						</div>
-						<div className="min-w-0">
-							<label className={labelClass}>Motivo / Razón</label>
-							<input type="text" value={reason} onChange={(e) => setReason(e.target.value)} className={`${inputNeutral} min-w-0`} />
 						</div>
 					</div>
 				</section>
