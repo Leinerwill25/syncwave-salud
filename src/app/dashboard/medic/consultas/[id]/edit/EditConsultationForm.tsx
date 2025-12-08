@@ -3,6 +3,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Loader2, Save, Trash2, FileText, Download, ChevronDown, ChevronUp, Activity, ClipboardList, Stethoscope, FileCheck } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import ICD11Search from '@/components/ICD11Search';
 
 type ConsultationShape = {
 	id: string;
@@ -11,6 +12,8 @@ type ConsultationShape = {
 	doctor_id: string;
 	chief_complaint?: string | null;
 	diagnosis?: string | null;
+	icd11_code?: string | null;
+	icd11_title?: string | null;
 	notes?: string | null;
 	vitals?: Record<string, any> | null;
 	started_at?: string | null;
@@ -178,6 +181,8 @@ export default function EditConsultationForm({ initial, patient, doctor, doctorS
 	// Core
 	const [chiefComplaint, setChiefComplaint] = useState(initial.chief_complaint ?? '');
 	const [diagnosis, setDiagnosis] = useState(initial.diagnosis ?? '');
+	const [icd11Code, setIcd11Code] = useState<string>(initial.icd11_code ?? '');
+	const [icd11Title, setIcd11Title] = useState<string>(initial.icd11_title ?? '');
 	const [notes, setNotes] = useState(initial.notes ?? '');
 	const [startedAt, setStartedAt] = useState(initial.started_at ? toLocalDateTime(initial.started_at) : toLocalDateTime(initial.created_at));
 	const [endedAt, setEndedAt] = useState(initial.ended_at ? toLocalDateTime(initial.ended_at) : '');
@@ -745,6 +750,8 @@ export default function EditConsultationForm({ initial, patient, doctor, doctorS
 			const payload: any = {
 				chief_complaint: chiefComplaint || null,
 				diagnosis: diagnosis || null,
+				icd11_code: icd11Code || null,
+				icd11_title: icd11Title || null,
 				notes: notes || null,
 				vitals: buildVitalsObject(),
 				started_at: startedAt || null,
@@ -1482,6 +1489,26 @@ export default function EditConsultationForm({ initial, patient, doctor, doctorS
 												<div className="border-t border-slate-200 dark:border-slate-700 pt-4">
 													<label className={labelClass}>Diagnóstico</label>
 													<textarea value={gynDiagnosis} onChange={(e) => setGynDiagnosis(e.target.value)} className={`${inputBase} ${inputDark}`} rows={4} placeholder="Ingrese el diagnóstico ginecológico..." />
+												</div>
+
+												{/* Diagnóstico con CIE-11 */}
+												<div className="border-t border-slate-200 dark:border-slate-700 pt-4">
+													<label className={labelClass}>Diagnóstico (CIE-11)</label>
+													<ICD11Search
+														onSelect={(code) => {
+															setIcd11Code(code.code);
+															setIcd11Title(code.title);
+														}}
+														selectedCode={icd11Code && icd11Title ? { code: icd11Code, title: icd11Title } : null}
+														placeholder="Buscar código CIE-11 (ej: diabetes, hipertensión...)"
+														className="mb-3"
+													/>
+													<textarea value={diagnosis} onChange={(e) => setDiagnosis(e.target.value)} rows={4} className={`${inputBase} ${inputDark} resize-none`} placeholder="Descripción detallada del diagnóstico..." />
+													{icd11Code && (
+														<p className="mt-2 text-xs text-slate-600 dark:text-slate-400">
+															<strong>Código CIE-11 seleccionado:</strong> {icd11Code} - {icd11Title}
+														</p>
+													)}
 												</div>
 
 												{/* Observaciones Adicionales */}

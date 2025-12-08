@@ -34,6 +34,8 @@ export async function GET(req: NextRequest, context: { params: Promise<{ id: str
         organization_id,
         chief_complaint,
         diagnosis,
+        icd11_code,
+        icd11_title,
         notes,
         vitals,
         started_at,
@@ -132,6 +134,8 @@ export async function PATCH(req: NextRequest, context: { params: Promise<{ id: s
 		const updatePayload: any = {
 			chief_complaint: body.chief_complaint ?? undefined,
 			diagnosis: body.diagnosis ?? undefined,
+			icd11_code: body.icd11_code ?? undefined,
+			icd11_title: body.icd11_title ?? undefined,
 			notes: body.notes ?? undefined,
 			vitals: body.vitals ?? undefined,
 			started_at: body.started_at ? new Date(body.started_at).toISOString() : undefined,

@@ -132,20 +132,22 @@ export async function GET(req: NextRequest) {
 		// Si se filtra por patientId, también buscar consultas del unregistered_patient_id relacionado
 		let unregisteredPatientIdToInclude: string | null = null;
 		if (patientId) {
-			// Buscar el paciente registrado para obtener su unregisteredPatientId
+			// Buscar el paciente registrado para obtener su unregisteredPatientId usando Supabase
 			try {
-				const { PrismaClient } = await import('@prisma/client');
-				const prisma = new PrismaClient();
-				const patientRecord = await prisma.patient.findUnique({
-					where: { id: patientId },
-				});
-				if (patientRecord && 'unregisteredPatientId' in patientRecord && patientRecord.unregisteredPatientId) {
-					unregisteredPatientIdToInclude = patientRecord.unregisteredPatientId as string;
+				const { data: patientRecord, error: patientError } = await supabase
+					.from('Patient')
+					.select('unregistered_patient_id')
+					.eq('id', patientId)
+					.maybeSingle();
+				
+				if (patientError) {
+					console.error('[Consultations API] Error obteniendo unregisteredPatientId del paciente:', patientError);
+				} else if (patientRecord && patientRecord.unregistered_patient_id) {
+					unregisteredPatientIdToInclude = patientRecord.unregistered_patient_id as string;
 					console.log(`[Consultations API] Paciente ${patientId} tiene unregisteredPatientId: ${unregisteredPatientIdToInclude}. Se incluirán consultas de ambos.`);
 				}
-				await prisma.$disconnect();
-			} catch (prismaError) {
-				console.error('[Consultations API] Error obteniendo unregisteredPatientId del paciente:', prismaError);
+			} catch (error) {
+				console.error('[Consultations API] Error obteniendo unregisteredPatientId del paciente:', error);
 				// Continuar sin incluir consultas de unregistered_patient si hay error
 			}
 			

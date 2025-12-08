@@ -361,6 +361,8 @@ model Consultation {
   endedAt        DateTime?     @map("ended_at")
   chiefComplaint String?       @map("chief_complaint")
   diagnosis      String?
+  icd11Code      String?       @map("icd11_code") // Código CIE-11
+  icd11Title     String?       @map("icd11_title") // Título del código CIE-11
   notes          String?
   vitals         Json?
   createdAt      DateTime      @default(now()) @map("created_at")
