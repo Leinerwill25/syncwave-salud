@@ -1668,24 +1668,15 @@ export default function EditConsultationForm({ initial, patient, doctor, doctorS
 															<label className={labelClass}>Interfase Endometrial (mm)</label>
 															<input value={endometrialInterface} onChange={(e) => setEndometrialInterface(e.target.value)} className={`${inputBase} ${inputDark}`} placeholder="7 MM" type="number" step="0.1" />
 														</div>
+
 														<div>
-															<label className={labelClass}>Tipo de Interfase Endometrial</label>
-															<select value={endometrialInterfaceType} onChange={(e) => setEndometrialInterfaceType(e.target.value)} className={`${inputBase} ${inputDark}`}>
-																<option value="">Seleccionar...</option>
-																<option value="proliferativo">proliferativo</option>
-																<option value="secretor">secretor</option>
-																<option value="trilaminar">trilaminar</option>
-																<option value="lineal">lineal</option>
-															</select>
-														</div>
-														<div>
-															<label className={labelClass}>Ecografía transvaginal interfase endometrial</label>
+															<label className={labelClass}>Ecografía Transvaginal Interfase Endometrial</label>
 															<select value={endometrialInterfacePhase} onChange={(e) => setEndometrialInterfacePhase(e.target.value)} className={`${inputBase} ${inputDark}`}>
 																<option value="">Seleccionar...</option>
-																<option value="Menstrual: Día 1 - 4">Menstrual: Día 1 - 4</option>
-																<option value="Proliferativa Temprana: Día 5 - 13">Proliferativa Temprana: Día 5 - 13</option>
-																<option value="Proliferativa Tardía: Día 14 - 16">Proliferativa Tardía: Día 14 - 16</option>
-																<option value="Secretora: Día 16 - 28">Secretora: Día 16 - 28</option>
+																<option value="Menstrual: Día 1 - 4">Lineal</option>
+																<option value="Proliferativa Temprana: Día 5 - 13">Proliferativa Temprana</option>
+																<option value="Proliferativa Tardía: Día 14 - 16">Proliferativa Tardía</option>
+																<option value="Secretora: Día 16 - 28">Secretora</option>
 															</select>
 														</div>
 														<div>

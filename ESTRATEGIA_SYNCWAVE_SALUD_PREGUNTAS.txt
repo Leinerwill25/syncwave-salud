@@ -1,0 +1,553 @@
+================================================================================
+ESTRATEGIA SYNCWAVE SALUD - PREGUNTAS ESTRATÉGICAS
+================================================================================
+Fecha: 2024
+Documento: Preguntas clave para validación y estrategia de negocio
+================================================================================
+
+1. VALIDACIÓN DE PRODUCTO Y MERCADO
+--------------------------------------------------------------------------------
+
+¿Qué funcionalidad exacta usarían los primeros 10 consultorios? ¿Cuál es el core?
+________________________________________________________________________________
+RESPUESTA BASADA EN EL PROYECTO:
+
+CORE FUNCTIONALITY (Funcionalidad Principal):
+1. GENERACIÓN AUTOMÁTICA DE INFORMES MÉDICOS
+   - Esta es la principal fortaleza identificada en la plataforma
+   - Permite cargar plantillas personalizadas y generar informes automáticamente
+   - El médico solo descarga, imprime y firma
+   - Ahorra hasta 40% del tiempo en cada consulta (según documentación)
+
+2. GESTIÓN INTEGRAL DE PACIENTES
+   - Historial médico completo y centralizado
+   - Datos demográficos, contactos, documentos adjuntos
+   - Búsqueda rápida por nombre, cédula, teléfono
+
+3. AGENDA Y CITAS DIGITALES
+   - Sistema de calendario para gestión de citas
+   - Disponibilidad por médico
+   - Recordatorios automáticos
+
+4. HISTORIA CLÍNICA DIGITAL
+   - Notas médicas estructuradas
+   - Diagnósticos, signos vitales, antecedentes
+   - Versionado y trazabilidad
+
+5. RECETAS ELECTRÓNICAS
+   - Generación de recetas vinculadas a consultas
+   - Validación de alergias e interacciones básicas
+   - Integración con farmacias
+
+6. MENSAJERÍA DIRECTA CON PACIENTES
+   - Comunicación antes y después de consultas
+   - Seguimiento de tratamientos
+   - Recordatorios personalizados
+
+7. SISTEMA DE TAREAS Y ALERTAS
+   - Recordatorios pendientes (ej: ver resultados de laboratorio)
+   - Asociación de pacientes a tareas
+
+8. REPORTES Y MÉTRICAS
+   - Validación de citas programadas vs efectivas
+   - Visualización de ingresos por períodos
+   - Reportes detallados
+
+VALOR PRINCIPAL: La generación automática de informes es el diferenciador clave 
+que resuelve el problema más crítico: el tiempo que los médicos dedican a la 
+documentación administrativa en lugar de atender pacientes.
+
+
+¿Cuántos consultorios han dicho explícitamente: "Sí, pagaría por esto ahora"?
+________________________________________________________________________________
+RESPUESTA BASADA EN EL PROYECTO:
+
+ESTADO ACTUAL:
+- Se está promocionando una oferta para los "primeros 20 consultorios"
+- Existe un caso de éxito documentado: Dra. Carwin Silva (Ginecóloga y Obstetra)
+- La plataforma está en fase beta/MVP según los roadmaps encontrados
+
+VALIDACIÓN NECESARIA:
+- No hay evidencia explícita en el código de cuántos consultorios han confirmado 
+  pago inmediato
+- Se requiere seguimiento activo de leads que han expresado interés
+- La estrategia de "primeros 20 consultorios" sugiere que aún están en fase de 
+  captación inicial
+
+RECOMENDACIÓN:
+- Implementar sistema de tracking de intención de compra
+- Seguimiento de consultorios que han visto demos o han expresado interés
+- Conversión de leads calificados a clientes pagadores
+- Documentar explícitamente compromisos financieros antes de considerar 
+  validación completa
+
+
+2. PROCESO DE VENTAS Y CONVERSIÓN
+--------------------------------------------------------------------------------
+
+¿Cuál es el proceso exacto para venderles? (Pasos, tiempo, objeciones).
+________________________________________________________________________________
+RESPUESTA BASADA EN EL PROYECTO:
+
+PROCESO DE VENTAS PROPUESTO:
+
+Paso 1: CAPTACIÓN Y CONTACTO INICIAL
+- Landing page optimizada para consultorios privados
+- Formulario de registro con información de contacto
+- Oferta promocional visible (primeros 20 consultorios)
+- Tiempo estimado: 1-2 días (respuesta inicial)
+
+Paso 2: DEMOSTRACIÓN DE PLATAFORMA
+- Demostración en vivo de funcionalidad core: generación automática de informes
+- Mostrar ahorro de tiempo (40% por consulta)
+- Casos de uso específicos según especialidad médica
+- Tiempo estimado: 30-45 minutos (sesión demo)
+
+Paso 3: PRESENTACIÓN DE PLANES Y PRECIOS
+- Mostrar planes flexibles: Mensual ($70), Trimestral ($63/mes con 10% OFF), 
+  Anual ($49/mes con 30% OFF)
+- Calcular ahorro mensual y total del período
+- Mostrar equivalente diario (menos que un café)
+- Enfatizar oferta limitada para primeros 20
+- Tiempo estimado: 15-20 minutos
+
+Paso 4: CIERRE Y ONBOARDING
+- Proceso de registro en plataforma
+- Configuración inicial (plantillas de informes, datos del consultorio)
+- Onboarding personalizado (especialmente para plan anual)
+- Tiempo estimado: 1-2 horas (setup inicial)
+
+TIEMPO TOTAL ESTIMADO: 2-3 semanas desde contacto inicial hasta cierre
+
+OBJECIONES COMUNES Y RESPUESTAS:
+
+1. "Es muy caro para mi consultorio pequeño"
+   RESPUESTA: 
+   - Mostrar ROI: $49/mes anual = $2.45/día (menos que un café)
+   - Ahorro de 40% tiempo = más pacientes atendidos = más ingresos
+   - Comparar con costo de secretaria o sistemas tradicionales
+   - Oferta especial primeros 20 consultorios (30% descuento)
+
+2. "Ya tengo un sistema / uso papel"
+   RESPUESTA:
+   - Enfoque en diferenciador: generación automática de informes
+   - Mostrar tiempo ahorrado vs sistema actual
+   - Migración de datos asistida
+   - Caso de éxito: Dra. Carwin Silva
+
+3. "No sé si mi personal lo va a usar"
+   RESPUESTA:
+   - Interfaz intuitiva y fácil de usar
+   - Capacitación incluida en onboarding
+   - Soporte prioritario en planes trimestral/anual
+   - Período de prueba o garantía de satisfacción
+
+4. "Necesito ver más funcionalidades antes de decidir"
+   RESPUESTA:
+   - Acceso a demo completa de todas las funcionalidades
+   - Casos de uso específicos por especialidad
+   - Roadmap de desarrollo futuro
+   - Oferta limitada crea urgencia
+
+5. "¿Qué pasa si no funciona bien?"
+   RESPUESTA:
+   - Plataforma en producción con casos de éxito
+   - Soporte técnico incluido
+   - Actualizaciones continuas
+   - Garantía de servicio
+
+
+3. MÉTRICAS Y USO REAL DE LA PLATAFORMA
+--------------------------------------------------------------------------------
+
+¿Qué métricas de uso real están observando en la plataforma beta?
+________________________________________________________________________________
+RESPUESTA BASADA EN EL PROYECTO:
+
+MÉTRICAS IDENTIFICADAS EN EL CÓDIGO:
+
+1. FUNCIONALIDADES MÁS UTILIZADAS (según documentación):
+   - Generación automática de informes médicos (core feature)
+   - Gestión de pacientes y citas
+   - Historia clínica digital
+   - Mensajería con pacientes
+
+2. CASOS DE ÉXITO DOCUMENTADOS:
+   - Dra. Carwin Silva (Ginecóloga y Obstetra, Caracas)
+   - Consultorio en zona de Sabana Grande
+   - Especialista en ginecología regenerativa, funcional y estética
+
+3. MÉTRICAS QUE DEBEN IMPLEMENTARSE/SEGUIRSE:
+
+   A. MÉTRICAS DE ADOPCIÓN:
+   - Número de consultorios activos en beta: [A IMPLEMENTAR]
+   - Consultorios con suscripción activa: [A IMPLEMENTAR]
+   - Tasa de conversión de registro a uso activo: [A IMPLEMENTAR]
+
+   B. MÉTRICAS DE USO:
+   - Frecuencia de uso (sesiones por semana/mes): [A IMPLEMENTAR]
+   - Tiempo promedio de sesión: [A IMPLEMENTAR]
+   - Número de informes generados por consultorio/mes: [A IMPLEMENTAR]
+   - Número de pacientes gestionados por consultorio: [A IMPLEMENTAR]
+   - Número de citas programadas vs efectivas: [MÉTRICA DISPONIBLE]
+
+   C. MÉTRICAS DE RETENCIÓN:
+   - Tasa de retención mensual: [A IMPLEMENTAR]
+   - Tasa de abandono: [A IMPLEMENTAR]
+   - Churn rate: [A IMPLEMENTAR]
+
+   D. MÉTRICAS DE VALOR:
+   - Tiempo ahorrado por consulta (objetivo: 40%): [A VALIDAR]
+   - Ingresos generados por consultorio: [MÉTRICA DISPONIBLE]
+   - ROI percibido por consultorio: [A IMPLEMENTAR]
+
+   E. MÉTRICAS DE FUNCIONALIDADES:
+   - Funcionalidades más utilizadas: [A IMPLEMENTAR]
+   - Funcionalidades menos utilizadas: [A IMPLEMENTAR]
+   - Tasa de adopción de cada funcionalidad: [A IMPLEMENTAR]
+
+RECOMENDACIÓN URGENTE:
+- Implementar sistema de analytics y tracking de uso
+- Dashboard de métricas para monitoreo continuo
+- Encuestas periódicas a usuarios beta para feedback cualitativo
+- Métricas de productividad (tiempo ahorrado, pacientes atendidos)
+
+
+4. REGULACIÓN Y CUMPLIMIENTO MÉDICO
+--------------------------------------------------------------------------------
+
+¿Cuál es el plan para obtener un advisor médico regulatorio?
+________________________________________________________________________________
+RESPUESTA BASADA EN EL PROYECTO:
+
+ESTADO ACTUAL:
+- No hay evidencia explícita en el código de un advisor médico regulatorio
+- La plataforma maneja datos médicos sensibles (historia clínica, diagnósticos)
+- Existe funcionalidad de auditoría y trazabilidad (audit logs)
+
+PLAN RECOMENDADO:
+
+FASE 1: IDENTIFICACIÓN Y CONTACTO (Mes 1)
+- Identificar médicos especialistas con experiencia regulatoria en Venezuela
+- Contactar colegios médicos y asociaciones profesionales
+- Buscar advisors con experiencia en:
+  * Software médico y telemedicina
+  * Cumplimiento normativo en salud digital
+  * Certificaciones médicas en LATAM
+
+FASE 2: EVALUACIÓN DE REQUISITOS (Mes 1-2)
+- Revisar requisitos regulatorios en Venezuela para software médico
+- Evaluar necesidad de certificaciones específicas
+- Identificar estándares aplicables (HL7, FHIR, etc.)
+- Determinar requisitos de protección de datos médicos
+
+FASE 3: INCORPORACIÓN (Mes 2-3)
+- Contratar advisor médico regulatorio (part-time o consultoría)
+- Establecer relación con colegio médico o asociación profesional
+- Definir rol del advisor:
+  * Revisión de funcionalidades médicas
+  * Validación de cumplimiento normativo
+  * Asesoría en certificaciones necesarias
+  * Validación de seguridad de datos médicos
+
+COSTOS ESTIMADOS:
+- Advisor médico regulatorio: $500-1,500/mes (consultoría part-time)
+- Certificaciones médicas: $2,000-5,000 (una vez)
+- Membresías en asociaciones: $200-500/año
+
+IMPACTO EN DESARROLLO:
+- Revisión de funcionalidades críticas (historia clínica, diagnósticos)
+- Validación de seguridad y privacidad de datos
+- Ajustes necesarios para cumplimiento normativo
+- Timeline adicional: +2-3 meses para ajustes regulatorios
+
+BENEFICIOS:
+- Credibilidad ante consultorios médicos
+- Cumplimiento normativo y reducción de riesgos legales
+- Validación profesional de funcionalidades médicas
+- Acceso a red de médicos para referidos
+
+RECOMENDACIÓN URGENTE:
+- Iniciar búsqueda de advisor médico inmediatamente
+- Priorizar para consultorios que manejan datos sensibles
+- Considerar advisor como diferenciador competitivo
+
+
+5. VALIDACIÓN DE MODELO DE NEGOCIO
+--------------------------------------------------------------------------------
+
+¿Qué validación tienen sobre que el paciente pagará por la IA?
+________________________________________________________________________________
+RESPUESTA BASADA EN EL PROYECTO:
+
+ESTADO ACTUAL:
+- El modelo de negocio actual está enfocado en consultorios médicos (B2B)
+- Precios actuales: $70/mes (médico), $63/mes trimestral, $49/mes anual
+- Pacientes tienen acceso gratuito según documentación del código
+- No hay evidencia de funcionalidades de IA específicas para pacientes que requieran pago
+
+ANÁLISIS DEL MODELO ACTUAL:
+- Modelo B2B2C: El consultorio paga, el paciente se beneficia
+- Pacientes acceden gratuitamente a:
+  * Portal de citas
+  * Historial médico básico
+  * Comunicación con médico
+  * Resultados de laboratorio
+
+VALIDACIÓN NECESARIA PARA MODELO B2C (SI SE IMPLEMENTA):
+
+1. CASOS DE USO DE IA PARA PACIENTES:
+   - Análisis de síntomas (chatbot médico)
+   - Recomendaciones personalizadas de salud
+   - Recordatorios inteligentes de medicamentos
+   - Análisis predictivo de salud
+   - Interpretación de resultados de laboratorio
+
+2. VALIDACIÓN DE INTENCIÓN DE PAGO:
+   - [A IMPLEMENTAR] Encuestas a pacientes actuales
+   - [A IMPLEMENTAR] Pruebas de precio (pricing tests)
+   - [A IMPLEMENTAR] Análisis de competencia
+
+3. PRECIO ESTIMADO PARA PACIENTES:
+   - Rango sugerido: $5-15/mes por paciente
+   - O modelo freemium con funcionalidades premium
+   - O pago por uso (pay-per-query)
+
+4. COMPETENCIA Y ALTERNATIVAS:
+   - Apps de salud gratuitas (WebMD, Healthline)
+   - Consultas médicas online (competencia directa)
+   - Seguros médicos que incluyen telemedicina
+
+RECOMENDACIÓN ESTRATÉGICA:
+- ENFOQUE ACTUAL (B2B) es más viable: consultorios pagan, pacientes se benefician
+- NO priorizar modelo B2C de pago por IA para pacientes en corto plazo
+- Enfoque en hacer que consultorios paguen más por funcionalidades avanzadas
+- Si se implementa IA para pacientes: modelo freemium con premium opcional
+- Validar primero con pacientes existentes antes de desarrollar funcionalidades pagas
+
+CONCLUSIÓN:
+- No hay validación actual de que pacientes pagarían por IA
+- El modelo B2B actual es más sostenible
+- Si se explora B2C: validar primero con MVP pequeño antes de inversión grande
+
+
+6. ROADMAP Y ENFOQUE ESTRATÉGICO
+--------------------------------------------------------------------------------
+
+¿Cuál es el roadmap reducido a un solo producto y un solo nicho para los próximos 6 meses?
+________________________________________________________________________________
+RESPUESTA BASADA EN EL PROYECTO:
+
+NICHO OBJETIVO: CONSULTORIOS PRIVADOS DE ESPECIALIDADES MÉDICAS
+- Enfoque inicial: Ginecología y Obstetricia (caso de éxito: Dra. Carwin Silva)
+- Expansión posterior: Otras especialidades que requieren informes detallados
+
+PRODUCTO ÚNICO: GENERACIÓN AUTOMÁTICA DE INFORMES MÉDICOS + GESTIÓN BÁSICA
+- Core: Sistema que genera informes médicos automáticamente desde plantillas
+- Valor: Ahorra 40% del tiempo en documentación médica
+- Diferenciador: Automatización inteligente vs sistemas manuales tradicionales
+
+ROADMAP SIMPLIFICADO (6 MESES):
+
+MES 1-2: VALIDACIÓN Y PRIMEROS CLIENTES
+- Objetivo: Conseguir 5-10 consultorios pagando (de los primeros 20)
+- Entregables:
+  * Optimización de generación automática de informes
+  * Plantillas personalizadas por especialidad (empezar con Ginecología)
+  * Onboarding simplificado para nuevos consultorios
+  * Sistema de métricas básico
+- Métricas de éxito:
+  * 5-10 consultorios suscritos y activos
+  * 80%+ tasa de uso de generación de informes
+  * <2 horas tiempo de onboarding por consultorio
+  * Feedback positivo de primeros clientes
+
+MES 3-4: MEJORA DE CORE Y RETENCIÓN
+- Objetivo: Retener 90%+ de clientes y mejorar producto core
+- Entregables:
+  * Mejoras en velocidad de generación de informes
+  * Más plantillas de especialidades (Cardiología, Pediatría)
+  * Sistema de reportes mejorado para consultorios
+  * Integración básica con laboratorios
+- Métricas de éxito:
+  * 90%+ tasa de retención mensual
+  * 15-20 consultorios activos totales
+  * 50+ informes generados por consultorio/mes promedio
+  * NPS > 50
+
+MES 5-6: ESCALAMIENTO Y OPTIMIZACIÓN
+- Objetivo: Llegar a 30-40 consultorios y optimizar operaciones
+- Entregables:
+  * Automatización de procesos de ventas
+  * Dashboard de métricas para consultorios
+  * Integración con más laboratorios y farmacias
+  * Programa de referidos para consultorios
+- Métricas de éxito:
+  * 30-40 consultorios activos
+  * Tiempo de venta reducido a <2 semanas
+  * 3+ referidos por consultorio activo
+  * MRR (Monthly Recurring Revenue) de $1,500-2,000+
+
+FUNCIONALIDADES QUE NO SE INCLUYEN (para mantener enfoque):
+- ❌ Portal avanzado para pacientes (mantener básico)
+- ❌ Facturación compleja (mantener simple)
+- ❌ Múltiples especialidades desde inicio (enfoque en 2-3)
+- ❌ Funcionalidades de IA complejas (mantener generación de informes)
+
+PRINCIPIOS DEL ROADMAP:
+1. UN PRODUCTO: Generación automática de informes médicos
+2. UN NICHO: Consultorios privados de especialidades
+3. UNA MÉTRICA: Número de informes generados por consultorio/mes
+4. UN OBJETIVO: Ahorrar tiempo a médicos para que atiendan más pacientes
+
+
+7. OPERACIONES Y RECURSOS
+--------------------------------------------------------------------------------
+
+¿La agencia seguirá en funcionamiento a la par del desarrollo de Syncwave Salud? 
+¿Cómo distribuirán sus horas de trabajo?
+________________________________________________________________________________
+RESPUESTA BASADA EN EL PROYECTO:
+
+ESTADO ACTUAL:
+- Syncwave Agency existe como entidad separada (evidencia en contactos: syncwaveagency@gmail.com)
+- La agencia parece ser la entidad que desarrolla Syncwave Salud
+- No hay evidencia clara de si la agencia tiene otros clientes activos
+
+DISTRIBUCIÓN DE RECURSOS RECOMENDADA:
+
+ESCENARIO 1: AGENCIA CONTINÚA CON OTROS CLIENTES (Modelo Híbrido)
+- Horas dedicadas a Syncwave Salud: 60-70% (30-35 horas/semana)
+- Horas dedicadas a agencia/otros clientes: 30-40% (15-20 horas/semana)
+- Total horas disponibles: 50 horas/semana (asumiendo trabajo full-time)
+
+Roles y responsabilidades:
+- Desarrollo Syncwave: Equipo técnico - 60% tiempo
+- Ventas/Marketing Syncwave: Equipo comercial - 20% tiempo
+- Operaciones agencia: Equipo agencia - 30% tiempo
+- Gestión/Administración: Liderazgo - 10% tiempo
+
+ESCENARIO 2: TRANSICIÓN GRADUAL A SYNCWAVE SALUD (Modelo Recomendado)
+- Mes 1-2: 50% Syncwave Salud, 50% Agencia
+- Mes 3-4: 70% Syncwave Salud, 30% Agencia
+- Mes 5-6: 80% Syncwave Salud, 20% Agencia (solo clientes estratégicos)
+
+PLAN DE TRANSICIÓN RECOMENDADO:
+
+FASE 1: VALIDACIÓN (Meses 1-2)
+- Mantener agencia funcionando con clientes existentes
+- Dedicar 50% tiempo a Syncwave Salud para validar modelo
+- Si Syncwave muestra tracción: aumentar dedicación
+- Si no: mantener agencia como fuente de ingresos
+
+FASE 2: CRECIMIENTO (Meses 3-4)
+- Aumentar dedicación a Syncwave Salud al 70%
+- Reducir nuevos proyectos de agencia
+- Mantener solo clientes estratégicos de agencia
+- Reinvertir ingresos de Syncwave en desarrollo
+
+FASE 3: ENFOQUE TOTAL (Meses 5-6)
+- Si Syncwave tiene 20+ consultorios pagando: 80% dedicación
+- Agencia solo para proyectos muy estratégicos o referidos
+- Preparar transición completa si MRR > $2,000/mes
+
+CRITERIOS DE DECISIÓN PARA TRANSICIÓN:
+- ✅ Transición completa si: MRR Syncwave > $3,000/mes
+- ✅ Mantener híbrido si: MRR Syncwave entre $1,500-3,000/mes
+- ⚠️ Re-evaluar si: MRR Syncwave < $1,500/mes después de 4 meses
+
+VENTAJAS DEL MODELO HÍBRIDO:
+- Ingresos diversificados (menos riesgo)
+- Aprendizaje continuo de proyectos de agencia aplicable a Syncwave
+- Flexibilidad para pivotar si necesario
+- Red de contactos de agencia puede generar referidos
+
+DESVENTAJAS DEL MODELO HÍBRIDO:
+- División de atención puede ralentizar crecimiento
+- Difícil escalar rápidamente con recursos divididos
+- Riesgo de no comprometerse completamente a Syncwave
+
+RECOMENDACIÓN:
+- Empezar con modelo híbrido (60% Syncwave, 40% Agencia)
+- Evaluar cada mes basado en métricas de Syncwave
+- Transición gradual basada en tracción real, no proyecciones
+- Mantener agencia como "plan B" hasta validación completa
+
+
+================================================================================
+NOTAS ADICIONALES
+================================================================================
+
+[Espacio para notas adicionales, insights, o consideraciones importantes]
+
+================================================================================
+PRÓXIMOS PASOS INMEDIATOS (Basados en análisis del proyecto)
+================================================================================
+
+1. IMPLEMENTAR SISTEMA DE TRACKING DE MÉTRICAS
+   Responsable: Equipo de Desarrollo
+   Fecha límite: 2 semanas
+   Acciones:
+   - Implementar analytics de uso de funcionalidades
+   - Dashboard de métricas para consultorios activos
+   - Tracking de conversión de leads a clientes pagadores
+   - Métricas de tiempo ahorrado por consulta
+
+2. VALIDAR INTENCIÓN DE COMPRA REAL
+   Responsable: Equipo Comercial/Ventas
+   Fecha límite: 1 mes
+   Acciones:
+   - Seguimiento activo de leads que han visto demo
+   - Documentar consultorios con compromiso financiero explícito
+   - Crear pipeline de ventas con etapas claras
+   - Implementar CRM para tracking de oportunidades
+
+3. BUSCAR ADVISOR MÉDICO REGULATORIO
+   Responsable: Liderazgo
+   Fecha límite: 1 mes
+   Acciones:
+   - Contactar colegios médicos en Venezuela
+   - Identificar médicos con experiencia en software médico
+   - Evaluar costos y beneficios de incorporar advisor
+   - Establecer relación con asociación médica profesional
+
+4. OPTIMIZAR PROCESO DE VENTAS
+   Responsable: Equipo Comercial
+   Fecha límite: 2 semanas
+   Acciones:
+   - Documentar proceso de ventas actual
+   - Crear script de demo enfocado en generación de informes
+   - Preparar respuestas a objeciones comunes
+   - Establecer timeline objetivo de ventas (2-3 semanas)
+
+5. ENFOQUE EN PRIMEROS 20 CONSULTORIOS
+   Responsable: Todo el equipo
+   Fecha límite: 2 meses
+   Acciones:
+   - Priorizar captación de primeros 20 consultorios
+   - Ofrecer onboarding personalizado
+   - Recolectar feedback continuo de primeros clientes
+   - Crear casos de éxito documentados
+
+6. DEFINIR ROADMAP DE 6 MESES
+   Responsable: Liderazgo + Producto
+   Fecha límite: 1 semana
+   Acciones:
+   - Validar roadmap propuesto con equipo
+   - Priorizar funcionalidades core (generación de informes)
+   - Establecer métricas de éxito por mes
+   - Comunicar roadmap a todo el equipo
+
+7. DECIDIR DISTRIBUCIÓN DE RECURSOS AGENCIA VS SYNCWAVE
+   Responsable: Liderazgo
+   Fecha límite: 1 semana
+   Acciones:
+   - Evaluar estado actual de clientes de agencia
+   - Decidir modelo híbrido vs transición completa
+   - Establecer criterios de decisión para transición
+   - Comunicar decisión al equipo
+
+================================================================================
+FIN DEL DOCUMENTO
+================================================================================
+
