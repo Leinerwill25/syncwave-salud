@@ -4,7 +4,7 @@ import React from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { motion } from 'framer-motion';
-import { Stethoscope, User, Calendar, FileText, Shield, Clock, CheckCircle2, ArrowRight, Zap, Activity, TrendingUp, DollarSign, Globe, MessageCircle, Bell, FileCheck, Users, Settings, BarChart3, CreditCard, Link2, Upload, Download, Star, Sparkles, Target, Rocket, Timer, Save, Building2, Instagram, Heart, MapPin } from 'lucide-react';
+import { Stethoscope, User, Calendar, FileText, Shield, Clock, CheckCircle2, ArrowRight, Zap, Activity, TrendingUp, DollarSign, Globe, MessageCircle, Bell, FileCheck, Users, Settings, BarChart3, CreditCard, Link2, Upload, Download, Star, Sparkles, Target, Rocket, Timer, Save, Building2, Instagram, Heart, MapPin, AlertCircle } from 'lucide-react';
 
 export default function ConsultoriosLandingPage() {
 	return (
@@ -291,9 +291,68 @@ export default function ConsultoriosLandingPage() {
 					<div className="absolute bottom-0 left-0 w-96 h-96 bg-cyan-400/10 rounded-full blur-3xl" />
 				</div>
 				<div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-					<motion.div initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.6 }} className="text-center mb-12 sm:mb-16">
+					<motion.div initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.6 }} className="text-center mb-8 sm:mb-10">
 						<h2 className="text-3xl sm:text-4xl md:text-5xl font-bold text-slate-900 mb-4">Planes de Suscripción Flexibles</h2>
 						<p className="text-lg sm:text-xl text-slate-600 max-w-2xl mx-auto">Elige el plan que mejor se adapte a tu consultorio. Ahorra más con suscripciones de largo plazo.</p>
+					</motion.div>
+
+					{/* Banner Promocional - Oferta Limitada */}
+					<motion.div initial={{ opacity: 0, scale: 0.95 }} whileInView={{ opacity: 1, scale: 1 }} viewport={{ once: true }} transition={{ duration: 0.5 }} className="max-w-4xl mx-auto mb-10 sm:mb-12">
+						<div className="relative bg-gradient-to-r from-amber-50 via-orange-50 to-red-50 rounded-2xl p-6 sm:p-8 border-2 border-amber-200 shadow-xl overflow-hidden">
+							<div className="absolute top-0 right-0 w-32 h-32 bg-amber-400/20 rounded-full blur-2xl -mr-16 -mt-16" />
+							<div className="absolute bottom-0 left-0 w-32 h-32 bg-orange-400/20 rounded-full blur-2xl -ml-16 -mb-16" />
+							<div className="relative z-10">
+								<div className="flex items-start gap-4 mb-4">
+									<div className="flex-shrink-0 w-12 h-12 rounded-xl bg-gradient-to-br from-amber-500 to-orange-500 flex items-center justify-center shadow-lg">
+										<AlertCircle className="w-6 h-6 text-white" />
+									</div>
+									<div className="flex-1">
+										<h3 className="text-xl sm:text-2xl font-bold text-slate-900 mb-2 flex items-center gap-2">
+											<span>🚀 Oferta de Lanzamiento Exclusiva</span>
+										</h3>
+										<p className="text-sm sm:text-base text-slate-700 leading-relaxed mb-3">
+											<strong className="text-slate-900">No te pierdas nuestra promoción especial</strong> y sé parte de los <span className="font-bold text-amber-700">20 primeros consultorios</span> que se suscriban. Aprovecha descuentos exclusivos que no volverán a estar disponibles.
+										</p>
+										<div className="bg-white/80 backdrop-blur-sm rounded-xl p-4 border border-amber-200 mt-4">
+											<div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
+												<div className="flex items-start gap-2">
+													<div className="flex-shrink-0 w-6 h-6 rounded-full bg-gradient-to-br from-teal-500 to-cyan-500 flex items-center justify-center mt-0.5">
+														<CheckCircle2 className="w-4 h-4 text-white" />
+													</div>
+													<div>
+														<div className="font-semibold text-slate-900">Primeros 20 consultorios:</div>
+														<div className="text-slate-600">
+															• Trimestral: <span className="font-bold text-teal-700">10% OFF</span>
+														</div>
+														<div className="text-slate-600">
+															• Anual: <span className="font-bold text-teal-700">30% OFF</span>
+														</div>
+													</div>
+												</div>
+												<div className="flex items-start gap-2">
+													<div className="flex-shrink-0 w-6 h-6 rounded-full bg-slate-300 flex items-center justify-center mt-0.5">
+														<Clock className="w-4 h-4 text-slate-600" />
+													</div>
+													<div>
+														<div className="font-semibold text-slate-900">Después del lanzamiento:</div>
+														<div className="text-slate-600">
+															• Trimestral: <span className="font-semibold text-slate-500">5% OFF</span>
+														</div>
+														<div className="text-slate-600">
+															• Anual: <span className="font-semibold text-slate-500">15% OFF</span>
+														</div>
+													</div>
+												</div>
+											</div>
+										</div>
+										<div className="mt-4 flex items-center gap-2 text-xs sm:text-sm text-amber-800 font-semibold">
+											<Timer className="w-4 h-4 animate-pulse" />
+											<span>⏰ Oferta limitada - Solo quedan pocos lugares disponibles</span>
+										</div>
+									</div>
+								</div>
+							</div>
+						</div>
 					</motion.div>
 
 					<div className="grid grid-cols-1 md:grid-cols-3 gap-6 sm:gap-8 max-w-6xl mx-auto">

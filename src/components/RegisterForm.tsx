@@ -1559,17 +1559,57 @@ export default function RegisterForm(): React.ReactElement {
 							<option value="annual">Anual — 15% descuento</option>
 						</select>
 
-						<div className="mt-3 p-3 sm:p-4 bg-slate-50 rounded-md border border-slate-100 text-slate-700">
-							<div className="text-xs sm:text-sm">Resumen de cobro:</div>
-							<div className="mt-1 text-xs sm:text-sm">
-								<strong>{recommendedPlan.label}</strong> — Precio base mensual: ${recommendedPlan.price.toFixed(2)}
+						<div className="mt-3 p-4 sm:p-5 bg-gradient-to-br from-slate-50 to-teal-50/30 rounded-lg border border-slate-200 shadow-sm">
+							<div className="text-xs sm:text-sm font-semibold text-slate-900 mb-3">Resumen de cobro:</div>
+							
+							<div className="space-y-2 mb-4">
+								<div className="text-xs sm:text-sm text-slate-700">
+									<strong className="text-slate-900">{recommendedPlan.label}</strong> — Precio base mensual: <span className="font-semibold">${recommendedPlan.price.toFixed(2)}</span>
+								</div>
+								<div className="text-xs sm:text-sm text-slate-700">
+									Periodo: <span className="font-semibold">{billingPreview.label}</span> — {billingPreview.months} {billingPreview.months > 1 ? 'meses' : 'mes'}
+								</div>
+								{billingPreview.discount > 0 && (
+									<div className="text-xs sm:text-sm text-emerald-700 font-semibold space-y-1">
+										<div>
+											Descuento aplicado: {(billingPreview.discount * 100).toFixed(0)}%
+										</div>
+										<div className="text-[10px] sm:text-xs text-emerald-600 font-medium italic">
+											✨ Este descuento será únicamente para los primeros 20 consultorios suscritos
+										</div>
+									</div>
+								)}
 							</div>
-							<div className="text-xs sm:text-sm">
-								Periodo: {billingPreview.label} — {billingPreview.months} {billingPreview.months > 1 ? 'meses' : 'mes'}
+
+							<div className="pt-3 border-t border-slate-200 space-y-2">
+								<div className="text-base sm:text-lg font-bold text-emerald-600">
+									Total a pagar: ${billingPreview.total.toFixed(2)}
+								</div>
+								<div className="text-xs sm:text-sm text-slate-700">
+									Equivalente mensual: <span className="font-semibold text-slate-900">${billingPreview.monthlyEquivalent.toFixed(2)} / mes</span>
+								</div>
+								
+								{billingPreview.discount > 0 && (
+									<div className="text-xs sm:text-sm text-teal-700 font-medium space-y-1">
+										<div>
+											💰 Ahorras <span className="font-bold">${(recommendedPlan.price - billingPreview.monthlyEquivalent).toFixed(2)}</span> al mes con este plan
+										</div>
+										<div className="text-teal-800">
+											💵 Ahorro total en {billingPreview.months} {billingPreview.months > 1 ? 'meses' : 'mes'}: <span className="font-bold">${((recommendedPlan.price - billingPreview.monthlyEquivalent) * billingPreview.months).toFixed(2)}</span>
+										</div>
+									</div>
+								)}
+								
+								{role === 'MEDICO' && (
+									<div className="mt-3 pt-3 border-t border-slate-200">
+										<div className="text-xs sm:text-sm text-slate-600 leading-relaxed">
+											<span className="font-semibold text-slate-900">Inversión diaria:</span> Si lo visualizas de forma más detallada, estarías invirtiendo{' '}
+											<span className="font-bold text-teal-700">${(billingPreview.monthlyEquivalent / 20).toFixed(2)}</span> diarios para el uso de nuestro software,{' '}
+											<span className="font-semibold text-slate-900">menos que el precio de un café</span>. Una inversión mínima que transforma tu práctica médica y te permite ahorrar hasta 40% del tiempo en cada consulta.
+										</div>
+									</div>
+								)}
 							</div>
-							{billingPreview.discount > 0 && <div className="text-xs sm:text-sm">Descuento aplicado: {(billingPreview.discount * 100).toFixed(0)}%</div>}
-							<div className="mt-2 text-base sm:text-lg font-semibold text-emerald-600">Total a pagar: ${billingPreview.total.toFixed(2)}</div>
-							<div className="text-[10px] sm:text-xs text-slate-500">Equivalente mensual: ${billingPreview.monthlyEquivalent.toFixed(2)} / mes</div>
 						</div>
 					</div>
 

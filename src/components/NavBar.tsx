@@ -167,6 +167,7 @@ export default function PublicNavBar() {
 			icon: Building2,
 			description: 'Administra múltiples especialistas y recursos',
 			color: 'from-blue-500 to-indigo-500',
+			comingSoon: true,
 		},
 		{
 			href: '/landing/consultorios',
@@ -174,6 +175,7 @@ export default function PublicNavBar() {
 			icon: Stethoscope,
 			description: 'Herramientas profesionales para médicos',
 			color: 'from-teal-500 to-cyan-500',
+			comingSoon: false,
 		},
 		{
 			href: '/landing/farmacias',
@@ -181,6 +183,7 @@ export default function PublicNavBar() {
 			icon: Pill,
 			description: 'Integración con el ecosistema de salud',
 			color: 'from-purple-500 to-pink-500',
+			comingSoon: true,
 		},
 		{
 			href: '/landing/laboratorios',
@@ -188,6 +191,7 @@ export default function PublicNavBar() {
 			icon: FlaskConical,
 			description: 'Gestión digital de órdenes y resultados',
 			color: 'from-orange-500 to-red-500',
+			comingSoon: true,
 		},
 	];
 
@@ -304,20 +308,35 @@ export default function PublicNavBar() {
 															animate={{ opacity: 1, x: 0 }}
 															transition={{ delay: index * 0.05 }}
 														>
-															<Link
-																href={org.href}
-																onClick={() => setOrgMenuOpen(false)}
-																className="group flex items-center gap-3 p-3 rounded-xl hover:bg-gradient-to-r hover:from-teal-50 hover:to-cyan-50 transition-all duration-200"
-															>
-																<div className={`flex-shrink-0 w-12 h-12 rounded-xl bg-gradient-to-br ${org.color} flex items-center justify-center shadow-md group-hover:scale-110 transition-transform`}>
-																	<org.icon className="w-6 h-6 text-white" />
+															{org.comingSoon ? (
+																<div className="group flex items-center gap-3 p-3 rounded-xl bg-slate-50/50 border border-slate-100 cursor-default opacity-75">
+																	<div className={`flex-shrink-0 w-12 h-12 rounded-xl bg-gradient-to-br ${org.color} flex items-center justify-center shadow-md opacity-60`}>
+																		<org.icon className="w-6 h-6 text-white" />
+																	</div>
+																	<div className="flex-1 min-w-0">
+																		<div className="font-semibold text-slate-600 flex items-center gap-2">
+																			{org.label}
+																			<span className="text-[10px] px-2 py-0.5 bg-amber-100 text-amber-700 rounded-full font-medium">Próximamente</span>
+																		</div>
+																		<div className="text-xs text-slate-400 mt-0.5">{org.description}</div>
+																	</div>
 																</div>
-																<div className="flex-1 min-w-0">
-																	<div className="font-semibold text-slate-900 group-hover:text-teal-600 transition-colors">{org.label}</div>
-																	<div className="text-xs text-slate-500 mt-0.5">{org.description}</div>
-																</div>
-																<ArrowRight className="w-4 h-4 text-slate-400 group-hover:text-teal-600 group-hover:translate-x-1 transition-all" />
-															</Link>
+															) : (
+																<Link
+																	href={org.href}
+																	onClick={() => setOrgMenuOpen(false)}
+																	className="group flex items-center gap-3 p-3 rounded-xl hover:bg-gradient-to-r hover:from-teal-50 hover:to-cyan-50 transition-all duration-200"
+																>
+																	<div className={`flex-shrink-0 w-12 h-12 rounded-xl bg-gradient-to-br ${org.color} flex items-center justify-center shadow-md group-hover:scale-110 transition-transform`}>
+																		<org.icon className="w-6 h-6 text-white" />
+																	</div>
+																	<div className="flex-1 min-w-0">
+																		<div className="font-semibold text-slate-900 group-hover:text-teal-600 transition-colors">{org.label}</div>
+																		<div className="text-xs text-slate-500 mt-0.5">{org.description}</div>
+																	</div>
+																	<ArrowRight className="w-4 h-4 text-slate-400 group-hover:text-teal-600 group-hover:translate-x-1 transition-all" />
+																</Link>
+															)}
 														</motion.div>
 													))}
 												</div>
@@ -651,19 +670,31 @@ export default function PublicNavBar() {
 																		animate={{ opacity: 1, x: 0 }}
 																		transition={{ delay: index * 0.05 }}
 																	>
-																		<Link
-																			href={org.href}
-																			onClick={() => {
-																				setMobileMenuOpen(false);
-																				setOrgMenuOpen(false);
-																			}}
-																			className="flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm text-slate-600 hover:bg-teal-50 active:bg-teal-100 hover:text-teal-600 transition-colors"
-																		>
-																			<div className={`w-8 h-8 rounded-lg bg-gradient-to-br ${org.color} flex items-center justify-center flex-shrink-0`}>
-																				<org.icon className="w-4 h-4 text-white" />
+																		{org.comingSoon ? (
+																			<div className="flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm text-slate-400 bg-slate-50/50 border border-slate-100 cursor-default">
+																				<div className={`w-8 h-8 rounded-lg bg-gradient-to-br ${org.color} flex items-center justify-center flex-shrink-0 opacity-50`}>
+																					<org.icon className="w-4 h-4 text-white" />
+																				</div>
+																				<span className="flex items-center gap-2">
+																					{org.label}
+																					<span className="text-[10px] px-1.5 py-0.5 bg-amber-100 text-amber-700 rounded-full font-medium">Próximamente</span>
+																				</span>
 																			</div>
-																			<span>{org.label}</span>
-																		</Link>
+																		) : (
+																			<Link
+																				href={org.href}
+																				onClick={() => {
+																					setMobileMenuOpen(false);
+																					setOrgMenuOpen(false);
+																				}}
+																				className="flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm text-slate-600 hover:bg-teal-50 active:bg-teal-100 hover:text-teal-600 transition-colors"
+																			>
+																				<div className={`w-8 h-8 rounded-lg bg-gradient-to-br ${org.color} flex items-center justify-center flex-shrink-0`}>
+																					<org.icon className="w-4 h-4 text-white" />
+																				</div>
+																				<span>{org.label}</span>
+																			</Link>
+																		)}
 																	</motion.div>
 																))}
 															</div>
