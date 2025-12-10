@@ -95,7 +95,7 @@ export default async function EditConsultationPage({ params }: Props) {
 
 	if (consultation.patient_id) {
 		// Paciente registrado - obtener datos directamente de la tabla Patient
-		const { data: fullPatientData } = await supabase.from('Patient').select('id, firstName, lastName, dob, identifier, phone, address, blood_type, allergies, chronic_conditions, current_medication').eq('id', consultation.patient_id).maybeSingle();
+		const { data: fullPatientData } = await supabase.from('Patient').select('id, firstName, lastName, dob, identifier, phone, address, profession, blood_type, allergies, chronic_conditions, current_medication').eq('id', consultation.patient_id).maybeSingle();
 
 		if (fullPatientData) {
 			patient = {
@@ -106,6 +106,7 @@ export default async function EditConsultationPage({ params }: Props) {
 				identifier: fullPatientData.identifier,
 				phone: fullPatientData.phone || null,
 				address: fullPatientData.address || null,
+				profession: (fullPatientData as any).profession || null,
 				bloodType: (fullPatientData as any).blood_type || null,
 				allergies: fullPatientData.allergies || null,
 				chronicConditions: (fullPatientData as any).chronic_conditions || null,
@@ -119,7 +120,7 @@ export default async function EditConsultationPage({ params }: Props) {
 	} else if (consultation.unregistered_patient_id) {
 		// Paciente no registrado
 		isUnregistered = true;
-		const { data: unregisteredPatientData } = await supabase.from('unregisteredpatients').select('id, first_name, last_name, identification, phone, email, birth_date, sex, address, allergies, chronic_conditions, current_medication, family_history').eq('id', consultation.unregistered_patient_id).maybeSingle();
+		const { data: unregisteredPatientData } = await supabase.from('unregisteredpatients').select('id, first_name, last_name, identification, phone, email, birth_date, sex, address, profession, allergies, chronic_conditions, current_medication, family_history').eq('id', consultation.unregistered_patient_id).maybeSingle();
 
 		if (unregisteredPatientData) {
 			// Normalizar datos del paciente no registrado para que coincidan con la estructura esperada
@@ -133,6 +134,7 @@ export default async function EditConsultationPage({ params }: Props) {
 				email: unregisteredPatientData.email,
 				sex: unregisteredPatientData.sex,
 				address: unregisteredPatientData.address,
+				profession: unregisteredPatientData.profession || null,
 				allergies: unregisteredPatientData.allergies,
 				chronicConditions: unregisteredPatientData.chronic_conditions,
 				currentMedication: unregisteredPatientData.current_medication,

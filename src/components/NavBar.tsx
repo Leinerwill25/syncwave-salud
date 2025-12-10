@@ -384,19 +384,15 @@ export default function PublicNavBar() {
 																animate={{ opacity: 1, scale: 1 }}
 																transition={{ delay: index * 0.05 }}
 															>
-																<Link
-																	href="/landing/pacientes"
-																	onClick={() => setPatientMenuOpen(false)}
-																	className="group flex flex-col gap-2 p-3 rounded-xl hover:bg-gradient-to-br hover:from-teal-50 hover:to-cyan-50 transition-all duration-200 border border-transparent hover:border-teal-200"
-																>
+																<div className="group flex flex-col gap-2 p-3 rounded-xl bg-slate-50/50 border border-slate-100 cursor-default">
 																	<div className="flex items-center gap-2">
-																		<div className="w-8 h-8 rounded-lg bg-gradient-to-br from-teal-500 to-cyan-500 flex items-center justify-center group-hover:scale-110 transition-transform">
+																		<div className="w-8 h-8 rounded-lg bg-gradient-to-br from-teal-500 to-cyan-500 flex items-center justify-center">
 																			<benefit.icon className="w-4 h-4 text-white" />
 																		</div>
-																		<span className="text-sm font-semibold text-slate-900 group-hover:text-teal-600 transition-colors">{benefit.title}</span>
+																		<span className="text-sm font-semibold text-slate-900">{benefit.title}</span>
 																	</div>
 																	<p className="text-xs text-slate-600 leading-snug">{benefit.description}</p>
-																</Link>
+																</div>
 															</motion.div>
 														))}
 													</div>

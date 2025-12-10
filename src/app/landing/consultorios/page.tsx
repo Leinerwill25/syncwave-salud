@@ -2,39 +2,9 @@
 
 import React from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { motion } from 'framer-motion';
-import {
-	Stethoscope,
-	User,
-	Calendar,
-	FileText,
-	Shield,
-	Clock,
-	CheckCircle2,
-	ArrowRight,
-	Zap,
-	Activity,
-	TrendingUp,
-	DollarSign,
-	Globe,
-	MessageCircle,
-	Bell,
-	FileCheck,
-	Users,
-	Settings,
-	BarChart3,
-	CreditCard,
-	Link2,
-	Upload,
-	Download,
-	Star,
-	Sparkles,
-	Target,
-	Rocket,
-	Timer,
-	Save,
-	Building2,
-} from 'lucide-react';
+import { Stethoscope, User, Calendar, FileText, Shield, Clock, CheckCircle2, ArrowRight, Zap, Activity, TrendingUp, DollarSign, Globe, MessageCircle, Bell, FileCheck, Users, Settings, BarChart3, CreditCard, Link2, Upload, Download, Star, Sparkles, Target, Rocket, Timer, Save, Building2, Instagram, Heart, MapPin } from 'lucide-react';
 
 export default function ConsultoriosLandingPage() {
 	return (
@@ -48,36 +18,22 @@ export default function ConsultoriosLandingPage() {
 
 				<div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
 					<div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
-						<motion.div
-							initial={{ opacity: 0, x: -30 }}
-							animate={{ opacity: 1, x: 0 }}
-							transition={{ duration: 0.6 }}
-							className="text-center lg:text-left"
-						>
+						<motion.div initial={{ opacity: 0, x: -30 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.6 }} className="text-center lg:text-left">
 							{/* Badge de urgencia/escasez */}
-							<motion.div
-								initial={{ opacity: 0, y: -20 }}
-								animate={{ opacity: 1, y: 0 }}
-								transition={{ delay: 0.2 }}
-								className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-teal-100 to-cyan-100 rounded-full mb-6 shadow-md"
-							>
+							<motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-teal-100 to-cyan-100 rounded-full mb-6 shadow-md">
 								<Sparkles className="w-5 h-5 text-teal-600 animate-pulse" />
 								<span className="text-sm font-semibold text-teal-700">Ahorra hasta 30% en suscripción anual</span>
 							</motion.div>
 
 							{/* Headline con beneficio principal */}
 							<h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-extrabold text-slate-900 mb-6 leading-tight">
-								<span className="bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-600 bg-clip-text text-transparent">
-									Reduce 40% el Tiempo
-								</span>
+								<span className="bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-600 bg-clip-text text-transparent">Reduce 40% el Tiempo</span>
 								<br />
 								<span className="text-slate-800">en Cada Consulta</span>
 							</h1>
 
 							{/* Subheadline con prueba social */}
-							<p className="text-lg sm:text-xl md:text-2xl text-slate-600 mb-4 leading-relaxed font-medium">
-								La plataforma #1 para consultorios privados. Genera informes médicos automáticamente y gestiona tu práctica con herramientas profesionales.
-							</p>
+							<p className="text-lg sm:text-xl md:text-2xl text-slate-600 mb-4 leading-relaxed font-medium">La plataforma #1 para consultorios privados. Genera informes médicos automáticamente y gestiona tu práctica con herramientas profesionales.</p>
 
 							{/* Prueba social */}
 							<div className="flex items-center gap-2 mb-8 justify-center lg:justify-start">
@@ -86,26 +42,17 @@ export default function ConsultoriosLandingPage() {
 										<div key={i} className="w-10 h-10 rounded-full bg-gradient-to-br from-teal-400 to-cyan-400 border-2 border-white" />
 									))}
 								</div>
-								<div className="text-sm text-slate-600">
-									<span className="font-semibold text-slate-900">+500 consultorios</span> ya confían en nosotros
-								</div>
 							</div>
 
 							{/* CTAs con urgencia */}
 							<div className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start">
-								<Link
-									href="/register"
-									className="group relative inline-flex items-center justify-center gap-2 px-8 py-4 bg-gradient-to-r from-teal-600 to-cyan-600 hover:from-teal-700 hover:to-cyan-700 text-white font-bold rounded-2xl shadow-xl hover:shadow-2xl transform hover:scale-105 transition-all duration-300 text-base sm:text-lg overflow-hidden"
-								>
+								<Link href="/register" className="group relative inline-flex items-center justify-center gap-2 px-8 py-4 bg-gradient-to-r from-teal-600 to-cyan-600 hover:from-teal-700 hover:to-cyan-700 text-white font-bold rounded-2xl shadow-xl hover:shadow-2xl transform hover:scale-105 transition-all duration-300 text-base sm:text-lg overflow-hidden">
 									<span className="absolute inset-0 bg-gradient-to-r from-white/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
 									<Rocket className="w-5 h-5 relative z-10" />
 									<span className="relative z-10">Comenzar Gratis Ahora</span>
 									<ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform relative z-10" />
 								</Link>
-								<Link
-									href="/login"
-									className="inline-flex items-center justify-center gap-2 px-8 py-4 bg-white hover:bg-slate-50 text-slate-700 font-semibold rounded-2xl border-2 border-slate-200 hover:border-teal-300 shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-300 text-base sm:text-lg"
-								>
+								<Link href="/login" className="inline-flex items-center justify-center gap-2 px-8 py-4 bg-white hover:bg-slate-50 text-slate-700 font-semibold rounded-2xl border-2 border-slate-200 hover:border-teal-300 shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-300 text-base sm:text-lg">
 									Iniciar Sesión
 								</Link>
 							</div>
@@ -117,32 +64,16 @@ export default function ConsultoriosLandingPage() {
 							</div>
 						</motion.div>
 
-						<motion.div
-							initial={{ opacity: 0, x: 30 }}
-							animate={{ opacity: 1, x: 0 }}
-							transition={{ duration: 0.6, delay: 0.2 }}
-							className="relative"
-						>
+						<motion.div initial={{ opacity: 0, x: 30 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.6, delay: 0.2 }} className="relative">
 							<div className="relative bg-gradient-to-br from-teal-500/10 via-cyan-500/10 to-blue-500/10 rounded-3xl p-12 backdrop-blur-sm border border-white/20 shadow-2xl">
 								<div className="grid grid-cols-2 gap-6">
 									{[Stethoscope, User, Calendar, FileText].map((Icon, index) => (
-										<motion.div
-											key={index}
-											initial={{ opacity: 0, scale: 0.8 }}
-											animate={{ opacity: 1, scale: 1 }}
-											transition={{ delay: 0.4 + index * 0.1 }}
-											whileHover={{ scale: 1.1, rotate: 5 }}
-											className="bg-white rounded-2xl p-6 shadow-lg flex items-center justify-center"
-										>
+										<motion.div key={index} initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.4 + index * 0.1 }} whileHover={{ scale: 1.1, rotate: 5 }} className="bg-white rounded-2xl p-6 shadow-lg flex items-center justify-center">
 											<Icon className="w-12 h-12 text-teal-600" />
 										</motion.div>
 									))}
 								</div>
-								<motion.div
-									animate={{ rotate: [0, 360] }}
-									transition={{ duration: 20, repeat: Infinity, ease: 'linear' }}
-									className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-24 h-24 bg-gradient-to-br from-teal-600 to-cyan-600 rounded-full flex items-center justify-center shadow-2xl"
-								>
+								<motion.div animate={{ rotate: [0, 360] }} transition={{ duration: 20, repeat: Infinity, ease: 'linear' }} className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-24 h-24 bg-gradient-to-br from-teal-600 to-cyan-600 rounded-full flex items-center justify-center shadow-2xl">
 									<Zap className="w-12 h-12 text-white" />
 								</motion.div>
 							</div>
@@ -156,42 +87,20 @@ export default function ConsultoriosLandingPage() {
 				<div className="absolute inset-0 bg-gradient-to-br from-teal-50/50 to-cyan-50/50" />
 				<div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
 					<div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
-						<motion.div
-							initial={{ opacity: 0, x: -30 }}
-							whileInView={{ opacity: 1, x: 0 }}
-							viewport={{ once: true }}
-							transition={{ duration: 0.6 }}
-						>
+						<motion.div initial={{ opacity: 0, x: -30 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true }} transition={{ duration: 0.6 }}>
 							<div className="inline-flex items-center gap-2 px-4 py-2 bg-teal-100 rounded-full mb-6">
 								<Target className="w-5 h-5 text-teal-600" />
 								<span className="text-sm font-semibold text-teal-600">Nuestra Principal Fortaleza</span>
 							</div>
 							<h2 className="text-3xl sm:text-4xl md:text-5xl font-bold text-slate-900 mb-6">
-								Genera Informes Médicos{' '}
-								<span className="bg-gradient-to-r from-teal-600 to-cyan-600 bg-clip-text text-transparent">
-									Automáticamente
-								</span>
+								Genera Informes Médicos <span className="bg-gradient-to-r from-teal-600 to-cyan-600 bg-clip-text text-transparent">Automáticamente</span>
 							</h2>
 							<p className="text-lg text-slate-600 mb-6 leading-relaxed">
-								<strong className="text-slate-900">Ahorra tiempo en cada consulta.</strong> Carga tu plantilla de informe y estructura una sola vez. 
-								La plataforma generará automáticamente el informe completo después de llenar el formulario.
+								<strong className="text-slate-900">Ahorra tiempo en cada consulta.</strong> Carga tu plantilla de informe y estructura una sola vez. La plataforma generará automáticamente el informe completo después de llenar el formulario.
 							</p>
 							<div className="space-y-4">
-								{[
-									'Carga tu plantilla Word personalizada',
-									'Define la estructura de tu informe',
-									'Llena el formulario de consulta',
-									'Descarga el informe generado automáticamente',
-									'Solo imprime y firma',
-								].map((step, index) => (
-									<motion.div
-										key={step}
-										initial={{ opacity: 0, x: -20 }}
-										whileInView={{ opacity: 1, x: 0 }}
-										viewport={{ once: true }}
-										transition={{ duration: 0.5, delay: index * 0.1 }}
-										className="flex items-center gap-3"
-									>
+								{['Carga tu plantilla Word personalizada', 'Define la estructura de tu informe', 'Llena el formulario de consulta', 'Descarga el informe generado automáticamente', 'Solo imprime y firma'].map((step, index) => (
+									<motion.div key={step} initial={{ opacity: 0, x: -20 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true }} transition={{ duration: 0.5, delay: index * 0.1 }} className="flex items-center gap-3">
 										<div className="flex-shrink-0 w-8 h-8 rounded-full bg-gradient-to-br from-teal-500 to-cyan-500 flex items-center justify-center shadow-md">
 											<CheckCircle2 className="w-5 h-5 text-white" />
 										</div>
@@ -208,13 +117,7 @@ export default function ConsultoriosLandingPage() {
 							</div>
 						</motion.div>
 
-						<motion.div
-							initial={{ opacity: 0, x: 30 }}
-							whileInView={{ opacity: 1, x: 0 }}
-							viewport={{ once: true }}
-							transition={{ duration: 0.6 }}
-							className="relative"
-						>
+						<motion.div initial={{ opacity: 0, x: 30 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true }} transition={{ duration: 0.6 }} className="relative">
 							<div className="relative bg-gradient-to-br from-teal-500 via-cyan-500 to-blue-500 rounded-3xl p-8 sm:p-12 shadow-2xl overflow-hidden">
 								<div className="absolute inset-0 bg-white/10 backdrop-blur-sm" />
 								<div className="relative z-10 space-y-6">
@@ -247,19 +150,9 @@ export default function ConsultoriosLandingPage() {
 			{/* Sección: Funciones para Especialistas */}
 			<section className="py-16 sm:py-20 md:py-24 bg-gradient-to-br from-slate-50 to-teal-50/30">
 				<div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-					<motion.div
-						initial={{ opacity: 0, y: 30 }}
-						whileInView={{ opacity: 1, y: 0 }}
-						viewport={{ once: true }}
-						transition={{ duration: 0.6 }}
-						className="text-center mb-12 sm:mb-16"
-					>
-						<h2 className="text-3xl sm:text-4xl md:text-5xl font-bold text-slate-900 mb-4">
-							Todo lo que Necesitas para tu Consultorio
-						</h2>
-						<p className="text-lg sm:text-xl text-slate-600 max-w-3xl mx-auto">
-							Herramientas profesionales diseñadas específicamente para consultorios privados. Configuración completa desde el primer registro.
-						</p>
+					<motion.div initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.6 }} className="text-center mb-12 sm:mb-16">
+						<h2 className="text-3xl sm:text-4xl md:text-5xl font-bold text-slate-900 mb-4">Todo lo que Necesitas para tu Consultorio</h2>
+						<p className="text-lg sm:text-xl text-slate-600 max-w-3xl mx-auto">Herramientas profesionales diseñadas específicamente para consultorios privados. Configuración completa desde el primer registro.</p>
 					</motion.div>
 
 					<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
@@ -319,15 +212,7 @@ export default function ConsultoriosLandingPage() {
 								gradient: 'from-blue-500 to-indigo-500',
 							},
 						].map((feature, index) => (
-							<motion.div
-								key={feature.title}
-								initial={{ opacity: 0, scale: 0.9 }}
-								whileInView={{ opacity: 1, scale: 1 }}
-								viewport={{ once: true }}
-								transition={{ duration: 0.5, delay: index * 0.1 }}
-								whileHover={{ scale: 1.05, y: -5 }}
-								className="group relative bg-white rounded-2xl p-6 shadow-md hover:shadow-xl border border-slate-100 transition-all duration-300 overflow-hidden"
-							>
+							<motion.div key={feature.title} initial={{ opacity: 0, scale: 0.9 }} whileInView={{ opacity: 1, scale: 1 }} viewport={{ once: true }} transition={{ duration: 0.5, delay: index * 0.1 }} whileHover={{ scale: 1.05, y: -5 }} className="group relative bg-white rounded-2xl p-6 shadow-md hover:shadow-xl border border-slate-100 transition-all duration-300 overflow-hidden">
 								<div className={`absolute inset-0 bg-gradient-to-br ${feature.gradient} opacity-0 group-hover:opacity-5 rounded-2xl transition-opacity duration-300`} />
 								<div className={`inline-flex items-center justify-center w-14 h-14 rounded-xl bg-gradient-to-br ${feature.gradient} shadow-md mb-4 group-hover:scale-110 group-hover:rotate-3 transition-all duration-300`}>
 									<feature.icon className="w-7 h-7 text-white" />
@@ -343,19 +228,9 @@ export default function ConsultoriosLandingPage() {
 			{/* Sección: Beneficios Detallados */}
 			<section className="py-16 sm:py-20 md:py-24 bg-white">
 				<div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-					<motion.div
-						initial={{ opacity: 0, y: 30 }}
-						whileInView={{ opacity: 1, y: 0 }}
-						viewport={{ once: true }}
-						transition={{ duration: 0.6 }}
-						className="text-center mb-12 sm:mb-16"
-					>
-						<h2 className="text-3xl sm:text-4xl md:text-5xl font-bold text-slate-900 mb-4">
-							Beneficios Exclusivos de la Plataforma
-						</h2>
-						<p className="text-lg sm:text-xl text-slate-600 max-w-3xl mx-auto">
-							Herramientas únicas diseñadas para hacer crecer tu consultorio y mejorar la experiencia de tus pacientes
-						</p>
+					<motion.div initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.6 }} className="text-center mb-12 sm:mb-16">
+						<h2 className="text-3xl sm:text-4xl md:text-5xl font-bold text-slate-900 mb-4">Beneficios Exclusivos de la Plataforma</h2>
+						<p className="text-lg sm:text-xl text-slate-600 max-w-3xl mx-auto">Herramientas únicas diseñadas para hacer crecer tu consultorio y mejorar la experiencia de tus pacientes</p>
 					</motion.div>
 
 					<div className="grid grid-cols-1 md:grid-cols-2 gap-8">
@@ -397,21 +272,10 @@ export default function ConsultoriosLandingPage() {
 								color: 'blue',
 							},
 						].map((benefit, index) => (
-							<motion.div
-								key={benefit.title}
-								initial={{ opacity: 0, y: 20 }}
-								whileInView={{ opacity: 1, y: 0 }}
-								viewport={{ once: true }}
-								transition={{ duration: 0.5, delay: index * 0.1 }}
-								className="group bg-gradient-to-br from-white to-slate-50 rounded-2xl p-6 sm:p-8 shadow-md hover:shadow-xl border border-slate-200 transition-all duration-300"
-							>
-							<div className={`inline-flex items-center justify-center w-14 h-14 rounded-xl shadow-md mb-4 group-hover:scale-110 transition-transform ${
-								benefit.color === 'teal' ? 'bg-gradient-to-br from-teal-500 to-cyan-500' :
-								benefit.color === 'cyan' ? 'bg-gradient-to-br from-cyan-500 to-blue-500' :
-								'bg-gradient-to-br from-blue-500 to-indigo-500'
-							}`}>
-								<benefit.icon className="w-7 h-7 text-white" />
-							</div>
+							<motion.div key={benefit.title} initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.5, delay: index * 0.1 }} className="group bg-gradient-to-br from-white to-slate-50 rounded-2xl p-6 sm:p-8 shadow-md hover:shadow-xl border border-slate-200 transition-all duration-300">
+								<div className={`inline-flex items-center justify-center w-14 h-14 rounded-xl shadow-md mb-4 group-hover:scale-110 transition-transform ${benefit.color === 'teal' ? 'bg-gradient-to-br from-teal-500 to-cyan-500' : benefit.color === 'cyan' ? 'bg-gradient-to-br from-cyan-500 to-blue-500' : 'bg-gradient-to-br from-blue-500 to-indigo-500'}`}>
+									<benefit.icon className="w-7 h-7 text-white" />
+								</div>
 								<h3 className="text-xl font-bold text-slate-900 mb-3">{benefit.title}</h3>
 								<p className="text-base text-slate-600 leading-relaxed">{benefit.description}</p>
 							</motion.div>
@@ -427,19 +291,9 @@ export default function ConsultoriosLandingPage() {
 					<div className="absolute bottom-0 left-0 w-96 h-96 bg-cyan-400/10 rounded-full blur-3xl" />
 				</div>
 				<div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-					<motion.div
-						initial={{ opacity: 0, y: 30 }}
-						whileInView={{ opacity: 1, y: 0 }}
-						viewport={{ once: true }}
-						transition={{ duration: 0.6 }}
-						className="text-center mb-12 sm:mb-16"
-					>
-						<h2 className="text-3xl sm:text-4xl md:text-5xl font-bold text-slate-900 mb-4">
-							Planes de Suscripción Flexibles
-						</h2>
-						<p className="text-lg sm:text-xl text-slate-600 max-w-2xl mx-auto">
-							Elige el plan que mejor se adapte a tu consultorio. Ahorra más con suscripciones de largo plazo.
-						</p>
+					<motion.div initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.6 }} className="text-center mb-12 sm:mb-16">
+						<h2 className="text-3xl sm:text-4xl md:text-5xl font-bold text-slate-900 mb-4">Planes de Suscripción Flexibles</h2>
+						<p className="text-lg sm:text-xl text-slate-600 max-w-2xl mx-auto">Elige el plan que mejor se adapte a tu consultorio. Ahorra más con suscripciones de largo plazo.</p>
 					</motion.div>
 
 					<div className="grid grid-cols-1 md:grid-cols-3 gap-6 sm:gap-8 max-w-6xl mx-auto">
@@ -473,21 +327,8 @@ export default function ConsultoriosLandingPage() {
 								features: ['Todo del plan mensual', '30% de descuento', 'Facturación anual', 'Soporte prioritario', 'Onboarding personalizado'],
 							},
 						].map((plan, index) => (
-							<motion.div
-								key={plan.period}
-								initial={{ opacity: 0, y: 30 }}
-								whileInView={{ opacity: 1, y: 0 }}
-								viewport={{ once: true }}
-								transition={{ duration: 0.5, delay: index * 0.1 }}
-								className={`relative bg-white rounded-3xl p-8 shadow-xl hover:shadow-2xl transition-all duration-300 ${
-									plan.popular ? 'ring-4 ring-teal-500 scale-105' : ''
-								}`}
-							>
-								{plan.popular && (
-									<div className="absolute -top-4 left-1/2 -translate-x-1/2 px-4 py-1 bg-gradient-to-r from-teal-600 to-cyan-600 text-white text-sm font-bold rounded-full">
-										MÁS POPULAR
-									</div>
-								)}
+							<motion.div key={plan.period} initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.5, delay: index * 0.1 }} className={`relative bg-white rounded-3xl p-8 shadow-xl hover:shadow-2xl transition-all duration-300 ${plan.popular ? 'ring-4 ring-teal-500 scale-105' : ''}`}>
+								{plan.popular && <div className="absolute -top-4 left-1/2 -translate-x-1/2 px-4 py-1 bg-gradient-to-r from-teal-600 to-cyan-600 text-white text-sm font-bold rounded-full">MÁS POPULAR</div>}
 								{plan.discount && (
 									<div className="absolute -top-3 -right-3 w-16 h-16 bg-gradient-to-br from-teal-500 to-cyan-500 rounded-full flex items-center justify-center shadow-lg">
 										<span className="text-white text-xs font-bold text-center leading-tight">{plan.discount}</span>
@@ -496,17 +337,11 @@ export default function ConsultoriosLandingPage() {
 								<div className="text-center mb-6">
 									<h3 className="text-2xl font-bold text-slate-900 mb-2">{plan.period}</h3>
 									<div className="flex items-baseline justify-center gap-2">
-										{plan.originalPrice && (
-											<span className="text-xl text-slate-400 line-through">${plan.originalPrice}</span>
-										)}
-										<span className="text-4xl sm:text-5xl font-extrabold bg-gradient-to-r from-teal-600 to-cyan-600 bg-clip-text text-transparent">
-											{plan.price}
-										</span>
+										{plan.originalPrice && <span className="text-xl text-slate-400 line-through">${plan.originalPrice}</span>}
+										<span className="text-4xl sm:text-5xl font-extrabold bg-gradient-to-r from-teal-600 to-cyan-600 bg-clip-text text-transparent">{plan.price}</span>
 										<span className="text-slate-600">/{plan.periodText}</span>
 									</div>
-									{plan.discountText && (
-										<p className="text-sm text-teal-600 font-semibold mt-2">{plan.discountText}</p>
-									)}
+									{plan.discountText && <p className="text-sm text-teal-600 font-semibold mt-2">{plan.discountText}</p>}
 								</div>
 								<ul className="space-y-3 mb-8">
 									{plan.features.map((feature, i) => (
@@ -516,14 +351,7 @@ export default function ConsultoriosLandingPage() {
 										</li>
 									))}
 								</ul>
-								<Link
-									href="/register"
-									className={`block w-full text-center py-3 px-6 rounded-xl font-semibold transition-all duration-300 ${
-										plan.popular
-											? 'bg-gradient-to-r from-teal-600 to-cyan-600 text-white hover:from-teal-700 hover:to-cyan-700 shadow-lg hover:shadow-xl'
-											: 'bg-slate-100 text-slate-700 hover:bg-slate-200'
-									}`}
-								>
+								<Link href="/register" className={`block w-full text-center py-3 px-6 rounded-xl font-semibold transition-all duration-300 ${plan.popular ? 'bg-gradient-to-r from-teal-600 to-cyan-600 text-white hover:from-teal-700 hover:to-cyan-700 shadow-lg hover:shadow-xl' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'}`}>
 									Elegir Plan
 								</Link>
 							</motion.div>
@@ -532,31 +360,112 @@ export default function ConsultoriosLandingPage() {
 				</div>
 			</section>
 
+			{/* Sección: Doctores Que Confían En Nosotros */}
+			<section className="py-16 sm:py-20 md:py-24 bg-gradient-to-br from-slate-50 via-white to-teal-50/30 relative overflow-hidden">
+				<div className="absolute inset-0 overflow-hidden pointer-events-none">
+					<div className="absolute top-0 right-0 w-96 h-96 bg-teal-400/5 rounded-full blur-3xl" />
+					<div className="absolute bottom-0 left-0 w-96 h-96 bg-cyan-400/5 rounded-full blur-3xl" />
+				</div>
+				<div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+					<motion.div initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.6 }} className="text-center mb-12 sm:mb-16">
+						<div className="inline-flex items-center gap-2 px-4 py-2 bg-teal-100 rounded-full mb-4">
+							<Heart className="w-5 h-5 text-teal-600" />
+							<span className="text-sm font-semibold text-teal-600">Doctores Que Confían En Nosotros</span>
+						</div>
+						<h2 className="text-3xl sm:text-4xl md:text-5xl font-bold text-slate-900 mb-4">Conoce a Nuestros Especialistas</h2>
+						<p className="text-lg text-slate-600 max-w-2xl mx-auto">Profesionales de la salud que transforman su práctica con nuestra plataforma</p>
+					</motion.div>
+
+					{/* Perfil de la Dra. Carwin Silva */}
+					<motion.div initial={{ opacity: 0, y: 50 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.8 }} className="max-w-6xl mx-auto">
+						<div className="bg-white rounded-3xl shadow-2xl overflow-hidden border border-slate-100">
+							<div className="grid grid-cols-1 lg:grid-cols-2 gap-0">
+								{/* Imagen */}
+								<div className="relative h-96 lg:h-auto min-h-[500px] bg-gradient-to-br from-teal-500/10 to-cyan-500/10">
+									<Image src="/consultorios/dracarwin/IMG_5197.JPG" alt="Dra. Carwin Silva - Ginecóloga y Obstetra" fill className="object-cover" priority />
+									<div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent" />
+									<div className="absolute bottom-6 left-6 right-6">
+										<a href="https://www.instagram.com/dra.csilva/?utm_source=chatgpt.com" target="_blank" rel="noopener noreferrer" className="group inline-flex items-center gap-2 px-4 py-2 bg-white/95 backdrop-blur-sm rounded-full shadow-lg hover:bg-white transition-all duration-300 hover:scale-105">
+											<Instagram className="w-5 h-5 text-pink-600 group-hover:text-pink-700 transition-colors" />
+											<span className="text-sm font-semibold text-slate-900 group-hover:text-pink-600 transition-colors">@dra.csilva</span>
+										</a>
+									</div>
+								</div>
+
+								{/* Contenido */}
+								<div className="p-8 sm:p-10 lg:p-12 flex flex-col justify-center">
+									<div className="mb-6">
+										<h3 className="text-3xl sm:text-4xl font-bold text-slate-900 mb-3">Dra. Carwin Silva</h3>
+										<div className="flex flex-wrap items-center gap-2 mb-4">
+											<span className="inline-flex items-center gap-1 px-3 py-1 bg-teal-100 text-teal-700 rounded-full text-sm font-semibold">
+												<Stethoscope className="w-4 h-4" />
+												Ginecóloga y Obstetra
+											</span>
+											<span className="inline-flex items-center gap-1 px-3 py-1 bg-cyan-100 text-cyan-700 rounded-full text-sm font-semibold">
+												<MapPin className="w-4 h-4" />
+												Caracas, Venezuela
+											</span>
+										</div>
+									</div>
+
+									{/* ¿Quién es? */}
+									<div className="mb-6">
+										<h4 className="text-lg font-bold text-slate-900 mb-3 flex items-center gap-2">
+											<User className="w-5 h-5 text-teal-600" />
+											¿Quién es?
+										</h4>
+										<p className="text-base text-slate-700 leading-relaxed mb-3">Carwin Silva es una ginecóloga y obstetra que ejerce en Caracas (Venezuela), con consultorio en la zona de Sabana Grande.</p>
+										<p className="text-base text-slate-700 leading-relaxed">
+											Se define como especialista en <strong className="text-slate-900">ginecología regenerativa, funcional y estética</strong>.
+										</p>
+									</div>
+
+									{/* Enfoque / Filosofía */}
+									<div className="border-t border-slate-200 pt-6">
+										<h4 className="text-lg font-bold text-slate-900 mb-3 flex items-center gap-2">
+											<Target className="w-5 h-5 text-teal-600" />
+											Enfoque / Filosofía
+										</h4>
+										<p className="text-base text-slate-700 leading-relaxed mb-3">
+											La Dra. Silva siente que la ginecología regenerativa y estética <strong className="text-slate-900">"va más allá de la vanidad"</strong>: su interés es brindar soluciones que mejoren tanto la salud física como emocional de las mujeres.
+										</p>
+										<p className="text-base text-slate-700 leading-relaxed">
+											Expresa que su motivación siempre ha sido <strong className="text-slate-900">apoyar a las mujeres a lo largo de las distintas etapas de su vida</strong>, ofreciendo alternativas adaptadas a sus necesidades particulares.
+										</p>
+									</div>
+
+									{/* Badge de confianza */}
+									<div className="mt-8 pt-6 border-t border-slate-200">
+										<div className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-teal-50 to-cyan-50 rounded-full border border-teal-200">
+											<CheckCircle2 className="w-5 h-5 text-teal-600" />
+											<span className="text-sm font-semibold text-teal-700">Confía en nuestra plataforma</span>
+										</div>
+									</div>
+								</div>
+							</div>
+						</div>
+					</motion.div>
+				</div>
+			</section>
+
 			{/* Sección: Consultorios Que Confían En Nosotros */}
 			<section className="py-16 sm:py-20 md:py-24 bg-white">
 				<div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-					<motion.div
-						initial={{ opacity: 0, y: 30 }}
-						whileInView={{ opacity: 1, y: 0 }}
-						viewport={{ once: true }}
-						transition={{ duration: 0.6 }}
-						className="text-center mb-12"
-					>
-						<h2 className="text-3xl sm:text-4xl md:text-5xl font-bold text-slate-900 mb-4">
-							Consultorios Que Confían En Nosotros
-						</h2>
-						<p className="text-lg text-slate-600 max-w-2xl mx-auto">
-							Únete a los consultorios que ya están transformando su práctica médica
-						</p>
+					<motion.div initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.6 }} className="text-center mb-12">
+						<h2 className="text-3xl sm:text-4xl md:text-5xl font-bold text-slate-900 mb-4">Consultorios Que Confían En Nosotros</h2>
+						<p className="text-lg text-slate-600 max-w-2xl mx-auto">Únete a los consultorios que ya están transformando su práctica médica</p>
 					</motion.div>
-					{/* Placeholder para futuros consultorios */}
-					<div className="grid grid-cols-2 md:grid-cols-4 gap-8 opacity-30">
-						{[1, 2, 3, 4].map((i) => (
-							<div key={i} className="bg-slate-100 rounded-2xl p-8 flex items-center justify-center h-32">
+					{/* Consultorios que confían en nosotros */}
+					<motion.div initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.6 }} className="grid grid-cols-2 md:grid-cols-4 gap-8">
+						<div className="bg-white rounded-2xl p-6 flex items-center justify-center h-32 shadow-md hover:shadow-lg transition-shadow duration-300">
+							<Image src="/consultorios/dracarwin/Recurso 28.png" alt="Dr. Acarwin - Consultorio que confía en nosotros" width={200} height={100} className="object-contain max-w-full max-h-full" />
+						</div>
+						{[1, 2, 3].map((i) => (
+							<div key={i} className="bg-slate-100 rounded-2xl p-8 flex items-center justify-center h-32 opacity-30">
 								<Building2 className="w-12 h-12 text-slate-400" />
 							</div>
 						))}
-					</div>
+					</motion.div>
 				</div>
 			</section>
 
@@ -567,32 +476,16 @@ export default function ConsultoriosLandingPage() {
 					<div className="absolute bottom-0 right-0 w-96 h-96 bg-white/10 rounded-full blur-3xl" />
 				</div>
 				<div className="relative max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-					<motion.div
-						initial={{ opacity: 0, y: 30 }}
-						whileInView={{ opacity: 1, y: 0 }}
-						viewport={{ once: true }}
-						transition={{ duration: 0.6 }}
-					>
-						<h2 className="text-3xl sm:text-4xl md:text-5xl font-bold text-white mb-6">
-							Comienza a Ahorrar Tiempo Hoy
-						</h2>
-						<p className="text-lg sm:text-xl text-teal-50 mb-8 max-w-2xl mx-auto">
-							Únete a más de 500 consultorios que ya están reduciendo 40% el tiempo en cada consulta. 
-							Registro gratuito, sin tarjeta de crédito.
-						</p>
+					<motion.div initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.6 }}>
+						<h2 className="text-3xl sm:text-4xl md:text-5xl font-bold text-white mb-6">Comienza a Ahorrar Tiempo Hoy</h2>
+						<p className="text-lg sm:text-xl text-teal-50 mb-8 max-w-2xl mx-auto">Únete a más de 500 consultorios que ya están reduciendo 40% el tiempo en cada consulta. Registro gratuito, sin tarjeta de crédito.</p>
 						<div className="flex flex-col sm:flex-row gap-4 justify-center">
-							<Link
-								href="/register"
-								className="group inline-flex items-center justify-center gap-2 px-8 py-4 bg-white hover:bg-slate-50 text-teal-600 font-bold rounded-2xl shadow-xl hover:shadow-2xl transform hover:scale-105 transition-all duration-300 text-base sm:text-lg"
-							>
+							<Link href="/register" className="group inline-flex items-center justify-center gap-2 px-8 py-4 bg-white hover:bg-slate-50 text-teal-600 font-bold rounded-2xl shadow-xl hover:shadow-2xl transform hover:scale-105 transition-all duration-300 text-base sm:text-lg">
 								<Rocket className="w-5 h-5" />
 								Comenzar Gratis Ahora
 								<ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
 							</Link>
-							<Link
-								href="/login"
-								className="inline-flex items-center justify-center gap-2 px-8 py-4 bg-white/10 hover:bg-white/20 backdrop-blur-md text-white font-semibold rounded-2xl border-2 border-white/30 hover:border-white/50 shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-300 text-base sm:text-lg"
-							>
+							<Link href="/login" className="inline-flex items-center justify-center gap-2 px-8 py-4 bg-white/10 hover:bg-white/20 backdrop-blur-md text-white font-semibold rounded-2xl border-2 border-white/30 hover:border-white/50 shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-300 text-base sm:text-lg">
 								Iniciar Sesión
 							</Link>
 						</div>

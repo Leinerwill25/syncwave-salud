@@ -91,6 +91,8 @@ CREATE TABLE public.Patient (
   disability text,
   has_elderly_conditions boolean DEFAULT false,
   elderly_conditions text,
+  unregistered_patient_id uuid UNIQUE,
+  profession text,
   CONSTRAINT Patient_pkey PRIMARY KEY (id)
 );
 CREATE TABLE public.Plan (
@@ -235,6 +237,8 @@ CREATE TABLE public.consultation (
   medical_record_id uuid,
   unregistered_patient_id uuid,
   report_url text,
+  icd11_code character varying,
+  icd11_title text,
   CONSTRAINT consultation_pkey PRIMARY KEY (id),
   CONSTRAINT fk_consultation_patient FOREIGN KEY (patient_id) REFERENCES public.Patient(id),
   CONSTRAINT fk_consultation_doctor FOREIGN KEY (doctor_id) REFERENCES public.User(id),
@@ -405,6 +409,8 @@ CREATE TABLE public.medic_profile (
   has_cashea boolean DEFAULT false,
   report_template_url text,
   report_template_name text,
+  report_template_text text,
+  report_font_family text DEFAULT 'Arial'::text,
   CONSTRAINT medic_profile_pkey PRIMARY KEY (id),
   CONSTRAINT fk_medic_profile_doctor FOREIGN KEY (doctor_id) REFERENCES public.User(id)
 );
@@ -510,7 +516,7 @@ CREATE TABLE public.pharmacy_order_item (
 );
 CREATE TABLE public.prescription (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
-  patient_id uuid NOT NULL,
+  patient_id uuid,
   doctor_id uuid NOT NULL,
   consultation_id uuid,
   issued_at timestamp with time zone NOT NULL DEFAULT now(),
@@ -518,10 +524,12 @@ CREATE TABLE public.prescription (
   notes text,
   status text NOT NULL DEFAULT 'ACTIVE'::text,
   created_at timestamp with time zone NOT NULL DEFAULT now(),
+  unregistered_patient_id uuid,
   CONSTRAINT prescription_pkey PRIMARY KEY (id),
   CONSTRAINT fk_prescription_patient FOREIGN KEY (patient_id) REFERENCES public.Patient(id),
   CONSTRAINT fk_prescription_doctor FOREIGN KEY (doctor_id) REFERENCES public.User(id),
-  CONSTRAINT fk_prescription_consultation FOREIGN KEY (consultation_id) REFERENCES public.consultation(id)
+  CONSTRAINT fk_prescription_consultation FOREIGN KEY (consultation_id) REFERENCES public.consultation(id),
+  CONSTRAINT fk_prescription_unregistered_patient FOREIGN KEY (unregistered_patient_id) REFERENCES public.unregisteredpatients(id)
 );
 CREATE TABLE public.prescription_dispense (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
@@ -613,6 +621,7 @@ CREATE TABLE public.unregisteredpatients (
   vital_temperature numeric,
   vital_spo2 integer,
   vital_glucose numeric,
+  profession text,
   CONSTRAINT unregisteredpatients_pkey PRIMARY KEY (id),
   CONSTRAINT unregisteredpatients_created_by_fkey FOREIGN KEY (created_by) REFERENCES public.medic_profile(id),
   CONSTRAINT unregisteredpatients_migrated_to_patient_id_fkey FOREIGN KEY (migrated_to_patient_id) REFERENCES public.Patient(id)

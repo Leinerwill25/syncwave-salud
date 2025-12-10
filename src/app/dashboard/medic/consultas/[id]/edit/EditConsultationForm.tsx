@@ -188,9 +188,14 @@ export default function EditConsultationForm({ initial, patient, doctor, doctorS
 	const [endedAt, setEndedAt] = useState(initial.ended_at ? toLocalDateTime(initial.ended_at) : '');
 
 	// Información General del Paciente
-	const [patientFullName, setPatientFullName] = useState('');
+	const [patientFirstName, setPatientFirstName] = useState('');
+	const [patientLastName, setPatientLastName] = useState('');
+	const [patientIdentifier, setPatientIdentifier] = useState('');
+	const [patientDob, setPatientDob] = useState('');
+	const [patientAge, setPatientAge] = useState<number | null>(null);
 	const [patientPhone, setPatientPhone] = useState('');
 	const [patientAddress, setPatientAddress] = useState('');
+	const [patientProfession, setPatientProfession] = useState('');
 	const [patientBloodType, setPatientBloodType] = useState('');
 	const [patientAllergies, setPatientAllergies] = useState('');
 	const [patientChronicConditions, setPatientChronicConditions] = useState('');
@@ -238,6 +243,39 @@ export default function EditConsultationForm({ initial, patient, doctor, doctorS
 
 	const [expandedSpecialties, setExpandedSpecialties] = useState<Set<string>>(initialExpandedSpecialties);
 
+	// Función para calcular la edad a partir de la fecha de nacimiento
+	const calculateAge = (dob: string | Date | null | undefined): number | null => {
+		if (!dob) return null;
+		try {
+			const birthDate = typeof dob === 'string' ? new Date(dob) : dob;
+			if (isNaN(birthDate.getTime())) return null;
+			const today = new Date();
+			let age = today.getFullYear() - birthDate.getFullYear();
+			const monthDiff = today.getMonth() - birthDate.getMonth();
+			if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+				age--;
+			}
+			return age;
+		} catch {
+			return null;
+		}
+	};
+
+	// Función para convertir fecha a formato input date (YYYY-MM-DD)
+	const toDateInput = (date: string | Date | null | undefined): string => {
+		if (!date) return '';
+		try {
+			const d = typeof date === 'string' ? new Date(date) : date;
+			if (isNaN(d.getTime())) return '';
+			const yyyy = d.getFullYear();
+			const mm = String(d.getMonth() + 1).padStart(2, '0');
+			const dd = String(d.getDate()).padStart(2, '0');
+			return `${yyyy}-${mm}-${dd}`;
+		} catch {
+			return '';
+		}
+	};
+
 	// Cargar datos del paciente cuando cambie el prop
 	useEffect(() => {
 		if (!patient) return;
@@ -246,24 +284,45 @@ export default function EditConsultationForm({ initial, patient, doctor, doctorS
 
 		if (isUnregistered) {
 			// Paciente no registrado
-			setPatientFullName(`${patient.firstName || ''} ${patient.lastName || ''}`.trim());
+			setPatientFirstName(patient.firstName || patient.first_name || '');
+			setPatientLastName(patient.lastName || patient.last_name || '');
+			setPatientIdentifier(patient.identification || patient.identifier || '');
+			const dob = patient.birth_date || patient.dob;
+			setPatientDob(toDateInput(dob));
+			setPatientAge(calculateAge(dob));
 			setPatientPhone(patient.phone || '');
 			setPatientAddress(patient.address || '');
+			setPatientProfession(patient.profession || '');
 			setPatientAllergies(patient.allergies || '');
-			setPatientChronicConditions(patient.chronicConditions || '');
-			setPatientCurrentMedications(patient.currentMedication || '');
-			setPatientFamilyHistory(patient.familyHistory || '');
+			setPatientChronicConditions(patient.chronicConditions || patient.chronic_conditions || '');
+			setPatientCurrentMedications(patient.currentMedication || patient.current_medication || '');
+			setPatientFamilyHistory(patient.familyHistory || patient.family_history || '');
 		} else {
 			// Paciente registrado
-			setPatientFullName(`${patient.firstName || ''} ${patient.lastName || ''}`.trim());
+			setPatientFirstName(patient.firstName || '');
+			setPatientLastName(patient.lastName || '');
+			setPatientIdentifier(patient.identifier || '');
+			setPatientDob(toDateInput(patient.dob));
+			setPatientAge(calculateAge(patient.dob));
 			setPatientPhone(patient.phone || '');
 			setPatientAddress(patient.address || '');
-			setPatientBloodType(patient.bloodType || '');
+			setPatientProfession(patient.profession || '');
+			setPatientBloodType(patient.bloodType || patient.blood_type || '');
 			setPatientAllergies(patient.allergies || '');
 			setPatientChronicConditions(patient.chronicConditions || '');
 			setPatientCurrentMedications(patient.currentMedications || '');
 		}
 	}, [patient]);
+
+	// Actualizar edad cuando cambie la fecha de nacimiento
+	useEffect(() => {
+		if (patientDob) {
+			const age = calculateAge(patientDob);
+			setPatientAge(age);
+		} else {
+			setPatientAge(null);
+		}
+	}, [patientDob]);
 	const initGeneral = initVitals.general ?? {};
 	const initCardio = initVitals.cardiology ?? {};
 	const initPulmo = initVitals.pulmonology ?? {};
@@ -363,7 +422,6 @@ export default function EditConsultationForm({ initial, patient, doctor, doctorS
 	const [cervicalExamNotes, setCervicalExamNotes] = useState<string>(initGyn.cervical_exam ?? '');
 
 	// Campos adicionales de la plantilla de ginecología
-	const [evaluationReason, setEvaluationReason] = useState<string>(initGyn.evaluation_reason ?? '');
 	const [currentIllnessHistory, setCurrentIllnessHistory] = useState<string>(initGyn.current_illness_history ?? '');
 	const [allergies, setAllergies] = useState<string>(initGyn.allergies ?? 'NIEGA');
 	const [surgicalHistory, setSurgicalHistory] = useState<string>(initGyn.surgical_history ?? 'NIEGA');
@@ -394,6 +452,7 @@ export default function EditConsultationForm({ initial, patient, doctor, doctorS
 	const [uterusDimensions, setUterusDimensions] = useState<string>(initGyn.uterus_dimensions ?? '');
 	const [endometrialInterface, setEndometrialInterface] = useState<string>(initGyn.endometrial_interface ?? '');
 	const [endometrialInterfaceType, setEndometrialInterfaceType] = useState<string>(initGyn.endometrial_interface_type ?? '');
+	const [endometrialInterfacePhase, setEndometrialInterfacePhase] = useState<string>(initGyn.endometrial_interface_phase ?? '');
 	const [leftOvaryDimensions, setLeftOvaryDimensions] = useState<string>(initGyn.left_ovary_dimensions ?? '');
 	const [rightOvaryDimensions, setRightOvaryDimensions] = useState<string>(initGyn.right_ovary_dimensions ?? '');
 	const [fundusFluid, setFundusFluid] = useState<string>(initGyn.fundus_fluid ?? 'NO SE EVIDENCIA LÍQUIDO EN FONDO DE SACO');
@@ -586,7 +645,6 @@ export default function EditConsultationForm({ initial, patient, doctor, doctorS
 		if (contraceptiveUse) gyn.contraceptive = contraceptiveUse;
 		// gynDiagnosis removido - ahora se usa solo el diagnóstico CIE-11
 		if (cervicalExamNotes) gyn.cervical_exam = cervicalExamNotes;
-		if (evaluationReason) gyn.evaluation_reason = evaluationReason;
 		if (currentIllnessHistory) gyn.current_illness_history = currentIllnessHistory;
 		if (allergies) gyn.allergies = allergies;
 		if (surgicalHistory) gyn.surgical_history = surgicalHistory;
@@ -617,6 +675,7 @@ export default function EditConsultationForm({ initial, patient, doctor, doctorS
 		if (uterusDimensions) gyn.uterus_dimensions = uterusDimensions;
 		if (endometrialInterface) gyn.endometrial_interface = endometrialInterface;
 		if (endometrialInterfaceType) gyn.endometrial_interface_type = endometrialInterfaceType;
+		if (endometrialInterfacePhase) gyn.endometrial_interface_phase = endometrialInterfacePhase;
 		if (leftOvaryDimensions) gyn.left_ovary_dimensions = leftOvaryDimensions;
 		if (rightOvaryDimensions) gyn.right_ovary_dimensions = rightOvaryDimensions;
 		if (fundusFluid) gyn.fundus_fluid = fundusFluid;
@@ -809,6 +868,89 @@ export default function EditConsultationForm({ initial, patient, doctor, doctorS
 				throw new Error(data?.error || data?.message || 'Error al guardar');
 			}
 
+			// Actualizar información del paciente si existe
+			if (patient) {
+				const isUnregistered = (patient as any).isUnregistered;
+				const patientUpdatePayload: any = {
+					firstName: patientFirstName || null,
+					lastName: patientLastName || null,
+					identifier: patientIdentifier || null,
+					phone: patientPhone || null,
+					address: patientAddress || null,
+					profession: patientProfession || null,
+				};
+
+				// Agregar fecha de nacimiento si está presente
+				if (patientDob) {
+					if (isUnregistered) {
+						patientUpdatePayload.birth_date = patientDob;
+					} else {
+						patientUpdatePayload.dob = new Date(patientDob).toISOString();
+					}
+				}
+
+				// Para pacientes registrados, incluir campos adicionales
+				if (!isUnregistered) {
+					patientUpdatePayload.blood_type = patientBloodType || null;
+					patientUpdatePayload.allergies = patientAllergies || null;
+					patientUpdatePayload.chronic_conditions = patientChronicConditions || null;
+					patientUpdatePayload.current_medication = patientCurrentMedications || null;
+				} else {
+					// Para pacientes no registrados
+					patientUpdatePayload.allergies = patientAllergies || null;
+					patientUpdatePayload.chronic_conditions = patientChronicConditions || null;
+					patientUpdatePayload.current_medication = patientCurrentMedications || null;
+					patientUpdatePayload.family_history = patientFamilyHistory || null;
+				}
+
+				// Remover campos undefined
+				Object.keys(patientUpdatePayload).forEach((key) => {
+					if (patientUpdatePayload[key] === undefined) {
+						delete patientUpdatePayload[key];
+					}
+				});
+
+				const tableName = isUnregistered ? 'unregisteredpatients' : 'Patient';
+				const patientId = patient.id;
+
+				// Mapear nombres de campos para unregisteredpatients
+				if (isUnregistered) {
+					const mappedPayload: any = {};
+					if (patientUpdatePayload.firstName !== undefined) mappedPayload.first_name = patientUpdatePayload.firstName;
+					if (patientUpdatePayload.lastName !== undefined) mappedPayload.last_name = patientUpdatePayload.lastName;
+					if (patientUpdatePayload.identifier !== undefined) mappedPayload.identification = patientUpdatePayload.identifier;
+					if (patientUpdatePayload.birth_date !== undefined) mappedPayload.birth_date = patientUpdatePayload.birth_date;
+					if (patientUpdatePayload.phone !== undefined) mappedPayload.phone = patientUpdatePayload.phone;
+					if (patientUpdatePayload.address !== undefined) mappedPayload.address = patientUpdatePayload.address;
+					if (patientUpdatePayload.profession !== undefined) mappedPayload.profession = patientUpdatePayload.profession;
+					if (patientUpdatePayload.allergies !== undefined) mappedPayload.allergies = patientUpdatePayload.allergies;
+					if (patientUpdatePayload.chronic_conditions !== undefined) mappedPayload.chronic_conditions = patientUpdatePayload.chronic_conditions;
+					if (patientUpdatePayload.current_medication !== undefined) mappedPayload.current_medication = patientUpdatePayload.current_medication;
+					if (patientUpdatePayload.family_history !== undefined) mappedPayload.family_history = patientUpdatePayload.family_history;
+					Object.assign(patientUpdatePayload, mappedPayload);
+					delete patientUpdatePayload.firstName;
+					delete patientUpdatePayload.lastName;
+					delete patientUpdatePayload.identifier;
+					delete patientUpdatePayload.dob;
+				}
+
+				const patientRes = await fetch(`/api/consultations/${initial.id}/patient`, {
+					method: 'PATCH',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify({
+						patient_id: patientId,
+						is_unregistered: isUnregistered,
+						...patientUpdatePayload,
+					}),
+				});
+
+				const patientData = await patientRes.json().catch(() => ({}));
+				if (!patientRes.ok) {
+					console.warn('Error al actualizar datos del paciente:', patientData?.error || patientData?.message);
+					// No lanzar error, solo mostrar advertencia ya que la consulta se guardó correctamente
+				}
+			}
+
 			setSuccess('Consulta actualizada correctamente.');
 			setLoading(false); // Resetear loading después del éxito
 
@@ -937,10 +1079,36 @@ export default function EditConsultationForm({ initial, patient, doctor, doctorS
 										<textarea value={chiefComplaint} onChange={(e) => setChiefComplaint(e.target.value)} rows={5} className={`${inputBase} ${inputDark} resize-none`} placeholder="Describa el motivo de consulta del paciente..." />
 									</div>
 
-									{/* Nombre Completo */}
+									{/* Nombre */}
 									<div>
-										<label className={labelClass}>Nombre Completo</label>
-										<input type="text" value={patientFullName} onChange={(e) => setPatientFullName(e.target.value)} className={`${inputBase} ${inputDark}`} placeholder="Nombre completo del paciente" />
+										<label className={labelClass}>Nombre</label>
+										<input type="text" value={patientFirstName} onChange={(e) => setPatientFirstName(e.target.value)} className={`${inputBase} ${inputDark}`} placeholder="Nombre del paciente" />
+									</div>
+
+									{/* Apellido */}
+									<div>
+										<label className={labelClass}>Apellido</label>
+										<input type="text" value={patientLastName} onChange={(e) => setPatientLastName(e.target.value)} className={`${inputBase} ${inputDark}`} placeholder="Apellido del paciente" />
+									</div>
+
+									{/* Cédula */}
+									<div>
+										<label className={labelClass}>Cédula</label>
+										<input type="text" value={patientIdentifier} onChange={(e) => setPatientIdentifier(e.target.value)} className={`${inputBase} ${inputDark}`} placeholder="Número de cédula" />
+									</div>
+
+									{/* Fecha de Nacimiento y Edad */}
+									<div>
+										<label className={labelClass}>Fecha de Nacimiento</label>
+										<div className="flex items-center gap-2">
+											<input type="date" value={patientDob} onChange={(e) => setPatientDob(e.target.value)} className={`${inputBase} ${inputDark} flex-1`} />
+											{patientAge !== null && (
+												<div className="flex items-center gap-2 px-3 py-2 bg-slate-100 dark:bg-slate-700 rounded-md border border-slate-300 dark:border-slate-600">
+													<span className="text-sm font-medium text-slate-700 dark:text-slate-300">Edad:</span>
+													<span className="text-sm font-semibold text-slate-900 dark:text-slate-100">{patientAge} años</span>
+												</div>
+											)}
+										</div>
 									</div>
 
 									{/* Número de Contacto */}
@@ -949,10 +1117,16 @@ export default function EditConsultationForm({ initial, patient, doctor, doctorS
 										<input type="tel" value={patientPhone} onChange={(e) => setPatientPhone(e.target.value)} className={`${inputBase} ${inputDark}`} placeholder="Teléfono o celular" />
 									</div>
 
-									{/* Dónde Vive */}
+									{/* Dirección */}
 									<div className="lg:col-span-2">
-										<label className={labelClass}>Dirección / Dónde Vive</label>
+										<label className={labelClass}>Dirección</label>
 										<textarea value={patientAddress} onChange={(e) => setPatientAddress(e.target.value)} rows={3} className={`${inputBase} ${inputDark} resize-none`} placeholder="Dirección completa del paciente" />
+									</div>
+
+									{/* Profesión */}
+									<div>
+										<label className={labelClass}>Profesión</label>
+										<input type="text" value={patientProfession} onChange={(e) => setPatientProfession(e.target.value)} className={`${inputBase} ${inputDark}`} placeholder="Profesión u ocupación" />
 									</div>
 
 									{/* Tipo de Sangre */}
@@ -1337,12 +1511,6 @@ export default function EditConsultationForm({ initial, patient, doctor, doctorS
 										</button>
 										{expandedSpecialties.has('gynecology') && (
 											<div className="p-4 pt-0 space-y-6">
-												{/* Motivo de Consulta */}
-												<div>
-													<label className={labelClass}>Motivo de Evaluación / Consulta</label>
-													<textarea value={evaluationReason} onChange={(e) => setEvaluationReason(e.target.value)} className={`${inputBase} ${inputDark}`} rows={2} placeholder="Motivo por el cual la paciente acude a consulta" />
-												</div>
-
 												{/* Historia de la enfermedad actual */}
 												<div>
 													<label className={labelClass}>Historia de la enfermedad actual</label>
@@ -1508,6 +1676,16 @@ export default function EditConsultationForm({ initial, patient, doctor, doctorS
 																<option value="secretor">secretor</option>
 																<option value="trilaminar">trilaminar</option>
 																<option value="lineal">lineal</option>
+															</select>
+														</div>
+														<div>
+															<label className={labelClass}>Ecografía transvaginal interfase endometrial</label>
+															<select value={endometrialInterfacePhase} onChange={(e) => setEndometrialInterfacePhase(e.target.value)} className={`${inputBase} ${inputDark}`}>
+																<option value="">Seleccionar...</option>
+																<option value="Menstrual: Día 1 - 4">Menstrual: Día 1 - 4</option>
+																<option value="Proliferativa Temprana: Día 5 - 13">Proliferativa Temprana: Día 5 - 13</option>
+																<option value="Proliferativa Tardía: Día 14 - 16">Proliferativa Tardía: Día 14 - 16</option>
+																<option value="Secretora: Día 16 - 28">Secretora: Día 16 - 28</option>
 															</select>
 														</div>
 														<div>
