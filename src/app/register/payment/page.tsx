@@ -1,11 +1,11 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import SubscriptionPaymentForm from '@/components/SubscriptionPaymentForm';
 import { Loader2 } from 'lucide-react';
 
-export default function PaymentPage() {
+function PaymentPageContent() {
 	const router = useRouter();
 	const searchParams = useSearchParams();
 	const [loading, setLoading] = useState(true);
@@ -87,6 +87,21 @@ export default function PaymentPage() {
 				/>
 			</div>
 		</main>
+	);
+}
+
+export default function PaymentPage() {
+	return (
+		<Suspense fallback={
+			<div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 via-blue-50 to-teal-50">
+				<div className="text-center">
+					<Loader2 className="w-8 h-8 animate-spin text-teal-600 mx-auto mb-4" />
+					<p className="text-slate-600">Cargando información de pago...</p>
+				</div>
+			</div>
+		}>
+			<PaymentPageContent />
+		</Suspense>
 	);
 }
 

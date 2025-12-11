@@ -3,6 +3,9 @@ import React from 'react';
 import ClinicSidebar from '@/components/ClinicSidebar';
 import ServerDashboardGuard from '@/components/auth/ServerDashboardGuard';
 
+// Forzar renderizado dinámico ya que usa cookies para autenticación
+export const dynamic = 'force-dynamic';
+
 export const metadata = {
 	title: 'Dashboard — Clínica',
 };

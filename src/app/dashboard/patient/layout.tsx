@@ -2,6 +2,9 @@ import SidebarPatient from '@/components/patient/SidebarPatient';
 import PatientHamburgerMenu from '@/components/patient/PatientHamburgerMenu';
 import ServerDashboardGuard from '@/components/auth/ServerDashboardGuard';
 
+// Forzar renderizado dinámico ya que usa cookies para autenticación
+export const dynamic = 'force-dynamic';
+
 export default function PatientLayout({
 	children,
 }: {
