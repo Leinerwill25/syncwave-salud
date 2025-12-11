@@ -14,6 +14,13 @@ function ConfirmEmailContent() {
 	useEffect(() => {
 		async function confirmEmail() {
 			try {
+				// Limpiar la URL si tiene /login al final (problema común en templates de Supabase)
+				if (typeof window !== 'undefined' && window.location.pathname.endsWith('/login')) {
+					const cleanPath = window.location.pathname.replace(/\/login$/, '');
+					const newUrl = cleanPath + window.location.search + window.location.hash;
+					window.history.replaceState({}, '', newUrl);
+				}
+
 				// Crear cliente de Supabase
 				const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
 				const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';

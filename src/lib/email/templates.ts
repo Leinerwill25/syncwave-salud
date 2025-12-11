@@ -413,7 +413,7 @@ export function getWelcomeEmailTemplate(data: {
 		</div>
 		${data.loginUrl ? `
 		<div style="text-align: center;">
-			<a href="${data.loginUrl}" class="button">Iniciar Sesión</a>
+			<a href="${data.loginUrl}" class="button">Confirmar Email e Iniciar Sesión</a>
 		</div>
 		` : ''}
 		<p>Estamos aquí para ayudarte. Si tienes alguna pregunta, no dudes en contactarnos.</p>

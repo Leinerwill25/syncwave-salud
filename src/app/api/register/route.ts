@@ -164,7 +164,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 		// Validar cédula única ANTES de crear usuario en Supabase (solo para pacientes)
 		if (role === 'PACIENTE' && patient && patient.identifier) {
 			const identifier = String(patient.identifier).trim();
-			
+
 			if (!identifier || identifier.length === 0) {
 				return NextResponse.json(
 					{
@@ -193,11 +193,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 			// Verificar en pacientes no registrados usando Supabase
 			// Si encontramos uno, lo vinculamos en lugar de rechazar el registro
 			if (supabaseAdmin) {
-				const { data: existingUnregistered, error: unregisteredCheckError } = await supabaseAdmin
-					.from('unregisteredpatients')
-					.select('id, identification')
-					.eq('identification', identifier)
-					.maybeSingle();
+				const { data: existingUnregistered, error: unregisteredCheckError } = await supabaseAdmin.from('unregisteredpatients').select('id, identification').eq('identification', identifier).maybeSingle();
 
 				if (unregisteredCheckError) {
 					console.error('Error verificando cédula en unregisteredpatients:', unregisteredCheckError);
@@ -239,7 +235,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 					supabaseUserId = parsedResp.id;
 					supabaseUserEmail = parsedResp.email ?? account.email;
 					supabaseCreated = true;
-					
+
 					// Generar link de verificación y enviarlo por email
 					// Supabase enviará automáticamente el email de verificación si está configurado
 					// Pero también podemos generar el link explícitamente si es necesario
@@ -253,7 +249,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 								redirectTo: redirectUrl,
 							},
 						});
-						
+
 						if (linkError) {
 							console.warn('Error generando link de verificación (el email se enviará automáticamente si está configurado):', linkError);
 						} else if (linkData?.properties?.action_link) {
@@ -309,9 +305,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 								};
 							}
 							// Guardar como JSON string si hay coordenadas, sino solo la dirección
-							return (patient as any).locationLat !== undefined && (patient as any).locationLng !== undefined
-								? JSON.stringify(locationData)
-								: patient.address ?? null;
+							return (patient as any).locationLat !== undefined && (patient as any).locationLng !== undefined ? JSON.stringify(locationData) : patient.address ?? null;
 						})(),
 						bloodType: patient.bloodType ? String(patient.bloodType).trim() : null,
 						hasDisability: patient.hasDisability ?? false,
@@ -452,26 +446,34 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 			}
 		}
 
-		// Enviar email de bienvenida
-		try {
-			const loginUrl = APP_URL ? `${APP_URL}/login` : undefined;
-			await createNotification({
-				userId: txResult.userRecord.id,
-				organizationId: txResult.organizationId,
-				type: 'WELCOME',
-				title: '¡Bienvenido a SyncWave Salud!',
-				message: `Tu cuenta ha sido creada exitosamente. Bienvenido, ${account.fullName || account.email}!`,
-				payload: {
-					userName: account.fullName || account.email,
-					userEmail: account.email,
-					loginUrl,
-				},
-				sendEmail: true,
-			});
-		} catch (emailErr) {
-			// No fallar el registro si el email falla
-			console.error('[Register] Error enviando email de bienvenida:', emailErr);
+		// Enviar email de bienvenida SOLO si el email ya está confirmado
+		// Si requiere confirmación, Supabase enviará el email de confirmación automáticamente
+		// y el email de bienvenida se enviará después de la confirmación
+		if (!supabaseCreated) {
+			// Si no se creó en Supabase (no requiere confirmación), enviar email de bienvenida
+			try {
+				const loginUrl = APP_URL ? `${APP_URL}/login` : undefined;
+				await createNotification({
+					userId: txResult.userRecord.id,
+					organizationId: txResult.organizationId,
+					type: 'WELCOME',
+					title: '¡Bienvenido a SyncWave Salud!',
+					message: `Tu cuenta ha sido creada exitosamente. Bienvenido, ${account.fullName || account.email}!`,
+					payload: {
+						userName: account.fullName || account.email,
+						userEmail: account.email,
+						loginUrl,
+					},
+					sendEmail: true,
+				});
+			} catch (emailErr) {
+				// No fallar el registro si el email falla
+				console.error('[Register] Error enviando email de bienvenida:', emailErr);
+			}
 		}
+		// Si supabaseCreated es true, NO enviar email de bienvenida aquí
+		// El email de confirmación de Supabase ya se envió automáticamente
+		// El email de bienvenida se puede enviar después de la confirmación si es necesario
 
 		const responsePayload = {
 			user: txResult.userRecord,
@@ -483,21 +485,17 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 		};
 
 		// Mensaje sobre verificación de email
-		let emailVerificationMessage = supabaseCreated 
-			? 'Se ha enviado un correo electrónico de verificación a tu dirección de email. Por favor, revisa tu bandeja de entrada (y la carpeta de spam) y haz clic en el enlace de verificación para activar tu cuenta. Es importante que tengas acceso a este correo electrónico.'
-			: null;
+		let emailVerificationMessage = supabaseCreated ? 'Se ha enviado un correo electrónico de verificación a tu dirección de email. Por favor, revisa tu bandeja de entrada (y la carpeta de spam) y haz clic en el enlace de verificación para activar tu cuenta. Es importante que tengas acceso a este correo electrónico.' : null;
 
 		// Mensaje adicional si se vinculó con un paciente no registrado
 		if (linkedUnregisteredPatientId && role === 'PACIENTE') {
 			const historyMessage = '¡Bienvenido! Hemos encontrado un historial médico previo asociado a tu cédula. Todas tus consultas anteriores ahora estarán disponibles en tu cuenta.';
-			emailVerificationMessage = emailVerificationMessage 
-				? `${emailVerificationMessage}\n\n${historyMessage}`
-				: historyMessage;
+			emailVerificationMessage = emailVerificationMessage ? `${emailVerificationMessage}\n\n${historyMessage}` : historyMessage;
 		}
 
-		return NextResponse.json({ 
-			ok: true, 
-			data: responsePayload, 
+		return NextResponse.json({
+			ok: true,
+			data: responsePayload,
 			nextUrl: null,
 			emailVerificationRequired: supabaseCreated,
 			hasLinkedHistory: linkedUnregisteredPatientId !== null,
