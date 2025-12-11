@@ -504,7 +504,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 			message: emailVerificationMessage || 'Registro exitoso',
 			// Incluir datos para pago si es necesario (MEDICO o ADMIN con organización)
 			organizationId: txResult.organizationId || null,
-			userId: txResult.userId || null,
+			userId: txResult.userRecord.id || null,
 		});
 	} catch (err: unknown) {
 		console.error('Register error:', err);
