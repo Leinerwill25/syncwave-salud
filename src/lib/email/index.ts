@@ -11,6 +11,7 @@ export {
 	getGenericNotificationTemplate,
 	getPasswordResetTemplate,
 	getWelcomeEmailTemplate,
+	getEmailConfirmationTemplate,
 } from './templates';
 
 /**

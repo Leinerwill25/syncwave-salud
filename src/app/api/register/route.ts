@@ -237,8 +237,8 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 					supabaseCreated = true;
 
 					// Generar link de verificación y enviarlo por email
-					// Supabase enviará automáticamente el email de verificación si está configurado
-					// Pero también podemos generar el link explícitamente si es necesario
+					// Cuando se usa admin.createUser, Supabase NO envía el email automáticamente
+					// Necesitamos generar el link y enviarlo manualmente
 					try {
 						const redirectUrl = `${APP_URL || process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/auth/confirm-email`;
 						const { data: linkData, error: linkError } = await supabaseAdmin.auth.admin.generateLink({
@@ -251,15 +251,40 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 						});
 
 						if (linkError) {
-							console.warn('Error generando link de verificación (el email se enviará automáticamente si está configurado):', linkError);
+							console.error('Error generando link de verificación:', linkError);
 						} else if (linkData?.properties?.action_link) {
 							console.log('Link de verificación generado para:', account.email);
-							// El link está en linkData.properties.action_link
-							// Supabase debería enviar el email automáticamente si está configurado en el dashboard
+							// Enviar el email de confirmación manualmente usando nuestro servicio de email
+							// Esto es necesario porque admin.createUser NO envía el email automáticamente
+							try {
+								const { sendEmail } = await import('@/lib/email');
+								const { getEmailConfirmationTemplate } = await import('@/lib/email/templates');
+								const { getAppName } = await import('@/lib/email/resend');
+
+								const confirmationLink = linkData.properties.action_link as string;
+								const emailHtml = getEmailConfirmationTemplate({
+									userName: account.fullName || account.email,
+									userEmail: account.email,
+									confirmationUrl: confirmationLink,
+								});
+
+								const emailResult = await sendEmail({
+									to: account.email,
+									subject: `Confirma tu email - ${getAppName()}`,
+									html: emailHtml,
+								});
+
+								if (emailResult.success) {
+									console.log('Email de confirmación enviado exitosamente a:', account.email);
+								} else {
+									console.error('Error enviando email de confirmación:', emailResult.error);
+								}
+							} catch (emailErr) {
+								console.error('Error en proceso de envío de email de confirmación:', emailErr);
+							}
 						}
 					} catch (linkErr) {
-						console.warn('Error en proceso de generación de link de verificación:', linkErr);
-						// Continuar de todos modos - Supabase puede enviar el email automáticamente
+						console.error('Error en proceso de generación de link de verificación:', linkErr);
 					}
 				}
 			} catch (err: unknown) {

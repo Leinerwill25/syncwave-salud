@@ -421,3 +421,29 @@ export function getWelcomeEmailTemplate(data: {
 	return getBaseTemplate(content);
 }
 
+/**
+ * Template para confirmación de email
+ */
+export function getEmailConfirmationTemplate(data: {
+	userName: string;
+	userEmail: string;
+	confirmationUrl: string;
+}): string {
+	const content = `
+		<h2>¡Bienvenido a ${getAppName()}!</h2>
+		<p>Hola ${data.userName},</p>
+		<p>Nos complace darte la bienvenida a ${getAppName()}. Tu cuenta ha sido creada exitosamente.</p>
+		<div class="info-box">
+			<p><strong>Tu cuenta:</strong> ${data.userEmail}</p>
+		</div>
+		<p>Para activar tu cuenta, por favor confirma tu dirección de correo electrónico haciendo clic en el botón a continuación:</p>
+		<div style="text-align: center;">
+			<a href="${data.confirmationUrl}" class="button">Confirmar Email</a>
+		</div>
+		<p>Si el botón no funciona, copia y pega este enlace en tu navegador:</p>
+		<p style="word-break: break-all; color: #64748b; font-size: 14px;">${data.confirmationUrl}</p>
+		<p>Estamos aquí para ayudarte. Si tienes alguna pregunta, no dudes en contactarnos.</p>
+	`;
+	return getBaseTemplate(content);
+}
+
