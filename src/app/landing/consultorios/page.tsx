@@ -359,7 +359,7 @@ export default function ConsultoriosLandingPage() {
 						{[
 							{
 								period: 'Mensual',
-								price: '$70',
+								price: '€70',
 								periodText: 'mes',
 								discount: null,
 								popular: false,
@@ -367,21 +367,21 @@ export default function ConsultoriosLandingPage() {
 							},
 							{
 								period: 'Trimestral',
-								price: '$63',
-								originalPrice: '$70',
+								price: '€63',
+								originalPrice: '€70',
 								periodText: 'mes',
 								discount: '10% OFF',
-								discountText: 'Ahorra $21 en 3 meses',
+								discountText: 'Ahorra €21 en 3 meses',
 								popular: true,
 								features: ['Todo del plan mensual', '10% de descuento', 'Facturación trimestral', 'Soporte prioritario'],
 							},
 							{
 								period: 'Anual',
-								price: '$49',
-								originalPrice: '$70',
+								price: '€49',
+								originalPrice: '€70',
 								periodText: 'mes',
 								discount: '30% OFF',
-								discountText: 'Ahorra $252 al año',
+								discountText: 'Ahorra €252 al año',
 								popular: false,
 								features: ['Todo del plan mensual', '30% de descuento', 'Facturación anual', 'Soporte prioritario', 'Onboarding personalizado'],
 							},
@@ -396,7 +396,7 @@ export default function ConsultoriosLandingPage() {
 								<div className="text-center mb-6">
 									<h3 className="text-2xl font-bold text-slate-900 mb-2">{plan.period}</h3>
 									<div className="flex items-baseline justify-center gap-2">
-										{plan.originalPrice && <span className="text-xl text-slate-400 line-through">${plan.originalPrice}</span>}
+										{plan.originalPrice && <span className="text-xl text-slate-400 line-through">{plan.originalPrice}</span>}
 										<span className="text-4xl sm:text-5xl font-extrabold bg-gradient-to-r from-teal-600 to-cyan-600 bg-clip-text text-transparent">{plan.price}</span>
 										<span className="text-slate-600">/{plan.periodText}</span>
 									</div>

@@ -501,7 +501,10 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 			nextUrl: null,
 			emailVerificationRequired: supabaseCreated,
 			hasLinkedHistory: linkedUnregisteredPatientId !== null,
-			message: emailVerificationMessage || 'Registro exitoso'
+			message: emailVerificationMessage || 'Registro exitoso',
+			// Incluir datos para pago si es necesario (MEDICO o ADMIN con organización)
+			organizationId: txResult.organizationId || null,
+			userId: txResult.userId || null,
 		});
 	} catch (err: unknown) {
 		console.error('Register error:', err);

@@ -152,6 +152,27 @@ export default function LoginFormAdvanced(): React.ReactElement {
 
 			setDetectedRole(roleToUse ?? 'UNKNOWN');
 
+			// Verificar si hay un pago pendiente (después de registro)
+			const pendingPaymentOrgId = localStorage.getItem('pendingPayment_organizationId');
+			const pendingPaymentUserId = localStorage.getItem('pendingPayment_userId');
+			const pendingPaymentAmount = localStorage.getItem('pendingPayment_amount');
+			const pendingPaymentRole = localStorage.getItem('pendingPayment_role');
+
+			// Si hay pago pendiente y el rol coincide (MEDICO o ADMIN), redirigir a página de pago
+			if (pendingPaymentOrgId && pendingPaymentUserId && pendingPaymentAmount && 
+				(pendingPaymentRole === 'MEDICO' || pendingPaymentRole === 'ADMIN') &&
+				(roleToUse === 'MEDICO' || roleToUse === 'ADMIN')) {
+				// Limpiar datos del localStorage antes de redirigir
+				localStorage.removeItem('pendingPayment_organizationId');
+				localStorage.removeItem('pendingPayment_userId');
+				localStorage.removeItem('pendingPayment_amount');
+				localStorage.removeItem('pendingPayment_role');
+				// breve pausa visual
+				await new Promise((r) => setTimeout(r, 400));
+				router.push(`/register/payment?organizationId=${pendingPaymentOrgId}&userId=${pendingPaymentUserId}&amount=${pendingPaymentAmount}`);
+				return;
+			}
+
 			// breve pausa visual para que el usuario identifique el role
 			await new Promise((r) => setTimeout(r, 400));
 			router.push(routeForRole(roleToUse ?? '', isRoleUser));

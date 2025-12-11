@@ -537,6 +537,15 @@ export default function RegisterForm(): React.ReactElement {
 				return;
 			}
 
+			// Guardar datos de pago pendiente si es MEDICO o ADMIN (independientemente de verificación de email)
+			if ((role === 'MEDICO' || role === 'ADMIN') && data?.organizationId && data?.userId && billingPreview) {
+				// Guardar datos en localStorage para la página de pago (se usará después del login)
+				localStorage.setItem('pendingPayment_organizationId', data.organizationId);
+				localStorage.setItem('pendingPayment_userId', data.userId);
+				localStorage.setItem('pendingPayment_amount', billingPreview.total.toString());
+				localStorage.setItem('pendingPayment_role', role);
+			}
+
 			// Si se requiere verificación de email, mostrar mensaje específico
 			let successMessage = '';
 			if (data?.emailVerificationRequired) {
@@ -544,6 +553,10 @@ export default function RegisterForm(): React.ReactElement {
 				// Si se vinculó con historial previo, agregar información adicional
 				if (data?.hasLinkedHistory) {
 					successMessage += '\n\n¡Bienvenido de nuevo! Se encontró un historial médico previo asociado a tu cédula. Al iniciar sesión, podrás acceder a todas tus consultas anteriores.';
+				}
+				// Si hay pago pendiente, agregar mensaje
+				if ((role === 'MEDICO' || role === 'ADMIN') && data?.organizationId && billingPreview) {
+					successMessage += '\n\nDespués de verificar tu email e iniciar sesión, serás redirigido para completar el pago de tu suscripción.';
 				}
 				setSuccessMsg(successMessage);
 				// Esperar 5 segundos antes de redirigir para que el usuario lea el mensaje
@@ -557,8 +570,17 @@ export default function RegisterForm(): React.ReactElement {
 					successMessage = '¡Registro exitoso! Se encontró un historial médico previo asociado a tu cédula. Podrás acceder a todas tus consultas anteriores. Serás redirigido...';
 				}
 				setSuccessMsg(successMessage);
-				// Redirect (backend can return data.nextUrl for checkout)
-				router.push(data.nextUrl || '/login');
+				
+				// Si es MEDICO o ADMIN (no PACIENTE) y hay datos de organización, redirigir a pago
+				if ((role === 'MEDICO' || role === 'ADMIN') && data?.organizationId && data?.userId && billingPreview) {
+					// Redirigir a página de pago
+					setTimeout(() => {
+						router.push(`/register/payment?organizationId=${data.organizationId}&userId=${data.userId}&amount=${billingPreview.total}`);
+					}, 2000);
+				} else {
+					// Redirect normal (backend can return data.nextUrl for checkout)
+					router.push(data.nextUrl || '/login');
+				}
 			}
 		} catch (err: any) {
 			setLoading(false);
@@ -1114,7 +1136,7 @@ export default function RegisterForm(): React.ReactElement {
 					</div>
 
 					<div className="mt-4 p-4 rounded-lg bg-emerald-50 border border-emerald-100 text-slate-800">
-						Plan recomendado: <strong>{recommendedPlan.label}</strong> — <strong>${recommendedPlan.price.toFixed(2)}</strong> / mes
+						Plan recomendado: <strong>{recommendedPlan.label}</strong> — <strong>€{recommendedPlan.price.toFixed(2)}</strong> / mes
 					</div>
 
 					<div className="flex justify-between gap-3 mt-4">
@@ -1503,7 +1525,7 @@ export default function RegisterForm(): React.ReactElement {
 								<div className="text-[10px] sm:text-xs text-slate-500">1 usuario — ideal para médicos independientes</div>
 							</div>
 							<div className="text-left sm:text-right">
-								<div className="text-xl sm:text-2xl font-extrabold text-emerald-600">${recommendedPlan.price.toFixed(2)}</div>
+								<div className="text-xl sm:text-2xl font-extrabold text-emerald-600">€{recommendedPlan.price.toFixed(2)}</div>
 								<div className="text-[10px] sm:text-xs text-slate-400">/ mes</div>
 							</div>
 						</div>
@@ -1542,7 +1564,7 @@ export default function RegisterForm(): React.ReactElement {
 											</div>
 										)}
 										<div className="text-right flex flex-col items-end">
-											<div className="text-base sm:text-lg md:text-2xl font-extrabold leading-none text-emerald-600">${p.price.toFixed(2)}</div>
+											<div className="text-base sm:text-lg md:text-2xl font-extrabold leading-none text-emerald-600">€{p.price.toFixed(2)}</div>
 											<div className="text-[10px] sm:text-[11px] text-slate-400">/ mes</div>
 										</div>
 									</div>
@@ -1564,7 +1586,7 @@ export default function RegisterForm(): React.ReactElement {
 							
 							<div className="space-y-2 mb-4">
 								<div className="text-xs sm:text-sm text-slate-700">
-									<strong className="text-slate-900">{recommendedPlan.label}</strong> — Precio base mensual: <span className="font-semibold">${recommendedPlan.price.toFixed(2)}</span>
+									<strong className="text-slate-900">{recommendedPlan.label}</strong> — Precio base mensual: <span className="font-semibold">€{recommendedPlan.price.toFixed(2)}</span>
 								</div>
 								<div className="text-xs sm:text-sm text-slate-700">
 									Periodo: <span className="font-semibold">{billingPreview.label}</span> — {billingPreview.months} {billingPreview.months > 1 ? 'meses' : 'mes'}
@@ -1583,19 +1605,19 @@ export default function RegisterForm(): React.ReactElement {
 
 							<div className="pt-3 border-t border-slate-200 space-y-2">
 								<div className="text-base sm:text-lg font-bold text-emerald-600">
-									Total a pagar: ${billingPreview.total.toFixed(2)}
+									Total a pagar: €{billingPreview.total.toFixed(2)}
 								</div>
 								<div className="text-xs sm:text-sm text-slate-700">
-									Equivalente mensual: <span className="font-semibold text-slate-900">${billingPreview.monthlyEquivalent.toFixed(2)} / mes</span>
+									Equivalente mensual: <span className="font-semibold text-slate-900">€{billingPreview.monthlyEquivalent.toFixed(2)} / mes</span>
 								</div>
 								
 								{billingPreview.discount > 0 && (
 									<div className="text-xs sm:text-sm text-teal-700 font-medium space-y-1">
 										<div>
-											💰 Ahorras <span className="font-bold">${(recommendedPlan.price - billingPreview.monthlyEquivalent).toFixed(2)}</span> al mes con este plan
+											💰 Ahorras <span className="font-bold">€{(recommendedPlan.price - billingPreview.monthlyEquivalent).toFixed(2)}</span> al mes con este plan
 										</div>
 										<div className="text-teal-800">
-											💵 Ahorro total en {billingPreview.months} {billingPreview.months > 1 ? 'meses' : 'mes'}: <span className="font-bold">${((recommendedPlan.price - billingPreview.monthlyEquivalent) * billingPreview.months).toFixed(2)}</span>
+											💵 Ahorro total en {billingPreview.months} {billingPreview.months > 1 ? 'meses' : 'mes'}: <span className="font-bold">€{((recommendedPlan.price - billingPreview.monthlyEquivalent) * billingPreview.months).toFixed(2)}</span>
 										</div>
 									</div>
 								)}
@@ -1604,7 +1626,7 @@ export default function RegisterForm(): React.ReactElement {
 									<div className="mt-3 pt-3 border-t border-slate-200">
 										<div className="text-xs sm:text-sm text-slate-600 leading-relaxed">
 											<span className="font-semibold text-slate-900">Inversión diaria:</span> Si lo visualizas de forma más detallada, estarías invirtiendo{' '}
-											<span className="font-bold text-teal-700">${(billingPreview.monthlyEquivalent / 20).toFixed(2)}</span> diarios para el uso de nuestro software,{' '}
+											<span className="font-bold text-teal-700">€{(billingPreview.monthlyEquivalent / 20).toFixed(2)}</span> diarios para el uso de nuestro software,{' '}
 											<span className="font-semibold text-slate-900">menos que el precio de un café</span>. Una inversión mínima que transforma tu práctica médica y te permite ahorrar hasta 40% del tiempo en cada consulta.
 										</div>
 									</div>
@@ -1702,7 +1724,7 @@ export default function RegisterForm(): React.ReactElement {
 								Periodicidad: <strong>{billingPreview.label}</strong>
 							</div>
 							<div className="text-xs sm:text-sm text-slate-600">
-								Total a pagar: <strong>${billingPreview.total.toFixed(2)}</strong>
+								Total a pagar: <strong>€{billingPreview.total.toFixed(2)}</strong>
 							</div>
 						</div>
 					)}
