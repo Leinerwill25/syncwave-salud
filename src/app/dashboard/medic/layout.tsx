@@ -6,6 +6,9 @@ import ServerDashboardGuard from '@/components/auth/ServerDashboardGuard';
 import AlertsButton from '@/components/medic/AlertsButton';
 import ProfileCompleteGuard from '@/components/medic/ProfileCompleteGuard';
 
+// Forzar renderizado dinámico ya que usa cookies para autenticación
+export const dynamic = 'force-dynamic';
+
 export const metadata = {
 	title: 'Dashboard — Medico',
 };

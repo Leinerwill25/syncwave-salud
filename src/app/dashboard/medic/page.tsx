@@ -1,4 +1,5 @@
 'use client';
+
 import { useState, useEffect } from 'react';
 import KPISection from './components/KPISection';
 import DayAgenda from './components/DayAgenda';
