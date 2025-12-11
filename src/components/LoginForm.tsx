@@ -162,11 +162,7 @@ export default function LoginFormAdvanced(): React.ReactElement {
 			if (pendingPaymentOrgId && pendingPaymentUserId && pendingPaymentAmount && 
 				(pendingPaymentRole === 'MEDICO' || pendingPaymentRole === 'ADMIN') &&
 				(roleToUse === 'MEDICO' || roleToUse === 'ADMIN')) {
-				// Limpiar datos del localStorage antes de redirigir
-				localStorage.removeItem('pendingPayment_organizationId');
-				localStorage.removeItem('pendingPayment_userId');
-				localStorage.removeItem('pendingPayment_amount');
-				localStorage.removeItem('pendingPayment_role');
+				// NO limpiar localStorage aquí - la página de pago lo limpiará después de cargar correctamente
 				// breve pausa visual
 				await new Promise((r) => setTimeout(r, 400));
 				router.push(`/register/payment?organizationId=${pendingPaymentOrgId}&userId=${pendingPaymentUserId}&amount=${pendingPaymentAmount}`);

@@ -31,11 +31,8 @@ function PaymentPageContent() {
 				setUserId(usrId);
 				setAmountEuros(parseFloat(amount));
 
-				// Limpiar datos del localStorage después de cargarlos
-				localStorage.removeItem('pendingPayment_organizationId');
-				localStorage.removeItem('pendingPayment_userId');
-				localStorage.removeItem('pendingPayment_amount');
-				localStorage.removeItem('pendingPayment_role');
+				// NO limpiar localStorage aquí - se limpiará después de completar el pago exitosamente
+				// Esto permite que si el usuario recarga la página, los datos sigan disponibles
 			} catch (error) {
 				console.error('Error cargando datos de pago:', error);
 				router.push('/dashboard');

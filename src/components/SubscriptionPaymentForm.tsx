@@ -177,14 +177,20 @@ export default function SubscriptionPaymentForm({ organizationId, userId, amount
 				throw new Error(data.error || 'Error al registrar el pago');
 			}
 
+			// Limpiar localStorage solo después de que el pago se haya registrado exitosamente
+			localStorage.removeItem('pendingPayment_organizationId');
+			localStorage.removeItem('pendingPayment_userId');
+			localStorage.removeItem('pendingPayment_amount');
+			localStorage.removeItem('pendingPayment_role');
+
 			setSuccess(true);
 			if (onPaymentSubmitted) {
 				onPaymentSubmitted();
 			}
 
-			// Redirigir al dashboard después de 2 segundos
+			// Redirigir al login después de 2 segundos
 			setTimeout(() => {
-				router.push('/dashboard');
+				router.push('/login');
 			}, 2000);
 		} catch (err: any) {
 			setError(err.message || 'Error al procesar el pago');
@@ -204,7 +210,7 @@ export default function SubscriptionPaymentForm({ organizationId, userId, amount
 					<p className="text-slate-600 mb-6">
 						Tu pago ha sido registrado y será verificado por nuestro equipo. Te notificaremos cuando sea aprobado.
 					</p>
-					<p className="text-sm text-slate-500">Redirigiendo al dashboard...</p>
+					<p className="text-sm text-slate-500">Redirigiendo al login...</p>
 				</div>
 			</div>
 		);
