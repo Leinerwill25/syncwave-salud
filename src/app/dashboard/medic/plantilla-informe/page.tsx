@@ -23,6 +23,7 @@ export default function ReportTemplatePage() {
 		{ value: 'Georgia', label: 'Georgia' },
 		{ value: 'Cambria', label: 'Cambria' },
 		{ value: 'Garamond', label: 'Garamond' },
+		{ value: 'Microsoft JhengHei', label: 'Microsoft JhengHei' },
 	];
 
 	useEffect(() => {
