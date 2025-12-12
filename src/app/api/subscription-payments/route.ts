@@ -6,12 +6,6 @@ export async function POST(req: NextRequest) {
 	try {
 		const supabase = await createSupabaseServerClient();
 		
-		// Verificar autenticación
-		const { data: { user }, error: authError } = await supabase.auth.getUser();
-		if (authError || !user) {
-			return NextResponse.json({ error: 'No autenticado' }, { status: 401 });
-		}
-
 		const body = await req.json();
 		const {
 			organizationId,
@@ -36,6 +30,28 @@ export async function POST(req: NextRequest) {
 		// Validaciones
 		if (!organizationId || !userId || !paymentMethod || !amountEuros || !organizationName || !organizationPhone) {
 			return NextResponse.json({ error: 'Faltan datos obligatorios' }, { status: 400 });
+		}
+
+		// Validar que el organizationId y userId existan en la base de datos
+		// Esto asegura que los datos son válidos sin requerir autenticación
+		const { data: orgData, error: orgError } = await supabase
+			.from('Organization')
+			.select('id')
+			.eq('id', organizationId)
+			.single();
+
+		if (orgError || !orgData) {
+			return NextResponse.json({ error: 'Organización no encontrada' }, { status: 404 });
+		}
+
+		const { data: userData, error: userError } = await supabase
+			.from('User')
+			.select('id')
+			.eq('id', userId)
+			.single();
+
+		if (userError || !userData) {
+			return NextResponse.json({ error: 'Usuario no encontrado' }, { status: 404 });
 		}
 
 		if (paymentMethod !== 'BINANCE' && paymentMethod !== 'PAGO_MOVIL') {
