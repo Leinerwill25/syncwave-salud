@@ -57,7 +57,7 @@ export default function ClinicSidebar() {
 					<div className="flex items-center gap-3">
 						<div className="w-12 h-12 rounded-xl bg-linear-to-br from-sky-600 to-indigo-600 flex items-center justify-center text-white font-bold text-lg shadow-md ring-1 ring-white/20">SW</div>
 						<div>
-							<div className="text-sm font-semibold text-slate-900">Syncwave Salud</div>
+							<div className="text-sm font-semibold text-slate-900">KAVIRA</div>
 							<div className="text-[12px] text-slate-500">Panel clínico — Gestión</div>
 						</div>
 					</div>

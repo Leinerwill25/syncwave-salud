@@ -55,9 +55,9 @@
     **Ejemplo de template completo:**
 
     ```html
-    <h2>¡Bienvenido a SyncWave Salud!</h2>
+    <h2>¡Bienvenido a KAVIRA!</h2>
     <p>Hola {{ .FullName }},</p>
-    <p>Nos complace darte la bienvenida a SyncWave Salud. Tu cuenta ha sido creada exitosamente.</p>
+    <p>Nos complace darte la bienvenida a KAVIRA. Tu cuenta ha sido creada exitosamente.</p>
     <p>Tu cuenta: {{ .Email }}</p>
     <p>
     	<a href="{{ .ConfirmationURL }}" style="background-color: #14b8a6; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;"> Confirmar Email </a>

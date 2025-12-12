@@ -5,9 +5,20 @@ import NavbarSwitcher from '@/components/NavbarSwitcher';
 import ConditionalMain from '@/components/ConditionalMain';
 
 export const metadata: Metadata = {
-	title: 'Syncwave Salud - Plataforma Integral de Salud para Venezuela',
-	description: 'Plataforma tecnológica que une farmacias, laboratorios, consultorios privados y clínicas para brindar una atención médica más eficiente, accesible y de calidad a todos los venezolanos. Gestión de pacientes, historial médico digital, citas y recetas electrónicas.',
-	keywords: 'salud digital, plataforma médica, Venezuela, consultorios, clínicas, farmacias, laboratorios, historial médico, citas médicas, telemedicina',
+	title: 'KAVIRA - Plataforma Integral de Salud Digital para Venezuela | Gestión Médica Completa',
+	description: 'KAVIRA es la plataforma tecnológica líder que conecta consultorios privados, clínicas, farmacias y laboratorios en Venezuela. Gestión integral de pacientes, historial médico digital, citas online, recetas electrónicas y resultados de laboratorio. Transforma tu práctica médica con tecnología de vanguardia.',
+	keywords: 'KAVIRA, plataforma salud digital Venezuela, gestión médica digital, historial médico electrónico, citas médicas online, recetas electrónicas, laboratorios clínicos Venezuela, farmacias digitales, telemedicina Venezuela, software médico, sistema gestión clínica, plataforma médica integral, salud digital Venezuela, consultorios médicos digitales, clínicas digitales',
+	openGraph: {
+		title: 'KAVIRA - Plataforma Integral de Salud Digital para Venezuela',
+		description: 'Conecta consultorios, clínicas, farmacias y laboratorios en un ecosistema unificado de salud digital.',
+		type: 'website',
+		locale: 'es_VE',
+	},
+	twitter: {
+		card: 'summary_large_image',
+		title: 'KAVIRA - Plataforma Integral de Salud Digital para Venezuela',
+		description: 'Transforma tu práctica médica con la plataforma tecnológica más completa del sector salud.',
+	},
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

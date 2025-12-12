@@ -4,7 +4,7 @@ import React from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { motion } from 'framer-motion';
-import { HeartPulse, Stethoscope, Pill, FlaskConical, Building2, Users, Shield, Zap, Clock, FileText, CheckCircle2, ArrowRight, Activity, Globe, TrendingUp, Sparkles, Star, BarChart3, Smartphone, Cloud, Lock } from 'lucide-react';
+import { HeartPulse, Stethoscope, Pill, FlaskConical, Building2, Users, Shield, Zap, Clock, FileText, CheckCircle2, ArrowRight, Activity, Globe, TrendingUp, Sparkles, Star, BarChart3, Smartphone, Cloud, Lock, Database, Network, Target } from 'lucide-react';
 
 export default function HomePage() {
 	const containerVariants = {
@@ -29,8 +29,32 @@ export default function HomePage() {
 		},
 	};
 
+	// JSON-LD para SEO
+	const jsonLd = {
+		'@context': 'https://schema.org',
+		'@type': 'SoftwareApplication',
+		name: 'KAVIRA',
+		applicationCategory: 'HealthApplication',
+		operatingSystem: 'Web',
+		offers: {
+			'@type': 'Offer',
+			price: '0',
+			priceCurrency: 'EUR',
+		},
+		description: 'Plataforma integral de salud digital que conecta consultorios privados, clínicas, farmacias y laboratorios en Venezuela.',
+		aggregateRating: {
+			'@type': 'AggregateRating',
+			ratingValue: '4.8',
+			ratingCount: '150',
+		},
+	};
+
 	return (
 		<div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-teal-50 overflow-x-hidden w-full max-w-full">
+			<script
+				type="application/ld+json"
+				dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+			/>
 			{/* Hero Section */}
 			<section className="relative overflow-hidden pt-20 pb-16 sm:pt-24 sm:pb-20 md:pt-32 md:pb-28">
 				{/* Animated Background Elements */}
@@ -56,13 +80,13 @@ export default function HomePage() {
 							</motion.div>
 
 							<motion.h1 variants={itemVariants} className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-extrabold text-slate-900 mb-6 leading-tight">
-								<span className="bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-600 bg-clip-text text-transparent">Syncwave Salud</span>
+								<span className="bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-600 bg-clip-text text-transparent">KAVIRA</span>
 								<br />
-								<span className="text-slate-800">Uniendo el Ecosistema de Salud en Venezuela</span>
+								<span className="text-slate-800">Plataforma Integral de Salud Digital para Venezuela</span>
 							</motion.h1>
 
 							<motion.p variants={itemVariants} className="text-lg sm:text-xl md:text-2xl text-slate-600 mb-8 leading-relaxed">
-								La plataforma integral que conecta farmacias, laboratorios, consultorios privados y clínicas para brindar una atención médica más eficiente, accesible y de calidad a todos los venezolanos.
+								La plataforma tecnológica líder que conecta consultorios privados, clínicas, farmacias y laboratorios en un ecosistema unificado. Gestión integral de pacientes, historial médico digital, citas online y recetas electrónicas para transformar la atención médica en Venezuela.
 							</motion.p>
 
 							<motion.div variants={itemVariants} className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start">
@@ -150,8 +174,8 @@ export default function HomePage() {
 							<Sparkles className="w-4 h-4 text-teal-600" />
 							<span className="text-sm font-semibold text-teal-600">Ecosistema Completo</span>
 						</div>
-						<h2 className="text-3xl sm:text-4xl md:text-5xl font-bold text-slate-900 mb-4">Un Ecosistema Completo de Salud</h2>
-						<p className="text-lg sm:text-xl text-slate-600 max-w-2xl mx-auto">Conectamos todos los actores del sector salud para ofrecer una experiencia integral y coordinada</p>
+						<h2 className="text-3xl sm:text-4xl md:text-5xl font-bold text-slate-900 mb-4">Solución Integral para el Sector Salud</h2>
+						<p className="text-lg sm:text-xl text-slate-600 max-w-3xl mx-auto">KAVIRA conecta todos los actores del sector salud venezolano - consultorios privados, clínicas, farmacias y laboratorios - en una plataforma unificada que optimiza procesos, mejora la coordinación y eleva la calidad de la atención médica.</p>
 					</motion.div>
 
 					<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 sm:gap-8">
@@ -222,8 +246,8 @@ export default function HomePage() {
 							<Star className="w-4 h-4 text-yellow-500 fill-yellow-500" />
 							<span className="text-sm font-semibold text-slate-700">Características Destacadas</span>
 						</div>
-						<h2 className="text-3xl sm:text-4xl md:text-5xl font-bold text-slate-900 mb-4">Herramientas Poderosas</h2>
-						<p className="text-lg sm:text-xl text-slate-600 max-w-2xl mx-auto">Diseñadas para transformar la atención médica en Venezuela</p>
+						<h2 className="text-3xl sm:text-4xl md:text-5xl font-bold text-slate-900 mb-4">Tecnología Avanzada para la Gestión Médica</h2>
+						<p className="text-lg sm:text-xl text-slate-600 max-w-3xl mx-auto">KAVIRA ofrece un conjunto completo de herramientas profesionales diseñadas específicamente para las necesidades del sector salud venezolano, facilitando la gestión diaria y mejorando los resultados clínicos.</p>
 					</motion.div>
 
 					<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
@@ -293,8 +317,8 @@ export default function HomePage() {
 								<CheckCircle2 className="w-4 h-4 text-teal-600" />
 								<span className="text-sm font-semibold text-teal-600">Beneficios para Pacientes</span>
 							</div>
-							<h2 className="text-3xl sm:text-4xl md:text-5xl font-bold text-slate-900 mb-6">Mejor Atención para los Pacientes</h2>
-							<p className="text-lg sm:text-xl text-slate-600 mb-8 leading-relaxed">Syncwave Salud revoluciona la forma en que los venezolanos acceden a servicios de salud, ofreciendo una experiencia integrada que conecta todos los aspectos del cuidado médico.</p>
+							<h2 className="text-3xl sm:text-4xl md:text-5xl font-bold text-slate-900 mb-6">Experiencia Integral para Pacientes</h2>
+							<p className="text-lg sm:text-xl text-slate-600 mb-8 leading-relaxed">KAVIRA transforma la experiencia del paciente en Venezuela, ofreciendo acceso centralizado a su historial médico completo, agendamiento de citas con múltiples especialistas, seguimiento de tratamientos y acceso inmediato a resultados de laboratorio y recetas digitales desde cualquier dispositivo.</p>
 							<div className="space-y-4">
 								{['Acceso rápido a profesionales de la salud', 'Gestión centralizada de historial médico', 'Coordinación entre diferentes especialistas', 'Resultados de laboratorio y recetas digitales', 'Recordatorios y seguimiento de tratamientos'].map((benefit, index) => (
 									<motion.div key={benefit} initial={{ opacity: 0, x: -20 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true }} transition={{ duration: 0.5, delay: index * 0.1 }} className="flex items-center gap-3 group">
@@ -361,33 +385,27 @@ export default function HomePage() {
 				</div>
 			</section>
 
-			{/* Premio Banco de Venezuela & Automatización */}
+			{/* Ecosistema y Automatización */}
 			<section className="py-16 sm:py-20 md:py-24 bg-slate-900 text-white relative overflow-hidden">
 				<div className="absolute inset-0">
 					<div className="absolute top-0 left-0 w-72 h-72 bg-emerald-500/20 rounded-full blur-3xl" />
 					<div className="absolute bottom-0 right-0 w-72 h-72 bg-cyan-500/20 rounded-full blur-3xl" />
 				</div>
 				<div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-					<div className="grid grid-cols-1 lg:grid-cols-3 gap-8 sm:gap-10 items-stretch">
-						{/* Premio Banco de Venezuela */}
-						<div className="lg:col-span-1 bg-white/5 border border-emerald-400/40 rounded-3xl p-6 sm:p-8 shadow-xl backdrop-blur-md flex flex-col justify-between">
-							<div className="flex items-center gap-3 mb-4">
-								<div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-emerald-400 to-teal-500 flex items-center justify-center shadow-lg">
-									<Star className="w-5 h-5 text-white" />
-								</div>
-								<p className="text-sm font-semibold text-emerald-300 uppercase tracking-wide">Reconocimiento Nacional</p>
-							</div>
-							<h2 className="text-2xl sm:text-3xl font-bold mb-3">Proyecto Más Innovador — Banco de Venezuela</h2>
-							<p className="text-sm sm:text-base text-slate-200 leading-relaxed mb-4">Syncwave Salud fue reconocido como uno de los proyectos más innovadores en el ecosistema fintech y salud en el Pitch Day del Banco de Venezuela, validando nuestra visión de transformar la atención médica en el país.</p>
-							<p className="text-xs sm:text-sm text-slate-400">Este reconocimiento respalda la solidez tecnológica, el impacto social y el potencial de escalabilidad de la plataforma.</p>
-						</div>
-
+					<motion.div initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.6 }} className="text-center mb-12">
+						<h2 className="text-3xl sm:text-4xl md:text-5xl font-bold mb-4">Ecosistema Completo de Salud Digital</h2>
+						<p className="text-lg sm:text-xl text-slate-300 max-w-3xl mx-auto">KAVIRA integra todos los módulos necesarios para una gestión médica integral, desde la atención primaria hasta el seguimiento completo del paciente.</p>
+					</motion.div>
+					<div className="grid grid-cols-1 lg:grid-cols-2 gap-8 sm:gap-10 items-stretch">
 						{/* Módulos del Ecosistema */}
-						<div className="lg:col-span-1 bg-white/5 border border-white/10 rounded-3xl p-6 sm:p-8 shadow-xl backdrop-blur-md">
-							<h3 className="text-xl sm:text-2xl font-bold mb-4 flex items-center gap-2">
-								<span>Módulos del Ecosistema</span>
-							</h3>
-							<p className="text-sm sm:text-base text-slate-200 mb-4">Un solo ecosistema para todos los actores del sector salud en Venezuela.</p>
+						<div className="bg-white/5 border border-white/10 rounded-3xl p-6 sm:p-8 shadow-xl backdrop-blur-md">
+							<div className="flex items-center gap-3 mb-4">
+								<div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-teal-400 to-cyan-500 flex items-center justify-center shadow-lg">
+									<Building2 className="w-6 h-6 text-white" />
+								</div>
+								<h3 className="text-xl sm:text-2xl font-bold">Módulos del Ecosistema</h3>
+							</div>
+							<p className="text-sm sm:text-base text-slate-200 mb-6">KAVIRA ofrece un ecosistema completo que integra todos los actores del sector salud en Venezuela, facilitando la coordinación y optimizando los procesos médicos.</p>
 							<div className="grid grid-cols-2 gap-3 text-sm sm:text-base">
 								<div className="flex items-center gap-2">
 									<div className="w-6 h-6 rounded-lg bg-emerald-500/20 flex items-center justify-center">
@@ -429,12 +447,14 @@ export default function HomePage() {
 						</div>
 
 						{/* Automatización y Flujos */}
-						<div className="lg:col-span-1 bg-white/5 border border-white/10 rounded-3xl p-6 sm:p-8 shadow-xl backdrop-blur-md">
-							<h3 className="text-xl sm:text-2xl font-bold mb-4 flex items-center gap-2">
-								<Zap className="w-5 h-5 text-emerald-300" />
-								<span>Automatización Clínica</span>
-							</h3>
-							<p className="text-sm sm:text-base text-slate-200 mb-4">Automatizamos los flujos clave para que el equipo de salud se concentre en lo más importante: el paciente.</p>
+						<div className="bg-white/5 border border-white/10 rounded-3xl p-6 sm:p-8 shadow-xl backdrop-blur-md">
+							<div className="flex items-center gap-3 mb-4">
+								<div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-emerald-400 to-teal-500 flex items-center justify-center shadow-lg">
+									<Zap className="w-6 h-6 text-white" />
+								</div>
+								<h3 className="text-xl sm:text-2xl font-bold">Automatización Clínica Inteligente</h3>
+							</div>
+							<p className="text-sm sm:text-base text-slate-200 mb-6">KAVIRA automatiza los flujos clínicos más importantes, permitiendo que los profesionales de la salud se concentren en lo esencial: brindar atención médica de calidad a sus pacientes.</p>
 							<ul className="space-y-3 text-sm sm:text-base">
 								<li className="flex items-start gap-2">
 									<div className="mt-1 w-5 h-5 rounded-full bg-emerald-500/30 flex items-center justify-center">
@@ -469,8 +489,8 @@ export default function HomePage() {
 
 				<div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
 					<motion.div initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.6 }} className="text-center mb-12">
-						<h2 className="text-3xl sm:text-4xl md:text-5xl font-bold mb-4">Transformando la Salud en Venezuela</h2>
-						<p className="text-lg sm:text-xl text-slate-300 max-w-2xl mx-auto">Números que demuestran nuestro compromiso con la excelencia</p>
+						<h2 className="text-3xl sm:text-4xl md:text-5xl font-bold mb-4">Comprometidos con la Excelencia en Salud Digital</h2>
+						<p className="text-lg sm:text-xl text-slate-300 max-w-3xl mx-auto">KAVIRA se compromete a ofrecer la mejor plataforma tecnológica para el sector salud venezolano, con estándares de calidad, seguridad y disponibilidad que garantizan una experiencia óptima para profesionales y pacientes.</p>
 					</motion.div>
 
 					<div className="grid grid-cols-2 md:grid-cols-4 gap-6 sm:gap-8">
@@ -503,8 +523,8 @@ export default function HomePage() {
 								<Sparkles className="w-4 h-4 text-teal-600" />
 								<span className="text-xs sm:text-sm font-semibold text-teal-700">Planes Simples</span>
 							</div>
-							<h3 className="text-2xl font-bold text-slate-900 mb-3">Un modelo para cada tipo de usuario</h3>
-							<p className="text-sm sm:text-base text-slate-600 mb-5">Syncwave Salud nace con una visión clara: que pacientes y profesionales puedan empezar rápido, y que clínicas, farmacias y laboratorios tengan una solución escalable.</p>
+						<h3 className="text-2xl font-bold text-slate-900 mb-3">Planes Flexibles Adaptados a tus Necesidades</h3>
+						<p className="text-sm sm:text-base text-slate-600 mb-5">KAVIRA ofrece modelos de suscripción diseñados para cada tipo de usuario del ecosistema de salud. Desde acceso gratuito para pacientes hasta planes empresariales para grandes organizaciones, nuestra plataforma se adapta a tus necesidades específicas.</p>
 							<ul className="space-y-3 text-sm sm:text-base">
 								<li>
 									<strong className="text-slate-900">Pacientes:</strong> <span className="text-emerald-600 font-semibold">Acceso gratuito</span> al portal del paciente.
@@ -533,12 +553,12 @@ export default function HomePage() {
 							</div>
 							<div className="space-y-4">
 								<div className="bg-white rounded-2xl p-4 sm:p-5 shadow-md border border-slate-100">
-									<h4 className="text-sm sm:text-base font-semibold text-slate-900 mb-1">¿Syncwave Salud es gratis para pacientes?</h4>
+									<h4 className="text-sm sm:text-base font-semibold text-slate-900 mb-1">¿KAVIRA es gratis para pacientes?</h4>
 									<p className="text-xs sm:text-sm text-slate-600">Sí. El portal del paciente está pensado para ser accesible de forma gratuita, permitiendo que cualquier persona gestione su salud digital sin barreras de entrada.</p>
 								</div>
 								<div className="bg-white rounded-2xl p-4 sm:p-5 shadow-md border border-slate-100">
 									<h4 className="text-sm sm:text-base font-semibold text-slate-900 mb-1">¿Necesito instalar algo en mi computadora?</h4>
-									<p className="text-xs sm:text-sm text-slate-600">No. Syncwave Salud es una plataforma 100% web. Solo necesitas un navegador moderno y conexión a internet, desde computadora, tablet o teléfono.</p>
+									<p className="text-xs sm:text-sm text-slate-600">No. KAVIRA es una plataforma 100% web. Solo necesitas un navegador moderno y conexión a internet, desde computadora, tablet o teléfono.</p>
 								</div>
 								<div className="bg-white rounded-2xl p-4 sm:p-5 shadow-md border border-slate-100">
 									<h4 className="text-sm sm:text-base font-semibold text-slate-900 mb-1">¿Cómo se protegen mis datos y mi historial médico?</h4>
@@ -566,8 +586,8 @@ export default function HomePage() {
 						<motion.div animate={{ rotate: [0, 360] }} transition={{ duration: 20, repeat: Infinity, ease: 'linear' }} className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-white/20 backdrop-blur-sm mb-6">
 							<Sparkles className="w-10 h-10 text-white" />
 						</motion.div>
-						<h2 className="text-3xl sm:text-4xl md:text-5xl font-bold text-white mb-6">Únete a la Revolución de la Salud Digital</h2>
-						<p className="text-lg sm:text-xl text-teal-50 mb-8 max-w-2xl mx-auto">Forma parte del ecosistema que está transformando la atención médica en Venezuela. Regístrate hoy y comienza a disfrutar de los beneficios.</p>
+						<h2 className="text-3xl sm:text-4xl md:text-5xl font-bold text-white mb-6">Únete a la Transformación Digital de la Salud</h2>
+						<p className="text-lg sm:text-xl text-teal-50 mb-8 max-w-3xl mx-auto">KAVIRA está revolucionando la forma en que se gestiona y se accede a la atención médica en Venezuela. Únete a cientos de profesionales de la salud que ya están transformando sus prácticas con nuestra plataforma integral. Regístrate hoy y comienza a experimentar los beneficios de la salud digital.</p>
 						<div className="flex flex-col sm:flex-row gap-4 justify-center">
 							<Link href="/register" className="group inline-flex items-center justify-center gap-2 px-8 py-4 bg-white hover:bg-slate-50 text-teal-600 font-semibold rounded-2xl shadow-xl hover:shadow-2xl transform hover:scale-105 transition-all duration-300 text-base sm:text-lg">
 								Crear Cuenta Gratis
@@ -581,35 +601,113 @@ export default function HomePage() {
 				</div>
 			</section>
 
+			{/* Beneficios Profesionales Section */}
+			<section className="py-16 sm:py-20 md:py-24 bg-gradient-to-br from-slate-50 to-blue-50 relative overflow-hidden">
+				<div className="absolute inset-0 bg-[linear-gradient(to_right,#80808008_1px,transparent_1px),linear-gradient(to_bottom,#80808008_1px,transparent_1px)] bg-[size:24px_24px]" />
+				<div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+					<motion.div initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.6 }} className="text-center mb-12 sm:mb-16">
+						<div className="inline-flex items-center gap-2 px-4 py-2 bg-white/60 backdrop-blur-sm rounded-full mb-4 shadow-sm">
+							<Target className="w-4 h-4 text-teal-600" />
+							<span className="text-sm font-semibold text-teal-600">Ventajas Competitivas</span>
+						</div>
+						<h2 className="text-3xl sm:text-4xl md:text-5xl font-bold text-slate-900 mb-4">¿Por Qué Elegir KAVIRA?</h2>
+						<p className="text-lg sm:text-xl text-slate-600 max-w-3xl mx-auto">Descubre las ventajas que hacen de KAVIRA la plataforma preferida por profesionales de la salud en Venezuela</p>
+					</motion.div>
+
+					<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
+						{[
+							{
+								icon: Database,
+								title: 'Historial Médico Centralizado',
+								description: 'Acceso completo y seguro al historial médico del paciente desde cualquier punto del ecosistema, facilitando diagnósticos precisos y tratamientos coordinados.',
+								gradient: 'from-teal-500 to-cyan-500',
+							},
+							{
+								icon: Network,
+								title: 'Integración Total del Ecosistema',
+								description: 'Conecta consultorios, clínicas, farmacias y laboratorios en tiempo real, eliminando barreras y optimizando la comunicación entre profesionales.',
+								gradient: 'from-blue-500 to-indigo-500',
+							},
+							{
+								icon: Shield,
+								title: 'Seguridad y Cumplimiento Normativo',
+								description: 'Protección de datos médicos con encriptación de nivel empresarial y cumplimiento de estándares internacionales de privacidad y seguridad.',
+								gradient: 'from-emerald-500 to-teal-500',
+							},
+							{
+								icon: Zap,
+								title: 'Automatización Inteligente',
+								description: 'Reduce tareas administrativas repetitivas con automatización de citas, notificaciones, recordatorios y flujos clínicos, aumentando la productividad.',
+								gradient: 'from-orange-500 to-red-500',
+							},
+							{
+								icon: BarChart3,
+								title: 'Analítica y Reportes Avanzados',
+								description: 'Dashboards intuitivos y reportes detallados que te permiten tomar decisiones informadas basadas en datos reales de tu práctica médica.',
+								gradient: 'from-purple-500 to-pink-500',
+							},
+							{
+								icon: Cloud,
+								title: 'Acceso desde Cualquier Lugar',
+								description: 'Plataforma 100% en la nube, accesible desde cualquier dispositivo con conexión a internet, sin necesidad de instalaciones complejas.',
+								gradient: 'from-cyan-500 to-blue-500',
+							},
+						].map((benefit, index) => (
+							<motion.div key={benefit.title} initial={{ opacity: 0, scale: 0.9 }} whileInView={{ opacity: 1, scale: 1 }} viewport={{ once: true }} transition={{ duration: 0.5, delay: index * 0.1 }} whileHover={{ scale: 1.05, y: -5 }} className="group relative bg-white rounded-2xl p-6 shadow-md hover:shadow-xl border border-slate-100 transition-all duration-300 overflow-hidden">
+								<div className={`absolute inset-0 bg-gradient-to-br ${benefit.gradient} opacity-0 group-hover:opacity-5 rounded-2xl transition-opacity duration-300`} />
+								<div className="relative z-10">
+									<div className={`inline-flex items-center justify-center w-14 h-14 rounded-xl bg-gradient-to-br ${benefit.gradient} shadow-md mb-4 group-hover:scale-110 group-hover:rotate-3 transition-all duration-300`}>
+										<benefit.icon className="w-7 h-7 text-white" />
+									</div>
+									<h3 className="text-xl font-bold text-slate-900 mb-2">{benefit.title}</h3>
+									<p className="text-sm sm:text-base text-slate-600 leading-relaxed">{benefit.description}</p>
+								</div>
+							</motion.div>
+						))}
+					</div>
+				</div>
+			</section>
+
 			{/* SEO Content Section */}
-			<section className="py-16 sm:py-20 md:py-24 bg-slate-50 relative">
+			<section className="py-16 sm:py-20 md:py-24 bg-white relative">
 				<div className="absolute inset-0 bg-[linear-gradient(to_right,#80808008_1px,transparent_1px),linear-gradient(to_bottom,#80808008_1px,transparent_1px)] bg-[size:24px_24px]" />
 
-				<div className="relative max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-					<motion.div initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.6 }} className="prose prose-lg sm:prose-xl max-w-none bg-white rounded-3xl p-8 sm:p-12 shadow-lg">
+				<div className="relative max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
+					<motion.div initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.6 }} className="prose prose-lg sm:prose-xl max-w-none bg-gradient-to-br from-slate-50 to-blue-50 rounded-3xl p-8 sm:p-12 shadow-lg border border-slate-200">
 						<div className="flex items-center gap-3 mb-6">
 							<div className="w-12 h-12 rounded-xl bg-gradient-to-br from-teal-500 to-cyan-500 flex items-center justify-center">
 								<FileText className="w-6 h-6 text-white" />
 							</div>
-							<h2 className="text-3xl sm:text-4xl font-bold text-slate-900 m-0">Plataforma Integral de Salud para Venezuela</h2>
+							<h2 className="text-3xl sm:text-4xl font-bold text-slate-900 m-0">KAVIRA: La Plataforma Integral de Salud Digital para Venezuela</h2>
 						</div>
 						<div className="space-y-6 text-slate-700 leading-relaxed">
 							<p className="text-base sm:text-lg">
-								<strong>Syncwave Salud</strong> es la plataforma tecnológica diseñada específicamente para unificar y modernizar el ecosistema de salud en Venezuela. Nuestra misión es conectar todos los actores del sector salud - desde consultorios privados y clínicas hasta farmacias y laboratorios - en un sistema integrado que mejore significativamente la calidad de la atención médica para todos los venezolanos.
+								<strong>KAVIRA</strong> es la plataforma tecnológica líder diseñada específicamente para unificar, modernizar y optimizar el ecosistema de salud en Venezuela. Nuestra misión es conectar todos los actores del sector salud - desde consultorios privados y clínicas hasta farmacias y laboratorios - en un sistema integrado que mejore significativamente la calidad, eficiencia y accesibilidad de la atención médica para todos los venezolanos.
+							</p>
+							<h3 className="text-2xl font-bold text-slate-900 mt-8 mb-4">Solución Completa para Profesionales de la Salud</h3>
+							<p className="text-base sm:text-lg">
+								Para <strong>médicos y especialistas independientes</strong>, KAVIRA ofrece una suite completa de herramientas que permiten gestionar consultorios privados de manera eficiente. La plataforma incluye gestión de historiales médicos digitales completos, sistema de agendamiento de citas inteligente, emisión de recetas y órdenes médicas electrónicas, y comunicación segura con pacientes. Todo esto desde una interfaz intuitiva que reduce el tiempo administrativo y permite enfocarse en la atención clínica.
 							</p>
 							<p className="text-base sm:text-lg">
-								La plataforma permite a los <strong>médicos y especialistas</strong> gestionar sus consultorios privados de manera eficiente, mantener historiales médicos digitales completos, coordinar citas con pacientes, y emitir recetas y órdenes médicas de forma segura y digital. Para las
-								<strong> clínicas</strong>, ofrecemos herramientas de administración avanzadas que permiten gestionar múltiples especialistas, recursos y servicios desde una plataforma centralizada.
+								Las <strong>clínicas y centros médicos</strong> encuentran en KAVIRA una solución empresarial robusta con herramientas de administración avanzadas. La plataforma permite gestionar múltiples especialistas, coordinar recursos, administrar horarios complejos, generar reportes financieros y operativos, y mantener un control centralizado de todas las operaciones clínicas desde un único dashboard.
+							</p>
+							<h3 className="text-2xl font-bold text-slate-900 mt-8 mb-4">Integración con Farmacias y Laboratorios</h3>
+							<p className="text-base sm:text-lg">
+								Las <strong>farmacias integradas</strong> pueden recibir recetas digitales directamente de los médicos a través de KAVIRA, facilitando la dispensación de medicamentos, mejorando la trazabilidad, reduciendo errores y agilizando el proceso de entrega. Los pacientes pueden verificar la disponibilidad de medicamentos y recibir notificaciones cuando sus recetas están listas.
 							</p>
 							<p className="text-base sm:text-lg">
-								Las <strong>farmacias</strong> integradas pueden recibir recetas digitales directamente de los médicos, facilitando la dispensación de medicamentos y mejorando la trazabilidad. Los
-								<strong> laboratorios</strong> pueden gestionar órdenes médicas, procesar análisis y entregar resultados de manera digital, agilizando todo el proceso de diagnóstico.
+								Los <strong>laboratorios clínicos</strong> pueden gestionar órdenes médicas digitales, procesar análisis, entregar resultados de manera inmediata y segura tanto a médicos como a pacientes, y mantener un registro completo de todos los estudios realizados. Esto agiliza significativamente el proceso de diagnóstico y tratamiento.
+							</p>
+							<h3 className="text-2xl font-bold text-slate-900 mt-8 mb-4">Portal del Paciente: Acceso Gratuito y Completo</h3>
+							<p className="text-base sm:text-lg">
+								Para los <strong>pacientes</strong>, KAVIRA ofrece un portal completamente gratuito que proporciona acceso a su historial médico completo, la posibilidad de agendar citas con diferentes especialistas, recibir recordatorios automáticos de tratamientos y citas, acceder instantáneamente a resultados de laboratorio y recetas digitales, y mantener comunicación directa con sus profesionales de la salud. Todo desde una única plataforma segura, fácil de usar y accesible desde cualquier dispositivo.
+							</p>
+							<h3 className="text-2xl font-bold text-slate-900 mt-8 mb-4">Tecnología de Vanguardia y Seguridad</h3>
+							<p className="text-base sm:text-lg">
+								KAVIRA utiliza tecnología de última generación con arquitectura en la nube, garantizando alta disponibilidad, escalabilidad y respaldo automático de datos. La plataforma cumple con los más altos estándares de seguridad, utilizando encriptación de extremo a extremo, autenticación de múltiples factores y controles de acceso basados en roles. Todos los datos médicos están protegidos según estándares internacionales similares a GDPR y HIPAA.
 							</p>
 							<p className="text-base sm:text-lg">
-								Para los <strong>pacientes</strong>, Syncwave Salud ofrece acceso a su historial médico completo, la posibilidad de agendar citas con diferentes especialistas, recibir recordatorios de tratamientos, acceder a resultados de laboratorio y recetas digitales, todo desde una única plataforma segura y fácil de usar.
-							</p>
-							<p className="text-base sm:text-lg">
-								Con <strong>Syncwave Salud</strong>, estamos construyendo el futuro de la atención médica en Venezuela, donde la tecnología y la innovación se unen para brindar una experiencia de salud más accesible, eficiente y de mayor calidad para todos.
+								Con <strong>KAVIRA</strong>, estamos construyendo el futuro de la atención médica en Venezuela, donde la tecnología y la innovación se unen para brindar una experiencia de salud más accesible, eficiente, coordinada y de mayor calidad para profesionales y pacientes por igual.
 							</p>
 						</div>
 					</motion.div>
@@ -618,3 +716,4 @@ export default function HomePage() {
 		</div>
 	);
 }
+

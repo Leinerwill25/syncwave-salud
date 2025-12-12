@@ -620,7 +620,7 @@ export default function ConsultationShareView({ consultation, patient, prescript
 						Este enlace fue generado por el paciente para compartir información médica con especialistas externos.
 					</p>
 					<p className="text-xs text-gray-500 mt-2">
-						Syncwave Salud - Sistema de Gestión Médica
+						KAVIRA - Sistema de Gestión Médica
 					</p>
 				</div>
 			</div>

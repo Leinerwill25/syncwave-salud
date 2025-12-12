@@ -56,7 +56,7 @@ export default function PublicLinkModal({ isOpen, onClose, organizationId }: Pub
 		if (navigator.share) {
 			try {
 				await navigator.share({
-					title: 'Mi Consultorio - Syncwave Salud',
+					title: 'Mi Consultorio - KAVIRA',
 					text: 'Visita mi consultorio médico',
 					url: publicUrl,
 				});

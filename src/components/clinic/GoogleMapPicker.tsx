@@ -70,7 +70,7 @@ export default function GoogleMapPicker({ onLocationSelect, initialLocation }: G
 				`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&addressdetails=1`,
 				{
 					headers: {
-						'User-Agent': 'SyncWave-Salud/1.0',
+						'User-Agent': 'KAVIRA/1.0',
 					},
 				}
 			);

@@ -123,7 +123,7 @@ export default function PacientesLandingPage() {
 							Todo lo que Necesitas para tu Salud
 						</h2>
 						<p className="text-lg sm:text-xl text-slate-600 max-w-2xl mx-auto">
-							Descubre todos los beneficios que Syncwave Salud ofrece a los pacientes
+							Descubre todos los beneficios que KAVIRA ofrece a los pacientes
 						</p>
 					</motion.div>
 
@@ -216,7 +216,7 @@ export default function PacientesLandingPage() {
 							transition={{ duration: 0.6 }}
 						>
 							<h2 className="text-3xl sm:text-4xl md:text-5xl font-bold text-slate-900 mb-6">
-								¿Por qué Elegir Syncwave Salud?
+								¿Por qué Elegir KAVIRA?
 							</h2>
 							<p className="text-lg sm:text-xl text-slate-600 mb-8 leading-relaxed">
 								Somos la plataforma más completa para gestionar tu salud en Venezuela. 
@@ -304,7 +304,7 @@ export default function PacientesLandingPage() {
 							Comienza a Gestionar tu Salud Hoy
 						</h2>
 						<p className="text-lg sm:text-xl text-indigo-50 mb-8 max-w-2xl mx-auto">
-							Regístrate gratis y comienza a disfrutar de todos los beneficios de Syncwave Salud
+							Regístrate gratis y comienza a disfrutar de todos los beneficios de KAVIRA
 						</p>
 						<div className="flex flex-col sm:flex-row gap-4 justify-center">
 							<Link

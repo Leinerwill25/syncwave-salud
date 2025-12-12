@@ -17,7 +17,7 @@ export default function PoliticasPrivacidadPage() {
 						Políticas de Privacidad
 					</h1>
 					<p className="text-lg sm:text-xl text-gray-600 max-w-2xl mx-auto">
-						Syncwave Salud - Última actualización: {new Date().toLocaleDateString('es-VE', { year: 'numeric', month: 'long', day: 'numeric' })}
+						KAVIRA - Última actualización: {new Date().toLocaleDateString('es-VE', { year: 'numeric', month: 'long', day: 'numeric' })}
 					</p>
 				</div>
 
@@ -31,7 +31,7 @@ export default function PoliticasPrivacidadPage() {
 						</div>
 						<div className="prose prose-slate max-w-none space-y-4 text-gray-700 leading-relaxed">
 							<p>
-								En <strong>Syncwave Salud</strong> ("nosotros", "nuestro", "la Plataforma"), nos comprometemos a proteger y respetar su privacidad. 
+								En <strong>KAVIRA</strong> ("nosotros", "nuestro", "la Plataforma"), nos comprometemos a proteger y respetar su privacidad. 
 								Esta Política de Privacidad describe cómo recopilamos, utilizamos, almacenamos y protegemos su información personal y de salud 
 								cuando utiliza nuestra plataforma de gestión médica integrada.
 							</p>
@@ -655,7 +655,7 @@ export default function PoliticasPrivacidadPage() {
 							<div className="p-4 bg-indigo-50 border-l-4 border-indigo-500 rounded-r-lg">
 								<p className="text-sm text-indigo-800">
 									<strong>Responsabilidad legal:</strong> El representante legal es el único responsable de garantizar que tiene la autoridad legal 
-									para registrar y gestionar la información del menor. Syncwave Salud se reserva el derecho de verificar la relación legal y puede 
+									para registrar y gestionar la información del menor. KAVIRA se reserva el derecho de verificar la relación legal y puede 
 									solicitar documentación adicional en cualquier momento. Cualquier uso fraudulento o no autorizado de esta funcionalidad puede 
 									resultar en la suspensión o eliminación de la cuenta y acciones legales correspondientes.
 								</p>
@@ -768,7 +768,7 @@ export default function PoliticasPrivacidadPage() {
 					<div className="pt-8 border-t border-gray-200 mt-12">
 						<div className="text-center space-y-4">
 							<p className="text-sm text-gray-600">
-								© {new Date().getFullYear()} Syncwave Salud. Todos los derechos reservados.
+								© {new Date().getFullYear()} KAVIRA. Todos los derechos reservados.
 							</p>
 							<div className="flex flex-wrap justify-center gap-4 text-sm">
 								<Link href="/" className="text-teal-600 hover:underline">

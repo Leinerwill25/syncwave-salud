@@ -126,7 +126,7 @@ export default function LeafletMapPicker({ onLocationSelect, initialLocation }: 
 					`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=5&countrycodes=ve&addressdetails=1`,
 					{
 						headers: {
-							'User-Agent': 'SyncWave-Salud/1.0', // Requerido por Nominatim
+							'User-Agent': 'KAVIRA/1.0', // Requerido por Nominatim
 						},
 					}
 				);
@@ -153,7 +153,7 @@ export default function LeafletMapPicker({ onLocationSelect, initialLocation }: 
 				`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&addressdetails=1`,
 				{
 					headers: {
-						'User-Agent': 'SyncWave-Salud/1.0',
+						'User-Agent': 'KAVIRA/1.0',
 					},
 				}
 			);

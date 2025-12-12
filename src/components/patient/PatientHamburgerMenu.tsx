@@ -255,7 +255,7 @@ export default function PatientHamburgerMenu() {
 						<div className="flex items-center gap-3">
 							<div className="w-12 h-12 rounded-xl bg-gradient-to-br from-indigo-600 to-purple-600 flex items-center justify-center text-white font-bold text-lg shadow-md ring-1 ring-white/20">PT</div>
 							<div>
-								<div className="text-sm font-semibold text-slate-900">Syncwave Salud</div>
+								<div className="text-sm font-semibold text-slate-900">KAVIRA</div>
 								<div className="text-[12px] text-slate-500">Panel del Paciente</div>
 							</div>
 						</div>

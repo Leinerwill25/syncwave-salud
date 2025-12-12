@@ -148,11 +148,11 @@ export default function DashboardNavBar(): React.ReactElement {
 					<div className="flex items-center gap-3 min-w-0">
 						<Link href="/" className="flex items-center gap-3">
 							<div className="relative h-10 w-10 rounded-lg overflow-hidden shadow-inner" aria-hidden>
-								<Image src="/3.png" alt="Syncwave" fill style={{ objectFit: 'cover' }} />
+								<Image src="/3.png" alt="KAVIRA" fill style={{ objectFit: 'cover' }} />
 							</div>
 							<div className="hidden md:flex flex-col leading-none">
-								<span className="text-sm font-semibold text-slate-900">Syncwave</span>
-								<span className="text-xs text-slate-500">Agencia de Automatizaciones</span>
+								<span className="text-sm font-semibold text-slate-900">KAVIRA</span>
+								<span className="text-xs text-slate-500">Plataforma de Salud</span>
 							</div>
 						</Link>
 					</div>

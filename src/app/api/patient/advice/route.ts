@@ -211,7 +211,7 @@ async function callFindSpecialists(specialty: string, limit = 5, supabase: any) 
 /* Construye el System Prompt (aquí puedes editar la personalidad / reglas) */
 function buildSystemPrompt({ patientName, age, remainingTurns }: { patientName: string; age: string | number; remainingTurns: number }) {
 	return `
-Eres SyncWave AI Health Assistant: un asistente de triaje clínico conversacional.
+Eres KAVIRA AI Health Assistant: un asistente de triaje clínico conversacional.
 Objetivo: obtener información suficiente en el menor número de intercambios posibles (ideal < ${remainingTurns} turns restantes)
 y ofrecer un resumen final estructurado con hasta 5 posibles causas y el especialista recomendado.
 Tono: empático, profesional, conciso, sin frases repetitivas ni plantillas obvias. Evita empezar respuestas con "Entiendo, <nombre>. Lamento mucho que...".
