@@ -436,6 +436,66 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 			};
 		});
 
+		// Migrar consultas antiguas del paciente no registrado al paciente registrado
+		// Esto debe hacerse DESPUÉS de la transacción de Prisma, usando Supabase
+		if (role === 'PACIENTE' && linkedUnregisteredPatientId && txResult.patientRecord?.id && supabaseAdmin) {
+			try {
+				console.log(`[Register API] Migrando consultas de unregistered_patient_id ${linkedUnregisteredPatientId} a patient_id ${txResult.patientRecord.id}`);
+
+				// Actualizar todas las consultas que tienen unregistered_patient_id pero NO tienen patient_id
+				const { data: updatedConsultations, error: updateError } = await supabaseAdmin.from('consultation').update({ patient_id: txResult.patientRecord.id }).eq('unregistered_patient_id', linkedUnregisteredPatientId).is('patient_id', null).select('id');
+
+				if (updateError) {
+					console.error('[Register API] Error migrando consultas:', updateError);
+					// No fallar el registro si la migración falla, pero loguear el error
+				} else {
+					const migratedCount = updatedConsultations?.length || 0;
+					console.log(`[Register API] Migradas ${migratedCount} consultas del paciente no registrado al paciente registrado`);
+
+					// También actualizar appointments, facturacion, prescriptions, lab_results, tasks
+					// que tengan unregistered_patient_id pero NO tengan patient_id
+
+					// Appointments
+					const { error: appointmentError } = await supabaseAdmin.from('appointment').update({ patient_id: txResult.patientRecord.id }).eq('unregistered_patient_id', linkedUnregisteredPatientId).is('patient_id', null);
+
+					if (appointmentError) {
+						console.error('[Register API] Error migrando appointments:', appointmentError);
+					}
+
+					// Facturacion
+					const { error: facturacionError } = await supabaseAdmin.from('facturacion').update({ patient_id: txResult.patientRecord.id }).eq('unregistered_patient_id', linkedUnregisteredPatientId).is('patient_id', null);
+
+					if (facturacionError) {
+						console.error('[Register API] Error migrando facturacion:', facturacionError);
+					}
+
+					// Prescriptions
+					const { error: prescriptionError } = await supabaseAdmin.from('prescription').update({ patient_id: txResult.patientRecord.id }).eq('unregistered_patient_id', linkedUnregisteredPatientId).is('patient_id', null);
+
+					if (prescriptionError) {
+						console.error('[Register API] Error migrando prescriptions:', prescriptionError);
+					}
+
+					// Lab Results
+					const { error: labResultError } = await supabaseAdmin.from('lab_result').update({ patient_id: txResult.patientRecord.id }).eq('unregistered_patient_id', linkedUnregisteredPatientId).is('patient_id', null);
+
+					if (labResultError) {
+						console.error('[Register API] Error migrando lab_results:', labResultError);
+					}
+
+					// Tasks
+					const { error: taskError } = await supabaseAdmin.from('task').update({ patient_id: txResult.patientRecord.id }).eq('unregistered_patient_id', linkedUnregisteredPatientId).is('patient_id', null);
+
+					if (taskError) {
+						console.error('[Register API] Error migrando tasks:', taskError);
+					}
+				}
+			} catch (migrationErr) {
+				console.error('[Register API] Error en proceso de migración de datos:', migrationErr);
+				// No fallar el registro si la migración falla
+			}
+		}
+
 		// Invites (fuera de la transacción)
 		const invitesReturned: Array<{ token: string; url?: string }> = [];
 		if (txResult.organizationId && organization) {
