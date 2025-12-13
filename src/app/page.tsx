@@ -4,7 +4,7 @@ import React from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { motion } from 'framer-motion';
-import { HeartPulse, Stethoscope, Pill, FlaskConical, Building2, Users, Shield, Zap, Clock, FileText, CheckCircle2, ArrowRight, Activity, Globe, TrendingUp, Sparkles, Star, BarChart3, Smartphone, Cloud, Lock, Database, Network, Target } from 'lucide-react';
+import { HeartPulse, Stethoscope, Pill, FlaskConical, Building2, Users, Shield, Zap, Clock, FileText, CheckCircle2, ArrowRight, Activity, Globe, TrendingUp, Sparkles, Star, BarChart3, Smartphone, Cloud, Lock, Database, Network, Target, Award, BadgeCheck, UserCircle } from 'lucide-react';
 
 export default function HomePage() {
 	const containerVariants = {
@@ -51,10 +51,7 @@ export default function HomePage() {
 
 	return (
 		<div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-teal-50 overflow-x-hidden w-full max-w-full">
-			<script
-				type="application/ld+json"
-				dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
-			/>
+			<script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
 			{/* Hero Section */}
 			<section className="relative overflow-hidden pt-20 pb-16 sm:pt-24 sm:pb-20 md:pt-32 md:pb-28">
 				{/* Animated Background Elements */}
@@ -385,6 +382,270 @@ export default function HomePage() {
 				</div>
 			</section>
 
+			{/* Dra. Carwin Silva - Embajadora Oficial - Optimizado para SEO */}
+			<article itemScope itemType="https://schema.org/Person" className="relative py-20 sm:py-28 md:py-32 bg-gradient-to-br from-teal-600 via-cyan-600 to-blue-600 overflow-hidden">
+				{/* Structured Data JSON-LD for SEO */}
+				<script
+					type="application/ld+json"
+					dangerouslySetInnerHTML={{
+						__html: JSON.stringify({
+							'@context': 'https://schema.org',
+							'@type': 'Person',
+							name: 'Dra. Carwin Silva',
+							alternateName: ['Doctora Carwin Silva', 'Carwin Silva Ginecóloga', 'Dra. Carwin Silva Ginecóloga'],
+							jobTitle: 'Ginecóloga Especialista en Ginecología Regenerativa, Funcional y Estética',
+							description: 'Dra. Carwin Silva es ginecóloga especialista en ginecología regenerativa, funcional y estética en Venezuela. Embajadora oficial de KAVIRA, pionera en salud digital y líder en salud femenina. Consulta ginecológica, ginecología estética, medicina funcional.',
+							url: 'https://kavira.com',
+							image: 'https://kavira.com/consultorios/dracarwin/IMG_5189.JPG',
+							sameAs: [
+								// Aquí se pueden agregar links a redes sociales cuando estén disponibles
+								// 'https://www.instagram.com/dracarwinsilva',
+								// 'https://www.facebook.com/dracarwinsilva',
+							],
+							knowsAbout: ['Ginecología', 'Ginecología Regenerativa', 'Ginecología Funcional', 'Ginecología Estética', 'Salud Femenina', 'Medicina Funcional', 'Salud Digital', 'Telemedicina'],
+							alumniOf: {
+								'@type': 'EducationalOrganization',
+								name: 'Universidad de Medicina',
+							},
+							hasCredential: {
+								'@type': 'EducationalOccupationalCredential',
+								credentialCategory: 'Médico Especialista en Ginecología',
+							},
+							memberOf: {
+								'@type': 'Organization',
+								name: 'KAVIRA',
+								description: 'Plataforma Integral de Salud Digital para Venezuela',
+								url: 'https://kavira.com',
+							},
+							hasOccupation: {
+								'@type': 'Occupation',
+								occupationLocation: {
+									'@type': 'Country',
+									name: 'Venezuela',
+								},
+								occupationalCategory: 'Ginecólogo',
+								skills: ['Ginecología Regenerativa', 'Ginecología Funcional', 'Ginecología Estética', 'Salud Femenina Digital'],
+							},
+						}),
+					}}
+				/>
+
+				{/* Premium Background Effects */}
+				<div className="absolute inset-0">
+					<div className="absolute top-0 left-1/4 w-[500px] h-[500px] bg-white/15 rounded-full blur-3xl animate-pulse" />
+					<div className="absolute bottom-0 right-1/4 w-[600px] h-[600px] bg-cyan-300/20 rounded-full blur-3xl" />
+					<div className="absolute top-1/2 left-0 w-72 h-72 bg-teal-300/15 rounded-full blur-3xl" />
+					<div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,rgba(255,255,255,0.2),transparent_60%)]" />
+					<div className="absolute inset-0 bg-[linear-gradient(to_bottom,transparent_0%,rgba(0,0,0,0.05)_100%)]" />
+				</div>
+
+				<div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+					{/* Header Section - Optimizado para SEO */}
+					<header className="text-center mb-16 sm:mb-20">
+						<motion.div initial={{ opacity: 0, y: 40 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.8 }}>
+							<motion.div initial={{ scale: 0.8, opacity: 0 }} whileInView={{ scale: 1, opacity: 1 }} viewport={{ once: true }} transition={{ duration: 0.6, delay: 0.2 }} className="inline-flex items-center gap-3 px-6 py-3 bg-white/20 backdrop-blur-xl rounded-full mb-8 shadow-2xl border border-white/30">
+								<BadgeCheck className="w-5 h-5 text-white" />
+								<span className="text-sm font-bold text-white tracking-wide uppercase">Alianza Estratégica</span>
+								<Star className="w-4 h-4 text-yellow-300 fill-yellow-300" />
+							</motion.div>
+							<h1 itemProp="name" className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-extrabold text-white mb-6 leading-tight">
+								<span className="block mb-2">Dra. Carwin Silva</span>
+								<span className="block text-teal-100 text-3xl sm:text-4xl md:text-5xl lg:text-6xl">Ginecóloga en Venezuela</span>
+								<span className="block text-xl sm:text-2xl md:text-3xl text-teal-100 mt-4 font-normal">Embajadora Oficial de KAVIRA</span>
+							</h1>
+							<p itemProp="description" className="text-xl sm:text-2xl text-white/90 max-w-4xl mx-auto leading-relaxed font-light mb-4">
+								<strong className="font-bold">Doctora Carwin Silva</strong> - Especialista en <strong>Ginecología Regenerativa, Funcional y Estética</strong> en Venezuela. Líder en salud femenina, pionera de la transformación digital médica y embajadora oficial de KAVIRA. Consulta ginecológica de excelencia en salud digital.
+							</p>
+							<p className="text-lg sm:text-xl text-white/80 max-w-3xl mx-auto leading-relaxed">
+								Ginecóloga especializada en <strong>ginecología estética</strong>, <strong>medicina funcional</strong> y <strong>salud femenina digital</strong>. Primera especialista en adoptar KAVIRA para la gestión de consultorios privados en Venezuela.
+							</p>
+						</motion.div>
+					</header>
+
+					{/* Main Content */}
+					<div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-start">
+						{/* Left: Premium Profile Section */}
+						<motion.div initial={{ opacity: 0, x: -50 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true }} transition={{ duration: 0.8, delay: 0.2 }} className="lg:col-span-5 relative">
+							{/* Premium Card with Glassmorphism */}
+							<div className="relative bg-white/15 backdrop-blur-2xl rounded-3xl p-8 sm:p-10 shadow-2xl border-2 border-white/30 overflow-hidden">
+								{/* Shimmer Effect */}
+								<div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full" style={{ animation: 'shimmer 3s infinite' }} />
+
+								{/* Badge - Premium */}
+								<div className="flex justify-center mb-8">
+									<div className="relative inline-flex items-center gap-2.5 px-6 py-3 bg-gradient-to-r from-yellow-400 via-amber-400 to-yellow-500 rounded-full shadow-2xl transform hover:scale-105 transition-transform">
+										<div className="absolute inset-0 bg-white/30 rounded-full blur-xl" />
+										<Award className="w-5 h-5 text-white relative z-10" />
+										<span className="text-sm font-bold text-white relative z-10 tracking-wide">Pionera de KAVIRA</span>
+										<div className="absolute -top-1 -right-1 w-3 h-3 bg-yellow-300 rounded-full animate-ping" />
+									</div>
+								</div>
+
+								{/* Premium Image Frame - Optimizado para SEO */}
+								<div className="flex justify-center mb-8">
+									<div className="relative group">
+										{/* Outer Glow */}
+										<div className="absolute -inset-4 bg-gradient-to-r from-teal-400 via-cyan-400 to-blue-400 rounded-full opacity-75 blur-2xl group-hover:opacity-100 transition-opacity duration-500 animate-pulse" />
+										{/* Middle Glow */}
+										<div className="absolute -inset-2 bg-gradient-to-br from-white/40 to-transparent rounded-3xl blur-xl" />
+										{/* Image Container */}
+										<div itemProp="image" className="relative w-64 h-64 sm:w-72 sm:h-72 rounded-3xl overflow-hidden border-4 border-white/40 shadow-2xl transform group-hover:scale-105 transition-transform duration-500">
+											<Image src="/consultorios/dracarwin/IMG_5189.JPG" alt="Dra. Carwin Silva - Ginecóloga Especialista en Ginecología Regenerativa, Funcional y Estética en Venezuela | Embajadora Oficial KAVIRA" title="Doctora Carwin Silva - Ginecóloga en Venezuela | KAVIRA" width={288} height={288} className="w-full h-full object-cover" priority itemProp="image" />
+											{/* Overlay Gradient */}
+											<div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-transparent" />
+										</div>
+										{/* Decorative Corner Accents */}
+										<div className="absolute -top-2 -left-2 w-6 h-6 border-t-2 border-l-2 border-yellow-300 rounded-tl-lg" />
+										<div className="absolute -bottom-2 -right-2 w-6 h-6 border-b-2 border-r-2 border-cyan-300 rounded-br-lg" />
+									</div>
+								</div>
+
+								{/* Name & Title - Centered & Elegant - Optimizado para SEO */}
+								<div className="text-center mb-8">
+									<h2 itemProp="name" className="text-4xl sm:text-5xl font-extrabold text-white mb-3 tracking-tight">
+										Dra. Carwin Silva
+									</h2>
+									<div itemProp="jobTitle" className="inline-block px-5 py-2 bg-white/20 backdrop-blur-sm rounded-full mb-4 border border-white/30">
+										<p className="text-lg sm:text-xl text-white font-semibold">Ginecóloga Especialista</p>
+										<p className="text-base text-teal-100 font-medium">Ginecología Regenerativa • Ginecología Funcional • Ginecología Estética</p>
+									</div>
+									<div className="inline-flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-white/25 to-white/15 backdrop-blur-md rounded-full border border-white/40 shadow-lg">
+										<UserCircle className="w-5 h-5 text-white" />
+										<span className="text-sm font-bold text-white uppercase tracking-wider">Embajadora Oficial KAVIRA</span>
+									</div>
+									<p className="mt-4 text-base text-white/90 max-w-md mx-auto">
+										Consulta ginecológica especializada en <strong>Venezuela</strong>. Ginecóloga experta en salud femenina, medicina funcional y salud digital.
+									</p>
+								</div>
+
+								{/* Achievements - Refined - Optimizado para SEO */}
+								<div className="space-y-4 pt-6 border-t border-white/20">
+									{[
+										{
+											icon: CheckCircle2,
+											text: 'Primera ginecóloga en adoptar KAVIRA para gestión de consultorios privados en Venezuela',
+											highlight: true,
+										},
+										{
+											icon: TrendingUp,
+											text: 'Alta reputación como ginecóloga especialista en ginecología regenerativa, funcional y estética en Venezuela',
+										},
+										{
+											icon: Users,
+											text: 'Comunidad sólida y activa - Ginecóloga reconocida en redes sociales y plataformas digitales',
+										},
+										{
+											icon: Sparkles,
+											text: 'Contribuye activamente con mejoras a los módulos de salud femenina y ginecología digital en KAVIRA',
+										},
+									].map((achievement, index) => (
+										<motion.div key={index} initial={{ opacity: 0, x: -20 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true }} transition={{ duration: 0.5, delay: index * 0.1 }} className={`flex items-start gap-4 p-3 rounded-xl transition-all duration-300 ${achievement.highlight ? 'bg-white/10 backdrop-blur-sm border border-white/20' : 'hover:bg-white/5'}`}>
+											<div className={`shrink-0 w-8 h-8 rounded-xl flex items-center justify-center ${achievement.highlight ? 'bg-gradient-to-br from-yellow-400 to-amber-500 shadow-lg' : 'bg-white/20 backdrop-blur-sm'}`}>
+												<achievement.icon className="w-5 h-5 text-white" />
+											</div>
+											<span className="text-base sm:text-lg text-white leading-relaxed font-medium pt-0.5">{achievement.text}</span>
+										</motion.div>
+									))}
+								</div>
+
+								{/* Keywords adicionales para SEO - Oculto visualmente pero presente para motores de búsqueda */}
+								<div className="sr-only">
+									<p>
+										<strong>Búsquedas relacionadas:</strong> Ginecólogo en Venezuela, Ginecología Caracas, Doctora Ginecóloga, Consulta Ginecológica, Ginecología Estética Venezuela, Salud Femenina Digital, Medicina Funcional Ginecología
+									</p>
+								</div>
+							</div>
+						</motion.div>
+
+						{/* Right: Partnership Content - Enhanced */}
+						<motion.div initial={{ opacity: 0, x: 50 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true }} transition={{ duration: 0.8, delay: 0.4 }} className="lg:col-span-7 space-y-8">
+							{/* Main Partnership Card */}
+							<div className="relative bg-white/15 backdrop-blur-2xl rounded-3xl p-8 sm:p-10 lg:p-12 shadow-2xl border-2 border-white/30 overflow-hidden">
+								{/* Header */}
+								<div className="flex items-center gap-4 mb-8 pb-6 border-b border-white/20">
+									<div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-cyan-400 to-blue-500 flex items-center justify-center shadow-xl">
+										<Sparkles className="w-8 h-8 text-white" />
+									</div>
+									<div>
+										<h3 className="text-3xl sm:text-4xl font-extrabold text-white mb-1">Alianza Estratégica</h3>
+										<p className="text-teal-100 font-medium">KAVIRA × Dra. Carwin Silva</p>
+									</div>
+								</div>
+
+								{/* Description - Optimizado para SEO */}
+								<div className="mb-10 space-y-4">
+									<p className="text-lg sm:text-xl text-white/95 leading-relaxed font-light">
+										La <strong className="font-bold text-white">Dra. Carwin Silva</strong>, <strong>ginecóloga especialista en Venezuela</strong>, es nuestra Embajadora Oficial para Consultorios Privados, liderando la transformación digital de la salud privada. Su expertise excepcional en <strong>ginecología regenerativa, ginecología funcional y ginecología estética</strong> la posiciona como una de las principales referentes en <strong>salud femenina</strong> y <strong>medicina funcional</strong> en Venezuela.
+									</p>
+									<p className="text-base sm:text-lg text-white/90 leading-relaxed">
+										Como <strong>doctora ginecóloga</strong> pionera en la adopción de tecnología digital, la <strong>Dra. Carwin Silva</strong> utiliza KAVIRA para ofrecer consultas ginecológicas de excelencia, gestionar su consultorio privado y proporcionar atención médica especializada en <strong>ginecología</strong>. Su compromiso con la innovación médica fortalece nuestra misión de modernizar la atención en salud femenina en todo el país.
+									</p>
+									<p className="text-base text-white/85 leading-relaxed">
+										Si buscas una <strong>ginecóloga en Venezuela</strong>, una <strong>consulta ginecológica especializada</strong> o información sobre <strong>ginecología estética, ginecología regenerativa o ginecología funcional</strong>, la <strong>Dra. Carwin Silva</strong> es tu especialista de confianza. Primera en adoptar KAVIRA para la gestión digital de consultorios médicos.
+									</p>
+								</div>
+
+								{/* Enhanced Benefits Grid */}
+								<div className="grid grid-cols-1 sm:grid-cols-2 gap-5 mb-10">
+									{[
+										{
+											icon: HeartPulse,
+											title: 'Advisor en Salud Femenina Digital',
+											description: 'Participación activa en desarrollo de módulos especializados',
+											gradient: 'from-rose-400 to-pink-500',
+										},
+										{
+											icon: TrendingUp,
+											title: 'Líder Médico Digital Nacional',
+											description: 'Reconocimiento como pionera de la salud digital',
+											gradient: 'from-blue-400 to-cyan-500',
+										},
+									].map((benefit, index) => (
+										<motion.div key={index} initial={{ opacity: 0, scale: 0.95 }} whileInView={{ opacity: 1, scale: 1 }} viewport={{ once: true }} transition={{ duration: 0.5, delay: index * 0.1 }} whileHover={{ scale: 1.03, y: -4 }} className="group relative bg-white/10 backdrop-blur-sm rounded-2xl p-5 border border-white/20 hover:border-white/40 hover:bg-white/15 transition-all duration-300 overflow-hidden">
+											{/* Gradient Background on Hover */}
+											<div className={`absolute inset-0 bg-gradient-to-br ${benefit.gradient} opacity-0 group-hover:opacity-10 transition-opacity duration-300`} />
+											<div className="relative z-10">
+												<div className={`inline-flex items-center justify-center w-12 h-12 rounded-xl bg-gradient-to-br ${benefit.gradient} shadow-lg mb-4 group-hover:scale-110 group-hover:rotate-3 transition-all duration-300`}>
+													<benefit.icon className="w-6 h-6 text-white" />
+												</div>
+												<h4 className="text-base sm:text-lg font-bold text-white mb-2">{benefit.title}</h4>
+												<p className="text-sm text-white/80 leading-relaxed">{benefit.description}</p>
+											</div>
+										</motion.div>
+									))}
+								</div>
+
+								{/* Impact Statement */}
+								<div className="relative bg-gradient-to-r from-white/20 to-white/10 backdrop-blur-md rounded-2xl p-6 sm:p-8 border border-white/30 overflow-hidden">
+									<div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full blur-3xl -mr-16 -mt-16" />
+									<div className="relative z-10">
+										<div className="flex items-center gap-3 mb-4">
+											<Target className="w-6 h-6 text-yellow-300" />
+											<h4 className="text-xl sm:text-2xl font-bold text-white">Impacto de la Alianza</h4>
+										</div>
+										<p className="text-base sm:text-lg text-white/95 leading-relaxed mb-6">Esta colaboración estratégica impulsa la modernización de la salud privada en Venezuela, estableciendo nuevos estándares de excelencia médica a través de la integración de tecnología de vanguardia con expertise clínico de clase mundial.</p>
+										<div className="flex flex-wrap gap-3">
+											{['Pionera Digital', 'Líder en Salud Femenina', 'Innovación Médica', 'Transformación Digital'].map((tag, idx) => (
+												<span key={idx} className="px-4 py-2 bg-white/20 backdrop-blur-sm rounded-full text-sm font-semibold text-white border border-white/30">
+													{tag}
+												</span>
+											))}
+										</div>
+									</div>
+								</div>
+							</div>
+						</motion.div>
+					</div>
+
+					{/* Keywords ocultas solo para SEO */}
+					<div className="sr-only">
+						<p>
+							<strong>Palabras clave relacionadas:</strong> Ginecólogo Venezuela, Ginecóloga Caracas, Doctora Carwin Silva, Consulta Ginecológica, Ginecología Estética, Ginecología Regenerativa, Ginecología Funcional, Salud Femenina, Medicina Funcional Ginecología, Ginecólogo Especialista Venezuela, Ginecología Digital, Telemedicina Ginecología
+						</p>
+					</div>
+				</div>
+			</article>
+
 			{/* Ecosistema y Automatización */}
 			<section className="py-16 sm:py-20 md:py-24 bg-slate-900 text-white relative overflow-hidden">
 				<div className="absolute inset-0">
@@ -523,8 +784,8 @@ export default function HomePage() {
 								<Sparkles className="w-4 h-4 text-teal-600" />
 								<span className="text-xs sm:text-sm font-semibold text-teal-700">Planes Simples</span>
 							</div>
-						<h3 className="text-2xl font-bold text-slate-900 mb-3">Planes Flexibles Adaptados a tus Necesidades</h3>
-						<p className="text-sm sm:text-base text-slate-600 mb-5">KAVIRA ofrece modelos de suscripción diseñados para cada tipo de usuario del ecosistema de salud. Desde acceso gratuito para pacientes hasta planes empresariales para grandes organizaciones, nuestra plataforma se adapta a tus necesidades específicas.</p>
+							<h3 className="text-2xl font-bold text-slate-900 mb-3">Planes Flexibles Adaptados a tus Necesidades</h3>
+							<p className="text-sm sm:text-base text-slate-600 mb-5">KAVIRA ofrece modelos de suscripción diseñados para cada tipo de usuario del ecosistema de salud. Desde acceso gratuito para pacientes hasta planes empresariales para grandes organizaciones, nuestra plataforma se adapta a tus necesidades específicas.</p>
 							<ul className="space-y-3 text-sm sm:text-base">
 								<li>
 									<strong className="text-slate-900">Pacientes:</strong> <span className="text-emerald-600 font-semibold">Acceso gratuito</span> al portal del paciente.
@@ -703,9 +964,7 @@ export default function HomePage() {
 								Para los <strong>pacientes</strong>, KAVIRA ofrece un portal completamente gratuito que proporciona acceso a su historial médico completo, la posibilidad de agendar citas con diferentes especialistas, recibir recordatorios automáticos de tratamientos y citas, acceder instantáneamente a resultados de laboratorio y recetas digitales, y mantener comunicación directa con sus profesionales de la salud. Todo desde una única plataforma segura, fácil de usar y accesible desde cualquier dispositivo.
 							</p>
 							<h3 className="text-2xl font-bold text-slate-900 mt-8 mb-4">Tecnología de Vanguardia y Seguridad</h3>
-							<p className="text-base sm:text-lg">
-								KAVIRA utiliza tecnología de última generación con arquitectura en la nube, garantizando alta disponibilidad, escalabilidad y respaldo automático de datos. La plataforma cumple con los más altos estándares de seguridad, utilizando encriptación de extremo a extremo, autenticación de múltiples factores y controles de acceso basados en roles. Todos los datos médicos están protegidos según estándares internacionales similares a GDPR y HIPAA.
-							</p>
+							<p className="text-base sm:text-lg">KAVIRA utiliza tecnología de última generación con arquitectura en la nube, garantizando alta disponibilidad, escalabilidad y respaldo automático de datos. La plataforma cumple con los más altos estándares de seguridad, utilizando encriptación de extremo a extremo, autenticación de múltiples factores y controles de acceso basados en roles. Todos los datos médicos están protegidos según estándares internacionales similares a GDPR y HIPAA.</p>
 							<p className="text-base sm:text-lg">
 								Con <strong>KAVIRA</strong>, estamos construyendo el futuro de la atención médica en Venezuela, donde la tecnología y la innovación se unen para brindar una experiencia de salud más accesible, eficiente, coordinada y de mayor calidad para profesionales y pacientes por igual.
 							</p>
@@ -716,4 +975,3 @@ export default function HomePage() {
 		</div>
 	);
 }
-

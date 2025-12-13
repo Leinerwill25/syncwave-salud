@@ -110,3 +110,13 @@ body {
 .leaflet-control-attribution {
 	z-index: 10 !important;
 }
+
+/* Shimmer animation for ambassador section */
+@keyframes shimmer {
+	0% {
+		transform: translateX(-100%);
+	}
+	100% {
+		transform: translateX(100%);
+	}
+}
