@@ -52,6 +52,8 @@ export default function AppointmentForm() {
 	const [scheduledAt, setScheduledAt] = useState('');
 	const [durationMinutes, setDurationMinutes] = useState<number | ''>(30);
 	const [location, setLocation] = useState('');
+	const [reason, setReason] = useState('');
+	const [referralSource, setReferralSource] = useState<string>('');
 
 	// Servicios del consultorio (desde medic_profile.services)
 	type ClinicService = {
@@ -67,9 +69,7 @@ export default function AppointmentForm() {
 	const [selectedServices, setSelectedServices] = useState<string[]>([]); // IDs de servicios seleccionados
 	const [loadingServices, setLoadingServices] = useState(false);
 
-	// Facturación calculada desde servicios
-	const [taxMode] = useState<'VE' | 'NONE'>('VE');
-	const IVA_VE_GENERAL = 0.16;
+	// Facturación calculada desde servicios - En el área de salud no se aplican impuestos (IVA)
 
 	const [submitting, setSubmitting] = useState(false);
 	const searchDebounceRef = useRef<number | null>(null);
@@ -126,6 +126,54 @@ export default function AppointmentForm() {
 		}
 
 		loadServices();
+	}, [organizationId]);
+
+	// Cargar ubicación del consultorio
+	useEffect(() => {
+		if (!organizationId) return;
+
+		async function loadClinicLocation() {
+			try {
+				// Intentar obtener la ubicación del consultorio
+				// Primero intentar con /api/role-users/clinic-location (para role-users)
+				let locationRes;
+				try {
+					locationRes = await axios.get('/api/role-users/clinic-location', { withCredentials: true });
+					if (locationRes.data?.location) {
+						setLocation(locationRes.data.location);
+						return;
+					}
+				} catch (err) {
+					// Si falla, intentar con /api/clinic-profile (para médicos/usuarios normales)
+					try {
+						const profileRes = await axios.get('/api/clinic-profile', { withCredentials: true });
+						if (profileRes.data?.ok && profileRes.data?.profile) {
+							const profile = profileRes.data.profile;
+							// Construir la ubicación completa
+							// Priorizar addressOperational, si no existe usar addressFiscal
+							const address = profile.addressOperational || profile.addressFiscal || '';
+
+							const parts: string[] = [];
+							if (address) parts.push(address);
+							if (profile.cityMunicipality) parts.push(profile.cityMunicipality);
+							if (profile.stateProvince) parts.push(profile.stateProvince);
+							if (profile.postalCode) parts.push(profile.postalCode);
+
+							const fullLocation = parts.join(', ');
+							if (fullLocation) {
+								setLocation(fullLocation);
+							}
+						}
+					} catch (profileErr) {
+						console.error('Error cargando ubicación del consultorio:', profileErr);
+					}
+				}
+			} catch (err) {
+				console.error('Error cargando ubicación del consultorio:', err);
+			}
+		}
+
+		loadClinicLocation();
 	}, [organizationId]);
 
 	useEffect(() => {
@@ -314,7 +362,6 @@ export default function AppointmentForm() {
 		return (Math.round((n + Number.EPSILON) * 100) / 100).toFixed(2);
 	};
 
-
 	// ---------------------------
 	// HANDLE SUBMIT
 	// ---------------------------
@@ -347,11 +394,7 @@ export default function AppointmentForm() {
 				const checkRes = await fetch(`/api/patients/search?identifier=${encodeURIComponent(unregisteredIdentification.trim())}`);
 				const existingPatients = await checkRes.json();
 				if (Array.isArray(existingPatients) && existingPatients.length > 0) {
-					const exists = existingPatients.some(
-						(p: any) =>
-							(p.identifier && p.identifier.trim().toLowerCase() === unregisteredIdentification.trim().toLowerCase()) ||
-							(p.identification && p.identification.trim().toLowerCase() === unregisteredIdentification.trim().toLowerCase())
-					);
+					const exists = existingPatients.some((p: any) => (p.identifier && p.identifier.trim().toLowerCase() === unregisteredIdentification.trim().toLowerCase()) || (p.identification && p.identification.trim().toLowerCase() === unregisteredIdentification.trim().toLowerCase()));
 					if (exists) {
 						return showMessage('warning', 'Cédula Duplicada', `La cédula "${unregisteredIdentification}" ya está registrada. Por favor, busca al paciente en la lista.`);
 					}
@@ -366,11 +409,11 @@ export default function AppointmentForm() {
 			return showMessage('warning', 'Campo Requerido', 'Debe seleccionar al menos un servicio para la cita.');
 		}
 
-		// Calcular facturación desde servicios seleccionados
+		// Calcular facturación desde servicios seleccionados - Sin impuestos (IVA) en área de salud
 		const selectedServicesData = services.filter((s) => selectedServices.includes(s.id));
 		const subtotal = selectedServicesData.reduce((sum, s) => sum + Number(s.price), 0);
-		const impuestos = taxMode === 'VE' ? subtotal * IVA_VE_GENERAL : 0;
-		const total = subtotal + impuestos;
+		const impuestos = 0; // No se aplican impuestos en el área de salud
+		const total = subtotal; // Total igual al subtotal sin impuestos
 		const currency = selectedServicesData[0]?.currency || 'USD'; // Usar la moneda del primer servicio
 
 		setSubmitting(true);
@@ -413,19 +456,31 @@ export default function AppointmentForm() {
 				}
 			}
 
+			// Obtener el servicio seleccionado (tomar el primero si hay varios)
+			const firstSelectedService = selectedServicesData.length > 0 ? selectedServicesData[0] : null;
+
 			// Crear la cita
 			const appointmentPayload: any = {
 				doctorId: userId,
 				organizationId,
 				scheduledAt,
 				durationMinutes: typeof durationMinutes === 'number' ? durationMinutes : Number(durationMinutes),
+				reason: reason || null,
 				location,
+				referralSource: referralSource || null,
+				selectedService: firstSelectedService
+					? JSON.stringify({
+							id: firstSelectedService.id,
+							name: firstSelectedService.name,
+							price: firstSelectedService.price,
+							currency: firstSelectedService.currency,
+					  })
+					: null,
 				billing: {
 					subtotal: subtotal || 0,
-					impuestos: impuestos || 0,
-					total: total || subtotal + impuestos,
+					impuestos: 0, // No se aplican impuestos en el área de salud
+					total: total || subtotal,
 					currency,
-					taxMode,
 				},
 			};
 
@@ -438,31 +493,29 @@ export default function AppointmentForm() {
 			const res = await axios.post('/api/appointments', appointmentPayload, { withCredentials: true });
 
 			if (res.data?.success) {
-				showMessage(
-					'success',
-					'¡Cita Registrada!',
-					'Cita registrada correctamente. La facturación se ha creado como pendiente de pago.',
-					() => {
-						setLocation('');
-						setSelectedPatient(null);
-						setSelectedUnregisteredPatientId(null);
-						setIdentifier('');
-						setSelectedServices([]);
-						// Resetear formulario de paciente no registrado
-						setUnregisteredFirstName('');
-						setUnregisteredLastName('');
-						setUnregisteredIdentification('');
-						setUnregisteredPhone('');
-						setUnregisteredEmail('');
-						setUnregisteredBirthDate('');
-						setUnregisteredSex('');
-						setUnregisteredAddress('');
-						// Recargar la página después de un breve delay
-						setTimeout(() => {
-							window.location.reload();
-						}, 1500);
-					}
-				);
+				showMessage('success', '¡Cita Registrada!', 'Cita registrada correctamente. La facturación se ha creado como pendiente de pago.', () => {
+					setLocation('');
+					setSelectedPatient(null);
+					setSelectedUnregisteredPatientId(null);
+					setIdentifier('');
+					setSelectedServices([]);
+					// Resetear formulario de paciente no registrado
+					setUnregisteredFirstName('');
+					setUnregisteredLastName('');
+					setUnregisteredIdentification('');
+					setUnregisteredPhone('');
+					setUnregisteredEmail('');
+					setUnregisteredBirthDate('');
+					setUnregisteredSex('');
+					setUnregisteredAddress('');
+					setReason('');
+					setLocation('');
+					setReferralSource('');
+					// Recargar la página después de un breve delay
+					setTimeout(() => {
+						window.location.reload();
+					}, 1500);
+				});
 			} else {
 				showMessage('error', 'Error al Registrar', 'Ocurrió un error al registrar la cita.');
 			}
@@ -532,44 +585,22 @@ export default function AppointmentForm() {
 			<AnimatePresence>
 				{modalMessage.open && (
 					<>
-						<motion.div
-							initial={{ opacity: 0 }}
-							animate={{ opacity: 1 }}
-							exit={{ opacity: 0 }}
-							className="fixed inset-0 z-50 flex items-center justify-center p-4"
-							onClick={closeModal}>
+						<motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={closeModal}>
 							<div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
-							<motion.div
-								initial={{ opacity: 0, scale: 0.95 }}
-								animate={{ opacity: 1, scale: 1 }}
-								exit={{ opacity: 0, scale: 0.95 }}
-								onClick={(e) => e.stopPropagation()}
-								className={`relative z-50 w-full max-w-md rounded-xl shadow-xl border-2 ${bgColors[modalMessage.type]}`}>
+							<motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} onClick={(e) => e.stopPropagation()} className={`relative z-50 w-full max-w-md rounded-xl shadow-xl border-2 ${bgColors[modalMessage.type]}`}>
 								<div className="p-6">
 									<div className="flex items-start gap-4">
-										<div className={`flex-shrink-0 ${iconColors[modalMessage.type]}`}>
-											{modalMessage.type === 'success' ? (
-												<CheckCircle2 className="w-6 h-6" />
-											) : modalMessage.type === 'error' ? (
-												<AlertCircle className="w-6 h-6" />
-											) : (
-												<AlertCircle className="w-6 h-6" />
-											)}
-										</div>
+										<div className={`flex-shrink-0 ${iconColors[modalMessage.type]}`}>{modalMessage.type === 'success' ? <CheckCircle2 className="w-6 h-6" /> : modalMessage.type === 'error' ? <AlertCircle className="w-6 h-6" /> : <AlertCircle className="w-6 h-6" />}</div>
 										<div className="flex-1 min-w-0">
 											<h3 className="text-lg font-semibold text-gray-900 mb-2">{modalMessage.title}</h3>
 											<p className="text-sm text-gray-700 whitespace-pre-wrap">{modalMessage.message}</p>
 										</div>
-										<button
-											onClick={closeModal}
-											className="flex-shrink-0 text-gray-400 hover:text-gray-600 transition-colors">
+										<button onClick={closeModal} className="flex-shrink-0 text-gray-400 hover:text-gray-600 transition-colors">
 											<X className="w-5 h-5" />
 										</button>
 									</div>
 									<div className="mt-6 flex justify-end">
-										<button
-											onClick={closeModal}
-											className={`px-4 py-2 rounded-md text-white text-sm font-medium transition-colors ${buttonColors[modalMessage.type]}`}>
+										<button onClick={closeModal} className={`px-4 py-2 rounded-md text-white text-sm font-medium transition-colors ${buttonColors[modalMessage.type]}`}>
 											{modalMessage.type === 'success' ? 'Aceptar' : 'Cerrar'}
 										</button>
 									</div>
@@ -589,371 +620,287 @@ export default function AppointmentForm() {
 		<>
 			<MessageModal />
 			<form onSubmit={handleSubmit} style={{ maxHeight: `calc(100vh - ${HEADER_OFFSET}px)` }} className="mx-auto bg-white rounded-xl shadow-md p-4 overflow-auto min-w-0 w-full max-w-full">
-			<div className="flex items-start justify-between mb-3">
-				<div>
-					<h2 className="text-lg font-semibold text-gray-900">Registrar Cita</h2>
-					<p className="text-xs text-gray-500 mt-1">Complete los datos de la cita y facturación (solo divisas).</p>
+				<div className="flex items-start justify-between mb-3">
+					<div>
+						<h2 className="text-lg font-semibold text-gray-900">Registrar Cita</h2>
+						<p className="text-xs text-gray-500 mt-1">Complete los datos de la cita y facturación (solo divisas).</p>
+					</div>
 				</div>
-			</div>
 
-			<div className="space-y-4">
-				{/* FORMULARIO DE LA CITA */}
-				<section className="space-y-3">
-					{/* Selector de tipo de paciente */}
-					<div className="p-3 border border-gray-200 rounded-md bg-gray-50">
-						<label className={labelClass}>Tipo de Paciente</label>
-						<div className="grid grid-cols-2 gap-2 mt-2">
-							<button
-								type="button"
-								onClick={() => setPatientType('registered')}
-								className={`flex items-center justify-center gap-2 px-3 py-2 rounded-md border-2 transition-all ${
-									patientType === 'registered'
-										? 'border-teal-500 bg-teal-50 text-teal-700 shadow-sm'
-										: 'border-gray-200 bg-white text-gray-700 hover:border-gray-300'
-								}`}>
-								<UserCheck size={16} />
-								<span className="text-xs font-semibold">Registrado</span>
-							</button>
-							<button
-								type="button"
-								onClick={() => setPatientType('unregistered')}
-								className={`flex items-center justify-center gap-2 px-3 py-2 rounded-md border-2 transition-all ${
-									patientType === 'unregistered'
-										? 'border-orange-500 bg-orange-50 text-orange-700 shadow-sm'
-										: 'border-gray-200 bg-white text-gray-700 hover:border-gray-300'
-								}`}>
-								<UserPlus size={16} />
-								<span className="text-xs font-semibold">No Registrado</span>
-							</button>
-						</div>
-					</div>
-
-					{/* Buscar paciente */}
-					<div className="relative">
-						<label className={labelClass}>Buscar {patientType === 'registered' ? 'paciente registrado' : 'paciente no registrado'}</label>
-						<input
-							type="text"
-							placeholder="Cédula o nombre"
-							value={identifier}
-							onChange={(e) => {
-								setIdentifier(e.target.value);
-								setSelectedPatient(null);
-								setSelectedUnregisteredPatientId(null);
-							}}
-							className={inputNeutral}
-							aria-label="Buscar paciente"
-						/>
-						{patients.length > 0 && (
-							<ul className="absolute z-50 left-0 right-0 mt-1 bg-white border rounded-md max-h-48 overflow-auto shadow-lg">
-								{patients.map((p) => (
-									<li
-										key={p.id}
-										onClick={() => {
-											if (patientType === 'registered') {
-												setSelectedPatient(p);
-												setIdentifier(`${p.firstName} ${p.lastName} ${p.identifier ? `(${p.identifier})` : ''}`);
-											} else {
-												setSelectedUnregisteredPatientId(p.id);
-												setUnregisteredFirstName(p.firstName);
-												setUnregisteredLastName(p.lastName);
-												setUnregisteredIdentification(p.identifier || '');
-												setIdentifier(`${p.firstName} ${p.lastName} ${p.identifier ? `(${p.identifier})` : ''}`);
-											}
-											setPatients([]);
-										}}
-										className={patientItemClass}>
-										<div className="font-medium text-gray-800">
-											{p.firstName} {p.lastName}
-										</div>
-										{p.identifier && <div className="text-xs text-gray-500">{p.identifier}</div>}
-										{patientType === 'unregistered' && (
-											<div className="text-xs text-orange-600 mt-0.5">No registrado</div>
-										)}
-									</li>
-								))}
-							</ul>
-						)}
-					</div>
-
-					{/* Formulario de paciente no registrado (si no se seleccionó uno existente) */}
-					{patientType === 'unregistered' && !selectedUnregisteredPatientId && (
-						<div className="p-3 border border-orange-200 rounded-md bg-orange-50/50">
-							<h3 className="text-xs font-semibold text-gray-800 mb-3 flex items-center gap-2">
-								<UserPlus size={14} />
-								Datos del Paciente No Registrado
-							</h3>
-							<div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-								<div className="min-w-0">
-									<label className={labelClass}>Nombre *</label>
-									<input
-										type="text"
-										value={unregisteredFirstName}
-										onChange={(e) => setUnregisteredFirstName(e.target.value)}
-										placeholder="Nombre"
-										className={`${inputNeutral} min-w-0`}
-									/>
-								</div>
-								<div className="min-w-0">
-									<label className={labelClass}>Apellido *</label>
-									<input
-										type="text"
-										value={unregisteredLastName}
-										onChange={(e) => setUnregisteredLastName(e.target.value)}
-										placeholder="Apellido"
-										className={`${inputNeutral} min-w-0`}
-									/>
-								</div>
-								<div className="min-w-0">
-									<label className={labelClass}>Cédula</label>
-									<input
-										type="text"
-										value={unregisteredIdentification}
-										onChange={(e) => setUnregisteredIdentification(e.target.value)}
-										placeholder="V-12345678"
-										className={`${inputNeutral} min-w-0`}
-									/>
-								</div>
-								<div className="min-w-0">
-									<label className={labelClass}>Teléfono *</label>
-									<input
-										type="tel"
-										value={unregisteredPhone}
-										onChange={(e) => setUnregisteredPhone(e.target.value)}
-										placeholder="0412-1234567"
-										className={`${inputNeutral} min-w-0`}
-									/>
-								</div>
-								<div className="min-w-0">
-									<label className={labelClass}>Email</label>
-									<input
-										type="email"
-										value={unregisteredEmail}
-										onChange={(e) => setUnregisteredEmail(e.target.value)}
-										placeholder="email@ejemplo.com"
-										className={`${inputNeutral} min-w-0`}
-									/>
-								</div>
-								<div className="min-w-0">
-									<label className={labelClass}>Fecha de Nacimiento</label>
-									<input
-										type="date"
-										value={unregisteredBirthDate}
-										onChange={(e) => setUnregisteredBirthDate(e.target.value)}
-										className={`${inputNeutral} min-w-0`}
-									/>
-								</div>
-								<div className="min-w-0">
-									<label className={labelClass}>Sexo</label>
-									<select
-										value={unregisteredSex}
-										onChange={(e) => setUnregisteredSex(e.target.value as 'M' | 'F' | 'OTHER' | '')}
-										className={`${inputNeutral} min-w-0`}
-									>
-										<option value="">Seleccionar...</option>
-										<option value="M">Masculino</option>
-										<option value="F">Femenino</option>
-										<option value="OTHER">Otro</option>
-									</select>
-								</div>
-								<div className="min-w-0">
-									<label className={labelClass}>Dirección</label>
-									<input
-										type="text"
-										value={unregisteredAddress}
-										onChange={(e) => setUnregisteredAddress(e.target.value)}
-										placeholder="Dirección"
-										className={`${inputNeutral} min-w-0`}
-									/>
-								</div>
-							</div>
-						</div>
-					)}
-
-					{/* Paciente seleccionado */}
-					{((patientType === 'registered' && selectedPatient) || (patientType === 'unregistered' && selectedUnregisteredPatientId)) && (
-						<div className="p-3 border border-green-200 rounded-md bg-green-50">
-							<div className="flex items-center justify-between">
-								<div>
-									<label className={labelClass}>Paciente Seleccionado</label>
-									<div className="text-sm font-medium text-gray-900">
-										{patientType === 'registered' && selectedPatient
-											? `${selectedPatient.firstName} ${selectedPatient.lastName}`
-											: `${unregisteredFirstName} ${unregisteredLastName}`}
-									</div>
-									{(patientType === 'registered' && selectedPatient?.identifier) || unregisteredIdentification ? (
-										<div className="text-xs text-gray-600 mt-0.5">
-											Cédula: {patientType === 'registered' && selectedPatient ? selectedPatient.identifier : unregisteredIdentification}
-										</div>
-									) : null}
-									<div className={`text-xs mt-1 ${patientType === 'registered' ? 'text-green-600' : 'text-orange-600'}`}>
-										{patientType === 'registered' ? 'Paciente Registrado' : 'Paciente No Registrado'}
-									</div>
-								</div>
-								<button
-									type="button"
-									onClick={() => {
-										if (patientType === 'registered') {
-											setSelectedPatient(null);
-										} else {
-											setSelectedUnregisteredPatientId(null);
-											setUnregisteredFirstName('');
-											setUnregisteredLastName('');
-											setUnregisteredIdentification('');
-										}
-										setIdentifier('');
-									}}
-									className="text-xs text-gray-600 hover:text-gray-900 px-2 py-1 border border-gray-300 rounded">
-									Cambiar
+				<div className="space-y-4">
+					{/* FORMULARIO DE LA CITA */}
+					<section className="space-y-3">
+						{/* Selector de tipo de paciente */}
+						<div className="p-3 border border-gray-200 rounded-md bg-gray-50">
+							<label className={labelClass}>Tipo de Paciente</label>
+							<div className="grid grid-cols-2 gap-2 mt-2">
+								<button type="button" onClick={() => setPatientType('registered')} className={`flex items-center justify-center gap-2 px-3 py-2 rounded-md border-2 transition-all ${patientType === 'registered' ? 'border-teal-500 bg-teal-50 text-teal-700 shadow-sm' : 'border-gray-200 bg-white text-gray-700 hover:border-gray-300'}`}>
+									<UserCheck size={16} />
+									<span className="text-xs font-semibold">Registrado</span>
+								</button>
+								<button type="button" onClick={() => setPatientType('unregistered')} className={`flex items-center justify-center gap-2 px-3 py-2 rounded-md border-2 transition-all ${patientType === 'unregistered' ? 'border-orange-500 bg-orange-50 text-orange-700 shadow-sm' : 'border-gray-200 bg-white text-gray-700 hover:border-gray-300'}`}>
+									<UserPlus size={16} />
+									<span className="text-xs font-semibold">No Registrado</span>
 								</button>
 							</div>
 						</div>
-					)}
 
-					<div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-						<div className="min-w-0">
-							<label className={labelClass}>Fecha y hora</label>
-							<input type="datetime-local" value={scheduledAt} onChange={(e) => setScheduledAt(e.target.value)} className={`${inputNeutral} min-w-0`} />
-						</div>
-						<div className="min-w-0">
-							<label className={labelClass}>Duración (min)</label>
-							<input type="number" min={1} value={durationMinutes} onChange={(e) => setDurationMinutes(e.target.value === '' ? '' : Number(e.target.value))} className={`${inputNeutral} min-w-0`} />
-						</div>
-					</div>
-
-					<div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-						<div className="min-w-0">
-							<label className={labelClass}>Ubicación</label>
-							<input type="text" value={location} onChange={(e) => setLocation(e.target.value)} className={`${inputNeutral} min-w-0`} />
-						</div>
-					</div>
-				</section>
-
-				{/* SERVICIOS DEL CONSULTORIO - Ahora en la parte inferior */}
-				<section className="space-y-3 border-t border-gray-200 pt-4">
-					<div className="p-4 border border-gray-100 rounded-md bg-gray-50">
-						<h3 className={sectionTitle}>Servicios del Consultorio</h3>
-						<p className="text-xs text-gray-600 mt-1 mb-4">Selecciona los servicios para esta cita</p>
-
-						{loadingServices ? (
-							<div className="flex items-center justify-center py-8">
-								<Loader2 className="w-5 h-5 animate-spin text-gray-400" />
-								<span className="text-xs text-gray-500 ml-2">Cargando servicios...</span>
-							</div>
-						) : services.length === 0 ? (
-							<div className="text-center py-6 text-xs text-gray-500">
-								<p>No hay servicios disponibles.</p>
-								<p className="mt-1">Configura los servicios en Configuración → Perfil Profesional</p>
-							</div>
-						) : (
-							<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 w-full min-w-0">
-								{services
-									.filter((service) => service.is_active !== false) // Filtrar solo servicios activos
-									.map((service) => {
-										const isSelected = selectedServices.includes(service.id);
-										return (
-											<button
-												key={service.id}
-												type="button"
-												onClick={() => {
-													setSelectedServices((prev) =>
-														isSelected ? prev.filter((id) => id !== service.id) : [...prev, service.id]
-													);
-												}}
-												className={`w-full p-4 rounded-lg border-2 text-left transition-all ${
-													isSelected
-														? 'border-teal-500 bg-teal-50 shadow-sm'
-														: 'border-gray-200 bg-white hover:border-gray-300 hover:shadow-sm'
-												}`}>
-												<div className="flex items-start justify-between gap-2">
-													<div className="flex-1 min-w-0">
-														<div className="flex items-center gap-2 mb-2">
-															{isSelected && <CheckCircle className="w-5 h-5 text-teal-600 shrink-0" />}
-															<h4 className={`text-sm font-semibold ${isSelected ? 'text-teal-900' : 'text-gray-900'}`}>
-																{service.name}
-															</h4>
-														</div>
-														{service.description && (
-															<p className="text-xs text-gray-600 mb-3 line-clamp-2">{service.description}</p>
-														)}
-														<div className="mt-2">
-															<CurrencyDisplay
-																amount={Number(service.price)}
-																currency={service.currency as 'USD' | 'EUR'}
-																showBoth={true}
-																size="sm"
-															/>
-														</div>
-													</div>
-												</div>
-											</button>
-										);
-									})}
-							</div>
-						)}
-					</div>
-
-					{/* Resumen de facturación */}
-					{selectedServices.length > 0 && (
-						<div className="p-4 border border-gray-100 rounded-md bg-white">
-							<h4 className="text-sm font-semibold text-gray-900 mb-3">Resumen de Facturación</h4>
-							<div className="space-y-2">
-								<div className="flex justify-between text-xs text-gray-600">
-									<span>Servicios seleccionados:</span>
-									<strong>{selectedServices.length}</strong>
-								</div>
-								{(() => {
-									const selectedServicesData = services.filter((s) => selectedServices.includes(s.id));
-									const subtotal = selectedServicesData.reduce((sum, s) => sum + Number(s.price), 0);
-									const impuestos = taxMode === 'VE' ? subtotal * IVA_VE_GENERAL : 0;
-									const total = subtotal + impuestos;
-									const currency = selectedServicesData[0]?.currency || 'USD';
-
-									return (
-										<>
-											<div className="flex justify-between text-sm text-gray-700 pt-2 border-t border-gray-200">
-												<span>Subtotal ({currency})</span>
-												<strong>{subtotal.toFixed(2)}</strong>
+						{/* Buscar paciente */}
+						<div className="relative">
+							<label className={labelClass}>Buscar {patientType === 'registered' ? 'paciente registrado' : 'paciente no registrado'}</label>
+							<input
+								type="text"
+								placeholder="Cédula o nombre"
+								value={identifier}
+								onChange={(e) => {
+									setIdentifier(e.target.value);
+									setSelectedPatient(null);
+									setSelectedUnregisteredPatientId(null);
+								}}
+								className={inputNeutral}
+								aria-label="Buscar paciente"
+							/>
+							{patients.length > 0 && (
+								<ul className="absolute z-50 left-0 right-0 mt-1 bg-white border rounded-md max-h-48 overflow-auto shadow-lg">
+									{patients.map((p) => (
+										<li
+											key={p.id}
+											onClick={() => {
+												if (patientType === 'registered') {
+													setSelectedPatient(p);
+													setIdentifier(`${p.firstName} ${p.lastName} ${p.identifier ? `(${p.identifier})` : ''}`);
+												} else {
+													setSelectedUnregisteredPatientId(p.id);
+													setUnregisteredFirstName(p.firstName);
+													setUnregisteredLastName(p.lastName);
+													setUnregisteredIdentification(p.identifier || '');
+													setIdentifier(`${p.firstName} ${p.lastName} ${p.identifier ? `(${p.identifier})` : ''}`);
+												}
+												setPatients([]);
+											}}
+											className={patientItemClass}>
+											<div className="font-medium text-gray-800">
+												{p.firstName} {p.lastName}
 											</div>
-											{taxMode === 'VE' && (
-												<div className="flex justify-between text-sm text-gray-700">
-													<span>Impuestos ({currency})</span>
-													<strong>{impuestos.toFixed(2)}</strong>
+											{p.identifier && (
+												<div key={`${p.id}-identifier`} className="text-xs text-gray-500">
+													{p.identifier}
 												</div>
 											)}
-											<div className="flex justify-between items-center pt-2 border-t border-gray-200">
-												<span className="font-semibold text-base">Total ({currency})</span>
-												<strong className="text-lg text-teal-700 font-bold">{total.toFixed(2)}</strong>
-											</div>
-											<div className="mt-3 pt-3 border-t border-gray-200">
-												<CurrencyDisplay
-													amount={total}
-													currency={currency as 'USD' | 'EUR'}
-													showBoth={true}
-													size="md"
-												/>
-											</div>
-											<p className="text-xs text-gray-500 mt-3 italic bg-blue-50 p-2 rounded border border-blue-100">
-												💡 Esta factura se creará automáticamente como pendiente de pago para el paciente
-											</p>
-										</>
-									);
-								})()}
+											{patientType === 'unregistered' && (
+												<div key={`${p.id}-unregistered`} className="text-xs text-orange-600 mt-0.5">
+													No registrado
+												</div>
+											)}
+										</li>
+									))}
+								</ul>
+							)}
+						</div>
+
+						{/* Formulario de paciente no registrado (si no se seleccionó uno existente) */}
+						{patientType === 'unregistered' && !selectedUnregisteredPatientId && (
+							<div className="p-3 border border-orange-200 rounded-md bg-orange-50/50">
+								<h3 className="text-xs font-semibold text-gray-800 mb-3 flex items-center gap-2">
+									<UserPlus size={14} />
+									Datos del Paciente No Registrado
+								</h3>
+								<div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+									<div className="min-w-0">
+										<label className={labelClass}>Nombre *</label>
+										<input type="text" value={unregisteredFirstName} onChange={(e) => setUnregisteredFirstName(e.target.value)} placeholder="Nombre" className={`${inputNeutral} min-w-0`} />
+									</div>
+									<div className="min-w-0">
+										<label className={labelClass}>Apellido *</label>
+										<input type="text" value={unregisteredLastName} onChange={(e) => setUnregisteredLastName(e.target.value)} placeholder="Apellido" className={`${inputNeutral} min-w-0`} />
+									</div>
+									<div className="min-w-0">
+										<label className={labelClass}>Cédula</label>
+										<input type="text" value={unregisteredIdentification} onChange={(e) => setUnregisteredIdentification(e.target.value)} placeholder="V-12345678" className={`${inputNeutral} min-w-0`} />
+									</div>
+									<div className="min-w-0">
+										<label className={labelClass}>Teléfono *</label>
+										<input type="tel" value={unregisteredPhone} onChange={(e) => setUnregisteredPhone(e.target.value)} placeholder="0412-1234567" className={`${inputNeutral} min-w-0`} />
+									</div>
+									<div className="min-w-0">
+										<label className={labelClass}>Email</label>
+										<input type="email" value={unregisteredEmail} onChange={(e) => setUnregisteredEmail(e.target.value)} placeholder="email@ejemplo.com" className={`${inputNeutral} min-w-0`} />
+									</div>
+									<div className="min-w-0">
+										<label className={labelClass}>Fecha de Nacimiento</label>
+										<input type="date" value={unregisteredBirthDate} onChange={(e) => setUnregisteredBirthDate(e.target.value)} className={`${inputNeutral} min-w-0`} />
+									</div>
+									<div className="min-w-0">
+										<label className={labelClass}>Sexo</label>
+										<select value={unregisteredSex} onChange={(e) => setUnregisteredSex(e.target.value as 'M' | 'F' | 'OTHER' | '')} className={`${inputNeutral} min-w-0`}>
+											<option value="">Seleccionar...</option>
+											<option value="M">Masculino</option>
+											<option value="F">Femenino</option>
+											<option value="OTHER">Otro</option>
+										</select>
+									</div>
+									<div className="min-w-0">
+										<label className={labelClass}>Dirección</label>
+										<input type="text" value={unregisteredAddress} onChange={(e) => setUnregisteredAddress(e.target.value)} placeholder="Dirección" className={`${inputNeutral} min-w-0`} />
+									</div>
+								</div>
+							</div>
+						)}
+
+						{/* Paciente seleccionado */}
+						{((patientType === 'registered' && selectedPatient) || (patientType === 'unregistered' && selectedUnregisteredPatientId)) && (
+							<div className="p-3 border border-green-200 rounded-md bg-green-50">
+								<div className="flex items-center justify-between">
+									<div>
+										<label className={labelClass}>Paciente Seleccionado</label>
+										<div className="text-sm font-medium text-gray-900">{patientType === 'registered' && selectedPatient ? `${selectedPatient.firstName} ${selectedPatient.lastName}` : `${unregisteredFirstName} ${unregisteredLastName}`}</div>
+										{(patientType === 'registered' && selectedPatient?.identifier) || unregisteredIdentification ? <div className="text-xs text-gray-600 mt-0.5">Cédula: {patientType === 'registered' && selectedPatient ? selectedPatient.identifier : unregisteredIdentification}</div> : null}
+										<div className={`text-xs mt-1 ${patientType === 'registered' ? 'text-green-600' : 'text-orange-600'}`}>{patientType === 'registered' ? 'Paciente Registrado' : 'Paciente No Registrado'}</div>
+									</div>
+									<button
+										type="button"
+										onClick={() => {
+											if (patientType === 'registered') {
+												setSelectedPatient(null);
+											} else {
+												setSelectedUnregisteredPatientId(null);
+												setUnregisteredFirstName('');
+												setUnregisteredLastName('');
+												setUnregisteredIdentification('');
+											}
+											setIdentifier('');
+										}}
+										className="text-xs text-gray-600 hover:text-gray-900 px-2 py-1 border border-gray-300 rounded">
+										Cambiar
+									</button>
+								</div>
+							</div>
+						)}
+
+						<div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+							<div className="min-w-0">
+								<label className={labelClass}>Fecha y hora</label>
+								<input type="datetime-local" value={scheduledAt} onChange={(e) => setScheduledAt(e.target.value)} className={`${inputNeutral} min-w-0`} />
+							</div>
+							<div className="min-w-0">
+								<label className={labelClass}>Duración (min)</label>
+								<input type="number" min={1} value={durationMinutes} onChange={(e) => setDurationMinutes(e.target.value === '' ? '' : Number(e.target.value))} className={`${inputNeutral} min-w-0`} />
 							</div>
 						</div>
-					)}
-				</section>
 
-				{/* Botón de envío */}
-				<div className="pt-4 border-t border-gray-200">
-					<button type="submit" disabled={submitting || loadingSession || !!sessionError || selectedServices.length === 0} className="w-full py-3 bg-linear-to-r from-violet-600 to-indigo-600 text-white rounded-md text-sm font-semibold shadow-sm disabled:opacity-60 disabled:cursor-not-allowed hover:from-violet-700 hover:to-indigo-700 transition-all">
-						{submitting ? 'Registrando...' : 'Registrar cita'}
-					</button>
-					{selectedServices.length === 0 && (
-						<p className="text-xs text-amber-600 mt-2 text-center">Debe seleccionar al menos un servicio para continuar</p>
-					)}
+						<div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+							<div className="min-w-0">
+								<label className={labelClass}>Ubicación</label>
+								<input type="text" value={location} readOnly className={`${inputNeutral} min-w-0 bg-gray-50 cursor-not-allowed`} />
+								<p className="text-xs text-gray-500 mt-1">Ubicación del consultorio (tomada del perfil)</p>
+							</div>
+
+							{/* Origen del Cliente (Solo para Asistente De Citas) */}
+							<div>
+								<label className={labelClass}>Origen del Cliente (¿Dónde lo captaste?)</label>
+								<select value={referralSource} onChange={(e) => setReferralSource(e.target.value)} className={inputNeutral}>
+									<option value="">Seleccione origen...</option>
+									<option value="FACEBOOK">Facebook</option>
+									<option value="INSTAGRAM">Instagram</option>
+									<option value="WHATSAPP">WhatsApp</option>
+									<option value="REFERIDO">Boca en Boca (Referido)</option>
+									<option value="OTRO">Otro</option>
+								</select>
+							</div>
+						</div>
+					</section>
+
+					{/* SERVICIOS DEL CONSULTORIO - Ahora en la parte inferior */}
+					<section className="space-y-3 border-t border-gray-200 pt-4">
+						<div className="p-4 border border-gray-100 rounded-md bg-gray-50">
+							<h3 className={sectionTitle}>Servicios del Consultorio</h3>
+							<p className="text-xs text-gray-600 mt-1 mb-4">Selecciona los servicios para esta cita</p>
+
+							{loadingServices ? (
+								<div className="flex items-center justify-center py-8">
+									<Loader2 className="w-5 h-5 animate-spin text-gray-400" />
+									<span className="text-xs text-gray-500 ml-2">Cargando servicios...</span>
+								</div>
+							) : services.length === 0 ? (
+								<div className="text-center py-6 text-xs text-gray-500">
+									<p>No hay servicios disponibles.</p>
+									<p className="mt-1">Configura los servicios en Configuración → Perfil Profesional</p>
+								</div>
+							) : (
+								<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 w-full min-w-0">
+									{services
+										.filter((service) => service.is_active !== false) // Filtrar solo servicios activos
+										.map((service) => {
+											const isSelected = selectedServices.includes(service.id);
+											return (
+												<button
+													key={service.id}
+													type="button"
+													onClick={() => {
+														setSelectedServices((prev) => (isSelected ? prev.filter((id) => id !== service.id) : [...prev, service.id]));
+													}}
+													className={`w-full p-4 rounded-lg border-2 text-left transition-all ${isSelected ? 'border-teal-500 bg-teal-50 shadow-sm' : 'border-gray-200 bg-white hover:border-gray-300 hover:shadow-sm'}`}>
+													<div className="flex items-start justify-between gap-2">
+														<div className="flex-1 min-w-0">
+															<div className="flex items-center gap-2 mb-2">
+																{isSelected && <CheckCircle className="w-5 h-5 text-teal-600 shrink-0" />}
+																<h4 className={`text-sm font-semibold ${isSelected ? 'text-teal-900' : 'text-gray-900'}`}>{service.name}</h4>
+															</div>
+															{service.description && <p className="text-xs text-gray-600 mb-3 line-clamp-2">{service.description}</p>}
+															<div className="mt-2">
+																<CurrencyDisplay amount={Number(service.price)} currency={service.currency as 'USD' | 'EUR'} showBoth={true} size="sm" />
+															</div>
+														</div>
+													</div>
+												</button>
+											);
+										})}
+								</div>
+							)}
+						</div>
+
+						{/* Resumen de facturación */}
+						{selectedServices.length > 0 && (
+							<div className="p-4 border border-gray-100 rounded-md bg-white">
+								<h4 className="text-sm font-semibold text-gray-900 mb-3">Resumen de Facturación</h4>
+								<div className="space-y-2">
+									<div className="flex justify-between text-xs text-gray-600">
+										<span>Servicios seleccionados:</span>
+										<strong>{selectedServices.length}</strong>
+									</div>
+									{(() => {
+										const selectedServicesData = services.filter((s) => selectedServices.includes(s.id));
+										const subtotal = selectedServicesData.reduce((sum, s) => sum + Number(s.price), 0);
+										const total = subtotal; // Sin impuestos en área de salud
+										const currency = selectedServicesData[0]?.currency || 'USD';
+
+										return (
+											<div>
+												<div className="flex justify-between items-center pt-2 border-t border-gray-200">
+													<span className="font-semibold text-base">Total ({currency})</span>
+													<strong className="text-lg text-teal-700 font-bold">{total.toFixed(2)}</strong>
+												</div>
+												<div className="mt-3 pt-3 border-t border-gray-200">
+													<CurrencyDisplay amount={total} currency={currency as 'USD' | 'EUR'} showBoth={true} size="md" />
+												</div>
+												<p className="text-xs text-gray-500 mt-3 italic bg-blue-50 p-2 rounded border border-blue-100">💡 Esta factura se creará automáticamente como pendiente de pago para el paciente</p>
+											</div>
+										);
+									})()}
+								</div>
+							</div>
+						)}
+					</section>
+
+					{/* Botón de envío */}
+					<div className="pt-4 border-t border-gray-200">
+						<button type="submit" disabled={submitting || loadingSession || !!sessionError || selectedServices.length === 0} className="w-full py-3 bg-linear-to-r from-violet-600 to-indigo-600 text-white rounded-md text-sm font-semibold shadow-sm disabled:opacity-60 disabled:cursor-not-allowed hover:from-violet-700 hover:to-indigo-700 transition-all">
+							{submitting ? 'Registrando...' : 'Registrar cita'}
+						</button>
+						{selectedServices.length === 0 && <p className="text-xs text-amber-600 mt-2 text-center">Debe seleccionar al menos un servicio para continuar</p>}
+					</div>
 				</div>
-			</div>
-		</form>
+			</form>
 		</>
 	);
 }

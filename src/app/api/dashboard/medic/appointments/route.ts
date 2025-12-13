@@ -45,38 +45,31 @@ export async function GET(req: Request) {
 				console.error('[Appointments API] Usuario MEDICO sin userId');
 				return NextResponse.json({ error: 'Usuario no válido' }, { status: 403 });
 			}
-			
+
 			// Validar que el médico tenga una organización asignada
 			if (!user.organizationId) {
 				console.warn('[Appointments API] Médico sin organizationId - denegando acceso por seguridad');
 				return NextResponse.json([], { status: 200 });
 			}
-			
+
 			doctorIdToFilter = user.userId;
 			organizationIdToFilter = user.organizationId;
-			
+
 			// Validar que el médico realmente pertenezca a esa organización
-			const { data: doctorCheck } = await supabase
-				.from('User')
-				.select('id, organizationId')
-				.eq('id', user.userId)
-				.eq('organizationId', user.organizationId)
-				.maybeSingle();
-			
+			const { data: doctorCheck } = await supabase.from('User').select('id, organizationId').eq('id', user.userId).eq('organizationId', user.organizationId).maybeSingle();
+
 			if (!doctorCheck) {
 				console.error('[Appointments API] Médico no pertenece a la organización especificada');
 				return NextResponse.json({ error: 'Error de validación de organización' }, { status: 403 });
 			}
-			
 		} else if (user.role === 'CLINICA' || user.role === 'ADMIN') {
 			// Clínicas y admins ven citas de su organización
 			if (!user.organizationId) {
 				console.warn('[Appointments API] Usuario CLINICA/ADMIN sin organizationId - denegando acceso');
 				return NextResponse.json([], { status: 200 });
 			}
-			
+
 			organizationIdToFilter = user.organizationId;
-			
 		} else {
 			// Para otros roles, no devolver nada por seguridad
 			return NextResponse.json([], { status: 200 });
@@ -98,11 +91,21 @@ export async function GET(req: Request) {
 				booked_by_patient_id,
 				doctor_id,
 				organization_id,
+				selected_service,
+				referral_source,
 				patient:patient_id (
 					id,
 					firstName,
 					lastName,
-					identifier
+					identifier,
+					phone
+				),
+				unregistered_patient:unregistered_patient_id (
+					id,
+					first_name,
+					last_name,
+					identification,
+					phone
 				)
 				`
 			)
@@ -137,35 +140,32 @@ export async function GET(req: Request) {
 		}
 
 		// 🧮 4️⃣ Formatear resultados y obtener datos de pacientes no registrados y booked_by_patient
-		// Obtener todos los IDs de pacientes no registrados de una vez
-		const unregisteredPatientIds = [...new Set(data.map((cita: any) => cita.unregistered_patient_id).filter(Boolean))];
-		
-		let unregisteredPatientsMap: Map<string, { first_name: string; last_name: string }> = new Map();
-		
-		if (unregisteredPatientIds.length > 0) {
-			const { data: unregisteredPatients } = await supabase
-				.from('unregisteredpatients')
-				.select('id, first_name, last_name')
-				.in('id', unregisteredPatientIds);
+		// Obtener todos los IDs de pacientes no registrados de una vez (ya viene en la query)
+		let unregisteredPatientsMap: Map<string, { first_name: string; last_name: string; identification?: string; phone?: string }> = new Map();
 
-			if (unregisteredPatients) {
-				unregisteredPatients.forEach((up: any) => {
-					unregisteredPatientsMap.set(up.id, { first_name: up.first_name, last_name: up.last_name });
-				});
+		// Construir mapa desde los datos que ya vienen en la query
+		data.forEach((cita: any) => {
+			if (cita.unregistered_patient) {
+				const up = Array.isArray(cita.unregistered_patient) ? cita.unregistered_patient[0] : cita.unregistered_patient;
+				if (up && up.id) {
+					unregisteredPatientsMap.set(up.id, {
+						first_name: up.first_name || '',
+						last_name: up.last_name || '',
+						identification: up.identification || undefined,
+						phone: up.phone || undefined,
+					});
+				}
 			}
-		}
+		});
 
 		// Obtener datos de pacientes que reservaron citas (booked_by_patient_id)
 		const bookedByPatientIds = [...new Set(data.map((cita: any) => cita.booked_by_patient_id).filter(Boolean))];
-		
+
 		let bookedByPatientsMap: Map<string, { id: string; firstName: string; lastName: string; identifier?: string }> = new Map();
-		
+
 		if (bookedByPatientIds.length > 0) {
 			// booked_by_patient_id puede ser UUID (string), así que intentamos obtener de Patient
-			const { data: bookedByPatients } = await supabase
-				.from('Patient')
-				.select('id, firstName, lastName, identifier')
-				.in('id', bookedByPatientIds);
+			const { data: bookedByPatients } = await supabase.from('Patient').select('id, firstName, lastName, identifier').in('id', bookedByPatientIds);
 
 			if (bookedByPatients) {
 				bookedByPatients.forEach((bp: any) => {
@@ -197,22 +197,60 @@ export async function GET(req: Request) {
 				});
 			}
 
-			// Determinar el nombre del paciente
+			// Determinar el nombre del paciente y datos completos
 			let patientName = 'Paciente no identificado';
+			let patientFirstName: string | null = null;
+			let patientLastName: string | null = null;
+			let patientIdentifier: string | null = null;
+			let patientPhone: string | null = null;
 			let isUnregistered = false;
 
-			if (cita.unregistered_patient_id) {
+			if (cita.unregistered_patient) {
 				// Es un paciente no registrado
-				const unregisteredPatient = unregisteredPatientsMap.get(cita.unregistered_patient_id);
+				const unregisteredPatient = Array.isArray(cita.unregistered_patient) ? cita.unregistered_patient[0] : cita.unregistered_patient;
 				if (unregisteredPatient) {
-					patientName = `${unregisteredPatient.first_name} ${unregisteredPatient.last_name}`;
+					patientFirstName = unregisteredPatient.first_name || null;
+					patientLastName = unregisteredPatient.last_name || null;
+					patientIdentifier = unregisteredPatient.identification || null;
+					patientPhone = unregisteredPatient.phone || null;
+					patientName = `${patientFirstName || ''} ${patientLastName || ''}`.trim() || 'Paciente no identificado';
 					isUnregistered = true;
 				}
 			} else if (cita.patient) {
 				// Es un paciente registrado - normalizar (puede venir como array)
 				const patient = Array.isArray(cita.patient) ? cita.patient[0] : cita.patient;
 				if (patient) {
-					patientName = `${patient.firstName} ${patient.lastName}`;
+					patientFirstName = patient.firstName || null;
+					patientLastName = patient.lastName || null;
+					patientIdentifier = patient.identifier || null;
+					patientPhone = patient.phone || null;
+					patientName = `${patientFirstName || ''} ${patientLastName || ''}`.trim() || 'Paciente no identificado';
+				}
+			}
+
+			// Parsear selected_service si existe
+			let selectedService: { name: string; description?: string; price?: number; currency?: string } | null = null;
+			if (cita.selected_service) {
+				try {
+					let serviceData: any = cita.selected_service;
+					if (typeof serviceData === 'string') {
+						try {
+							serviceData = JSON.parse(serviceData);
+						} catch {
+							// Si no es JSON válido, usar como nombre
+							serviceData = { name: serviceData };
+						}
+					}
+					if (typeof serviceData === 'object' && serviceData !== null) {
+						selectedService = {
+							name: serviceData.name || 'Servicio',
+							description: serviceData.description,
+							price: serviceData.price || serviceData.price === 0 ? Number(serviceData.price) : undefined,
+							currency: serviceData.currency || 'USD',
+						};
+					}
+				} catch (e) {
+					console.error('[Medic Appointments API] Error parseando selected_service:', e);
 				}
 			}
 
@@ -232,11 +270,18 @@ export async function GET(req: Request) {
 			return {
 				id: cita.id,
 				patient: patientName,
+				patientFirstName,
+				patientLastName,
+				patientIdentifier,
+				patientPhone,
 				isUnregistered,
 				time: endTime ? `${startTime} - ${endTime}` : startTime,
+				scheduled_at: cita.scheduled_at,
 				status: cita.status ?? 'SCHEDULED',
 				reason: cita.reason ?? '',
 				location: cita.location ?? '',
+				selected_service: selectedService,
+				referral_source: cita.referral_source || null,
 				bookedBy, // Información de quién reservó la cita (si es diferente del paciente)
 			};
 		});

@@ -194,7 +194,11 @@ export default function ProfessionalProfile({ config, onUpdate }: { config: Medi
 		}));
 	};
 
-	const removeServiceAffiliated = (index: number) => {
+	const removeServiceAffiliated = (index: number, e?: React.MouseEvent) => {
+		if (e) {
+			e.preventDefault();
+			e.stopPropagation();
+		}
 		setAffiliatedForm((prev) => ({
 			...prev,
 			services: prev.services.filter((_, i) => i !== index),
@@ -215,7 +219,11 @@ export default function ProfessionalProfile({ config, onUpdate }: { config: Medi
 		}));
 	};
 
-	const removeService = (index: number) => {
+	const removeService = (index: number, e?: React.MouseEvent) => {
+		if (e) {
+			e.preventDefault();
+			e.stopPropagation();
+		}
 		setPrivateForm((prev) => ({
 			...prev,
 			services: prev.services.filter((_, i) => i !== index),
@@ -363,27 +371,66 @@ export default function ProfessionalProfile({ config, onUpdate }: { config: Medi
 							<Stethoscope className="w-5 h-5 text-indigo-600" />
 							Servicios y Precios
 						</h3>
-						<div className="space-y-3">
+						<div className="space-y-4">
 							{affiliatedForm.services.map((service, idx) => (
-								<div key={idx} className="p-4 bg-white rounded-lg border border-gray-200">
-									<div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-										<input type="text" placeholder="Nombre del servicio" value={service.name || ''} onChange={(e) => updateServiceAffiliated(idx, 'name', e.target.value)} className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent" />
-										<input type="text" placeholder="Descripción" value={service.description || ''} onChange={(e) => updateServiceAffiliated(idx, 'description', e.target.value)} className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent" />
-										<div className="flex items-center gap-2">
-											<input type="text" placeholder="Precio" value={service.price || ''} onChange={(e) => updateServiceAffiliated(idx, 'price', e.target.value)} className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent" />
-											<select value={service.currency || 'USD'} onChange={(e) => updateServiceAffiliated(idx, 'currency', e.target.value)} className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
+								<div key={idx} className="relative p-4 bg-white rounded-lg border border-gray-200 hover:border-gray-300 transition-colors overflow-hidden">
+									<div className="flex flex-col md:flex-row gap-4 items-start md:items-center">
+										<div className="flex-1 min-w-0 w-full md:w-auto">
+											<input 
+												type="text" 
+												placeholder="Nombre del servicio" 
+												value={service.name || ''} 
+												onChange={(e) => updateServiceAffiliated(idx, 'name', e.target.value)} 
+												className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent" 
+											/>
+										</div>
+										<div className="flex-1 min-w-0 w-full md:w-auto">
+											<input 
+												type="text" 
+												placeholder="Descripción" 
+												value={service.description || ''} 
+												onChange={(e) => updateServiceAffiliated(idx, 'description', e.target.value)} 
+												className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent" 
+											/>
+										</div>
+										<div className="flex items-center gap-2 flex-shrink-0 w-full md:w-auto">
+											<input 
+												type="text" 
+												placeholder="Precio" 
+												value={service.price || ''} 
+												onChange={(e) => updateServiceAffiliated(idx, 'price', e.target.value)} 
+												className="flex-1 md:w-24 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent" 
+											/>
+											<select 
+												value={service.currency || 'USD'} 
+												onChange={(e) => updateServiceAffiliated(idx, 'currency', e.target.value)} 
+												className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent bg-white flex-shrink-0"
+												onClick={(e) => e.stopPropagation()}
+											>
 												<option value="USD">USD</option>
 												<option value="VES">VES</option>
 												<option value="EUR">EUR</option>
 											</select>
 										</div>
-										<button type="button" onClick={() => removeServiceAffiliated(idx)} className="p-2 text-red-600 hover:bg-red-50 rounded-lg">
-											<X className="w-4 h-4" />
-										</button>
+										<div className="flex-shrink-0">
+											<button 
+												type="button" 
+												onClick={(e) => removeServiceAffiliated(idx, e)} 
+												onMouseDown={(e) => e.preventDefault()}
+												className="flex items-center justify-center w-8 h-8 text-red-600 hover:text-red-700 hover:bg-red-50 rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-1"
+												aria-label={`Eliminar servicio ${idx + 1}`}
+											>
+												<X className="w-5 h-5" />
+											</button>
+										</div>
 									</div>
 								</div>
 							))}
-							<button type="button" onClick={addServiceAffiliated} className="w-full px-4 py-2 border-2 border-dashed border-gray-300 rounded-lg text-gray-600 hover:border-indigo-400 hover:text-indigo-600 transition-colors">
+							<button 
+								type="button" 
+								onClick={addServiceAffiliated} 
+								className="w-full px-4 py-2.5 border-2 border-dashed border-gray-300 rounded-lg text-gray-600 hover:border-indigo-400 hover:text-indigo-600 hover:bg-indigo-50 transition-all duration-200 font-medium"
+							>
 								+ Agregar Servicio
 							</button>
 						</div>
@@ -612,27 +659,66 @@ export default function ProfessionalProfile({ config, onUpdate }: { config: Medi
 							<Stethoscope className="w-5 h-5 text-indigo-600" />
 							Servicios y Precios
 						</h3>
-						<div className="space-y-3">
+						<div className="space-y-4">
 							{privateForm.services.map((service, idx) => (
-								<div key={idx} className="p-4 bg-white rounded-lg border border-gray-200">
-									<div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-										<input type="text" placeholder="Nombre del servicio" value={service.name || ''} onChange={(e) => updateService(idx, 'name', e.target.value)} className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent" />
-										<input type="text" placeholder="Descripción" value={service.description || ''} onChange={(e) => updateService(idx, 'description', e.target.value)} className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent" />
-										<div className="flex items-center gap-2">
-											<input type="text" placeholder="Precio" value={service.price || ''} onChange={(e) => updateService(idx, 'price', e.target.value)} className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent" />
-											<select value={service.currency || 'USD'} onChange={(e) => updateService(idx, 'currency', e.target.value)} className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
+								<div key={idx} className="relative p-4 bg-white rounded-lg border border-gray-200 hover:border-gray-300 transition-colors overflow-hidden">
+									<div className="flex flex-col md:flex-row gap-4 items-start md:items-center">
+										<div className="flex-1 min-w-0 w-full md:w-auto">
+											<input 
+												type="text" 
+												placeholder="Nombre del servicio" 
+												value={service.name || ''} 
+												onChange={(e) => updateService(idx, 'name', e.target.value)} 
+												className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent" 
+											/>
+										</div>
+										<div className="flex-1 min-w-0 w-full md:w-auto">
+											<input 
+												type="text" 
+												placeholder="Descripción" 
+												value={service.description || ''} 
+												onChange={(e) => updateService(idx, 'description', e.target.value)} 
+												className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent" 
+											/>
+										</div>
+										<div className="flex items-center gap-2 flex-shrink-0 w-full md:w-auto">
+											<input 
+												type="text" 
+												placeholder="Precio" 
+												value={service.price || ''} 
+												onChange={(e) => updateService(idx, 'price', e.target.value)} 
+												className="flex-1 md:w-24 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent" 
+											/>
+											<select 
+												value={service.currency || 'USD'} 
+												onChange={(e) => updateService(idx, 'currency', e.target.value)} 
+												className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent bg-white flex-shrink-0"
+												onClick={(e) => e.stopPropagation()}
+											>
 												<option value="USD">USD</option>
 												<option value="VES">VES</option>
 												<option value="EUR">EUR</option>
 											</select>
 										</div>
-										<button type="button" onClick={() => removeService(idx)} className="p-2 text-red-600 hover:bg-red-50 rounded-lg">
-											<X className="w-4 h-4" />
-										</button>
+										<div className="flex-shrink-0">
+											<button 
+												type="button" 
+												onClick={(e) => removeService(idx, e)} 
+												onMouseDown={(e) => e.preventDefault()}
+												className="flex items-center justify-center w-8 h-8 text-red-600 hover:text-red-700 hover:bg-red-50 rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-1"
+												aria-label={`Eliminar servicio ${idx + 1}`}
+											>
+												<X className="w-5 h-5" />
+											</button>
+										</div>
 									</div>
 								</div>
 							))}
-							<button type="button" onClick={addService} className="w-full px-4 py-2 border-2 border-dashed border-gray-300 rounded-lg text-gray-600 hover:border-indigo-400 hover:text-indigo-600 transition-colors">
+							<button 
+								type="button" 
+								onClick={addService} 
+								className="w-full px-4 py-2.5 border-2 border-dashed border-gray-300 rounded-lg text-gray-600 hover:border-indigo-400 hover:text-indigo-600 hover:bg-indigo-50 transition-all duration-200 font-medium"
+							>
 								+ Agregar Servicio
 							</button>
 						</div>

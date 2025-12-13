@@ -1,10 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server';
-import createSupabaseServerClient from '@/app/adapters/server';
+import { createClient } from '@supabase/supabase-js';
 import { getCurrencyRate } from '@/lib/currency-utils';
+
+// Cliente admin de Supabase para operaciones sin autenticación
+const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL ?? process.env.SUPABASE_URL ?? '';
+const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY ?? '';
+
+const supabaseAdmin = SUPABASE_URL && SUPABASE_SERVICE_ROLE_KEY
+	? createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, { auth: { persistSession: false } })
+	: null;
 
 export async function POST(req: NextRequest) {
 	try {
-		const supabase = await createSupabaseServerClient();
+		if (!supabaseAdmin) {
+			return NextResponse.json({ error: 'Configuración de Supabase no disponible' }, { status: 500 });
+		}
 		
 		const body = await req.json();
 		const {
@@ -34,7 +44,7 @@ export async function POST(req: NextRequest) {
 
 		// Validar que el organizationId y userId existan en la base de datos
 		// Esto asegura que los datos son válidos sin requerir autenticación
-		const { data: orgData, error: orgError } = await supabase
+		const { data: orgData, error: orgError } = await supabaseAdmin
 			.from('Organization')
 			.select('id')
 			.eq('id', organizationId)
@@ -44,7 +54,7 @@ export async function POST(req: NextRequest) {
 			return NextResponse.json({ error: 'Organización no encontrada' }, { status: 404 });
 		}
 
-		const { data: userData, error: userError } = await supabase
+		const { data: userData, error: userError } = await supabaseAdmin
 			.from('User')
 			.select('id')
 			.eq('id', userId)
@@ -82,7 +92,7 @@ export async function POST(req: NextRequest) {
 		}
 
 		// Insertar pago en la base de datos
-		const { data: payment, error: insertError } = await supabase
+		const { data: payment, error: insertError } = await supabaseAdmin
 			.from('subscription_payments')
 			.insert({
 				organization_id: organizationId,
@@ -123,12 +133,8 @@ export async function POST(req: NextRequest) {
 
 export async function GET(req: NextRequest) {
 	try {
-		const supabase = await createSupabaseServerClient();
-		
-		// Verificar autenticación
-		const { data: { user }, error: authError } = await supabase.auth.getUser();
-		if (authError || !user) {
-			return NextResponse.json({ error: 'No autenticado' }, { status: 401 });
+		if (!supabaseAdmin) {
+			return NextResponse.json({ error: 'Configuración de Supabase no disponible' }, { status: 500 });
 		}
 
 		const { searchParams } = new URL(req.url);
@@ -139,7 +145,7 @@ export async function GET(req: NextRequest) {
 		}
 
 		// Obtener pagos de la organización
-		const { data: payments, error } = await supabase
+		const { data: payments, error } = await supabaseAdmin
 			.from('subscription_payments')
 			.select('*')
 			.eq('organization_id', organizationId)

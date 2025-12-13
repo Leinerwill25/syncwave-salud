@@ -133,8 +133,8 @@ export async function POST(request: Request) {
 		const price = parseFloat(selected_service.price || '0');
 		const currency = selected_service.currency || 'USD';
 		const subtotal = price;
-		const impuestos = 0; // Puedes calcular impuestos si es necesario
-		const total = subtotal + impuestos;
+		const impuestos = 0; // No se aplican impuestos en el área de salud
+		const total = subtotal; // Total igual al subtotal sin impuestos
 
 		const { data: facturacion, error: facturacionError } = await supabase
 			.from('facturacion')

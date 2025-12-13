@@ -5,11 +5,23 @@ import useSWR from 'swr';
 type Appointment = {
 	id: string;
 	patient: string;
+	patientFirstName?: string | null;
+	patientLastName?: string | null;
+	patientIdentifier?: string | null;
+	patientPhone?: string | null;
 	reason: string;
 	time: string;
-	status: 'CONFIRMADA' | 'EN_ESPERA' | 'EN_CURSO' | 'COMPLETADA' | 'CANCELADA' | 'SCHEDULED';
+	scheduled_at?: string;
+	status: 'CONFIRMADA' | 'EN_ESPERA' | 'EN_CURSO' | 'COMPLETADA' | 'CANCELADA' | 'SCHEDULED' | 'REAGENDADA' | 'NO ASISTIÓ' | 'NO_ASISTIO';
 	location?: string;
 	isUnregistered?: boolean;
+	selected_service?: {
+		name: string;
+		description?: string;
+		price?: number;
+		currency?: string;
+	} | null;
+	referral_source?: string | null;
 	bookedBy?: {
 		id: string;
 		name: string;
@@ -20,12 +32,12 @@ type Appointment = {
 const fetcher = async (url: string) => {
 	const res = await fetch(url);
 	const data = await res.json();
-	
+
 	// Si hay un error en la respuesta, lanzar error
 	if (!res.ok) {
 		throw new Error(data.error || 'Error al obtener citas');
 	}
-	
+
 	// Asegurar que siempre devolvemos un array
 	return Array.isArray(data) ? data : [];
 };

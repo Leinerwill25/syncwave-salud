@@ -100,11 +100,58 @@ export default function RolesManagementPage() {
 		}
 	};
 
+	// Roles predeterminados
+	const PREDEFINED_ROLES = {
+		'Asistente De Citas': {
+			roleName: 'Asistente De Citas',
+			roleDescription: 'Rol para gestionar citas: crear y editar citas (agendar citas)',
+			permissions: {
+				citas: {
+					view: true,
+					create: true,
+					edit: true,
+					delete: false,
+					confirm: false,
+					schedule: true,
+					cancel: false,
+				},
+			},
+		},
+		'Recepción': {
+			roleName: 'Recepción',
+			roleDescription: 'Rol para recepción: visualizar citas, editar estados (reagendada, cancelada, en proceso), gestionar servicios y montos cobrados con motivos',
+			permissions: {
+				citas: {
+					view: true,
+					create: false,
+					edit: true,
+					delete: false,
+					confirm: false,
+					schedule: false,
+					cancel: true,
+				},
+				consultas: {
+					view: true,
+					create: false,
+					edit: false,
+					delete: false,
+				},
+			},
+		},
+	};
+
 	const handleCreateRole = () => {
 		setRoleName('');
 		setRoleDescription('');
 		setSelectedPermissions({});
 		setIsCreateModalOpen(true);
+	};
+
+	const handleSelectPredefinedRole = (roleKey: keyof typeof PREDEFINED_ROLES) => {
+		const predefined = PREDEFINED_ROLES[roleKey];
+		setRoleName(predefined.roleName);
+		setRoleDescription(predefined.roleDescription);
+		setSelectedPermissions(predefined.permissions);
 	};
 
 	const handleEditRole = (role: Role) => {
@@ -479,57 +526,197 @@ export default function RolesManagementPage() {
 							</div>
 
 							<div className="p-6 space-y-6">
-								<div>
-									<label className="block text-sm font-semibold text-slate-700 mb-2">Nombre del Rol *</label>
-									<input type="text" value={roleName} onChange={(e) => setRoleName(e.target.value)} className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-transparent" placeholder="Ej: Asistente, Recepcionista" />
-								</div>
+								{/* Roles Predeterminados - Solo mostrar al crear, no al editar */}
+								{!editingRole && (
+									<div className="bg-gradient-to-r from-teal-50 to-cyan-50 border border-teal-200 rounded-lg p-4 mb-4">
+										<label className="block text-sm font-semibold text-slate-700 mb-3">Selecciona un Rol Predeterminado</label>
+										<p className="text-xs text-slate-600 mb-3">Al seleccionar un rol predeterminado, se creará automáticamente con todas sus funcionalidades configuradas.</p>
+										<div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+											<button
+												type="button"
+												onClick={async () => {
+													setError(null);
+													try {
+														// Verificar si el rol ya existe
+														const existingRoles = roles.filter((r) => r.role_name === PREDEFINED_ROLES['Asistente De Citas'].roleName);
+														
+														if (existingRoles.length > 0) {
+															setError(`El rol "${PREDEFINED_ROLES['Asistente De Citas'].roleName}" ya existe en tu consultorio`);
+															return;
+														}
 
-								<div>
-									<label className="block text-sm font-semibold text-slate-700 mb-2">Descripción</label>
-									<textarea value={roleDescription} onChange={(e) => setRoleDescription(e.target.value)} rows={3} className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-transparent" placeholder="Descripción del rol y sus responsabilidades" />
-								</div>
+														const permissions = Object.entries(PREDEFINED_ROLES['Asistente De Citas'].permissions).map(([module, perms]) => ({
+															module,
+															permissions: perms,
+														}));
 
-								<div>
-									<label className="block text-sm font-semibold text-slate-700 mb-4">Permisos por Módulo</label>
-									<div className="space-y-4">
-										{AVAILABLE_MODULES.map((module) => (
-											<div key={module.value} className="border border-slate-200 rounded-lg p-4">
-												<h4 className="font-medium text-slate-900 mb-3">{module.label}</h4>
-												<div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-													{AVAILABLE_PERMISSIONS.map((perm) => {
-														const isChecked = selectedPermissions[module.value]?.[perm.key] === true;
-														return (
-															<label key={`${module.value}-${perm.key}`} className="flex items-center gap-2 cursor-pointer hover:bg-slate-50 p-2 rounded transition">
-																<input
-																	type="checkbox"
-																	checked={isChecked}
-																	onChange={(e) => {
-																		e.stopPropagation();
-																		togglePermission(module.value, perm.key);
-																	}}
-																	onClick={(e) => e.stopPropagation()}
-																	className="w-4 h-4 text-teal-600 border-slate-300 rounded focus:ring-teal-500 cursor-pointer"
-																/>
-																<span className="text-sm text-slate-700 select-none">{perm.label}</span>
-															</label>
-														);
-													})}
-												</div>
-											</div>
-										))}
+														const res = await fetch('/api/medic/roles', {
+															method: 'POST',
+															headers: { 'Content-Type': 'application/json' },
+															credentials: 'include',
+															body: JSON.stringify({
+																roleName: PREDEFINED_ROLES['Asistente De Citas'].roleName,
+																roleDescription: PREDEFINED_ROLES['Asistente De Citas'].roleDescription,
+																permissions,
+															}),
+														});
+
+														if (!res.ok) {
+															const data = await res.json();
+															// Si es un error 409 (conflicto), el rol ya existe
+															if (res.status === 409) {
+																setError(`El rol "${PREDEFINED_ROLES['Asistente De Citas'].roleName}" ya existe en tu consultorio`);
+																return;
+															}
+															throw new Error(data.error || 'Error al crear el rol');
+														}
+
+														setSuccess('Rol "Asistente De Citas" creado correctamente');
+														setIsCreateModalOpen(false);
+														loadRoles();
+														setTimeout(() => setSuccess(null), 3000);
+													} catch (err) {
+														setError(err instanceof Error ? err.message : 'Error al crear el rol');
+													}
+												}}
+												className="text-left p-4 bg-white border-2 border-teal-300 rounded-lg hover:border-teal-500 hover:shadow-md transition-all"
+											>
+												<div className="font-semibold text-slate-900 mb-1">Asistente De Citas</div>
+												<div className="text-xs text-slate-600 mb-2">Crear y editar citas</div>
+												<div className="text-xs text-teal-600 font-medium">✓ Crear citas</div>
+												<div className="text-xs text-teal-600 font-medium">✓ Editar citas</div>
+											</button>
+											<button
+												type="button"
+												onClick={async () => {
+													setError(null);
+													try {
+														// Verificar si el rol ya existe
+														const existingRoles = roles.filter((r) => r.role_name === PREDEFINED_ROLES['Recepción'].roleName);
+														
+														if (existingRoles.length > 0) {
+															setError(`El rol "${PREDEFINED_ROLES['Recepción'].roleName}" ya existe en tu consultorio`);
+															return;
+														}
+
+														const permissions = Object.entries(PREDEFINED_ROLES['Recepción'].permissions).map(([module, perms]) => ({
+															module,
+															permissions: perms,
+														}));
+
+														const res = await fetch('/api/medic/roles', {
+															method: 'POST',
+															headers: { 'Content-Type': 'application/json' },
+															credentials: 'include',
+															body: JSON.stringify({
+																roleName: PREDEFINED_ROLES['Recepción'].roleName,
+																roleDescription: PREDEFINED_ROLES['Recepción'].roleDescription,
+																permissions,
+															}),
+														});
+
+														if (!res.ok) {
+															const data = await res.json();
+															// Si es un error 409 (conflicto), el rol ya existe
+															if (res.status === 409) {
+																setError(`El rol "${PREDEFINED_ROLES['Recepción'].roleName}" ya existe en tu consultorio`);
+																return;
+															}
+															throw new Error(data.error || 'Error al crear el rol');
+														}
+
+														setSuccess('Rol "Recepción" creado correctamente');
+														setIsCreateModalOpen(false);
+														loadRoles();
+														setTimeout(() => setSuccess(null), 3000);
+													} catch (err) {
+														setError(err instanceof Error ? err.message : 'Error al crear el rol');
+													}
+												}}
+												className="text-left p-4 bg-white border-2 border-teal-300 rounded-lg hover:border-teal-500 hover:shadow-md transition-all"
+											>
+												<div className="font-semibold text-slate-900 mb-1">Recepción</div>
+												<div className="text-xs text-slate-600 mb-2">Gestionar citas, servicios y pagos</div>
+												<div className="text-xs text-teal-600 font-medium">✓ Ver citas</div>
+												<div className="text-xs text-teal-600 font-medium">✓ Editar estados</div>
+												<div className="text-xs text-teal-600 font-medium">✓ Gestionar servicios</div>
+												<div className="text-xs text-teal-600 font-medium">✓ Editar montos</div>
+											</button>
+										</div>
+										<div className="mt-4 pt-4 border-t border-teal-200">
+											<p className="text-xs text-slate-500 italic">Nota: Los roles se crean automáticamente con permisos predefinidos. Puedes editarlos después si es necesario.</p>
+										</div>
 									</div>
-								</div>
+								)}
+
+								{/* Solo mostrar campos editables si se está editando un rol existente */}
+								{editingRole && (
+									<>
+										<div>
+											<label className="block text-sm font-semibold text-slate-700 mb-2">Nombre del Rol *</label>
+											<input type="text" value={roleName} onChange={(e) => setRoleName(e.target.value)} className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-transparent" placeholder="Ej: Asistente, Recepcionista" />
+										</div>
+
+										<div>
+											<label className="block text-sm font-semibold text-slate-700 mb-2">Descripción</label>
+											<textarea value={roleDescription} onChange={(e) => setRoleDescription(e.target.value)} rows={3} className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-transparent" placeholder="Descripción del rol y sus responsabilidades" />
+										</div>
+
+										<div>
+											<label className="block text-sm font-semibold text-slate-700 mb-4">Permisos por Módulo</label>
+											<div className="space-y-4">
+												{AVAILABLE_MODULES.map((module) => (
+													<div key={module.value} className="border border-slate-200 rounded-lg p-4">
+														<h4 className="font-medium text-slate-900 mb-3">{module.label}</h4>
+														<div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+															{AVAILABLE_PERMISSIONS.map((perm) => {
+																const isChecked = selectedPermissions[module.value]?.[perm.key] === true;
+																return (
+																	<label key={`${module.value}-${perm.key}`} className="flex items-center gap-2 cursor-pointer hover:bg-slate-50 p-2 rounded transition">
+																		<input
+																			type="checkbox"
+																			checked={isChecked}
+																			onChange={(e) => {
+																				e.stopPropagation();
+																				togglePermission(module.value, perm.key);
+																			}}
+																			onClick={(e) => e.stopPropagation()}
+																			className="w-4 h-4 text-teal-600 border-slate-300 rounded focus:ring-teal-500 cursor-pointer"
+																		/>
+																		<span className="text-sm text-slate-700 select-none">{perm.label}</span>
+																	</label>
+																);
+															})}
+														</div>
+													</div>
+												))}
+											</div>
+										</div>
+									</>
+								)}
 							</div>
 
-							<div className="p-6 border-t border-slate-200 flex justify-end gap-3">
-								<button onClick={() => { setIsCreateModalOpen(false); setIsEditModalOpen(false); setEditingRole(null); }} className="px-4 py-2 text-slate-700 hover:bg-slate-100 rounded-lg transition">
-									Cancelar
-								</button>
-								<button onClick={handleSaveRole} className="px-4 py-2 bg-gradient-to-r from-teal-600 to-cyan-600 text-white rounded-lg hover:from-teal-700 hover:to-cyan-700 transition flex items-center gap-2">
-									<Save className="w-4 h-4" />
-									Guardar
-								</button>
-							</div>
+							{/* Solo mostrar botones de guardar/cancelar si se está editando */}
+							{editingRole && (
+								<div className="p-6 border-t border-slate-200 flex justify-end gap-3">
+									<button onClick={() => { setIsCreateModalOpen(false); setIsEditModalOpen(false); setEditingRole(null); }} className="px-4 py-2 text-slate-700 hover:bg-slate-100 rounded-lg transition">
+										Cancelar
+									</button>
+									<button onClick={handleSaveRole} className="px-4 py-2 bg-gradient-to-r from-teal-600 to-cyan-600 text-white rounded-lg hover:from-teal-700 hover:to-cyan-700 transition flex items-center gap-2">
+										<Save className="w-4 h-4" />
+										Guardar
+									</button>
+								</div>
+							)}
+
+							{/* Si no se está editando, mostrar solo botón de cerrar */}
+							{!editingRole && (
+								<div className="p-6 border-t border-slate-200 flex justify-end gap-3">
+									<button onClick={() => { setIsCreateModalOpen(false); setIsEditModalOpen(false); setEditingRole(null); }} className="px-4 py-2 text-slate-700 hover:bg-slate-100 rounded-lg transition">
+										Cerrar
+									</button>
+								</div>
+							)}
 						</motion.div>
 					</motion.div>
 				)}

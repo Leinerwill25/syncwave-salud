@@ -4,7 +4,8 @@ import React, { useEffect, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
 import { format } from 'date-fns';
 import Link from 'next/link';
-import { FileText, PlusCircle, Download, Loader2, RefreshCw, Search, File, FileMinus, User, Calendar, Stethoscope, AlertCircle } from 'lucide-react';
+import { FileText, PlusCircle, Download, Loader2, RefreshCw, Search, File, FileMinus, User, Calendar, Stethoscope, AlertCircle, Edit } from 'lucide-react';
+import EditConsultationModal from './EditConsultationModal';
 
 type Patient = {
 	firstName: string;
@@ -15,9 +16,39 @@ type Patient = {
 
 type Consultation = {
 	id: string;
-	chief_complaint: string | null;
-	created_at: string;
-	patient?: Patient | null;
+	appointmentId: string;
+	patientName: string;
+	patientIdentifier?: string;
+	isUnregistered: boolean;
+	chiefComplaint: string | null;
+	diagnosis?: string | null;
+	notes?: string | null;
+	createdAt: string;
+	startedAt?: string | null;
+	status: string;
+	appointmentStatus: string;
+	scheduledAt?: string;
+	selectedService?: string;
+	serviceInfo?: {
+		id?: string;
+		name?: string;
+		price?: number;
+		currency?: string;
+	} | null;
+	referralSource?: string;
+	location?: string;
+	facturacion?: {
+		id: string;
+		subtotal: number;
+		impuestos: number;
+		total: number;
+		currency: string;
+		tipoCambio?: number;
+		metodoPago?: string;
+		estadoPago?: string;
+		fechaPago?: string;
+		notas?: string;
+	} | null;
 };
 
 const SearchInput = ({ value, onChange, placeholder = 'Buscar por motivo o paciente...' }: { value: string; onChange: (v: string) => void; placeholder?: string }) => {
@@ -80,6 +111,7 @@ export default function RoleUserConsultationsPage() {
 	const debounceRef = useRef<number | null>(null);
 	const [refreshing, setRefreshing] = useState(false);
 	const [exporting, setExporting] = useState(false);
+	const [editingConsultation, setEditingConsultation] = useState<Consultation | null>(null);
 
 	// fetcher (supports page + q)
 	async function loadConsultations({ reset = false } = {}) {
@@ -92,7 +124,7 @@ export default function RoleUserConsultationsPage() {
 			}
 
 			const currentPage = reset ? 1 : page;
-			const url = new URL('/api/consultations', location.origin);
+			const url = new URL('/api/role-users/consultations', location.origin);
 			url.searchParams.set('page', String(currentPage));
 			url.searchParams.set('pageSize', String(pageSize));
 			if (query.trim()) url.searchParams.set('q', query.trim());
@@ -150,7 +182,7 @@ export default function RoleUserConsultationsPage() {
 		setPage(nextPage);
 		try {
 			setRefreshing(true);
-			const url = new URL('/api/consultations', location.origin);
+			const url = new URL('/api/role-users/consultations', location.origin);
 			url.searchParams.set('page', String(nextPage));
 			url.searchParams.set('pageSize', String(pageSize));
 			if (query.trim()) url.searchParams.set('q', query.trim());
@@ -183,8 +215,8 @@ export default function RoleUserConsultationsPage() {
 		if (!consultations.length) return;
 		setExporting(true);
 		try {
-			const header = ['Fecha', 'Paciente', 'Tipo', 'Motivo'];
-			const rows = consultations.map((c) => [format(new Date(c.created_at), 'dd/MM/yyyy HH:mm'), c.patient ? `${c.patient.firstName} ${c.patient.lastName}` : 'Sin paciente', c.patient?.isUnregistered ? 'No Registrado' : c.patient ? 'Registrado' : 'N/A', c.chief_complaint || '']);
+			const header = ['Fecha', 'Paciente', 'Tipo', 'Estado'];
+			const rows = consultations.map((c) => [format(new Date(c.createdAt), 'dd/MM/yyyy HH:mm'), c.patientName || 'Sin paciente', c.isUnregistered ? 'No Registrado' : 'Registrado', c.status || '']);
 			const csv = [header, ...rows].map((r) => r.map((v) => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\n');
 			const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
 			const url = URL.createObjectURL(blob);
@@ -202,8 +234,8 @@ export default function RoleUserConsultationsPage() {
 		if (!consultations.length) return;
 		setExporting(true);
 		try {
-			const headers = ['Fecha', 'Paciente', 'Tipo', 'Motivo'];
-			const rows = consultations.map((c) => [format(new Date(c.created_at), 'dd/MM/yyyy HH:mm'), c.patient ? `${c.patient.firstName} ${c.patient.lastName}` : 'Sin paciente', c.patient?.isUnregistered ? 'No Registrado' : c.patient ? 'Registrado' : 'N/A', c.chief_complaint || '']);
+			const headers = ['Fecha', 'Paciente', 'Tipo', 'Estado'];
+			const rows = consultations.map((c) => [format(new Date(c.createdAt), 'dd/MM/yyyy HH:mm'), c.patientName || 'Sin paciente', c.isUnregistered ? 'No Registrado' : 'Registrado', c.status || '']);
 
 			let table = '<table>';
 			table += '<thead><tr>' + headers.map((h) => `<th style="background:#f4f6f8;padding:6px;border:1px solid #ddd">${h}</th>`).join('') + '</tr></thead>';
@@ -378,7 +410,9 @@ export default function RoleUserConsultationsPage() {
 												<span>Paciente</span>
 											</div>
 										</th>
-										<th className="px-4 sm:px-6 py-4 text-left text-xs font-semibold text-slate-700 uppercase tracking-wider">Motivo de Consulta</th>
+										<th className="px-4 sm:px-6 py-4 text-left text-xs font-semibold text-slate-700 uppercase tracking-wider">Servicio</th>
+										<th className="px-4 sm:px-6 py-4 text-left text-xs font-semibold text-slate-700 uppercase tracking-wider">Monto</th>
+										<th className="px-4 sm:px-6 py-4 text-left text-xs font-semibold text-slate-700 uppercase tracking-wider">Estado</th>
 									</tr>
 								</thead>
 
@@ -387,39 +421,49 @@ export default function RoleUserConsultationsPage() {
 										<motion.tr key={c.id} initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: index * 0.05 }} className="hover:bg-gradient-to-r hover:from-teal-50/50 hover:to-cyan-50/50 transition-all duration-200 group">
 											<td className="px-4 sm:px-6 py-4 whitespace-nowrap">
 												<div className="flex flex-col">
-													<span className="text-sm font-semibold text-slate-900">{format(new Date(c.created_at), 'dd/MM/yyyy')}</span>
-													<span className="text-xs text-slate-500 mt-0.5">{format(new Date(c.created_at), 'HH:mm')}</span>
+													<span className="text-sm font-semibold text-slate-900">{format(new Date(c.createdAt), 'dd/MM/yyyy')}</span>
+													<span className="text-xs text-slate-500 mt-0.5">{format(new Date(c.createdAt), 'HH:mm')}</span>
 												</div>
 											</td>
 											<td className="px-4 sm:px-6 py-4">
-												{c.patient ? (
-													<div className="flex items-center gap-3">
-														<div className="flex-shrink-0 w-10 h-10 rounded-full bg-gradient-to-br from-teal-400 to-cyan-500 flex items-center justify-center text-white font-semibold text-sm shadow-md">{(c.patient.firstName?.[0] || '') + (c.patient.lastName?.[0] || '')}</div>
-														<div className="flex-1 min-w-0">
-															<div className="flex items-center gap-2 flex-wrap">
-																<span className="text-sm font-semibold text-slate-900">
-																	{c.patient.firstName} {c.patient.lastName}
+												<div className="flex items-center gap-3">
+													<div className="flex-shrink-0 w-10 h-10 rounded-full bg-gradient-to-br from-teal-400 to-cyan-500 flex items-center justify-center text-white font-semibold text-sm shadow-md">{(c.patientName?.[0] || '') + (c.patientName?.split(' ')[1]?.[0] || '')}</div>
+													<div className="flex-1 min-w-0">
+														<div className="flex items-center gap-2 flex-wrap">
+															<span className="text-sm font-semibold text-slate-900">{c.patientName || 'Sin paciente'}</span>
+															{c.isUnregistered && (
+																<span className="inline-flex items-center gap-1 px-2 py-0.5 bg-amber-100 text-amber-800 rounded-full text-[10px] font-semibold border border-amber-200">
+																	<AlertCircle className="w-3 h-3" />
+																	No Registrado
 																</span>
-																{c.patient.isUnregistered && (
-																	<span className="inline-flex items-center gap-1 px-2 py-0.5 bg-amber-100 text-amber-800 rounded-full text-[10px] font-semibold border border-amber-200">
-																		<AlertCircle className="w-3 h-3" />
-																		No Registrado
-																	</span>
-																)}
-															</div>
-															{c.patient.identifier && <p className="text-xs text-slate-500 mt-0.5">ID: {c.patient.identifier}</p>}
+															)}
 														</div>
+														{c.patientIdentifier && <p className="text-xs text-slate-500 mt-0.5">ID: {c.patientIdentifier}</p>}
+													</div>
+												</div>
+											</td>
+											<td className="px-4 sm:px-6 py-4">{c.serviceInfo?.name ? <span className="text-sm font-medium text-slate-900">{c.serviceInfo.name}</span> : <span className="text-sm text-slate-400 italic">Sin servicio</span>}</td>
+											<td className="px-4 sm:px-6 py-4">
+												{c.facturacion ? (
+													<div className="flex flex-col gap-1">
+														<span className="text-sm font-semibold text-slate-900">
+															{Number(c.facturacion.total).toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} {c.facturacion.currency || 'USD'}
+														</span>
+														{c.facturacion.tipoCambio && c.facturacion.currency !== 'VES' && <span className="text-xs text-slate-500">≈ {(Number(c.facturacion.total) * Number(c.facturacion.tipoCambio)).toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} Bs.</span>}
+														{c.facturacion.currency === 'VES' && <span className="text-xs text-slate-500">{c.facturacion.tipoCambio && `(T.C: ${Number(c.facturacion.tipoCambio).toLocaleString('es-VE', { minimumFractionDigits: 2 })})`}</span>}
 													</div>
 												) : (
-													<div className="flex items-center gap-2 text-slate-400">
-														<User className="w-4 h-4" />
-														<span className="text-sm italic">Sin paciente asignado</span>
-													</div>
+													<span className="text-sm text-slate-400 italic">Sin facturación</span>
 												)}
 											</td>
-											<td className="px-4 sm:px-6 py-4">
-												<div className="max-w-xs">
-													<p className="text-sm text-slate-900 font-medium line-clamp-2">{c.chief_complaint || <span className="text-slate-400 italic">Sin motivo registrado</span>}</p>
+											<td className="px-4 sm:px-6 py-4 whitespace-nowrap">
+												<div className="flex items-center gap-2">
+													<span className={`px-3 py-1.5 rounded-full text-xs font-semibold ${c.status === 'CONFIRMADA' || c.appointmentStatus === 'CONFIRMADA' ? 'bg-green-100 text-green-800' : c.status === 'EN CURSO' || c.appointmentStatus === 'EN_CURSO' ? 'bg-blue-100 text-blue-800' : c.status === 'REAGENDADA' || c.appointmentStatus === 'REAGENDADA' ? 'bg-yellow-100 text-yellow-800' : c.status === 'CANCELADA' || c.appointmentStatus === 'CANCELADA' ? 'bg-red-100 text-red-800' : c.status === 'COMPLETADA' || c.appointmentStatus === 'COMPLETADA' ? 'bg-purple-100 text-purple-800' : c.status === 'NO ASISTIÓ' || c.appointmentStatus === 'NO ASISTIÓ' ? 'bg-gray-100 text-gray-800' : 'bg-slate-100 text-slate-800'}`}>{c.status}</span>
+													{c.facturacion && (
+														<button onClick={() => setEditingConsultation(c)} className="p-1.5 text-teal-600 hover:bg-teal-50 rounded-lg transition-colors" title="Editar facturación">
+															<Edit className="w-4 h-4" />
+														</button>
+													)}
 												</div>
 											</td>
 										</motion.tr>
@@ -449,6 +493,19 @@ export default function RoleUserConsultationsPage() {
 					</>
 				)}
 			</motion.div>
+
+			{/* Modal de edición */}
+			{editingConsultation && editingConsultation.facturacion && (
+				<EditConsultationModal
+					isOpen={!!editingConsultation}
+					onClose={() => setEditingConsultation(null)}
+					consultationId={editingConsultation.id}
+					facturacion={editingConsultation.facturacion}
+					onSave={() => {
+						loadConsultations({ reset: true });
+					}}
+				/>
+			)}
 		</div>
 	);
 }

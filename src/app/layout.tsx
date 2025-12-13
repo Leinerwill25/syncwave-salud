@@ -3,6 +3,7 @@ import type { Metadata } from 'next';
 import '../../public/globals.css';
 import NavbarSwitcher from '@/components/NavbarSwitcher';
 import ConditionalMain from '@/components/ConditionalMain';
+import { Toaster } from 'sonner';
 
 export const metadata: Metadata = {
 	title: 'KAVIRA - Plataforma Integral de Salud Digital para Venezuela | Gestión Médica Completa',
@@ -29,9 +30,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 				<NavbarSwitcher />
 
 				{/* Main con padding condicional */}
-				<ConditionalMain>
-					{children}
-				</ConditionalMain>
+				<ConditionalMain>{children}</ConditionalMain>
+
+				{/* Toaster para notificaciones */}
+				<Toaster position="top-right" richColors />
 			</body>
 		</html>
 	);

@@ -31,8 +31,7 @@ type Props = {
 	initialData?: InitialData;
 };
 
-// Constantes de impuestos
-const IVA_RATE = 0.16; // 16% IVA fijo
+// Constantes de impuestos - En el área de salud no se aplican impuestos
 const IGTF_RATE = 0.03; // 3% IGTF solo para pagos en efectivo (divisa)
 
 // Helper para extraer referencia y captura de las notas
@@ -66,7 +65,6 @@ const extractReferenceAndScreenshot = (notas: string | null): { referencia: stri
 export default function PaymentForm({ consultationId, appointmentId, patientId, doctorId, organizationId, initialData }: Props) {
 	const [facturacionId, setFacturacionId] = useState<string | null>(initialData?.id || null);
 	const [subtotal, setSubtotal] = useState<string>(initialData?.subtotal || '');
-	const [iva, setIva] = useState<string>('0');
 	const [igtf, setIgtf] = useState<string>('0');
 	const [total, setTotal] = useState<string>(initialData?.total || '');
 	const [currency, setCurrency] = useState<string>(initialData?.currency || 'USD');
@@ -105,36 +103,26 @@ export default function PaymentForm({ consultationId, appointmentId, patientId, 
 
 	const isEditing = !!facturacionId;
 
-	// Calcular IVA automáticamente (16% sobre subtotal)
+	// Calcular IGTF automáticamente (3% sobre subtotal, solo si método de pago es efectivo)
 	useEffect(() => {
 		const sub = parseFloat(subtotal) || 0;
-		const calculatedIva = sub * IVA_RATE;
-		setIva(calculatedIva.toFixed(2));
-	}, [subtotal]);
-
-	// Calcular IGTF automáticamente (3% sobre subtotal + IVA, solo si método de pago es efectivo)
-	useEffect(() => {
-		const sub = parseFloat(subtotal) || 0;
-		const ivaAmount = parseFloat(iva) || 0;
-		const baseForIgtf = sub + ivaAmount;
 		
 		// IGTF solo aplica si el método de pago es "efectivo" (pago en divisa)
 		if (metodoPago === 'efectivo') {
-			const calculatedIgtf = baseForIgtf * IGTF_RATE;
+			const calculatedIgtf = sub * IGTF_RATE;
 			setIgtf(calculatedIgtf.toFixed(2));
 		} else {
 			setIgtf('0');
 		}
-	}, [subtotal, iva, metodoPago]);
+	}, [subtotal, metodoPago]);
 
-	// Calcular total automáticamente (subtotal + IVA + IGTF)
+	// Calcular total automáticamente (subtotal + IGTF, sin IVA ya que en salud no aplica)
 	useEffect(() => {
 		const sub = parseFloat(subtotal) || 0;
-		const ivaAmount = parseFloat(iva) || 0;
 		const igtfAmount = parseFloat(igtf) || 0;
-		const calculatedTotal = sub + ivaAmount + igtfAmount;
+		const calculatedTotal = sub + igtfAmount;
 		setTotal(calculatedTotal.toFixed(2));
-	}, [subtotal, iva, igtf]);
+	}, [subtotal, igtf]);
 
 	// Si estado_pago es 'pagado', establecer fecha_pago automáticamente si no está establecida
 	useEffect(() => {
@@ -185,7 +173,7 @@ export default function PaymentForm({ consultationId, appointmentId, patientId, 
 			}
 			const finalNotas = notasParts.join('\n');
 
-			const impuestosTotal = parseFloat(iva) + parseFloat(igtf);
+			const impuestosTotal = parseFloat(igtf); // Solo IGTF, sin IVA
 
 			const payload: any = {
 				consultation_id: consultationId,
@@ -240,7 +228,6 @@ export default function PaymentForm({ consultationId, appointmentId, patientId, 
 	}
 
 	const subtotalNum = parseFloat(subtotal) || 0;
-	const ivaNum = parseFloat(iva) || 0;
 	const igtfNum = parseFloat(igtf) || 0;
 	const totalNum = parseFloat(total) || 0;
 
@@ -298,27 +285,6 @@ export default function PaymentForm({ consultationId, appointmentId, patientId, 
 							{subtotalNum > 0 && (
 								<div className="mt-2">
 									<CurrencyDisplay amount={subtotalNum} currency={currency as 'USD' | 'EUR'} showBoth={true} size="sm" />
-								</div>
-							)}
-						</div>
-
-						<div>
-							<label className="block text-sm font-semibold text-slate-700 dark:text-slate-200 mb-2">
-								IVA (16%) <span className="text-xs font-normal text-slate-500">Automático</span>
-							</label>
-							<div className="relative">
-								<input
-									type="number"
-									step="0.01"
-									value={iva}
-									readOnly
-									className="w-full px-4 py-3 rounded-lg border-2 border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 text-slate-900 dark:text-slate-100 text-lg font-semibold"
-								/>
-								<div className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 font-medium">{currency}</div>
-							</div>
-							{ivaNum > 0 && (
-								<div className="mt-2">
-									<CurrencyDisplay amount={ivaNum} currency={currency as 'USD' | 'EUR'} showBoth={true} size="sm" />
 								</div>
 							)}
 						</div>

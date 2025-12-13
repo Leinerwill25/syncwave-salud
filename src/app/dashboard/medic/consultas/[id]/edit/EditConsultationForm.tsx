@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useMemo, useState } from 'react';
-import { Loader2, Save, Trash2, FileText, Download, ChevronDown, ChevronUp, Activity, ClipboardList, Stethoscope, FileCheck } from 'lucide-react';
+import { Loader2, Save, Trash2, FileText, Download, ChevronDown, ChevronUp, Activity, ClipboardList, Stethoscope, FileCheck, Image, X, Upload } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import ICD11Search from '@/components/ICD11Search';
 
@@ -205,6 +205,7 @@ export default function EditConsultationForm({ initial, patient, doctor, doctorS
 	// Report generation
 	const [reportContent, setReportContent] = useState('');
 	const [generatingReport, setGeneratingReport] = useState(false);
+	const [savingReport, setSavingReport] = useState(false);
 	const [reportError, setReportError] = useState<string | null>(null);
 	const [reportSuccess, setReportSuccess] = useState<string | null>(null);
 	const [reportUrl, setReportUrl] = useState<string | null>((initial as any).report_url || null);
@@ -480,6 +481,9 @@ export default function EditConsultationForm({ initial, patient, doctor, doctorS
 	const [colposcopyBiopsy, setColposcopyBiopsy] = useState<string>(initColposcopy.biopsy ?? 'No');
 	const [colposcopyBiopsyLocation, setColposcopyBiopsyLocation] = useState<string>(initColposcopy.biopsy_location ?? '');
 	const [colposcopyLugol, setColposcopyLugol] = useState<string>(initColposcopy.lugol ?? '');
+	const [colposcopyImage, setColposcopyImage] = useState<string>(initColposcopy.colposcopy_image ?? '');
+	const [colposcopyAdditionalDetails, setColposcopyAdditionalDetails] = useState<string>(initColposcopy.additional_details ?? '');
+	const [uploadingColposcopyImage, setUploadingColposcopyImage] = useState(false);
 
 	/* -------------------------
      Endocrinología
@@ -701,6 +705,8 @@ export default function EditConsultationForm({ initial, patient, doctor, doctorS
 		if (colposcopyBiopsy) colposcopy.biopsy = colposcopyBiopsy;
 		if (colposcopyBiopsyLocation) colposcopy.biopsy_location = colposcopyBiopsyLocation;
 		if (colposcopyLugol) colposcopy.lugol = colposcopyLugol;
+		if (colposcopyImage) colposcopy.colposcopy_image = colposcopyImage;
+		if (colposcopyAdditionalDetails) colposcopy.additional_details = colposcopyAdditionalDetails;
 		if (Object.keys(colposcopy).length) gyn.colposcopy = colposcopy;
 
 		// Solo agregar ginecología si hay al menos un campo con datos (además del LMP que siempre está)
@@ -1006,12 +1012,43 @@ export default function EditConsultationForm({ initial, patient, doctor, doctorS
 				throw new Error(data.error || 'Error al generar informe');
 			}
 
-			setReportSuccess('Informe generado exitosamente');
+			setReportSuccess('Informe generado exitosamente. Puedes descargarlo o guardarlo en el historial del paciente.');
 			setReportUrl(data.report_url);
 		} catch (err: any) {
 			setReportError(err?.message ?? String(err));
 		} finally {
 			setGeneratingReport(false);
+		}
+	}
+
+	async function handleSaveReport() {
+		if (!reportUrl) {
+			setReportError('Primero debes generar el informe antes de guardarlo');
+			return;
+		}
+
+		setSavingReport(true);
+		setReportError(null);
+		setReportSuccess(null);
+
+		try {
+			const res = await fetch(`/api/consultations/${initial.id}/save-report`, {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ content: reportContent }),
+			});
+
+			const data = await res.json();
+
+			if (!res.ok) {
+				throw new Error(data.error || 'Error al guardar informe');
+			}
+
+			setReportSuccess('Informe guardado exitosamente en el historial del paciente');
+		} catch (err: any) {
+			setReportError(err?.message ?? String(err));
+		} finally {
+			setSavingReport(false);
 		}
 	}
 
@@ -1971,6 +2008,112 @@ export default function EditConsultationForm({ initial, patient, doctor, doctorS
 																	</div>
 																</div>
 															</div>
+
+															{/* Sección 7: Imagen Colposcópica y Detalles Adicionales */}
+															<div className="bg-gradient-to-br from-rose-50 to-pink-50/50 dark:from-rose-900/20 dark:to-pink-900/10 rounded-xl p-6 border border-rose-200 dark:border-rose-800 shadow-sm">
+																<h4 className="text-base font-semibold text-slate-900 dark:text-slate-100 mb-4 flex items-center gap-2">
+																	<div className="w-2 h-2 bg-rose-500 rounded-full"></div>
+																	Documentación Adicional
+																</h4>
+
+																<div className="space-y-6">
+																	{/* Campo de Imagen Colposcópica */}
+																	<div>
+																		<label className={labelClass}>Imagen Colposcópica</label>
+																		<div className="space-y-3">
+																			{colposcopyImage ? (
+																				<div className="relative border-2 border-slate-200 dark:border-slate-700 rounded-lg p-4 bg-slate-50 dark:bg-slate-800/50">
+																					<div className="flex items-center justify-between">
+																						<div className="flex items-center gap-3 flex-1 min-w-0">
+																							<div className="flex-shrink-0 w-12 h-12 rounded-lg bg-gradient-to-br from-teal-500 to-cyan-500 flex items-center justify-center">
+																								<Image className="w-6 h-6 text-white" />
+																							</div>
+																							<div className="flex-1 min-w-0">
+																								<p className="text-sm font-medium text-slate-900 dark:text-slate-100 truncate">Imagen colposcópica cargada</p>
+																								<a href={colposcopyImage} target="_blank" rel="noopener noreferrer" className="text-xs text-teal-600 dark:text-teal-400 hover:underline truncate block">
+																									Ver imagen
+																								</a>
+																							</div>
+																						</div>
+																						<button type="button" onClick={() => setColposcopyImage('')} className="flex-shrink-0 ml-3 p-2 rounded-lg bg-rose-100 dark:bg-rose-900/50 text-rose-600 dark:text-rose-400 hover:bg-rose-200 dark:hover:bg-rose-900 transition-colors">
+																							<X size={18} />
+																						</button>
+																					</div>
+																				</div>
+																			) : (
+																				<label className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-slate-300 dark:border-slate-600 rounded-lg cursor-pointer bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors">
+																					<div className="flex flex-col items-center justify-center pt-5 pb-6">
+																						{uploadingColposcopyImage ? (
+																							<>
+																								<Loader2 className="w-8 h-8 mb-2 text-teal-600 dark:text-teal-400 animate-spin" />
+																								<p className="text-sm text-slate-600 dark:text-slate-400">Subiendo imagen...</p>
+																							</>
+																						) : (
+																							<>
+																								<Upload className="w-8 h-8 mb-2 text-slate-400 dark:text-slate-500" />
+																								<p className="mb-2 text-sm text-slate-600 dark:text-slate-400">
+																									<span className="font-semibold">Haz clic para subir</span> o arrastra y suelta
+																								</p>
+																								<p className="text-xs text-slate-500 dark:text-slate-500">PNG, JPG, WEBP (MAX. 10MB)</p>
+																							</>
+																						)}
+																					</div>
+																					<input
+																						type="file"
+																						className="hidden"
+																						accept="image/png,image/jpeg,image/jpg,image/webp"
+																						onChange={async (e) => {
+																							const file = e.target.files?.[0];
+																							if (!file) return;
+
+																							// Validar tamaño (10MB)
+																							if (file.size > 10 * 1024 * 1024) {
+																								alert('El archivo es demasiado grande. Máximo 10MB.');
+																								return;
+																							}
+
+																							setUploadingColposcopyImage(true);
+																							try {
+																								const formData = new FormData();
+																								formData.append('file', file);
+																								formData.append('consultation_id', initial.id);
+																								formData.append('file_name', 'colposcopy-image');
+
+																								const res = await fetch('/api/consultations/upload-image', {
+																									method: 'POST',
+																									body: formData,
+																								});
+
+																								const data = await res.json();
+
+																								if (!res.ok) {
+																									throw new Error(data.error || 'Error al subir imagen');
+																								}
+
+																								setColposcopyImage(data.url);
+																								setSuccess('Imagen colposcópica subida exitosamente');
+																							} catch (err: any) {
+																								setError(err?.message || 'Error al subir imagen');
+																							} finally {
+																								setUploadingColposcopyImage(false);
+																							}
+																						}}
+																						disabled={uploadingColposcopyImage}
+																					/>
+																				</label>
+																			)}
+																		</div>
+																		<p className="mt-2 text-xs text-slate-500 dark:text-slate-400">Sube una imagen del examen colposcópico para documentar los hallazgos visuales</p>
+																	</div>
+
+																	{/* Campo de Detalles Adicionales */}
+																	<div>
+																		<label className={labelClass}>Detalles Adicionales</label>
+																		<textarea value={colposcopyAdditionalDetails} onChange={(e) => setColposcopyAdditionalDetails(e.target.value)} rows={4} className={`${inputBase} ${inputDark} resize-none`} placeholder="Agrega comentarios adicionales sobre la colposcopía, observaciones importantes, recomendaciones de seguimiento, etc." />
+																		<p className="mt-2 text-xs text-slate-500 dark:text-slate-400">Comentarios adicionales sobre el examen colposcópico</p>
+																	</div>
+																</div>
+															</div>
 														</div>
 													</div>
 												)}
@@ -2029,17 +2172,11 @@ export default function EditConsultationForm({ initial, patient, doctor, doctorS
 					{/* Report Generation Tab */}
 					{activeTab === 'report' && (
 						<div className={sectionCard} data-tab="report">
-							<div className="flex items-center justify-between mb-6">
-								<h2 className="text-xl font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
+							<div className="mb-6">
+								<h2 className="text-xl font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2 mb-4">
 									<FileCheck size={20} />
 									Generar Informe Médico
 								</h2>
-								{reportUrl && (
-									<a href={reportUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-emerald-600 text-white text-sm font-medium hover:bg-emerald-700 transition-colors shadow-sm">
-										<Download size={16} />
-										Descargar Informe
-									</a>
-								)}
 							</div>
 
 							<div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4 mb-6">
@@ -2133,19 +2270,49 @@ export default function EditConsultationForm({ initial, patient, doctor, doctorS
 
 								{reportSuccess && <div className="rounded-lg bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300 p-4 text-sm">{reportSuccess}</div>}
 
-								<button type="button" onClick={handleGenerateReport} disabled={generatingReport || !reportContent.trim()} className="inline-flex items-center gap-2 px-6 py-3 rounded-lg bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-semibold shadow-lg hover:shadow-xl hover:scale-[1.02] transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100">
-									{generatingReport ? (
-										<>
-											<Loader2 className="w-5 h-5 animate-spin" />
-											Generando Informe...
-										</>
-									) : (
-										<>
-											<FileText size={18} />
-											Generar Informe
-										</>
+								{/* Botones de acción del informe */}
+								<div className="flex flex-col gap-3">
+									{/* Fila 1: Generar y Descargar lado a lado */}
+									<div className="flex items-center gap-3">
+										<button type="button" onClick={handleGenerateReport} disabled={generatingReport || !reportContent.trim()} className="flex-1 inline-flex items-center justify-center gap-2 px-6 py-3 rounded-lg bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-semibold shadow-lg hover:shadow-xl hover:scale-[1.02] transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100">
+											{generatingReport ? (
+												<>
+													<Loader2 className="w-5 h-5 animate-spin" />
+													Generando Informe...
+												</>
+											) : (
+												<>
+													<FileText size={18} />
+													Generar Informe
+												</>
+											)}
+										</button>
+
+										{reportUrl && (
+											<a href={reportUrl} target="_blank" rel="noopener noreferrer" className="flex-1 inline-flex items-center justify-center gap-2 px-6 py-3 rounded-lg bg-gradient-to-r from-emerald-600 to-teal-600 text-white font-semibold shadow-lg hover:shadow-xl hover:scale-[1.02] transition-all">
+												<Download size={18} />
+												Descargar Informe
+											</a>
+										)}
+									</div>
+
+									{/* Fila 2: Guardar Informe (debajo de Descargar) */}
+									{reportUrl && (
+										<button type="button" onClick={handleSaveReport} disabled={savingReport} className="w-full inline-flex items-center justify-center gap-2 px-6 py-3 rounded-lg bg-gradient-to-r from-teal-600 to-cyan-600 text-white font-semibold shadow-lg hover:shadow-xl hover:scale-[1.02] transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100">
+											{savingReport ? (
+												<>
+													<Loader2 className="w-5 h-5 animate-spin" />
+													Guardando Informe...
+												</>
+											) : (
+												<>
+													<Save size={18} />
+													Guardar Informe en Base de Datos
+												</>
+											)}
+										</button>
 									)}
-								</button>
+								</div>
 							</div>
 						</div>
 					)}

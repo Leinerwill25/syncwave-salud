@@ -3,22 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import {
-	LayoutDashboard,
-	CalendarDays,
-	User,
-	ClipboardList,
-	FileText,
-	MessageCircle,
-	CheckSquare,
-	Folder,
-	ChevronRight,
-	ChevronDown,
-	Search,
-	FileCheck,
-	LogOut,
-	Shield,
-} from 'lucide-react';
+import { LayoutDashboard, CalendarDays, User, ClipboardList, FileText, MessageCircle, CheckSquare, Folder, ChevronRight, ChevronDown, Search, FileCheck, LogOut, Shield, Calendar, BarChart3, TrendingUp, CreditCard } from 'lucide-react';
 import { hasRoleUserPermission, getRoleUserSession, type RoleUserSession } from '@/lib/role-user-auth-client';
 
 type IconComponent = React.ComponentType<React.SVGProps<SVGSVGElement>>;
@@ -30,6 +15,7 @@ type LinkItem = {
 	module?: string; // Nombre del módulo para verificar permisos
 	submenu?: LinkItem[];
 	requiredPermission?: 'view' | 'create' | 'edit' | 'delete'; // Permiso requerido para ver este link
+	showOnlyForRole?: string; // Solo mostrar si el nombre del rol coincide
 };
 
 // Configuración de todos los módulos posibles
@@ -64,6 +50,30 @@ const ALL_MODULES: LinkItem[] = [
 		requiredPermission: 'view',
 	},
 	{
+		href: '/dashboard/role-user/mis-citas',
+		label: 'Mis Citas Programadas',
+		icon: Calendar,
+		module: 'citas',
+		requiredPermission: 'view',
+		showOnlyForRole: 'Asistente De Citas',
+	},
+	{
+		href: '/dashboard/role-user/reportes-citas',
+		label: 'Reportes de Citas',
+		icon: BarChart3,
+		module: 'citas',
+		requiredPermission: 'view',
+		showOnlyForRole: 'Asistente De Citas',
+	},
+	{
+		href: '/dashboard/role-user/estadisticas-citas',
+		label: 'Estadísticas de Citas',
+		icon: TrendingUp,
+		module: 'citas',
+		requiredPermission: 'view',
+		showOnlyForRole: 'Asistente De Citas',
+	},
+	{
 		label: 'Recetas',
 		icon: FileText,
 		module: 'recetas',
@@ -95,6 +105,11 @@ const ALL_MODULES: LinkItem[] = [
 		requiredPermission: 'view',
 	},
 	{
+		href: '/dashboard/role-user/mensajeria',
+		label: 'Mensajería Privada',
+		icon: MessageCircle,
+	},
+	{
 		href: '/dashboard/role-user/tareas',
 		label: 'Tareas',
 		icon: CheckSquare,
@@ -107,6 +122,12 @@ const ALL_MODULES: LinkItem[] = [
 		icon: FileText,
 		module: 'reportes',
 		requiredPermission: 'view',
+	},
+	{
+		href: '/dashboard/role-user/metodos-pago',
+		label: 'Métodos de Pago',
+		icon: CreditCard,
+		showOnlyForRole: 'Recepción',
 	},
 ];
 
@@ -156,7 +177,14 @@ export default function RoleUserSidebar() {
 
 	// Verifica si el usuario tiene permiso para ver un link
 	const hasPermissionForLink = (link: LinkItem): boolean => {
-		if (!session || !link.module || !link.requiredPermission) {
+		if (!session) return false;
+
+		// Si tiene showOnlyForRole, verificar que el rol coincide
+		if (link.showOnlyForRole && session.roleName !== link.showOnlyForRole) {
+			return false;
+		}
+
+		if (!link.module || !link.requiredPermission) {
 			// Si no hay módulo o permiso requerido, siempre mostrar (como Panel General)
 			return true;
 		}
@@ -305,7 +333,9 @@ export default function RoleUserSidebar() {
 						</div>
 						<div className="flex-1 min-w-0">
 							<div className="text-sm font-semibold text-slate-900 truncate">{session.roleName}</div>
-							<div className="text-[12px] text-slate-500 truncate">{session.firstName} {session.lastName}</div>
+							<div className="text-[12px] text-slate-500 truncate">
+								{session.firstName} {session.lastName}
+							</div>
 						</div>
 					</div>
 
@@ -322,10 +352,7 @@ export default function RoleUserSidebar() {
 
 					{/* Logout Button */}
 					<div className="mt-3 pt-2 border-t border-blue-100">
-						<button
-							onClick={handleLogout}
-							className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-slate-700 hover:bg-red-50 hover:text-red-700 transition-colors group"
-						>
+						<button onClick={handleLogout} className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-slate-700 hover:bg-red-50 hover:text-red-700 transition-colors group">
 							<LogOut className="w-5 h-5 text-slate-600 group-hover:text-red-600" />
 							<span>Cerrar Sesión</span>
 						</button>
@@ -343,4 +370,3 @@ export default function RoleUserSidebar() {
 		</aside>
 	);
 }
-

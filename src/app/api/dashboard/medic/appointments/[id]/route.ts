@@ -16,11 +16,7 @@ export async function PATCH(req: Request, context: { params: Promise<{ id: strin
 		}
 
 		// 1️⃣ Obtener cita actual antes del cambio (incluyendo selected_service)
-		const { data: current, error: fetchErr } = await supabaseAdmin
-			.from('appointment')
-			.select('*, selected_service')
-			.eq('id', id)
-			.single();
+		const { data: current, error: fetchErr } = await supabaseAdmin.from('appointment').select('*, selected_service').eq('id', id).single();
 
 		if (fetchErr || !current) return NextResponse.json({ error: 'Cita no encontrada.' }, { status: 404 });
 
@@ -47,19 +43,13 @@ export async function PATCH(req: Request, context: { params: Promise<{ id: strin
 
 			try {
 				// Buscar facturación existente para esta cita
-				const { data: existingFacturacion, error: facturacionFetchError } = await supabaseAdmin
-					.from('facturacion')
-					.select('id, total, currency, notas')
-					.eq('appointment_id', id)
-					.maybeSingle();
+				const { data: existingFacturacion, error: facturacionFetchError } = await supabaseAdmin.from('facturacion').select('id, total, currency, notas').eq('appointment_id', id).maybeSingle();
 
 				if (facturacionFetchError) {
 					console.error('[Appointment Update] Error buscando facturación:', facturacionFetchError);
 				} else if (existingFacturacion) {
 					// Actualizar notas para indicar que la cita fue confirmada y el pago está disponible
-					const notasActualizadas = existingFacturacion.notas 
-						? `${existingFacturacion.notas}\n\nCita confirmada. El pago está ahora disponible.`
-						: 'Cita confirmada. El pago está ahora disponible.';
+					const notasActualizadas = existingFacturacion.notas ? `${existingFacturacion.notas}\n\nCita confirmada. El pago está ahora disponible.` : 'Cita confirmada. El pago está ahora disponible.';
 
 					const { error: updateFacturacionError } = await supabaseAdmin
 						.from('facturacion')
@@ -72,22 +62,14 @@ export async function PATCH(req: Request, context: { params: Promise<{ id: strin
 						console.error('[Appointment Update] Error actualizando facturación:', updateFacturacionError);
 					} else {
 						console.log('[Appointment Update] Facturación actualizada - pago habilitado:', existingFacturacion.id);
-						
+
 						// Crear notificación al paciente sobre el pago disponible
 						try {
 							// Obtener información del paciente y su user_id
-							const { data: patientData } = await supabaseAdmin
-								.from('Patient')
-								.select('firstName, lastName')
-								.eq('id', patient_id)
-								.maybeSingle();
+							const { data: patientData } = await supabaseAdmin.from('Patient').select('firstName, lastName').eq('id', patient_id).maybeSingle();
 
 							// Obtener el user_id del paciente
-							const { data: userData } = await supabaseAdmin
-								.from('User')
-								.select('id')
-								.eq('patientProfileId', patient_id)
-								.maybeSingle();
+							const { data: userData } = await supabaseAdmin.from('User').select('id').eq('patientProfileId', patient_id).maybeSingle();
 
 							const patientName = patientData ? `${patientData.firstName} ${patientData.lastName}` : 'Paciente';
 							const patientUserId = userData?.id || null;
@@ -126,7 +108,23 @@ export async function PATCH(req: Request, context: { params: Promise<{ id: strin
 			}
 		}
 
-		// 4️⃣ Si cambió el status → crear notificaciones y enviar emails
+		// 4️⃣ Si la cita estaba CONFIRMADA y se reagenda (cambió scheduled_at), actualizar consultation.started_at si existe
+		if (current.status === 'CONFIRMADA' && body.scheduled_at && body.scheduled_at !== current.scheduled_at) {
+			// Buscar consultation asociada a esta cita
+			const { data: consultation, error: consultationError } = await supabaseAdmin.from('consultation').select('id, started_at').eq('appointment_id', id).maybeSingle();
+
+			if (!consultationError && consultation && consultation.started_at) {
+				// Actualizar started_at con la nueva fecha/hora
+				const { error: consultationUpdateError } = await supabaseAdmin.from('consultation').update({ started_at: body.scheduled_at, updated_at: new Date().toISOString() }).eq('id', consultation.id);
+
+				if (consultationUpdateError) {
+					console.warn('[Appointment Update] Error actualizando consultation.started_at:', consultationUpdateError);
+					// No fallar la operación principal, solo loguear el warning
+				}
+			}
+		}
+
+		// 5️⃣ Si cambió el status → crear notificaciones y enviar emails
 		if (body.status && body.status !== current.status) {
 			const { patient_id, doctor_id, organization_id, scheduled_at, reason, location } = current;
 			const statusText = body.status.replace('_', ' ').toLowerCase();
@@ -135,10 +133,7 @@ export async function PATCH(req: Request, context: { params: Promise<{ id: strin
 			let patientName: string | undefined;
 			let doctorName: string | undefined;
 			try {
-				const [patientRes, doctorRes] = await Promise.all([
-					supabaseAdmin.from('Patient').select('firstName, lastName').eq('id', patient_id).maybeSingle(),
-					doctor_id ? supabaseAdmin.from('User').select('name').eq('id', doctor_id).maybeSingle() : Promise.resolve({ data: null }),
-				]);
+				const [patientRes, doctorRes] = await Promise.all([supabaseAdmin.from('Patient').select('firstName, lastName').eq('id', patient_id).maybeSingle(), doctor_id ? supabaseAdmin.from('User').select('name').eq('id', doctor_id).maybeSingle() : Promise.resolve({ data: null })]);
 				if (patientRes.data) {
 					patientName = `${patientRes.data.firstName} ${patientRes.data.lastName}`;
 				}
@@ -149,14 +144,16 @@ export async function PATCH(req: Request, context: { params: Promise<{ id: strin
 				// Ignorar errores
 			}
 
-			const appointmentDate = scheduled_at ? new Date(scheduled_at).toLocaleDateString('es-ES', {
-				weekday: 'long',
-				year: 'numeric',
-				month: 'long',
-				day: 'numeric',
-				hour: '2-digit',
-				minute: '2-digit',
-			}) : '';
+			const appointmentDate = scheduled_at
+				? new Date(scheduled_at).toLocaleDateString('es-ES', {
+						weekday: 'long',
+						year: 'numeric',
+						month: 'long',
+						day: 'numeric',
+						hour: '2-digit',
+						minute: '2-digit',
+				  })
+				: '';
 
 			const appointmentUrl = `${process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_VERCEL_URL ? `https://${process.env.NEXT_PUBLIC_VERCEL_URL}` : 'http://localhost:3000'}/dashboard/medic/consultas/${id}`;
 

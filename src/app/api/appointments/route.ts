@@ -11,11 +11,7 @@ const pool = new Pool({
 });
 
 // Cliente Supabase Admin para notificaciones
-const supabaseAdmin = createClient(
-	process.env.NEXT_PUBLIC_SUPABASE_URL!,
-	process.env.SUPABASE_SERVICE_ROLE_KEY!,
-	{ auth: { persistSession: false } }
-);
+const supabaseAdmin = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!, { auth: { persistSession: false } });
 
 export async function POST(req: NextRequest) {
 	const client = await pool.connect();
@@ -23,14 +19,50 @@ export async function POST(req: NextRequest) {
 		// 🔹 Leer cuerpo JSON
 		const body = await req.json();
 
-		const { patientId, unregisteredPatientId, doctorId, organizationId, scheduledAt, durationMinutes, reason, location, billing } = body;
+		let { patientId, unregisteredPatientId, doctorId, organizationId, scheduledAt, durationMinutes, reason, location, referralSource, createdByRoleUserId, selectedService, billing } = body;
+
+		// 🔹 Si la cita fue creada por un role-user, obtener organizationId y doctorId correctos
+		// Esto debe hacerse ANTES de iniciar la transacción
+		if (createdByRoleUserId) {
+			try {
+				// Obtener el organizationId del role-user
+				const roleUserQuery = await client.query(`SELECT organization_id FROM public.consultorio_role_users WHERE id = $1`, [createdByRoleUserId]);
+
+				if (roleUserQuery.rows.length === 0) {
+					return NextResponse.json({ success: false, error: 'Role-user no encontrado.' }, { status: 404 });
+				}
+
+				const roleUserOrgId = roleUserQuery.rows[0].organization_id;
+				if (!roleUserOrgId) {
+					return NextResponse.json({ success: false, error: 'El role-user no tiene una organización asignada.' }, { status: 400 });
+				}
+
+				// Usar el organizationId del role-user
+				organizationId = roleUserOrgId;
+
+				// Obtener el primer doctor (User con role='MEDICO') asociado a esa organización
+				const doctorQuery = await client.query(`SELECT id FROM public."User" WHERE "organizationId" = $1 AND role = 'MEDICO' LIMIT 1`, [roleUserOrgId]);
+
+				if (doctorQuery.rows.length === 0) {
+					return NextResponse.json({ success: false, error: 'No se encontró un médico asociado a la organización del role-user.' }, { status: 404 });
+				}
+
+				// Usar el doctorId encontrado
+				doctorId = doctorQuery.rows[0].id;
+
+				console.log(`[Appointments API] Cita creada por role-user ${createdByRoleUserId}, usando organizationId: ${organizationId}, doctorId: ${doctorId}`);
+			} catch (roleUserError: any) {
+				console.error('[Appointments API] Error obteniendo datos del role-user:', roleUserError);
+				return NextResponse.json({ success: false, error: 'Error al obtener información del role-user.' }, { status: 500 });
+			}
+		}
 
 		// 🔹 Extraer datos de facturación con valores por defecto
 		const subtotal = typeof billing?.subtotal === 'number' ? billing.subtotal : parseFloat(billing?.subtotal) || 0;
 		const impuestos = typeof billing?.impuestos === 'number' ? billing.impuestos : parseFloat(billing?.impuestos) || 0;
 		const total = typeof billing?.total === 'number' ? billing.total : parseFloat(billing?.total) || 0;
 		const currency = billing?.currency ?? 'USD';
-		
+
 		// Obtener la tasa de cambio de la moneda especificada desde la base de datos rates
 		const tipoCambio = await getExchangeRateForCurrency(currency);
 
@@ -71,10 +103,7 @@ export async function POST(req: NextRequest) {
 				}
 
 				// Verificar que el paciente no registrado existe
-				const unregisteredCheck = await client.query(
-					`SELECT id FROM public.unregisteredpatients WHERE id = $1`,
-					[finalUnregisteredPatientId]
-				);
+				const unregisteredCheck = await client.query(`SELECT id FROM public.unregisteredpatients WHERE id = $1`, [finalUnregisteredPatientId]);
 
 				if (unregisteredCheck.rows.length === 0) {
 					throw new Error('Paciente no registrado no encontrado.');
@@ -88,10 +117,7 @@ export async function POST(req: NextRequest) {
 				}
 
 				// Verificar que el paciente registrado existe
-				const patientCheck = await client.query(
-					`SELECT id FROM public."Patient" WHERE id = $1`,
-					[finalPatientId]
-				);
+				const patientCheck = await client.query(`SELECT id FROM public."Patient" WHERE id = $1`, [finalPatientId]);
 
 				if (patientCheck.rows.length === 0) {
 					throw new Error('Paciente registrado no encontrado.');
@@ -103,8 +129,8 @@ export async function POST(req: NextRequest) {
 			const appointmentResult = await client.query(
 				`
         INSERT INTO public.appointment
-          (patient_id, unregistered_patient_id, doctor_id, organization_id, scheduled_at, duration_minutes, reason, location)
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+          (patient_id, unregistered_patient_id, doctor_id, organization_id, scheduled_at, duration_minutes, reason, location, referral_source, created_by_role_user_id, selected_service)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
         RETURNING id
       `,
 				[
@@ -116,6 +142,9 @@ export async function POST(req: NextRequest) {
 					durationMinutes ?? 30,
 					reason || null,
 					location || null,
+					referralSource || null,
+					createdByRoleUserId || null,
+					selectedService || null,
 				]
 			);
 
@@ -143,18 +172,10 @@ export async function POST(req: NextRequest) {
 			if (finalPatientId) {
 				try {
 					// Obtener información del paciente y su user_id
-					const { data: patientData } = await supabaseAdmin
-						.from('Patient')
-						.select('firstName, lastName')
-						.eq('id', finalPatientId)
-						.maybeSingle();
+					const { data: patientData } = await supabaseAdmin.from('Patient').select('firstName, lastName').eq('id', finalPatientId).maybeSingle();
 
 					// Obtener el user_id del paciente
-					const { data: userData } = await supabaseAdmin
-						.from('User')
-						.select('id')
-						.eq('patientProfileId', finalPatientId)
-						.maybeSingle();
+					const { data: userData } = await supabaseAdmin.from('User').select('id').eq('patientProfileId', finalPatientId).maybeSingle();
 
 					const patientName = patientData ? `${patientData.firstName} ${patientData.lastName}` : 'Paciente';
 					const patientUserId = userData?.id || null;

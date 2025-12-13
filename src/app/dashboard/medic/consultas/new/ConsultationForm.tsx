@@ -225,7 +225,7 @@ export default function ConsultationForm() {
 	const [services, setServices] = useState<ClinicService[]>([]);
 	const [selectedServices, setSelectedServices] = useState<string[]>([]); // IDs de servicios seleccionados
 	const [loadingServices, setLoadingServices] = useState(false);
-	const IVA_VE_GENERAL = 0.16;
+	// No se aplican impuestos (IVA) en el área de salud
 
 	// Inicializar fecha con la fecha actual
 	useEffect(() => {
@@ -542,8 +542,8 @@ export default function ConsultationForm() {
 				try {
 					const selectedServicesData = services.filter((s) => selectedServices.includes(s.id));
 					const subtotal = selectedServicesData.reduce((sum, s) => sum + Number(s.price), 0);
-					const impuestos = subtotal * IVA_VE_GENERAL;
-					const total = subtotal + impuestos;
+					const impuestos = 0; // No se aplican impuestos en el área de salud
+					const total = subtotal; // Total igual al subtotal sin impuestos
 					const currency = selectedServicesData[0]?.currency || 'USD';
 
 					const billingPayload: any = {
@@ -1129,20 +1129,11 @@ export default function ConsultationForm() {
 								{(() => {
 									const selectedServicesData = services.filter((s) => selectedServices.includes(s.id));
 									const subtotal = selectedServicesData.reduce((sum, s) => sum + Number(s.price), 0);
-									const impuestos = subtotal * IVA_VE_GENERAL;
-									const total = subtotal + impuestos;
+									const total = subtotal; // Sin impuestos en área de salud
 									const currency = selectedServicesData[0]?.currency || 'USD';
 
 									return (
 										<>
-											<div className="flex justify-between text-sm text-slate-700 pt-2 border-t border-slate-200">
-												<span>Subtotal ({currency})</span>
-												<strong>{subtotal.toFixed(2)}</strong>
-											</div>
-											<div className="flex justify-between text-sm text-slate-700">
-												<span>Impuestos ({currency})</span>
-												<strong>{impuestos.toFixed(2)}</strong>
-											</div>
 											<div className="flex justify-between items-center pt-2 border-t border-slate-200">
 												<span className="font-semibold text-base">Total ({currency})</span>
 												<strong className="text-lg text-teal-700 font-bold">{total.toFixed(2)}</strong>

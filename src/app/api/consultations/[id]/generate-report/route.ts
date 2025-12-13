@@ -623,7 +623,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 
 				// Obtener la fuente seleccionada (por defecto Arial)
 				const selectedFont = medicProfile?.report_font_family || 'Arial';
-				
+
 				// Cambiar tamaño de fuente a 9pt (en half-points: 9 * 2 = 18)
 				// Reemplazar todos los valores de w:sz a 18
 				xmlContent = xmlContent.replace(/<w:sz\s+w:val="\d+"/g, '<w:sz w:val="18"');
@@ -634,7 +634,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 				// Aplicar la fuente seleccionada
 				// Reemplazar todas las fuentes existentes con la fuente seleccionada
 				xmlContent = xmlContent.replace(/<w:rFonts[^>]*>/g, `<w:rFonts w:ascii="${selectedFont}" w:hAnsi="${selectedFont}" w:cs="${selectedFont}"/>`);
-				
+
 				// Si hay <w:rPr> sin <w:rFonts>, agregarlo con la fuente seleccionada
 				xmlContent = xmlContent.replace(/(<w:rPr[^>]*>)(?![^<]*<w:rFonts)/g, `$1<w:rFonts w:ascii="${selectedFont}" w:hAnsi="${selectedFont}" w:cs="${selectedFont}"/>`);
 
@@ -694,7 +694,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 
 		const reportUrl = urlData?.signedUrl || `/${reportsBucket}/${reportFileName}`;
 
-		// Actualizar consulta con URL del informe
+		// Actualizar consulta solo con URL del informe (sin guardar en MedicalRecord automáticamente)
 		const { error: updateError } = await supabase.from('consultation').update({ report_url: reportUrl }).eq('id', id);
 
 		if (updateError) {
@@ -705,7 +705,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 		return NextResponse.json({
 			success: true,
 			report_url: reportUrl,
-			message: 'Informe generado exitosamente',
+			message: 'Informe generado exitosamente. Usa el botón "Guardar Informe" para guardarlo en el historial del paciente.',
 		});
 	} catch (err) {
 		console.error('[Generate Report API] Error:', err);

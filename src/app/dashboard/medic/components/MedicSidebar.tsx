@@ -70,6 +70,11 @@ const LINKS: LinkItem[] = [
 		icon: MessageCircle,
 	},
 	{
+		href: '/dashboard/medic/mensajeria',
+		label: 'Mensajería Privada',
+		icon: MessageCircle,
+	},
+	{
 		href: '/dashboard/medic/tareas',
 		label: 'Tareas',
 		icon: CheckSquare,
@@ -339,21 +344,13 @@ export default function MedicSidebar() {
 					<div className="mt-3 pt-2 border-t border-blue-100 space-y-2">
 						{/* Link Público Button - Solo para consultorios privados */}
 						{medicConfig?.organizationType === 'CONSULTORIO' && (medicConfig?.user?.organizationId || (medicConfig as any)?.organizationId) && (
-							<button
-								onClick={() => setPublicLinkModalOpen(true)}
-								className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-slate-700 hover:bg-gradient-to-r hover:from-teal-50 hover:to-cyan-50 transition-all group border border-teal-200 hover:border-teal-300"
-							>
+							<button onClick={() => setPublicLinkModalOpen(true)} className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-slate-700 hover:bg-gradient-to-r hover:from-teal-50 hover:to-cyan-50 transition-all group border border-teal-200 hover:border-teal-300">
 								<Share2 className="w-5 h-5 text-teal-600 group-hover:text-teal-700" />
 								<span>Link Público</span>
-								<span className="ml-auto px-2 py-0.5 text-[10px] font-semibold rounded-full bg-teal-100 text-teal-700 border border-teal-200">
-									Nuevo
-								</span>
+								<span className="ml-auto px-2 py-0.5 text-[10px] font-semibold rounded-full bg-teal-100 text-teal-700 border border-teal-200">Nuevo</span>
 							</button>
 						)}
-						<button
-							onClick={() => setPaymentsModalOpen(true)}
-							className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-slate-700 hover:bg-blue-50 transition-colors group"
-						>
+						<button onClick={() => setPaymentsModalOpen(true)} className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-slate-700 hover:bg-blue-50 transition-colors group">
 							<CreditCard className="w-5 h-5 text-teal-600 group-hover:text-teal-700" />
 							<span>Pagos Efectuados</span>
 						</button>
@@ -370,17 +367,10 @@ export default function MedicSidebar() {
 			</div>
 
 			{/* Payments Modal */}
-			<PaymentsModal
-				isOpen={paymentsModalOpen}
-				onClose={() => setPaymentsModalOpen(false)}
-			/>
+			<PaymentsModal isOpen={paymentsModalOpen} onClose={() => setPaymentsModalOpen(false)} />
 
 			{/* Public Link Modal */}
-			<PublicLinkModal
-				isOpen={publicLinkModalOpen}
-				onClose={() => setPublicLinkModalOpen(false)}
-				organizationId={(medicConfig?.user?.organizationId || (medicConfig as any)?.organizationId) || null}
-			/>
+			<PublicLinkModal isOpen={publicLinkModalOpen} onClose={() => setPublicLinkModalOpen(false)} organizationId={medicConfig?.user?.organizationId || (medicConfig as any)?.organizationId || null} />
 		</aside>
 	);
 }

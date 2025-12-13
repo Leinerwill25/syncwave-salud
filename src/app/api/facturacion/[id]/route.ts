@@ -1,6 +1,7 @@
 // app/api/facturacion/[id]/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import createSupabaseServerClient from '@/app/adapters/server';
+import { getRoleUserSessionFromServer } from '@/lib/role-user-auth';
 
 export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
 	try {
@@ -13,30 +14,41 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
 
 		// Body
 		const body = await req.json().catch(() => ({}));
-		const {
-			appointment_id,
-			patient_id,
-			doctor_id,
-			organization_id,
-			subtotal,
-			impuestos,
-			total,
-			currency,
-			tipo_cambio,
-			billing_series,
-			numero_factura,
-			estado_factura,
-			estado_pago,
-			metodo_pago,
-			fecha_pago,
-			notas,
-		} = body || {};
+		const { appointment_id, patient_id, doctor_id, organization_id, subtotal, impuestos, total, currency, tipo_cambio, billing_series, numero_factura, estado_factura, estado_pago, metodo_pago, fecha_pago, notas, ajuste_monto, razon_ajuste } = body || {};
 
-		// Validar que existe la facturación
-		const { data: existingFacturacion, error: fetchError } = await supabase.from('facturacion').select('id, appointment_id, numero_factura').eq('id', id).single();
+		// Validar que existe la facturación y obtener organization_id y total
+		const { data: existingFacturacion, error: fetchError } = await supabase.from('facturacion').select('id, appointment_id, numero_factura, organization_id, total').eq('id', id).single();
 
 		if (fetchError || !existingFacturacion) {
 			return NextResponse.json({ error: 'Facturación no encontrada' }, { status: 404 });
+		}
+
+		// Verificar autorización: intentar obtener sesión de role-user primero
+		let authorized = false;
+		let userOrganizationId: string | null = null;
+
+		try {
+			const roleUserSession = await getRoleUserSessionFromServer();
+			if (roleUserSession && roleUserSession.organizationId === existingFacturacion.organization_id) {
+				authorized = true;
+				userOrganizationId = roleUserSession.organizationId;
+			}
+		} catch {
+			// Si no es role-user, continuar con verificación de usuario regular
+		}
+
+		// Si no es role-user autorizado, verificar usuario regular
+		if (!authorized && sessionUser?.id) {
+			const { data: appUser } = await supabase.from('User').select('id, organizationId').eq('authId', sessionUser.id).maybeSingle();
+			if (appUser && (appUser as any).organizationId === existingFacturacion.organization_id) {
+				authorized = true;
+				userOrganizationId = (appUser as any).organizationId;
+			}
+		}
+
+		// Si no está autorizado, retornar error 403
+		if (!authorized) {
+			return NextResponse.json({ error: 'No autorizado para actualizar esta facturación' }, { status: 403 });
 		}
 
 		// Validaciones básicas
@@ -80,6 +92,15 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
 			updatePayload.fecha_pago = fecha_pago ? new Date(fecha_pago).toISOString() : null;
 		}
 		if (notas !== undefined) updatePayload.notas = notas || null;
+		if (ajuste_monto !== undefined && ajuste_monto !== null) {
+			updatePayload.ajuste_monto = Number(ajuste_monto);
+			// Si hay ajuste, actualizar el total sumando el ajuste al total original
+			// Nota: si también se proporciona total, ese tiene prioridad
+			if (total === undefined && existingFacturacion.total) {
+				updatePayload.total = Number(existingFacturacion.total) + Number(ajuste_monto);
+			}
+		}
+		if (razon_ajuste !== undefined) updatePayload.razon_ajuste = razon_ajuste || null;
 
 		// Si hay sesión server-side, permitir actualizar doctor_id y organization_id
 		if (sessionUser?.id) {
@@ -148,4 +169,3 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
 		return NextResponse.json({ error: error?.message ?? 'Error interno' }, { status: 500 });
 	}
 }
-
