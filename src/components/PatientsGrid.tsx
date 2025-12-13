@@ -207,10 +207,7 @@ function PatientCard({ patient, onLoadReports, onViewHistory }: { patient: Patie
 					</h3>
 
 					<p className="text-sm text-gray-500 mt-0.5 truncate">
-						Cédula:{' '}
-						{patient.identifier != null ? String(patient.identifier) : '—'} • Género:{' '}
-						{patient.gender != null ? String(patient.gender) : '—'} • Teléfono:{' '}
-						{patient.phone != null ? String(patient.phone) : '—'}
+						Cédula: {patient.identifier != null ? String(patient.identifier) : '—'} • Género: {patient.gender != null ? String(patient.gender) : '—'} • Teléfono: {patient.phone != null ? String(patient.phone) : '—'}
 					</p>
 
 					{/* Estadísticas */}
@@ -403,12 +400,7 @@ function LabResultCard({ item }: { item: LabResult }) {
 
 	// Asegurar que nunca se renderice un objeto crudo como hijo de React
 	const rawResult = item.result;
-	const result =
-		rawResult === null || rawResult === undefined
-			? null
-			: typeof rawResult === 'object'
-				? JSON.stringify(rawResult)
-				: String(rawResult);
+	const result = rawResult === null || rawResult === undefined ? null : typeof rawResult === 'object' ? JSON.stringify(rawResult) : String(rawResult);
 
 	const unit = item.unit != null ? String(item.unit) : undefined;
 	const status = item.status != null ? String(item.status) : undefined;
@@ -1178,7 +1170,10 @@ export default function PatientsGrid({ perPage = 18 }: { perPage?: number }) {
 	};
 
 	const onLoadReports = (id: string) => loadHistory(id, 'prescriptions');
-	const onViewHistory = (id: string) => loadHistory(id, 'overview');
+	const onViewHistory = (id: string) => {
+		// Redirigir a la nueva página de historial
+		window.location.href = `/dashboard/medic/pacientes/${id}/historial`;
+	};
 
 	return (
 		<div>

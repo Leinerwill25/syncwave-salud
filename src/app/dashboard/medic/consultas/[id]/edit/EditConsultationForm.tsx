@@ -3,6 +3,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Loader2, Save, Trash2, FileText, Download, ChevronDown, ChevronUp, Activity, ClipboardList, Stethoscope, FileCheck, Image, X, Upload } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import ICD11Search from '@/components/ICD11Search';
 
 type ConsultationShape = {
@@ -590,138 +591,179 @@ export default function EditConsultationForm({ initial, patient, doctor, doctorS
 		const out: Record<string, any> = {};
 		if (Object.keys(g).length) out.general = g;
 
-		const cardio: Record<string, any> = {};
-		if (ekgRhythm) cardio.ekg_rhythm = ekgRhythm;
-		if (bnp) cardio.bnp = bnp;
-		cardio.edema = !!edema;
-		if (chestPainScale) cardio.chest_pain_scale = chestPainScale;
-		if (Object.keys(cardio).length || cardio.edema) out.cardiology = cardio;
+		// Solo incluir especialidades si corresponden a la especialidad activa del doctor
+		// Si no hay especialidad del doctor, no incluir ninguna especialidad (solo general)
+		if (!doctorSpecialtyCode) {
+			return Object.keys(out).length ? out : null;
+		}
 
-		const pulmo: Record<string, any> = {};
-		if (fev1) pulmo.fev1 = fev1;
-		if (fvc) pulmo.fvc = fvc;
-		if (peakFlow) pulmo.peak_flow = peakFlow;
-		if (wheezeNote) pulmo.wheeze = wheezeNote;
-		if (Object.keys(pulmo).length) out.pulmonology = pulmo;
+		// Cardiology - solo si la especialidad activa es cardiology
+		if (doctorSpecialtyCode === 'cardiology') {
+			const cardio: Record<string, any> = {};
+			if (ekgRhythm) cardio.ekg_rhythm = ekgRhythm;
+			if (bnp) cardio.bnp = bnp;
+			if (edema !== null && edema !== undefined) cardio.edema = !!edema;
+			if (chestPainScale) cardio.chest_pain_scale = chestPainScale;
+			if (Object.keys(cardio).length) out.cardiology = cardio;
+		}
 
-		const neuro: Record<string, any> = {};
-		if (gcsTotal) neuro.gcs_total = gcsTotal;
-		if (pupillaryReactivity) neuro.pupillary_reactivity = pupillaryReactivity;
-		if (neuroNotes) neuro.notes = neuroNotes;
-		if (Object.keys(neuro).length) out.neurology = neuro;
+		// Pulmonology - solo si la especialidad activa es pulmonology
+		if (doctorSpecialtyCode === 'pulmonology') {
+			const pulmo: Record<string, any> = {};
+			if (fev1) pulmo.fev1 = fev1;
+			if (fvc) pulmo.fvc = fvc;
+			if (peakFlow) pulmo.peak_flow = peakFlow;
+			if (wheezeNote) pulmo.wheeze = wheezeNote;
+			if (Object.keys(pulmo).length) out.pulmonology = pulmo;
+		}
 
-		const obst: Record<string, any> = {};
-		if (fundalHeight) obst.fundal_height_cm = fundalHeight;
-		if (fetalHr) obst.fetal_heart_rate = fetalHr;
-		if (gravida) obst.gravida = gravida;
-		if (para) obst.para = para;
-		if (Object.keys(obst).length) out.obstetrics = obst;
+		// Neurology - solo si la especialidad activa es neurology
+		if (doctorSpecialtyCode === 'neurology') {
+			const neuro: Record<string, any> = {};
+			if (gcsTotal) neuro.gcs_total = gcsTotal;
+			if (pupillaryReactivity) neuro.pupillary_reactivity = pupillaryReactivity;
+			if (neuroNotes) neuro.notes = neuroNotes;
+			if (Object.keys(neuro).length) out.neurology = neuro;
+		}
 
-		const nutr: Record<string, any> = {};
-		if (waistCircumference) nutr.waist_cm = waistCircumference;
-		if (bmiOverride) nutr.bmi_override = bmiOverride;
-		if (Object.keys(nutr).length) out.nutrition = nutr;
+		// Obstetrics - solo si la especialidad activa es obstetrics
+		if (doctorSpecialtyCode === 'obstetrics') {
+			const obst: Record<string, any> = {};
+			if (fundalHeight) obst.fundal_height_cm = fundalHeight;
+			if (fetalHr) obst.fetal_heart_rate = fetalHr;
+			if (gravida) obst.gravida = gravida;
+			if (para) obst.para = para;
+			if (Object.keys(obst).length) out.obstetrics = obst;
+		}
 
-		const derma: Record<string, any> = {};
-		if (lesionDesc) derma.lesion_description = lesionDesc;
-		if (lesionSize) derma.lesion_size_cm = lesionSize;
-		if (Object.keys(derma).length) out.dermatology = derma;
+		// Nutrition - solo si la especialidad activa es nutrition
+		if (doctorSpecialtyCode === 'nutrition') {
+			const nutr: Record<string, any> = {};
+			if (waistCircumference) nutr.waist_cm = waistCircumference;
+			if (bmiOverride) nutr.bmi_override = bmiOverride;
+			if (Object.keys(nutr).length) out.nutrition = nutr;
+		}
 
-		const psych: Record<string, any> = {};
-		if (moodScale) psych.mood_scale = moodScale;
-		if (phq9) psych.phq9 = phq9;
-		if (Object.keys(psych).length) out.psychiatry = psych;
+		// Dermatology - solo si la especialidad activa es dermatology
+		if (doctorSpecialtyCode === 'dermatology') {
+			const derma: Record<string, any> = {};
+			if (lesionDesc) derma.lesion_description = lesionDesc;
+			if (lesionSize) derma.lesion_size_cm = lesionSize;
+			if (Object.keys(derma).length) out.dermatology = derma;
+		}
 
-		const ortho: Record<string, any> = {};
-		if (romNotes) ortho.range_of_motion = romNotes;
-		if (limbStrength) ortho.limb_strength = limbStrength;
-		if (Object.keys(ortho).length) out.orthopedics = ortho;
+		// Psychiatry - solo si la especialidad activa es psychiatry
+		if (doctorSpecialtyCode === 'psychiatry') {
+			const psych: Record<string, any> = {};
+			if (moodScale) psych.mood_scale = moodScale;
+			if (phq9) psych.phq9 = phq9;
+			if (Object.keys(psych).length) out.psychiatry = psych;
+		}
 
-		const ent: Record<string, any> = {};
-		if (hearingLeft) ent.hearing_left_db = hearingLeft;
-		if (hearingRight) ent.hearing_right_db = hearingRight;
-		if (otoscopyNotes) ent.otoscopy = otoscopyNotes;
-		if (Object.keys(ent).length) out.ent = ent;
+		// Orthopedics - solo si la especialidad activa es orthopedics
+		if (doctorSpecialtyCode === 'orthopedics') {
+			const ortho: Record<string, any> = {};
+			if (romNotes) ortho.range_of_motion = romNotes;
+			if (limbStrength) ortho.limb_strength = limbStrength;
+			if (Object.keys(ortho).length) out.orthopedics = ortho;
+		}
 
-		const gyn: Record<string, any> = {};
-		// LMP es obligatorio si hay datos de ginecología, así que siempre lo incluimos
-		gyn.last_menstrual_period = lmp || '';
-		if (contraceptiveUse) gyn.contraceptive = contraceptiveUse;
-		// gynDiagnosis removido - ahora se usa solo el diagnóstico CIE-11
-		if (cervicalExamNotes) gyn.cervical_exam = cervicalExamNotes;
-		if (currentIllnessHistory) gyn.current_illness_history = currentIllnessHistory;
-		if (allergies) gyn.allergies = allergies;
-		if (surgicalHistory) gyn.surgical_history = surgicalHistory;
-		if (familyHistoryMother) gyn.family_history_mother = familyHistoryMother;
-		if (familyHistoryFather) gyn.family_history_father = familyHistoryFather;
-		if (familyHistoryBreastCancer) gyn.family_history_breast_cancer = familyHistoryBreastCancer;
-		if (its) gyn.its = its;
-		if (menstruationType) gyn.menstruation_type = menstruationType;
-		if (menstruationPattern) gyn.menstruation_pattern = menstruationPattern;
-		if (dysmenorrhea) gyn.dysmenorrhea = dysmenorrhea;
-		if (firstSexualRelation) gyn.first_sexual_relation = firstSexualRelation;
-		if (sexualPartners) gyn.sexual_partners = sexualPartners;
-		if (generalConditions) gyn.general_conditions = generalConditions;
-		if (breastSize) gyn.breast_size = breastSize;
-		if (breastSymmetry) gyn.breast_symmetry = breastSymmetry;
-		if (breastCap) gyn.breast_cap = breastCap;
-		if (breastSecretion) gyn.breast_secretion = breastSecretion;
-		if (axillaryFossae) gyn.axillary_fossae = axillaryFossae;
-		if (abdomen) gyn.abdomen = abdomen;
-		if (externalGenitals) gyn.external_genitals = externalGenitals;
-		if (vaginalDischarge) gyn.vaginal_discharge = vaginalDischarge;
-		if (speculumCervix) gyn.speculum_cervix = speculumCervix;
-		if (tactCervix) gyn.tact_cervix = tactCervix;
-		if (fundusSacs) gyn.fundus_sacs = fundusSacs;
-		if (adnexa) gyn.adnexa = adnexa;
-		if (hinselmannTest) gyn.hinselmann_test = hinselmannTest;
-		if (schillerTest) gyn.schiller_test = schillerTest;
-		if (uterusDimensions) gyn.uterus_dimensions = uterusDimensions;
-		if (endometrialInterface) gyn.endometrial_interface = endometrialInterface;
-		if (endometrialInterfaceType) gyn.endometrial_interface_type = endometrialInterfaceType;
-		if (endometrialInterfacePhase) gyn.endometrial_interface_phase = endometrialInterfacePhase;
-		if (leftOvaryDimensions) gyn.left_ovary_dimensions = leftOvaryDimensions;
-		if (rightOvaryDimensions) gyn.right_ovary_dimensions = rightOvaryDimensions;
-		if (fundusFluid) gyn.fundus_fluid = fundusFluid;
-		if (ho) gyn.ho = ho;
+		// ENT - solo si la especialidad activa es ent
+		if (doctorSpecialtyCode === 'ent') {
+			const ent: Record<string, any> = {};
+			if (hearingLeft) ent.hearing_left_db = hearingLeft;
+			if (hearingRight) ent.hearing_right_db = hearingRight;
+			if (otoscopyNotes) ent.otoscopy = otoscopyNotes;
+			if (Object.keys(ent).length) out.ent = ent;
+		}
 
-		// Datos de colposcopia
-		const colposcopy: Record<string, any> = {};
-		if (colposcopyAcetic5) colposcopy.acetic_5 = colposcopyAcetic5;
-		if (colposcopyEctocervix) colposcopy.ectocervix = colposcopyEctocervix;
-		if (colposcopyType) colposcopy.type = colposcopyType;
-		if (colposcopyExtension) colposcopy.extension = colposcopyExtension;
-		if (colposcopyDescription) colposcopy.description = colposcopyDescription;
-		if (colposcopyLocation) colposcopy.location = colposcopyLocation;
-		if (colposcopyAcetowhite) colposcopy.acetowhite = colposcopyAcetowhite;
-		if (colposcopyAcetowhiteDetails) colposcopy.acetowhite_details = colposcopyAcetowhiteDetails;
-		if (colposcopyMosaic) colposcopy.mosaic = colposcopyMosaic;
-		if (colposcopyPunctation) colposcopy.punctation = colposcopyPunctation;
-		if (colposcopyAtypicalVessels) colposcopy.atypical_vessels = colposcopyAtypicalVessels;
-		if (colposcopyInvasiveCarcinoma) colposcopy.invasive_carcinoma = colposcopyInvasiveCarcinoma;
-		if (colposcopyBorders) colposcopy.borders = colposcopyBorders;
-		if (colposcopySituation) colposcopy.situation = colposcopySituation;
-		if (colposcopyElevation) colposcopy.elevation = colposcopyElevation;
-		if (colposcopyBiopsy) colposcopy.biopsy = colposcopyBiopsy;
-		if (colposcopyBiopsyLocation) colposcopy.biopsy_location = colposcopyBiopsyLocation;
-		if (colposcopyLugol) colposcopy.lugol = colposcopyLugol;
-		if (colposcopyImage) colposcopy.colposcopy_image = colposcopyImage;
-		if (colposcopyAdditionalDetails) colposcopy.additional_details = colposcopyAdditionalDetails;
-		if (Object.keys(colposcopy).length) gyn.colposcopy = colposcopy;
+		// Gynecology - solo si la especialidad activa es gynecology
+		if (doctorSpecialtyCode === 'gynecology') {
+			const gyn: Record<string, any> = {};
+			// LMP es obligatorio si hay datos de ginecología, así que siempre lo incluimos
+			if (lmp) gyn.last_menstrual_period = lmp;
+			if (contraceptiveUse) gyn.contraceptive = contraceptiveUse;
+			// gynDiagnosis removido - ahora se usa solo el diagnóstico CIE-11
+			if (cervicalExamNotes) gyn.cervical_exam = cervicalExamNotes;
+			if (currentIllnessHistory) gyn.current_illness_history = currentIllnessHistory;
+			if (allergies) gyn.allergies = allergies;
+			if (surgicalHistory) gyn.surgical_history = surgicalHistory;
+			if (familyHistoryMother) gyn.family_history_mother = familyHistoryMother;
+			if (familyHistoryFather) gyn.family_history_father = familyHistoryFather;
+			if (familyHistoryBreastCancer) gyn.family_history_breast_cancer = familyHistoryBreastCancer;
+			if (its) gyn.its = its;
+			if (menstruationType) gyn.menstruation_type = menstruationType;
+			if (menstruationPattern) gyn.menstruation_pattern = menstruationPattern;
+			if (dysmenorrhea) gyn.dysmenorrhea = dysmenorrhea;
+			if (firstSexualRelation) gyn.first_sexual_relation = firstSexualRelation;
+			if (sexualPartners) gyn.sexual_partners = sexualPartners;
+			if (generalConditions) gyn.general_conditions = generalConditions;
+			if (breastSize) gyn.breast_size = breastSize;
+			if (breastSymmetry) gyn.breast_symmetry = breastSymmetry;
+			if (breastCap) gyn.breast_cap = breastCap;
+			if (breastSecretion) gyn.breast_secretion = breastSecretion;
+			if (axillaryFossae) gyn.axillary_fossae = axillaryFossae;
+			if (abdomen) gyn.abdomen = abdomen;
+			if (externalGenitals) gyn.external_genitals = externalGenitals;
+			if (vaginalDischarge) gyn.vaginal_discharge = vaginalDischarge;
+			if (speculumCervix) gyn.speculum_cervix = speculumCervix;
+			if (tactCervix) gyn.tact_cervix = tactCervix;
+			if (fundusSacs) gyn.fundus_sacs = fundusSacs;
+			if (adnexa) gyn.adnexa = adnexa;
+			if (hinselmannTest) gyn.hinselmann_test = hinselmannTest;
+			if (schillerTest) gyn.schiller_test = schillerTest;
+			if (uterusDimensions) gyn.uterus_dimensions = uterusDimensions;
+			if (endometrialInterface) gyn.endometrial_interface = endometrialInterface;
+			if (endometrialInterfaceType) gyn.endometrial_interface_type = endometrialInterfaceType;
+			if (endometrialInterfacePhase) gyn.endometrial_interface_phase = endometrialInterfacePhase;
+			if (leftOvaryDimensions) gyn.left_ovary_dimensions = leftOvaryDimensions;
+			if (rightOvaryDimensions) gyn.right_ovary_dimensions = rightOvaryDimensions;
+			if (fundusFluid) gyn.fundus_fluid = fundusFluid;
+			if (ho) gyn.ho = ho;
 
-		// Solo agregar ginecología si hay al menos un campo con datos (además del LMP que siempre está)
-		const hasGynData = Object.keys(gyn).some((key) => key !== 'last_menstrual_period' && gyn[key] !== '' && gyn[key] !== null && gyn[key] !== undefined);
-		if (hasGynData || lmp) out.gynecology = gyn;
+			// Datos de colposcopia
+			const colposcopy: Record<string, any> = {};
+			if (colposcopyAcetic5) colposcopy.acetic_5 = colposcopyAcetic5;
+			if (colposcopyEctocervix) colposcopy.ectocervix = colposcopyEctocervix;
+			if (colposcopyType) colposcopy.type = colposcopyType;
+			if (colposcopyExtension) colposcopy.extension = colposcopyExtension;
+			if (colposcopyDescription) colposcopy.description = colposcopyDescription;
+			if (colposcopyLocation) colposcopy.location = colposcopyLocation;
+			if (colposcopyAcetowhite) colposcopy.acetowhite = colposcopyAcetowhite;
+			if (colposcopyAcetowhiteDetails) colposcopy.acetowhite_details = colposcopyAcetowhiteDetails;
+			if (colposcopyMosaic) colposcopy.mosaic = colposcopyMosaic;
+			if (colposcopyPunctation) colposcopy.punctation = colposcopyPunctation;
+			if (colposcopyAtypicalVessels) colposcopy.atypical_vessels = colposcopyAtypicalVessels;
+			if (colposcopyInvasiveCarcinoma) colposcopy.invasive_carcinoma = colposcopyInvasiveCarcinoma;
+			if (colposcopyBorders) colposcopy.borders = colposcopyBorders;
+			if (colposcopySituation) colposcopy.situation = colposcopySituation;
+			if (colposcopyElevation) colposcopy.elevation = colposcopyElevation;
+			if (colposcopyBiopsy) colposcopy.biopsy = colposcopyBiopsy;
+			if (colposcopyBiopsyLocation) colposcopy.biopsy_location = colposcopyBiopsyLocation;
+			if (colposcopyLugol) colposcopy.lugol = colposcopyLugol;
+			if (colposcopyImage) colposcopy.colposcopy_image = colposcopyImage;
+			if (colposcopyAdditionalDetails) colposcopy.additional_details = colposcopyAdditionalDetails;
+			if (Object.keys(colposcopy).length) gyn.colposcopy = colposcopy;
 
-		const endo: Record<string, any> = {};
-		if (tsh) endo.tsh = tsh;
-		if (hba1c) endo.hba1c = hba1c;
-		if (Object.keys(endo).length) out.endocrinology = endo;
+			// Solo agregar ginecología si hay al menos un campo con datos
+			if (Object.keys(gyn).length > 0) out.gynecology = gyn;
+		}
 
-		const oph: Record<string, any> = {};
-		if (visualAcuity) oph.visual_acuity = visualAcuity;
-		if (iop) oph.iop = iop;
-		if (Object.keys(oph).length) out.ophthalmology = oph;
+		// Endocrinology - solo si la especialidad activa es endocrinology
+		if (doctorSpecialtyCode === 'endocrinology') {
+			const endo: Record<string, any> = {};
+			if (tsh) endo.tsh = tsh;
+			if (hba1c) endo.hba1c = hba1c;
+			if (Object.keys(endo).length) out.endocrinology = endo;
+		}
+
+		// Ophthalmology - solo si la especialidad activa es ophthalmology
+		if (doctorSpecialtyCode === 'ophthalmology') {
+			const oph: Record<string, any> = {};
+			if (visualAcuity) oph.visual_acuity = visualAcuity;
+			if (iop) oph.iop = iop;
+			if (Object.keys(oph).length) out.ophthalmology = oph;
+		}
 
 		return Object.keys(out).length ? out : null;
 	}
@@ -2313,6 +2355,31 @@ export default function EditConsultationForm({ initial, patient, doctor, doctorS
 										</button>
 									)}
 								</div>
+							</div>
+						</div>
+					)}
+
+					{/* Prescription Section - After Report */}
+					{activeTab === 'report' && (
+						<div className={sectionCard}>
+							<div className="mb-6">
+								<h2 className="text-xl font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2 mb-4">
+									<ClipboardList size={20} />
+									Prescripción Médica
+								</h2>
+							</div>
+
+							<div className="bg-teal-50 dark:bg-teal-900/20 border border-teal-200 dark:border-teal-800 rounded-lg p-4 mb-6">
+								<p className="text-sm text-teal-800 dark:text-teal-200">
+									<strong>Información:</strong> Crea y gestiona las prescripciones médicas para esta consulta. Puedes agregar medicamentos, dosis, frecuencia y duración del tratamiento.
+								</p>
+							</div>
+
+							<div className="flex justify-center">
+								<Link href={`/dashboard/medic/consultas/${initial.id}/prescription`} className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-lg bg-gradient-to-r from-teal-600 to-cyan-600 text-white font-semibold shadow-lg hover:shadow-xl hover:scale-[1.02] transition-all" aria-label="Crear prescripción">
+									<ClipboardList size={18} />
+									Crear Prescripción
+								</Link>
 							</div>
 						</div>
 					)}

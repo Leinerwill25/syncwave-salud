@@ -75,7 +75,8 @@ export default async function ConsultationDetail({ params }: Props) {
 		if (data?.appointment_id) {
 			const { data: appointment } = await supabase
 				.from('appointment')
-				.select(`
+				.select(
+					`
 					id,
 					booked_by_patient_id,
 					booked_by_patient:booked_by_patient_id (
@@ -84,7 +85,8 @@ export default async function ConsultationDetail({ params }: Props) {
 						lastName,
 						identifier
 					)
-				`)
+				`
+				)
 				.eq('id', data.appointment_id)
 				.maybeSingle();
 			appointmentInfo = appointment;
@@ -93,12 +95,7 @@ export default async function ConsultationDetail({ params }: Props) {
 		if (data) {
 			// Buscar facturación por appointment_id si existe
 			if (data.appointment_id) {
-				const { data: facturacionByAppointment } = await supabase
-					.from('facturacion')
-					.select('id, estado_pago')
-					.eq('appointment_id', data.appointment_id)
-					.eq('doctor_id', data.doctor_id)
-					.maybeSingle();
+				const { data: facturacionByAppointment } = await supabase.from('facturacion').select('id, estado_pago').eq('appointment_id', data.appointment_id).eq('doctor_id', data.doctor_id).maybeSingle();
 
 				if (facturacionByAppointment) {
 					facturacionId = facturacionByAppointment.id;
@@ -108,12 +105,7 @@ export default async function ConsultationDetail({ params }: Props) {
 
 			// Si no hay facturación por appointment, buscar por patient_id o unregistered_patient_id
 			if (!facturacionId) {
-				const query = supabase
-					.from('facturacion')
-					.select('id, estado_pago')
-					.eq('doctor_id', data.doctor_id)
-					.order('fecha_emision', { ascending: false })
-					.limit(1);
+				const query = supabase.from('facturacion').select('id, estado_pago').eq('doctor_id', data.doctor_id).order('fecha_emision', { ascending: false }).limit(1);
 
 				if (data.patient_id) {
 					query.eq('patient_id', data.patient_id);
@@ -138,12 +130,8 @@ export default async function ConsultationDetail({ params }: Props) {
 		// Obtener datos del paciente no registrado si existe
 		let unregisteredPatient: any = null;
 		if (c.unregistered_patient_id) {
-			const { data: unregisteredData } = await supabase
-				.from('unregisteredpatients')
-				.select('id, first_name, last_name, identification, phone, email, birth_date, sex, address')
-				.eq('id', c.unregistered_patient_id)
-				.maybeSingle();
-			
+			const { data: unregisteredData } = await supabase.from('unregisteredpatients').select('id, first_name, last_name, identification, phone, email, birth_date, sex, address').eq('id', c.unregistered_patient_id).maybeSingle();
+
 			if (unregisteredData) {
 				unregisteredPatient = {
 					id: unregisteredData.id,
@@ -202,9 +190,7 @@ export default async function ConsultationDetail({ params }: Props) {
 										</div>
 										<div className="text-white text-sm text-left">
 											<div className="font-semibold truncate">{currentPatient ? `${currentPatient.firstName} ${currentPatient.lastName}` : 'Paciente —'}</div>
-											<div className="text-xs opacity-90 truncate">
-												{isUnregistered ? 'Paciente No Registrado' : c.doctor?.name ? `Dr(a). ${c.doctor.name}` : '—'}
-											</div>
+											<div className="text-xs opacity-90 truncate">{isUnregistered ? 'Paciente No Registrado' : c.doctor?.name ? `Dr(a). ${c.doctor.name}` : '—'}</div>
 										</div>
 									</div>
 								</div>
@@ -219,12 +205,13 @@ export default async function ConsultationDetail({ params }: Props) {
 									<div className="flex-1 min-w-0">
 										<p className="text-xs sm:text-sm font-semibold text-blue-900 mb-1">Cita Reservada por Grupo Familiar</p>
 										{(() => {
-											const bookedBy = Array.isArray(appointmentInfo.booked_by_patient) 
-												? appointmentInfo.booked_by_patient[0] 
-												: appointmentInfo.booked_by_patient;
+											const bookedBy = Array.isArray(appointmentInfo.booked_by_patient) ? appointmentInfo.booked_by_patient[0] : appointmentInfo.booked_by_patient;
 											return bookedBy ? (
 												<p className="text-xs sm:text-sm text-blue-800 break-words">
-													Esta cita fue reservada por <span className="font-semibold">{bookedBy.firstName} {bookedBy.lastName}</span> 
+													Esta cita fue reservada por{' '}
+													<span className="font-semibold">
+														{bookedBy.firstName} {bookedBy.lastName}
+													</span>
 													{bookedBy.identifier && ` (ID: ${bookedBy.identifier})`} del grupo familiar.
 												</p>
 											) : (
@@ -253,9 +240,7 @@ export default async function ConsultationDetail({ params }: Props) {
 							</div>
 
 							<div className="flex items-center gap-3 flex-wrap">
-								{hasPendingPayment && (
-									<ApproveAttendanceButton consultationId={c.id} facturacionId={facturacionId} hasPendingPayment={hasPendingPayment} />
-								)}
+								{hasPendingPayment && <ApproveAttendanceButton consultationId={c.id} facturacionId={facturacionId} hasPendingPayment={hasPendingPayment} />}
 								<Link href={`/dashboard/medic/consultas/${c.id}/edit`} className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-gradient-to-r from-teal-600 to-cyan-600 text-white hover:from-teal-700 hover:to-cyan-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-teal-400">
 									Editar
 								</Link>
@@ -316,11 +301,11 @@ export default async function ConsultationDetail({ params }: Props) {
 									(() => {
 										// helpers localizados dentro del JSX (no crear componente nuevo)
 										const vitalsObj = typeof c.vitals === 'string' ? JSON.parse(c.vitals) : c.vitals || {};
-										
+
 										// Filtrar campos que no son signos vitales (scheduled_date, consultation_date, initial_patient_data, specialty_data, private_notes, images)
 										const excludedKeys = ['scheduled_date', 'consultation_date', 'initial_patient_data', 'specialty_data', 'private_notes', 'images'];
 										const filteredVitalsObj: Record<string, any> = {};
-										Object.keys(vitalsObj).forEach(key => {
+										Object.keys(vitalsObj).forEach((key) => {
 											if (!excludedKeys.includes(key)) {
 												filteredVitalsObj[key] = vitalsObj[key];
 											}
@@ -367,36 +352,36 @@ export default async function ConsultationDetail({ params }: Props) {
 														const sectionData = filteredVitalsObj[section] || {};
 														const entries = Object.entries(sectionData);
 
-													return (
-														<div key={section} className="border border-blue-100 rounded-xl p-3 bg-blue-50/50">
-															<div className="flex items-center justify-between mb-3">
-																<div className="flex items-center gap-3">
-																	<div className="w-10 h-10 rounded-lg bg-gradient-to-br from-teal-50 to-cyan-50 flex items-center justify-center text-teal-600 font-semibold">{String(section).charAt(0).toUpperCase()}</div>
-																	<div>
-																		<div className="text-sm font-semibold text-slate-900">{prettyLabel(section)}</div>
-																		<div className="text-xs text-slate-700">{entries.length} campo(s)</div>
+														return (
+															<div key={section} className="border border-blue-100 rounded-xl p-3 bg-blue-50/50">
+																<div className="flex items-center justify-between mb-3">
+																	<div className="flex items-center gap-3">
+																		<div className="w-10 h-10 rounded-lg bg-gradient-to-br from-teal-50 to-cyan-50 flex items-center justify-center text-teal-600 font-semibold">{String(section).charAt(0).toUpperCase()}</div>
+																		<div>
+																			<div className="text-sm font-semibold text-slate-900">{prettyLabel(section)}</div>
+																			<div className="text-xs text-slate-700">{entries.length} campo(s)</div>
+																		</div>
 																	</div>
 																</div>
-															</div>
 
-															{entries.length === 0 ? (
-																<div className="text-sm text-slate-700">No hay datos en esta sección.</div>
-															) : (
-																<div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
-																	{entries.map(([k, v]) => (
-																		<div key={k} className="flex flex-col gap-1 p-3 rounded-lg bg-white border border-blue-100">
-																			<div className="text-xs text-slate-800 font-medium">{prettyLabel(k)}</div>
-																			<div className="flex items-center justify-between gap-2">
-																				<div className="text-sm font-medium text-slate-900 break-words">{formatValue(v)}</div>
-																				{/* pequeño chip para valores booleanos o numéricos destacables */}
-																				{typeof v === 'boolean' ? <div className={`text-xs px-2 py-0.5 rounded-full font-medium ${v ? 'bg-green-100 text-green-800' : 'bg-rose-100 text-rose-800'}`}>{v ? 'Sí' : 'No'}</div> : typeof v === 'string' && /^\d+(\.\d+)?$/.test(v) ? <div className="text-xs px-2 py-0.5 rounded-full bg-slate-100 text-slate-700">{v}</div> : null}
+																{entries.length === 0 ? (
+																	<div className="text-sm text-slate-700">No hay datos en esta sección.</div>
+																) : (
+																	<div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+																		{entries.map(([k, v]) => (
+																			<div key={k} className="flex flex-col gap-1 p-3 rounded-lg bg-white border border-blue-100">
+																				<div className="text-xs text-slate-800 font-medium">{prettyLabel(k)}</div>
+																				<div className="flex items-center justify-between gap-2">
+																					<div className="text-sm font-medium text-slate-900 break-words">{formatValue(v)}</div>
+																					{/* pequeño chip para valores booleanos o numéricos destacables */}
+																					{typeof v === 'boolean' ? <div className={`text-xs px-2 py-0.5 rounded-full font-medium ${v ? 'bg-green-100 text-green-800' : 'bg-rose-100 text-rose-800'}`}>{v ? 'Sí' : 'No'}</div> : typeof v === 'string' && /^\d+(\.\d+)?$/.test(v) ? <div className="text-xs px-2 py-0.5 rounded-full bg-slate-100 text-slate-700">{v}</div> : null}
+																				</div>
 																			</div>
-																		</div>
-																	))}
-																</div>
-															)}
-														</div>
-													);
+																		))}
+																	</div>
+																)}
+															</div>
+														);
 													})
 												)}
 											</div>
@@ -412,13 +397,7 @@ export default async function ConsultationDetail({ params }: Props) {
 						<aside className="space-y-5">
 							{/* Selector de Paciente */}
 							<div className="rounded-2xl bg-white border border-blue-100 shadow-sm p-4">
-								<PatientSelector
-									consultationId={c.id}
-									currentPatientId={c.patient_id}
-									currentUnregisteredPatientId={c.unregistered_patient_id}
-									currentPatientName={currentPatient ? `${currentPatient.firstName} ${currentPatient.lastName}` : 'Sin paciente'}
-									isUnregistered={isUnregistered}
-								/>
+								<PatientSelector consultationId={c.id} currentPatientId={c.patient_id} currentUnregisteredPatientId={c.unregistered_patient_id} currentPatientName={currentPatient ? `${currentPatient.firstName} ${currentPatient.lastName}` : 'Sin paciente'} isUnregistered={isUnregistered} />
 							</div>
 
 							{/* QuickFacts — envuelto en tarjeta con estilo corporativo */}
@@ -431,13 +410,7 @@ export default async function ConsultationDetail({ params }: Props) {
 								<h3 className="text-sm font-semibold text-slate-900 mb-3">Acciones</h3>
 
 								<div className="flex flex-col gap-2">
-									{currentPatient && (
-										<PatientHistoryLink patientId={c.patient_id} isUnregistered={isUnregistered} />
-									)}
-
-									<Link href={`/dashboard/medic/consultas/${c.id}/prescription`} className="inline-flex items-center justify-center px-3 py-2 rounded-lg bg-gradient-to-r from-teal-600 to-cyan-600 text-white text-sm hover:from-teal-700 hover:to-cyan-700 focus:outline-none focus:ring-2 focus:ring-offset-1 focus:ring-teal-400" aria-label="Crear prescripción">
-										Crear Prescripción
-									</Link>
+									{currentPatient && <PatientHistoryLink patientId={c.patient_id} isUnregistered={isUnregistered} />}
 
 									<Link href={`/dashboard/medic/consultas/${c.id}/pago`} className="inline-flex items-center justify-center gap-2 px-3 py-2 rounded-lg bg-green-600 text-white text-sm hover:opacity-95 focus:outline-none focus:ring-2 focus:ring-offset-1 focus:ring-green-400" aria-label="Registrar pago de consulta">
 										<DollarSign size={16} />

@@ -146,18 +146,16 @@ function FileUploader({ files, setFiles }: { files: File[]; setFiles: (f: File[]
 			<div className="mb-4">
 				<label className="block text-sm font-semibold text-slate-900 mb-2">Adjuntar documentos médicos</label>
 				<div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-3">
-					<p className="text-sm font-medium text-slate-900 mb-2">📋 Documentos requeridos para el paciente:</p>
+					<p className="text-sm font-medium text-slate-900 mb-2">📋 Documento requerido para el paciente:</p>
 					<ul className="space-y-2 text-sm text-slate-800">
 						<li className="flex items-start gap-2">
 							<span className="text-teal-600 font-bold">•</span>
-							<span><strong>Informe médico:</strong> Documento con el resumen clínico, diagnóstico y recomendaciones de la consulta.</span>
-						</li>
-						<li className="flex items-start gap-2">
-							<span className="text-teal-600 font-bold">•</span>
-							<span><strong>Receta médica:</strong> Documento físico o digital de la receta que has escrito durante la consulta con el paciente.</span>
+							<span>
+								<strong>Receta médica:</strong> Documento físico o digital de la receta que has escrito durante la consulta con el paciente.
+							</span>
 						</li>
 					</ul>
-					<p className="text-xs text-slate-700 mt-3 italic">Estos documentos quedarán guardados digitalmente y estarán disponibles para el paciente en su panel.</p>
+					<p className="text-xs text-slate-700 mt-3 italic">Este documento quedará guardado digitalmente y estará disponible para el paciente en su panel.</p>
 				</div>
 			</div>
 
@@ -192,12 +190,8 @@ function FileUploader({ files, setFiles }: { files: File[]; setFiles: (f: File[]
 				{files.length > 0 && (
 					<div className="mt-4">
 						<div className="mb-3 flex items-center justify-between">
-							<p className="text-sm font-medium text-slate-900">
-								Documentos adjuntos ({files.length})
-							</p>
-							<p className="text-xs text-slate-600">
-								El paciente podrá descargar estos documentos desde su panel
-							</p>
+							<p className="text-sm font-medium text-slate-900">Documentos adjuntos ({files.length})</p>
+							<p className="text-xs text-slate-600">El paciente podrá descargar estos documentos desde su panel</p>
 						</div>
 						<div className="grid grid-cols-1 gap-2">
 							{files.map((f, i) => {
@@ -266,27 +260,27 @@ function generateFrequencyText(hours: number | null | undefined, days: number | 
 // Helper para parsear frecuencia antigua (ej: "8/8 hrs" o "cada 8 horas por 7 días")
 function parseOldFrequency(frequency: string | null | undefined): { hours: number | null; days: number | null } {
 	if (!frequency) return { hours: null, days: null };
-	
+
 	const freqLower = frequency.toLowerCase().trim();
-	
+
 	// Intentar parsear formato "8/8" o "8/8 hrs"
 	const slashMatch = freqLower.match(/(\d+)\s*\/\s*(\d+)/);
 	if (slashMatch) {
 		return { hours: parseInt(slashMatch[1], 10), days: parseInt(slashMatch[2], 10) };
 	}
-	
+
 	// Intentar parsear formato "cada X horas por Y días"
 	const cadaMatch = freqLower.match(/cada\s+(\d+)\s+horas?\s+por\s+(\d+)\s+d[ií]as?/);
 	if (cadaMatch) {
 		return { hours: parseInt(cadaMatch[1], 10), days: parseInt(cadaMatch[2], 10) };
 	}
-	
+
 	// Intentar parsear solo "cada X horas" (sin días)
 	const soloCadaMatch = freqLower.match(/cada\s+(\d+)\s+horas?/);
 	if (soloCadaMatch) {
 		return { hours: parseInt(soloCadaMatch[1], 10), days: null };
 	}
-	
+
 	return { hours: null, days: null };
 }
 
@@ -299,7 +293,7 @@ function PrescriptionItemsEditor({ items, setItems }: { items: Item[]; setItems:
 	}
 	function update(id: string, patch: Partial<Item>) {
 		const updatedItem = { ...patch };
-		
+
 		// Si se actualizan frequencyHours o frequencyDays, generar el texto de frequency automáticamente
 		if ('frequencyHours' in patch || 'frequencyDays' in patch) {
 			const item = items.find((it) => it.id === id);
@@ -307,7 +301,7 @@ function PrescriptionItemsEditor({ items, setItems }: { items: Item[]; setItems:
 			const days = 'frequencyDays' in patch ? patch.frequencyDays : item?.frequencyDays;
 			updatedItem.frequency = generateFrequencyText(hours, days);
 		}
-		
+
 		setItems(items.map((it) => (it.id === id ? { ...it, ...updatedItem } : it)));
 	}
 
@@ -338,32 +332,13 @@ function PrescriptionItemsEditor({ items, setItems }: { items: Item[]; setItems:
 						<div className="md:col-span-2 grid grid-cols-2 gap-2">
 							<div>
 								<label className="text-xs text-slate-800 font-medium">Cada cuántas horas</label>
-								<input 
-									type="number" 
-									min="1" 
-									max="24"
-									className="w-full mt-1 px-3 py-2 rounded-md border border-blue-200 bg-white text-slate-900" 
-									placeholder="Ej: 8" 
-									value={it.frequencyHours ?? ''} 
-									onChange={(e) => update(it.id, { frequencyHours: e.target.value ? parseInt(e.target.value, 10) : null })} 
-								/>
+								<input type="number" min="1" max="24" className="w-full mt-1 px-3 py-2 rounded-md border border-blue-200 bg-white text-slate-900" placeholder="Ej: 8" value={it.frequencyHours ?? ''} onChange={(e) => update(it.id, { frequencyHours: e.target.value ? parseInt(e.target.value, 10) : null })} />
 							</div>
 							<div>
 								<label className="text-xs text-slate-800 font-medium">Por cuántos días</label>
-								<input 
-									type="number" 
-									min="1"
-									className="w-full mt-1 px-3 py-2 rounded-md border border-blue-200 bg-white text-slate-900" 
-									placeholder="Ej: 7" 
-									value={it.frequencyDays ?? ''} 
-									onChange={(e) => update(it.id, { frequencyDays: e.target.value ? parseInt(e.target.value, 10) : null })} 
-								/>
+								<input type="number" min="1" className="w-full mt-1 px-3 py-2 rounded-md border border-blue-200 bg-white text-slate-900" placeholder="Ej: 7" value={it.frequencyDays ?? ''} onChange={(e) => update(it.id, { frequencyDays: e.target.value ? parseInt(e.target.value, 10) : null })} />
 							</div>
-							{it.frequency && (
-								<div className="col-span-2 text-xs text-slate-600 mt-1 italic">
-									{it.frequency}
-								</div>
-							)}
+							{it.frequency && <div className="col-span-2 text-xs text-slate-600 mt-1 italic">{it.frequency}</div>}
 						</div>
 
 						<div className="md:col-span-1 flex flex-col items-end gap-2">
@@ -409,7 +384,7 @@ export default function PrescriptionForm({ consultationId, patientId, unregister
 			setIsEditMode(true);
 			setNotes(existingPrescription.notes || '');
 			setValidUntil(existingPrescription.valid_until ? new Date(existingPrescription.valid_until).toISOString().split('T')[0] : '');
-			
+
 			// Cargar items existentes
 			if (existingPrescription.prescription_item && Array.isArray(existingPrescription.prescription_item)) {
 				const loadedItems: Item[] = existingPrescription.prescription_item.map((item) => {
@@ -544,24 +519,18 @@ export default function PrescriptionForm({ consultationId, patientId, unregister
 			<div className="rounded-2xl bg-gradient-to-r from-white to-blue-50 border border-blue-100 p-5 shadow-sm">
 				<div className="flex items-start justify-between gap-4">
 					<div>
-						<h2 className="text-xl md:text-2xl font-semibold text-slate-900">
-							{isEditMode ? 'Editar Prescripción Médica' : 'Crear Prescripción Médica'}
-						</h2>
-						<p className="mt-1 text-sm text-slate-800">
-							{isEditMode 
-								? 'Actualiza los medicamentos prescritos y adjunta documentos adicionales si es necesario.'
-								: 'Registra los medicamentos prescritos y adjunta el <strong>informe médico</strong> y la <strong>receta médica</strong> para que el paciente tenga constancia digital de su consulta.'
-							}
-						</p>
+						<h2 className="text-xl md:text-2xl font-semibold text-slate-900">{isEditMode ? 'Editar Prescripción Médica' : 'Crear Prescripción Médica'}</h2>
+						<p className="mt-1 text-sm text-slate-800">{isEditMode ? 'Actualiza los medicamentos prescritos y adjunta documentos adicionales si es necesario.' : 'Registra los medicamentos prescritos y adjunta la receta médica para que el paciente tenga constancia digital de su consulta.'}</p>
 						{isEditMode && existingPrescription && (
 							<div className="mt-2 px-3 py-1.5 bg-blue-100 border border-blue-200 rounded-lg">
 								<p className="text-xs text-blue-800">
-									<strong>Prescripción creada:</strong> {new Date(existingPrescription.created_at).toLocaleDateString('es-ES', {
+									<strong>Prescripción creada:</strong>{' '}
+									{new Date(existingPrescription.created_at).toLocaleDateString('es-ES', {
 										year: 'numeric',
 										month: 'long',
 										day: 'numeric',
 										hour: '2-digit',
-										minute: '2-digit'
+										minute: '2-digit',
 									})}
 								</p>
 							</div>
