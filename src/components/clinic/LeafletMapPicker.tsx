@@ -18,16 +18,16 @@ const Popup = dynamic(() => import('react-leaflet').then((mod) => mod.Popup), { 
 // Componente para manejar eventos del mapa
 function MapClickHandler({ onClick }: { onClick: (lat: number, lng: number) => void }) {
 	if (typeof window === 'undefined') return null;
-	
+
 	// Importar useMapEvents dinámicamente dentro del componente
 	const { useMapEvents } = require('react-leaflet');
-	
+
 	useMapEvents({
 		click: (e: { latlng: { lat: number; lng: number } }) => {
 			onClick(e.latlng.lat, e.latlng.lng);
 		},
 	});
-	
+
 	return null;
 }
 
@@ -37,18 +37,14 @@ interface LeafletMapPickerProps {
 }
 
 export default function LeafletMapPicker({ onLocationSelect, initialLocation }: LeafletMapPickerProps) {
-	const [selectedLocation, setSelectedLocation] = useState<{ lat: number; lng: number; address: string } | null>(
-		initialLocation || null
-	);
+	const [selectedLocation, setSelectedLocation] = useState<{ lat: number; lng: number; address: string } | null>(initialLocation || null);
 	const [searchQuery, setSearchQuery] = useState('');
 	const [mapLoaded, setMapLoaded] = useState(false);
 	const [loadingAddress, setLoadingAddress] = useState(false);
 	const [error, setError] = useState<string | null>(null);
 	const [searchResults, setSearchResults] = useState<any[]>([]);
 	const [showSearchResults, setShowSearchResults] = useState(false);
-	const [markerPosition, setMarkerPosition] = useState<[number, number] | null>(
-		initialLocation ? [initialLocation.lat, initialLocation.lng] : null
-	);
+	const [markerPosition, setMarkerPosition] = useState<[number, number] | null>(initialLocation ? [initialLocation.lat, initialLocation.lng] : null);
 	const [isClient, setIsClient] = useState(false);
 	const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 	const mapRef = useRef<any>(null);
@@ -56,7 +52,7 @@ export default function LeafletMapPicker({ onLocationSelect, initialLocation }: 
 	// Detectar si estamos en el cliente
 	useEffect(() => {
 		setIsClient(true);
-		
+
 		// Configurar iconos de Leaflet
 		if (typeof window !== 'undefined') {
 			import('leaflet').then((L) => {
@@ -70,7 +66,7 @@ export default function LeafletMapPicker({ onLocationSelect, initialLocation }: 
 							}
 							return '/images/marker-icon.png';
 						};
-						
+
 						const getShadowUrl = (shadowData: unknown): string => {
 							if (typeof shadowData === 'string') return shadowData;
 							if (shadowData && typeof shadowData === 'object' && 'src' in shadowData) {
@@ -79,7 +75,7 @@ export default function LeafletMapPicker({ onLocationSelect, initialLocation }: 
 							}
 							return '/images/marker-shadow.png';
 						};
-						
+
 						const iconUrl = getIconUrl(icon.default);
 						const shadowUrl = getShadowUrl(iconShadow.default);
 						const DefaultIcon = L.default.icon({
@@ -122,14 +118,11 @@ export default function LeafletMapPicker({ onLocationSelect, initialLocation }: 
 		searchTimeoutRef.current = setTimeout(async () => {
 			try {
 				// Usar Nominatim API pública (con límites de uso)
-				const response = await fetch(
-					`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=5&countrycodes=ve&addressdetails=1`,
-					{
-						headers: {
-							'User-Agent': 'KAVIRA/1.0', // Requerido por Nominatim
-						},
-					}
-				);
+				const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=5&countrycodes=ve&addressdetails=1`, {
+					headers: {
+						'User-Agent': 'ASHIRA/1.0', // Requerido por Nominatim
+					},
+				});
 
 				if (!response.ok) {
 					throw new Error('Error en la búsqueda');
@@ -146,37 +139,37 @@ export default function LeafletMapPicker({ onLocationSelect, initialLocation }: 
 	}, []);
 
 	// Función para geocodificación inversa (coordenadas -> dirección)
-	const reverseGeocode = useCallback(async (lat: number, lng: number) => {
-		setLoadingAddress(true);
-		try {
-			const response = await fetch(
-				`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&addressdetails=1`,
-				{
+	const reverseGeocode = useCallback(
+		async (lat: number, lng: number) => {
+			setLoadingAddress(true);
+			try {
+				const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&addressdetails=1`, {
 					headers: {
-						'User-Agent': 'KAVIRA/1.0',
+						'User-Agent': 'ASHIRA/1.0',
 					},
+				});
+
+				if (!response.ok) {
+					throw new Error('Error en geocodificación inversa');
 				}
-			);
 
-			if (!response.ok) {
-				throw new Error('Error en geocodificación inversa');
+				const data = await response.json();
+				const address = data.display_name || `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
+				const location = { lat, lng, address };
+				setSelectedLocation(location);
+				onLocationSelect(location);
+			} catch (err) {
+				console.error('[LeafletMapPicker] Error en geocodificación inversa:', err);
+				const address = `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
+				const location = { lat, lng, address };
+				setSelectedLocation(location);
+				onLocationSelect(location);
+			} finally {
+				setLoadingAddress(false);
 			}
-
-			const data = await response.json();
-			const address = data.display_name || `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
-			const location = { lat, lng, address };
-			setSelectedLocation(location);
-			onLocationSelect(location);
-		} catch (err) {
-			console.error('[LeafletMapPicker] Error en geocodificación inversa:', err);
-			const address = `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
-			const location = { lat, lng, address };
-			setSelectedLocation(location);
-			onLocationSelect(location);
-		} finally {
-			setLoadingAddress(false);
-		}
-	}, [onLocationSelect]);
+		},
+		[onLocationSelect]
+	);
 
 	// Manejar selección de resultado de búsqueda
 	const handleSelectSearchResult = useCallback(
@@ -246,9 +239,7 @@ export default function LeafletMapPicker({ onLocationSelect, initialLocation }: 
 	}, [onLocationSelect]);
 
 	// Centro por defecto (Caracas, Venezuela)
-	const defaultCenter: [number, number] = selectedLocation
-		? [selectedLocation.lat, selectedLocation.lng]
-		: [10.4806, -66.9036];
+	const defaultCenter: [number, number] = selectedLocation ? [selectedLocation.lat, selectedLocation.lng] : [10.4806, -66.9036];
 
 	const defaultZoom = selectedLocation ? 16 : 11;
 
@@ -289,12 +280,7 @@ export default function LeafletMapPicker({ onLocationSelect, initialLocation }: 
 					placeholder="Buscar dirección o lugar (ej: Av. Principal, Caracas)"
 					className="w-full pl-12 pr-32 py-3 border-2 border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500 bg-white text-slate-900 shadow-sm transition-all"
 				/>
-				<button
-					type="button"
-					onClick={handleCurrentLocation}
-					className="absolute right-2 top-1/2 -translate-y-1/2 p-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 transition-colors shadow-md"
-					title="Usar mi ubicación actual"
-				>
+				<button type="button" onClick={handleCurrentLocation} className="absolute right-2 top-1/2 -translate-y-1/2 p-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 transition-colors shadow-md" title="Usar mi ubicación actual">
 					<Navigation className="w-4 h-4" />
 				</button>
 
@@ -309,8 +295,7 @@ export default function LeafletMapPicker({ onLocationSelect, initialLocation }: 
 									e.preventDefault(); // Prevenir blur del input
 									handleSelectSearchResult(result);
 								}}
-								className="w-full px-4 py-3 text-left hover:bg-teal-50 transition-colors border-b border-slate-100 last:border-b-0"
-							>
+								className="w-full px-4 py-3 text-left hover:bg-teal-50 transition-colors border-b border-slate-100 last:border-b-0">
 								<div className="flex items-start gap-2">
 									<MapPin className="w-4 h-4 text-teal-600 flex-shrink-0 mt-0.5" />
 									<div className="flex-1 min-w-0">
@@ -332,27 +317,15 @@ export default function LeafletMapPicker({ onLocationSelect, initialLocation }: 
 			{/* Mapa Leaflet */}
 			<div className="relative rounded-xl overflow-hidden border-2 border-slate-200 shadow-lg">
 				{isClient && MapContainer && (
-					<MapContainer
-						center={defaultCenter}
-						zoom={defaultZoom}
-						style={{ height: '500px', width: '100%' }}
-						whenReady={() => setMapLoaded(true)}
-						ref={mapRef}
-					>
-						{TileLayer && (
-							<TileLayer
-								attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-								url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-							/>
-						)}
+					<MapContainer center={defaultCenter} zoom={defaultZoom} style={{ height: '500px', width: '100%' }} whenReady={() => setMapLoaded(true)} ref={mapRef}>
+						{TileLayer && <TileLayer attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors' url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />}
 						{markerPosition && Marker && (
 							<Marker
 								position={markerPosition}
 								draggable={true}
 								eventHandlers={{
 									dragend: handleMarkerDragEnd,
-								}}
-							>
+								}}>
 								{Popup && <Popup>Ubicación del consultorio</Popup>}
 							</Marker>
 						)}
@@ -388,11 +361,7 @@ export default function LeafletMapPicker({ onLocationSelect, initialLocation }: 
 
 			{/* Ubicación seleccionada */}
 			{selectedLocation && selectedLocation.address && (
-				<motion.div
-					initial={{ opacity: 0, y: 10 }}
-					animate={{ opacity: 1, y: 0 }}
-					className="p-5 bg-gradient-to-r from-teal-50 via-cyan-50 to-blue-50 border-2 border-teal-200 rounded-xl shadow-sm"
-				>
+				<motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="p-5 bg-gradient-to-r from-teal-50 via-cyan-50 to-blue-50 border-2 border-teal-200 rounded-xl shadow-sm">
 					<div className="flex items-start justify-between gap-4">
 						<div className="flex items-start gap-3 flex-1">
 							<div className="p-2 bg-gradient-to-br from-teal-500 to-cyan-500 rounded-lg shadow-md">
@@ -411,12 +380,7 @@ export default function LeafletMapPicker({ onLocationSelect, initialLocation }: 
 								</div>
 							</div>
 						</div>
-						<button
-							type="button"
-							onClick={clearLocation}
-							className="p-2 text-teal-600 hover:text-red-600 hover:bg-white rounded-lg transition-all flex-shrink-0"
-							title="Limpiar ubicación"
-						>
+						<button type="button" onClick={clearLocation} className="p-2 text-teal-600 hover:text-red-600 hover:bg-white rounded-lg transition-all flex-shrink-0" title="Limpiar ubicación">
 							<X className="w-5 h-5" />
 						</button>
 					</div>

@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { Upload, FileType, CheckCircle2, AlertCircle, Loader2, Download, Trash2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 
-export default function ReportTemplatePage() {
+export default function PrescriptionTemplatePage() {
 	const router = useRouter();
 	const [file, setFile] = useState<File | null>(null);
 	const [uploading, setUploading] = useState(false);
@@ -22,7 +22,7 @@ export default function ReportTemplatePage() {
 
 	const loadCurrentTemplate = async () => {
 		try {
-			const res = await fetch('/api/medic/report-template', {
+			const res = await fetch('/api/medic/prescription-template', {
 				credentials: 'include',
 			});
 			if (res.ok) {
@@ -33,11 +33,10 @@ export default function ReportTemplatePage() {
 						name: data.template_name || 'Plantilla actual',
 					});
 				}
-				// Cargar plantilla de texto si existe (puede ser null, undefined o string vacío)
+				// Cargar plantilla de texto si existe
 				if (data.template_text && typeof data.template_text === 'string' && data.template_text.trim() !== '') {
 					setTemplateText(data.template_text);
 				} else {
-					// Si no hay plantilla guardada, mantener el estado vacío
 					setTemplateText('');
 				}
 			}
@@ -55,14 +54,14 @@ export default function ReportTemplatePage() {
 		// Validar que sea un archivo Word (.docx)
 		const validExtensions = ['.docx', '.doc'];
 		const fileExtension = selectedFile.name.toLowerCase().substring(selectedFile.name.lastIndexOf('.'));
-		
+
 		if (!validExtensions.includes(fileExtension)) {
 			setError('Por favor, selecciona un archivo Word (.docx o .doc)');
 			setFile(null);
 			return;
 		}
 
-		// Validar tamaño (máximo 50MB - permite plantillas con imágenes y mucho contenido)
+		// Validar tamaño (máximo 50MB)
 		const maxSizeBytes = 50 * 1024 * 1024; // 50MB
 		if (selectedFile.size > maxSizeBytes) {
 			setError(`El archivo es demasiado grande. El tamaño máximo es ${maxSizeBytes / (1024 * 1024)}MB`);
@@ -88,7 +87,7 @@ export default function ReportTemplatePage() {
 			const formData = new FormData();
 			formData.append('template', file);
 
-			const res = await fetch('/api/medic/report-template', {
+			const res = await fetch('/api/medic/prescription-template', {
 				method: 'POST',
 				credentials: 'include',
 				body: formData,
@@ -103,7 +102,7 @@ export default function ReportTemplatePage() {
 			setSuccess('Plantilla cargada exitosamente');
 			setFile(null);
 			await loadCurrentTemplate();
-			
+
 			// Reset file input
 			const fileInput = document.getElementById('template-file') as HTMLInputElement;
 			if (fileInput) fileInput.value = '';
@@ -132,7 +131,7 @@ export default function ReportTemplatePage() {
 		setSuccess(null);
 
 		try {
-			const res = await fetch('/api/medic/report-template', {
+			const res = await fetch('/api/medic/prescription-template', {
 				method: 'DELETE',
 				credentials: 'include',
 			});
@@ -157,13 +156,13 @@ export default function ReportTemplatePage() {
 		setSuccess(null);
 
 		try {
-			const res = await fetch('/api/medic/report-template', {
+			const res = await fetch('/api/medic/prescription-template', {
 				method: 'PUT',
 				credentials: 'include',
 				headers: {
 					'Content-Type': 'application/json',
 				},
-				body: JSON.stringify({ 
+				body: JSON.stringify({
 					template_text: templateText,
 				}),
 			});
@@ -205,11 +204,9 @@ export default function ReportTemplatePage() {
 					<div className="bg-gradient-to-r from-teal-600 to-cyan-600 p-6 rounded-2xl shadow-lg">
 						<h1 className="text-2xl md:text-3xl font-semibold text-white flex items-center gap-3">
 							<FileType size={24} />
-							Plantilla de Informe Médico
+							Plantilla de Receta Médica
 						</h1>
-						<p className="mt-2 text-sm text-white/90">
-							Carga tu plantilla de informe médico en formato Word (.docx). El contenido que escribas en las consultas se insertará automáticamente en esta plantilla.
-						</p>
+						<p className="mt-2 text-sm text-white/90">Carga tu plantilla de receta médica en formato Word (.docx). Los medicamentos que escribas en las prescripciones se insertarán automáticamente en esta plantilla.</p>
 					</div>
 				</header>
 
@@ -220,9 +217,53 @@ export default function ReportTemplatePage() {
 						<li>La plantilla debe estar en formato Word (.docx o .doc)</li>
 						<li>El tamaño máximo del archivo es 50MB (permite plantillas con imágenes, encabezados y mucho contenido)</li>
 						<li>Tu plantilla puede tener cualquier contenido adicional: encabezados, imágenes, texto, tablas, etc.</li>
-						<li>En tu plantilla, usa el marcador <code className="bg-blue-100 px-1 rounded">{"{{contenido}}"}</code> donde quieras que se inserte el texto del informe</li>
-						<li>Puedes usar otros marcadores como <code className="bg-blue-100 px-1 rounded">{"{{fecha}}"}</code>, <code className="bg-blue-100 px-1 rounded">{"{{paciente}}"}</code>, <code className="bg-blue-100 px-1 rounded">{"{{medico}}"}</code>, <code className="bg-blue-100 px-1 rounded">{"{{diagnostico}}"}</code>, <code className="bg-blue-100 px-1 rounded">{"{{motivo}}"}</code>, <code className="bg-blue-100 px-1 rounded">{"{{notas}}"}</code> para datos adicionales</li>
-						<li><strong>Importante:</strong> Solo se valida que el archivo sea .docx o .doc. El contenido interno puede ser cualquier cosa, siempre que incluya los marcadores necesarios.</li>
+						<li>En tu plantilla, usa los marcadores disponibles para insertar datos:</li>
+						<li className="ml-4">
+							<ul className="list-disc list-inside space-y-1">
+								<li>
+									<code className="bg-blue-100 px-1 rounded">{'{{paciente}}'}</code> - Nombre del paciente
+								</li>
+								<li>
+									<code className="bg-blue-100 px-1 rounded">{'{{edad}}'}</code> - Edad del paciente
+								</li>
+								<li>
+									<code className="bg-blue-100 px-1 rounded">{'{{cedula}}'}</code> o <code className="bg-blue-100 px-1 rounded">{'{{cedula_identidad}}'}</code> - Cédula/ID del paciente
+								</li>
+								<li>
+									<code className="bg-blue-100 px-1 rounded">{'{{medico}}'}</code> o <code className="bg-blue-100 px-1 rounded">{'{{doctor}}'}</code> - Nombre del médico
+								</li>
+								<li>
+									<code className="bg-blue-100 px-1 rounded">{'{{fecha}}'}</code> o <code className="bg-blue-100 px-1 rounded">{'{{date}}'}</code> - Fecha de emisión
+								</li>
+								<li>
+									<code className="bg-blue-100 px-1 rounded">{'{{recipe}}'}</code> o <code className="bg-blue-100 px-1 rounded">{'{{receta}}'}</code> - <strong>Récipe completo:</strong> Contiene todos los medicamentos con su información completa (nombre, dosis, frecuencia, duración, cantidad). <strong>NO incluye las instrucciones específicas</strong>, esas van en la variable {'{{instrucciones}}'}. Esta variable va en la primera hoja del documento.
+								</li>
+								<li>
+									<code className="bg-blue-100 px-1 rounded">{'{{instrucciones}}'}</code> o <code className="bg-blue-100 px-1 rounded">{'{{instructions}}'}</code> - <strong>Instrucciones específicas:</strong> Contiene solo las instrucciones específicas de cada medicamento, agrupadas por medicamento. Útil si quieres mostrar las instrucciones por separado. Esta variable puede ir en la misma hoja del récipe o en una sección separada.
+								</li>
+								<li>
+									<code className="bg-blue-100 px-1 rounded">{'{{indicaciones}}'}</code> o <code className="bg-blue-100 px-1 rounded">{'{{indications}}'}</code> - <strong>Indicaciones generales:</strong> Contiene las notas generales de la prescripción (no las instrucciones específicas de cada medicamento, esas van en {'{{instrucciones}}'} o en {'{{recipe}}'}). Esta variable va en la segunda hoja del documento.
+								</li>
+								<li>
+									<code className="bg-blue-100 px-1 rounded">{'{{validez}}'}</code> o <code className="bg-blue-100 px-1 rounded">{'{{valid_until}}'}</code> - Fecha de validez de la receta
+								</li>
+							</ul>
+						</li>
+						<li className="mt-2">
+							<strong>Nota importante:</strong> La plantilla debe tener DOS hojas: una para récipe y otra para indicaciones. El sistema genera UN SOLO archivo Word con ambas hojas rellenadas:
+							<ul className="list-disc list-inside ml-4 mt-1 space-y-1">
+								<li>
+									<strong>Primera hoja (Récipe):</strong> Se rellena <code className="bg-blue-100 px-1 rounded">{'{{recipe}}'}</code> con todos los medicamentos (nombre, dosis, frecuencia, duración, cantidad). Las instrucciones específicas van en la variable <code className="bg-blue-100 px-1 rounded">{'{{instrucciones}}'}</code> en la siguiente hoja.
+								</li>
+								<li>
+									<strong>Segunda hoja (Indicaciones):</strong> Se rellena <code className="bg-blue-100 px-1 rounded">{'{{indicaciones}}'}</code> con las notas generales de la prescripción.
+								</li>
+								<li>El archivo se genera en tiempo real mientras escribes, sin necesidad de guardar primero.</li>
+							</ul>
+						</li>
+						<li>
+							<strong>Importante:</strong> Solo se valida que el archivo sea .docx o .doc. El contenido interno puede ser cualquier cosa, siempre que incluya los marcadores necesarios.
+						</li>
 					</ul>
 				</div>
 
@@ -238,16 +279,10 @@ export default function ReportTemplatePage() {
 								</div>
 							</div>
 							<div className="flex items-center gap-2">
-								<button
-									onClick={handleDownload}
-									className="px-4 py-2 rounded-lg bg-teal-600 text-white text-sm font-medium hover:bg-teal-700 transition-colors"
-								>
+								<button onClick={handleDownload} className="px-4 py-2 rounded-lg bg-teal-600 text-white text-sm font-medium hover:bg-teal-700 transition-colors">
 									Descargar
 								</button>
-								<button
-									onClick={handleDeleteClick}
-									className="px-4 py-2 rounded-lg bg-rose-600 text-white text-sm font-medium hover:bg-rose-700 transition-colors flex items-center gap-2"
-								>
+								<button onClick={handleDeleteClick} className="px-4 py-2 rounded-lg bg-rose-600 text-white text-sm font-medium hover:bg-rose-700 transition-colors flex items-center gap-2">
 									<Trash2 className="w-4 h-4" />
 									Eliminar
 								</button>
@@ -260,7 +295,7 @@ export default function ReportTemplatePage() {
 				<div className="bg-white rounded-2xl border border-blue-100 shadow-lg p-6">
 					<div className="flex items-center justify-between mb-4">
 						<div className="flex items-center gap-3">
-							<h2 className="text-lg font-semibold text-slate-900">Plantilla de Texto del Informe</h2>
+							<h2 className="text-lg font-semibold text-slate-900">Plantilla de Texto de la Receta</h2>
 							{templateText && templateText.trim() !== '' && (
 								<span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-green-100 text-green-700 text-xs font-medium">
 									<CheckCircle2 className="w-3.5 h-3.5" />
@@ -268,37 +303,18 @@ export default function ReportTemplatePage() {
 								</span>
 							)}
 						</div>
-						<button
-							onClick={() => {
-								// Descargar archivo de ejemplo
-								const link = document.createElement('a');
-								link.href = '/ejemplo-plantilla-informe.txt';
-								link.download = 'ejemplo-plantilla-informe.txt';
-								document.body.appendChild(link);
-								link.click();
-								document.body.removeChild(link);
-							}}
-							className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-700 transition-colors shadow-sm"
-						>
-							<Download size={16} />
-							Descargar Ejemplo
-						</button>
 					</div>
 					<p className="text-sm text-slate-600 mb-4">
-						Escribe aquí la estructura de texto que se usará para generar automáticamente el contenido del informe. 
-						Usa marcadores como {'{{paciente}}'}, {'{{edad}}'}, {'{{motivo_consulta}}'}, etc. para insertar los datos de la consulta.
-						Haz clic en "Descargar Ejemplo" para ver todas las variables disponibles y un ejemplo completo.
-						{templateText && templateText.trim() !== '' && (
-							<span className="block mt-2 text-xs text-green-600 font-medium">
-								✓ Hay una plantilla guardada. Puedes editarla aquí y guardar los cambios.
-							</span>
-						)}
+						Escribe aquí la estructura de texto que se usará para generar automáticamente el contenido de la receta. Usa marcadores como {'{{paciente}}'}, {'{{recipe}}'}, {'{{indicaciones}}'}, {'{{fecha}}'}, etc. para insertar los datos automáticamente.
+						<br />
+						<strong className="text-slate-800">Importante:</strong> Usa {'{{recipe}}'} para los récipes individuales y {'{{indicaciones}}'} para las indicaciones generales.
+						{templateText && templateText.trim() !== '' && <span className="block mt-2 text-xs text-green-600 font-medium">✓ Hay una plantilla guardada. Puedes editarla aquí y guardar los cambios.</span>}
 					</p>
-					
+
 					<div className="space-y-4">
 						<div>
 							<label htmlFor="template-text" className="block text-sm font-medium text-slate-700 mb-2">
-								Estructura del Informe
+								Estructura de la Receta
 							</label>
 							<textarea
 								id="template-text"
@@ -306,30 +322,31 @@ export default function ReportTemplatePage() {
 								onChange={(e) => setTemplateText(e.target.value)}
 								rows={20}
 								className="w-full px-4 py-3 rounded-lg border border-slate-300 bg-white text-slate-900 font-mono text-sm resize-none focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent"
-								placeholder={`PACIENTE FEMENINO DE {{edad}} AÑOS DE EDAD QUIEN ACUDE A CONSULTA GINECOLÓGICA REFIRIENDO, {{motivo_consulta}}.
+								placeholder={`RECETA MÉDICA
 
-ANTECEDENTES MÉDICOS: ALERGICOS: {{alergicos}} QUIRÚRGICOS: {{quirurgicos}}
+Paciente: {{paciente}}
+Edad: {{edad}} años
+Cédula: {{cedula}}
+Fecha: {{fecha}}
 
-ANTECEDENTES FAMILIARES: MADRE: {{antecedentes_madre}} PADRE: {{antecedentes_padre}} {{antecedentes_cancer_mama}} ANTECEDENTES DE CANCER DE MAMA.
+Récipe:
+{{recipe}}
 
-ANTECEDENTES GINECOLÓGICOS: ITS: {{its}} MENSTRUACIONES: {{tipo_menstruacion}}. TIPO: {{patron_menstruacion}} DISMENORREICA: {{dismenorrea}}. PRS: {{primera_relacion_sexual}} #PS: {{parejas_sexuales}}
+O si es para indicaciones:
 
-EXAMEN FÍSICO: SE EVALÚA PACIENTE EN {{condiciones_generales}} CONDICIONES GENERALES EUPNEICA AFEBRIL HIDRATADA. MAMAS DE {{tamano_mamas}}, {{simetria_mamas}}, CAP {{cap_mamas}}, {{secrecion_mamas}}, FOSAS AXILARES Y SUPRACLAVICULARES {{fosas_axilares}}. ABDOMEN: {{abdomen}}. GENITALES EXTERNOS: {{genitales_externos}}, ESPECULOSCOPIO: {{especuloscopia}}, TACTO: {{tacto_cervix}}, FONDO DE SACOS {{fondo_sacos}}, ANEXOS {{anexos}}. RESTO DENTRO DE LOS LÍMITES NORMALES.
+Indicaciones:
+{{indicaciones}}
 
-COLPOSCOPIA: TEST DE HINSELMANN ({{test_hinselmann}}) TEST DE SCHILLER ({{test_schiller}}).
+Válido hasta: {{validez}}
 
-SE REALIZA ECOSONOGRAMA TRANSVAGINAL CON SONDA ENDOCAVITARIA DE 6.5 MHZ EN TIEMPO REAL DONDE SE EVIDENCIA UTERO EN AVF DE BORDES REGULARES MIOMETRIO HOMOGENEO, ÚTERO: DIMENSIONES: {{dimensiones_utero}} INTERFASE ENDOMETRIAL: {{interfase_endometrial}} {{tipo_interfase_endometrial}} OVARIO IZQUIERDO: DIMENSIONES: {{dimensiones_ovario_izquierdo}} SIN ALTERACIONES. OVARIO DERECHO: DIMENSIONES {{dimensiones_ovario_derecho}} SIN ALTERACIONES. {{liquido_fondo_saco}}.`}
+Dr./Dra. {{medico}}`}
 							/>
 							<p className="mt-2 text-xs text-slate-500">
-								Usa marcadores como {'{{paciente}}'}, {'{{edad}}'}, {'{{motivo_consulta}}'}, {'{{alergicos}}'}, etc. para insertar los datos automáticamente. Haz clic en "Descargar Ejemplo" arriba para ver todas las variables disponibles.
+								Usa marcadores como {'{{paciente}}'}, {'{{recipe}}'} o {'{{receta}}'} para récipes, {'{{indicaciones}}'} para indicaciones, {'{{fecha}}'}, etc. para insertar los datos automáticamente.
 							</p>
 						</div>
 
-						<button
-							onClick={handleSaveTemplateText}
-							disabled={savingText}
-							className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-lg bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-semibold shadow hover:scale-[1.01] transition disabled:opacity-50 disabled:cursor-not-allowed"
-						>
+						<button onClick={handleSaveTemplateText} disabled={savingText} className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-lg bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-semibold shadow hover:scale-[1.01] transition disabled:opacity-50 disabled:cursor-not-allowed">
 							{savingText ? (
 								<>
 									<Loader2 className="w-5 h-5 animate-spin" />
@@ -356,28 +373,13 @@ SE REALIZA ECOSONOGRAMA TRANSVAGINAL CON SONDA ENDOCAVITARIA DE 6.5 MHZ EN TIEMP
 								Seleccionar archivo de plantilla
 							</label>
 							<div className="flex items-center gap-4">
-								<label
-									htmlFor="template-file"
-									className="flex items-center gap-2 px-4 py-3 rounded-lg border-2 border-dashed border-slate-300 bg-slate-50 hover:bg-slate-100 cursor-pointer transition-colors"
-								>
+								<label htmlFor="template-file" className="flex items-center gap-2 px-4 py-3 rounded-lg border-2 border-dashed border-slate-300 bg-slate-50 hover:bg-slate-100 cursor-pointer transition-colors">
 									<Upload className="w-5 h-5 text-teal-600" />
-									<span className="text-sm font-medium text-slate-700">
-										{file ? file.name : 'Seleccionar archivo Word (.docx)'}
-									</span>
+									<span className="text-sm font-medium text-slate-700">{file ? file.name : 'Seleccionar archivo Word (.docx)'}</span>
 								</label>
-								<input
-									id="template-file"
-									type="file"
-									accept=".docx,.doc"
-									onChange={handleFileChange}
-									className="hidden"
-								/>
+								<input id="template-file" type="file" accept=".docx,.doc" onChange={handleFileChange} className="hidden" />
 							</div>
-							{file && (
-								<div className="mt-2 text-xs text-slate-500">
-									Tamaño: {(file.size / 1024).toFixed(2)} KB
-								</div>
-							)}
+							{file && <div className="mt-2 text-xs text-slate-500">Tamaño: {(file.size / 1024).toFixed(2)} KB</div>}
 						</div>
 
 						{/* Error Message */}
@@ -397,11 +399,7 @@ SE REALIZA ECOSONOGRAMA TRANSVAGINAL CON SONDA ENDOCAVITARIA DE 6.5 MHZ EN TIEMP
 						)}
 
 						{/* Upload Button */}
-						<button
-							onClick={handleUpload}
-							disabled={!file || uploading}
-							className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-lg bg-gradient-to-r from-teal-600 to-cyan-600 text-white font-semibold shadow hover:scale-[1.01] transition disabled:opacity-50 disabled:cursor-not-allowed"
-						>
+						<button onClick={handleUpload} disabled={!file || uploading} className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-lg bg-gradient-to-r from-teal-600 to-cyan-600 text-white font-semibold shadow hover:scale-[1.01] transition disabled:opacity-50 disabled:cursor-not-allowed">
 							{uploading ? (
 								<>
 									<Loader2 className="w-5 h-5 animate-spin" />
@@ -428,20 +426,12 @@ SE REALIZA ECOSONOGRAMA TRANSVAGINAL CON SONDA ENDOCAVITARIA DE 6.5 MHZ EN TIEMP
 							</div>
 							<h3 className="text-lg font-semibold text-slate-900">Eliminar Plantilla</h3>
 						</div>
-						<p className="text-slate-700 mb-6">
-							¿Estás seguro de que deseas eliminar esta plantilla? Esta acción no se puede deshacer.
-						</p>
+						<p className="text-slate-700 mb-6">¿Estás seguro de que deseas eliminar esta plantilla? Esta acción no se puede deshacer.</p>
 						<div className="flex items-center gap-3 justify-end">
-							<button
-								onClick={() => setShowDeleteModal(false)}
-								className="px-4 py-2 rounded-lg border border-slate-300 bg-white text-slate-700 font-medium hover:bg-slate-50 transition-colors"
-							>
+							<button onClick={() => setShowDeleteModal(false)} className="px-4 py-2 rounded-lg border border-slate-300 bg-white text-slate-700 font-medium hover:bg-slate-50 transition-colors">
 								Cancelar
 							</button>
-							<button
-								onClick={handleDeleteConfirm}
-								className="px-4 py-2 rounded-lg bg-rose-600 text-white font-medium hover:bg-rose-700 transition-colors flex items-center gap-2"
-							>
+							<button onClick={handleDeleteConfirm} className="px-4 py-2 rounded-lg bg-rose-600 text-white font-medium hover:bg-rose-700 transition-colors flex items-center gap-2">
 								<Trash2 className="w-4 h-4" />
 								Eliminar
 							</button>
@@ -452,4 +442,3 @@ SE REALIZA ECOSONOGRAMA TRANSVAGINAL CON SONDA ENDOCAVITARIA DE 6.5 MHZ EN TIEMP
 		</main>
 	);
 }
-

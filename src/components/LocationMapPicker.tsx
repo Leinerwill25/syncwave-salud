@@ -28,7 +28,7 @@ async function reverseGeocode(lat: number, lng: number): Promise<string> {
 			`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1`,
 			{
 				headers: {
-					'User-Agent': 'KAVIRA-Clinic-App/1.0',
+					'User-Agent': 'ASHIRA-Clinic-App/1.0',
 				},
 			}
 		);

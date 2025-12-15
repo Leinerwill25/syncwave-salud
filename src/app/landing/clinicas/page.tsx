@@ -194,7 +194,7 @@ export default function ClinicasLandingPage() {
 								Optimiza tu Clínica con Tecnología
 							</h2>
 							<p className="text-lg sm:text-xl text-slate-600 mb-8 leading-relaxed">
-								KAVIRA ofrece herramientas especializadas para clínicas que buscan modernizar 
+								ASHIRA ofrece herramientas especializadas para clínicas que buscan modernizar 
 								sus operaciones y mejorar la atención a sus pacientes.
 							</p>
 							<div className="space-y-4">
@@ -275,7 +275,7 @@ export default function ClinicasLandingPage() {
 							Transforma tu Clínica Hoy
 						</h2>
 						<p className="text-lg sm:text-xl text-blue-50 mb-8 max-w-2xl mx-auto">
-							Únete a las clínicas que ya están modernizando su gestión con KAVIRA
+							Únete a las clínicas que ya están modernizando su gestión con ASHIRA
 						</p>
 						<div className="flex flex-col sm:flex-row gap-4 justify-center">
 							<Link

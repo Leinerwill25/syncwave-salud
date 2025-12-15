@@ -209,7 +209,7 @@ export default function PacientesLandingPage() {
 							<span className="text-sm font-semibold text-indigo-700">Beneficios Exclusivos para Pacientes</span>
 						</div>
 						<h2 className="text-4xl sm:text-5xl md:text-6xl font-extrabold text-slate-900 mb-6 leading-tight">Plataforma Integral de Salud Digital</h2>
-						<p className="text-xl sm:text-2xl text-slate-600 max-w-3xl mx-auto leading-relaxed">Descubre cómo KAVIRA transforma la gestión de tu salud con herramientas digitales avanzadas diseñadas para pacientes venezolanos.</p>
+						<p className="text-xl sm:text-2xl text-slate-600 max-w-3xl mx-auto leading-relaxed">Descubre cómo ASHIRA transforma la gestión de tu salud con herramientas digitales avanzadas diseñadas para pacientes venezolanos.</p>
 					</motion.div>
 
 					<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
@@ -342,7 +342,7 @@ export default function PacientesLandingPage() {
 										{
 											icon: UserPlus,
 											title: 'Cualquier Miembro de la Familia',
-											description: 'Incluye a cualquier miembro de tu familia que necesite tu apoyo médico. Todos merecen atención de calidad, y tú puedes ser su apoyo en la gestión de su salud con KAVIRA.',
+											description: 'Incluye a cualquier miembro de tu familia que necesite tu apoyo médico. Todos merecen atención de calidad, y tú puedes ser su apoyo en la gestión de su salud con ASHIRA.',
 											color: 'from-indigo-400 to-purple-500',
 										},
 									].map((member, index) => (
@@ -369,7 +369,7 @@ export default function PacientesLandingPage() {
 											<Sparkles className="w-12 h-12 text-white" />
 										</div>
 										<h3 className="text-3xl sm:text-4xl font-extrabold text-white mb-4">Mejora la Calidad de Vida</h3>
-										<p className="text-lg text-white/95 leading-relaxed">KAVIRA está diseñado para que cada paciente reciba la atención médica que merece, sin importar su condición de salud o edad.</p>
+										<p className="text-lg text-white/95 leading-relaxed">ASHIRA está diseñado para que cada paciente reciba la atención médica que merece, sin importar su condición de salud o edad.</p>
 									</div>
 
 									<div className="space-y-6 mb-10">
@@ -400,7 +400,7 @@ export default function PacientesLandingPage() {
 
 									<div className="bg-white/20 backdrop-blur-md rounded-2xl p-6 border border-white/30 mb-8">
 										<p className="text-white text-center mb-4 font-bold text-xl">💝 Cuidar es Nuestra Prioridad</p>
-										<p className="text-white/90 text-center leading-relaxed">En KAVIRA entendemos que la salud es un tema familiar. Por eso, te damos las herramientas digitales para que puedas brindar el mejor cuidado médico a quienes más te importan.</p>
+										<p className="text-white/90 text-center leading-relaxed">En ASHIRA entendemos que la salud es un tema familiar. Por eso, te damos las herramientas digitales para que puedas brindar el mejor cuidado médico a quienes más te importan.</p>
 									</div>
 
 									<motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.6, delay: 1 }}>
@@ -418,8 +418,8 @@ export default function PacientesLandingPage() {
 					<motion.div initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, margin: '-100px' }} transition={{ duration: 0.8, delay: 0.3 }} className="max-w-4xl mx-auto">
 						<div className="bg-white/90 backdrop-blur-xl rounded-3xl p-10 sm:p-12 shadow-2xl border border-rose-100 text-center">
 							<Heart className="w-14 h-14 text-rose-500 mx-auto mb-6" />
-							<blockquote className="text-2xl sm:text-3xl text-slate-800 font-medium mb-6 leading-relaxed">"La salud de mi familia es lo más importante. Con KAVIRA puedo estar al día con las consultas médicas de mis hijos y mis padres mayores, todo desde un solo lugar. Me da mucha tranquilidad saber que tengo toda su información médica organizada y accesible."</blockquote>
-							<p className="text-slate-600 font-semibold text-lg">- Paciente de KAVIRA</p>
+							<blockquote className="text-2xl sm:text-3xl text-slate-800 font-medium mb-6 leading-relaxed">"La salud de mi familia es lo más importante. Con ASHIRA puedo estar al día con las consultas médicas de mis hijos y mis padres mayores, todo desde un solo lugar. Me da mucha tranquilidad saber que tengo toda su información médica organizada y accesible."</blockquote>
+							<p className="text-slate-600 font-semibold text-lg">- Paciente de ASHIRA</p>
 						</div>
 					</motion.div>
 				</div>
@@ -430,7 +430,7 @@ export default function PacientesLandingPage() {
 				<div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
 					<motion.div initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, margin: '-100px' }} transition={{ duration: 0.8 }} className="text-center mb-16">
 						<h2 className="text-4xl sm:text-5xl md:text-6xl font-extrabold text-slate-900 mb-6 leading-tight">Funcionalidades Avanzadas de Salud Digital</h2>
-						<p className="text-xl sm:text-2xl text-slate-600 max-w-3xl mx-auto leading-relaxed">Conoce en detalle todas las herramientas que KAVIRA ofrece para gestionar tu salud de forma profesional y eficiente.</p>
+						<p className="text-xl sm:text-2xl text-slate-600 max-w-3xl mx-auto leading-relaxed">Conoce en detalle todas las herramientas que ASHIRA ofrece para gestionar tu salud de forma profesional y eficiente.</p>
 					</motion.div>
 
 					<div className="space-y-8">
@@ -516,7 +516,7 @@ export default function PacientesLandingPage() {
 					<div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
 						<motion.div initial={{ opacity: 0, x: -50 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true, margin: '-100px' }} transition={{ duration: 0.8 }} className="space-y-8">
 							<div>
-								<h2 className="text-4xl sm:text-5xl md:text-6xl font-extrabold text-slate-900 mb-6 leading-tight">¿Por qué Elegir KAVIRA?</h2>
+								<h2 className="text-4xl sm:text-5xl md:text-6xl font-extrabold text-slate-900 mb-6 leading-tight">¿Por qué Elegir ASHIRA?</h2>
 								<p className="text-xl sm:text-2xl text-slate-600 mb-8 leading-relaxed">Somos la plataforma de salud digital más completa para pacientes en Venezuela. Conectamos todo el ecosistema médico para brindarte la mejor experiencia de gestión de salud.</p>
 								<p className="text-lg text-slate-700 leading-relaxed">
 									<strong className="font-bold text-slate-900">Todo en un solo lugar, sin complicaciones, sin correos perdidos, sin cadenas de WhatsApp.</strong> Tu salud digital gestionada de forma profesional y segura.

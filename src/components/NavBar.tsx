@@ -224,14 +224,14 @@ export default function PublicNavBar() {
 				<div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full">
 					<div className="flex h-20 items-center justify-between">
 						{/* Logo */}
-						<Link href="/" className="flex items-center gap-3 no-underline group" aria-label="Inicio - KAVIRA">
+						<Link href="/" className="flex items-center gap-3 no-underline group" aria-label="Inicio - ASHIRA">
 							<div className="relative w-12 h-12 rounded-xl overflow-hidden shrink-0">
 								<div className="absolute inset-0 scale-110">
-									<Image src="/3.png" alt="KAVIRA" fill sizes="48px" className="object-cover" />
+									<Image src="/3.png" alt="ASHIRA" fill sizes="48px" className="object-cover" />
 								</div>
 							</div>
 							<div className="flex flex-col leading-tight">
-								<span className="font-bold text-slate-900 text-base group-hover:text-teal-600 transition-colors">KAVIRA</span>
+								<span className="font-bold text-slate-900 text-base group-hover:text-teal-600 transition-colors">ASHIRA</span>
 							</div>
 						</Link>
 

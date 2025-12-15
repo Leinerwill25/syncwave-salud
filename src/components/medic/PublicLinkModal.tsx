@@ -56,7 +56,7 @@ export default function PublicLinkModal({ isOpen, onClose, organizationId }: Pub
 		if (navigator.share) {
 			try {
 				await navigator.share({
-					title: 'Mi Consultorio - KAVIRA',
+					title: 'Mi Consultorio - ASHIRA',
 					text: 'Visita mi consultorio médico',
 					url: publicUrl,
 				});

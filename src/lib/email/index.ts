@@ -122,7 +122,7 @@ export async function sendNotificationEmail(
 		html,
 		tags: [
 			{ name: 'type', value: type },
-			{ name: 'app', value: 'kavira' },
+			{ name: 'app', value: 'ashira' },
 		],
 	});
 }

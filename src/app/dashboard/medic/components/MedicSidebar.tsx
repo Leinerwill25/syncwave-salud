@@ -99,6 +99,11 @@ const LINKS: LinkItem[] = [
 		label: 'Plantilla de Informe',
 		icon: FileType,
 	},
+	{
+		href: '/dashboard/medic/plantilla-receta',
+		label: 'Plantilla de Receta',
+		icon: FileText,
+	},
 ];
 
 export default function MedicSidebar() {
@@ -324,7 +329,7 @@ export default function MedicSidebar() {
 					<div className="flex items-center gap-3">
 						<div className="w-12 h-12 rounded-xl bg-gradient-to-br from-teal-600 to-cyan-600 flex items-center justify-center text-white font-bold text-lg shadow-md ring-1 ring-white/20">MD</div>
 						<div>
-							<div className="text-sm font-semibold text-slate-900">KAVIRA</div>
+							<div className="text-sm font-semibold text-slate-900">ASHIRA</div>
 							<div className="text-[12px] text-slate-500">Panel médico — Profesional</div>
 						</div>
 					</div>

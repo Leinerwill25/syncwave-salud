@@ -9,7 +9,7 @@ import dynamic from 'next/dynamic';
 // Importar estilos de Leaflet solo en el cliente
 if (typeof window !== 'undefined') {
 	require('leaflet/dist/leaflet.css');
-	
+
 	// Fix para los iconos de Leaflet en Next.js
 	const L = require('leaflet');
 	delete (L.Icon.Default.prototype as any)._getIconUrl;
@@ -36,9 +36,7 @@ export default function GoogleMapPicker({ onLocationSelect, initialLocation }: G
 	const [mapCenter, setMapCenter] = useState<[number, number]>(
 		initialLocation ? [initialLocation.lat, initialLocation.lng] : [10.4806, -66.9036] // Caracas por defecto
 	);
-	const [markerPosition, setMarkerPosition] = useState<[number, number] | null>(
-		initialLocation ? [initialLocation.lat, initialLocation.lng] : null
-	);
+	const [markerPosition, setMarkerPosition] = useState<[number, number] | null>(initialLocation ? [initialLocation.lat, initialLocation.lng] : null);
 
 	useEffect(() => {
 		setMapLoaded(true);
@@ -52,28 +50,22 @@ export default function GoogleMapPicker({ onLocationSelect, initialLocation }: G
 		}
 	}, [initialLocation]);
 
-	const handleMapClick = useCallback(
-		(lat: number, lng: number) => {
-			// Siempre colocar marcador cuando se hace clic en el mapa
-			setMarkerPosition([lat, lng]);
-			setMapCenter([lat, lng]);
-			reverseGeocode(lat, lng);
-		},
-		[]
-	);
+	const handleMapClick = useCallback((lat: number, lng: number) => {
+		// Siempre colocar marcador cuando se hace clic en el mapa
+		setMarkerPosition([lat, lng]);
+		setMapCenter([lat, lng]);
+		reverseGeocode(lat, lng);
+	}, []);
 
 	const reverseGeocode = async (lat: number, lng: number) => {
 		setLoadingAddress(true);
 		setError(null);
 		try {
-			const response = await fetch(
-				`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&addressdetails=1`,
-				{
-					headers: {
-						'User-Agent': 'KAVIRA/1.0',
-					},
-				}
-			);
+			const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&addressdetails=1`, {
+				headers: {
+					'User-Agent': 'ASHIRA/1.0',
+				},
+			});
 
 			if (!response.ok) {
 				throw new Error('Error en geocodificación inversa');
@@ -157,16 +149,10 @@ export default function GoogleMapPicker({ onLocationSelect, initialLocation }: G
 					<div className="flex-1">
 						<p className="text-sm font-bold text-blue-900 mb-1">Instrucciones para seleccionar la ubicación</p>
 						<p className="text-sm text-blue-800 leading-relaxed">
-							Haz clic en el mapa para colocar el marcador inicial, luego <strong>arrastra el punto rojo</strong> hasta la ubicación exacta de tu consultorio. 
-							La dirección se actualizará automáticamente cuando muevas el marcador.
+							Haz clic en el mapa para colocar el marcador inicial, luego <strong>arrastra el punto rojo</strong> hasta la ubicación exacta de tu consultorio. La dirección se actualizará automáticamente cuando muevas el marcador.
 						</p>
 					</div>
-					<button
-						type="button"
-						onClick={handleCurrentLocation}
-						className="px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 transition-colors shadow-md flex items-center gap-2 flex-shrink-0"
-						title="Usar mi ubicación actual"
-					>
+					<button type="button" onClick={handleCurrentLocation} className="px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 transition-colors shadow-md flex items-center gap-2 flex-shrink-0" title="Usar mi ubicación actual">
 						<Navigation className="w-4 h-4" />
 						<span className="text-sm font-semibold">Mi Ubicación</span>
 					</button>
@@ -177,12 +163,7 @@ export default function GoogleMapPicker({ onLocationSelect, initialLocation }: G
 			<div className="relative rounded-xl overflow-hidden border-2 border-slate-200 shadow-lg" style={{ zIndex: 1, isolation: 'isolate' }}>
 				{typeof window !== 'undefined' && (
 					<div style={{ position: 'relative', zIndex: 1 }}>
-						<MapComponent
-							center={mapCenter}
-							markerPosition={markerPosition}
-							onMapClick={handleMapClick}
-							onMarkerDrag={handleMarkerDrag}
-						/>
+						<MapComponent center={mapCenter} markerPosition={markerPosition} onMapClick={handleMapClick} onMarkerDrag={handleMarkerDrag} />
 					</div>
 				)}
 				{loadingAddress && (
@@ -213,11 +194,7 @@ export default function GoogleMapPicker({ onLocationSelect, initialLocation }: G
 
 			{/* Ubicación seleccionada mejorada */}
 			{selectedLocation && selectedLocation.address && (
-				<motion.div
-					initial={{ opacity: 0, y: 10 }}
-					animate={{ opacity: 1, y: 0 }}
-					className="p-5 bg-gradient-to-r from-teal-50 via-cyan-50 to-blue-50 border-2 border-teal-200 rounded-xl shadow-sm"
-				>
+				<motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="p-5 bg-gradient-to-r from-teal-50 via-cyan-50 to-blue-50 border-2 border-teal-200 rounded-xl shadow-sm">
 					<div className="flex items-start justify-between gap-4">
 						<div className="flex items-start gap-3 flex-1">
 							<div className="p-2 bg-gradient-to-br from-teal-500 to-cyan-500 rounded-lg shadow-md">
@@ -234,17 +211,10 @@ export default function GoogleMapPicker({ onLocationSelect, initialLocation }: G
 										<strong>Lng:</strong> {selectedLocation.lng.toFixed(6)}
 									</span>
 								</div>
-								<p className="text-xs text-teal-600 mt-2 italic">
-									💡 Puedes arrastrar el marcador rojo en el mapa para ajustar la ubicación
-								</p>
+								<p className="text-xs text-teal-600 mt-2 italic">💡 Puedes arrastrar el marcador rojo en el mapa para ajustar la ubicación</p>
 							</div>
 						</div>
-						<button
-							type="button"
-							onClick={clearLocation}
-							className="p-2 text-teal-600 hover:text-red-600 hover:bg-white rounded-lg transition-all flex-shrink-0"
-							title="Limpiar ubicación"
-						>
+						<button type="button" onClick={clearLocation} className="p-2 text-teal-600 hover:text-red-600 hover:bg-white rounded-lg transition-all flex-shrink-0" title="Limpiar ubicación">
 							<X className="w-5 h-5" />
 						</button>
 					</div>

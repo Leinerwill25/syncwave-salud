@@ -705,7 +705,7 @@ export default function ConsultorioDetailPage() {
 							<div className="space-y-2 sm:space-y-3">
 								<div className="flex items-start gap-2 sm:gap-3">
 									<CheckCircle2 className="w-4 h-4 sm:w-4 sm:h-4 md:w-5 md:h-5 text-green-600 flex-shrink-0 mt-0.5" />
-									<p className="text-gray-700 text-xs sm:text-sm leading-relaxed">Consultorio verificado en KAVIRA</p>
+									<p className="text-gray-700 text-xs sm:text-sm leading-relaxed">Consultorio verificado en ASHIRA</p>
 								</div>
 								<div className="flex items-start gap-2 sm:gap-3">
 									<CheckCircle2 className="w-4 h-4 sm:w-4 sm:h-4 md:w-5 md:h-5 text-green-600 flex-shrink-0 mt-0.5" />

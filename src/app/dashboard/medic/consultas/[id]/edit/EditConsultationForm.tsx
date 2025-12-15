@@ -211,7 +211,6 @@ export default function EditConsultationForm({ initial, patient, doctor, doctorS
 	const [reportSuccess, setReportSuccess] = useState<string | null>(null);
 	const [reportUrl, setReportUrl] = useState<string | null>((initial as any).report_url || null);
 	const [fontFamily, setFontFamily] = useState<string>('Arial');
-	const [savingFont, setSavingFont] = useState(false);
 
 	// Fuentes profesionales disponibles (no similares a Times New Roman)
 	const availableFonts = [
@@ -551,22 +550,6 @@ export default function EditConsultationForm({ initial, patient, doctor, doctorS
 				};
 				loadGeneratedContent();
 			}
-
-			// Cargar fuente seleccionada
-			const loadFontFamily = async () => {
-				try {
-					const res = await fetch('/api/medic/report-template', {
-						credentials: 'include',
-					});
-					const data = await res.json();
-					if (res.ok && data.font_family) {
-						setFontFamily(data.font_family);
-					}
-				} catch (err) {
-					console.warn('No se pudo cargar la fuente seleccionada:', err);
-				}
-			};
-			loadFontFamily();
 		}
 	}, [activeTab, initial.id]);
 
@@ -1045,7 +1028,7 @@ export default function EditConsultationForm({ initial, patient, doctor, doctorS
 			const res = await fetch(`/api/consultations/${initial.id}/generate-report`, {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ content: reportContent }),
+				body: JSON.stringify({ content: reportContent, font_family: fontFamily }),
 			});
 
 			const data = await res.json();
@@ -2231,55 +2214,14 @@ export default function EditConsultationForm({ initial, patient, doctor, doctorS
 								{/* Selector de Fuente */}
 								<div>
 									<label className={labelClass}>Fuente del Informe</label>
-									<div className="flex items-center gap-3">
-										<select
-											value={fontFamily}
-											onChange={async (e) => {
-												const newFont = e.target.value;
-												const previousFont = fontFamily; // Guardar valor anterior
-												setFontFamily(newFont);
-												setSavingFont(true);
-												setReportError(null);
-												setReportSuccess(null);
-
-												try {
-													const res = await fetch('/api/medic/report-template', {
-														method: 'PUT',
-														credentials: 'include',
-														headers: {
-															'Content-Type': 'application/json',
-														},
-														body: JSON.stringify({ font_family: newFont }),
-													});
-
-													const data = await res.json();
-													if (res.ok) {
-														setReportSuccess(`Fuente cambiada a ${newFont}. Se aplicará al generar el informe.`);
-													} else {
-														setReportError(data.error || 'Error al guardar la fuente');
-														// Revertir al valor anterior
-														setFontFamily(previousFont);
-													}
-												} catch (err: any) {
-													setReportError(err.message || 'Error al guardar la fuente');
-													// Revertir al valor anterior
-													setFontFamily(previousFont);
-												} finally {
-													setSavingFont(false);
-												}
-											}}
-											disabled={savingFont}
-											className={`${inputBase} ${inputDark} flex-1`}
-											style={{ fontFamily: fontFamily }}>
-											{availableFonts.map((font) => (
-												<option key={font.value} value={font.value} style={{ fontFamily: font.value }}>
-													{font.label}
-												</option>
-											))}
-										</select>
-										{savingFont && <Loader2 className="w-5 h-5 animate-spin text-slate-500" />}
-									</div>
-									<p className="mt-2 text-xs text-slate-500 dark:text-slate-400">La fuente seleccionada se aplicará automáticamente al generar el informe.</p>
+									<select value={fontFamily} onChange={(e) => setFontFamily(e.target.value)} className={`${inputBase} ${inputDark} w-full`} style={{ fontFamily: fontFamily }}>
+										{availableFonts.map((font) => (
+											<option key={font.value} value={font.value} style={{ fontFamily: font.value }}>
+												{font.label}
+											</option>
+										))}
+									</select>
+									<p className="mt-2 text-xs text-slate-500 dark:text-slate-400">La fuente seleccionada se aplicará al generar el informe.</p>
 								</div>
 
 								<div className="flex items-center justify-between">

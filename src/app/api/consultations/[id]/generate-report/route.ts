@@ -304,9 +304,10 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 			unregistered_patient_id: consultation.unregistered_patient_id,
 		});
 
-		// Obtener contenido del informe del body (puede venir del frontend o generarse automáticamente)
+		// Obtener contenido del informe y fuente del body (puede venir del frontend o generarse automáticamente)
 		const body = await request.json();
 		let reportContent = body.content || '';
+		const fontFamilyFromRequest: string | undefined = body.font_family;
 
 		// Obtener plantilla del médico (incluyendo plantilla de texto y fuente)
 		const { data: medicProfile, error: profileError } = await supabase.from('medic_profile').select('report_template_url, report_template_name, report_template_text, report_font_family').eq('doctor_id', doctorId).maybeSingle();
@@ -622,7 +623,8 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 				let xmlContent = documentXml.asText();
 
 				// Obtener la fuente seleccionada (por defecto Arial)
-				const selectedFont = medicProfile?.report_font_family || 'Arial';
+				// La fuente del request tiene prioridad, si no, del perfil, si no, Arial por defecto
+				const selectedFont = fontFamilyFromRequest || medicProfile?.report_font_family || 'Arial';
 
 				// Cambiar tamaño de fuente a 9pt (en half-points: 9 * 2 = 18)
 				// Reemplazar todos los valores de w:sz a 18

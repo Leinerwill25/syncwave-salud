@@ -1,4 +1,4 @@
-// app/api/medic/report-template/route.ts
+// app/api/medic/prescription-template/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { createSupabaseServerClient } from '@/app/adapters/server';
@@ -21,25 +21,21 @@ export async function GET(request: Request) {
 		const supabase = await createSupabaseServerClient();
 
 		// Obtener plantilla del médico desde medic_profile
-		const { data: medicProfile, error: profileError } = await supabase
-			.from('medic_profile')
-			.select('report_template_url, report_template_name, report_template_text, report_font_family')
-			.eq('doctor_id', doctorId)
-			.maybeSingle();
+		const { data: medicProfile, error: profileError } = await supabase.from('medic_profile').select('prescription_template_url, prescription_template_name, prescription_template_text, prescription_font_family').eq('doctor_id', doctorId).maybeSingle();
 
 		if (profileError) {
-			console.error('[Report Template API] Error obteniendo perfil:', profileError);
+			console.error('[Prescription Template API] Error obteniendo perfil:', profileError);
 			return NextResponse.json({ error: 'Error al obtener plantilla' }, { status: 500 });
 		}
 
 		return NextResponse.json({
-			template_url: medicProfile?.report_template_url || null,
-			template_name: medicProfile?.report_template_name || null,
-			template_text: medicProfile?.report_template_text || null,
-			font_family: medicProfile?.report_font_family || 'Arial',
+			template_url: medicProfile?.prescription_template_url || null,
+			template_name: medicProfile?.prescription_template_name || null,
+			template_text: medicProfile?.prescription_template_text || null,
+			font_family: medicProfile?.prescription_font_family || 'Arial',
 		});
 	} catch (err) {
-		console.error('[Report Template API] Error:', err);
+		console.error('[Prescription Template API] Error:', err);
 		return NextResponse.json({ error: 'Error interno' }, { status: 500 });
 	}
 }
@@ -67,7 +63,6 @@ export async function POST(request: NextRequest) {
 		}
 
 		// Validar solo la extensión del archivo (.docx o .doc)
-		// No validamos el contenido interno, solo que sea un archivo Word válido
 		const validExtensions = ['.docx', '.doc'];
 		const fileName = templateFile.name.toLowerCase();
 		const fileExtension = fileName.substring(fileName.lastIndexOf('.'));
@@ -76,89 +71,103 @@ export async function POST(request: NextRequest) {
 			return NextResponse.json({ error: 'Formato de archivo no válido. Solo se permiten archivos Word (.docx, .doc)' }, { status: 400 });
 		}
 
-		// Validar tamaño (máximo 50MB - límite global del proyecto)
-		// Esto permite plantillas con imágenes, encabezados, y mucho contenido
+		// Validar tamaño (máximo 50MB)
 		const maxSizeBytes = 50 * 1024 * 1024; // 50MB
 		if (templateFile.size > maxSizeBytes) {
-			return NextResponse.json({ 
-				error: `El archivo es demasiado grande. Máximo ${maxSizeBytes / (1024 * 1024)}MB` 
-			}, { status: 400 });
+			return NextResponse.json(
+				{
+					error: `El archivo es demasiado grande. Máximo ${maxSizeBytes / (1024 * 1024)}MB`,
+				},
+				{ status: 400 }
+			);
 		}
-
-		// No validamos el contenido interno de la plantilla
-		// La plantilla puede tener cualquier contenido: encabezados, imágenes, texto, etc.
-		// Solo se requiere que tenga los marcadores {{variable}} necesarios
 
 		// Crear cliente admin para subir archivo (bypass RLS)
 		const SUPABASE_URL = process.env.SUPABASE_URL ?? process.env.NEXT_PUBLIC_SUPABASE_URL ?? '';
 		const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY ?? '';
 
 		if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
-			console.error('[Report Template API] SUPABASE_SERVICE_ROLE_KEY no configurado');
+			console.error('[Prescription Template API] SUPABASE_SERVICE_ROLE_KEY no configurado');
 			return NextResponse.json({ error: 'Error de configuración del servidor' }, { status: 500 });
 		}
 
 		const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
-			auth: { persistSession: false }
+			auth: { persistSession: false },
 		});
 
 		// Subir archivo a Supabase Storage
-		const bucket = 'report-templates';
+		const bucket = 'prescription-templates';
+
+		// Verificar si el bucket existe, si no, crearlo
+		try {
+			const { data: buckets, error: listError } = await supabaseAdmin.storage.listBuckets();
+			if (listError) {
+				console.warn('[Prescription Template API] Error listando buckets:', listError);
+			} else {
+				const bucketExists = buckets?.some((b) => b.name === bucket);
+				if (!bucketExists) {
+					console.log(`[Prescription Template API] Bucket "${bucket}" no existe, creándolo...`);
+					// Crear bucket para plantillas de recetas
+					const { error: createError } = await supabaseAdmin.storage.createBucket(bucket, {
+						public: false, // Privado, requiere autenticación
+						fileSizeLimit: 52428800, // 50MB
+						allowedMimeTypes: ['application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'application/msword'], // .docx y .doc
+					});
+					if (createError) {
+						console.error(`[Prescription Template API] Error creando bucket "${bucket}":`, createError);
+					} else {
+						console.log(`[Prescription Template API] Bucket "${bucket}" creado exitosamente`);
+					}
+				}
+			}
+		} catch (bucketErr) {
+			console.error('[Prescription Template API] Error verificando/creando bucket:', bucketErr);
+		}
+
 		const fileExt = fileExtension;
-		
-		// Sanitizar el nombre del archivo para evitar caracteres inválidos en Supabase Storage
-		// Supabase Storage solo acepta: letras, números, guiones, guiones bajos, puntos y barras
-		// Reemplazar todos los caracteres no válidos con guión bajo
+
+		// Sanitizar el nombre del archivo
 		let sanitizedFileName = templateFile.name
-			.normalize('NFD') // Normalizar caracteres Unicode (é -> e + ´)
-			.replace(/[\u0300-\u036f]/g, '') // Eliminar diacríticos
-			.replace(/[^a-zA-Z0-9._-]/g, '_') // Reemplazar caracteres especiales con guión bajo
-			.replace(/\s+/g, '_') // Reemplazar espacios con guión bajo
-			.replace(/_{2,}/g, '_') // Reemplazar múltiples guiones bajos con uno solo
-			.replace(/^_+|_+$/g, ''); // Eliminar guiones bajos al inicio y final
-		
-		// Asegurar que el nombre no esté vacío
+			.normalize('NFD')
+			.replace(/[\u0300-\u036f]/g, '')
+			.replace(/[^a-zA-Z0-9._-]/g, '_')
+			.replace(/\s+/g, '_')
+			.replace(/_{2,}/g, '_')
+			.replace(/^_+|_+$/g, '');
+
 		if (!sanitizedFileName || sanitizedFileName.length === 0) {
 			sanitizedFileName = `template_${Date.now()}${fileExtension}`;
 		}
-		
-		// Asegurar que tenga la extensión correcta
+
 		if (!sanitizedFileName.endsWith(fileExtension)) {
 			sanitizedFileName = sanitizedFileName.replace(/\.[^.]+$/, '') + fileExtension;
 		}
-		
-		const fileNameUnique = `${doctorId}/${Date.now()}-${sanitizedFileName}`;
-		
-		console.log('[Report Template API] Nombre original:', templateFile.name);
-		console.log('[Report Template API] Nombre sanitizado:', sanitizedFileName);
-		console.log('[Report Template API] Ruta completa:', fileNameUnique);
 
-		// Convertir File a Buffer con manejo robusto de errores
-		// Timeout ajustado según el tamaño del archivo (más tiempo para archivos grandes)
+		const fileNameUnique = `${doctorId}/${Date.now()}-${sanitizedFileName}`;
+
+		console.log('[Prescription Template API] Nombre original:', templateFile.name);
+		console.log('[Prescription Template API] Nombre sanitizado:', sanitizedFileName);
+		console.log('[Prescription Template API] Ruta completa:', fileNameUnique);
+
+		// Convertir File a Buffer
 		let fileBuffer: Buffer;
 		try {
-			// Calcular timeout dinámico: 1 segundo por MB, mínimo 30 segundos, máximo 120 segundos
 			const fileSizeMB = templateFile.size / (1024 * 1024);
 			const timeoutSeconds = Math.min(Math.max(fileSizeMB * 1000, 30000), 120000);
-			
-			console.log(`[Report Template API] Procesando archivo de ${fileSizeMB.toFixed(2)}MB con timeout de ${timeoutSeconds / 1000}s`);
-			
-			// Usar arrayBuffer con timeout dinámico
-			const arrayBuffer = await Promise.race([
-				templateFile.arrayBuffer(),
-				new Promise<never>((_, reject) => 
-					setTimeout(() => reject(new Error('Timeout al leer el archivo')), timeoutSeconds)
-				)
-			]);
+
+			console.log(`[Prescription Template API] Procesando archivo de ${fileSizeMB.toFixed(2)}MB con timeout de ${timeoutSeconds / 1000}s`);
+
+			const arrayBuffer = await Promise.race([templateFile.arrayBuffer(), new Promise<never>((_, reject) => setTimeout(() => reject(new Error('Timeout al leer el archivo')), timeoutSeconds))]);
 			fileBuffer = Buffer.from(arrayBuffer);
-			console.log(`[Report Template API] Archivo convertido exitosamente, tamaño: ${fileBuffer.length} bytes`);
+			console.log(`[Prescription Template API] Archivo convertido exitosamente, tamaño: ${fileBuffer.length} bytes`);
 		} catch (conversionError: any) {
-			console.error('[Report Template API] Error convirtiendo archivo:', conversionError);
-			return NextResponse.json({ 
-				error: conversionError?.message?.includes('Timeout') 
-					? 'El archivo tardó demasiado en procesarse. Intenta con un archivo más pequeño o verifica tu conexión.' 
-					: 'Error al procesar el archivo. Por favor, verifica que el archivo no esté corrupto e intenta nuevamente.' 
-			}, { status: 500 });
+			console.error('[Prescription Template API] Error convirtiendo archivo:', conversionError);
+			return NextResponse.json(
+				{
+					error: conversionError?.message?.includes('Timeout') ? 'El archivo tardó demasiado en procesarse. Intenta con un archivo más pequeño o verifica tu conexión.' : 'Error al procesar el archivo. Por favor, verifica que el archivo no esté corrupto e intenta nuevamente.',
+				},
+				{ status: 500 }
+			);
 		}
 
 		// Subir archivo con cliente admin (bypass RLS) y reintentos
@@ -169,34 +178,25 @@ export async function POST(request: NextRequest) {
 
 		while (retryCount <= maxRetries && !uploadData) {
 			try {
-				// Determinar el content type basado en la extensión del archivo
-				// Esto evita problemas con detección incorrecta de MIME type
-				const contentType = fileExtension === '.docx' 
-					? 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
-					: 'application/msword';
+				const contentType = fileExtension === '.docx' ? 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' : 'application/msword';
 
-				const uploadPromise = supabaseAdmin.storage
-					.from(bucket)
-					.upload(fileNameUnique, fileBuffer, {
-						contentType: contentType,
-						upsert: false,
-					});
+				const uploadPromise = supabaseAdmin.storage.from(bucket).upload(fileNameUnique, fileBuffer, {
+					contentType: contentType,
+					upsert: false,
+				});
 
-				// Timeout dinámico para subida: más tiempo para archivos grandes
 				const fileSizeMB = fileBuffer.length / (1024 * 1024);
-				const uploadTimeout = Math.min(Math.max(fileSizeMB * 2000, 60000), 180000); // 2s por MB, min 60s, max 180s
-				
-				console.log(`[Report Template API] Subiendo archivo con timeout de ${uploadTimeout / 1000}s`);
-				
-				const timeoutPromise = new Promise<never>((_, reject) => 
-					setTimeout(() => reject(new Error('Upload timeout')), uploadTimeout)
-				);
+				const uploadTimeout = Math.min(Math.max(fileSizeMB * 2000, 60000), 180000);
 
-				const uploadResult = await Promise.race([uploadPromise, timeoutPromise]) as any;
+				console.log(`[Prescription Template API] Subiendo archivo con timeout de ${uploadTimeout / 1000}s`);
+
+				const timeoutPromise = new Promise<never>((_, reject) => setTimeout(() => reject(new Error('Upload timeout')), uploadTimeout));
+
+				const uploadResult = (await Promise.race([uploadPromise, timeoutPromise])) as any;
 
 				uploadData = uploadResult.data;
 				uploadError = uploadResult.error;
-				
+
 				if (uploadError) {
 					throw uploadError;
 				}
@@ -204,77 +204,72 @@ export async function POST(request: NextRequest) {
 				uploadError = err;
 				retryCount++;
 				if (retryCount <= maxRetries) {
-					console.warn(`[Report Template API] Intento ${retryCount} falló, reintentando...`, err?.message);
-					await new Promise(resolve => setTimeout(resolve, 2000)); // Esperar 2 segundos antes de reintentar
+					console.warn(`[Prescription Template API] Intento ${retryCount} falló, reintentando...`, err?.message);
+					await new Promise((resolve) => setTimeout(resolve, 2000));
 				}
 			}
 		}
 
 		if (uploadError || !uploadData) {
-			console.error('[Report Template API] Error subiendo archivo después de reintentos:', uploadError);
+			console.error('[Prescription Template API] Error subiendo archivo después de reintentos:', uploadError);
 			const errorMessage = uploadError?.message || String(uploadError);
 			const statusCode = (uploadError as any)?.statusCode || (uploadError as any)?.status;
-			
-			// Detectar si el error es por bucket no existente
+
 			if (statusCode === '404' || errorMessage.includes('not found') || errorMessage.includes('bucket')) {
-				return NextResponse.json({ 
-					error: 'El bucket de almacenamiento "report-templates" no existe. Por favor, contacta al administrador para crear el bucket en Supabase Storage.' 
-				}, { status: 500 });
+				return NextResponse.json(
+					{
+						error: 'El bucket de almacenamiento "prescription-templates" no existe. Por favor, contacta al administrador para crear el bucket en Supabase Storage.',
+					},
+					{ status: 500 }
+				);
 			}
-			
-			return NextResponse.json({ 
-				error: errorMessage.includes('timeout') || errorMessage.includes('closed')
-					? 'La conexión se interrumpió durante la subida. Por favor, verifica tu conexión a internet e intenta nuevamente con un archivo más pequeño si el problema persiste.' 
-					: 'Error al subir archivo. Por favor, verifica tu conexión e intenta nuevamente.' 
-			}, { status: 500 });
+
+			return NextResponse.json(
+				{
+					error: errorMessage.includes('timeout') || errorMessage.includes('closed') ? 'La conexión se interrumpió durante la subida. Por favor, verifica tu conexión a internet e intenta nuevamente con un archivo más pequeño si el problema persiste.' : 'Error al subir archivo. Por favor, verifica tu conexión e intenta nuevamente.',
+				},
+				{ status: 500 }
+			);
 		}
 
 		// Obtener URL del archivo usando cliente admin
 		const filePath = uploadData.path;
 
 		// Obtener URL pública o firmada
-		const { data: urlData } = await supabaseAdmin.storage
-			.from(bucket)
-			.createSignedUrl(filePath, 31536000); // 1 año de validez
+		const { data: urlData } = await supabaseAdmin.storage.from(bucket).createSignedUrl(filePath, 31536000); // 1 año de validez
 
 		const templateUrl = urlData?.signedUrl || `/${bucket}/${filePath}`;
 
 		// Actualizar o crear registro en medic_profile
-		const { data: existingProfile } = await supabase
-			.from('medic_profile')
-			.select('id')
-			.eq('doctor_id', doctorId)
-			.maybeSingle();
+		const { data: existingProfile } = await supabase.from('medic_profile').select('id').eq('doctor_id', doctorId).maybeSingle();
 
 		if (existingProfile) {
-			// Actualizar perfil existente (mantener report_template_text si existe)
+			// Actualizar perfil existente (mantener prescription_template_text si existe)
 			const { error: updateError } = await supabase
 				.from('medic_profile')
 				.update({
-					report_template_url: templateUrl,
-					report_template_name: templateFile.name,
-					// No sobrescribir report_template_text si ya existe
+					prescription_template_url: templateUrl,
+					prescription_template_name: templateFile.name,
+					// No sobrescribir prescription_template_text si ya existe
 				})
 				.eq('doctor_id', doctorId);
 
 			if (updateError) {
-				console.error('[Report Template API] Error actualizando perfil:', updateError);
+				console.error('[Prescription Template API] Error actualizando perfil:', updateError);
 				// Intentar eliminar el archivo subido
 				await supabaseAdmin.storage.from(bucket).remove([filePath]);
 				return NextResponse.json({ error: 'Error al guardar plantilla' }, { status: 500 });
 			}
 		} else {
 			// Crear nuevo perfil
-			const { error: insertError } = await supabase
-				.from('medic_profile')
-				.insert({
-					doctor_id: doctorId,
-					report_template_url: templateUrl,
-					report_template_name: templateFile.name,
-				});
+			const { error: insertError } = await supabase.from('medic_profile').insert({
+				doctor_id: doctorId,
+				prescription_template_url: templateUrl,
+				prescription_template_name: templateFile.name,
+			});
 
 			if (insertError) {
-				console.error('[Report Template API] Error creando perfil:', insertError);
+				console.error('[Prescription Template API] Error creando perfil:', insertError);
 				// Intentar eliminar el archivo subido
 				await supabaseAdmin.storage.from(bucket).remove([filePath]);
 				return NextResponse.json({ error: 'Error al guardar plantilla' }, { status: 500 });
@@ -287,7 +282,7 @@ export async function POST(request: NextRequest) {
 			template_name: templateFile.name,
 		});
 	} catch (err) {
-		console.error('[Report Template API] Error:', err);
+		console.error('[Prescription Template API] Error:', err);
 		return NextResponse.json({ error: 'Error interno' }, { status: 500 });
 	}
 }
@@ -315,39 +310,35 @@ export async function PUT(request: NextRequest) {
 		}
 
 		// Validar font_family si se proporciona
-		const validFonts = ['Arial', 'Calibri', 'Georgia', 'Cambria', 'Garamond'];
+		const validFonts = ['Arial', 'Calibri', 'Georgia', 'Cambria', 'Garamond', 'Microsoft JhengHei'];
 		if (font_family !== undefined) {
 			if (typeof font_family !== 'string' || !validFonts.includes(font_family)) {
-				return NextResponse.json({ 
-					error: `font_family debe ser una de las siguientes: ${validFonts.join(', ')}` 
-				}, { status: 400 });
+				return NextResponse.json(
+					{
+						error: `font_family debe ser una de las siguientes: ${validFonts.join(', ')}`,
+					},
+					{ status: 400 }
+				);
 			}
 		}
 
 		// Actualizar o crear registro en medic_profile
-		const { data: existingProfile } = await supabase
-			.from('medic_profile')
-			.select('id')
-			.eq('doctor_id', doctorId)
-			.maybeSingle();
+		const { data: existingProfile } = await supabase.from('medic_profile').select('id').eq('doctor_id', doctorId).maybeSingle();
 
 		if (existingProfile) {
 			// Actualizar perfil existente
 			const updateData: any = {};
 			if (template_text !== undefined) {
-				updateData.report_template_text = template_text;
+				updateData.prescription_template_text = template_text;
 			}
 			if (font_family !== undefined) {
-				updateData.report_font_family = font_family;
+				updateData.prescription_font_family = font_family;
 			}
-			
-			const { error: updateError } = await supabase
-				.from('medic_profile')
-				.update(updateData)
-				.eq('doctor_id', doctorId);
+
+			const { error: updateError } = await supabase.from('medic_profile').update(updateData).eq('doctor_id', doctorId);
 
 			if (updateError) {
-				console.error('[Report Template API] Error actualizando plantilla de texto:', updateError);
+				console.error('[Prescription Template API] Error actualizando plantilla de texto:', updateError);
 				return NextResponse.json({ error: 'Error al guardar plantilla de texto' }, { status: 500 });
 			}
 		} else {
@@ -356,20 +347,18 @@ export async function PUT(request: NextRequest) {
 				doctor_id: doctorId,
 			};
 			if (template_text !== undefined) {
-				insertData.report_template_text = template_text;
+				insertData.prescription_template_text = template_text;
 			}
 			if (font_family !== undefined) {
-				insertData.report_font_family = font_family;
+				insertData.prescription_font_family = font_family;
 			} else {
-				insertData.report_font_family = 'Arial'; // Valor por defecto
+				insertData.prescription_font_family = 'Arial'; // Valor por defecto
 			}
-			
-			const { error: insertError } = await supabase
-				.from('medic_profile')
-				.insert(insertData);
+
+			const { error: insertError } = await supabase.from('medic_profile').insert(insertData);
 
 			if (insertError) {
-				console.error('[Report Template API] Error creando perfil con plantilla de texto:', insertError);
+				console.error('[Prescription Template API] Error creando perfil con plantilla de texto:', insertError);
 				return NextResponse.json({ error: 'Error al guardar plantilla de texto' }, { status: 500 });
 			}
 		}
@@ -379,7 +368,7 @@ export async function PUT(request: NextRequest) {
 			message: 'Plantilla de texto guardada exitosamente',
 		});
 	} catch (err) {
-		console.error('[Report Template API] Error:', err);
+		console.error('[Prescription Template API] Error:', err);
 		return NextResponse.json({ error: 'Error interno' }, { status: 500 });
 	}
 }
@@ -400,15 +389,15 @@ export async function DELETE(request: NextRequest) {
 		const supabase = await createSupabaseServerClient();
 
 		// Obtener información de la plantilla actual antes de eliminar
-		const { data: medicProfile, error: profileError } = await supabase.from('medic_profile').select('report_template_url, report_template_name').eq('doctor_id', doctorId).maybeSingle();
+		const { data: medicProfile, error: profileError } = await supabase.from('medic_profile').select('prescription_template_url, prescription_template_name').eq('doctor_id', doctorId).maybeSingle();
 
 		if (profileError) {
-			console.error('[Report Template API] Error obteniendo perfil:', profileError);
+			console.error('[Prescription Template API] Error obteniendo perfil:', profileError);
 			return NextResponse.json({ error: 'Error al obtener plantilla' }, { status: 500 });
 		}
 
 		// Si hay una plantilla en Storage, eliminarla
-		if (medicProfile?.report_template_url) {
+		if (medicProfile?.prescription_template_url) {
 			try {
 				const SUPABASE_URL = process.env.SUPABASE_URL ?? process.env.NEXT_PUBLIC_SUPABASE_URL ?? '';
 				const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY ?? '';
@@ -420,31 +409,31 @@ export async function DELETE(request: NextRequest) {
 
 					// Extraer la ruta del archivo desde la URL
 					// La URL puede ser una signed URL o una ruta relativa
-					const bucket = 'report-templates';
+					const bucket = 'prescription-templates';
 					let filePath = '';
 
-					if (medicProfile.report_template_url.includes(bucket)) {
+					if (medicProfile.prescription_template_url.includes(bucket)) {
 						// Extraer la ruta después del bucket
-						const parts = medicProfile.report_template_url.split(`${bucket}/`);
+						const parts = medicProfile.prescription_template_url.split(`${bucket}/`);
 						if (parts.length > 1) {
 							// Puede haber query parameters, eliminarlos
 							filePath = parts[1].split('?')[0];
 						}
 					} else {
 						// Si es una ruta relativa, intentar extraer directamente
-						filePath = medicProfile.report_template_url.replace(/^\/+/, '');
+						filePath = medicProfile.prescription_template_url.replace(/^\/+/, '');
 					}
 
 					if (filePath) {
 						const { error: deleteError } = await supabaseAdmin.storage.from(bucket).remove([filePath]);
 						if (deleteError) {
-							console.warn('[Report Template API] Error eliminando archivo de Storage:', deleteError);
+							console.warn('[Prescription Template API] Error eliminando archivo de Storage:', deleteError);
 							// Continuar con la eliminación de la BD aunque falle el Storage
 						}
 					}
 				}
 			} catch (storageError) {
-				console.warn('[Report Template API] Error eliminando archivo de Storage:', storageError);
+				console.warn('[Prescription Template API] Error eliminando archivo de Storage:', storageError);
 				// Continuar con la eliminación de la BD aunque falle el Storage
 			}
 		}
@@ -453,14 +442,14 @@ export async function DELETE(request: NextRequest) {
 		const { error: updateError } = await supabase
 			.from('medic_profile')
 			.update({
-				report_template_url: null,
-				report_template_name: null,
-				report_template_text: null,
+				prescription_template_url: null,
+				prescription_template_name: null,
+				prescription_template_text: null,
 			})
 			.eq('doctor_id', doctorId);
 
 		if (updateError) {
-			console.error('[Report Template API] Error eliminando plantilla:', updateError);
+			console.error('[Prescription Template API] Error eliminando plantilla:', updateError);
 			return NextResponse.json({ error: 'Error al eliminar plantilla' }, { status: 500 });
 		}
 
@@ -469,8 +458,7 @@ export async function DELETE(request: NextRequest) {
 			message: 'Plantilla eliminada exitosamente',
 		});
 	} catch (err) {
-		console.error('[Report Template API] Error:', err);
+		console.error('[Prescription Template API] Error:', err);
 		return NextResponse.json({ error: 'Error interno' }, { status: 500 });
 	}
 }
-

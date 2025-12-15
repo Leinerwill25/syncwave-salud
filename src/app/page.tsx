@@ -33,7 +33,7 @@ export default function HomePage() {
 	const jsonLd = {
 		'@context': 'https://schema.org',
 		'@type': 'SoftwareApplication',
-		name: 'KAVIRA',
+		name: 'ASHIRA',
 		applicationCategory: 'HealthApplication',
 		operatingSystem: 'Web',
 		offers: {
@@ -77,7 +77,7 @@ export default function HomePage() {
 							</motion.div>
 
 							<motion.h1 variants={itemVariants} className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-extrabold text-slate-900 mb-6 leading-tight">
-								<span className="bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-600 bg-clip-text text-transparent">KAVIRA</span>
+								<span className="bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-600 bg-clip-text text-transparent">ASHIRA</span>
 								<br />
 								<span className="text-slate-800">Plataforma Integral de Salud Digital para Venezuela</span>
 							</motion.h1>
@@ -172,7 +172,7 @@ export default function HomePage() {
 							<span className="text-sm font-semibold text-teal-600">Ecosistema Completo</span>
 						</div>
 						<h2 className="text-3xl sm:text-4xl md:text-5xl font-bold text-slate-900 mb-4">Solución Integral para el Sector Salud</h2>
-						<p className="text-lg sm:text-xl text-slate-600 max-w-3xl mx-auto">KAVIRA conecta todos los actores del sector salud venezolano - consultorios privados, clínicas, farmacias y laboratorios - en una plataforma unificada que optimiza procesos, mejora la coordinación y eleva la calidad de la atención médica.</p>
+						<p className="text-lg sm:text-xl text-slate-600 max-w-3xl mx-auto">ASHIRA conecta todos los actores del sector salud venezolano - consultorios privados, clínicas, farmacias y laboratorios - en una plataforma unificada que optimiza procesos, mejora la coordinación y eleva la calidad de la atención médica.</p>
 					</motion.div>
 
 					<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 sm:gap-8">
@@ -244,7 +244,7 @@ export default function HomePage() {
 							<span className="text-sm font-semibold text-slate-700">Características Destacadas</span>
 						</div>
 						<h2 className="text-3xl sm:text-4xl md:text-5xl font-bold text-slate-900 mb-4">Tecnología Avanzada para la Gestión Médica</h2>
-						<p className="text-lg sm:text-xl text-slate-600 max-w-3xl mx-auto">KAVIRA ofrece un conjunto completo de herramientas profesionales diseñadas específicamente para las necesidades del sector salud venezolano, facilitando la gestión diaria y mejorando los resultados clínicos.</p>
+						<p className="text-lg sm:text-xl text-slate-600 max-w-3xl mx-auto">ASHIRA ofrece un conjunto completo de herramientas profesionales diseñadas específicamente para las necesidades del sector salud venezolano, facilitando la gestión diaria y mejorando los resultados clínicos.</p>
 					</motion.div>
 
 					<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
@@ -315,7 +315,7 @@ export default function HomePage() {
 								<span className="text-sm font-semibold text-teal-600">Beneficios para Pacientes</span>
 							</div>
 							<h2 className="text-3xl sm:text-4xl md:text-5xl font-bold text-slate-900 mb-6">Experiencia Integral para Pacientes</h2>
-							<p className="text-lg sm:text-xl text-slate-600 mb-8 leading-relaxed">KAVIRA transforma la experiencia del paciente en Venezuela, ofreciendo acceso centralizado a su historial médico completo, agendamiento de citas con múltiples especialistas, seguimiento de tratamientos y acceso inmediato a resultados de laboratorio y recetas digitales desde cualquier dispositivo.</p>
+							<p className="text-lg sm:text-xl text-slate-600 mb-8 leading-relaxed">ASHIRA transforma la experiencia del paciente en Venezuela, ofreciendo acceso centralizado a su historial médico completo, agendamiento de citas con múltiples especialistas, seguimiento de tratamientos y acceso inmediato a resultados de laboratorio y recetas digitales desde cualquier dispositivo.</p>
 							<div className="space-y-4">
 								{['Acceso rápido a profesionales de la salud', 'Gestión centralizada de historial médico', 'Coordinación entre diferentes especialistas', 'Resultados de laboratorio y recetas digitales', 'Recordatorios y seguimiento de tratamientos'].map((benefit, index) => (
 									<motion.div key={benefit} initial={{ opacity: 0, x: -20 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true }} transition={{ duration: 0.5, delay: index * 0.1 }} className="flex items-center gap-3 group">
@@ -394,9 +394,9 @@ export default function HomePage() {
 							name: 'Dra. Carwin Silva',
 							alternateName: ['Doctora Carwin Silva', 'Carwin Silva Ginecóloga', 'Dra. Carwin Silva Ginecóloga'],
 							jobTitle: 'Ginecóloga Especialista en Ginecología Regenerativa, Funcional y Estética',
-							description: 'Dra. Carwin Silva es ginecóloga especialista en ginecología regenerativa, funcional y estética en Venezuela. Embajadora oficial de KAVIRA, pionera en salud digital y líder en salud femenina. Consulta ginecológica, ginecología estética, medicina funcional.',
-							url: 'https://kavira.com',
-							image: 'https://kavira.com/consultorios/dracarwin/IMG_5189.JPG',
+							description: 'Dra. Carwin Silva es ginecóloga especialista en ginecología regenerativa, funcional y estética en Venezuela. Embajadora oficial de ASHIRA, pionera en salud digital y líder en salud femenina. Consulta ginecológica, ginecología estética, medicina funcional.',
+							url: 'https://ashira.com',
+							image: 'https://ashira.com/consultorios/dracarwin/IMG_5189.JPG',
 							sameAs: [
 								// Aquí se pueden agregar links a redes sociales cuando estén disponibles
 								// 'https://www.instagram.com/dracarwinsilva',
@@ -413,9 +413,9 @@ export default function HomePage() {
 							},
 							memberOf: {
 								'@type': 'Organization',
-								name: 'KAVIRA',
+								name: 'ASHIRA',
 								description: 'Plataforma Integral de Salud Digital para Venezuela',
-								url: 'https://kavira.com',
+								url: 'https://ashira.com',
 							},
 							hasOccupation: {
 								'@type': 'Occupation',
@@ -451,13 +451,13 @@ export default function HomePage() {
 							<h1 itemProp="name" className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-extrabold text-white mb-6 leading-tight">
 								<span className="block mb-2">Dra. Carwin Silva</span>
 								<span className="block text-teal-100 text-3xl sm:text-4xl md:text-5xl lg:text-6xl">Ginecóloga en Venezuela</span>
-								<span className="block text-xl sm:text-2xl md:text-3xl text-teal-100 mt-4 font-normal">Embajadora Oficial de KAVIRA</span>
+								<span className="block text-xl sm:text-2xl md:text-3xl text-teal-100 mt-4 font-normal">Embajadora Oficial de ASHIRA</span>
 							</h1>
 							<p itemProp="description" className="text-xl sm:text-2xl text-white/90 max-w-4xl mx-auto leading-relaxed font-light mb-4">
-								<strong className="font-bold">Doctora Carwin Silva</strong> - Especialista en <strong>Ginecología Regenerativa, Funcional y Estética</strong> en Venezuela. Líder en salud femenina, pionera de la transformación digital médica y embajadora oficial de KAVIRA. Consulta ginecológica de excelencia en salud digital.
+								<strong className="font-bold">Doctora Carwin Silva</strong> - Especialista en <strong>Ginecología Regenerativa, Funcional y Estética</strong> en Venezuela. Líder en salud femenina, pionera de la transformación digital médica y embajadora oficial de ASHIRA. Consulta ginecológica de excelencia en salud digital.
 							</p>
 							<p className="text-lg sm:text-xl text-white/80 max-w-3xl mx-auto leading-relaxed">
-								Ginecóloga especializada en <strong>ginecología estética</strong>, <strong>medicina funcional</strong> y <strong>salud femenina digital</strong>. Primera especialista en adoptar KAVIRA para la gestión de consultorios privados en Venezuela.
+								Ginecóloga especializada en <strong>ginecología estética</strong>, <strong>medicina funcional</strong> y <strong>salud femenina digital</strong>. Primera especialista en adoptar ASHIRA para la gestión de consultorios privados en Venezuela.
 							</p>
 						</motion.div>
 					</header>
@@ -476,7 +476,7 @@ export default function HomePage() {
 									<div className="relative inline-flex items-center gap-2.5 px-6 py-3 bg-gradient-to-r from-yellow-400 via-amber-400 to-yellow-500 rounded-full shadow-2xl transform hover:scale-105 transition-transform">
 										<div className="absolute inset-0 bg-white/30 rounded-full blur-xl" />
 										<Award className="w-5 h-5 text-white relative z-10" />
-										<span className="text-sm font-bold text-white relative z-10 tracking-wide">Pionera de KAVIRA</span>
+										<span className="text-sm font-bold text-white relative z-10 tracking-wide">Pionera de ASHIRA</span>
 										<div className="absolute -top-1 -right-1 w-3 h-3 bg-yellow-300 rounded-full animate-ping" />
 									</div>
 								</div>
@@ -490,7 +490,7 @@ export default function HomePage() {
 										<div className="absolute -inset-2 bg-gradient-to-br from-white/40 to-transparent rounded-3xl blur-xl" />
 										{/* Image Container */}
 										<div itemProp="image" className="relative w-64 h-64 sm:w-72 sm:h-72 rounded-3xl overflow-hidden border-4 border-white/40 shadow-2xl transform group-hover:scale-105 transition-transform duration-500">
-											<Image src="/consultorios/dracarwin/IMG_5189.JPG" alt="Dra. Carwin Silva - Ginecóloga Especialista en Ginecología Regenerativa, Funcional y Estética en Venezuela | Embajadora Oficial KAVIRA" title="Doctora Carwin Silva - Ginecóloga en Venezuela | KAVIRA" width={288} height={288} className="w-full h-full object-cover" priority itemProp="image" />
+											<Image src="/consultorios/dracarwin/IMG_5189.JPG" alt="Dra. Carwin Silva - Ginecóloga Especialista en Ginecología Regenerativa, Funcional y Estética en Venezuela | Embajadora Oficial ASHIRA" title="Doctora Carwin Silva - Ginecóloga en Venezuela | ASHIRA" width={288} height={288} className="w-full h-full object-cover" priority itemProp="image" />
 											{/* Overlay Gradient */}
 											<div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-transparent" />
 										</div>
@@ -511,7 +511,7 @@ export default function HomePage() {
 									</div>
 									<div className="inline-flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-white/25 to-white/15 backdrop-blur-md rounded-full border border-white/40 shadow-lg">
 										<UserCircle className="w-5 h-5 text-white" />
-										<span className="text-sm font-bold text-white uppercase tracking-wider">Embajadora Oficial KAVIRA</span>
+										<span className="text-sm font-bold text-white uppercase tracking-wider">Embajadora Oficial ASHIRA</span>
 									</div>
 									<p className="mt-4 text-base text-white/90 max-w-md mx-auto">
 										Consulta ginecológica especializada en <strong>Venezuela</strong>. Ginecóloga experta en salud femenina, medicina funcional y salud digital.
@@ -523,7 +523,7 @@ export default function HomePage() {
 									{[
 										{
 											icon: CheckCircle2,
-											text: 'Primera ginecóloga en adoptar KAVIRA para gestión de consultorios privados en Venezuela',
+											text: 'Primera ginecóloga en adoptar ASHIRA para gestión de consultorios privados en Venezuela',
 											highlight: true,
 										},
 										{
@@ -536,7 +536,7 @@ export default function HomePage() {
 										},
 										{
 											icon: Sparkles,
-											text: 'Contribuye activamente con mejoras a los módulos de salud femenina y ginecología digital en KAVIRA',
+											text: 'Contribuye activamente con mejoras a los módulos de salud femenina y ginecología digital en ASHIRA',
 										},
 									].map((achievement, index) => (
 										<motion.div key={index} initial={{ opacity: 0, x: -20 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true }} transition={{ duration: 0.5, delay: index * 0.1 }} className={`flex items-start gap-4 p-3 rounded-xl transition-all duration-300 ${achievement.highlight ? 'bg-white/10 backdrop-blur-sm border border-white/20' : 'hover:bg-white/5'}`}>
@@ -568,7 +568,7 @@ export default function HomePage() {
 									</div>
 									<div>
 										<h3 className="text-3xl sm:text-4xl font-extrabold text-white mb-1">Alianza Estratégica</h3>
-										<p className="text-teal-100 font-medium">KAVIRA × Dra. Carwin Silva</p>
+										<p className="text-teal-100 font-medium">ASHIRA × Dra. Carwin Silva</p>
 									</div>
 								</div>
 
@@ -578,10 +578,10 @@ export default function HomePage() {
 										La <strong className="font-bold text-white">Dra. Carwin Silva</strong>, <strong>ginecóloga especialista en Venezuela</strong>, es nuestra Embajadora Oficial para Consultorios Privados, liderando la transformación digital de la salud privada. Su expertise excepcional en <strong>ginecología regenerativa, ginecología funcional y ginecología estética</strong> la posiciona como una de las principales referentes en <strong>salud femenina</strong> y <strong>medicina funcional</strong> en Venezuela.
 									</p>
 									<p className="text-base sm:text-lg text-white/90 leading-relaxed">
-										Como <strong>doctora ginecóloga</strong> pionera en la adopción de tecnología digital, la <strong>Dra. Carwin Silva</strong> utiliza KAVIRA para ofrecer consultas ginecológicas de excelencia, gestionar su consultorio privado y proporcionar atención médica especializada en <strong>ginecología</strong>. Su compromiso con la innovación médica fortalece nuestra misión de modernizar la atención en salud femenina en todo el país.
+										Como <strong>doctora ginecóloga</strong> pionera en la adopción de tecnología digital, la <strong>Dra. Carwin Silva</strong> utiliza ASHIRA para ofrecer consultas ginecológicas de excelencia, gestionar su consultorio privado y proporcionar atención médica especializada en <strong>ginecología</strong>. Su compromiso con la innovación médica fortalece nuestra misión de modernizar la atención en salud femenina en todo el país.
 									</p>
 									<p className="text-base text-white/85 leading-relaxed">
-										Si buscas una <strong>ginecóloga en Venezuela</strong>, una <strong>consulta ginecológica especializada</strong> o información sobre <strong>ginecología estética, ginecología regenerativa o ginecología funcional</strong>, la <strong>Dra. Carwin Silva</strong> es tu especialista de confianza. Primera en adoptar KAVIRA para la gestión digital de consultorios médicos.
+										Si buscas una <strong>ginecóloga en Venezuela</strong>, una <strong>consulta ginecológica especializada</strong> o información sobre <strong>ginecología estética, ginecología regenerativa o ginecología funcional</strong>, la <strong>Dra. Carwin Silva</strong> es tu especialista de confianza. Primera en adoptar ASHIRA para la gestión digital de consultorios médicos.
 									</p>
 								</div>
 
@@ -655,7 +655,7 @@ export default function HomePage() {
 				<div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
 					<motion.div initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.6 }} className="text-center mb-12">
 						<h2 className="text-3xl sm:text-4xl md:text-5xl font-bold mb-4">Ecosistema Completo de Salud Digital</h2>
-						<p className="text-lg sm:text-xl text-slate-300 max-w-3xl mx-auto">KAVIRA integra todos los módulos necesarios para una gestión médica integral, desde la atención primaria hasta el seguimiento completo del paciente.</p>
+						<p className="text-lg sm:text-xl text-slate-300 max-w-3xl mx-auto">ASHIRA integra todos los módulos necesarios para una gestión médica integral, desde la atención primaria hasta el seguimiento completo del paciente.</p>
 					</motion.div>
 					<div className="grid grid-cols-1 lg:grid-cols-2 gap-8 sm:gap-10 items-stretch">
 						{/* Módulos del Ecosistema */}
@@ -666,7 +666,7 @@ export default function HomePage() {
 								</div>
 								<h3 className="text-xl sm:text-2xl font-bold">Módulos del Ecosistema</h3>
 							</div>
-							<p className="text-sm sm:text-base text-slate-200 mb-6">KAVIRA ofrece un ecosistema completo que integra todos los actores del sector salud en Venezuela, facilitando la coordinación y optimizando los procesos médicos.</p>
+							<p className="text-sm sm:text-base text-slate-200 mb-6">ASHIRA ofrece un ecosistema completo que integra todos los actores del sector salud en Venezuela, facilitando la coordinación y optimizando los procesos médicos.</p>
 							<div className="grid grid-cols-2 gap-3 text-sm sm:text-base">
 								<div className="flex items-center gap-2">
 									<div className="w-6 h-6 rounded-lg bg-emerald-500/20 flex items-center justify-center">
@@ -715,7 +715,7 @@ export default function HomePage() {
 								</div>
 								<h3 className="text-xl sm:text-2xl font-bold">Automatización Clínica Inteligente</h3>
 							</div>
-							<p className="text-sm sm:text-base text-slate-200 mb-6">KAVIRA automatiza los flujos clínicos más importantes, permitiendo que los profesionales de la salud se concentren en lo esencial: brindar atención médica de calidad a sus pacientes.</p>
+							<p className="text-sm sm:text-base text-slate-200 mb-6">ASHIRA automatiza los flujos clínicos más importantes, permitiendo que los profesionales de la salud se concentren en lo esencial: brindar atención médica de calidad a sus pacientes.</p>
 							<ul className="space-y-3 text-sm sm:text-base">
 								<li className="flex items-start gap-2">
 									<div className="mt-1 w-5 h-5 rounded-full bg-emerald-500/30 flex items-center justify-center">
@@ -751,7 +751,7 @@ export default function HomePage() {
 				<div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
 					<motion.div initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.6 }} className="text-center mb-12">
 						<h2 className="text-3xl sm:text-4xl md:text-5xl font-bold mb-4">Comprometidos con la Excelencia en Salud Digital</h2>
-						<p className="text-lg sm:text-xl text-slate-300 max-w-3xl mx-auto">KAVIRA se compromete a ofrecer la mejor plataforma tecnológica para el sector salud venezolano, con estándares de calidad, seguridad y disponibilidad que garantizan una experiencia óptima para profesionales y pacientes.</p>
+						<p className="text-lg sm:text-xl text-slate-300 max-w-3xl mx-auto">ASHIRA se compromete a ofrecer la mejor plataforma tecnológica para el sector salud venezolano, con estándares de calidad, seguridad y disponibilidad que garantizan una experiencia óptima para profesionales y pacientes.</p>
 					</motion.div>
 
 					<div className="grid grid-cols-2 md:grid-cols-4 gap-6 sm:gap-8">
@@ -785,7 +785,7 @@ export default function HomePage() {
 								<span className="text-xs sm:text-sm font-semibold text-teal-700">Planes Simples</span>
 							</div>
 							<h3 className="text-2xl font-bold text-slate-900 mb-3">Planes Flexibles Adaptados a tus Necesidades</h3>
-							<p className="text-sm sm:text-base text-slate-600 mb-5">KAVIRA ofrece modelos de suscripción diseñados para cada tipo de usuario del ecosistema de salud. Desde acceso gratuito para pacientes hasta planes empresariales para grandes organizaciones, nuestra plataforma se adapta a tus necesidades específicas.</p>
+							<p className="text-sm sm:text-base text-slate-600 mb-5">ASHIRA ofrece modelos de suscripción diseñados para cada tipo de usuario del ecosistema de salud. Desde acceso gratuito para pacientes hasta planes empresariales para grandes organizaciones, nuestra plataforma se adapta a tus necesidades específicas.</p>
 							<ul className="space-y-3 text-sm sm:text-base">
 								<li>
 									<strong className="text-slate-900">Pacientes:</strong> <span className="text-emerald-600 font-semibold">Acceso gratuito</span> al portal del paciente.
@@ -814,12 +814,12 @@ export default function HomePage() {
 							</div>
 							<div className="space-y-4">
 								<div className="bg-white rounded-2xl p-4 sm:p-5 shadow-md border border-slate-100">
-									<h4 className="text-sm sm:text-base font-semibold text-slate-900 mb-1">¿KAVIRA es gratis para pacientes?</h4>
+									<h4 className="text-sm sm:text-base font-semibold text-slate-900 mb-1">¿ASHIRA es gratis para pacientes?</h4>
 									<p className="text-xs sm:text-sm text-slate-600">Sí. El portal del paciente está pensado para ser accesible de forma gratuita, permitiendo que cualquier persona gestione su salud digital sin barreras de entrada.</p>
 								</div>
 								<div className="bg-white rounded-2xl p-4 sm:p-5 shadow-md border border-slate-100">
 									<h4 className="text-sm sm:text-base font-semibold text-slate-900 mb-1">¿Necesito instalar algo en mi computadora?</h4>
-									<p className="text-xs sm:text-sm text-slate-600">No. KAVIRA es una plataforma 100% web. Solo necesitas un navegador moderno y conexión a internet, desde computadora, tablet o teléfono.</p>
+									<p className="text-xs sm:text-sm text-slate-600">No. ASHIRA es una plataforma 100% web. Solo necesitas un navegador moderno y conexión a internet, desde computadora, tablet o teléfono.</p>
 								</div>
 								<div className="bg-white rounded-2xl p-4 sm:p-5 shadow-md border border-slate-100">
 									<h4 className="text-sm sm:text-base font-semibold text-slate-900 mb-1">¿Cómo se protegen mis datos y mi historial médico?</h4>
@@ -848,7 +848,7 @@ export default function HomePage() {
 							<Sparkles className="w-10 h-10 text-white" />
 						</motion.div>
 						<h2 className="text-3xl sm:text-4xl md:text-5xl font-bold text-white mb-6">Únete a la Transformación Digital de la Salud</h2>
-						<p className="text-lg sm:text-xl text-teal-50 mb-8 max-w-3xl mx-auto">KAVIRA está revolucionando la forma en que se gestiona y se accede a la atención médica en Venezuela. Únete a cientos de profesionales de la salud que ya están transformando sus prácticas con nuestra plataforma integral. Regístrate hoy y comienza a experimentar los beneficios de la salud digital.</p>
+						<p className="text-lg sm:text-xl text-teal-50 mb-8 max-w-3xl mx-auto">ASHIRA está revolucionando la forma en que se gestiona y se accede a la atención médica en Venezuela. Únete a cientos de profesionales de la salud que ya están transformando sus prácticas con nuestra plataforma integral. Regístrate hoy y comienza a experimentar los beneficios de la salud digital.</p>
 						<div className="flex flex-col sm:flex-row gap-4 justify-center">
 							<Link href="/register" className="group inline-flex items-center justify-center gap-2 px-8 py-4 bg-white hover:bg-slate-50 text-teal-600 font-semibold rounded-2xl shadow-xl hover:shadow-2xl transform hover:scale-105 transition-all duration-300 text-base sm:text-lg">
 								Crear Cuenta Gratis
@@ -871,8 +871,8 @@ export default function HomePage() {
 							<Target className="w-4 h-4 text-teal-600" />
 							<span className="text-sm font-semibold text-teal-600">Ventajas Competitivas</span>
 						</div>
-						<h2 className="text-3xl sm:text-4xl md:text-5xl font-bold text-slate-900 mb-4">¿Por Qué Elegir KAVIRA?</h2>
-						<p className="text-lg sm:text-xl text-slate-600 max-w-3xl mx-auto">Descubre las ventajas que hacen de KAVIRA la plataforma preferida por profesionales de la salud en Venezuela</p>
+						<h2 className="text-3xl sm:text-4xl md:text-5xl font-bold text-slate-900 mb-4">¿Por Qué Elegir ASHIRA?</h2>
+						<p className="text-lg sm:text-xl text-slate-600 max-w-3xl mx-auto">Descubre las ventajas que hacen de ASHIRA la plataforma preferida por profesionales de la salud en Venezuela</p>
 					</motion.div>
 
 					<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
@@ -939,34 +939,34 @@ export default function HomePage() {
 							<div className="w-12 h-12 rounded-xl bg-gradient-to-br from-teal-500 to-cyan-500 flex items-center justify-center">
 								<FileText className="w-6 h-6 text-white" />
 							</div>
-							<h2 className="text-3xl sm:text-4xl font-bold text-slate-900 m-0">KAVIRA: La Plataforma Integral de Salud Digital para Venezuela</h2>
+							<h2 className="text-3xl sm:text-4xl font-bold text-slate-900 m-0">ASHIRA: La Plataforma Integral de Salud Digital para Venezuela</h2>
 						</div>
 						<div className="space-y-6 text-slate-700 leading-relaxed">
 							<p className="text-base sm:text-lg">
-								<strong>KAVIRA</strong> es la plataforma tecnológica líder diseñada específicamente para unificar, modernizar y optimizar el ecosistema de salud en Venezuela. Nuestra misión es conectar todos los actores del sector salud - desde consultorios privados y clínicas hasta farmacias y laboratorios - en un sistema integrado que mejore significativamente la calidad, eficiencia y accesibilidad de la atención médica para todos los venezolanos.
+								<strong>ASHIRA</strong> es la plataforma tecnológica líder diseñada específicamente para unificar, modernizar y optimizar el ecosistema de salud en Venezuela. Nuestra misión es conectar todos los actores del sector salud - desde consultorios privados y clínicas hasta farmacias y laboratorios - en un sistema integrado que mejore significativamente la calidad, eficiencia y accesibilidad de la atención médica para todos los venezolanos.
 							</p>
 							<h3 className="text-2xl font-bold text-slate-900 mt-8 mb-4">Solución Completa para Profesionales de la Salud</h3>
 							<p className="text-base sm:text-lg">
-								Para <strong>médicos y especialistas independientes</strong>, KAVIRA ofrece una suite completa de herramientas que permiten gestionar consultorios privados de manera eficiente. La plataforma incluye gestión de historiales médicos digitales completos, sistema de agendamiento de citas inteligente, emisión de recetas y órdenes médicas electrónicas, y comunicación segura con pacientes. Todo esto desde una interfaz intuitiva que reduce el tiempo administrativo y permite enfocarse en la atención clínica.
+								Para <strong>médicos y especialistas independientes</strong>, ASHIRA ofrece una suite completa de herramientas que permiten gestionar consultorios privados de manera eficiente. La plataforma incluye gestión de historiales médicos digitales completos, sistema de agendamiento de citas inteligente, emisión de recetas y órdenes médicas electrónicas, y comunicación segura con pacientes. Todo esto desde una interfaz intuitiva que reduce el tiempo administrativo y permite enfocarse en la atención clínica.
 							</p>
 							<p className="text-base sm:text-lg">
-								Las <strong>clínicas y centros médicos</strong> encuentran en KAVIRA una solución empresarial robusta con herramientas de administración avanzadas. La plataforma permite gestionar múltiples especialistas, coordinar recursos, administrar horarios complejos, generar reportes financieros y operativos, y mantener un control centralizado de todas las operaciones clínicas desde un único dashboard.
+								Las <strong>clínicas y centros médicos</strong> encuentran en ASHIRA una solución empresarial robusta con herramientas de administración avanzadas. La plataforma permite gestionar múltiples especialistas, coordinar recursos, administrar horarios complejos, generar reportes financieros y operativos, y mantener un control centralizado de todas las operaciones clínicas desde un único dashboard.
 							</p>
 							<h3 className="text-2xl font-bold text-slate-900 mt-8 mb-4">Integración con Farmacias y Laboratorios</h3>
 							<p className="text-base sm:text-lg">
-								Las <strong>farmacias integradas</strong> pueden recibir recetas digitales directamente de los médicos a través de KAVIRA, facilitando la dispensación de medicamentos, mejorando la trazabilidad, reduciendo errores y agilizando el proceso de entrega. Los pacientes pueden verificar la disponibilidad de medicamentos y recibir notificaciones cuando sus recetas están listas.
+								Las <strong>farmacias integradas</strong> pueden recibir recetas digitales directamente de los médicos a través de ASHIRA, facilitando la dispensación de medicamentos, mejorando la trazabilidad, reduciendo errores y agilizando el proceso de entrega. Los pacientes pueden verificar la disponibilidad de medicamentos y recibir notificaciones cuando sus recetas están listas.
 							</p>
 							<p className="text-base sm:text-lg">
 								Los <strong>laboratorios clínicos</strong> pueden gestionar órdenes médicas digitales, procesar análisis, entregar resultados de manera inmediata y segura tanto a médicos como a pacientes, y mantener un registro completo de todos los estudios realizados. Esto agiliza significativamente el proceso de diagnóstico y tratamiento.
 							</p>
 							<h3 className="text-2xl font-bold text-slate-900 mt-8 mb-4">Portal del Paciente: Acceso Gratuito y Completo</h3>
 							<p className="text-base sm:text-lg">
-								Para los <strong>pacientes</strong>, KAVIRA ofrece un portal completamente gratuito que proporciona acceso a su historial médico completo, la posibilidad de agendar citas con diferentes especialistas, recibir recordatorios automáticos de tratamientos y citas, acceder instantáneamente a resultados de laboratorio y recetas digitales, y mantener comunicación directa con sus profesionales de la salud. Todo desde una única plataforma segura, fácil de usar y accesible desde cualquier dispositivo.
+								Para los <strong>pacientes</strong>, ASHIRA ofrece un portal completamente gratuito que proporciona acceso a su historial médico completo, la posibilidad de agendar citas con diferentes especialistas, recibir recordatorios automáticos de tratamientos y citas, acceder instantáneamente a resultados de laboratorio y recetas digitales, y mantener comunicación directa con sus profesionales de la salud. Todo desde una única plataforma segura, fácil de usar y accesible desde cualquier dispositivo.
 							</p>
 							<h3 className="text-2xl font-bold text-slate-900 mt-8 mb-4">Tecnología de Vanguardia y Seguridad</h3>
-							<p className="text-base sm:text-lg">KAVIRA utiliza tecnología de última generación con arquitectura en la nube, garantizando alta disponibilidad, escalabilidad y respaldo automático de datos. La plataforma cumple con los más altos estándares de seguridad, utilizando encriptación de extremo a extremo, autenticación de múltiples factores y controles de acceso basados en roles. Todos los datos médicos están protegidos según estándares internacionales similares a GDPR y HIPAA.</p>
+							<p className="text-base sm:text-lg">ASHIRA utiliza tecnología de última generación con arquitectura en la nube, garantizando alta disponibilidad, escalabilidad y respaldo automático de datos. La plataforma cumple con los más altos estándares de seguridad, utilizando encriptación de extremo a extremo, autenticación de múltiples factores y controles de acceso basados en roles. Todos los datos médicos están protegidos según estándares internacionales similares a GDPR y HIPAA.</p>
 							<p className="text-base sm:text-lg">
-								Con <strong>KAVIRA</strong>, estamos construyendo el futuro de la atención médica en Venezuela, donde la tecnología y la innovación se unen para brindar una experiencia de salud más accesible, eficiente, coordinada y de mayor calidad para profesionales y pacientes por igual.
+								Con <strong>ASHIRA</strong>, estamos construyendo el futuro de la atención médica en Venezuela, donde la tecnología y la innovación se unen para brindar una experiencia de salud más accesible, eficiente, coordinada y de mayor calidad para profesionales y pacientes por igual.
 							</p>
 						</div>
 					</motion.div>

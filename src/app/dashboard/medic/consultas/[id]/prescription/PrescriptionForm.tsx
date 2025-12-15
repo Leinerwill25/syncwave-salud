@@ -1,7 +1,7 @@
 'use client';
 
-import React, { useEffect, useRef, useState } from 'react';
-import { Loader2, Plus, Trash, Paperclip, FileText, Image as ImgIcon } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import { Loader2, Plus, Trash, FileDown, Save, FileCheck } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 
 type Item = {
@@ -45,202 +45,6 @@ type Props = {
 
 function uid(prefix = '') {
 	return prefix + Math.random().toString(36).slice(2, 9);
-}
-
-/* -------------------------
-   Constants / helpers
-   ------------------------- */
-const ACCEPT_TYPES = ['image/png', 'image/jpeg', 'image/webp', 'application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
-const MAX_FILE_BYTES = 10 * 1024 * 1024; // 10MB
-
-function humanFileSize(bytes: number) {
-	if (bytes === 0) return '0 B';
-	const i = Math.floor(Math.log(bytes) / Math.log(1024));
-	const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
-	return `${(bytes / Math.pow(1024, i)).toFixed(i === 0 ? 0 : 1)} ${sizes[i]}`;
-}
-
-/* -------------------------
-   File preview utilities
-   ------------------------- */
-function getExtension(name: string) {
-	const parts = name.split('.');
-	return parts.length > 1 ? parts[parts.length - 1].toLowerCase() : '';
-}
-
-/* -------------------------
-   FileUploader component
-   - Drag & drop
-   - Previews for images
-   - Filename + size for others
-   - Validation: types / size
-   ------------------------- */
-function FileUploader({ files, setFiles }: { files: File[]; setFiles: (f: File[]) => void }) {
-	const inputRef = useRef<HTMLInputElement | null>(null);
-	const [urls, setUrls] = useState<Record<string, string>>({}); // objectURL map
-
-	useEffect(() => {
-		// cleanup object URLs on unmount or files change
-		return () => {
-			Object.values(urls).forEach((u) => URL.revokeObjectURL(u));
-		};
-		// eslint-disable-next-line react-hooks/exhaustive-deps
-	}, []);
-
-	function pushFiles(list: FileList | null) {
-		if (!list) return;
-		const accepted: File[] = [];
-		for (const f of Array.from(list)) {
-			if (!ACCEPT_TYPES.includes(f.type)) {
-				alert(`Tipo de archivo no permitido: ${f.name}`);
-				continue;
-			}
-			if (f.size > MAX_FILE_BYTES) {
-				alert(`Archivo muy grande (máx 10MB): ${f.name}`);
-				continue;
-			}
-			accepted.push(f);
-		}
-
-		if (accepted.length === 0) return;
-
-		// create object URLs for images
-		const newUrls = { ...urls };
-		accepted.forEach((f) => {
-			if (f.type.startsWith('image/')) {
-				newUrls[f.name + f.size] = URL.createObjectURL(f);
-			}
-		});
-
-		setUrls(newUrls);
-		setFiles([...files, ...accepted]);
-	}
-
-	function onDrop(e: React.DragEvent) {
-		e.preventDefault();
-		pushFiles(e.dataTransfer.files);
-	}
-
-	function removeAt(index: number) {
-		const copy = [...files];
-		const f = copy.splice(index, 1)[0];
-		// revoke url if present
-		const key = f.name + f.size;
-		if (urls[key]) {
-			URL.revokeObjectURL(urls[key]);
-			const kcopy = { ...urls };
-			delete kcopy[key];
-			setUrls(kcopy);
-		} else {
-			setUrls({ ...urls });
-		}
-		setFiles(copy);
-	}
-
-	function openPicker() {
-		inputRef.current?.click();
-	}
-
-	return (
-		<div>
-			<div className="mb-4">
-				<label className="block text-sm font-semibold text-slate-900 mb-2">Adjuntar documentos médicos</label>
-				<div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-3">
-					<p className="text-sm font-medium text-slate-900 mb-2">📋 Documento requerido para el paciente:</p>
-					<ul className="space-y-2 text-sm text-slate-800">
-						<li className="flex items-start gap-2">
-							<span className="text-teal-600 font-bold">•</span>
-							<span>
-								<strong>Receta médica:</strong> Documento físico o digital de la receta que has escrito durante la consulta con el paciente.
-							</span>
-						</li>
-					</ul>
-					<p className="text-xs text-slate-700 mt-3 italic">Este documento quedará guardado digitalmente y estará disponible para el paciente en su panel.</p>
-				</div>
-			</div>
-
-			<div onDrop={onDrop} onDragOver={(e) => e.preventDefault()} onClick={openPicker} role="button" tabIndex={0} onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && openPicker()} className="group relative border-2 border-dashed border-teal-300 rounded-xl p-4 bg-gradient-to-b from-white to-teal-50/30 hover:shadow-lg hover:border-teal-400 transition cursor-pointer" aria-label="Área para arrastrar o adjuntar archivos">
-				<input ref={inputRef} type="file" multiple accept={ACCEPT_TYPES.join(',')} className="hidden" onChange={(e) => pushFiles(e.target.files)} />
-
-				<div className="flex items-center justify-between gap-4">
-					<div className="flex items-center gap-4">
-						<div className="flex items-center justify-center w-10 h-10 rounded-lg bg-teal-100 text-teal-700 shadow-sm">
-							<Paperclip size={18} />
-						</div>
-
-						<div>
-							<p className="font-semibold text-slate-900">Arrastra o selecciona los documentos</p>
-							<p className="text-xs text-slate-700">Formato: PNG, JPG, WEBP, PDF, DOC, DOCX • Máx 10 MB por archivo</p>
-						</div>
-					</div>
-
-					<div>
-						<button
-							type="button"
-							onClick={(e) => {
-								e.stopPropagation();
-								inputRef.current?.click();
-							}}
-							className="inline-flex items-center gap-2 px-4 py-2 rounded-md bg-gradient-to-r from-teal-600 to-cyan-600 text-white shadow hover:from-teal-700 hover:to-cyan-700">
-							<Paperclip size={14} /> Adjuntar Documentos
-						</button>
-					</div>
-				</div>
-
-				{files.length > 0 && (
-					<div className="mt-4">
-						<div className="mb-3 flex items-center justify-between">
-							<p className="text-sm font-medium text-slate-900">Documentos adjuntos ({files.length})</p>
-							<p className="text-xs text-slate-600">El paciente podrá descargar estos documentos desde su panel</p>
-						</div>
-						<div className="grid grid-cols-1 gap-2">
-							{files.map((f, i) => {
-								const isImage = f.type.startsWith('image/');
-								const key = f.name + f.size;
-								const previewUrl = urls[key];
-
-								return (
-									<div key={i} className="flex items-center justify-between gap-3 bg-white border border-teal-200 rounded-lg p-3 hover:bg-teal-50/50 transition">
-										<div className="flex items-center gap-3 min-w-0 flex-1">
-											<div className="w-14 h-14 rounded-md flex items-center justify-center bg-teal-50 overflow-hidden border border-teal-100">
-												{isImage && previewUrl ? (
-													// eslint-disable-next-line @next/next/no-img-element
-													<img src={previewUrl} alt={f.name} className="w-full h-full object-cover" />
-												) : (
-													<div className="flex flex-col items-center justify-center text-teal-700">
-														{getExtension(f.name) === 'pdf' ? <FileText size={28} /> : <ImgIcon size={28} />}
-														<span className="sr-only">{f.name}</span>
-													</div>
-												)}
-											</div>
-
-											<div className="min-w-0 flex-1">
-												<div className="text-sm font-semibold text-slate-900 break-all">{f.name}</div>
-												<div className="text-xs text-slate-700 mt-0.5">{humanFileSize(f.size)}</div>
-											</div>
-										</div>
-
-										<div className="flex items-center gap-2">
-											<button
-												type="button"
-												onClick={(ev) => {
-													ev.stopPropagation();
-													removeAt(i);
-												}}
-												className="inline-flex items-center gap-2 px-2 py-1 rounded-md text-rose-600 border border-rose-100 hover:bg-rose-50 transition"
-												aria-label={`Eliminar archivo ${f.name}`}>
-												<Trash size={14} /> Eliminar
-											</button>
-										</div>
-									</div>
-								);
-							})}
-						</div>
-					</div>
-				)}
-			</div>
-		</div>
-	);
 }
 
 /* -------------------------
@@ -371,12 +175,25 @@ export default function PrescriptionForm({ consultationId, patientId, unregister
 	const [items, setItems] = useState<Item[]>([]);
 	const [notes, setNotes] = useState('');
 	const [validUntil, setValidUntil] = useState<string>('');
-	const [files, setFiles] = useState<File[]>([]);
 	const [loading, setLoading] = useState(false);
 	const router = useRouter();
 	const [error, setError] = useState<string | null>(null);
 	const [success, setSuccess] = useState<string | null>(null);
 	const [isEditMode, setIsEditMode] = useState(false);
+	const [prescriptionUrl, setPrescriptionUrl] = useState<string | null>(null);
+	const [generatingPrescription, setGeneratingPrescription] = useState(false);
+	const [savingPrescription, setSavingPrescription] = useState(false);
+	const [fontFamily, setFontFamily] = useState<string>('Arial');
+
+	// Fuentes profesionales disponibles
+	const availableFonts = [
+		{ value: 'Arial', label: 'Arial' },
+		{ value: 'Calibri', label: 'Calibri' },
+		{ value: 'Georgia', label: 'Georgia' },
+		{ value: 'Cambria', label: 'Cambria' },
+		{ value: 'Garamond', label: 'Garamond' },
+		{ value: 'Microsoft JhengHei', label: 'Microsoft JhengHei' },
+	];
 
 	// Cargar datos existentes si hay prescripción
 	useEffect(() => {
@@ -450,8 +267,6 @@ export default function PrescriptionForm({ consultationId, patientId, unregister
 				});
 				form.append('items', JSON.stringify(itemsToSave));
 
-				files.forEach((f) => form.append('files', f, f.name));
-
 				const res = await fetch('/api/prescriptions', {
 					method: 'PATCH',
 					body: form,
@@ -490,8 +305,6 @@ export default function PrescriptionForm({ consultationId, patientId, unregister
 				});
 				form.append('items', JSON.stringify(itemsToSave));
 
-				files.forEach((f) => form.append('files', f, f.name));
-
 				const res = await fetch('/api/prescriptions', {
 					method: 'POST',
 					body: form,
@@ -520,7 +333,7 @@ export default function PrescriptionForm({ consultationId, patientId, unregister
 				<div className="flex items-start justify-between gap-4">
 					<div>
 						<h2 className="text-xl md:text-2xl font-semibold text-slate-900">{isEditMode ? 'Editar Prescripción Médica' : 'Crear Prescripción Médica'}</h2>
-						<p className="mt-1 text-sm text-slate-800">{isEditMode ? 'Actualiza los medicamentos prescritos y adjunta documentos adicionales si es necesario.' : 'Registra los medicamentos prescritos y adjunta la receta médica para que el paciente tenga constancia digital de su consulta.'}</p>
+						<p className="mt-1 text-sm text-slate-800">{isEditMode ? 'Actualiza los medicamentos prescritos.' : 'Registra los medicamentos prescritos para que el paciente tenga constancia digital de su consulta.'}</p>
 						{isEditMode && existingPrescription && (
 							<div className="mt-2 px-3 py-1.5 bg-blue-100 border border-blue-200 rounded-lg">
 								<p className="text-xs text-blue-800">
@@ -560,10 +373,163 @@ export default function PrescriptionForm({ consultationId, patientId, unregister
 			{/* Items editor */}
 			<PrescriptionItemsEditor items={items} setItems={setItems} />
 
-			{/* File uploader */}
-			<div className="rounded-2xl bg-white border border-blue-100 p-5 shadow-sm">
-				<FileUploader files={files} setFiles={setFiles} />
-			</div>
+			{/* Prescription Generation Section - Always visible when there are items */}
+			{items.length > 0 && (
+				<div className="rounded-2xl bg-gradient-to-br from-indigo-50 to-purple-50 border border-indigo-200 p-6 shadow-lg">
+					<div className="flex items-center gap-3 mb-4">
+						<FileCheck className="w-6 h-6 text-indigo-600" />
+						<h3 className="text-lg font-semibold text-slate-900">Generar Receta desde Plantilla</h3>
+					</div>
+					<p className="text-sm text-slate-700 mb-4">
+						Genera un archivo Word de la receta usando tu plantilla personalizada. El archivo contiene ambas hojas: una con el <strong>récipe completo</strong> de todos los medicamentos (variable {'{{recipe}}'}), incluyendo las <strong>instrucciones específicas</strong> de cada medicamento (variable {'{{instrucciones}}'}), y otra hoja con las <strong>indicaciones generales</strong> de la prescripción (variable {'{{indicaciones}}'}). Puedes generar la receta mientras escribes, sin necesidad de guardar primero.
+					</p>
+
+					{/* Font selector */}
+					<div className="mb-4">
+						<label className="block text-sm font-medium text-slate-700 mb-2">Fuente de la Receta</label>
+						<select value={fontFamily} onChange={(e) => setFontFamily(e.target.value)} className="w-full px-4 py-2 rounded-lg border border-slate-300 bg-white text-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent" style={{ fontFamily: fontFamily }}>
+							{availableFonts.map((font) => (
+								<option key={font.value} value={font.value} style={{ fontFamily: font.value }}>
+									{font.label}
+								</option>
+							))}
+						</select>
+						<p className="mt-1 text-xs text-slate-500">La fuente seleccionada se aplicará al generar la receta.</p>
+					</div>
+
+					{/* Generate and Download buttons side by side */}
+					<div className="flex flex-col sm:flex-row gap-3 mb-4">
+						<button
+							type="button"
+							onClick={async () => {
+								setGeneratingPrescription(true);
+								setError(null);
+								setSuccess(null);
+
+								try {
+									// Preparar items para enviar (incluyendo frequency generada si aplica)
+									const itemsToSend = items.map((item) => {
+										const frequencyText = item.frequency || generateFrequencyText(item.frequencyHours, item.frequencyDays);
+										return {
+											name: item.name,
+											dosage: item.dosage,
+											form: '', // Campo no usado actualmente en el formulario
+											frequency: frequencyText,
+											duration: item.duration,
+											quantity: item.quantity,
+											instructions: item.instructions,
+										};
+									});
+
+									const res = await fetch(`/api/consultations/${consultationId}/generate-prescription`, {
+										method: 'POST',
+										credentials: 'include',
+										headers: {
+											'Content-Type': 'application/json',
+										},
+										body: JSON.stringify({
+											items: itemsToSend,
+											notes: notes,
+											valid_until: validUntil || null,
+											issued_at: existingPrescription?.issued_at || null,
+											prescription_id: existingPrescription?.id || null,
+											font_family: fontFamily,
+										}),
+									});
+
+									const data = await res.json();
+
+									if (!res.ok) {
+										throw new Error(data.error || 'Error al generar receta');
+									}
+
+									setPrescriptionUrl(data.prescription_url);
+									setSuccess('Receta generada exitosamente. Puedes descargarla o guardarla en la base de datos.');
+								} catch (err: any) {
+									setError(err.message || 'Error al generar receta');
+								} finally {
+									setGeneratingPrescription(false);
+								}
+							}}
+							disabled={generatingPrescription || items.length === 0}
+							className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-3 rounded-lg bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-semibold shadow hover:scale-[1.01] transition disabled:opacity-50 disabled:cursor-not-allowed">
+							{generatingPrescription ? (
+								<>
+									<Loader2 className="w-5 h-5 animate-spin" />
+									Generando...
+								</>
+							) : (
+								<>
+									<FileCheck className="w-5 h-5" />
+									Generar Prescripción
+								</>
+							)}
+						</button>
+
+						{prescriptionUrl && (
+							<button
+								type="button"
+								onClick={() => {
+									window.open(prescriptionUrl, '_blank');
+								}}
+								className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-3 rounded-lg bg-gradient-to-r from-teal-600 to-cyan-600 text-white font-semibold shadow hover:scale-[1.01] transition">
+								<FileDown className="w-5 h-5" />
+								Descargar Receta (Word)
+							</button>
+						)}
+					</div>
+
+					{/* Save to database button - full width below */}
+					{prescriptionUrl && (
+						<button
+							type="button"
+							onClick={async () => {
+								setSavingPrescription(true);
+								setError(null);
+								setSuccess(null);
+
+								try {
+									const res = await fetch(`/api/consultations/${consultationId}/save-prescription`, {
+										method: 'POST',
+										credentials: 'include',
+										headers: {
+											'Content-Type': 'application/json',
+										},
+										body: JSON.stringify({
+											prescriptionUrl: prescriptionUrl,
+										}),
+									});
+
+									const data = await res.json();
+
+									if (!res.ok) {
+										throw new Error(data.error || 'Error al guardar receta en la base de datos');
+									}
+
+									setSuccess('Receta guardada exitosamente en la base de datos. El paciente podrá visualizarla desde su panel.');
+								} catch (err: any) {
+									setError(err.message || 'Error al guardar receta');
+								} finally {
+									setSavingPrescription(false);
+								}
+							}}
+							disabled={savingPrescription}
+							className="w-full inline-flex items-center justify-center gap-2 px-4 py-3 rounded-lg bg-gradient-to-r from-emerald-600 to-teal-600 text-white font-semibold shadow hover:scale-[1.01] transition disabled:opacity-50 disabled:cursor-not-allowed">
+							{savingPrescription ? (
+								<>
+									<Loader2 className="w-5 h-5 animate-spin" />
+									Guardando...
+								</>
+							) : (
+								<>
+									<Save className="w-5 h-5" />
+									Guardar Receta en Base de Datos
+								</>
+							)}
+						</button>
+					)}
+				</div>
+			)}
 
 			{/* Messages */}
 			{error && <div className="rounded-md bg-rose-50 text-rose-700 p-3 text-sm">{error}</div>}
@@ -580,7 +546,7 @@ export default function PrescriptionForm({ consultationId, patientId, unregister
 				</button>
 
 				<div className="ml-auto text-xs text-slate-800">
-					<div className="hidden sm:block">Los documentos y la receta quedarán guardados digitalmente para el paciente</div>
+					<div className="hidden sm:block">La receta quedará guardada digitalmente para el paciente</div>
 				</div>
 			</div>
 		</form>

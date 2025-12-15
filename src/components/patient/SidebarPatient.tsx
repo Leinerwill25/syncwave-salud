@@ -220,7 +220,7 @@ export default function SidebarPatient() {
 					<div className="flex items-center gap-2 sm:gap-3">
 						<div className="w-10 h-10 sm:w-12 sm:h-12 rounded-lg sm:rounded-xl bg-gradient-to-br from-indigo-600 to-purple-600 flex items-center justify-center text-white font-bold text-base sm:text-lg shadow-md ring-1 ring-white/20 flex-shrink-0">PT</div>
 						<div className="min-w-0">
-							<div className="text-xs sm:text-sm font-semibold text-slate-900 truncate">KAVIRA</div>
+							<div className="text-xs sm:text-sm font-semibold text-slate-900 truncate">ASHIRA</div>
 							<div className="text-[10px] sm:text-[12px] text-slate-500 truncate">Panel del Paciente</div>
 						</div>
 					</div>

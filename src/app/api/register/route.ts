@@ -542,7 +542,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 					userId: txResult.userRecord.id,
 					organizationId: txResult.organizationId,
 					type: 'WELCOME',
-					title: '¡Bienvenido a KAVIRA!',
+					title: '¡Bienvenido a ASHIRA!',
 					message: `Tu cuenta ha sido creada exitosamente. Bienvenido, ${account.fullName || account.email}!`,
 					payload: {
 						userName: account.fullName || account.email,
