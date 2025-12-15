@@ -111,10 +111,9 @@ export default function RoleUserWhatsappConfigPage() {
 					<MessageCircle className="w-6 h-6" />
 				</div>
 				<div>
-					<h1 className="text-2xl font-bold text-slate-900 tracking-tight">Mensaje de WhatsApp</h1>
+					<h1 className="text-2xl font-bold text-slate-900 tracking-tight">Configuración de WhatsApp</h1>
 					<p className="text-sm text-slate-600 mt-1">
-						Define el mensaje base que se usará al enviar recordatorios y confirmaciones de citas por WhatsApp
-						desde el módulo de Citas.
+						Registra tu número personal de WhatsApp y personaliza el mensaje base que se usará al enviar recordatorios y confirmaciones de citas desde el módulo de Citas.
 					</p>
 				</div>
 			</div>
@@ -142,23 +141,22 @@ export default function RoleUserWhatsappConfigPage() {
 				<div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
 					{/* Formulario */}
 					<div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 space-y-4">
-						<div>
-							<label className="block text-sm font-medium text-slate-700 mb-2">
-								Número de WhatsApp del consultorio
-							</label>
-							<input
-								type="text"
-								value={whatsappNumber}
-								onChange={(e) => setWhatsappNumber(e.target.value)}
-								placeholder="Ej: +584121234567"
-								disabled={!canEdit}
-								className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent disabled:bg-slate-50 disabled:text-slate-400"
-							/>
-							<p className="mt-1 text-xs text-slate-500">
-								Este número es informativo para el equipo; los mensajes se envían desde el WhatsApp del
-								asistente o recepción.
-							</p>
-						</div>
+					<div>
+						<label className="block text-sm font-medium text-slate-700 mb-2">
+							Tu número de WhatsApp personal
+						</label>
+						<input
+							type="text"
+							value={whatsappNumber}
+							onChange={(e) => setWhatsappNumber(e.target.value)}
+							placeholder="Ej: +584121234567"
+							disabled={!canEdit}
+							className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent disabled:bg-slate-50 disabled:text-slate-400"
+						/>
+						<p className="mt-1 text-xs text-slate-500">
+							<strong>Importante:</strong> Registra aquí el número de WhatsApp personal que usas para agendar citas y comunicarte con los pacientes. Este es el número desde el cual envías los recordatorios y confirmaciones de citas. Usa el formato internacional con código de país (ejemplo: +58 para Venezuela).
+						</p>
+					</div>
 
 						<div>
 							<label className="block text-sm font-medium text-slate-700 mb-2">

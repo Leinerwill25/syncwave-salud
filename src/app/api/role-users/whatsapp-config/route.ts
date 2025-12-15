@@ -11,7 +11,18 @@ export async function GET(req: NextRequest) {
 
 		const supabase = await createSupabaseServerClient();
 
-		// Obtener el primer médico de la organización
+		// Obtener el número de WhatsApp del asistente desde su propio registro
+		const { data: roleUser, error: roleUserError } = await supabase
+			.from('consultorio_role_users')
+			.select('whatsapp_number')
+			.eq('id', session.roleUserId)
+			.maybeSingle();
+
+		if (roleUserError) {
+			console.error('[Role User WhatsApp Config API] Error obteniendo role user:', roleUserError);
+		}
+
+		// Obtener el primer médico de la organización para la plantilla y nombre del doctor
 		const { data: doctor, error: doctorError } = await supabase
 			.from('User')
 			.select('id, name')
@@ -20,25 +31,16 @@ export async function GET(req: NextRequest) {
 			.limit(1)
 			.maybeSingle();
 
-		if (doctorError || !doctor) {
-			return NextResponse.json(
-				{
-					success: true,
-					config: null,
-				},
-				{ status: 200 },
-			);
-		}
+		// Obtener la plantilla de mensaje desde medic_profile (compartida para la organización)
+		let whatsappMessageTemplate = null;
+		if (doctor) {
+			const { data: profile } = await supabase
+				.from('medic_profile')
+				.select('whatsapp_message_template')
+				.eq('doctor_id', doctor.id)
+				.maybeSingle();
 
-		const { data: profile, error: profileError } = await supabase
-			.from('medic_profile')
-			.select('whatsapp_number, whatsapp_message_template')
-			.eq('doctor_id', doctor.id)
-			.maybeSingle();
-
-		if (profileError) {
-			console.error('[Role User WhatsApp Config API] Error obteniendo perfil:', profileError);
-			return NextResponse.json({ error: 'Error al obtener configuración de WhatsApp' }, { status: 500 });
+			whatsappMessageTemplate = profile?.whatsapp_message_template || null;
 		}
 
 		const defaultTemplate =
@@ -48,9 +50,9 @@ export async function GET(req: NextRequest) {
 			{
 				success: true,
 				config: {
-					whatsappNumber: profile?.whatsapp_number || null,
-					whatsappMessageTemplate: profile?.whatsapp_message_template || defaultTemplate,
-					doctorName: (doctor as any).name || null,
+					whatsappNumber: roleUser?.whatsapp_number || null, // Número personal del asistente
+					whatsappMessageTemplate: whatsappMessageTemplate || defaultTemplate,
+					doctorName: (doctor as any)?.name || null,
 				},
 			},
 			{ status: 200 },
@@ -68,10 +70,10 @@ export async function PATCH(req: NextRequest) {
 			return NextResponse.json({ error: 'No autenticado' }, { status: 401 });
 		}
 
-		// Solo Asistente De Citas puede editar la plantilla
+		// Solo Asistente De Citas puede editar la configuración
 		if (!roleNameEquals(session.roleName, 'Asistente De Citas')) {
 			return NextResponse.json(
-				{ error: 'Solo el rol "Asistente De Citas" puede editar la plantilla de WhatsApp' },
+				{ error: 'Solo el rol "Asistente De Citas" puede editar la configuración de WhatsApp' },
 				{ status: 403 },
 			);
 		}
@@ -81,66 +83,77 @@ export async function PATCH(req: NextRequest) {
 
 		const supabase = await createSupabaseServerClient();
 
-		// Obtener el primer médico de la organización
-		const { data: doctor, error: doctorError } = await supabase
-			.from('User')
-			.select('id')
-			.eq('organizationId', session.organizationId)
-			.eq('role', 'MEDICO')
-			.limit(1)
-			.maybeSingle();
-
-		if (doctorError || !doctor) {
-			return NextResponse.json(
-				{ error: 'No se encontró un médico asociado a esta organización' },
-				{ status: 400 },
-			);
-		}
-
-		// Verificar si ya existe medic_profile
-		const { data: existingProfile } = await supabase
-			.from('medic_profile')
-			.select('id')
-			.eq('doctor_id', doctor.id)
-			.maybeSingle();
-
-		const payload: Record<string, unknown> = {};
-
+		// Actualizar el número de WhatsApp del asistente en su propio registro
 		if (whatsappNumber !== undefined) {
 			const value = String(whatsappNumber).trim();
-			payload.whatsapp_number = value.length > 0 ? value : null;
-		}
+			const { error: updateRoleUserError } = await supabase
+				.from('consultorio_role_users')
+				.update({ whatsapp_number: value.length > 0 ? value : null })
+				.eq('id', session.roleUserId);
 
-		if (whatsappMessageTemplate !== undefined) {
-			const value = String(whatsappMessageTemplate);
-			payload.whatsapp_message_template = value.trim().length > 0 ? value : null;
-		}
-
-		if (!existingProfile) {
-			const { error: insertError } = await supabase.from('medic_profile').insert({
-				doctor_id: doctor.id,
-				...payload,
-			});
-
-			if (insertError) {
-				console.error('[Role User WhatsApp Config API] Error creando perfil:', insertError);
+			if (updateRoleUserError) {
+				console.error('[Role User WhatsApp Config API] Error actualizando role user:', updateRoleUserError);
 				return NextResponse.json(
-					{ error: 'Error al crear configuración de WhatsApp' },
+					{ error: 'Error al actualizar número de WhatsApp del asistente' },
 					{ status: 500 },
 				);
 			}
-		} else {
-			const { error: updateError } = await supabase
-				.from('medic_profile')
-				.update(payload)
-				.eq('doctor_id', doctor.id);
+		}
 
-			if (updateError) {
-				console.error('[Role User WhatsApp Config API] Error actualizando perfil:', updateError);
+		// Actualizar la plantilla de mensaje en medic_profile (compartida para la organización)
+		if (whatsappMessageTemplate !== undefined) {
+			// Obtener el primer médico de la organización
+			const { data: doctor, error: doctorError } = await supabase
+				.from('User')
+				.select('id')
+				.eq('organizationId', session.organizationId)
+				.eq('role', 'MEDICO')
+				.limit(1)
+				.maybeSingle();
+
+			if (doctorError || !doctor) {
 				return NextResponse.json(
-					{ error: 'Error al actualizar configuración de WhatsApp' },
-					{ status: 500 },
+					{ error: 'No se encontró un médico asociado a esta organización' },
+					{ status: 400 },
 				);
+			}
+
+			// Verificar si ya existe medic_profile
+			const { data: existingProfile } = await supabase
+				.from('medic_profile')
+				.select('id')
+				.eq('doctor_id', doctor.id)
+				.maybeSingle();
+
+			const value = String(whatsappMessageTemplate);
+			const templateValue = value.trim().length > 0 ? value : null;
+
+			if (!existingProfile) {
+				const { error: insertError } = await supabase.from('medic_profile').insert({
+					doctor_id: doctor.id,
+					whatsapp_message_template: templateValue,
+				});
+
+				if (insertError) {
+					console.error('[Role User WhatsApp Config API] Error creando perfil:', insertError);
+					return NextResponse.json(
+						{ error: 'Error al crear configuración de plantilla de WhatsApp' },
+						{ status: 500 },
+					);
+				}
+			} else {
+				const { error: updateError } = await supabase
+					.from('medic_profile')
+					.update({ whatsapp_message_template: templateValue })
+					.eq('doctor_id', doctor.id);
+
+				if (updateError) {
+					console.error('[Role User WhatsApp Config API] Error actualizando perfil:', updateError);
+					return NextResponse.json(
+						{ error: 'Error al actualizar configuración de plantilla de WhatsApp' },
+						{ status: 500 },
+					);
+				}
 			}
 		}
 
