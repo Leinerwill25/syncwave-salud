@@ -90,6 +90,22 @@ export async function GET(req: NextRequest) {
 			return NextResponse.json([], { status: 200 });
 		}
 
+		// Obtener el médico principal de la organización (rol MEDICO) para usar su nombre en recordatorios
+		let orgDoctorName: string | null = null;
+		const { data: orgDoctor, error: orgDoctorError } = await supabase
+			.from('User')
+			.select('id, name')
+			.eq('organizationId', session.organizationId)
+			.eq('role', 'MEDICO')
+			.limit(1)
+			.maybeSingle();
+
+		if (orgDoctorError) {
+			console.warn('[Role User Appointments API] Error obteniendo médico de la organización:', orgDoctorError);
+		} else if (orgDoctor && (orgDoctor as any).name) {
+			orgDoctorName = String((orgDoctor as any).name);
+		}
+
 		// Normalizar las citas para el formato esperado por el frontend
 		const normalizedAppointments = (Array.isArray(appointments) ? appointments : []).map((apt: any) => {
 			const patient = apt.patient || apt.unregistered_patient;
@@ -139,6 +155,7 @@ export async function GET(req: NextRequest) {
 					: null,
 				selected_service: selectedService,
 				referral_source: apt.referral_source || null,
+				doctorName: orgDoctorName,
 			};
 		});
 

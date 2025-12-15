@@ -380,6 +380,8 @@ export async function GET(request: Request) {
 				notifications: notifications,
 				services: services,
 				serviceCombos: serviceCombos,
+				whatsappNumber: (profile as any)?.whatsapp_number || null,
+				whatsappMessageTemplate: (profile as any)?.whatsapp_message_template || null,
 				privateSpecialties: Array.isArray(profile?.private_specialty) 
 					? profile.private_specialty 
 					: profile?.private_specialty 
@@ -542,6 +544,20 @@ export async function PATCH(request: Request) {
 
 		if (body.notifications !== undefined) {
 			profileData.notifications = body.notifications;
+		}
+
+		if (body.whatsappNumber !== undefined) {
+			profileData.whatsapp_number =
+				body.whatsappNumber && String(body.whatsappNumber).trim().length > 0
+					? String(body.whatsappNumber).trim()
+					: null;
+		}
+
+		if (body.whatsappMessageTemplate !== undefined) {
+			profileData.whatsapp_message_template =
+				body.whatsappMessageTemplate && String(body.whatsappMessageTemplate).trim().length > 0
+					? String(body.whatsappMessageTemplate)
+					: null;
 		}
 
 		if (body.paymentMethods !== undefined) {

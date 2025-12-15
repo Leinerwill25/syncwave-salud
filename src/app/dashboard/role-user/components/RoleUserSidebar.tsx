@@ -135,6 +135,12 @@ const ALL_MODULES: LinkItem[] = [
 		icon: Stethoscope,
 	},
 	{
+		href: '/dashboard/role-user/whatsapp-config',
+		label: 'Mensaje de WhatsApp',
+		icon: MessageCircle,
+		showOnlyForRole: 'Asistente De Citas',
+	},
+	{
 		href: '/dashboard/role-user/metodos-pago',
 		label: 'Métodos de Pago',
 		icon: CreditCard,

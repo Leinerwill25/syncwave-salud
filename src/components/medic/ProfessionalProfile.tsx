@@ -2,14 +2,7 @@
 
 import { useState, useRef } from 'react';
 import { Upload, Camera, FileText, Award, Building2, Stethoscope, X, Check, User, CreditCard, Smartphone } from 'lucide-react';
-import type {
-	MedicConfig,
-	MedicCredentials,
-	MedicService,
-	MedicServiceCombo,
-	CreditHistory,
-	PaymentMethod,
-} from '@/types/medic-config';
+import type { MedicConfig, MedicCredentials, MedicService, MedicServiceCombo, CreditHistory, PaymentMethod } from '@/types/medic-config';
 import { PRIVATE_SPECIALTIES } from '@/lib/constants/specialties';
 
 export default function ProfessionalProfile({ config, onUpdate }: { config: MedicConfig; onUpdate: () => void }) {
@@ -39,6 +32,8 @@ export default function ProfessionalProfile({ config, onUpdate }: { config: Medi
 		},
 		paymentMethods: config.config.paymentMethods || [],
 		serviceCombos: (config.config as any).serviceCombos || [],
+		whatsappNumber: config.config.whatsappNumber || '',
+		whatsappMessageTemplate: config.config.whatsappMessageTemplate || 'Hola {NOMBRE_PACIENTE}, le recordamos su cita el {FECHA} a las {HORA} con el Dr/a {NOMBRE_DOCTORA} en {CLÍNICA}. Por los servicios de:\n\n{SERVICIOS}\n\npor favor confirmar con un "Asistiré" o "No Asistiré"',
 	});
 
 	// Formulario para consultorio privado
@@ -63,6 +58,8 @@ export default function ProfessionalProfile({ config, onUpdate }: { config: Medi
 		},
 		paymentMethods: config.config.paymentMethods || [],
 		serviceCombos: (config.config as any).serviceCombos || [],
+		whatsappNumber: config.config.whatsappNumber || '',
+		whatsappMessageTemplate: config.config.whatsappMessageTemplate || 'Hola {NOMBRE_PACIENTE}, le recordamos su cita el {FECHA} a las {HORA} con el Dr/a {NOMBRE_DOCTORA} en {CLÍNICA}. Por los servicios de:\n\n{SERVICIOS}\n\npor favor confirmar con un "Asistiré" o "No Asistiré"',
 	});
 
 	const photoInputRef = useRef<HTMLInputElement>(null);
@@ -281,25 +278,16 @@ export default function ProfessionalProfile({ config, onUpdate }: { config: Medi
 		}
 	};
 
-	const updateServiceCombo = (
-		isAffiliatedForm: boolean,
-		index: number,
-		field: keyof MedicServiceCombo | 'serviceIds',
-		value: string | string[],
-	) => {
+	const updateServiceCombo = (isAffiliatedForm: boolean, index: number, field: keyof MedicServiceCombo | 'serviceIds', value: string | string[]) => {
 		if (isAffiliatedForm) {
 			setAffiliatedForm((prev: any) => ({
 				...prev,
-				serviceCombos: (prev.serviceCombos || []).map((c: MedicServiceCombo, i: number) =>
-					i === index ? { ...c, [field]: value } : c,
-				),
+				serviceCombos: (prev.serviceCombos || []).map((c: MedicServiceCombo, i: number) => (i === index ? { ...c, [field]: value } : c)),
 			}));
 		} else {
 			setPrivateForm((prev: any) => ({
 				...prev,
-				serviceCombos: (prev.serviceCombos || []).map((c: MedicServiceCombo, i: number) =>
-					i === index ? { ...c, [field]: value } : c,
-				),
+				serviceCombos: (prev.serviceCombos || []).map((c: MedicServiceCombo, i: number) => (i === index ? { ...c, [field]: value } : c)),
 			}));
 		}
 	};
@@ -457,63 +445,117 @@ export default function ProfessionalProfile({ config, onUpdate }: { config: Medi
 								<div key={idx} className="relative p-4 bg-white rounded-lg border border-gray-200 hover:border-gray-300 transition-colors overflow-hidden">
 									<div className="flex flex-col md:flex-row gap-4 items-start md:items-center">
 										<div className="flex-1 min-w-0 w-full md:w-auto">
-											<input 
-												type="text" 
-												placeholder="Nombre del servicio" 
-												value={service.name || ''} 
-												onChange={(e) => updateServiceAffiliated(idx, 'name', e.target.value)} 
-												className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent" 
-											/>
+											<input type="text" placeholder="Nombre del servicio" value={service.name || ''} onChange={(e) => updateServiceAffiliated(idx, 'name', e.target.value)} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent" />
 										</div>
 										<div className="flex-1 min-w-0 w-full md:w-auto">
-											<input 
-												type="text" 
-												placeholder="Descripción" 
-												value={service.description || ''} 
-												onChange={(e) => updateServiceAffiliated(idx, 'description', e.target.value)} 
-												className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent" 
-											/>
+											<input type="text" placeholder="Descripción" value={service.description || ''} onChange={(e) => updateServiceAffiliated(idx, 'description', e.target.value)} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent" />
 										</div>
 										<div className="flex items-center gap-2 flex-shrink-0 w-full md:w-auto">
-											<input 
-												type="text" 
-												placeholder="Precio" 
-												value={service.price || ''} 
-												onChange={(e) => updateServiceAffiliated(idx, 'price', e.target.value)} 
-												className="flex-1 md:w-24 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent" 
-											/>
-											<select 
-												value={service.currency || 'USD'} 
-												onChange={(e) => updateServiceAffiliated(idx, 'currency', e.target.value)} 
-												className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent bg-white flex-shrink-0"
-												onClick={(e) => e.stopPropagation()}
-											>
+											<input type="text" placeholder="Precio" value={service.price || ''} onChange={(e) => updateServiceAffiliated(idx, 'price', e.target.value)} className="flex-1 md:w-24 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent" />
+											<select value={service.currency || 'USD'} onChange={(e) => updateServiceAffiliated(idx, 'currency', e.target.value)} className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent bg-white flex-shrink-0" onClick={(e) => e.stopPropagation()}>
 												<option value="USD">USD</option>
 												<option value="VES">VES</option>
 												<option value="EUR">EUR</option>
 											</select>
 										</div>
 										<div className="flex-shrink-0">
-											<button 
-												type="button" 
-												onClick={(e) => removeServiceAffiliated(idx, e)} 
-												onMouseDown={(e) => e.preventDefault()}
-												className="flex items-center justify-center w-8 h-8 text-red-600 hover:text-red-700 hover:bg-red-50 rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-1"
-												aria-label={`Eliminar servicio ${idx + 1}`}
-											>
+											<button type="button" onClick={(e) => removeServiceAffiliated(idx, e)} onMouseDown={(e) => e.preventDefault()} className="flex items-center justify-center w-8 h-8 text-red-600 hover:text-red-700 hover:bg-red-50 rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-1" aria-label={`Eliminar servicio ${idx + 1}`}>
 												<X className="w-5 h-5" />
 											</button>
 										</div>
 									</div>
 								</div>
 							))}
-							<button 
-								type="button" 
-								onClick={addServiceAffiliated} 
-								className="w-full px-4 py-2.5 border-2 border-dashed border-gray-300 rounded-lg text-gray-600 hover:border-indigo-400 hover:text-indigo-600 hover:bg-indigo-50 transition-all duration-200 font-medium"
-							>
+							<button type="button" onClick={addServiceAffiliated} className="w-full px-4 py-2.5 border-2 border-dashed border-gray-300 rounded-lg text-gray-600 hover:border-indigo-400 hover:text-indigo-600 hover:bg-indigo-50 transition-all duration-200 font-medium">
 								+ Agregar Servicio
 							</button>
+						</div>
+					</div>
+
+					{/* Configuración de WhatsApp para recordatorios */}
+					<div className="bg-gray-50 rounded-xl p-6 mt-6">
+						<h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+							<Smartphone className="w-5 h-5 text-emerald-600" />
+							Recordatorios por WhatsApp
+						</h3>
+						<p className="text-sm text-gray-600 mb-4">Configura el número oficial de WhatsApp y el mensaje base que usará tu equipo de recepción / asistente para enviar recordatorios y confirmaciones de citas. No se usa la API oficial de WhatsApp: se abrirá WhatsApp Web o la app en el dispositivo con el mensaje prellenado.</p>
+
+						<div className="space-y-4">
+							<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+								<div>
+									<label className="block text-sm font-medium text-gray-700 mb-2">Número de WhatsApp del consultorio</label>
+									<input
+										type="text"
+										value={config.isAffiliated ? affiliatedForm.whatsappNumber : privateForm.whatsappNumber}
+										onChange={(e) => {
+											const value = e.target.value;
+											if (config.isAffiliated) {
+												setAffiliatedForm((prev) => ({
+													...prev,
+													whatsappNumber: value,
+												}));
+											} else {
+												setPrivateForm((prev) => ({
+													...prev,
+													whatsappNumber: value,
+												}));
+											}
+										}}
+										placeholder="Ej: +584121234567"
+										className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+									/>
+									<p className="mt-1 text-xs text-gray-500">Use el formato internacional con código de país (ejemplo: +58 para Venezuela). Este número se mostrará como referencia al equipo, pero el mensaje se envía desde el WhatsApp del asistente/recepción.</p>
+								</div>
+							</div>
+
+							<div>
+								<label className="block text-sm font-medium text-gray-700 mb-2">Plantilla de mensaje para recordatorios</label>
+								<textarea
+									value={config.isAffiliated ? affiliatedForm.whatsappMessageTemplate : privateForm.whatsappMessageTemplate}
+									onChange={(e) => {
+										const value = e.target.value;
+										if (config.isAffiliated) {
+											setAffiliatedForm((prev) => ({
+												...prev,
+												whatsappMessageTemplate: value,
+											}));
+										} else {
+											setPrivateForm((prev) => ({
+												...prev,
+												whatsappMessageTemplate: value,
+											}));
+										}
+									}}
+									rows={6}
+									className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent text-sm resize-vertical"
+									placeholder={`Hola {NOMBRE_PACIENTE}, le recordamos su cita el {FECHA} a las {HORA} con la Dra. {NOMBRE_DOCTORA} en {CLÍNICA}. Por los servicios de:
+
+{SERVICIOS}
+
+por favor confirmar con un "Asistiré" o "No Asistiré"`}
+								/>
+								<p className="mt-2 text-xs text-gray-500">Puede usar estas variables que se reemplazarán automáticamente:</p>
+								<ul className="mt-1 text-xs text-gray-500 list-disc list-inside space-y-0.5">
+									<li>
+										<span className="font-mono text-emerald-700">{'{NOMBRE_PACIENTE}'}</span> — nombre completo del paciente
+									</li>
+									<li>
+										<span className="font-mono text-emerald-700">{'{FECHA}'}</span> — fecha de la cita (formato dd/mm/aaaa)
+									</li>
+									<li>
+										<span className="font-mono text-emerald-700">{'{HORA}'}</span> — hora de la cita
+									</li>
+									<li>
+										<span className="font-mono text-emerald-700">{'{NOMBRE_DOCTORA}'}</span> — nombre del médico/a que atiende
+									</li>
+									<li>
+										<span className="font-mono text-emerald-700">{'{CLÍNICA}'}</span> — nombre del consultorio o clínica
+									</li>
+									<li>
+										<span className="font-mono text-emerald-700">{'{SERVICIOS}'}</span> — lista de servicios programados para la cita
+									</li>
+								</ul>
+							</div>
 						</div>
 					</div>
 
@@ -523,86 +565,41 @@ export default function ProfessionalProfile({ config, onUpdate }: { config: Medi
 							<Stethoscope className="w-5 h-5 text-indigo-600" />
 							Combos de Servicios (paquetes promocionales)
 						</h3>
-						<p className="text-xs text-gray-500 mb-3">
-							Crea paquetes que agrupen varios servicios individuales con un precio especial. Estos combos
-							se mostrarán también en el módulo de servicios del asistente/recepción.
-						</p>
+						<p className="text-xs text-gray-500 mb-3">Crea paquetes que agrupen varios servicios individuales con un precio especial. Estos combos se mostrarán también en el módulo de servicios del asistente/recepción.</p>
 						<div className="space-y-4">
 							{(affiliatedForm as any).serviceCombos?.map((combo: MedicServiceCombo, idx: number) => (
-								<div
-									key={combo.id || idx}
-									className="relative p-4 bg-white rounded-lg border border-gray-200 hover:border-gray-300 transition-colors"
-								>
+								<div key={combo.id || idx} className="relative p-4 bg-white rounded-lg border border-gray-200 hover:border-gray-300 transition-colors">
 									<div className="flex flex-col md:flex-row gap-4 items-start md:items-center">
 										<div className="flex-1 min-w-0 w-full md:w-auto space-y-2">
-											<input
-												type="text"
-												placeholder="Nombre del combo (ej: Control Prenatal Básico)"
-												value={combo.name || ''}
-												onChange={(e) =>
-													updateServiceCombo(true, idx, 'name', e.target.value)
-												}
-												className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-											/>
-											<textarea
-												placeholder="Descripción breve del combo"
-												value={combo.description || ''}
-												onChange={(e) =>
-													updateServiceCombo(true, idx, 'description', e.target.value)
-												}
-												rows={2}
-												className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent resize-none text-sm"
-											/>
+											<input type="text" placeholder="Nombre del combo (ej: Control Prenatal Básico)" value={combo.name || ''} onChange={(e) => updateServiceCombo(true, idx, 'name', e.target.value)} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent" />
+											<textarea placeholder="Descripción breve del combo" value={combo.description || ''} onChange={(e) => updateServiceCombo(true, idx, 'description', e.target.value)} rows={2} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent resize-none text-sm" />
 										</div>
 										<div className="flex flex-col gap-2 flex-shrink-0 w-full md:w-56">
 											<label className="text-xs font-medium text-gray-600">Precio promo</label>
 											<div className="flex items-center gap-2">
-												<input
-													type="text"
-													placeholder="Precio"
-													value={combo.price || ''}
-													onChange={(e) =>
-														updateServiceCombo(true, idx, 'price', e.target.value)
-													}
-													className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-												/>
-												<select
-													value={combo.currency || 'USD'}
-													onChange={(e) =>
-														updateServiceCombo(true, idx, 'currency', e.target.value)
-													}
-													className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent bg-white flex-shrink-0"
-												>
+												<input type="text" placeholder="Precio" value={combo.price || ''} onChange={(e) => updateServiceCombo(true, idx, 'price', e.target.value)} className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent" />
+												<select value={combo.currency || 'USD'} onChange={(e) => updateServiceCombo(true, idx, 'currency', e.target.value)} className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent bg-white flex-shrink-0">
 													<option value="USD">USD</option>
 													<option value="VES">VES</option>
 													<option value="EUR">EUR</option>
 												</select>
 											</div>
-											<label className="text-xs font-medium text-gray-600 mt-2">
-												Servicios incluidos
-											</label>
+											<label className="text-xs font-medium text-gray-600 mt-2">Servicios incluidos</label>
 											<div className="border border-dashed border-gray-300 rounded-lg p-2 max-h-40 overflow-y-auto text-xs space-y-1">
 												{affiliatedForm.services.length === 0 ? (
-													<p className="text-gray-400">
-														Primero debes registrar servicios individuales.
-													</p>
+													<p className="text-gray-400">Primero debes registrar servicios individuales.</p>
 												) : (
 													affiliatedForm.services.map((svc, sIdx) => {
 														const svcId = (svc as any).id || String(sIdx);
 														const checked = combo.serviceIds?.includes(svcId);
 														return (
-															<label
-																key={svcId}
-																className="flex items-center gap-2 py-0.5 cursor-pointer"
-															>
+															<label key={svcId} className="flex items-center gap-2 py-0.5 cursor-pointer">
 																<input
 																	type="checkbox"
 																	checked={checked}
 																	onChange={(e) => {
 																		const current = combo.serviceIds || [];
-																		const next = e.target.checked
-																			? [...current, svcId]
-																			: current.filter((id) => id !== svcId);
+																		const next = e.target.checked ? [...current, svcId] : current.filter((id) => id !== svcId);
 																		updateServiceCombo(true, idx, 'serviceIds', next);
 																	}}
 																/>
@@ -614,23 +611,14 @@ export default function ProfessionalProfile({ config, onUpdate }: { config: Medi
 											</div>
 										</div>
 										<div className="flex-shrink-0 self-stretch flex items-start">
-											<button
-												type="button"
-												onClick={() => removeServiceCombo(true, idx)}
-												className="p-2 text-red-600 hover:bg-red-50 rounded-lg"
-												aria-label="Eliminar combo"
-											>
+											<button type="button" onClick={() => removeServiceCombo(true, idx)} className="p-2 text-red-600 hover:bg-red-50 rounded-lg" aria-label="Eliminar combo">
 												<X className="w-5 h-5" />
 											</button>
 										</div>
 									</div>
 								</div>
 							))}
-							<button
-								type="button"
-								onClick={() => addServiceCombo(true)}
-								className="w-full px-4 py-2.5 border-2 border-dashed border-gray-300 rounded-lg text-gray-600 hover:border-indigo-400 hover:text-indigo-600 hover:bg-indigo-50 transition-all duration-200 font-medium"
-							>
+							<button type="button" onClick={() => addServiceCombo(true)} className="w-full px-4 py-2.5 border-2 border-dashed border-gray-300 rounded-lg text-gray-600 hover:border-indigo-400 hover:text-indigo-600 hover:bg-indigo-50 transition-all duration-200 font-medium">
 								+ Agregar Combo
 							</button>
 						</div>
@@ -864,61 +852,28 @@ export default function ProfessionalProfile({ config, onUpdate }: { config: Medi
 								<div key={idx} className="relative p-4 bg-white rounded-lg border border-gray-200 hover:border-gray-300 transition-colors overflow-hidden">
 									<div className="flex flex-col md:flex-row gap-4 items-start md:items-center">
 										<div className="flex-1 min-w-0 w-full md:w-auto">
-											<input 
-												type="text" 
-												placeholder="Nombre del servicio" 
-												value={service.name || ''} 
-												onChange={(e) => updateService(idx, 'name', e.target.value)} 
-												className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent" 
-											/>
+											<input type="text" placeholder="Nombre del servicio" value={service.name || ''} onChange={(e) => updateService(idx, 'name', e.target.value)} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent" />
 										</div>
 										<div className="flex-1 min-w-0 w-full md:w-auto">
-											<input 
-												type="text" 
-												placeholder="Descripción" 
-												value={service.description || ''} 
-												onChange={(e) => updateService(idx, 'description', e.target.value)} 
-												className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent" 
-											/>
+											<input type="text" placeholder="Descripción" value={service.description || ''} onChange={(e) => updateService(idx, 'description', e.target.value)} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent" />
 										</div>
 										<div className="flex items-center gap-2 flex-shrink-0 w-full md:w-auto">
-											<input 
-												type="text" 
-												placeholder="Precio" 
-												value={service.price || ''} 
-												onChange={(e) => updateService(idx, 'price', e.target.value)} 
-												className="flex-1 md:w-24 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent" 
-											/>
-											<select 
-												value={service.currency || 'USD'} 
-												onChange={(e) => updateService(idx, 'currency', e.target.value)} 
-												className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent bg-white flex-shrink-0"
-												onClick={(e) => e.stopPropagation()}
-											>
+											<input type="text" placeholder="Precio" value={service.price || ''} onChange={(e) => updateService(idx, 'price', e.target.value)} className="flex-1 md:w-24 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent" />
+											<select value={service.currency || 'USD'} onChange={(e) => updateService(idx, 'currency', e.target.value)} className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent bg-white flex-shrink-0" onClick={(e) => e.stopPropagation()}>
 												<option value="USD">USD</option>
 												<option value="VES">VES</option>
 												<option value="EUR">EUR</option>
 											</select>
 										</div>
 										<div className="flex-shrink-0">
-											<button 
-												type="button" 
-												onClick={(e) => removeService(idx, e)} 
-												onMouseDown={(e) => e.preventDefault()}
-												className="flex items-center justify-center w-8 h-8 text-red-600 hover:text-red-700 hover:bg-red-50 rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-1"
-												aria-label={`Eliminar servicio ${idx + 1}`}
-											>
+											<button type="button" onClick={(e) => removeService(idx, e)} onMouseDown={(e) => e.preventDefault()} className="flex items-center justify-center w-8 h-8 text-red-600 hover:text-red-700 hover:bg-red-50 rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-1" aria-label={`Eliminar servicio ${idx + 1}`}>
 												<X className="w-5 h-5" />
 											</button>
 										</div>
 									</div>
 								</div>
 							))}
-							<button 
-								type="button" 
-								onClick={addService} 
-								className="w-full px-4 py-2.5 border-2 border-dashed border-gray-300 rounded-lg text-gray-600 hover:border-indigo-400 hover:text-indigo-600 hover:bg-indigo-50 transition-all duration-200 font-medium"
-							>
+							<button type="button" onClick={addService} className="w-full px-4 py-2.5 border-2 border-dashed border-gray-300 rounded-lg text-gray-600 hover:border-indigo-400 hover:text-indigo-600 hover:bg-indigo-50 transition-all duration-200 font-medium">
 								+ Agregar Servicio
 							</button>
 						</div>
@@ -930,85 +885,41 @@ export default function ProfessionalProfile({ config, onUpdate }: { config: Medi
 							<Stethoscope className="w-5 h-5 text-indigo-600" />
 							Combos de Servicios (paquetes promocionales)
 						</h3>
-						<p className="text-xs text-gray-500 mb-3">
-							Crea combos que agrupen varios de tus servicios privados con precios especiales.
-						</p>
+						<p className="text-xs text-gray-500 mb-3">Crea combos que agrupen varios de tus servicios privados con precios especiales.</p>
 						<div className="space-y-4">
 							{(privateForm as any).serviceCombos?.map((combo: MedicServiceCombo, idx: number) => (
-								<div
-									key={combo.id || idx}
-									className="relative p-4 bg-white rounded-lg border border-gray-200 hover:border-gray-300 transition-colors"
-								>
+								<div key={combo.id || idx} className="relative p-4 bg-white rounded-lg border border-gray-200 hover:border-gray-300 transition-colors">
 									<div className="flex flex-col md:flex-row gap-4 items-start md:items-center">
 										<div className="flex-1 min-w-0 w-full md:w-auto space-y-2">
-											<input
-												type="text"
-												placeholder="Nombre del combo"
-												value={combo.name || ''}
-												onChange={(e) =>
-													updateServiceCombo(false, idx, 'name', e.target.value)
-												}
-												className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-											/>
-											<textarea
-												placeholder="Descripción breve del combo"
-												value={combo.description || ''}
-												onChange={(e) =>
-													updateServiceCombo(false, idx, 'description', e.target.value)
-												}
-												rows={2}
-												className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent resize-none text-sm"
-											/>
+											<input type="text" placeholder="Nombre del combo" value={combo.name || ''} onChange={(e) => updateServiceCombo(false, idx, 'name', e.target.value)} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent" />
+											<textarea placeholder="Descripción breve del combo" value={combo.description || ''} onChange={(e) => updateServiceCombo(false, idx, 'description', e.target.value)} rows={2} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent resize-none text-sm" />
 										</div>
 										<div className="flex flex-col gap-2 flex-shrink-0 w-full md:w-56">
 											<label className="text-xs font-medium text-gray-600">Precio promo</label>
 											<div className="flex items-center gap-2">
-												<input
-													type="text"
-													placeholder="Precio"
-													value={combo.price || ''}
-													onChange={(e) =>
-														updateServiceCombo(false, idx, 'price', e.target.value)
-													}
-													className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-												/>
-												<select
-													value={combo.currency || 'USD'}
-													onChange={(e) =>
-														updateServiceCombo(false, idx, 'currency', e.target.value)
-													}
-													className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent bg-white flex-shrink-0"
-												>
+												<input type="text" placeholder="Precio" value={combo.price || ''} onChange={(e) => updateServiceCombo(false, idx, 'price', e.target.value)} className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent" />
+												<select value={combo.currency || 'USD'} onChange={(e) => updateServiceCombo(false, idx, 'currency', e.target.value)} className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent bg-white flex-shrink-0">
 													<option value="USD">USD</option>
 													<option value="VES">VES</option>
 													<option value="EUR">EUR</option>
 												</select>
 											</div>
-											<label className="text-xs font-medium text-gray-600 mt-2">
-												Servicios incluidos
-											</label>
+											<label className="text-xs font-medium text-gray-600 mt-2">Servicios incluidos</label>
 											<div className="border border-dashed border-gray-300 rounded-lg p-2 max-h-40 overflow-y-auto text-xs space-y-1">
 												{privateForm.services.length === 0 ? (
-													<p className="text-gray-400">
-														Primero debes registrar servicios individuales.
-													</p>
+													<p className="text-gray-400">Primero debes registrar servicios individuales.</p>
 												) : (
 													privateForm.services.map((svc, sIdx) => {
 														const svcId = (svc as any).id || String(sIdx);
 														const checked = combo.serviceIds?.includes(svcId);
 														return (
-															<label
-																key={svcId}
-																className="flex items-center gap-2 py-0.5 cursor-pointer"
-															>
+															<label key={svcId} className="flex items-center gap-2 py-0.5 cursor-pointer">
 																<input
 																	type="checkbox"
 																	checked={checked}
 																	onChange={(e) => {
 																		const current = combo.serviceIds || [];
-																		const next = e.target.checked
-																			? [...current, svcId]
-																			: current.filter((id) => id !== svcId);
+																		const next = e.target.checked ? [...current, svcId] : current.filter((id) => id !== svcId);
 																		updateServiceCombo(false, idx, 'serviceIds', next);
 																	}}
 																/>
@@ -1020,23 +931,14 @@ export default function ProfessionalProfile({ config, onUpdate }: { config: Medi
 											</div>
 										</div>
 										<div className="flex-shrink-0 self-stretch flex items-start">
-											<button
-												type="button"
-												onClick={() => removeServiceCombo(false, idx)}
-												className="p-2 text-red-600 hover:bg-red-50 rounded-lg"
-												aria-label="Eliminar combo"
-											>
+											<button type="button" onClick={() => removeServiceCombo(false, idx)} className="p-2 text-red-600 hover:bg-red-50 rounded-lg" aria-label="Eliminar combo">
 												<X className="w-5 h-5" />
 											</button>
 										</div>
 									</div>
 								</div>
 							))}
-							<button
-								type="button"
-								onClick={() => addServiceCombo(false)}
-								className="w-full px-4 py-2.5 border-2 border-dashed border-gray-300 rounded-lg text-gray-600 hover:border-indigo-400 hover:text-indigo-600 hover:bg-indigo-50 transition-all duration-200 font-medium"
-							>
+							<button type="button" onClick={() => addServiceCombo(false)} className="w-full px-4 py-2.5 border-2 border-dashed border-gray-300 rounded-lg text-gray-600 hover:border-indigo-400 hover:text-indigo-600 hover:bg-indigo-50 transition-all duration-200 font-medium">
 								+ Agregar Combo
 							</button>
 						</div>

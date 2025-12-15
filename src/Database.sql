@@ -416,6 +416,11 @@ CREATE TABLE public.medic_profile (
   report_template_name text,
   report_template_text text,
   report_font_family text DEFAULT 'Arial'::text,
+  prescription_template_url text,
+  prescription_template_name text,
+  prescription_template_text text,
+  prescription_font_family text DEFAULT 'Arial'::text,
+  service_combos jsonb DEFAULT '[]'::jsonb,
   CONSTRAINT medic_profile_pkey PRIMARY KEY (id),
   CONSTRAINT fk_medic_profile_doctor FOREIGN KEY (doctor_id) REFERENCES public.User(id)
 );
@@ -530,6 +535,7 @@ CREATE TABLE public.prescription (
   status text NOT NULL DEFAULT 'ACTIVE'::text,
   created_at timestamp with time zone NOT NULL DEFAULT now(),
   unregistered_patient_id uuid,
+  prescription_url text,
   CONSTRAINT prescription_pkey PRIMARY KEY (id),
   CONSTRAINT fk_prescription_patient FOREIGN KEY (patient_id) REFERENCES public.Patient(id),
   CONSTRAINT fk_prescription_doctor FOREIGN KEY (doctor_id) REFERENCES public.User(id),

@@ -36,6 +36,14 @@ CREATE TABLE IF NOT EXISTS public.medic_profile (
   
   -- Preferencias de notificaciones (JSON)
   notifications jsonb DEFAULT '{"email": true, "whatsapp": false, "push": false}'::jsonb,
+
+  -- Configuración de WhatsApp para recordatorios
+  whatsapp_number text,
+  whatsapp_message_template text DEFAULT 'Hola {NOMBRE_PACIENTE}, le recordamos su cita el {FECHA} a las {HORA} con el Dr/a {NOMBRE_DOCTORA} en {CLÍNICA}. Por los servicios de:
+
+{SERVICIOS}
+
+por favor confirmar con un "Asistiré" o "No Asistiré"',
   
   -- Seguridad
   two_factor_enabled boolean DEFAULT false,
@@ -62,6 +70,8 @@ COMMENT ON COLUMN public.medic_profile.service_combos IS 'Array JSON de combos d
 COMMENT ON COLUMN public.medic_profile.availability IS 'JSON con horarios de disponibilidad por día';
 COMMENT ON COLUMN public.medic_profile.credentials IS 'JSON con información de credenciales (licencia, número, emisor, expiración, archivos)';
 COMMENT ON COLUMN public.medic_profile.credit_history IS 'JSON con historial crediticio (universidad, título, certificaciones)';
+COMMENT ON COLUMN public.medic_profile.whatsapp_number IS 'Número oficial de WhatsApp del consultorio/médico para envío de recordatorios y confirmaciones de citas.';
+COMMENT ON COLUMN public.medic_profile.whatsapp_message_template IS 'Plantilla de mensaje de WhatsApp para recordatorios. Variables: {NOMBRE_PACIENTE}, {FECHA}, {HORA}, {NOMBRE_DOCTORA}, {CLÍNICA}, {SERVICIOS}.';
 
 -- Trigger para actualizar updated_at automáticamente
 CREATE OR REPLACE FUNCTION update_medic_profile_updated_at()

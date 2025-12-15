@@ -1,8 +1,25 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Clock, MapPin, Loader2, ChevronDown, Users, DollarSign, FileText, X, Edit2, Trash2, User, Phone, Mail, CreditCard, CalendarClock } from 'lucide-react';
+import {
+	Clock,
+	MapPin,
+	Loader2,
+	ChevronDown,
+	Users,
+	DollarSign,
+	FileText,
+	X,
+	Edit2,
+	Trash2,
+	User,
+	Phone,
+	Mail,
+	CreditCard,
+	CalendarClock,
+	MessageCircle,
+} from 'lucide-react';
 import { useAppointmentsForRoleUser } from '@/app/hooks/useAppointmentsForRoleUser';
 import ReceptionAppointmentModal from './ReceptionAppointmentModal';
 import RescheduleModal from './RescheduleModal';
@@ -22,6 +39,33 @@ export default function AppointmentListForRoleUser({ selectedDate, roleName, can
 	const [isModalOpen, setIsModalOpen] = useState(false);
 	const [rescheduleAppointment, setRescheduleAppointment] = useState<{ id: string; scheduled_at: string; patient: string } | null>(null);
 	const [isRescheduleModalOpen, setIsRescheduleModalOpen] = useState(false);
+	const [whatsappConfig, setWhatsappConfig] = useState<{
+		whatsappNumber: string | null;
+		whatsappMessageTemplate: string | null;
+		doctorName: string | null;
+	} | null>(null);
+
+	// Cargar configuración básica de WhatsApp (número + plantilla)
+	useEffect(() => {
+		let cancelled = false;
+		const load = async () => {
+			try {
+				const res = await fetch('/api/role-users/whatsapp-config', { credentials: 'include' });
+				const data = await res.json().catch(() => ({}));
+				if (!cancelled && res.ok && data?.config) {
+					setWhatsappConfig(data.config);
+				}
+			} catch (err) {
+				if (!cancelled) {
+					console.error('[AppointmentListForRoleUser] Error cargando whatsapp-config:', err);
+				}
+			}
+		};
+		load();
+		return () => {
+			cancelled = true;
+		};
+	}, []);
 
 	const getStatusColor = (status: string) => {
 		switch (status) {
@@ -84,6 +128,131 @@ export default function AppointmentListForRoleUser({ selectedDate, roleName, can
 			patient: appt.patient,
 		});
 		setIsRescheduleModalOpen(true);
+	};
+
+	const getDaysUntilAppointment = (appt: any): number | null => {
+		const scheduled = appt.scheduled_at ? new Date(appt.scheduled_at) : null;
+		if (!scheduled || Number.isNaN(scheduled.getTime())) return null;
+
+		const today = new Date();
+		const startOfToday = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+		const startOfAppt = new Date(
+			scheduled.getFullYear(),
+			scheduled.getMonth(),
+			scheduled.getDate(),
+		);
+
+		const diffMs = startOfAppt.getTime() - startOfToday.getTime();
+		return Math.round(diffMs / (1000 * 60 * 60 * 24));
+	};
+
+	const buildWhatsappMessage = (appt: any): string => {
+		const template =
+			whatsappConfig?.whatsappMessageTemplate ||
+			'Hola {NOMBRE_PACIENTE}, le recordamos su cita el {FECHA} a las {HORA} con el Dr/a {NOMBRE_DOCTORA} en {CLÍNICA}. Por los servicios de:\n\n{SERVICIOS}\n\npor favor confirmar con un "Asistiré" o "No Asistiré"';
+
+		const fullName =
+			[appt.patientFirstName, appt.patientLastName].filter(Boolean).join(' ') || appt.patient || 'Paciente';
+
+		// Fecha solo con día/mes/año (sin hora)
+		let dateStr = '';
+		if (appt.scheduled_at) {
+			try {
+				const d = new Date(appt.scheduled_at);
+				if (!Number.isNaN(d.getTime())) {
+					dateStr = d.toLocaleDateString('es-VE', {
+						day: '2-digit',
+						month: '2-digit',
+						year: 'numeric',
+					});
+				}
+			} catch {
+				dateStr = '';
+			}
+		}
+
+		const timeStr = appt.time || '';
+
+		// Nombre doctora/médico: tomar SIEMPRE el médico de la organización (rol MEDICO),
+		// que viene resuelto desde el backend en doctorName. Nunca usar el nombre del asistente.
+		const doctorName = (appt.doctorName as string | undefined) || '';
+
+		// Nombre de clínica / consultorio (podríamos usar location como fallback simple)
+		const clinicName = (appt.clinicName as string) || (appt.location as string) || 'consultorio';
+
+		// Servicios: si selected_service es objeto o array, intentar listar nombres
+		let serviciosTexto = '';
+		try {
+			let raw = appt.selected_service;
+			if (!raw) {
+				serviciosTexto = 'Consulta médica';
+			} else {
+				let data = raw;
+				if (typeof data === 'string') {
+					try {
+						data = JSON.parse(data);
+					} catch {
+						// texto plano (nombre de un servicio)
+						data = { name: data };
+					}
+				}
+
+				const names: string[] = [];
+				if (Array.isArray(data)) {
+					for (const item of data) {
+						if (item && typeof item === 'object' && (item as any).name) {
+							names.push(String((item as any).name));
+						}
+					}
+				} else if (data && typeof data === 'object') {
+					// Podría ser un combo con services_included
+					if (Array.isArray((data as any).services_included)) {
+						for (const s of (data as any).services_included) {
+							if (s && typeof s === 'object' && (s as any).name) {
+								names.push(String((s as any).name));
+							}
+						}
+					} else if ((data as any).name) {
+						names.push(String((data as any).name));
+					}
+				}
+
+				serviciosTexto = names.length > 0 ? names.join(', ') : 'Consulta médica';
+			}
+		} catch {
+			serviciosTexto = 'Consulta médica';
+		}
+
+		return template
+			.replace('{NOMBRE_PACIENTE}', fullName)
+			.replace('{FECHA}', dateStr)
+			.replace('{HORA}', timeStr)
+			.replace('{NOMBRE_DOCTORA}', doctorName || 'su médica especialista')
+			.replace('{CLÍNICA}', clinicName)
+			.replace('{SERVICIOS}', serviciosTexto);
+	};
+
+	const handleWhatsappReminder = (appt: any) => {
+		if (!appt.patientPhone) {
+			alert('Esta cita no tiene un número de teléfono asociado al paciente.');
+			return;
+		}
+
+		const rawPhone = String(appt.patientPhone).trim();
+		if (!rawPhone) {
+			alert('Número de teléfono del paciente inválido.');
+			return;
+		}
+
+		const mensaje = buildWhatsappMessage(appt);
+		const encodedMessage = encodeURIComponent(mensaje);
+
+		// El número de WhatsApp del paciente debe incluir código de país
+		const url = `https://wa.me/${encodeURIComponent(rawPhone)}?text=${encodedMessage}`;
+
+		if (typeof window !== 'undefined') {
+			window.open(url, '_blank');
+		}
 	};
 
 	const handleViewAppointment = (appt: any) => {
@@ -222,10 +391,37 @@ export default function AppointmentListForRoleUser({ selectedDate, roleName, can
 										<span>Haz clic para ver servicios y gestionar pagos</span>
 									</p>
 								)}
+
+								{/* Alerta para Asistente de Citas cuando faltan 2 días para la cita */}
+								{!isReception && getDaysUntilAppointment(appt) === 2 && (
+									<div className="mt-2 ml-6 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 flex items-start gap-2">
+										<span className="mt-0.5 inline-flex h-5 w-5 items-center justify-center rounded-full bg-amber-100 text-amber-700 text-xs font-bold">
+											!
+										</span>
+										<div className="text-xs text-amber-800">
+											<p className="font-semibold">Faltan 2 días para esta cita.</p>
+											<p>Envía el recordatorio por WhatsApp para confirmar la asistencia del paciente.</p>
+										</div>
+									</div>
+								)}
 							</div>
 
 							{/* Botones de acción y estado */}
 							<div className="flex flex-col gap-2 shrink-0 w-full sm:w-auto">
+								{/* Botón de WhatsApp recordatorio */}
+								{appt.patientPhone && (
+									<button
+										onClick={(e) => {
+											e.stopPropagation();
+											handleWhatsappReminder(appt);
+										}}
+										className="flex items-center justify-center gap-2 px-3 py-1.5 text-xs font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-lg hover:bg-emerald-100 transition-all shadow-sm"
+									>
+										<MessageCircle className="w-3.5 h-3.5" />
+										WhatsApp
+									</button>
+								)}
+
 								{/* Botón de reagendar */}
 								{canEdit && appt.status !== 'COMPLETADA' && appt.status !== 'CANCELADA' && (
 									<button

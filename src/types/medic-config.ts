@@ -84,6 +84,8 @@ export interface MedicConfigData {
 	notifications: MedicNotifications;
 	services: MedicService[];
 	serviceCombos?: MedicServiceCombo[];
+	whatsappNumber?: string | null;
+	whatsappMessageTemplate?: string | null;
 	privateSpecialties: string[];
 	paymentMethods: PaymentMethod[];
 }
