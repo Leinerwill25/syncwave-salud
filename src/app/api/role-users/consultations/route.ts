@@ -83,7 +83,12 @@ export async function GET(request: NextRequest) {
 		// primero obtenemos las citas confirmadas y luego las consultas asociadas
 
 		// Obtener IDs de citas confirmadas de la organización
-		const { data: confirmedAppointments, error: appointmentsError } = await supabase.from('appointment').select('id').eq('organization_id', session.organizationId).in('status', ['CONFIRMADA', 'EN_CURSO', 'COMPLETADA', 'REAGENDADA', 'CANCELADA', 'NO ASISTIÓ']).order('scheduled_at', { ascending: false });
+		const { data: confirmedAppointments, error: appointmentsError } = await supabase
+			.from('appointment')
+			.select('id')
+			.eq('organization_id', session.organizationId)
+			.in('status', ['CONFIRMADA', 'COMPLETADA', 'REAGENDADA', 'CANCELADA', 'NO ASISTIÓ'])
+			.order('scheduled_at', { ascending: false });
 
 		if (appointmentsError) {
 			console.error('[Role Users Consultations GET] Error obteniendo citas:', appointmentsError);
@@ -234,7 +239,6 @@ export async function GET(request: NextRequest) {
 			let consultationStatus = appointmentStatus;
 			if (appointmentStatus === 'SCHEDULED') consultationStatus = 'EN ESPERA';
 			if (appointmentStatus === 'CONFIRMADA') consultationStatus = 'CONFIRMADA';
-			if (appointmentStatus === 'EN_CURSO') consultationStatus = 'EN CURSO';
 			if (appointmentStatus === 'REAGENDADA') consultationStatus = 'REAGENDADA';
 			if (appointmentStatus === 'CANCELADA') consultationStatus = 'CANCELADA';
 			if (appointmentStatus === 'COMPLETADA') consultationStatus = 'COMPLETADA';

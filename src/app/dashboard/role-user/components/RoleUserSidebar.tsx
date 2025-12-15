@@ -3,8 +3,8 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { LayoutDashboard, CalendarDays, User, ClipboardList, FileText, MessageCircle, CheckSquare, Folder, ChevronRight, ChevronDown, Search, FileCheck, LogOut, Shield, Calendar, BarChart3, TrendingUp, CreditCard } from 'lucide-react';
-import { hasRoleUserPermission, getRoleUserSession, type RoleUserSession } from '@/lib/role-user-auth-client';
+import { LayoutDashboard, CalendarDays, User, ClipboardList, FileText, MessageCircle, CheckSquare, Folder, ChevronRight, ChevronDown, Search, FileCheck, LogOut, Shield, Calendar, BarChart3, TrendingUp, CreditCard, Stethoscope } from 'lucide-react';
+import { hasRoleUserPermission, getRoleUserSession, type RoleUserSession, roleNameEquals, getRoleUserDisplayName } from '@/lib/role-user-auth-client';
 
 type IconComponent = React.ComponentType<React.SVGProps<SVGSVGElement>>;
 
@@ -74,6 +74,12 @@ const ALL_MODULES: LinkItem[] = [
 		showOnlyForRole: 'Asistente De Citas',
 	},
 	{
+		href: '/dashboard/role-user/estadisticas-servicios',
+		label: 'Panel Inteligente de Servicios',
+		icon: BarChart3,
+		showOnlyForRole: 'Recepción',
+	},
+	{
 		label: 'Recetas',
 		icon: FileText,
 		module: 'recetas',
@@ -122,6 +128,11 @@ const ALL_MODULES: LinkItem[] = [
 		icon: FileText,
 		module: 'reportes',
 		requiredPermission: 'view',
+	},
+	{
+		href: '/dashboard/role-user/servicios',
+		label: 'Servicios del consultorio',
+		icon: Stethoscope,
 	},
 	{
 		href: '/dashboard/role-user/metodos-pago',
@@ -179,9 +190,21 @@ export default function RoleUserSidebar() {
 	const hasPermissionForLink = (link: LinkItem): boolean => {
 		if (!session) return false;
 
-		// Si tiene showOnlyForRole, verificar que el rol coincide
-		if (link.showOnlyForRole && session.roleName !== link.showOnlyForRole) {
+		// Si tiene showOnlyForRole, verificar que el rol coincide (normalizado)
+		if (link.showOnlyForRole && !roleNameEquals(session.roleName, link.showOnlyForRole)) {
 			return false;
+		}
+
+		// Link especial: Servicios del consultorio → solo Recepción o Asistente De Citas
+		if (link.href === '/dashboard/role-user/servicios') {
+			if (
+				!roleNameEquals(session.roleName, 'Recepción') &&
+				!roleNameEquals(session.roleName, 'Asistente De Citas')
+			) {
+				return false;
+			}
+			// No depende de módulos/permissions, se muestra directo
+			return true;
 		}
 
 		if (!link.module || !link.requiredPermission) {
@@ -332,7 +355,9 @@ export default function RoleUserSidebar() {
 							<Shield className="w-6 h-6" />
 						</div>
 						<div className="flex-1 min-w-0">
-							<div className="text-sm font-semibold text-slate-900 truncate">{session.roleName}</div>
+							<div className="text-sm font-semibold text-slate-900 truncate">
+								{getRoleUserDisplayName(session)}
+							</div>
 							<div className="text-[12px] text-slate-500 truncate">
 								{session.firstName} {session.lastName}
 							</div>

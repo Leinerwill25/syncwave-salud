@@ -86,12 +86,16 @@ export default function AppointmentModal({ isOpen, onClose, selectedDate }: Prop
 
 						<div>
 							<label className="text-sm font-medium text-gray-700">Estado</label>
-							<select className="w-full mt-1 p-2 border rounded-xl" value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value })}>
+							<select
+								className="w-full mt-1 p-2 border rounded-xl"
+								value={form.status}
+								onChange={(e) => setForm({ ...form, status: e.target.value })}
+							>
 								<option value="EN_ESPERA">En espera</option>
 								<option value="CONFIRMADA">Confirmada</option>
-								<option value="EN_CURSO">En curso</option>
-								<option value="COMPLETADA">Completada</option>
+								<option value="REAGENDADA">Reagendada</option>
 								<option value="CANCELADA">Cancelada</option>
+								<option value="COMPLETADA">Finalizada</option>
 							</select>
 						</div>
 					</div>

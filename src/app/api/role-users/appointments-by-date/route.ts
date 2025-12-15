@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createSupabaseServerClient } from '@/app/adapters/server';
-import { getRoleUserSessionFromServer } from '@/lib/role-user-auth';
+import { getRoleUserSessionFromServer, roleNameEquals } from '@/lib/role-user-auth';
 
 export async function GET(req: NextRequest) {
 	try {
@@ -48,7 +48,7 @@ export async function GET(req: NextRequest) {
 		let query = supabase.from('appointment').select(selectFields).eq('organization_id', session.organizationId).gte('scheduled_at', startIso).lte('scheduled_at', endIso).order('scheduled_at', { ascending: true });
 
 		// Si es "Asistente De Citas", solo mostrar las citas que él creó
-		if (session.roleName === 'Asistente De Citas') {
+		if (roleNameEquals(session.roleName, 'Asistente De Citas')) {
 			query = query.eq('created_by_role_user_id', session.roleUserId);
 		}
 		// Si es "Recepción", mostrar todas las citas del consultorio (ya filtrado por organization_id)

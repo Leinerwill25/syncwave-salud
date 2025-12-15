@@ -264,6 +264,7 @@ export async function GET(request: Request) {
 		};
 
 		const services = parseJsonField<Array<Record<string, unknown>>>(profile?.services, []);
+		const serviceCombos = parseJsonField<Array<Record<string, unknown>>>(profile?.service_combos, []);
 		
 		// Tipar explícitamente credentials y creditHistory para validación
 		type CredentialsType = {
@@ -378,6 +379,7 @@ export async function GET(request: Request) {
 				availability: availability,
 				notifications: notifications,
 				services: services,
+				serviceCombos: serviceCombos,
 				privateSpecialties: Array.isArray(profile?.private_specialty) 
 					? profile.private_specialty 
 					: profile?.private_specialty 
@@ -520,6 +522,10 @@ export async function PATCH(request: Request) {
 
 		if (body.services !== undefined) {
 			profileData.services = body.services;
+		}
+
+		if (body.serviceCombos !== undefined) {
+			profileData.service_combos = body.serviceCombos;
 		}
 
 		if (body.credentials !== undefined) {

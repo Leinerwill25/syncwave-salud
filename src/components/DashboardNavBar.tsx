@@ -56,7 +56,7 @@ export default function DashboardNavBar(): React.ReactElement {
 	const router = useRouter();
 	const [user, setUser] = useState<any | null>(null);
 	const [userRole, setUserRole] = useState<string | null>(null);
-	const [displayName, setDisplayName] = useState<string>('Panel');
+	const [displayName, setDisplayName] = useState<string>('');
 	const [loading, setLoading] = useState<boolean>(true);
 	const [signOutLoading, setSignOutLoading] = useState<boolean>(false);
 	const [menuOpen, setMenuOpen] = useState<boolean>(false);
@@ -78,8 +78,12 @@ export default function DashboardNavBar(): React.ReactElement {
 
 				if (mounted && u) {
 					setUser(u);
-					const fullName = (u.user_metadata?.fullName ?? `${u.user_metadata?.firstName ?? ''} ${u.user_metadata?.lastName ?? ''}`).trim() || 'Panel';
-					setDisplayName(fullName);
+					const fullName = (
+						u.user_metadata?.fullName ??
+						`${u.user_metadata?.firstName ?? ''} ${u.user_metadata?.lastName ?? ''}`
+					).trim();
+					// Preferir nombre completo, luego email, y como último recurso "Panel"
+					setDisplayName(fullName || u.email || 'Panel');
 
 					// Obtener rol del usuario desde la base de datos
 					try {
@@ -107,12 +111,16 @@ export default function DashboardNavBar(): React.ReactElement {
 			const sub = supabaseClient?.auth.onAuthStateChange((event, session) => {
 				if (event === 'SIGNED_OUT') {
 					setUser(null);
-					setDisplayName('Panel');
+					setDisplayName('');
 				}
 				if (event === 'SIGNED_IN' && session?.user) {
 					const u = session.user;
 					setUser(u);
-					setDisplayName(u.user_metadata?.fullName ?? u.email ?? 'Panel');
+					const fullName = (
+						u.user_metadata?.fullName ??
+						`${u.user_metadata?.firstName ?? ''} ${u.user_metadata?.lastName ?? ''}`
+					).trim();
+					setDisplayName(fullName || u.email || 'Panel');
 				}
 			});
 			authListener = (sub as any)?.data ?? sub;
@@ -161,8 +169,11 @@ export default function DashboardNavBar(): React.ReactElement {
 					<div className="flex-1 flex items-center justify-center min-w-0">
 						<div className="flex flex-col items-center min-w-0 w-full px-2">
 							<span className="text-xs text-slate-500">Bienvenido</span>
-							<span className="text-sm md:text-lg font-semibold text-slate-900 truncate w-full text-center" title={displayName}>
-								{loading ? 'Cargando...' : displayName}
+							<span
+								className="text-sm md:text-lg font-semibold text-slate-900 truncate w-full text-center"
+								title={displayName || undefined}
+							>
+								{loading ? 'Cargando...' : displayName || 'Panel'}
 							</span>
 						</div>
 					</div>

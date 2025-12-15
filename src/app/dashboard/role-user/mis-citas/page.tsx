@@ -116,10 +116,8 @@ export default function MisCitasPage() {
 			case 'EN ESPERA':
 			case 'EN_ESPERA':
 				return 'bg-yellow-100 text-yellow-800';
-			case 'EN CURSO':
-			case 'EN_CURSO':
-				return 'bg-purple-100 text-purple-800';
 			case 'COMPLETADA':
+				// "Finalizada" en UI, se mantiene COMpletada internamente
 				return 'bg-green-100 text-green-800';
 			case 'CANCELADA':
 				return 'bg-gray-100 text-gray-800';
@@ -283,7 +281,7 @@ export default function MisCitasPage() {
 								{/* Estado */}
 								<div className="flex-shrink-0">
 									<span className={`px-4 py-2 rounded-lg text-sm font-semibold ${getStatusColor(appt.status)}`}>
-										{appt.status}
+										{appt.status === 'COMPLETADA' ? 'Finalizada' : appt.status}
 									</span>
 								</div>
 							</div>

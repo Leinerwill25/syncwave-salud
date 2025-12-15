@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createSupabaseServerClient } from '@/app/adapters/server';
-import { getRoleUserSessionFromServer } from '@/lib/role-user-auth';
+import { getRoleUserSessionFromServer, roleNameEquals } from '@/lib/role-user-auth';
 
 export async function GET(req: NextRequest) {
 	try {
@@ -10,7 +10,7 @@ export async function GET(req: NextRequest) {
 		}
 
 		// Solo el rol "Asistente De Citas" puede acceder a estas estadísticas
-		if (session.roleName !== 'Asistente De Citas') {
+		if (!roleNameEquals(session.roleName, 'Asistente De Citas')) {
 			return NextResponse.json({ error: 'Acceso denegado. Solo Asistentes de Citas pueden ver estadísticas.' }, { status: 403 });
 		}
 

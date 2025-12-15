@@ -11,7 +11,7 @@ type Appointment = {
 	reason: string;
 	time: string;
 	scheduled_at?: string;
-	status: 'CONFIRMADA' | 'EN_ESPERA' | 'EN_CURSO' | 'COMPLETADA' | 'CANCELADA' | 'SCHEDULED' | 'REAGENDADA' | 'EN PROCESO' | 'NO ASISTIÓ' | 'NO_ASISTIO';
+	status: 'CONFIRMADA' | 'EN_ESPERA' | 'COMPLETADA' | 'CANCELADA' | 'SCHEDULED' | 'REAGENDADA' | 'NO ASISTIÓ' | 'NO_ASISTIO';
 	location?: string;
 	isUnregistered?: boolean;
 	bookedBy?: {

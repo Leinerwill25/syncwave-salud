@@ -30,17 +30,13 @@ export default function AppointmentListForRoleUser({ selectedDate, roleName, can
 			case 'EN ESPERA':
 			case 'EN_ESPERA':
 				return 'from-yellow-400 to-amber-500';
-			case 'EN CURSO':
-			case 'EN_CURSO':
-				return 'from-violet-500 to-indigo-600';
+			case 'REAGENDADA':
+				return 'from-orange-500 to-red-600';
 			case 'COMPLETADA':
+				// "Finalizada" en UI, pero se mantiene COMpletada internamente
 				return 'from-emerald-500 to-teal-600';
 			case 'CANCELADA':
 				return 'from-gray-400 to-gray-500';
-			case 'REAGENDADA':
-				return 'from-orange-500 to-red-600';
-			case 'EN PROCESO':
-				return 'from-indigo-500 to-purple-600';
 			case 'NO ASISTIÓ':
 			case 'NO_ASISTIO':
 				return 'from-red-500 to-rose-600';
@@ -49,10 +45,10 @@ export default function AppointmentListForRoleUser({ selectedDate, roleName, can
 		}
 	};
 
-	// Estados específicos para Recepción
-	const receptionStatusOptions = ['EN ESPERA', 'CONFIRMADA', 'EN CURSO', 'REAGENDADA', 'EN PROCESO', 'CANCELADA', 'COMPLETADA', 'NO ASISTIÓ'];
-	// Estados para Asistente De Citas (puede cambiar estado también)
-	const assistantStatusOptions = ['EN ESPERA', 'CONFIRMADA', 'EN CURSO', 'COMPLETADA', 'CANCELADA', 'REAGENDADA', 'NO ASISTIÓ'];
+	// Estados específicos para Recepción (sin EN PROCESO ni EN CURSO)
+	const receptionStatusOptions = ['EN ESPERA', 'CONFIRMADA', 'REAGENDADA', 'CANCELADA', 'COMPLETADA', 'NO ASISTIÓ'];
+	// Estados para Asistente De Citas (sin EN CURSO)
+	const assistantStatusOptions = ['EN ESPERA', 'CONFIRMADA', 'COMPLETADA', 'CANCELADA', 'REAGENDADA', 'NO ASISTIÓ'];
 
 	const statusOptions = isReception ? receptionStatusOptions : assistantStatusOptions;
 

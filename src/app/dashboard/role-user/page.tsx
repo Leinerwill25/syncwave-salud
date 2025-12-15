@@ -7,6 +7,7 @@ import {
 	User,
 	ClipboardList,
 	FileText,
+	Stethoscope,
 	MessageCircle,
 	CheckSquare,
 	Folder,
@@ -14,7 +15,7 @@ import {
 	Shield,
 } from 'lucide-react';
 import { motion } from 'framer-motion';
-import { hasRoleUserPermission, getRoleUserAccessibleModules } from '@/lib/role-user-auth-client';
+import { hasRoleUserPermission, getRoleUserAccessibleModules, getRoleUserDisplayName } from '@/lib/role-user-auth-client';
 
 interface RoleUserSession {
 	roleUserId: string;
@@ -35,6 +36,12 @@ const MODULE_CONFIG = [
 	{ value: 'pacientes', label: 'Pacientes', icon: User, href: '/dashboard/role-user/pacientes' },
 	{ value: 'consultas', label: 'Consultas', icon: ClipboardList, href: '/dashboard/role-user/consultas' },
 	{ value: 'citas', label: 'Citas', icon: CalendarDays, href: '/dashboard/role-user/citas' },
+	{
+		value: 'servicios',
+		label: 'Servicios del consultorio',
+		icon: Stethoscope,
+		href: '/dashboard/role-user/servicios',
+	},
 	{ value: 'recetas', label: 'Recetas', icon: FileText, href: '/dashboard/role-user/recetas' },
 	{ value: 'ordenes', label: 'Órdenes Médicas', icon: FileCheck, href: '/dashboard/role-user/ordenes' },
 	{ value: 'resultados', label: 'Resultados', icon: Folder, href: '/dashboard/role-user/resultados' },
@@ -97,6 +104,13 @@ export default function RoleUserDashboard() {
 
 	const accessibleModules = getRoleUserAccessibleModules(session);
 
+	// Servicios del consultorio: habilitar siempre para Recepción y Asistente De Citas,
+	// aunque no exista módulo explícito en consultorio_role_permissions
+	const canSeeServicios =
+		session &&
+		(getRoleUserDisplayName(session) === 'Recepción' ||
+			getRoleUserDisplayName(session) === 'Asistente De Citas');
+
 	return (
 		<div className="w-full">
 			{/* Header */}
@@ -107,7 +121,8 @@ export default function RoleUserDashboard() {
 			>
 				<h1 className="text-2xl sm:text-3xl font-bold text-slate-900">Panel General</h1>
 				<p className="text-sm sm:text-base text-slate-600 mt-1">
-					Bienvenido, {session.firstName} {session.lastName} — Rol: <span className="font-semibold text-teal-600">{session.roleName}</span>
+					Bienvenido, {session.firstName} {session.lastName} — Rol:{' '}
+					<span className="font-semibold text-teal-600">{getRoleUserDisplayName(session)}</span>
 				</p>
 			</motion.div>
 
@@ -121,7 +136,11 @@ export default function RoleUserDashboard() {
 						</div>
 					) : (
 						<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-							{MODULE_CONFIG.filter((module) => accessibleModules.includes(module.value)).map((module, index) => {
+							{MODULE_CONFIG.filter((module) =>
+								module.value === 'servicios'
+									? !!canSeeServicios
+									: accessibleModules.includes(module.value),
+							).map((module, index) => {
 								const Icon = module.icon;
 								const canView = hasRoleUserPermission(session, module.value as any, 'view');
 								const canCreate = hasRoleUserPermission(session, module.value as any, 'create');

@@ -28,7 +28,7 @@ type Consultation = {
 	status: string;
 	appointmentStatus: string;
 	scheduledAt?: string;
-	selectedService?: string;
+	selectedService?: any;
 	serviceInfo?: {
 		id?: string;
 		name?: string;
@@ -458,7 +458,23 @@ export default function RoleUserConsultationsPage() {
 											</td>
 											<td className="px-4 sm:px-6 py-4 whitespace-nowrap">
 												<div className="flex items-center gap-2">
-													<span className={`px-3 py-1.5 rounded-full text-xs font-semibold ${c.status === 'CONFIRMADA' || c.appointmentStatus === 'CONFIRMADA' ? 'bg-green-100 text-green-800' : c.status === 'EN CURSO' || c.appointmentStatus === 'EN_CURSO' ? 'bg-blue-100 text-blue-800' : c.status === 'REAGENDADA' || c.appointmentStatus === 'REAGENDADA' ? 'bg-yellow-100 text-yellow-800' : c.status === 'CANCELADA' || c.appointmentStatus === 'CANCELADA' ? 'bg-red-100 text-red-800' : c.status === 'COMPLETADA' || c.appointmentStatus === 'COMPLETADA' ? 'bg-purple-100 text-purple-800' : c.status === 'NO ASISTIÓ' || c.appointmentStatus === 'NO ASISTIÓ' ? 'bg-gray-100 text-gray-800' : 'bg-slate-100 text-slate-800'}`}>{c.status}</span>
+													<span
+														className={`px-3 py-1.5 rounded-full text-xs font-semibold ${
+															c.status === 'CONFIRMADA' || c.appointmentStatus === 'CONFIRMADA'
+																? 'bg-green-100 text-green-800'
+																: c.status === 'REAGENDADA' || c.appointmentStatus === 'REAGENDADA'
+																? 'bg-yellow-100 text-yellow-800'
+																: c.status === 'CANCELADA' || c.appointmentStatus === 'CANCELADA'
+																? 'bg-red-100 text-red-800'
+																: c.status === 'COMPLETADA' || c.appointmentStatus === 'COMPLETADA'
+																? 'bg-purple-100 text-purple-800'
+																: c.status === 'NO ASISTIÓ' || c.appointmentStatus === 'NO ASISTIÓ'
+																? 'bg-gray-100 text-gray-800'
+																: 'bg-slate-100 text-slate-800'
+														}`}
+													>
+														{c.status === 'COMPLETADA' ? 'Finalizada' : c.status}
+													</span>
 													{c.facturacion && (
 														<button onClick={() => setEditingConsultation(c)} className="p-1.5 text-teal-600 hover:bg-teal-50 rounded-lg transition-colors" title="Editar facturación">
 															<Edit className="w-4 h-4" />
@@ -501,6 +517,7 @@ export default function RoleUserConsultationsPage() {
 					onClose={() => setEditingConsultation(null)}
 					consultationId={editingConsultation.id}
 					facturacion={editingConsultation.facturacion}
+					selectedService={editingConsultation.selectedService}
 					onSave={() => {
 						loadConsultations({ reset: true });
 					}}

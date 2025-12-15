@@ -21,6 +21,22 @@ export interface RoleUserSession {
 	}>;
 }
 
+// Helpers compartidos para nombres de rol (server-side)
+export function normalizeRoleName(name: string | null | undefined): string {
+	if (!name) return '';
+	const raw = name.toString().trim();
+	return raw
+		.normalize('NFD')
+		.replace(/[\u0300-\u036f]/g, '')
+		.toUpperCase();
+}
+
+export function roleNameEquals(name: string | null | undefined, expected: string): boolean {
+	const norm = normalizeRoleName(name);
+	const normExpected = normalizeRoleName(expected);
+	return norm === normExpected;
+}
+
 /**
  * Obtiene la sesión del usuario de rol desde el servidor (para API routes y Server Components)
  * 

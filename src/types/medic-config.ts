@@ -16,6 +16,15 @@ export interface MedicService {
 	currency: 'USD' | 'VES' | 'EUR';
 }
 
+export interface MedicServiceCombo {
+	id: string;
+	name: string;
+	description: string;
+	price: string;
+	currency: 'USD' | 'VES' | 'EUR';
+	serviceIds: string[]; // IDs de servicios individuales incluidos en el combo
+}
+
 export interface Certification {
 	name: string;
 	issuer: string;
@@ -74,6 +83,7 @@ export interface MedicConfigData {
 	availability: MedicAvailability;
 	notifications: MedicNotifications;
 	services: MedicService[];
+	serviceCombos?: MedicServiceCombo[];
 	privateSpecialties: string[];
 	paymentMethods: PaymentMethod[];
 }

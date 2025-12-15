@@ -24,8 +24,12 @@ CREATE TABLE IF NOT EXISTS public.medic_profile (
   credit_history jsonb DEFAULT '{}'::jsonb,
   
   -- Servicios ofrecidos (JSON array)
-  -- Formato: [{"name": "Consulta General", "description": "...", "price": 50.00, "currency": "USD"}]
+  -- Formato: [{"id": "uuid", "name": "Consulta General", "description": "...", "price": 50.00, "currency": "USD"}]
   services jsonb DEFAULT '[]'::jsonb,
+
+  -- Combos de servicios (JSON array)
+  -- Formato: [{"id": "uuid", "name": "Combo Prenatal", "description": "...", "price": 80.00, "currency": "USD", "serviceIds": ["id-serv-1","id-serv-2"]}]
+  service_combos jsonb DEFAULT '[]'::jsonb,
   
   -- Horarios de disponibilidad (JSON)
   availability jsonb DEFAULT '{}'::jsonb,
@@ -53,7 +57,8 @@ CREATE INDEX IF NOT EXISTS idx_medic_profile_doctor_id ON public.medic_profile(d
 COMMENT ON TABLE public.medic_profile IS 'Perfil profesional y configuración de médicos especialistas';
 COMMENT ON COLUMN public.medic_profile.specialty IS 'Especialidad seleccionada de la clínica (para médicos afiliados)';
 COMMENT ON COLUMN public.medic_profile.private_specialty IS 'Especialidad propia registrada (para consultorios privados)';
-COMMENT ON COLUMN public.medic_profile.services IS 'Array JSON de servicios ofrecidos con nombre, descripción y precio';
+COMMENT ON COLUMN public.medic_profile.services IS 'Array JSON de servicios ofrecidos con id, nombre, descripción y precio';
+COMMENT ON COLUMN public.medic_profile.service_combos IS 'Array JSON de combos de servicios con referencias a services (serviceIds) y precio promocional';
 COMMENT ON COLUMN public.medic_profile.availability IS 'JSON con horarios de disponibilidad por día';
 COMMENT ON COLUMN public.medic_profile.credentials IS 'JSON con información de credenciales (licencia, número, emisor, expiración, archivos)';
 COMMENT ON COLUMN public.medic_profile.credit_history IS 'JSON con historial crediticio (universidad, título, certificaciones)';

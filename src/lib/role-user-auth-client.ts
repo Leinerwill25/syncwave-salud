@@ -17,6 +17,31 @@ export interface RoleUserSession {
 	}>;
 }
 
+// Normaliza nombres de rol para comparaciones (case / acentos)
+export function normalizeRoleName(name: string | null | undefined): string {
+	if (!name) return '';
+	const raw = name.toString().trim();
+	// Eliminar acentos y pasar a mayúsculas
+	return raw
+		.normalize('NFD')
+		.replace(/[\u0300-\u036f]/g, '')
+		.toUpperCase();
+}
+
+export function roleNameEquals(name: string | null | undefined, expected: string): boolean {
+	const norm = normalizeRoleName(name);
+	const normExpected = normalizeRoleName(expected);
+	return norm === normExpected;
+}
+
+export function getRoleUserDisplayName(session: RoleUserSession | null): string {
+	if (!session?.roleName) return 'Personal';
+	// Normalizar casos típicos en mayúsculas sin acento desde BD
+	if (roleNameEquals(session.roleName, 'Recepción')) return 'Recepción';
+	if (roleNameEquals(session.roleName, 'Asistente De Citas')) return 'Asistente De Citas';
+	return session.roleName;
+}
+
 /**
  * Obtiene la sesión del usuario de rol desde el servidor (usando API)
  */
