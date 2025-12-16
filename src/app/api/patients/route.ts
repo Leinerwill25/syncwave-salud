@@ -4,6 +4,10 @@ import { cookies } from 'next/headers';
 import { createSupabaseServerClient } from '@/app/adapters/server';
 import { apiRequireRole } from '@/lib/auth-guards';
 
+// Configurar caché para esta ruta (30 segundos)
+export const revalidate = 30;
+export const dynamic = 'force-dynamic';
+
 /* ---------------------- Helpers ---------------------- */
 function parseIntOrDefault(v: string | null, d = 1) {
 	if (!v) return d;

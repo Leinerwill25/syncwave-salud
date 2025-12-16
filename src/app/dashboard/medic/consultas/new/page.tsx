@@ -1,8 +1,18 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, Suspense } from 'react';
 import { Loader2 } from 'lucide-react';
-import ConsultationForm from '@/app/dashboard/medic/consultas/new/ConsultationForm';
+import dynamic from 'next/dynamic';
+
+// Lazy load del formulario pesado para mejorar tiempo de carga inicial
+const ConsultationForm = dynamic(() => import('@/app/dashboard/medic/consultas/new/ConsultationForm'), {
+	loading: () => (
+		<div className="flex items-center justify-center min-h-[400px]">
+			<Loader2 className="w-8 h-8 animate-spin text-teal-600" />
+		</div>
+	),
+	ssr: false, // Formulario complejo, no necesita SSR
+});
 
 export default function NewConsultationPage() {
 	const [fetchingSession, setFetchingSession] = useState(true);
@@ -11,7 +21,13 @@ export default function NewConsultationPage() {
 		async function fetchSession() {
 			try {
 				setFetchingSession(true);
-				const res = await fetch('/api/auth/met', { method: 'GET', credentials: 'include', cache: 'no-store' });
+				// Usar caché corto para sesión (5 segundos)
+				const res = await fetch('/api/auth/met', { 
+					method: 'GET', 
+					credentials: 'include', 
+					next: { revalidate: 5 },
+					cache: 'default' 
+				});
 				if (!res.ok) {
 					setFetchingSession(false);
 					return;

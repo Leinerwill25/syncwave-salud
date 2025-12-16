@@ -58,9 +58,11 @@ export default function PendingPaymentAlerts() {
 		try {
 			setLoading(true);
 			setError(null);
+			// Usar caché con revalidación para alertas (15 segundos)
 			const res = await fetch('/api/medic/pending-payment-alerts', {
 				credentials: 'include',
-				cache: 'no-store',
+				next: { revalidate: 15 },
+				cache: 'default',
 			});
 
 			if (!res.ok) {

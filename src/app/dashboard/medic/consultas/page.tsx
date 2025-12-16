@@ -98,7 +98,11 @@ export default function ConsultationsPage() {
 			url.searchParams.set('pageSize', String(pageSize));
 			if (query.trim()) url.searchParams.set('q', query.trim());
 
-			const res = await fetch(url.toString(), { cache: 'no-store' });
+			// Usar caché con revalidación para mejorar rendimiento
+			const res = await fetch(url.toString(), { 
+				next: { revalidate: 10 },
+				cache: 'default' 
+			});
 			const data = await res.json();
 
 			if (!res.ok) throw new Error(data?.error || 'Error cargando consultas');
@@ -134,12 +138,12 @@ export default function ConsultationsPage() {
 		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, []);
 
-	// search debounce
+	// search debounce mejorado para conexiones lentas (aumentado a 600ms)
 	useEffect(() => {
 		if (debounceRef.current) window.clearTimeout(debounceRef.current);
 		debounceRef.current = window.setTimeout(() => {
 			loadConsultations({ reset: true });
-		}, 450);
+		}, 600); // Aumentado de 450ms a 600ms para reducir llamadas en conexiones lentas
 		return () => {
 			if (debounceRef.current) window.clearTimeout(debounceRef.current);
 		};
@@ -156,7 +160,11 @@ export default function ConsultationsPage() {
 			url.searchParams.set('pageSize', String(pageSize));
 			if (query.trim()) url.searchParams.set('q', query.trim());
 
-			const res = await fetch(url.toString(), { cache: 'no-store' });
+			// Usar caché con revalidación para mejorar rendimiento
+			const res = await fetch(url.toString(), { 
+				next: { revalidate: 10 },
+				cache: 'default' 
+			});
 			const data = await res.json();
 			if (!res.ok) throw new Error(data?.error || 'Error cargando más consultas');
 

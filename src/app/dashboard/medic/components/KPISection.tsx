@@ -28,9 +28,11 @@ export default function KPISection() {
 			try {
 				// 🔑 Incluimos cookies de sesión con la solicitud y parámetro de período
 				const url = `/api/dashboard/medic/kpis?period=${period}`;
+				// Usar caché con revalidación para mejorar rendimiento
 				const res = await fetch(url, {
-					cache: 'no-store',
-					credentials: 'include', // ✅ Esto es clave
+					next: { revalidate: 30 }, // Revalidar cada 30 segundos (KPIs no cambian tan rápido)
+					cache: 'default',
+					credentials: 'include',
 				});
 
 				if (!res.ok) {

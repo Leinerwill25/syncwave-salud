@@ -3,6 +3,11 @@ import { NextRequest, NextResponse } from 'next/server';
 import createSupabaseServerClient from '@/app/adapters/server';
 import { apiRequireRole } from '@/lib/auth-guards';
 
+// Configurar caché para esta ruta (30 segundos para datos dinámicos)
+// Mantener dinámico por seguridad pero con caché corto para mejorar rendimiento
+export const dynamic = 'force-dynamic';
+export const revalidate = 30;
+
 export async function GET(req: NextRequest) {
 	try {
 		// 1️⃣ Autenticación - requerir que el usuario esté autenticado

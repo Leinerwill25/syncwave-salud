@@ -129,7 +129,12 @@ export default function RoleUserConsultationsPage() {
 			url.searchParams.set('pageSize', String(pageSize));
 			if (query.trim()) url.searchParams.set('q', query.trim());
 
-			const res = await fetch(url.toString(), { cache: 'no-store', credentials: 'include' });
+			// Usar caché con revalidación para mejorar rendimiento en conexiones lentas
+			const res = await fetch(url.toString(), { 
+				next: { revalidate: 10 },
+				cache: 'default',
+				credentials: 'include' 
+			});
 			const data = await res.json();
 
 			if (!res.ok) throw new Error(data?.error || 'Error cargando consultas');
@@ -165,12 +170,12 @@ export default function RoleUserConsultationsPage() {
 		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, []);
 
-	// search debounce
+	// search debounce mejorado para conexiones lentas
 	useEffect(() => {
 		if (debounceRef.current) window.clearTimeout(debounceRef.current);
 		debounceRef.current = window.setTimeout(() => {
 			loadConsultations({ reset: true });
-		}, 450);
+		}, 600); // Aumentado a 600ms para reducir llamadas en conexiones lentas
 		return () => {
 			if (debounceRef.current) window.clearTimeout(debounceRef.current);
 		};
@@ -187,7 +192,12 @@ export default function RoleUserConsultationsPage() {
 			url.searchParams.set('pageSize', String(pageSize));
 			if (query.trim()) url.searchParams.set('q', query.trim());
 
-			const res = await fetch(url.toString(), { cache: 'no-store', credentials: 'include' });
+			// Usar caché con revalidación para mejorar rendimiento en conexiones lentas
+			const res = await fetch(url.toString(), { 
+				next: { revalidate: 10 },
+				cache: 'default',
+				credentials: 'include' 
+			});
 			const data = await res.json();
 			if (!res.ok) throw new Error(data?.error || 'Error cargando más consultas');
 
