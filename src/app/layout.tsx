@@ -4,6 +4,7 @@ import '../../public/globals.css';
 import NavbarSwitcher from '@/components/NavbarSwitcher';
 import ConditionalMain from '@/components/ConditionalMain';
 import { Toaster } from 'sonner';
+import QueryProvider from '@/providers/QueryProvider';
 
 export const metadata: Metadata = {
 	title: 'ASHIRA - Plataforma Integral de Salud Digital para Venezuela | Dra. Carwin Silva - Ginecóloga Especialista',
@@ -26,14 +27,16 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 	return (
 		<html lang="es" className="overflow-x-hidden">
 			<body className="antialiased bg-[#F5F7FA] text-[#2C3E50] overflow-x-hidden w-full max-w-full">
-				{/* Navbar dinámico */}
-				<NavbarSwitcher />
+				<QueryProvider>
+					{/* Navbar dinámico */}
+					<NavbarSwitcher />
 
-				{/* Main con padding condicional */}
-				<ConditionalMain>{children}</ConditionalMain>
+					{/* Main con padding condicional */}
+					<ConditionalMain>{children}</ConditionalMain>
 
-				{/* Toaster para notificaciones */}
-				<Toaster position="top-right" richColors />
+					{/* Toaster para notificaciones */}
+					<Toaster position="top-right" richColors />
+				</QueryProvider>
 			</body>
 		</html>
 	);
