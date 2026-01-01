@@ -2,6 +2,7 @@
 export const runtime = 'nodejs';
 
 import { NextResponse } from 'next/server';
+import { createSupabaseServerClient } from '@/app/adapters/server';
 
 /**
  * DEV: permite forzar una org id desde env para desarrollo
@@ -43,55 +44,6 @@ function extractAccessTokenFromRequest(req: Request): string | null {
 	return null;
 }
 
-/** base64url decode (Node/browser) */
-function base64UrlDecode(payload: string): string {
-	const b64 = payload.replace(/-/g, '+').replace(/_/g, '/');
-	const pad = b64.length % 4;
-	const padded = pad ? b64 + '='.repeat(4 - pad) : b64;
-	if (typeof Buffer !== 'undefined') return Buffer.from(padded, 'base64').toString('utf8');
-	if (typeof atob !== 'undefined') {
-		return decodeURIComponent(Array.prototype.map.call(atob(padded), (c: string) => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)).join(''));
-	}
-	throw new Error('No base64 decode available');
-}
-
-/** Decodifica sub del JWT sin verificar signature — sólo fallback */
-function decodeJwtSub(token: string | null): string | null {
-	if (!token) return null;
-	try {
-		const parts = token.split('.');
-		if (parts.length < 2) return null;
-		const decoded = base64UrlDecode(parts[1]);
-		const obj = JSON.parse(decoded);
-		return (obj?.sub as string) ?? (obj?.user_id as string) ?? null;
-	} catch {
-		return null;
-	}
-}
-
-/** Resuelve auth user id usando Supabase Admin + JWT sub fallback */
-async function resolveAuthUserId(token: string | null, supabaseAdmin: any): Promise<string | null> {
-	if (!token) return null;
-	// intentar con supabaseAdmin
-	try {
-		const userResp = await supabaseAdmin.auth.getUser(token);
-		if ((userResp as any)?.data?.user?.id) {
-			return (userResp as any).data.user.id;
-		}
-		// en algunos escenarios supabase devuelve data: { user: null } - we fallback below
-		console.warn('supabaseAdmin.auth.getUser returned no user, resp:', userResp);
-	} catch (err) {
-		console.warn('supabaseAdmin.auth.getUser error (fallthrough to jwt-sub):', err);
-	}
-	// fallback simple: decode sub without verification
-	const sub = decodeJwtSub(token);
-	if (sub) {
-		console.warn('Using JWT-sub fallback to resolve authId. (No signature verification)');
-		return sub;
-	}
-	return null;
-}
-
 /** safe parse helper: si recibe string intenta JSON.parse, si no deja como está */
 function safeParseMaybeJson(input: any) {
 	if (input == null) return input;
@@ -113,96 +65,186 @@ function safeParseMaybeJson(input: any) {
 	return input;
 }
 
+/** Normaliza campos JSON que pueden ser null */
+function normalizeJsonFields(profile: any) {
+	if (!profile) return profile;
+
+	// Normalizar specialties
+	if (profile.specialties === null || profile.specialties === undefined) {
+		profile.specialties = [];
+	} else if (typeof profile.specialties === 'string') {
+		try {
+			profile.specialties = JSON.parse(profile.specialties);
+		} catch {
+			profile.specialties = [];
+		}
+	}
+
+	// Normalizar opening_hours
+	if (profile.opening_hours === null || profile.opening_hours === undefined) {
+		profile.opening_hours = [];
+	} else if (typeof profile.opening_hours === 'string') {
+		try {
+			profile.opening_hours = JSON.parse(profile.opening_hours);
+		} catch {
+			profile.opening_hours = [];
+		}
+	}
+
+	// Normalizar payment_methods
+	if (profile.payment_methods === null || profile.payment_methods === undefined) {
+		profile.payment_methods = [];
+	} else if (typeof profile.payment_methods === 'string') {
+		try {
+			profile.payment_methods = JSON.parse(profile.payment_methods);
+		} catch {
+			profile.payment_methods = [];
+		}
+	}
+
+	// Normalizar location
+	if (profile.location === null || profile.location === undefined) {
+		profile.location = null;
+	} else if (typeof profile.location === 'string') {
+		try {
+			profile.location = JSON.parse(profile.location);
+		} catch {
+			profile.location = null;
+		}
+	}
+
+	// Normalizar photos
+	if (profile.photos === null || profile.photos === undefined) {
+		profile.photos = [];
+	} else if (typeof profile.photos === 'string') {
+		try {
+			profile.photos = JSON.parse(profile.photos);
+		} catch {
+			profile.photos = [];
+		}
+	}
+
+	return profile;
+}
+
+/** Convierte campos snake_case a camelCase para la respuesta */
+function toCamelCase(profile: any) {
+	if (!profile) return profile;
+
+	return {
+		id: profile.id,
+		organizationId: profile.organization_id,
+		legalRif: profile.legal_rif,
+		legalName: profile.legal_name,
+		tradeName: profile.trade_name,
+		entityType: profile.entity_type,
+		addressFiscal: profile.address_fiscal,
+		addressOperational: profile.address_operational,
+		stateProvince: profile.state_province,
+		cityMunicipality: profile.city_municipality,
+		postalCode: profile.postal_code,
+		phoneFixed: profile.phone_fixed,
+		phoneMobile: profile.phone_mobile,
+		contactEmail: profile.contact_email,
+		website: profile.website,
+		socialFacebook: profile.social_facebook,
+		socialInstagram: profile.social_instagram,
+		socialLinkedin: profile.social_linkedin,
+		officesCount: profile.offices_count,
+		specialties: profile.specialties,
+		openingHours: profile.opening_hours,
+		capacityPerDay: profile.capacity_per_day,
+		employeesCount: profile.employees_count,
+		directorName: profile.director_name,
+		adminName: profile.admin_name,
+		directorIdNumber: profile.director_id_number,
+		sanitaryLicense: profile.sanitary_license,
+		liabilityInsuranceNumber: profile.liability_insurance_number,
+		bankName: profile.bank_name,
+		bankAccountType: profile.bank_account_type,
+		bankAccountNumber: profile.bank_account_number,
+		bankAccountOwner: profile.bank_account_owner,
+		currency: profile.currency,
+		paymentMethods: profile.payment_methods,
+		billingSeries: profile.billing_series,
+		taxRegime: profile.tax_regime,
+		billingAddress: profile.billing_address,
+		createdAt: profile.created_at,
+		updatedAt: profile.updated_at,
+		location: profile.location,
+		photos: profile.photos,
+		profilePhoto: profile.profile_photo,
+		hasCashea: profile.has_cashea,
+	};
+}
+
 /** GET handler (trae profile por organizationId) */
 export async function GET(req: Request) {
 	try {
-		// Dev shortcut
-		if (TEST_ORG_ID) {
-			const prismaModule = await import('@/lib/prisma');
-			const prisma = prismaModule.default ?? prismaModule;
-			const profileDev = await (prisma as any).clinicProfile.findUnique({ where: { organizationId: TEST_ORG_ID } });
-			if (!profileDev) return NextResponse.json({ ok: false, message: 'clinic profile not found (TEST_ORG_ID)' }, { status: 404 });
-			return NextResponse.json({ ok: true, profile: profileDev }, { status: 200 });
+		const supabase = await createSupabaseServerClient();
+
+		// Obtener usuario autenticado
+		let authUser = null;
+		const { data: { user: userFromSession }, error: authError } = await supabase.auth.getUser();
+		
+		if (!authError && userFromSession) {
+			authUser = userFromSession;
+		} else {
+			// Fallback: intentar obtener token desde request
+			const token = extractAccessTokenFromRequest(req);
+			if (!token) {
+				return NextResponse.json({ ok: false, message: 'not authenticated (no token found)' }, { status: 401 });
+			}
+
+			// Intentar obtener usuario con el token
+			const { data: { user: tokenUser }, error: tokenError } = await supabase.auth.getUser(token);
+			if (tokenError || !tokenUser) {
+				return NextResponse.json({ ok: false, message: 'not authenticated (could not resolve authId)' }, { status: 401 });
+			}
+			authUser = tokenUser;
 		}
 
-		const SUPABASE_URL = process.env.SUPABASE_URL ?? '';
-		const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY ?? '';
-
-		if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
-			console.error('Supabase service role client not configurado (SUPABASE_SERVICE_ROLE_KEY o SUPABASE_URL faltante).');
-			return NextResponse.json({ ok: false, message: 'server misconfiguration' }, { status: 500 });
+		if (!authUser) {
+			return NextResponse.json({ ok: false, message: 'not authenticated' }, { status: 401 });
 		}
 
-		const [{ createClient }, prismaModule] = await Promise.all([import('@supabase/supabase-js'), import('@/lib/prisma')]);
-		const prisma = prismaModule.default ?? prismaModule;
-		const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, { auth: { persistSession: false } });
+		// Obtener organizationId desde tabla User usando Supabase
+		const { data: appUser, error: userError } = await supabase
+			.from('User')
+			.select('organizationId')
+			.eq('authId', authUser.id)
+			.maybeSingle();
 
-		const token = extractAccessTokenFromRequest(req);
-		if (!token) return NextResponse.json({ ok: false, message: 'not authenticated (no token found)' }, { status: 401 });
-
-		const authUserId = await resolveAuthUserId(token, supabaseAdmin);
-		if (!authUserId) return NextResponse.json({ ok: false, message: 'not authenticated (could not resolve authId)' }, { status: 401 });
-
-		// obtener organizationId desde tabla User
-		const appUser = await (prisma as any).user.findFirst({
-			where: { authId: authUserId },
-			select: { organizationId: true },
-		});
-
-		if (!appUser?.organizationId) {
+		if (userError || !appUser?.organizationId) {
 			return NextResponse.json({ ok: false, message: 'organization not found for user' }, { status: 401 });
 		}
 
 		const organizationId = appUser.organizationId;
 
-		const profile = await (prisma as any).clinicProfile.findUnique({
-			where: { organizationId },
-			select: {
-				id: true,
-				organizationId: true,
-				legalRif: true,
-				legalName: true,
-				tradeName: true,
-				entityType: true,
-				addressFiscal: true,
-				addressOperational: true,
-				stateProvince: true,
-				cityMunicipality: true,
-				postalCode: true,
-				phoneFixed: true,
-				phoneMobile: true,
-				contactEmail: true,
-				website: true,
-				socialFacebook: true,
-				socialInstagram: true,
-				socialLinkedin: true,
-				officesCount: true,
-				specialties: true,
-				openingHours: true,
-				capacityPerDay: true,
-				employeesCount: true,
-				directorName: true,
-				adminName: true,
-				directorIdNumber: true,
-				sanitaryLicense: true,
-				liabilityInsuranceNumber: true,
-				bankName: true,
-				bankAccountType: true,
-				bankAccountNumber: true,
-				bankAccountOwner: true,
-				currency: true,
-				paymentMethods: true,
-				billingSeries: true,
-				taxRegime: true,
-				billingAddress: true,
-				createdAt: true,
-				updatedAt: true,
-			},
-		});
+		// Dev shortcut
+		const targetOrgId = TEST_ORG_ID || organizationId;
 
-		if (!profile) return NextResponse.json({ ok: false, message: 'clinic profile not found' }, { status: 404 });
+		// Obtener profile desde Supabase
+		const { data: profile, error: profileError } = await supabase
+			.from('clinic_profile')
+			.select('*')
+			.eq('organization_id', targetOrgId)
+			.maybeSingle();
 
-		return NextResponse.json({ ok: true, profile }, { status: 200 });
+		if (profileError) {
+			console.error('Error obteniendo clinic_profile:', profileError);
+			return NextResponse.json({ ok: false, message: 'Error obteniendo perfil de clínica' }, { status: 500 });
+		}
+
+		if (!profile) {
+			return NextResponse.json({ ok: false, message: 'clinic profile not found' }, { status: 404 });
+		}
+
+		// Normalizar campos JSON y convertir a camelCase
+		const normalized = normalizeJsonFields(profile);
+		const camelCaseProfile = toCamelCase(normalized);
+
+		return NextResponse.json({ ok: true, profile: camelCaseProfile }, { status: 200 });
 	} catch (err: any) {
 		console.error('GET /api/clinic-profile error', err);
 		return NextResponse.json({ ok: false, message: err?.message ?? 'server error' }, { status: 500 });
@@ -212,57 +254,47 @@ export async function GET(req: Request) {
 /** PUT handler: actualiza (o crea) clinicProfile para la organization del usuario */
 export async function PUT(req: Request) {
 	try {
-		// Dev shortcut: si TEST_ORG_ID -> actualizar para esa org sin auth
-		if (TEST_ORG_ID) {
-			const body = await req.json().catch(() => ({}));
-			const prismaModule = await import('@/lib/prisma');
-			const prisma = prismaModule.default ?? prismaModule;
+		const supabase = await createSupabaseServerClient();
 
-			// normalizaciones basicas
-			const payload: any = { ...body };
-			payload.specialties = safeParseMaybeJson(payload.specialties) ?? [];
-			payload.openingHours = safeParseMaybeJson(payload.openingHours) ?? [];
-			payload.paymentMethods = safeParseMaybeJson(payload.paymentMethods) ?? [];
+		// Obtener usuario autenticado
+		let authUser = null;
+		const { data: { user: userFromSession }, error: authError } = await supabase.auth.getUser();
+		
+		if (!authError && userFromSession) {
+			authUser = userFromSession;
+		} else {
+			// Fallback: intentar obtener token desde request
+			const token = extractAccessTokenFromRequest(req);
+			if (!token) {
+				return NextResponse.json({ ok: false, message: 'not authenticated (no token found)' }, { status: 401 });
+			}
 
-			const upserted = await (prisma as any).clinicProfile.upsert({
-				where: { organizationId: TEST_ORG_ID },
-				update: { ...payload },
-				create: { organizationId: TEST_ORG_ID, ...payload },
-			});
-
-			return NextResponse.json({ ok: true, profile: upserted }, { status: 200 });
+			// Intentar obtener usuario con el token
+			const { data: { user: tokenUser }, error: tokenError } = await supabase.auth.getUser(token);
+			if (tokenError || !tokenUser) {
+				return NextResponse.json({ ok: false, message: 'not authenticated (could not resolve authId)' }, { status: 401 });
+			}
+			authUser = tokenUser;
 		}
 
-		const SUPABASE_URL = process.env.SUPABASE_URL ?? '';
-		const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY ?? '';
-
-		if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
-			console.error('Supabase service role client not configurado (SUPABASE_SERVICE_ROLE_KEY o SUPABASE_URL faltante).');
-			return NextResponse.json({ ok: false, message: 'server misconfiguration' }, { status: 500 });
+		if (!authUser) {
+			return NextResponse.json({ ok: false, message: 'not authenticated' }, { status: 401 });
 		}
 
-		const [{ createClient }, prismaModule] = await Promise.all([import('@supabase/supabase-js'), import('@/lib/prisma')]);
-		const prisma = prismaModule.default ?? prismaModule;
-		const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, { auth: { persistSession: false } });
+		// Obtener organizationId desde tabla User usando Supabase
+		const { data: appUser, error: userError } = await supabase
+			.from('User')
+			.select('organizationId')
+			.eq('authId', authUser.id)
+			.maybeSingle();
 
-		const token = extractAccessTokenFromRequest(req);
-		if (!token) return NextResponse.json({ ok: false, message: 'not authenticated (no token found)' }, { status: 401 });
-
-		const authUserId = await resolveAuthUserId(token, supabaseAdmin);
-		if (!authUserId) return NextResponse.json({ ok: false, message: 'not authenticated (could not resolve authId)' }, { status: 401 });
-
-		const appUser = await (prisma as any).user.findFirst({
-			where: { authId: authUserId },
-			select: { organizationId: true },
-		});
-
-		if (!appUser?.organizationId) {
+		if (userError || !appUser?.organizationId) {
 			return NextResponse.json({ ok: false, message: 'organization not found for user' }, { status: 401 });
 		}
 
-		const organizationId = appUser.organizationId;
+		const organizationId = TEST_ORG_ID || appUser.organizationId;
 
-		// leer body y normalizar
+		// Leer body y normalizar
 		const body = await req.json().catch(() => ({}));
 		const payload: any = { ...body };
 
@@ -271,29 +303,106 @@ export async function PUT(req: Request) {
 		payload.openingHours = safeParseMaybeJson(payload.openingHours) ?? [];
 		payload.paymentMethods = safeParseMaybeJson(payload.paymentMethods) ?? [];
 
-		// Evitar que campos no permitidos rompan el upsert: seleccionar sólo keys relevantes
-		const allowedKeys = new Set(['legalRif', 'legalName', 'tradeName', 'entityType', 'addressFiscal', 'addressOperational', 'stateProvince', 'cityMunicipality', 'postalCode', 'phoneFixed', 'phoneMobile', 'contactEmail', 'website', 'socialFacebook', 'socialInstagram', 'socialLinkedin', 'officesCount', 'specialties', 'openingHours', 'capacityPerDay', 'employeesCount', 'directorName', 'adminName', 'directorIdNumber', 'sanitaryLicense', 'liabilityInsuranceNumber', 'bankName', 'bankAccountType', 'bankAccountNumber', 'bankAccountOwner', 'currency', 'paymentMethods', 'billingSeries', 'taxRegime', 'billingAddress']);
+		// Convertir camelCase a snake_case para la base de datos
+		const dataToUpdate: any = {
+			legal_rif: payload.legalRif,
+			legal_name: payload.legalName,
+			trade_name: payload.tradeName,
+			entity_type: payload.entityType,
+			address_fiscal: payload.addressFiscal,
+			address_operational: payload.addressOperational,
+			state_province: payload.stateProvince,
+			city_municipality: payload.cityMunicipality,
+			postal_code: payload.postalCode,
+			phone_fixed: payload.phoneFixed,
+			phone_mobile: payload.phoneMobile,
+			contact_email: payload.contactEmail,
+			website: payload.website,
+			social_facebook: payload.socialFacebook,
+			social_instagram: payload.socialInstagram,
+			social_linkedin: payload.socialLinkedin,
+			offices_count: payload.officesCount,
+			specialties: payload.specialties,
+			opening_hours: payload.openingHours,
+			capacity_per_day: payload.capacityPerDay,
+			employees_count: payload.employeesCount,
+			director_name: payload.directorName,
+			admin_name: payload.adminName,
+			director_id_number: payload.directorIdNumber,
+			sanitary_license: payload.sanitaryLicense,
+			liability_insurance_number: payload.liabilityInsuranceNumber,
+			bank_name: payload.bankName,
+			bank_account_type: payload.bankAccountType,
+			bank_account_number: payload.bankAccountNumber,
+			bank_account_owner: payload.bankAccountOwner,
+			currency: payload.currency,
+			payment_methods: payload.paymentMethods,
+			billing_series: payload.billingSeries,
+			tax_regime: payload.taxRegime,
+			billing_address: payload.billingAddress,
+		};
 
-		const dataToUpdate: any = {};
-		for (const k of Object.keys(payload)) {
-			if (allowedKeys.has(k)) dataToUpdate[k] = payload[k];
-		}
-
-		// Normalizaciones simples: empty string -> null for optional fields (if you prefer '')
+		// Normalizaciones: empty string -> null for optional fields
 		for (const k of Object.keys(dataToUpdate)) {
-			if (typeof dataToUpdate[k] === 'string' && dataToUpdate[k].trim() === '') {
+			if (dataToUpdate[k] === undefined) {
+				delete dataToUpdate[k];
+			} else if (typeof dataToUpdate[k] === 'string' && dataToUpdate[k].trim() === '') {
 				dataToUpdate[k] = null;
 			}
 		}
 
-		// Upsert (crea si no existe)
-		const upserted = await (prisma as any).clinicProfile.upsert({
-			where: { organizationId },
-			update: { ...dataToUpdate },
-			create: { organizationId, ...dataToUpdate },
-		});
+		// Upsert usando Supabase (insert o update)
+		const { data: existingProfile } = await supabase
+			.from('clinic_profile')
+			.select('id')
+			.eq('organization_id', organizationId)
+			.maybeSingle();
 
-		return NextResponse.json({ ok: true, profile: upserted }, { status: 200 });
+		let upserted: any;
+
+		if (existingProfile) {
+			// Update
+			const { data: updated, error: updateError } = await supabase
+				.from('clinic_profile')
+				.update({
+					...dataToUpdate,
+					updated_at: new Date().toISOString(),
+				})
+				.eq('organization_id', organizationId)
+				.select()
+				.single();
+
+			if (updateError) {
+				console.error('Error actualizando clinic_profile:', updateError);
+				return NextResponse.json({ ok: false, message: 'Error actualizando perfil de clínica' }, { status: 500 });
+			}
+
+			upserted = updated;
+		} else {
+			// Create
+			const { data: created, error: createError } = await supabase
+				.from('clinic_profile')
+				.insert({
+					organization_id: organizationId,
+					legal_name: dataToUpdate.legal_name || 'Clínica',
+					...dataToUpdate,
+				})
+				.select()
+				.single();
+
+			if (createError) {
+				console.error('Error creando clinic_profile:', createError);
+				return NextResponse.json({ ok: false, message: 'Error creando perfil de clínica' }, { status: 500 });
+			}
+
+			upserted = created;
+		}
+
+		// Normalizar campos JSON y convertir a camelCase
+		const normalized = normalizeJsonFields(upserted);
+		const camelCaseProfile = toCamelCase(normalized);
+
+		return NextResponse.json({ ok: true, profile: camelCaseProfile }, { status: 200 });
 	} catch (err: any) {
 		console.error('PUT /api/clinic-profile error', err);
 		return NextResponse.json({ ok: false, message: err?.message ?? 'server error' }, { status: 500 });

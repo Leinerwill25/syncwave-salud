@@ -3,7 +3,6 @@ export const runtime = 'nodejs';
 
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import prisma from '@/lib/prisma';
 import crypto from 'crypto';
 
 type CreateInviteBody = {
@@ -88,25 +87,36 @@ function decodeJwtPayload(token: string | null): any | null {
 async function resolveDbUserFromToken(token: string | null) {
 	if (!token) return null;
 
-	// 1) Si hay SUPABASE admin creds, usarlo (creado dentro de la función — sin side effects en import)
-	if (SUPABASE_URL && SUPABASE_SERVICE_ROLE_KEY) {
-		try {
-			const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, { auth: { persistSession: false } });
-			const userResp = await supabaseAdmin.auth.getUser(token);
-			const supUser = (userResp as any)?.data?.user ?? null;
-			if (supUser?.id) {
-				// buscar en DB por authId
-				const dbUser = await prisma.user.findFirst({ where: { authId: supUser.id } });
-				if (dbUser) return dbUser;
-				// si no existe por authId, intentar por email si la respuesta lo tiene
-				if (supUser?.email) {
-					const dbByEmail = await prisma.user.findFirst({ where: { email: supUser.email } });
-					if (dbByEmail) return dbByEmail;
-				}
+	const supabaseAdmin = SUPABASE_URL && SUPABASE_SERVICE_ROLE_KEY
+		? createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, { auth: { persistSession: false } })
+		: null;
+
+	if (!supabaseAdmin) return null;
+
+	// 1) Si hay SUPABASE admin creds, usarlo
+	try {
+		const userResp = await supabaseAdmin.auth.getUser(token);
+		const supUser = (userResp as any)?.data?.user ?? null;
+		if (supUser?.id) {
+			// buscar en DB por authId usando Supabase (tabla User según Database.sql)
+			const { data: dbUser } = await supabaseAdmin
+				.from('User')
+				.select('id, email, role, organizationId, authId')
+				.eq('authId', supUser.id)
+				.maybeSingle();
+			if (dbUser) return dbUser;
+			// si no existe por authId, intentar por email si la respuesta lo tiene
+			if (supUser?.email) {
+				const { data: dbByEmail } = await supabaseAdmin
+					.from('User')
+					.select('id, email, role, organizationId, authId')
+					.eq('email', supUser.email)
+					.maybeSingle();
+				if (dbByEmail) return dbByEmail;
 			}
-		} catch (err) {
-			console.warn('supabaseAdmin.auth.getUser falló, continuando con fallback JWT', err);
 		}
+	} catch (err) {
+		console.warn('supabaseAdmin.auth.getUser falló, continuando con fallback JWT', err);
 	}
 
 	// 2) Fallback: parsear payload del JWT para obtener sub o email
@@ -114,12 +124,20 @@ async function resolveDbUserFromToken(token: string | null) {
 	if (!payload) return null;
 	const authId = payload.sub ?? payload.user_id ?? null;
 	const email = payload.email ?? null;
-	if (authId) {
-		const dbUser = await prisma.user.findFirst({ where: { authId } });
+	if (authId && supabaseAdmin) {
+		const { data: dbUser } = await supabaseAdmin
+			.from('User')
+			.select('id, email, role, organizationId, authId')
+			.eq('authId', authId)
+			.maybeSingle();
 		if (dbUser) return dbUser;
 	}
-	if (email) {
-		const dbByEmail = await prisma.user.findFirst({ where: { email } });
+	if (email && supabaseAdmin) {
+		const { data: dbByEmail } = await supabaseAdmin
+			.from('User')
+			.select('id, email, role, organizationId, authId')
+			.eq('email', email)
+			.maybeSingle();
 		if (dbByEmail) return dbByEmail;
 	}
 	return null;
@@ -166,18 +184,34 @@ export async function POST(req: Request) {
 		// generar token seguro
 		const tokenGenerated = generateToken();
 
-		// crear invitación (castear role a any para evitar dependencia de enum generado)
-		const invite = await prisma.invite.create({
-			data: {
-				organizationId: orgId, // ahora TS sabe que es string
+		// crear invitación usando Supabase (tabla Invite según Database.sql)
+		// Campos: organizationId, email, token, role, invitedById, used, expiresAt, createdAt
+		const supabaseAdmin = SUPABASE_URL && SUPABASE_SERVICE_ROLE_KEY
+			? createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, { auth: { persistSession: false } })
+			: null;
+
+		if (!supabaseAdmin) {
+			return NextResponse.json({ error: 'Error de configuración del servidor' }, { status: 500 });
+		}
+
+		const { data: invite, error: inviteError } = await supabaseAdmin
+			.from('Invite')
+			.insert({
+				organizationId: orgId,
 				email,
 				token: tokenGenerated,
-				role: role as any,
+				role: role, // USER-DEFINED type según Database.sql
 				invitedById: dbUser.id,
 				used: false,
-				expiresAt,
-			},
-		});
+				expiresAt: expiresAt.toISOString(),
+			})
+			.select('id, email, token, role, used, expiresAt, createdAt')
+			.single();
+
+		if (inviteError) {
+			console.error('[Invites API] Error creando invite:', inviteError);
+			return NextResponse.json({ error: 'Error al crear invitación' }, { status: 500 });
+		}
 
 		return NextResponse.json(
 			{
@@ -208,11 +242,37 @@ export async function DELETE(req: Request) {
 		const { id } = (await req.json().catch(() => ({}))) as { id?: string };
 		if (!id) return NextResponse.json({ error: 'id is required' }, { status: 400 });
 
-		const existing = await prisma.invite.findUnique({ where: { id }, select: { organizationId: true } });
-		if (!existing) return NextResponse.json({ error: 'Invite not found' }, { status: 404 });
-		if (existing.organizationId !== dbUser.organizationId) return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
+		const supabaseAdmin = SUPABASE_URL && SUPABASE_SERVICE_ROLE_KEY
+			? createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, { auth: { persistSession: false } })
+			: null;
 
-		await prisma.invite.delete({ where: { id } });
+		if (!supabaseAdmin) {
+			return NextResponse.json({ error: 'Error de configuración del servidor' }, { status: 500 });
+		}
+
+		const { data: existing, error: findError } = await supabaseAdmin
+			.from('Invite')
+			.select('organizationId')
+			.eq('id', id)
+			.maybeSingle();
+
+		if (findError || !existing) {
+			return NextResponse.json({ error: 'Invite not found' }, { status: 404 });
+		}
+		if (existing.organizationId !== dbUser.organizationId) {
+			return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
+		}
+
+		const { error: deleteError } = await supabaseAdmin
+			.from('Invite')
+			.delete()
+			.eq('id', id);
+
+		if (deleteError) {
+			console.error('[Invites API] Error eliminando invite:', deleteError);
+			return NextResponse.json({ error: 'Error al eliminar invitación' }, { status: 500 });
+		}
+
 		return NextResponse.json({ ok: true });
 	} catch (err: any) {
 		console.error('API DELETE /api/invites error:', err);

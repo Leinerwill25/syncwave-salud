@@ -441,13 +441,13 @@ export default function PublicNavBar() {
 															</div>
 														</div>
 														<div className="p-3 space-y-2">
-															<a href="https://wa.me/584242070878" target="_blank" rel="noopener noreferrer" onClick={() => setContactMenuOpen(false)} className="group flex items-center gap-3 p-3 rounded-xl hover:bg-gradient-to-r hover:from-teal-50 hover:to-cyan-50 transition-all duration-200">
+															<a href="https://wa.me/584124885623" target="_blank" rel="noopener noreferrer" onClick={() => setContactMenuOpen(false)} className="group flex items-center gap-3 p-3 rounded-xl hover:bg-gradient-to-r hover:from-teal-50 hover:to-cyan-50 transition-all duration-200">
 																<div className="flex-shrink-0 w-12 h-12 rounded-xl bg-gradient-to-br from-green-500 to-emerald-500 flex items-center justify-center shadow-md group-hover:scale-110 transition-transform">
 																	<MessageCircle className="w-6 h-6 text-white" />
 																</div>
 																<div className="flex-1 min-w-0">
 																	<div className="font-semibold text-slate-900 group-hover:text-teal-600 transition-colors">WhatsApp</div>
-																	<div className="text-xs text-slate-500 mt-0.5">04242070878</div>
+																	<div className="text-xs text-slate-500 mt-0.5">04124885623</div>
 																</div>
 															</a>
 															<Link href="/politicas-privacidad" onClick={() => setContactMenuOpen(false)} className="group flex items-center gap-3 p-3 rounded-xl hover:bg-gradient-to-r hover:from-teal-50 hover:to-cyan-50 transition-all duration-200">
@@ -459,22 +459,22 @@ export default function PublicNavBar() {
 																	<div className="text-xs text-slate-500 mt-0.5">Conoce cómo protegemos tus datos</div>
 																</div>
 															</Link>
-															<a href="mailto:syncwaveagency@gmail.com" onClick={() => setContactMenuOpen(false)} className="group flex items-center gap-3 p-3 rounded-xl hover:bg-gradient-to-r hover:from-teal-50 hover:to-cyan-50 transition-all duration-200">
+															<a href="mailto:ashirasoftware@gmail.com" onClick={() => setContactMenuOpen(false)} className="group flex items-center gap-3 p-3 rounded-xl hover:bg-gradient-to-r hover:from-teal-50 hover:to-cyan-50 transition-all duration-200">
 																<div className="flex-shrink-0 w-12 h-12 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-500 flex items-center justify-center shadow-md group-hover:scale-110 transition-transform">
 																	<Mail className="w-6 h-6 text-white" />
 																</div>
 																<div className="flex-1 min-w-0">
 																	<div className="font-semibold text-slate-900 group-hover:text-teal-600 transition-colors">Correo</div>
-																	<div className="text-xs text-slate-500 mt-0.5">syncwaveagency@gmail.com</div>
+																	<div className="text-xs text-slate-500 mt-0.5">ashirasoftware@gmail.com</div>
 																</div>
 															</a>
-															<a href="https://instagram.com/syncwave_agency" target="_blank" rel="noopener noreferrer" onClick={() => setContactMenuOpen(false)} className="group flex items-center gap-3 p-3 rounded-xl hover:bg-gradient-to-r hover:from-teal-50 hover:to-cyan-50 transition-all duration-200">
+															<a href="https://instagram.com/ashira_soft" target="_blank" rel="noopener noreferrer" onClick={() => setContactMenuOpen(false)} className="group flex items-center gap-3 p-3 rounded-xl hover:bg-gradient-to-r hover:from-teal-50 hover:to-cyan-50 transition-all duration-200">
 																<div className="flex-shrink-0 w-12 h-12 rounded-xl bg-gradient-to-br from-pink-500 to-rose-500 flex items-center justify-center shadow-md group-hover:scale-110 transition-transform">
 																	<Instagram className="w-6 h-6 text-white" />
 																</div>
 																<div className="flex-1 min-w-0">
 																	<div className="font-semibold text-slate-900 group-hover:text-teal-600 transition-colors">Instagram</div>
-																	<div className="text-xs text-slate-500 mt-0.5">@syncwave_agency</div>
+																	<div className="text-xs text-slate-500 mt-0.5">@ashira_soft</div>
 																</div>
 															</a>
 														</div>
@@ -640,7 +640,7 @@ export default function PublicNavBar() {
 															<motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.2 }} className="overflow-hidden">
 																<div className="pl-4 space-y-1 mt-1">
 																	<a
-																		href="https://wa.me/584242070878"
+																		href="https://wa.me/584124885623"
 																		target="_blank"
 																		rel="noopener noreferrer"
 																		onClick={() => {
@@ -649,17 +649,17 @@ export default function PublicNavBar() {
 																		}}
 																		className="flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm text-slate-600 hover:bg-teal-50 active:bg-teal-100 hover:text-teal-600 transition-colors">
 																		<MessageCircle className="w-4 h-4 text-green-600 flex-shrink-0" />
-																		<span>WhatsApp: 04242070878</span>
+																		<span>WhatsApp: 04124885623</span>
 																	</a>
 																	<a
-																		href="mailto:syncwaveagency@gmail.com"
+																		href="mailto:ashirasoftware@gmail.com"
 																		onClick={() => {
 																			setMobileMenuOpen(false);
 																			setContactMenuOpen(false);
 																		}}
 																		className="flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm text-slate-600 hover:bg-teal-50 active:bg-teal-100 hover:text-teal-600 transition-colors">
 																		<Mail className="w-4 h-4 text-blue-600 flex-shrink-0" />
-																		<span>syncwaveagency@gmail.com</span>
+																		<span>ashirasoftware@gmail.com</span>
 																	</a>
 																	<Link
 																		href="/politicas-privacidad"
@@ -672,7 +672,7 @@ export default function PublicNavBar() {
 																		<span>Políticas de Privacidad</span>
 																	</Link>
 																	<a
-																		href="https://instagram.com/syncwave_agency"
+																		href="https://instagram.com/ashira_soft"
 																		target="_blank"
 																		rel="noopener noreferrer"
 																		onClick={() => {
@@ -681,7 +681,7 @@ export default function PublicNavBar() {
 																		}}
 																		className="flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm text-slate-600 hover:bg-teal-50 active:bg-teal-100 hover:text-teal-600 transition-colors">
 																		<Instagram className="w-4 h-4 text-pink-600 flex-shrink-0" />
-																		<span>@syncwave_agency</span>
+																		<span>@ashira_soft</span>
 																	</a>
 																</div>
 															</motion.div>

@@ -6,6 +6,8 @@ import { Users, CalendarDays, DollarSign, Calendar as CalendarIcon } from 'lucid
 import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import CurrencyDisplay from '@/components/CurrencyDisplay';
+import { useLiteMode } from '@/contexts/LiteModeContext';
+import { getLiteCacheConfig } from '@/lib/lite-mode-utils';
 
 type KpiTitle = 'Pacientes Atendidos' | 'Citas Programadas' | 'Ingresos Generados';
 type PeriodType = 'day' | 'week' | 'month';
@@ -21,17 +23,19 @@ export default function KPISection() {
 	const [kpis, setKpis] = useState<KPI[]>([]);
 	const [loading, setLoading] = useState(true);
 	const [period, setPeriod] = useState<PeriodType>('week');
+	const { isLiteMode } = useLiteMode();
 
 	useEffect(() => {
 		const fetchData = async () => {
 			setLoading(true);
 			try {
 				// 🔑 Incluimos cookies de sesión con la solicitud y parámetro de período
-				const url = `/api/dashboard/medic/kpis?period=${period}`;
-				// Usar caché con revalidación para mejorar rendimiento
+				const url = `/api/dashboard/medic/kpis?period=${period}&liteMode=${isLiteMode}`;
+				// Usar caché con revalidación optimizada para liteMode
+				const cacheConfig = getLiteCacheConfig(isLiteMode);
 				const res = await fetch(url, {
-					next: { revalidate: 30 }, // Revalidar cada 30 segundos (KPIs no cambian tan rápido)
-					cache: 'default',
+					next: { revalidate: cacheConfig.revalidate },
+					cache: cacheConfig.cache,
 					credentials: 'include',
 				});
 
@@ -134,8 +138,13 @@ export default function KPISection() {
 					const gradient = gradientMap[kpi.title];
 
 					return (
-						<motion.div key={i} whileHover={{ y: -6 }} transition={{ type: 'spring', stiffness: 300, damping: 18 }} className="h-full">
-							<Card className="relative bg-white/90 backdrop-blur-sm border border-gray-100 shadow-sm hover:shadow-xl hover:border-gray-200 transition-all rounded-2xl overflow-hidden h-full flex flex-col">
+						<motion.div 
+							key={i} 
+							whileHover={isLiteMode ? {} : { y: -6 }} 
+							transition={isLiteMode ? { duration: 0 } : { type: 'spring', stiffness: 300, damping: 18 }} 
+							className="h-full"
+						>
+							<Card className={`relative bg-white/90 backdrop-blur-sm border border-gray-100 shadow-sm rounded-2xl overflow-hidden h-full flex flex-col ${isLiteMode ? '' : 'hover:shadow-xl hover:border-gray-200 transition-all'}`}>
 								<CardContent className="p-4 sm:p-6 flex items-center gap-3 sm:gap-5 relative z-10 flex-1 min-h-[140px] sm:min-h-[160px]">
 									<div className={`relative flex items-center justify-center bg-linear-to-br ${gradient} p-3 sm:p-4 rounded-xl sm:rounded-2xl text-white shrink-0`}>
 										<Icon className="w-5 h-5 sm:w-6 sm:h-6" />

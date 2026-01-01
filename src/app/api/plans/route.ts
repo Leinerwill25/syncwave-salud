@@ -2,36 +2,55 @@
 // API para obtener planes disponibles desde la base de datos
 
 import { NextResponse } from 'next/server';
-import { PrismaClient } from '@prisma/client';
+import { createClient } from '@supabase/supabase-js';
 
-const prisma = new PrismaClient();
+const SUPABASE_URL = process.env.SUPABASE_URL ?? process.env.NEXT_PUBLIC_SUPABASE_URL ?? '';
+const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY ?? '';
+
+const supabaseAdmin = SUPABASE_URL && SUPABASE_SERVICE_ROLE_KEY
+	? createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
+			auth: {
+				autoRefreshToken: false,
+				persistSession: false,
+			},
+	  })
+	: null;
 
 export async function GET(request: Request) {
 	try {
+		if (!supabaseAdmin) {
+			return NextResponse.json({ success: false, error: 'Error de configuración del servidor' }, { status: 500 });
+		}
+
 		const { searchParams } = new URL(request.url);
 		const role = searchParams.get('role'); // 'MEDICO', 'PACIENTE', etc.
 		const specialistCount = searchParams.get('specialistCount'); // Para organizaciones
 
-		// Obtener todos los planes activos
-		const plans = await prisma.plan.findMany({
-			orderBy: [
-				{ monthlyPrice: 'asc' },
-			],
-		});
+		// Obtener todos los planes activos usando Supabase
+		// Según Database.sql: Plan tiene: id, slug, name, minSpecialists, maxSpecialists, monthlyPrice, quarterlyPrice, annualPrice, description
+		const { data: plans, error: plansError } = await supabaseAdmin
+			.from('Plan')
+			.select('id, slug, name, minSpecialists, maxSpecialists, monthlyPrice, quarterlyPrice, annualPrice, description')
+			.order('monthlyPrice', { ascending: true });
+
+		if (plansError) {
+			console.error('[Plans API] Error obteniendo planes:', plansError);
+			return NextResponse.json({ success: false, error: 'Error al obtener planes' }, { status: 500 });
+		}
 
 		// Filtrar planes según el rol y contexto
-		let filteredPlans = plans;
+		let filteredPlans = plans || [];
 
 		if (role === 'MEDICO') {
 			// Para médicos, buscar plan con slug 'medico' específicamente
-			filteredPlans = plans.filter((plan) => plan.slug === 'medico');
+			filteredPlans = filteredPlans.filter((plan) => plan.slug === 'medico');
 		} else if (role === 'PACIENTE') {
 			// Para pacientes, no devolver planes (son gratuitos)
 			filteredPlans = [];
 		} else if (role && specialistCount) {
 			// Para organizaciones, filtrar por rango de especialistas
 			const count = parseInt(specialistCount, 10);
-			filteredPlans = plans.filter(
+			filteredPlans = filteredPlans.filter(
 				(plan) =>
 					(plan.minSpecialists === 0 || plan.minSpecialists <= count) &&
 					(plan.maxSpecialists === 0 || plan.maxSpecialists >= count)
@@ -56,8 +75,6 @@ export async function GET(request: Request) {
 		console.error('[Plans API] Error:', error);
 		const errorMessage = error instanceof Error ? error.message : 'Error desconocido';
 		return NextResponse.json({ success: false, error: errorMessage }, { status: 500 });
-	} finally {
-		await prisma.$disconnect();
 	}
 }
 

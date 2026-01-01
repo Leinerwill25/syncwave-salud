@@ -101,19 +101,60 @@ export default function NewOrderPage() {
 	const fetchActivePatients = async () => {
 		try {
 			setLoadingPatients(true);
+			
+			// Intentar obtener desde caché primero
+			const cacheKey = 'active-patients-cache';
+			const cached = sessionStorage.getItem(cacheKey);
+			if (cached) {
+				try {
+					const cachedData = JSON.parse(cached);
+					const cacheAge = Date.now() - cachedData.timestamp;
+					// Usar caché si tiene menos de 30 segundos
+					if (cacheAge < 30000) {
+						setActivePatients(cachedData.patients || []);
+						setLoadingPatients(false);
+						// Cargar en background para actualizar
+						fetch('/api/medic/orders/active-patients', {
+							credentials: 'include',
+						}).then(res => res.json()).then(data => {
+							sessionStorage.setItem(cacheKey, JSON.stringify({
+								patients: data.patients || [],
+								timestamp: Date.now()
+							}));
+							setActivePatients(data.patients || []);
+						}).catch(() => {});
+						return;
+					}
+				} catch {}
+			}
+
+			const controller = new AbortController();
+			const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 segundos timeout
+
 			const res = await fetch('/api/medic/orders/active-patients', {
 				credentials: 'include',
+				signal: controller.signal,
 			});
 			
+			clearTimeout(timeoutId);
+
 			if (res.ok) {
 				const data = await res.json();
-				setActivePatients(data.patients || []);
+				const patients = data.patients || [];
+				setActivePatients(patients);
+				// Guardar en caché
+				sessionStorage.setItem(cacheKey, JSON.stringify({
+					patients,
+					timestamp: Date.now()
+				}));
 			} else {
 				const error = await res.json();
 				console.error('Error cargando pacientes activos:', error);
 			}
-		} catch (err) {
-			console.error('Error cargando pacientes activos:', err);
+		} catch (err: any) {
+			if (err.name !== 'AbortError') {
+				console.error('Error cargando pacientes activos:', err);
+			}
 		} finally {
 			setLoadingPatients(false);
 		}
@@ -134,33 +175,32 @@ export default function NewOrderPage() {
 			return;
 		}
 
-		// Para pacientes no registrados, necesitamos usar el patient_id de la consulta si existe
-		// Si la consulta tiene unregistered_patient_id pero no patient_id, no podemos crear la orden
-		// porque lab_result requiere patient_id de la tabla Patient
-		if (patient.patient.is_unregistered && patient.consultation) {
-			// Intentar obtener el patient_id de la consulta
-			// Si la consulta no tiene patient_id, no podemos continuar
-			// Esto se validará en el backend también
-		}
-
 		setLoading(true);
 		try {
 			// Usar la consulta activa si existe
 			const consultationId = selectedPatient?.consultation?.id || formData.consultation_id || null;
 
+			const payload = {
+				patient_id: formData.patient_id,
+				consultation_id: consultationId,
+				result_type: formData.result_type,
+				attachments: formData.attachments,
+				notes: formData.notes,
+				is_critical: formData.is_critical,
+			};
+
+			const controller = new AbortController();
+			const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 segundos timeout
+
 			const res = await fetch('/api/medic/orders', {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
 				credentials: 'include',
-				body: JSON.stringify({
-					patient_id: formData.patient_id,
-					consultation_id: consultationId,
-					result_type: formData.result_type,
-					attachments: formData.attachments,
-					notes: formData.notes,
-					is_critical: formData.is_critical,
-				}),
+				body: JSON.stringify(payload),
+				signal: controller.signal,
 			});
+
+			clearTimeout(timeoutId);
 
 			if (!res.ok) {
 				const error = await res.json();
@@ -168,10 +208,16 @@ export default function NewOrderPage() {
 			}
 
 			const data = await res.json();
+			// Limpiar caché de pacientes activos
+			sessionStorage.removeItem('active-patients-cache');
 			router.push(`/dashboard/medic/ordenes/${data.order.id}`);
-		} catch (err) {
-			console.error('Error:', err);
-			alert(err instanceof Error ? err.message : 'Error al crear orden');
+		} catch (err: any) {
+			if (err.name === 'AbortError') {
+				alert('La operación está tomando más tiempo del esperado. Por favor, intenta nuevamente.');
+			} else {
+				console.error('Error:', err);
+				alert(err instanceof Error ? err.message : 'Error al crear orden');
+			}
 		} finally {
 			setLoading(false);
 		}

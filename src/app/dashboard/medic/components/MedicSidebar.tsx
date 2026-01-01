@@ -3,10 +3,11 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { LayoutDashboard, CalendarDays, User, ClipboardList, FileText, Settings, MessageCircle, CheckSquare, Folder, ChevronRight, ChevronDown, Search, FileCheck, CreditCard, DollarSign, Users, FileType, Share2 } from 'lucide-react';
+import { LayoutDashboard, CalendarDays, User, ClipboardList, FileText, Settings, MessageCircle, CheckSquare, Folder, ChevronRight, ChevronDown, Search, FileCheck, CreditCard, DollarSign, Users, FileType, Share2, Zap } from 'lucide-react';
 import type { MedicConfig } from '@/types/medic-config';
 import PaymentsModal from '@/components/medic/PaymentsModal';
 import PublicLinkModal from '@/components/medic/PublicLinkModal';
+import { useLiteMode } from '@/contexts/LiteModeContext';
 
 type IconComponent = React.ComponentType<React.SVGProps<SVGSVGElement>>;
 
@@ -113,6 +114,7 @@ export default function MedicSidebar() {
 	const [loadingConfig, setLoadingConfig] = useState(true);
 	const [paymentsModalOpen, setPaymentsModalOpen] = useState(false);
 	const [publicLinkModalOpen, setPublicLinkModalOpen] = useState(false);
+	const { isLiteMode, toggleLiteMode, loading: liteModeLoading } = useLiteMode();
 
 	useEffect(() => {
 		loadMedicConfig();
@@ -347,6 +349,24 @@ export default function MedicSidebar() {
 
 					{/* Action Buttons */}
 					<div className="mt-3 pt-2 border-t border-blue-100 space-y-2">
+						{/* Versión Lite Button */}
+						<button 
+							onClick={toggleLiteMode} 
+							disabled={liteModeLoading}
+							className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors group ${
+								isLiteMode 
+									? 'bg-gradient-to-r from-teal-600 to-cyan-600 text-white shadow-md' 
+									: 'text-slate-700 hover:bg-blue-50'
+							}`}
+						>
+							<Zap className={`w-5 h-5 ${isLiteMode ? 'text-white' : 'text-teal-600 group-hover:text-teal-700'}`} />
+							<span>{isLiteMode ? 'Versión Lite Activa' : 'Habilitar Versión Lite'}</span>
+							{isLiteMode && (
+								<span className="ml-auto px-2 py-0.5 text-[10px] font-semibold rounded-full bg-white/20 text-white border border-white/30">
+									ON
+								</span>
+							)}
+						</button>
 						{/* Link Público Button - Solo para consultorios privados */}
 						{medicConfig?.organizationType === 'CONSULTORIO' && (medicConfig?.user?.organizationId || (medicConfig as any)?.organizationId) && (
 							<button onClick={() => setPublicLinkModalOpen(true)} className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-slate-700 hover:bg-gradient-to-r hover:from-teal-50 hover:to-cyan-50 transition-all group border border-teal-200 hover:border-teal-300">

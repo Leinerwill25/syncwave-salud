@@ -353,12 +353,12 @@ export default async function ConsultationDetail({ params }: Props) {
 														const entries = Object.entries(sectionData);
 
 														return (
-															<div key={section} className="border border-blue-100 rounded-xl p-3 bg-blue-50/50">
+															<div key={section} className="border border-blue-100 rounded-xl p-3 sm:p-4 bg-blue-50/50 min-w-0 overflow-hidden">
 																<div className="flex items-center justify-between mb-3">
-																	<div className="flex items-center gap-3">
-																		<div className="w-10 h-10 rounded-lg bg-gradient-to-br from-teal-50 to-cyan-50 flex items-center justify-center text-teal-600 font-semibold">{String(section).charAt(0).toUpperCase()}</div>
-																		<div>
-																			<div className="text-sm font-semibold text-slate-900">{prettyLabel(section)}</div>
+																	<div className="flex items-center gap-3 min-w-0 flex-1">
+																		<div className="w-10 h-10 rounded-lg bg-gradient-to-br from-teal-50 to-cyan-50 flex items-center justify-center text-teal-600 font-semibold flex-shrink-0">{String(section).charAt(0).toUpperCase()}</div>
+																		<div className="min-w-0 flex-1">
+																			<div className="text-sm font-semibold text-slate-900 truncate">{prettyLabel(section)}</div>
 																			<div className="text-xs text-slate-700">{entries.length} campo(s)</div>
 																		</div>
 																	</div>
@@ -368,16 +368,49 @@ export default async function ConsultationDetail({ params }: Props) {
 																	<div className="text-sm text-slate-700">No hay datos en esta sección.</div>
 																) : (
 																	<div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
-																		{entries.map(([k, v]) => (
-																			<div key={k} className="flex flex-col gap-1 p-3 rounded-lg bg-white border border-blue-100">
-																				<div className="text-xs text-slate-800 font-medium">{prettyLabel(k)}</div>
-																				<div className="flex items-center justify-between gap-2">
-																					<div className="text-sm font-medium text-slate-900 break-words">{formatValue(v)}</div>
-																					{/* pequeño chip para valores booleanos o numéricos destacables */}
-																					{typeof v === 'boolean' ? <div className={`text-xs px-2 py-0.5 rounded-full font-medium ${v ? 'bg-green-100 text-green-800' : 'bg-rose-100 text-rose-800'}`}>{v ? 'Sí' : 'No'}</div> : typeof v === 'string' && /^\d+(\.\d+)?$/.test(v) ? <div className="text-xs px-2 py-0.5 rounded-full bg-slate-100 text-slate-700">{v}</div> : null}
+																		{entries.map(([k, v]) => {
+																			const valueStr = String(formatValue(v));
+																			const isLongText = valueStr.length > 50;
+																			const isBoolean = typeof v === 'boolean';
+																			const isNumeric = typeof v === 'string' && /^\d+(\.\d+)?$/.test(valueStr);
+																			
+																			return (
+																				<div 
+																					key={k} 
+																					className={`flex flex-col gap-1 p-3 rounded-lg bg-white border border-blue-100 ${isLongText ? 'min-w-0' : ''}`}
+																				>
+																					<div className="text-xs text-slate-800 font-medium truncate" title={prettyLabel(k)}>
+																						{prettyLabel(k)}
+																					</div>
+																					<div className={`flex items-start gap-2 ${isBoolean || isNumeric ? 'items-center' : ''}`}>
+																						<div 
+																							className={`text-sm font-medium text-slate-900 ${
+																								isLongText 
+																									? 'break-words overflow-wrap-anywhere hyphens-auto max-w-full' 
+																									: 'break-words'
+																							}`}
+																							style={{ 
+																								wordBreak: isLongText ? 'break-word' : 'normal',
+																								overflowWrap: isLongText ? 'anywhere' : 'normal',
+																								maxWidth: '100%'
+																							}}
+																						>
+																							{valueStr}
+																						</div>
+																						{/* pequeño chip para valores booleanos o numéricos destacables */}
+																						{isBoolean ? (
+																							<div className={`text-xs px-2 py-0.5 rounded-full font-medium flex-shrink-0 ${v ? 'bg-green-100 text-green-800' : 'bg-rose-100 text-rose-800'}`}>
+																								{v ? 'Sí' : 'No'}
+																							</div>
+																						) : isNumeric ? (
+																							<div className="text-xs px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 flex-shrink-0">
+																								{valueStr}
+																							</div>
+																						) : null}
+																					</div>
 																				</div>
-																			</div>
-																		))}
+																			);
+																		})}
 																	</div>
 																)}
 															</div>

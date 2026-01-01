@@ -8,14 +8,17 @@ import DayAgenda from '@/app/dashboard/medic/components/DayAgenda'; // usa tu co
 import AppointmentList from './AppointmentList';
 import AppointmentForm from '@/app/dashboard/medic/components/AppointmentForm';
 import { Button } from '@/components/ui/button';
+import { useLiteMode } from '@/contexts/LiteModeContext';
+import { getLiteAnimation } from '@/lib/lite-mode-utils';
 
 export default function CitasPage() {
 	const [selectedDate, setSelectedDate] = useState<Date>(new Date());
 	const [isModalOpen, setIsModalOpen] = useState(false);
+	const { isLiteMode } = useLiteMode();
 
 	return (
 		<div className="w-full min-w-0 overflow-x-hidden">
-			<motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="w-full min-w-0 flex flex-col gap-4 sm:gap-6">
+			<motion.div {...getLiteAnimation(isLiteMode)} className="w-full min-w-0 flex flex-col gap-4 sm:gap-6">
 				{/* Parte superior: Calendario (ahora full width y encima de la lista) */}
 				<div className="w-full min-w-0">
 					<DayAgenda onDateSelect={(date) => date && setSelectedDate(date)} />
@@ -49,8 +52,20 @@ export default function CitasPage() {
 			{/* Modal */}
 			<AnimatePresence>
 				{isModalOpen && (
-					<motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-						<motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }} transition={{ duration: 0.2 }} className="bg-white rounded-xl sm:rounded-2xl shadow-xl w-full max-w-2xl p-4 sm:p-6 relative max-h-[90vh] overflow-y-auto min-w-0" style={{ maxWidth: 'calc(100vw - 2rem)' }}>
+					<motion.div 
+						initial={isLiteMode ? { opacity: 1 } : { opacity: 0 }} 
+						animate={{ opacity: 1 }} 
+						exit={{ opacity: 0 }} 
+						className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
+					>
+						<motion.div 
+							initial={isLiteMode ? { scale: 1, opacity: 1 } : { scale: 0.9, opacity: 0 }} 
+							animate={{ scale: 1, opacity: 1 }} 
+							exit={{ scale: 0.9, opacity: 0 }} 
+							transition={isLiteMode ? { duration: 0 } : { duration: 0.2 }} 
+							className="bg-white rounded-xl sm:rounded-2xl shadow-xl w-full max-w-2xl p-4 sm:p-6 relative max-h-[90vh] overflow-y-auto min-w-0" 
+							style={{ maxWidth: 'calc(100vw - 2rem)' }}
+						>
 							<Button className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 p-2 rounded-full z-10" onClick={() => setIsModalOpen(false)}>
 								X
 							</Button>

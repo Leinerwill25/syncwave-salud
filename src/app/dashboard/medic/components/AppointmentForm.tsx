@@ -679,19 +679,21 @@ export default function AppointmentForm() {
 												setPatients([]);
 											}}
 											className={patientItemClass}>
-											<div className="font-medium text-gray-800">
-												{p.firstName} {p.lastName}
+											<div>
+												<div className="font-medium text-gray-800">
+													{p.firstName} {p.lastName}
+												</div>
+												{p.identifier && (
+													<div className="text-xs text-gray-500">
+														{p.identifier}
+													</div>
+												)}
+												{patientType === 'unregistered' && (
+													<div className="text-xs text-orange-600 mt-0.5">
+														No registrado
+													</div>
+												)}
 											</div>
-											{p.identifier && (
-												<div key={`${p.id}-identifier`} className="text-xs text-gray-500">
-													{p.identifier}
-												</div>
-											)}
-											{patientType === 'unregistered' && (
-												<div key={`${p.id}-unregistered`} className="text-xs text-orange-600 mt-0.5">
-													No registrado
-												</div>
-											)}
 										</li>
 									))}
 								</ul>

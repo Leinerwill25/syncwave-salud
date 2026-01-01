@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Clock, MapPin, Loader2, ChevronDown, Users, DollarSign, FileText, User, Phone, CreditCard, CalendarClock } from 'lucide-react';
 import { useAppointments } from '@/app/hooks/useAppointments';
 import RescheduleModal from './RescheduleModal';
+import { useLiteMode } from '@/contexts/LiteModeContext';
 
 interface Props {
 	selectedDate: Date;
@@ -15,6 +16,7 @@ export default function AppointmentList({ selectedDate }: Props) {
 	const [loadingId, setLoadingId] = useState<string | null>(null);
 	const [rescheduleAppointment, setRescheduleAppointment] = useState<{ id: string; scheduled_at?: string; patient: string } | null>(null);
 	const [isRescheduleModalOpen, setIsRescheduleModalOpen] = useState(false);
+	const { isLiteMode } = useLiteMode();
 
 	const getStatusColor = (status: string) => {
 		switch (status) {
@@ -93,7 +95,11 @@ export default function AppointmentList({ selectedDate }: Props) {
 		<>
 			<div className="space-y-3 sm:space-y-4 w-full min-w-0">
 				{appointments.map((appt) => (
-					<motion.div key={appt.id} whileHover={{ y: -3 }} className="rounded-xl sm:rounded-2xl bg-white/90 backdrop-blur-sm border border-gray-100 shadow-sm hover:shadow-lg transition-all p-3 sm:p-4 flex flex-col gap-3 sm:gap-4 w-full min-w-0">
+					<motion.div 
+						key={appt.id} 
+						{...(isLiteMode ? {} : { whileHover: { y: -3 } })} 
+						className={`rounded-xl sm:rounded-2xl bg-white/90 backdrop-blur-sm border border-gray-100 shadow-sm ${isLiteMode ? '' : 'hover:shadow-lg transition-all'} p-3 sm:p-4 flex flex-col gap-3 sm:gap-4 w-full min-w-0`}
+					>
 						<div className="flex flex-col sm:flex-row justify-between items-start sm:items-start gap-3 sm:gap-4 w-full min-w-0">
 							<div className="flex-1 min-w-0 w-full sm:w-auto space-y-2">
 								{/* Información del paciente */}

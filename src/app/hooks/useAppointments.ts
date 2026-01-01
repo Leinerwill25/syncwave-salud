@@ -1,6 +1,8 @@
 'use client';
 
 import useSWR from 'swr';
+import { useLiteMode } from '@/contexts/LiteModeContext';
+import { getLiteCacheConfig } from '@/lib/lite-mode-utils';
 
 type Appointment = {
 	id: string;
@@ -44,8 +46,14 @@ const fetcher = async (url: string) => {
 
 export function useAppointments(selectedDate?: Date) {
 	const dateParam = selectedDate ? selectedDate.toISOString().split('T')[0] : new Date().toISOString().split('T')[0];
-
-	const { data, error, mutate, isLoading } = useSWR<Appointment[]>(`/api/dashboard/medic/appointments?date=${dateParam}`, fetcher);
+	const { isLiteMode } = useLiteMode();
+	
+	const url = `/api/dashboard/medic/appointments?date=${dateParam}${isLiteMode ? '&liteMode=true' : ''}`;
+	const { data, error, mutate, isLoading } = useSWR<Appointment[]>(url, fetcher, {
+		revalidateOnFocus: !isLiteMode, // No revalidar en focus si es liteMode
+		revalidateOnReconnect: true,
+		dedupingInterval: isLiteMode ? 60000 : 30000, // Más tiempo entre deduplicaciones en liteMode
+	});
 
 	// Crear nueva cita
 	const createAppointment = async (payload: any) => {

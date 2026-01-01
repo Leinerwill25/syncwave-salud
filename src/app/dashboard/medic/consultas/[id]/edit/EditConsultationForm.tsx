@@ -5,6 +5,9 @@ import { Loader2, Save, Trash2, FileText, Download, ChevronDown, ChevronUp, Acti
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import ICD11Search from '@/components/ICD11Search';
+import { useOptimisticSave } from '@/lib/optimistic-save';
+import { useDebouncedSave } from '@/lib/debounced-save';
+import { useLiteMode } from '@/contexts/LiteModeContext';
 
 type ConsultationShape = {
 	id: string;
@@ -45,6 +48,8 @@ function isNumericOrEmpty(s: string | number | null | undefined) {
 
 export default function EditConsultationForm({ initial, patient, doctor, doctorSpecialty }: { initial: ConsultationShape; patient?: any; doctor?: any; doctorSpecialty?: string | null }) {
 	const router = useRouter();
+	const { saveOptimistically } = useOptimisticSave();
+	const { isLiteMode } = useLiteMode();
 
 	// Función para mapear el nombre de la especialidad al código interno
 	// Las especialidades vienen en español desde la base de datos (ej: "Ginecología", "Medicina General")
@@ -888,19 +893,66 @@ export default function EditConsultationForm({ initial, patient, doctor, doctorS
 				ended_at: endedAt || null,
 			};
 
-			const res = await fetch(`/api/consultations/${initial.id}`, {
-				method: 'PATCH',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify(payload),
-			});
+			// Guardado optimista: actualizar UI inmediatamente y no bloquear
+			setSuccess('Guardando...');
 
-			const data = await res.json().catch(() => ({}));
-			if (!res.ok) {
-				throw new Error(data?.error || data?.message || 'Error al guardar');
+			// Intentar guardado inmediato con timeout corto
+			const controller = new AbortController();
+			const timeoutId = setTimeout(() => controller.abort(), isLiteMode ? 10000 : 15000);
+
+			let saveSuccess = false;
+			try {
+				const res = await fetch(`/api/consultations/${initial.id}`, {
+					method: 'PATCH',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify(payload),
+					signal: controller.signal,
+				});
+
+				clearTimeout(timeoutId);
+
+				const data = await res.json().catch(() => ({}));
+				if (!res.ok) {
+					throw new Error(data?.error || data?.message || 'Error al guardar');
+				}
+
+				// Si el guardado fue exitoso, continuar
+				saveSuccess = true;
+				setSuccess('Consulta guardada correctamente.');
+			} catch (err: any) {
+				clearTimeout(timeoutId);
+				
+				// Si es timeout o error de red, usar guardado optimista en background
+				if (err.name === 'AbortError' || err.message?.includes('timeout') || err.message?.includes('fetch failed') || err.message?.includes('network')) {
+					console.warn('[EditConsultationForm] Timeout o error de red, guardando en background:', err);
+					
+					// Agregar a la cola de guardado optimista
+					saveOptimistically(
+						'consultation',
+						`/api/consultations/${initial.id}`,
+						payload,
+						(result) => {
+							setSuccess('Consulta guardada en segundo plano.');
+						},
+						(error) => {
+							console.warn('Error en guardado optimista:', error);
+						}
+					);
+
+					// Continuar sin bloquear - el usuario puede seguir trabajando
+					setSuccess('Guardando en segundo plano, puedes continuar trabajando...');
+					setLoading(false);
+					// No lanzar error, permitir que continúe con la actualización del paciente
+				} else {
+					// Error real, mostrar al usuario
+					throw err;
+				}
 			}
 
-			// Actualizar información del paciente si existe
-			if (patient) {
+			// Solo actualizar paciente si el guardado de consulta fue exitoso o si estamos en modo optimista
+			if (saveSuccess || !loading) {
+				// Actualizar información del paciente si existe
+				if (patient) {
 				const isUnregistered = (patient as any).isUnregistered;
 				const patientUpdatePayload: any = {
 					firstName: patientFirstName || null,
@@ -965,24 +1017,42 @@ export default function EditConsultationForm({ initial, patient, doctor, doctorS
 					delete patientUpdatePayload.dob;
 				}
 
-				const patientRes = await fetch(`/api/consultations/${initial.id}/patient`, {
-					method: 'PATCH',
-					headers: { 'Content-Type': 'application/json' },
-					body: JSON.stringify({
-						patient_id: patientId,
-						is_unregistered: isUnregistered,
-						...patientUpdatePayload,
-					}),
-				});
+				// Intentar actualizar paciente con timeout
+				const patientController = new AbortController();
+				const patientTimeoutId = setTimeout(() => patientController.abort(), isLiteMode ? 8000 : 12000);
 
-				const patientData = await patientRes.json().catch(() => ({}));
-				if (!patientRes.ok) {
-					console.warn('Error al actualizar datos del paciente:', patientData?.error || patientData?.message);
-					// No lanzar error, solo mostrar advertencia ya que la consulta se guardó correctamente
+				try {
+					const patientRes = await fetch(`/api/consultations/${initial.id}/patient`, {
+						method: 'PATCH',
+						headers: { 'Content-Type': 'application/json' },
+						body: JSON.stringify({
+							patient_id: patientId,
+							is_unregistered: isUnregistered,
+							...patientUpdatePayload,
+						}),
+						signal: patientController.signal,
+					});
+
+					clearTimeout(patientTimeoutId);
+
+					const patientData = await patientRes.json().catch(() => ({}));
+					if (!patientRes.ok) {
+						console.warn('Error al actualizar datos del paciente:', patientData?.error || patientData?.message);
+						// No lanzar error, solo mostrar advertencia ya que la consulta se guardó correctamente
+					}
+				} catch (patientErr: any) {
+					clearTimeout(patientTimeoutId);
+					if (patientErr.name !== 'AbortError') {
+						console.warn('Error al actualizar datos del paciente:', patientErr);
+					}
+					// No bloquear si falla la actualización del paciente
 				}
 			}
+			}
 
-			setSuccess('Consulta actualizada correctamente.');
+			if (saveSuccess) {
+				setSuccess('Consulta actualizada correctamente.');
+			}
 			setLoading(false); // Resetear loading después del éxito
 
 			// Cambiar a la sección de "informe médico" después de guardar

@@ -218,32 +218,76 @@ export default function PrescriptionsPage() {
 
 	useEffect(() => {
 		const fetchData = async () => {
-			const [presRes, patRes, unregisteredRes] = await Promise.all([
-				fetch('/api/medic/prescriptions'),
-				supabase.from('Patient').select('id, firstName, lastName, identifier'),
-				supabase.from('unregisteredpatients').select('id, first_name, last_name, identification')
-			]);
+			// Intentar obtener desde caché primero
+			const cacheKey = 'prescriptions-cache';
+			const cached = sessionStorage.getItem(cacheKey);
+			if (cached) {
+				try {
+					const cachedData = JSON.parse(cached);
+					const cacheAge = Date.now() - cachedData.timestamp;
+					// Usar caché si tiene menos de 30 segundos
+					if (cacheAge < 30000) {
+						setPrescriptions(cachedData.prescriptions || []);
+						setPatients(cachedData.patients || []);
+						setLoading(false);
+						// Cargar en background para actualizar
+						fetchDataInBackground();
+						return;
+					}
+				} catch {}
+			}
 
-			const presData = await presRes.json();
-			const prescriptionsData = presData.prescriptions ?? [];
-			setPrescriptions(prescriptionsData);
-			
-			// Combinar pacientes registrados y no registrados
-			const registeredPatients = (patRes.data ?? []).map((p: any) => ({
-				...p,
-				isUnregistered: false
-			}));
-			const unregisteredPatients = (unregisteredRes.data ?? []).map((p: any) => ({
-				id: p.id,
-				firstName: p.first_name,
-				lastName: p.last_name,
-				identifier: p.identification,
-				isUnregistered: true
-			}));
-			
-			setPatients([...registeredPatients, ...unregisteredPatients]);
-			setLoading(false);
+			await fetchDataInBackground();
 		};
+
+		const fetchDataInBackground = async () => {
+			try {
+				const controller = new AbortController();
+				const timeoutId = setTimeout(() => controller.abort(), 12000); // 12 segundos timeout
+
+				const [presRes, patRes, unregisteredRes] = await Promise.all([
+					fetch('/api/medic/prescriptions', { signal: controller.signal }),
+					supabase.from('Patient').select('id, firstName, lastName, identifier'),
+					supabase.from('unregisteredpatients').select('id, first_name, last_name, identification')
+				]);
+
+				clearTimeout(timeoutId);
+
+				const presData = await presRes.json();
+				const prescriptionsData = presData.prescriptions ?? [];
+				setPrescriptions(prescriptionsData);
+				
+				// Combinar pacientes registrados y no registrados
+				const registeredPatients = (patRes.data ?? []).map((p: any) => ({
+					...p,
+					isUnregistered: false
+				}));
+				const unregisteredPatients = (unregisteredRes.data ?? []).map((p: any) => ({
+					id: p.id,
+					firstName: p.first_name,
+					lastName: p.last_name,
+					identifier: p.identification,
+					isUnregistered: true
+				}));
+				
+				const allPatients = [...registeredPatients, ...unregisteredPatients];
+				setPatients(allPatients);
+				
+				// Guardar en caché
+				sessionStorage.setItem('prescriptions-cache', JSON.stringify({
+					prescriptions: prescriptionsData,
+					patients: allPatients,
+					timestamp: Date.now()
+				}));
+			} catch (err: any) {
+				if (err.name !== 'AbortError') {
+					console.error('Error cargando datos:', err);
+				}
+			} finally {
+				setLoading(false);
+			}
+		};
+
 		fetchData();
 	}, [supabase]);
 

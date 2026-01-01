@@ -645,7 +645,7 @@ export default function ClinicSettingsPage(): React.ReactElement {
 						</div>
 
 						<div className="mt-5 grid grid-cols-1 gap-3">
-							<Button variant="ghost" className="w-full px-4 py-3 rounded-lg text-slate-700 hover:bg-slate-50" onClick={() => window.open('mailto:syncwave_agency@gmail.com')}>
+							<Button variant="ghost" className="w-full px-4 py-3 rounded-lg text-slate-700 hover:bg-slate-50" onClick={() => window.open('mailto:ashirasoftware@gmail.com')}>
 								Contactar soporte
 							</Button>
 						</div>

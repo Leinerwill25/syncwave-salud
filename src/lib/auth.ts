@@ -1,6 +1,5 @@
 // src/lib/auth.ts
-import prisma from '@/lib/prisma';
-import createSupabaseServerClient from '@/app/adapters/server'; // ajusta según tu alias/estructura
+import createSupabaseServerClient from '@/app/adapters/server';
 import { headers, cookies } from 'next/headers';
 import type { User } from '@supabase/supabase-js';
 
@@ -60,11 +59,41 @@ export async function getCurrentOrganizationId(options?: { verbose?: boolean }):
 			return null;
 		}
 
-		// buscar app user por authId (user.id es el authId de supabase)
-		const appUser = await prisma.user.findFirst({
-			where: { authId: user.id },
-			select: { organizationId: true },
-		});
+		// buscar app user por authId usando Supabase directamente
+		// Intentar diferentes variantes del nombre de tabla según Database.sql
+		const tableCandidates = ['User', 'user', '"User"'];
+		let appUser: { organizationId: string | null } | null = null;
+
+		for (const tableName of tableCandidates) {
+			try {
+				const { data, error: queryError } = await supabase
+					.from(tableName)
+					.select('organizationId')
+					.eq('authId', user.id)
+					.maybeSingle();
+
+				if (!queryError && data) {
+					appUser = data;
+					break;
+				}
+
+				// Si el error es "tabla no encontrada", probar siguiente candidato
+				if (queryError && (queryError.code === 'PGRST205' || queryError.message?.includes('Could not find the table'))) {
+					continue;
+				}
+
+				// Si hay otro error, detener
+				if (queryError) {
+					if (process.env.NODE_ENV !== 'production') {
+						console.warn(`[getCurrentOrganizationId] Error querying ${tableName}:`, queryError);
+					}
+					break;
+				}
+			} catch (err) {
+				// Continuar con siguiente candidato
+				continue;
+			}
+		}
 
 		if (!appUser?.organizationId) {
 			if (process.env.NODE_ENV !== 'production') {

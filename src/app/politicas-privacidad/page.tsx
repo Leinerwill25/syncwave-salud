@@ -519,10 +519,10 @@ export default function PoliticasPrivacidadPage() {
 							<div className="mt-6 p-4 bg-blue-50 border-l-4 border-blue-500 rounded-r-lg">
 								<p className="text-sm text-blue-800">
 									<strong>Para ejercer estos derechos:</strong> Envíe una solicitud por escrito a{' '}
-									<a href="mailto:syncwaveagency@gmail.com" className="underline font-semibold">
-										syncwaveagency@gmail.com
+									<a href="mailto:ashirasoftware@gmail.com" className="underline font-semibold">
+										ashirasoftware@gmail.com
 									</a>{' '}
-									o contáctenos por WhatsApp al <strong>04242070878</strong>. Responderemos a su solicitud dentro de 30 días hábiles.
+									o contáctenos por WhatsApp al <strong>04124885623</strong>. Responderemos a su solicitud dentro de 30 días hábiles.
 								</p>
 							</div>
 						</div>
@@ -727,8 +727,8 @@ export default function PoliticasPrivacidadPage() {
 									<Mail className="w-5 h-5 text-teal-600 mt-1 flex-shrink-0" />
 									<div>
 										<h4 className="font-semibold text-gray-900 mb-1">Correo Electrónico</h4>
-										<a href="mailto:syncwaveagency@gmail.com" className="text-teal-600 hover:underline">
-											syncwaveagency@gmail.com
+										<a href="mailto:ashirasoftware@gmail.com" className="text-teal-600 hover:underline">
+											ashirasoftware@gmail.com
 										</a>
 									</div>
 								</div>
@@ -736,8 +736,8 @@ export default function PoliticasPrivacidadPage() {
 									<Phone className="w-5 h-5 text-teal-600 mt-1 flex-shrink-0" />
 									<div>
 										<h4 className="font-semibold text-gray-900 mb-1">WhatsApp</h4>
-										<a href="https://wa.me/584242070878" target="_blank" rel="noopener noreferrer" className="text-teal-600 hover:underline">
-											04242070878
+										<a href="https://wa.me/584124885623" target="_blank" rel="noopener noreferrer" className="text-teal-600 hover:underline">
+											04124885623
 										</a>
 									</div>
 								</div>

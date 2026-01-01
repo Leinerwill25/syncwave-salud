@@ -5,6 +5,8 @@ import { motion } from 'framer-motion';
 import { format } from 'date-fns';
 import Link from 'next/link';
 import { FileText, PlusCircle, Download, Loader2, RefreshCw, Search, File, FileMinus, User, Calendar, Stethoscope, AlertCircle } from 'lucide-react';
+import { useLiteMode } from '@/contexts/LiteModeContext';
+import { getLiteAnimation, getLiteCacheConfig } from '@/lib/lite-mode-utils';
 
 type Patient = {
 	firstName: string;
@@ -73,14 +75,15 @@ export default function ConsultationsPage() {
 	const [loading, setLoading] = useState(true);
 	const [error, setError] = useState<string | null>(null);
 
-	// paging + search
+	// paging + search - Optimizado para conexiones lentas
 	const [page, setPage] = useState(1);
-	const pageSize = 10;
+	const pageSize = 8; // Reducido de 10 a 8 para cargar más rápido
 	const [hasMore, setHasMore] = useState(false);
 	const [query, setQuery] = useState('');
 	const debounceRef = useRef<number | null>(null);
 	const [refreshing, setRefreshing] = useState(false);
 	const [exporting, setExporting] = useState(false);
+	const { isLiteMode } = useLiteMode();
 
 	// fetcher (supports page + q)
 	async function loadConsultations({ reset = false } = {}) {
@@ -97,11 +100,14 @@ export default function ConsultationsPage() {
 			url.searchParams.set('page', String(currentPage));
 			url.searchParams.set('pageSize', String(pageSize));
 			if (query.trim()) url.searchParams.set('q', query.trim());
+			if (isLiteMode) url.searchParams.set('liteMode', 'true');
 
-			// Usar caché con revalidación para mejorar rendimiento
+			// Usar caché optimizado según liteMode
+			const cacheConfig = getLiteCacheConfig(isLiteMode);
 			const res = await fetch(url.toString(), { 
-				next: { revalidate: 10 },
-				cache: 'default' 
+				next: { revalidate: cacheConfig.revalidate },
+				cache: cacheConfig.cache,
+				credentials: 'include',
 			});
 			const data = await res.json();
 
@@ -138,17 +144,18 @@ export default function ConsultationsPage() {
 		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, []);
 
-	// search debounce mejorado para conexiones lentas (aumentado a 600ms)
+	// search debounce optimizado según liteMode
 	useEffect(() => {
 		if (debounceRef.current) window.clearTimeout(debounceRef.current);
+		const debounceTime = isLiteMode ? 800 : 600; // Más tiempo en liteMode
 		debounceRef.current = window.setTimeout(() => {
 			loadConsultations({ reset: true });
-		}, 600); // Aumentado de 450ms a 600ms para reducir llamadas en conexiones lentas
+		}, debounceTime);
 		return () => {
 			if (debounceRef.current) window.clearTimeout(debounceRef.current);
 		};
 		// eslint-disable-next-line react-hooks/exhaustive-deps
-	}, [query]);
+	}, [query, isLiteMode]);
 
 	async function loadMore() {
 		const nextPage = page + 1;
@@ -159,11 +166,14 @@ export default function ConsultationsPage() {
 			url.searchParams.set('page', String(nextPage));
 			url.searchParams.set('pageSize', String(pageSize));
 			if (query.trim()) url.searchParams.set('q', query.trim());
+			if (isLiteMode) url.searchParams.set('liteMode', 'true');
 
-			// Usar caché con revalidación para mejorar rendimiento
+			// Usar caché optimizado según liteMode
+			const cacheConfig = getLiteCacheConfig(isLiteMode);
 			const res = await fetch(url.toString(), { 
-				next: { revalidate: 10 },
-				cache: 'default' 
+				next: { revalidate: cacheConfig.revalidate },
+				cache: cacheConfig.cache,
+				credentials: 'include',
 			});
 			const data = await res.json();
 			if (!res.ok) throw new Error(data?.error || 'Error cargando más consultas');
@@ -244,7 +254,7 @@ export default function ConsultationsPage() {
 		<main className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-cyan-50 p-4 sm:p-6 md:p-8">
 			<div className="max-w-7xl mx-auto space-y-6">
 				{/* Header Section - Mejorado */}
-				<motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="bg-white/80 backdrop-blur-md rounded-2xl shadow-lg border border-slate-200/50 p-6 sm:p-8">
+				<motion.div {...getLiteAnimation(isLiteMode)} className="bg-white/80 backdrop-blur-md rounded-2xl shadow-lg border border-slate-200/50 p-6 sm:p-8">
 					<div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6">
 						<div className="flex-1">
 							<div className="flex items-center gap-3 mb-3">
@@ -289,7 +299,7 @@ export default function ConsultationsPage() {
 				</motion.div>
 
 				{/* Toolbar Section - Mejorado */}
-				<motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="bg-white/80 backdrop-blur-md rounded-2xl shadow-lg border border-slate-200/50 p-4 sm:p-6">
+				<motion.div {...getLiteAnimation(isLiteMode)} className="bg-white/80 backdrop-blur-md rounded-2xl shadow-lg border border-slate-200/50 p-4 sm:p-6">
 					<div className="flex flex-col lg:flex-row gap-4 items-stretch lg:items-center">
 						<div className="flex-1 w-full">
 							<SearchInput value={query} onChange={setQuery} />
@@ -322,7 +332,7 @@ export default function ConsultationsPage() {
 				</motion.div>
 
 				{/* Consultations Table - Mejorado */}
-				<motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="bg-white/80 backdrop-blur-md rounded-2xl shadow-lg border border-slate-200/50 overflow-hidden">
+				<motion.div {...getLiteAnimation(isLiteMode)} className="bg-white/80 backdrop-blur-md rounded-2xl shadow-lg border border-slate-200/50 overflow-hidden">
 					{loading ? (
 						<div className="p-8 sm:p-10">
 							<div className="flex items-center gap-3 text-slate-600 mb-6">
@@ -404,7 +414,11 @@ export default function ConsultationsPage() {
 
 									<tbody className="bg-white divide-y divide-slate-100">
 										{consultations.map((c, index) => (
-											<motion.tr key={c.id} initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: index * 0.05 }} className="hover:bg-gradient-to-r hover:from-teal-50/50 hover:to-cyan-50/50 transition-all duration-200 group">
+											<motion.tr 
+												key={c.id} 
+												{...(isLiteMode ? {} : { initial: { opacity: 0, x: -20 }, animate: { opacity: 1, x: 0 }, transition: { delay: index * 0.05 } })} 
+												className={`${isLiteMode ? '' : 'hover:bg-gradient-to-r hover:from-teal-50/50 hover:to-cyan-50/50 transition-all duration-200'} group`}
+											>
 												<td className="px-4 sm:px-6 py-4 whitespace-nowrap">
 													<div className="flex flex-col">
 														<span className="text-sm font-semibold text-slate-900">{format(new Date(c.created_at), 'dd/MM/yyyy')}</span>

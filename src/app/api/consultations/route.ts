@@ -2,6 +2,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import createSupabaseServerClient from '@/app/adapters/server';
 import { apiRequireRole } from '@/lib/auth-guards';
+import { optimizeSupabaseQuery, getLitePagination } from '@/lib/lite-mode-utils';
 
 // Configurar caché para esta ruta (30 segundos para datos dinámicos)
 // Mantener dinámico por seguridad pero con caché corto para mejorar rendimiento
@@ -28,6 +29,7 @@ export async function GET(req: NextRequest) {
 		const pageSize = Math.max(1, Number(url.searchParams.get('pageSize') || '10'));
 		const from = url.searchParams.get('from'); // ISO date optional
 		const to = url.searchParams.get('to'); // ISO date optional
+		const isLiteMode = url.searchParams.get('liteMode') === 'true';
 
 		// 2️⃣ Determinar los filtros de seguridad según el rol del usuario
 		// REGLA CRÍTICA: Cada usuario solo puede ver datos de su propia organización/consultorio
@@ -92,14 +94,32 @@ export async function GET(req: NextRequest) {
 			return NextResponse.json({ error: 'Rol no autorizado' }, { status: 403 });
 		}
 
-		const start = (page - 1) * pageSize;
-		const end = start + pageSize - 1;
+		// Optimizar paginación para liteMode
+		const pagination = getLitePagination(isLiteMode, page, pageSize);
+		const start = pagination.offset;
+		const end = start + pagination.limit - 1;
 
-		// Query mejorado: obtener todos los campos necesarios incluyendo patient_id y unregistered_patient_id
-		let query = supabase
-			.from('consultation')
-			.select(
-				`id, 
+		// Query optimizado: en liteMode mantenemos relaciones de pacientes (crítico para mostrar datos)
+		// Solo reducimos campos no esenciales como notes, diagnosis completo, etc.
+		const selectFields = isLiteMode
+			? `id, 
+				chief_complaint, 
+				diagnosis, 
+				created_at, 
+				patient_id, 
+				unregistered_patient_id,
+				doctor_id,
+				patient:patient_id(
+					id,
+					firstName, 
+					lastName, 
+					identifier
+				),
+				doctor:doctor_id(
+					id, 
+					name
+				)`
+			: `id, 
 				chief_complaint, 
 				diagnosis, 
 				notes, 
@@ -115,10 +135,19 @@ export async function GET(req: NextRequest) {
 				doctor:doctor_id(
 					id, 
 					name
-				)`,
-				{ count: 'exact' }
-			)
+				)`;
+
+		let query = supabase
+			.from('consultation')
+			.select(selectFields, { count: 'exact' })
 			.order('created_at', { ascending: false });
+		
+		// En liteMode, solo limitar resultados pero mantener relaciones de pacientes
+		// NO usar optimizeSupabaseQuery aquí porque ya tenemos selectFields optimizado
+		if (isLiteMode && pagination.limit) {
+			// Solo aplicar límite, pero mantener las relaciones
+			query = query.limit(pagination.limit);
+		}
 
 		// 3️⃣ Aplicar filtros de seguridad - SIEMPRE filtrar por doctor_id Y organization_id
 		// Esto asegura que incluso si hay un error, los datos están aislados
@@ -171,7 +200,12 @@ export async function GET(req: NextRequest) {
 
 		if (q) {
 			const pattern = `%${q}%`;
-			query = query.or(`chief_complaint.ilike.${pattern},diagnosis.ilike.${pattern}`);
+			// En liteMode, buscar en chief_complaint y diagnosis (pero no en notes para ser más rápido)
+			if (isLiteMode) {
+				query = query.or(`chief_complaint.ilike.${pattern},diagnosis.ilike.${pattern}`);
+			} else {
+				query = query.or(`chief_complaint.ilike.${pattern},diagnosis.ilike.${pattern}`);
+			}
 		}
 
 		query = query.range(start, end);
@@ -195,32 +229,28 @@ export async function GET(req: NextRequest) {
 			[key: string]: unknown;
 		}
 
-		// Debug: Log para ver qué datos estamos recibiendo
-		console.log('[Consultations API] Total consultas recibidas:', (data || []).length);
-		console.log('[Consultations API] Muestra de datos:', JSON.stringify((data || []).slice(0, 2), null, 2));
-
-		// Extraer TODOS los IDs de pacientes no registrados
+		// Extraer TODOS los IDs de pacientes (registrados y no registrados) para obtener sus datos
 		const unregisteredPatientIds = (data || [])
 			.map((c: ConsultationWithRelations) => c.unregistered_patient_id)
 			.filter((id): id is string => typeof id === 'string' && id !== null && id !== undefined);
 
-		console.log('[Consultations API] IDs de pacientes no registrados encontrados:', unregisteredPatientIds.length);
+		const registeredPatientIds = (data || [])
+			.map((c: ConsultationWithRelations) => c.patient_id)
+			.filter((id): id is string => typeof id === 'string' && id !== null && id !== undefined);
 
-		// Obtener todos los pacientes no registrados de una vez
+		// Obtener todos los pacientes no registrados de una vez - SIEMPRE cargar, incluso en liteMode
 		let unregisteredPatientsMap: Record<string, { firstName: string; lastName: string; identifier?: string }> = {};
 		if (unregisteredPatientIds.length > 0) {
 			try {
 				const { data: unregisteredData, error: unregisteredError } = await supabase
 					.from('unregisteredpatients')
 					.select('id, first_name, last_name, identification')
-					.in('id', unregisteredPatientIds);
+					.in('id', unregisteredPatientIds)
+					.limit(50); // Limitar a 50 para evitar queries muy grandes
 
 				if (unregisteredError) {
 					console.error('[Consultations API] Error obteniendo pacientes no registrados:', unregisteredError);
-					// No lanzar error, continuar sin los datos de pacientes no registrados
-					// Los logs ayudarán a identificar el problema
 				} else if (unregisteredData) {
-					console.log('[Consultations API] Pacientes no registrados obtenidos:', unregisteredData.length);
 					unregisteredPatientsMap = unregisteredData.reduce((acc, up) => {
 						acc[up.id] = {
 							firstName: up.first_name || '',
@@ -231,14 +261,48 @@ export async function GET(req: NextRequest) {
 					}, {} as Record<string, { firstName: string; lastName: string; identifier?: string }>);
 				}
 			} catch (unregisteredFetchError: unknown) {
-				// Si hay un error de conexión al obtener pacientes no registrados, continuar sin ellos
-				// Esto permite que la consulta principal funcione aunque falle la obtención de datos adicionales
 				console.error('[Consultations API] Error al obtener pacientes no registrados (continuando sin ellos):', unregisteredFetchError);
 			}
 		}
 
+		// Obtener pacientes registrados si no vienen en la relación (fallback siempre disponible)
+		let registeredPatientsMap: Record<string, { firstName: string; lastName: string; identifier?: string }> = {};
+		// Verificar si necesitamos obtener pacientes registrados (si no vienen en la relación o están incompletos)
+		const needsRegisteredPatients = registeredPatientIds.some((id) => {
+			const consultation = (data || []).find((c: ConsultationWithRelations) => c.patient_id === id);
+			if (!consultation) return true;
+			const patientData = Array.isArray(consultation.patient) ? consultation.patient[0] : consultation.patient;
+			return !patientData || !((patientData as any)?.firstName || (patientData as any)?.lastName);
+		});
+
+		// SIEMPRE obtener pacientes registrados si faltan datos (incluso en liteMode)
+		if (needsRegisteredPatients && registeredPatientIds.length > 0) {
+			try {
+				const { data: registeredData, error: registeredError } = await supabase
+					.from('Patient')
+					.select('id, firstName, lastName, identifier')
+					.in('id', registeredPatientIds)
+					.limit(50);
+
+				if (registeredError) {
+					console.error('[Consultations API] Error obteniendo pacientes registrados:', registeredError);
+				} else if (registeredData) {
+					registeredPatientsMap = registeredData.reduce((acc, p) => {
+						acc[p.id] = {
+							firstName: p.firstName || '',
+							lastName: p.lastName || '',
+							identifier: p.identifier || undefined,
+						};
+						return acc;
+					}, {} as Record<string, { firstName: string; lastName: string; identifier?: string }>);
+				}
+			} catch (registeredFetchError: unknown) {
+				console.error('[Consultations API] Error al obtener pacientes registrados (continuando sin ellos):', registeredFetchError);
+			}
+		}
+
+		// Normalización de datos - SIEMPRE obtener datos completos de pacientes
 		const consultationsWithUnregistered = (data || []).map((c: ConsultationWithRelations) => {
-			// Normalizar paciente y doctor (pueden venir como array o objeto)
 			const patientData = Array.isArray(c.patient) ? c.patient[0] : c.patient;
 			const normalized = {
 				...c,
@@ -246,19 +310,33 @@ export async function GET(req: NextRequest) {
 				doctor: Array.isArray(c.doctor) ? c.doctor[0] : c.doctor,
 			};
 
-			// Verificar si hay paciente registrado válido
-			const hasRegisteredPatient = patientData && 
+			// Verificar si hay paciente registrado válido desde la relación
+			let hasRegisteredPatient = patientData && 
 				typeof patientData === 'object' && 
 				patientData !== null &&
 				('firstName' in patientData || 'lastName' in patientData) &&
 				((patientData as any).firstName || (patientData as any).lastName);
 
-			// Prioridad 1: Si hay unregistered_patient_id, intentar obtener los datos
+			// Si no hay datos válidos desde la relación pero hay patient_id, intentar desde el mapa
+			if (!hasRegisteredPatient && c.patient_id && typeof c.patient_id === 'string') {
+				const registeredData = registeredPatientsMap[c.patient_id];
+				if (registeredData && (registeredData.firstName || registeredData.lastName)) {
+					normalized.patient = {
+						firstName: registeredData.firstName || '',
+						lastName: registeredData.lastName || '',
+						identifier: registeredData.identifier,
+						isUnregistered: false,
+					};
+					hasRegisteredPatient = true;
+				}
+			}
+
+			// Prioridad 1: Si hay unregistered_patient_id, intentar obtener los datos del mapa
 			if (c.unregistered_patient_id && typeof c.unregistered_patient_id === 'string') {
 				const unregisteredData = unregisteredPatientsMap[c.unregistered_patient_id];
 				
 				if (unregisteredData && (unregisteredData.firstName || unregisteredData.lastName)) {
-					// Si no hay paciente registrado válido, usar el no registrado
+					// Si hay datos del paciente no registrado, usarlos
 					if (!hasRegisteredPatient) {
 						normalized.patient = {
 							firstName: unregisteredData.firstName || '',
@@ -266,19 +344,15 @@ export async function GET(req: NextRequest) {
 							identifier: unregisteredData.identifier,
 							isUnregistered: true,
 						};
-						console.log(`[Consultations API] Consulta ${c.id}: Usando paciente no registrado`, unregisteredData);
 					} else {
-						// Si hay paciente registrado, mantenerlo pero marcar como registrado
+						// Si también hay paciente registrado, priorizar el registrado
 						normalized.patient = {
 							...(patientData as any),
 							isUnregistered: false,
 						};
 					}
 				} else {
-					// Hay unregistered_patient_id pero no encontramos los datos en el mapa
-					console.warn(`[Consultations API] Consulta ${c.id}: unregistered_patient_id=${c.unregistered_patient_id} pero no se encontraron datos en el mapa`);
-					
-					// Si no hay paciente registrado, intentar al menos mostrar algo
+					// No se encontraron datos del paciente no registrado en el mapa
 					if (!hasRegisteredPatient) {
 						normalized.patient = {
 							firstName: 'Paciente',
@@ -293,17 +367,15 @@ export async function GET(req: NextRequest) {
 					}
 				}
 			} 
-			// Prioridad 2: Si hay paciente registrado válido
+			// Prioridad 2: Si hay paciente registrado válido (desde relación o mapa)
 			else if (hasRegisteredPatient) {
 				normalized.patient = {
 					...(patientData as any),
 					isUnregistered: false,
 				};
 			} 
-			// Prioridad 3: Si hay patient_id pero no se pudo obtener la relación
+			// Prioridad 3: Si hay patient_id pero no se pudo obtener la relación ni el mapa
 			else if (c.patient_id) {
-				console.warn(`[Consultations API] Consulta ${c.id}: Tiene patient_id=${c.patient_id} pero no se pudo obtener la relación del paciente`);
-				// Intentar obtener el paciente directamente si tenemos el ID
 				normalized.patient = {
 					firstName: 'Paciente',
 					lastName: `ID: ${c.patient_id.substring(0, 8)}...`,
@@ -312,7 +384,6 @@ export async function GET(req: NextRequest) {
 			} 
 			// Prioridad 4: No hay información de paciente
 			else {
-				console.warn(`[Consultations API] Consulta ${c.id}: No tiene patient_id ni unregistered_patient_id - consulta sin paciente asignado`);
 				normalized.patient = null;
 			}
 

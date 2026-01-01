@@ -58,9 +58,41 @@ export default function ReportesPage() {
 			params.append('startDate', startDate);
 			params.append('endDate', endDate);
 
+			// Intentar obtener desde caché primero
+			const cacheKey = `reportes-cache-${startDate}-${endDate}`;
+			const cached = sessionStorage.getItem(cacheKey);
+			if (cached) {
+				try {
+					const cachedData = JSON.parse(cached);
+					const cacheAge = Date.now() - cachedData.timestamp;
+					// Usar caché si tiene menos de 60 segundos
+					if (cacheAge < 60000) {
+						setData(cachedData.data);
+						setLoading(false);
+						// Cargar en background para actualizar
+						fetch(`/api/medic/reportes?${params.toString()}`, {
+							credentials: 'include',
+						}).then(res => res.json()).then(reportData => {
+							sessionStorage.setItem(cacheKey, JSON.stringify({
+								data: reportData,
+								timestamp: Date.now()
+							}));
+							setData(reportData);
+						}).catch(() => {});
+						return;
+					}
+				} catch {}
+			}
+
+			const controller = new AbortController();
+			const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 segundos timeout
+
 			const res = await fetch(`/api/medic/reportes?${params.toString()}`, {
 				credentials: 'include',
+				signal: controller.signal,
 			});
+
+			clearTimeout(timeoutId);
 
 			if (!res.ok) {
 				const errorText = await res.text();
@@ -86,9 +118,23 @@ export default function ReportesPage() {
 				reportData.totalIncome = 0;
 			}
 			
+			// Validar que totalIncome sea un número
+			if (reportData.totalIncome === undefined || reportData.totalIncome === null) {
+				console.warn('[Reportes] totalIncome es undefined o null, estableciendo a 0');
+				reportData.totalIncome = 0;
+			}
+			
 			setData(reportData);
-		} catch (err) {
-			console.error('Error:', err);
+			
+			// Guardar en caché
+			sessionStorage.setItem(cacheKey, JSON.stringify({
+				data: reportData,
+				timestamp: Date.now()
+			}));
+		} catch (err: any) {
+			if (err.name !== 'AbortError') {
+				console.error('Error:', err);
+			}
 		} finally {
 			setLoading(false);
 		}

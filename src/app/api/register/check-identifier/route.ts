@@ -1,11 +1,8 @@
 // app/api/register/check-identifier/route.ts
 import { NextRequest, NextResponse } from 'next/server';
-import { PrismaClient } from '@prisma/client';
 import { createClient } from '@supabase/supabase-js';
 
-const prisma = new PrismaClient();
-
-// Crear cliente de Supabase Admin para acceder a unregisteredpatients
+// Crear cliente de Supabase Admin para acceder a todas las tablas
 const supabaseAdmin = process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY
 	? createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY, {
 			auth: {
@@ -27,10 +24,25 @@ export async function GET(req: NextRequest) {
 			}, { status: 400 });
 		}
 
-		// Verificar en pacientes registrados
-		const existingRegistered = await prisma.patient.findFirst({
-			where: { identifier: identifier },
-		});
+		if (!supabaseAdmin) {
+			console.warn('[Check Identifier] Supabase Admin no disponible');
+			return NextResponse.json({ 
+				canRegister: false, 
+				reason: 'error',
+				message: 'Error de configuración del servidor' 
+			}, { status: 500 });
+		}
+
+		// Verificar en pacientes registrados usando Supabase (tabla Patient según Database.sql)
+		const { data: existingRegistered, error: registeredError } = await supabaseAdmin
+			.from('Patient')
+			.select('id, identifier')
+			.eq('identifier', identifier)
+			.maybeSingle();
+
+		if (registeredError && registeredError.code !== 'PGRST116') { // PGRST116 = no rows returned
+			console.error('[Check Identifier] Error verificando en Patient:', registeredError);
+		}
 
 		if (existingRegistered) {
 			return NextResponse.json({ 
@@ -41,16 +53,6 @@ export async function GET(req: NextRequest) {
 		}
 
 		// Verificar en pacientes no registrados usando Supabase Admin
-		if (!supabaseAdmin) {
-			console.warn('[Check Identifier] Supabase Admin no disponible - no se puede verificar historial');
-			// Si no hay Supabase Admin, permitir registro sin verificar historial
-			return NextResponse.json({ 
-				canRegister: true, 
-				hasHistory: false,
-				message: null 
-			}, { status: 200 });
-		}
-
 		const { data: existingUnregistered, error: unregisteredError } = await supabaseAdmin
 			.from('unregisteredpatients')
 			.select('id, first_name, last_name, identification')
@@ -92,8 +94,6 @@ export async function GET(req: NextRequest) {
 			reason: 'error',
 			message: 'Error al verificar la cédula. Por favor, intenta nuevamente.' 
 		}, { status: 500 });
-	} finally {
-		await prisma.$disconnect();
 	}
 }
 

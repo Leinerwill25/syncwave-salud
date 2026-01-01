@@ -388,6 +388,7 @@ export async function GET(request: Request) {
 						? [profile.private_specialty] 
 						: [],
 				paymentMethods: paymentMethods,
+				liteMode: (profile as any)?.lite_mode ?? false,
 			},
 		});
 	} catch (err) {
@@ -562,6 +563,10 @@ export async function PATCH(request: Request) {
 
 		if (body.paymentMethods !== undefined) {
 			profileData.payment_methods = body.paymentMethods;
+		}
+
+		if (body.liteMode !== undefined) {
+			profileData.lite_mode = body.liteMode;
 		}
 
 		// Verificar si existe perfil

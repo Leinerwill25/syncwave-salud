@@ -1,11 +1,9 @@
 // app/api/register/route.ts
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
-import prisma from '@/lib/prisma';
 import { randomUUID } from 'crypto';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import bcrypt from 'bcryptjs';
-import type { Prisma } from '@prisma/client'; // tipos Prisma
 import { createNotification } from '@/lib/notifications';
 
 const SUPABASE_URL = process.env.SUPABASE_URL ?? process.env.NEXT_PUBLIC_SUPABASE_URL ?? '';
@@ -72,6 +70,7 @@ type PatientInput = {
 	insuranceNumber?: string | null;
 	emergencyContactName?: string | null;
 	emergencyContactPhone?: string | null;
+	profession?: string | null;
 };
 
 type PlanInput = {
@@ -137,6 +136,13 @@ type InviteCreateManyLocalInput = {
 
 /* ---------- Handler ---------- */
 export async function POST(req: NextRequest): Promise<NextResponse> {
+	// Variables para rollback - declaradas fuera del try para que estén disponibles en el catch
+	let orgRecord: any = null;
+	let patientRecord: any = null;
+	let userRecord: any = null;
+	let subscriptionRecord: any = null;
+	const createdIds: { type: string; id: string }[] = [];
+
 	try {
 		const parsed = await req.json().catch(() => null);
 		if (!isObject(parsed) || !isObject(parsed.account)) {
@@ -152,8 +158,22 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 		const roleRaw = account.role ? String(account.role) : 'ADMIN';
 		const role: UserRoleLocal = USER_ROLES.includes(roleRaw as UserRoleLocal) ? (roleRaw as UserRoleLocal) : 'ADMIN';
 
-		// Prevent duplicates - Email
-		const existing = await prisma.user.findUnique({ where: { email: account.email } });
+		if (!supabaseAdmin) {
+			return NextResponse.json({ ok: false, message: 'Error de configuración del servidor' }, { status: 500 });
+		}
+
+		// Prevent duplicates - Email usando Supabase (tabla User según Database.sql)
+		const { data: existing, error: userCheckError } = await supabaseAdmin
+			.from('User')
+			.select('id, email')
+			.eq('email', account.email)
+			.maybeSingle();
+
+		if (userCheckError && userCheckError.code !== 'PGRST116') { // PGRST116 = no rows returned
+			console.error('[Register API] Error verificando email:', userCheckError);
+			return NextResponse.json({ ok: false, message: 'Error al verificar el email' }, { status: 500 });
+		}
+
 		if (existing) {
 			return NextResponse.json({ ok: false, message: 'Ya existe un usuario con ese email' }, { status: 409 });
 		}
@@ -175,10 +195,23 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 				);
 			}
 
-			// Verificar en pacientes registrados (tabla Patient)
-			const existingRegistered = await prisma.patient.findFirst({
-				where: { identifier: identifier },
-			});
+			// Verificar en pacientes registrados usando Supabase (tabla Patient según Database.sql)
+			const { data: existingRegistered, error: registeredCheckError } = await supabaseAdmin
+				.from('Patient')
+				.select('id, identifier')
+				.eq('identifier', identifier)
+				.maybeSingle();
+
+			if (registeredCheckError && registeredCheckError.code !== 'PGRST116') {
+				console.error('[Register API] Error verificando cédula en Patient:', registeredCheckError);
+				return NextResponse.json(
+					{
+						ok: false,
+						message: 'Error al verificar la cédula de identidad. Por favor, intente nuevamente o contacte al administrador.',
+					},
+					{ status: 500 }
+				);
+			}
 
 			if (existingRegistered) {
 				return NextResponse.json(
@@ -293,89 +326,147 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 			}
 		}
 
-		// Tipamos correctamente tx para Prisma
-		const txResult = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
-			let orgRecord: any = null;
+		// Crear registros usando Supabase directamente (sin transacciones, pero en orden)
+		// Nota: Si alguna inserción falla, debemos hacer rollback manual eliminando lo creado
+		try {
+			// 1. Crear Organization si existe
 			if (organization) {
 				const orgTypeCast: OrgTypeLocal = organization.orgType && ORG_TYPES.includes(organization.orgType as OrgTypeLocal) ? (organization.orgType as OrgTypeLocal) : 'CLINICA';
-				orgRecord = await tx.organization.create({
-					data: {
+				
+				// Según Database.sql: Organization tiene campos: name, type, address, contactEmail, phone, specialistCount
+				const { data: orgData, error: orgError } = await supabaseAdmin
+					.from('Organization')
+					.insert({
 						name: organization.orgName,
-						type: orgTypeCast as unknown as any,
+						type: orgTypeCast, // USER-DEFINED type según Database.sql
 						address: organization.orgAddress ?? null,
 						contactEmail: account.email,
 						phone: organization.orgPhone ?? null,
 						specialistCount: safeNumber(organization.specialistCount) ?? 0,
-					},
-				});
+					})
+					.select('id, name')
+					.single();
+
+				if (orgError) {
+					console.error('[Register API] Error creando Organization:', orgError);
+					throw new Error(`Error al crear organización: ${orgError.message}`);
+				}
+
+				orgRecord = orgData;
+				createdIds.push({ type: 'Organization', id: orgRecord.id });
 			}
 
-			let patientRecord: any = null;
+			// 2. Crear Patient si existe
 			if (patient) {
-				patientRecord = await tx.patient.create({
-					data: {
+				// Según Database.sql: Patient tiene campos: firstName, lastName, identifier, dob, gender, phone, address, 
+				// blood_type, allergies, has_disability, disability, unregistered_patient_id, profession
+				// Nota: Database.sql usa camelCase para algunos campos (firstName, lastName) pero snake_case para otros
+				const addressValue = (() => {
+					const locationData: any = { address: patient.address ?? null };
+					if ((patient as any).locationLat !== undefined && (patient as any).locationLng !== undefined) {
+						locationData.coordinates = {
+							lat: (patient as any).locationLat,
+							lng: (patient as any).locationLng,
+						};
+					}
+					return (patient as any).locationLat !== undefined && (patient as any).locationLng !== undefined ? JSON.stringify(locationData) : patient.address ?? null;
+				})();
+
+				const { data: patientData, error: patientError } = await supabaseAdmin
+					.from('Patient')
+					.insert({
 						firstName: patient.firstName,
 						lastName: patient.lastName,
 						identifier: patient.identifier ? String(patient.identifier).trim() : null,
-						dob: patient.dob ? new Date(patient.dob) : null,
+						dob: patient.dob ? new Date(patient.dob).toISOString() : null,
 						gender: patient.gender ?? null,
 						phone: patient.phone ?? null,
-						address: (() => {
-							// Si hay coordenadas, guardarlas como JSON en el campo address junto con la dirección
-							const locationData: any = { address: patient.address ?? null };
-							if ((patient as any).locationLat !== undefined && (patient as any).locationLng !== undefined) {
-								locationData.coordinates = {
-									lat: (patient as any).locationLat,
-									lng: (patient as any).locationLng,
-								};
-							}
-							// Guardar como JSON string si hay coordenadas, sino solo la dirección
-							return (patient as any).locationLat !== undefined && (patient as any).locationLng !== undefined ? JSON.stringify(locationData) : patient.address ?? null;
-						})(),
-						bloodType: patient.bloodType ? String(patient.bloodType).trim() : null,
-						hasDisability: patient.hasDisability ?? false,
+						address: addressValue,
+						blood_type: patient.bloodType ? String(patient.bloodType).trim() : null,
+						has_disability: patient.hasDisability ?? false,
 						disability: patient.hasDisability && patient.disability ? String(patient.disability).trim() : null,
 						allergies: patient.allergies ? String(patient.allergies).trim() : null,
-						chronicConditions: patient.chronicConditions ? String(patient.chronicConditions).trim() : null,
-						currentMedications: patient.currentMedications ? String(patient.currentMedications).trim() : null,
-						// Vincular con paciente no registrado si se encontró uno con la misma cédula
-						unregisteredPatientId: linkedUnregisteredPatientId ?? null,
-					} as Prisma.PatientCreateInput,
-				});
+						unregistered_patient_id: linkedUnregisteredPatientId ?? null,
+						profession: patient.profession ?? null,
+						// Nota: chronicConditions y currentMedications no están en Database.sql como campos directos
+						// Se pueden guardar en allergies o crear campos adicionales si es necesario
+					})
+					.select('id, firstName, lastName')
+					.single();
+
+				if (patientError) {
+					console.error('[Register API] Error creando Patient:', patientError);
+					// Rollback: eliminar Organization si se creó
+					if (orgRecord) {
+						await supabaseAdmin.from('Organization').delete().eq('id', orgRecord.id);
+					}
+					throw new Error(`Error al crear paciente: ${patientError.message}`);
+				}
+
+				patientRecord = patientData;
+				createdIds.push({ type: 'Patient', id: patientRecord.id });
 
 				// Log para confirmar la vinculación
 				if (linkedUnregisteredPatientId) {
 					console.log(`[Register API] Paciente creado con ID ${patientRecord.id} vinculado a unregistered_patient_id: ${linkedUnregisteredPatientId}`);
 				}
 
+				// Crear FamilyGroup si es plan paciente-family
 				if (plan?.selectedPlan === 'paciente-family') {
-					await tx.familyGroup.create({
-						data: {
+					// Según Database.sql: FamilyGroup tiene: name, ownerId, maxMembers
+					const { error: familyGroupError } = await supabaseAdmin
+						.from('FamilyGroup')
+						.insert({
 							name: `${patient.firstName} ${patient.lastName} - Grupo familiar`,
 							ownerId: patientRecord.id,
 							maxMembers: 5,
-						},
-					});
+						});
+
+					if (familyGroupError) {
+						console.error('[Register API] Error creando FamilyGroup:', familyGroupError);
+						// No fallar el registro si FamilyGroup falla
+					}
 				}
 			}
 
+			// 3. Preparar datos de User
 			const userCreateData: {
 				email: string;
 				name: string | null;
-				role: UserRoleLocal;
-				organizationId?: string;
+				role: string;
+				organizationId?: string | null;
 				patientProfileId?: string | null;
-				authId?: string;
-				passwordHash?: string;
-			} = { email: account.email, name: account.fullName ?? null, role };
+				authId?: string | null;
+				passwordHash?: string | null;
+			} = { 
+				email: account.email, 
+				name: account.fullName ?? null, 
+				role: role,
+				organizationId: null,
+				patientProfileId: null,
+				authId: null,
+				passwordHash: null,
+			};
 
+			// Verificar organizationId si es paciente con referredOrgId
 			if (String(role).toUpperCase() === 'PACIENTE' && referredOrgIdFromForm) {
-				const maybeOrg = await tx.organization.findUnique({ where: { id: referredOrgIdFromForm } });
-				if (maybeOrg) userCreateData.organizationId = referredOrgIdFromForm;
+				const { data: maybeOrg, error: orgCheckError } = await supabaseAdmin
+					.from('Organization')
+					.select('id')
+					.eq('id', referredOrgIdFromForm)
+					.maybeSingle();
+
+				if (!orgCheckError && maybeOrg) {
+					userCreateData.organizationId = referredOrgIdFromForm;
+				}
 			}
 
-			if (!userCreateData.organizationId && orgRecord) userCreateData.organizationId = orgRecord.id;
-			if (patientRecord) userCreateData.patientProfileId = String(patientRecord.id);
+			if (!userCreateData.organizationId && orgRecord) {
+				userCreateData.organizationId = orgRecord.id;
+			}
+			if (patientRecord) {
+				userCreateData.patientProfileId = patientRecord.id;
+			}
 
 			if (supabaseCreated && supabaseUserId) {
 				userCreateData.authId = supabaseUserId;
@@ -384,32 +475,52 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 				userCreateData.passwordHash = hashed;
 			}
 
-			// Al insertar en Prisma, casteamos role para evitar discrepancias de typing en distintos setups de prisma
-			const userRecord = await tx.user.create({
-				data: {
+			// 4. Crear User
+			// Según Database.sql: User tiene: email, name, passwordHash, role, organizationId, patientProfileId, authId, used
+			const { data: userData, error: userError } = await supabaseAdmin
+				.from('User')
+				.insert({
 					email: userCreateData.email,
 					name: userCreateData.name,
-					// cast seguro para satisfacer al typing de Prisma en diferentes setups
-					role: userCreateData.role as unknown as any,
-					organizationId: userCreateData.organizationId,
-					patientProfileId: userCreateData.patientProfileId,
-					authId: userCreateData.authId,
-					passwordHash: userCreateData.passwordHash,
-				},
-			});
+					role: userCreateData.role, // USER-DEFINED type según Database.sql
+					organizationId: userCreateData.organizationId ?? null,
+					patientProfileId: userCreateData.patientProfileId ?? null,
+					authId: userCreateData.authId ?? null,
+					passwordHash: userCreateData.passwordHash ?? null,
+					used: true, // DEFAULT true según Database.sql
+				})
+				.select('id, email, role, authId, organizationId')
+				.single();
 
-			let subscriptionRecord: any = null;
+			if (userError) {
+				console.error('[Register API] Error creando User:', userError);
+				// Rollback: eliminar lo creado
+				if (patientRecord) {
+					await supabaseAdmin.from('Patient').delete().eq('id', patientRecord.id);
+				}
+				if (orgRecord) {
+					await supabaseAdmin.from('Organization').delete().eq('id', orgRecord.id);
+				}
+				throw new Error(`Error al crear usuario: ${userError.message}`);
+			}
+
+			userRecord = userData;
+			createdIds.push({ type: 'User', id: userRecord.id });
+
+			// 5. Crear Subscription si existe plan
 			if (plan) {
 				const now = new Date();
-				subscriptionRecord = await tx.subscription.create({
-					data: {
-						organizationId: orgRecord?.id,
-						patientId: patientRecord?.id ? String(patientRecord.id) : undefined,
+				// Según Database.sql: Subscription tiene: organizationId, patientId, planId, stripeSubscriptionId, status, startDate, endDate, planSnapshot
+				const { data: subData, error: subError } = await supabaseAdmin
+					.from('Subscription')
+					.insert({
+						organizationId: orgRecord?.id ?? null,
+						patientId: patientRecord?.id ?? null,
 						planId: null,
 						stripeSubscriptionId: null,
-						status: 'TRIALING',
-						startDate: now,
-						endDate: addOneMonth(now),
+						status: 'TRIALING', // USER-DEFINED type según Database.sql
+						startDate: now.toISOString(),
+						endDate: addOneMonth(now).toISOString(),
 						planSnapshot: {
 							selectedPlan: plan.selectedPlan,
 							billingPeriod: plan.billingPeriod,
@@ -417,33 +528,41 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 							discount: plan.billingDiscount,
 							total: plan.billingTotal,
 						},
-					},
-				});
+					})
+					.select('id')
+					.single();
+
+				if (subError) {
+					console.error('[Register API] Error creando Subscription:', subError);
+					// No fallar el registro si Subscription falla, pero loguear
+				} else {
+					subscriptionRecord = subData;
+				}
 			}
 
-			return {
-				userRecord: {
-					id: userRecord.id,
-					email: userRecord.email,
-					role: userRecord.role,
-					authId: userRecord.authId ?? null,
-					organizationId: userRecord.organizationId ?? null,
-				},
-				organizationId: orgRecord?.id ?? null,
-				organizationName: orgRecord?.name ?? null,
-				patientRecord: patientRecord ? { id: patientRecord.id, firstName: patientRecord.firstName, lastName: patientRecord.lastName } : null,
-				subscriptionId: subscriptionRecord?.id ?? null,
-			};
-		});
+		} catch (createError: unknown) {
+			// Rollback manual: eliminar lo que se haya creado
+			if (createdIds.length > 0 && supabaseAdmin) {
+				console.error('[Register API] Error durante creación de registros, haciendo rollback de:', createdIds);
+				for (const { type, id } of createdIds.reverse()) {
+					try {
+						await supabaseAdmin.from(type).delete().eq('id', id);
+					} catch (rollbackErr) {
+						console.error(`[Register API] Error en rollback de ${type} (${id}):`, rollbackErr);
+					}
+				}
+			}
+			throw createError;
+		}
 
 		// Migrar consultas antiguas del paciente no registrado al paciente registrado
-		// Esto debe hacerse DESPUÉS de la transacción de Prisma, usando Supabase
-		if (role === 'PACIENTE' && linkedUnregisteredPatientId && txResult.patientRecord?.id && supabaseAdmin) {
+		// Esto debe hacerse DESPUÉS de crear los registros, usando Supabase
+		if (role === 'PACIENTE' && linkedUnregisteredPatientId && patientRecord?.id && supabaseAdmin) {
 			try {
-				console.log(`[Register API] Migrando consultas de unregistered_patient_id ${linkedUnregisteredPatientId} a patient_id ${txResult.patientRecord.id}`);
+				console.log(`[Register API] Migrando consultas de unregistered_patient_id ${linkedUnregisteredPatientId} a patient_id ${patientRecord.id}`);
 
 				// Actualizar todas las consultas que tienen unregistered_patient_id pero NO tienen patient_id
-				const { data: updatedConsultations, error: updateError } = await supabaseAdmin.from('consultation').update({ patient_id: txResult.patientRecord.id }).eq('unregistered_patient_id', linkedUnregisteredPatientId).is('patient_id', null).select('id');
+				const { data: updatedConsultations, error: updateError } = await supabaseAdmin.from('consultation').update({ patient_id: patientRecord.id }).eq('unregistered_patient_id', linkedUnregisteredPatientId).is('patient_id', null).select('id');
 
 				if (updateError) {
 					console.error('[Register API] Error migrando consultas:', updateError);
@@ -456,35 +575,35 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 					// que tengan unregistered_patient_id pero NO tengan patient_id
 
 					// Appointments
-					const { error: appointmentError } = await supabaseAdmin.from('appointment').update({ patient_id: txResult.patientRecord.id }).eq('unregistered_patient_id', linkedUnregisteredPatientId).is('patient_id', null);
+					const { error: appointmentError } = await supabaseAdmin.from('appointment').update({ patient_id: patientRecord.id }).eq('unregistered_patient_id', linkedUnregisteredPatientId).is('patient_id', null);
 
 					if (appointmentError) {
 						console.error('[Register API] Error migrando appointments:', appointmentError);
 					}
 
 					// Facturacion
-					const { error: facturacionError } = await supabaseAdmin.from('facturacion').update({ patient_id: txResult.patientRecord.id }).eq('unregistered_patient_id', linkedUnregisteredPatientId).is('patient_id', null);
+					const { error: facturacionError } = await supabaseAdmin.from('facturacion').update({ patient_id: patientRecord.id }).eq('unregistered_patient_id', linkedUnregisteredPatientId).is('patient_id', null);
 
 					if (facturacionError) {
 						console.error('[Register API] Error migrando facturacion:', facturacionError);
 					}
 
 					// Prescriptions
-					const { error: prescriptionError } = await supabaseAdmin.from('prescription').update({ patient_id: txResult.patientRecord.id }).eq('unregistered_patient_id', linkedUnregisteredPatientId).is('patient_id', null);
+					const { error: prescriptionError } = await supabaseAdmin.from('prescription').update({ patient_id: patientRecord.id }).eq('unregistered_patient_id', linkedUnregisteredPatientId).is('patient_id', null);
 
 					if (prescriptionError) {
 						console.error('[Register API] Error migrando prescriptions:', prescriptionError);
 					}
 
 					// Lab Results
-					const { error: labResultError } = await supabaseAdmin.from('lab_result').update({ patient_id: txResult.patientRecord.id }).eq('unregistered_patient_id', linkedUnregisteredPatientId).is('patient_id', null);
+					const { error: labResultError } = await supabaseAdmin.from('lab_result').update({ patient_id: patientRecord.id }).eq('unregistered_patient_id', linkedUnregisteredPatientId).is('patient_id', null);
 
 					if (labResultError) {
 						console.error('[Register API] Error migrando lab_results:', labResultError);
 					}
 
 					// Tasks
-					const { error: taskError } = await supabaseAdmin.from('task').update({ patient_id: txResult.patientRecord.id }).eq('unregistered_patient_id', linkedUnregisteredPatientId).is('patient_id', null);
+					const { error: taskError } = await supabaseAdmin.from('task').update({ patient_id: patientRecord.id }).eq('unregistered_patient_id', linkedUnregisteredPatientId).is('patient_id', null);
 
 					if (taskError) {
 						console.error('[Register API] Error migrando tasks:', taskError);
@@ -496,28 +615,38 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 			}
 		}
 
-		// Invites (fuera de la transacción)
+		// Invites (crear usando Supabase)
 		const invitesReturned: Array<{ token: string; url?: string }> = [];
-		if (txResult.organizationId && organization) {
+		if (orgRecord?.id && organization) {
 			const specialists = safeNumber(organization.specialistCount) ?? 0;
 			if (specialists > 0) {
 				const expiresAt = expiryDays(14);
 				const now = new Date();
-				const invitesData: InviteCreateManyLocalInput[] = [];
+				// Según Database.sql: Invite tiene: organizationId, email, token, role, invitedById, used, expiresAt, createdAt
+				const invitesData: Array<{
+					organizationId: string;
+					email: string | null;
+					token: string;
+					role: string;
+					invitedById: string;
+					used: boolean;
+					expiresAt: string;
+					createdAt: string;
+				}> = [];
 
 				for (let i = 0; i < specialists; i++) {
 					const token = genToken();
-					const invitedById = String(txResult.userRecord.id);
+					const invitedById = userRecord.id;
 
 					invitesData.push({
-						organizationId: txResult.organizationId,
-						email: '',
+						organizationId: orgRecord.id,
+						email: null, // email vacío según el código original
 						token,
-						role: 'MEDICO',
+						role: 'MEDICO', // USER-DEFINED type según Database.sql
 						invitedById,
 						used: false,
-						expiresAt,
-						createdAt: now,
+						expiresAt: expiresAt.toISOString(),
+						createdAt: now.toISOString(),
 					});
 
 					invitesReturned.push({
@@ -526,8 +655,15 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 					});
 				}
 
-				// casteo al pasar a prisma.createMany para evitar problemas de typing en compilación
-				await prisma.invite.createMany({ data: invitesData as unknown as any, skipDuplicates: true });
+				// Insertar invites usando Supabase
+				const { error: invitesError } = await supabaseAdmin
+					.from('Invite')
+					.insert(invitesData);
+
+				if (invitesError) {
+					console.error('[Register API] Error creando Invites:', invitesError);
+					// No fallar el registro si los invites fallan
+				}
 			}
 		}
 
@@ -539,8 +675,8 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 			try {
 				const loginUrl = APP_URL ? `${APP_URL}/login` : undefined;
 				await createNotification({
-					userId: txResult.userRecord.id,
-					organizationId: txResult.organizationId,
+					userId: userRecord.id,
+					organizationId: orgRecord?.id ?? null,
 					type: 'WELCOME',
 					title: '¡Bienvenido a ASHIRA!',
 					message: `Tu cuenta ha sido creada exitosamente. Bienvenido, ${account.fullName || account.email}!`,
@@ -561,10 +697,16 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 		// El email de bienvenida se puede enviar después de la confirmación si es necesario
 
 		const responsePayload = {
-			user: txResult.userRecord,
-			organization: txResult.organizationId ? { id: txResult.organizationId, name: txResult.organizationName } : null,
-			patient: txResult.patientRecord,
-			subscriptionId: txResult.subscriptionId,
+			user: {
+				id: userRecord.id,
+				email: userRecord.email,
+				role: userRecord.role,
+				authId: userRecord.authId ?? null,
+				organizationId: userRecord.organizationId ?? null,
+			},
+			organization: orgRecord?.id ? { id: orgRecord.id, name: orgRecord.name } : null,
+			patient: patientRecord ? { id: patientRecord.id, firstName: patientRecord.firstName, lastName: patientRecord.lastName } : null,
+			subscriptionId: subscriptionRecord?.id ?? null,
 			invites: invitesReturned,
 			supabaseUser: supabaseCreated ? { id: supabaseUserId, email: supabaseUserEmail } : null,
 		};
@@ -586,10 +728,21 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 			hasLinkedHistory: linkedUnregisteredPatientId !== null,
 			message: emailVerificationMessage || 'Registro exitoso',
 			// Incluir datos para pago si es necesario (MEDICO o ADMIN con organización)
-			organizationId: txResult.organizationId || null,
-			userId: txResult.userRecord.id || null,
+			organizationId: orgRecord?.id ?? null,
+			userId: userRecord.id ?? null,
 		});
 	} catch (err: unknown) {
+		// Rollback manual: eliminar lo que se haya creado
+		if (createdIds.length > 0 && supabaseAdmin) {
+			console.error('[Register API] Error durante registro, haciendo rollback de:', createdIds);
+			for (const { type, id } of createdIds.reverse()) {
+				try {
+					await supabaseAdmin.from(type).delete().eq('id', id);
+				} catch (rollbackErr) {
+					console.error(`[Register API] Error en rollback de ${type} (${id}):`, rollbackErr);
+				}
+			}
+		}
 		console.error('Register error:', err);
 		return NextResponse.json({ ok: false, message: err instanceof Error ? err.message : 'Error interno' }, { status: 500 });
 	}

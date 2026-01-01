@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createSupabaseServerClient } from '@/app/adapters/server';
 import { cookies } from 'next/headers';
 import { apiRequireRole } from '@/lib/auth-guards';
+import { optimizeSupabaseQuery } from '@/lib/lite-mode-utils';
 
 type PeriodType = 'day' | 'week' | 'month';
 
@@ -88,6 +89,7 @@ export async function GET(req: NextRequest) {
 		const url = new URL(req.url);
 		const period = (url.searchParams.get('period') || 'week') as PeriodType;
 		const periodOffset = parseInt(url.searchParams.get('offset') || '0', 10);
+		const isLiteMode = url.searchParams.get('liteMode') === 'true';
 
 		// Validar período
 		if (!['day', 'week', 'month'].includes(period)) {
@@ -110,41 +112,53 @@ export async function GET(req: NextRequest) {
 		// Usar started_at si existe, sino created_at
 		// ────────────────────────────────
 		// Consulta para consultas con started_at en el rango actual
-		const { count: currentConsultsWithStarted } = await supabase
+		let query1 = supabase
 			.from('consultation')
-			.select('*', { count: 'exact', head: true })
+			.select(isLiteMode ? 'id' : '*', { count: 'exact', head: true })
 			.eq('doctor_id', doctorId)
 			.not('started_at', 'is', null)
 			.gte('started_at', currentRange.start.toISOString())
 			.lte('started_at', currentRange.end.toISOString());
+		
+		query1 = optimizeSupabaseQuery(query1, isLiteMode, 'consultation', { limit: undefined });
+		const { count: currentConsultsWithStarted } = await query1;
 
 		// Consultas sin started_at pero con created_at en el rango
-		const { count: currentConsultsWithCreated } = await supabase
+		let query2 = supabase
 			.from('consultation')
-			.select('*', { count: 'exact', head: true })
+			.select(isLiteMode ? 'id' : '*', { count: 'exact', head: true })
 			.eq('doctor_id', doctorId)
 			.is('started_at', null)
 			.gte('created_at', currentRange.start.toISOString())
 			.lte('created_at', currentRange.end.toISOString());
+		
+		query2 = optimizeSupabaseQuery(query2, isLiteMode, 'consultation', { limit: undefined });
+		const { count: currentConsultsWithCreated } = await query2;
 
 		const currentConsultsFiltered = (currentConsultsWithStarted ?? 0) + (currentConsultsWithCreated ?? 0);
 
 		// Período anterior
-		const { count: prevConsultsWithStarted } = await supabase
+		let query3 = supabase
 			.from('consultation')
-			.select('*', { count: 'exact', head: true })
+			.select(isLiteMode ? 'id' : '*', { count: 'exact', head: true })
 			.eq('doctor_id', doctorId)
 			.not('started_at', 'is', null)
 			.gte('started_at', previousRange.start.toISOString())
 			.lte('started_at', previousRange.end.toISOString());
+		
+		query3 = optimizeSupabaseQuery(query3, isLiteMode, 'consultation', { limit: undefined });
+		const { count: prevConsultsWithStarted } = await query3;
 
-		const { count: prevConsultsWithCreated } = await supabase
+		let query4 = supabase
 			.from('consultation')
-			.select('*', { count: 'exact', head: true })
+			.select(isLiteMode ? 'id' : '*', { count: 'exact', head: true })
 			.eq('doctor_id', doctorId)
 			.is('started_at', null)
 			.gte('created_at', previousRange.start.toISOString())
 			.lte('created_at', previousRange.end.toISOString());
+		
+		query4 = optimizeSupabaseQuery(query4, isLiteMode, 'consultation', { limit: undefined });
+		const { count: prevConsultsWithCreated } = await query4;
 
 		const prevConsultsFiltered = (prevConsultsWithStarted ?? 0) + (prevConsultsWithCreated ?? 0);
 
@@ -166,13 +180,16 @@ export async function GET(req: NextRequest) {
 			},
 		});
 
-		const { count: currentAppt, error: currentApptError } = await supabase
+		let query5 = supabase
 			.from('appointment')
-			.select('*', { count: 'exact', head: true })
+			.select(isLiteMode ? 'id' : '*', { count: 'exact', head: true })
 			.eq('doctor_id', doctorId)
 			.in('status', validStatuses)
 			.gte('scheduled_at', currentRange.start.toISOString())
 			.lte('scheduled_at', currentRange.end.toISOString());
+		
+		query5 = optimizeSupabaseQuery(query5, isLiteMode, 'appointment', { limit: undefined });
+		const { count: currentAppt, error: currentApptError } = await query5;
 
 		if (currentApptError) {
 			console.error('[KPI] Error obteniendo citas programadas actuales:', currentApptError);
@@ -180,13 +197,16 @@ export async function GET(req: NextRequest) {
 			console.log('[KPI] Citas programadas encontradas (período actual):', currentAppt);
 		}
 
-		const { count: prevAppt, error: prevApptError } = await supabase
+		let query6 = supabase
 			.from('appointment')
-			.select('*', { count: 'exact', head: true })
+			.select(isLiteMode ? 'id' : '*', { count: 'exact', head: true })
 			.eq('doctor_id', doctorId)
 			.in('status', validStatuses)
 			.gte('scheduled_at', previousRange.start.toISOString())
 			.lte('scheduled_at', previousRange.end.toISOString());
+		
+		query6 = optimizeSupabaseQuery(query6, isLiteMode, 'appointment', { limit: undefined });
+		const { count: prevAppt, error: prevApptError } = await query6;
 
 		if (prevApptError) {
 			console.error('[KPI] Error obteniendo citas programadas anteriores:', prevApptError);
@@ -220,7 +240,7 @@ export async function GET(req: NextRequest) {
 		// Usar fecha_pago si existe, sino fecha_emision
 		// ────────────────────────────────
 		// Consulta para facturaciones con fecha_pago en el rango actual
-		const { data: factNowWithFechaPago } = await supabase
+		let query7 = supabase
 			.from('facturacion')
 			.select('total, currency')
 			.eq('doctor_id', doctorId)
@@ -228,9 +248,12 @@ export async function GET(req: NextRequest) {
 			.not('fecha_pago', 'is', null)
 			.gte('fecha_pago', currentRange.start.toISOString())
 			.lte('fecha_pago', currentRange.end.toISOString());
+		
+		query7 = optimizeSupabaseQuery(query7, isLiteMode, 'facturacion', { limit: 100 });
+		const { data: factNowWithFechaPago } = await query7;
 
 		// Consulta para facturaciones sin fecha_pago pero con fecha_emision en el rango actual
-		const { data: factNowWithFechaEmision } = await supabase
+		let query8 = supabase
 			.from('facturacion')
 			.select('total, currency')
 			.eq('doctor_id', doctorId)
@@ -238,6 +261,9 @@ export async function GET(req: NextRequest) {
 			.is('fecha_pago', null)
 			.gte('fecha_emision', currentRange.start.toISOString())
 			.lte('fecha_emision', currentRange.end.toISOString());
+		
+		query8 = optimizeSupabaseQuery(query8, isLiteMode, 'facturacion', { limit: 100 });
+		const { data: factNowWithFechaEmision } = await query8;
 
 		// Sumar todos los totales (convertir a USD si es necesario)
 		const ingresosActual =
@@ -253,7 +279,7 @@ export async function GET(req: NextRequest) {
 			}, 0);
 
 		// Período anterior
-		const { data: factPrevWithFechaPago } = await supabase
+		let query9 = supabase
 			.from('facturacion')
 			.select('total, currency')
 			.eq('doctor_id', doctorId)
@@ -261,8 +287,11 @@ export async function GET(req: NextRequest) {
 			.not('fecha_pago', 'is', null)
 			.gte('fecha_pago', previousRange.start.toISOString())
 			.lte('fecha_pago', previousRange.end.toISOString());
+		
+		query9 = optimizeSupabaseQuery(query9, isLiteMode, 'facturacion', { limit: 100 });
+		const { data: factPrevWithFechaPago } = await query9;
 
-		const { data: factPrevWithFechaEmision } = await supabase
+		let query10 = supabase
 			.from('facturacion')
 			.select('total, currency')
 			.eq('doctor_id', doctorId)
@@ -270,6 +299,9 @@ export async function GET(req: NextRequest) {
 			.is('fecha_pago', null)
 			.gte('fecha_emision', previousRange.start.toISOString())
 			.lte('fecha_emision', previousRange.end.toISOString());
+		
+		query10 = optimizeSupabaseQuery(query10, isLiteMode, 'facturacion', { limit: 100 });
+		const { data: factPrevWithFechaEmision } = await query10;
 
 		const ingresosPrev =
 			(factPrevWithFechaPago || []).reduce((sum, f) => {
