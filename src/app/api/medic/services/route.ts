@@ -1,11 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import createSupabaseServerClient from '@/app/adapters/server';
-import { getApiResponseHeaders, getRevalidateConfig } from '@/lib/api-cache-utils';
+import { getApiResponseHeaders } from '@/lib/api-cache-utils';
 
 // Configurar caché optimizada (semi-static: servicios cambian ocasionalmente)
-const cacheConfig = getRevalidateConfig('semi-static');
-export const revalidate = cacheConfig.revalidate;
-export const dynamic = cacheConfig.dynamic;
+export const dynamic = 'force-dynamic';
+export const revalidate = 300;
 
 export async function GET(req: NextRequest) {
 	try {

@@ -3,12 +3,11 @@ import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { createSupabaseServerClient } from '@/app/adapters/server';
 import { apiRequireRole } from '@/lib/auth-guards';
-import { getApiResponseHeaders, getRevalidateConfig } from '@/lib/api-cache-utils';
+import { getApiResponseHeaders } from '@/lib/api-cache-utils';
 
 // Configurar caché optimizada para esta ruta (semi-static: datos que cambian ocasionalmente)
-const cacheConfig = getRevalidateConfig('semi-static');
-export const revalidate = cacheConfig.revalidate;
-export const dynamic = cacheConfig.dynamic;
+export const dynamic = 'force-dynamic';
+export const revalidate = 300;
 
 /* ---------------------- Helpers ---------------------- */
 function parseIntOrDefault(v: string | null, d = 1) {

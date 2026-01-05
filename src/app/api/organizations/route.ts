@@ -2,12 +2,11 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import { getApiResponseHeaders, getRevalidateConfig } from '@/lib/api-cache-utils';
+import { getApiResponseHeaders } from '@/lib/api-cache-utils';
 
 // Configurar caché optimizada (semi-static: datos que cambian ocasionalmente)
-const cacheConfig = getRevalidateConfig('semi-static');
-export const revalidate = cacheConfig.revalidate;
-export const dynamic = cacheConfig.dynamic;
+export const dynamic = 'force-dynamic';
+export const revalidate = 300;
 
 const SUPABASE_URL = process.env.SUPABASE_URL ?? process.env.NEXT_PUBLIC_SUPABASE_URL ?? '';
 // En server puedes usar SUPABASE_SERVICE_ROLE_KEY; si no está, caerá al ANON key (menos privilegios).

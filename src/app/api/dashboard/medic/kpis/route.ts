@@ -3,14 +3,13 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createSupabaseServerClient } from '@/app/adapters/server';
 import { cookies } from 'next/headers';
 import { apiRequireRole } from '@/lib/auth-guards';
-import { getApiResponseHeaders, getRevalidateConfig } from '@/lib/api-cache-utils';
+import { getApiResponseHeaders } from '@/lib/api-cache-utils';
 
 type PeriodType = 'day' | 'week' | 'month';
 
 // Configurar caché optimizado (dynamic: datos que cambian frecuentemente pero se calculan)
-const cacheConfig = getRevalidateConfig('dynamic');
-export const revalidate = cacheConfig.revalidate;
-export const dynamic = cacheConfig.dynamic;
+export const dynamic = 'force-dynamic';
+export const revalidate = 60;
 
 // 🗓️ Calcular rango de día
 function getDayRange(offset = 0) {
