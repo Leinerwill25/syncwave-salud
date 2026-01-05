@@ -46,14 +46,14 @@ export async function GET() {
 			return NextResponse.json({
 				token: newToken,
 				enabled: patientData.emergency_qr_enabled || false,
-				url: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/emergency/${newToken}`,
+				url: `${process.env.NEXT_PUBLIC_APP_URL || 'https://ashira.click'}/emergency/${newToken}`,
 			});
 		}
 
 		return NextResponse.json({
 			token: patientData.emergency_qr_token,
 			enabled: patientData.emergency_qr_enabled || false,
-			url: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/emergency/${patientData.emergency_qr_token}`,
+			url: `${process.env.NEXT_PUBLIC_APP_URL || 'https://ashira.click'}/emergency/${patientData.emergency_qr_token}`,
 		});
 	} catch (err: any) {
 		console.error('[Emergency QR API] Error:', err);
@@ -103,7 +103,7 @@ export async function POST(req: NextRequest) {
 					success: true,
 					enabled: true,
 					token: newToken,
-					url: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/emergency/${newToken}`,
+					url: `${process.env.NEXT_PUBLIC_APP_URL || 'https://ashira.click'}/emergency/${newToken}`,
 				});
 			}
 		}
@@ -152,7 +152,7 @@ export async function DELETE() {
 		return NextResponse.json({
 			success: true,
 			token: newToken,
-			url: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/emergency/${newToken}`,
+			url: `${process.env.NEXT_PUBLIC_APP_URL || 'https://ashira.click'}/emergency/${newToken}`,
 		});
 	} catch (err: any) {
 		console.error('[Emergency QR API] Error:', err);
