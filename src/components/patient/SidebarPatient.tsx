@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { LayoutDashboard, CalendarDays, Building2, ShoppingBag, FlaskConical, Search, FileText, Pill, Receipt, MessageCircle, Settings, Users, Shield, ChevronRight, ChevronDown, Search as SearchIcon, Bell } from 'lucide-react';
+import { LayoutDashboard, CalendarDays, Building2, ShoppingBag, FlaskConical, Search, FileText, Pill, Receipt, MessageCircle, Settings, Users, Shield, ChevronRight, ChevronDown, Search as SearchIcon, Bell, QrCode } from 'lucide-react';
 
 type IconComponent = React.ComponentType<React.SVGProps<SVGSVGElement>>;
 
@@ -56,6 +56,11 @@ const LINKS: LinkItem[] = [
 		href: '/dashboard/patient/recordatorios',
 		label: 'Recordatorios',
 		icon: Bell,
+	},
+	{
+		href: '/dashboard/patient/qr-urgente',
+		label: 'QR Urgente',
+		icon: QrCode,
 	},
 	{
 		href: '/dashboard/patient/pagos',

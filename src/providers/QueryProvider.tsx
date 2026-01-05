@@ -13,10 +13,11 @@ function makeQueryClient() {
 	return new QueryClient({
 		defaultOptions: {
 			queries: {
-				// Stale time: data is considered fresh for 30 seconds
-				staleTime: 30 * 1000,
-				// Cache time: keep unused data for 5 minutes
-				gcTime: 5 * 60 * 1000,
+				// OPTIMIZACIÓN: Stale time aumentado para reducir requests
+				// Los datos se consideran frescos por más tiempo, aprovechando el cache del servidor
+				staleTime: 60 * 1000, // 1 minuto (aumentado de 30 segundos)
+				// OPTIMIZACIÓN: Cache time aumentado para mantener datos más tiempo
+				gcTime: 10 * 60 * 1000, // 10 minutos (aumentado de 5 minutos)
 				// Retry configuration
 				retry: (failureCount, error: any) => {
 					// Only retry network errors, not 4xx errors
@@ -30,10 +31,11 @@ function makeQueryClient() {
 					// Exponential backoff: 1s, 2s, 4s
 					return Math.min(1000 * 2 ** attemptIndex, 4000);
 				},
-				// Refetch on window focus only if data is stale
+				// OPTIMIZACIÓN: Desactivar refetch automático para reducir carga
 				refetchOnWindowFocus: false,
-				// Don't refetch on reconnect automatically (we'll handle it manually)
 				refetchOnReconnect: false,
+				// OPTIMIZACIÓN: Desactivar refetch en mount si los datos están frescos
+				refetchOnMount: true, // Mantener true para primera carga, pero staleTime evita refetches innecesarios
 			},
 			mutations: {
 				// Retry mutations only for network errors

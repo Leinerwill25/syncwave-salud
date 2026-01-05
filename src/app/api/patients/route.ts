@@ -3,10 +3,12 @@ import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { createSupabaseServerClient } from '@/app/adapters/server';
 import { apiRequireRole } from '@/lib/auth-guards';
+import { getApiResponseHeaders, getRevalidateConfig } from '@/lib/api-cache-utils';
 
-// Configurar caché para esta ruta (30 segundos)
-export const revalidate = 30;
-export const dynamic = 'force-dynamic';
+// Configurar caché optimizada para esta ruta (semi-static: datos que cambian ocasionalmente)
+const cacheConfig = getRevalidateConfig('semi-static');
+export const revalidate = cacheConfig.revalidate;
+export const dynamic = cacheConfig.dynamic;
 
 /* ---------------------- Helpers ---------------------- */
 function parseIntOrDefault(v: string | null, d = 1) {
@@ -566,17 +568,19 @@ export async function GET(request: Request) {
 		if (isMedic) {
 			// doctor_id en consultation referencia User.id (app user ID), no authId
 			// Buscar tanto por patient_id como por unregistered_patient_id
+			// OPTIMIZACIÓN: Usar select mínimo para reducir datos transferidos
 			const { data: consultationsData, error: idsError } = await supabase
 				.from('consultation')
 				.select('patient_id, unregistered_patient_id')
-				.eq('doctor_id', appUserId);
+				.eq('doctor_id', appUserId)
+				.limit(1000); // Límite razonable para evitar queries muy grandes
 
 			if (idsError) {
 				console.error('Error fetching patient IDs for medic', idsError);
 				return NextResponse.json({ error: 'Error fetching patient data', detail: idsError.message }, { status: 500 });
 			}
 
-			// Obtener IDs de pacientes registrados y no registrados
+			// Obtener IDs de pacientes registrados y no registrados (optimizado con Set)
 			const registeredPatientIds = [...new Set((consultationsData ?? []).map((p) => p.patient_id).filter(Boolean))];
 			const unregisteredPatientIds = [...new Set((consultationsData ?? []).map((p) => p.unregistered_patient_id).filter(Boolean))];
 
@@ -584,6 +588,8 @@ export async function GET(request: Request) {
 				return NextResponse.json({
 					data: [],
 					meta: { page, per_page, total: 0 },
+				}, {
+					headers: getApiResponseHeaders('semi-static'),
 				});
 			}
 
@@ -736,16 +742,20 @@ export async function GET(request: Request) {
 					});
 
 					const finalPatients = Array.from(map.values());
-					return NextResponse.json({
-						data: finalPatients,
-						meta: { page, per_page, total },
-					});
-				}
-
 				return NextResponse.json({
-					data: paginatedPatients,
+					data: finalPatients,
 					meta: { page, per_page, total },
+				}, {
+					headers: getApiResponseHeaders('semi-static'),
 				});
+			}
+
+			return NextResponse.json({
+				data: paginatedPatients,
+				meta: { page, per_page, total },
+			}, {
+				headers: getApiResponseHeaders('semi-static'),
+			});
 			}
 		}
 
@@ -754,6 +764,8 @@ export async function GET(request: Request) {
 			return NextResponse.json({
 				data: [],
 				meta: { page, per_page, total: 0 },
+			}, {
+				headers: getApiResponseHeaders('semi-static'),
 			});
 		}
 
@@ -851,12 +863,16 @@ export async function GET(request: Request) {
 			return NextResponse.json({
 				data: finalPatients,
 				meta: { page, per_page, total: count ?? finalPatients.length },
+			}, {
+				headers: getApiResponseHeaders('semi-static'),
 			});
 		}
 
 		return NextResponse.json({
 			data: patients ?? [],
 			meta: { page, per_page, total: count ?? 0 },
+		}, {
+			headers: getApiResponseHeaders('semi-static'),
 		});
 	} catch (err: any) {
 		console.error('GET /api/patients error', err);

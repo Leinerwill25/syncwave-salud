@@ -3,9 +3,14 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createSupabaseServerClient } from '@/app/adapters/server';
 import { cookies } from 'next/headers';
 import { apiRequireRole } from '@/lib/auth-guards';
-import { optimizeSupabaseQuery } from '@/lib/lite-mode-utils';
+import { getApiResponseHeaders, getRevalidateConfig } from '@/lib/api-cache-utils';
 
 type PeriodType = 'day' | 'week' | 'month';
+
+// Configurar caché optimizado (dynamic: datos que cambian frecuentemente pero se calculan)
+const cacheConfig = getRevalidateConfig('dynamic');
+export const revalidate = cacheConfig.revalidate;
+export const dynamic = cacheConfig.dynamic;
 
 // 🗓️ Calcular rango de día
 function getDayRange(offset = 0) {
@@ -73,7 +78,6 @@ function calcChange(current: number, previous: number) {
 	};
 }
 
-
 export async function GET(req: NextRequest) {
 	try {
 		// 1️⃣ Autenticación usando apiRequireRole (maneja correctamente la restauración de sesión)
@@ -97,227 +101,138 @@ export async function GET(req: NextRequest) {
 		}
 
 		// 3️⃣ Obtener cliente Supabase
-		const cookieStore = await cookies();
 		const supabase = await createSupabaseServerClient();
 
 		const doctorId = user.userId;
-		console.log(`[KPI] Doctor encontrado: ${doctorId}, período: ${period}`);
 
-		// 6️⃣ Calcular rangos de fecha según período
+		// 4️⃣ Calcular rangos de fecha según período
 		const currentRange = getDateRange(period, periodOffset);
 		const previousRange = getDateRange(period, periodOffset - 1);
 
-		// ────────────────────────────────
-		// 🩺 1️⃣ PACIENTES ATENDIDOS (consultation)
-		// Usar started_at si existe, sino created_at
-		// ────────────────────────────────
-		// Consulta para consultas con started_at en el rango actual
-		let query1 = supabase
-			.from('consultation')
-			.select(isLiteMode ? 'id' : '*', { count: 'exact', head: true })
-			.eq('doctor_id', doctorId)
-			.not('started_at', 'is', null)
-			.gte('started_at', currentRange.start.toISOString())
-			.lte('started_at', currentRange.end.toISOString());
-		
-		query1 = optimizeSupabaseQuery(query1, isLiteMode, 'consultation', { limit: undefined });
-		const { count: currentConsultsWithStarted } = await query1;
+		const currentStart = currentRange.start.toISOString();
+		const currentEnd = currentRange.end.toISOString();
+		const prevStart = previousRange.start.toISOString();
+		const prevEnd = previousRange.end.toISOString();
 
-		// Consultas sin started_at pero con created_at en el rango
-		let query2 = supabase
-			.from('consultation')
-			.select(isLiteMode ? 'id' : '*', { count: 'exact', head: true })
-			.eq('doctor_id', doctorId)
-			.is('started_at', null)
-			.gte('created_at', currentRange.start.toISOString())
-			.lte('created_at', currentRange.end.toISOString());
-		
-		query2 = optimizeSupabaseQuery(query2, isLiteMode, 'consultation', { limit: undefined });
-		const { count: currentConsultsWithCreated } = await query2;
+		// 5️⃣ EJECUTAR TODAS LAS QUERIES EN PARALELO para máximo rendimiento (de 10 queries a 8 queries paralelas)
+		const validStatuses = ['SCHEDULED', 'CONFIRMADA', 'EN ESPERA', 'EN_CURSO', 'CONFIRMED'];
 
-		const currentConsultsFiltered = (currentConsultsWithStarted ?? 0) + (currentConsultsWithCreated ?? 0);
+		// Ejecutar todas las queries en paralelo para consultas, citas y facturaciones
+		const [
+			// Consultas - período actual
+			currentConsultsWithStarted,
+			currentConsultsWithCreated,
+			// Consultas - período anterior
+			prevConsultsWithStarted,
+			prevConsultsWithCreated,
+			// Citas - período actual
+			currentApptResult,
+			// Citas - período anterior
+			prevApptResult,
+			// Facturaciones - período actual (obtenemos todas y filtramos en memoria)
+			currentFactResult,
+			// Facturaciones - período anterior
+			prevFactResult,
+		] = await Promise.all([
+			// Consultas con started_at en período actual
+			supabase
+				.from('consultation')
+				.select('id', { count: 'exact', head: true })
+				.eq('doctor_id', doctorId)
+				.not('started_at', 'is', null)
+				.gte('started_at', currentStart)
+				.lte('started_at', currentEnd),
+			// Consultas sin started_at en período actual
+			supabase
+				.from('consultation')
+				.select('id', { count: 'exact', head: true })
+				.eq('doctor_id', doctorId)
+				.is('started_at', null)
+				.gte('created_at', currentStart)
+				.lte('created_at', currentEnd),
+			// Consultas con started_at en período anterior
+			supabase
+				.from('consultation')
+				.select('id', { count: 'exact', head: true })
+				.eq('doctor_id', doctorId)
+				.not('started_at', 'is', null)
+				.gte('started_at', prevStart)
+				.lte('started_at', prevEnd),
+			// Consultas sin started_at en período anterior
+			supabase
+				.from('consultation')
+				.select('id', { count: 'exact', head: true })
+				.eq('doctor_id', doctorId)
+				.is('started_at', null)
+				.gte('created_at', prevStart)
+				.lte('created_at', prevEnd),
+			// Citas período actual
+			supabase
+				.from('appointment')
+				.select('id', { count: 'exact', head: true })
+				.eq('doctor_id', doctorId)
+				.in('status', validStatuses)
+				.gte('scheduled_at', currentStart)
+				.lte('scheduled_at', currentEnd),
+			// Citas período anterior
+			supabase
+				.from('appointment')
+				.select('id', { count: 'exact', head: true })
+				.eq('doctor_id', doctorId)
+				.in('status', validStatuses)
+				.gte('scheduled_at', prevStart)
+				.lte('scheduled_at', prevEnd),
+			// Facturaciones período actual: obtenemos un rango amplio y filtramos en memoria (más rápido)
+			supabase
+				.from('facturacion')
+				.select('total, currency, fecha_pago, fecha_emision')
+				.eq('doctor_id', doctorId)
+				.eq('estado_pago', 'pagada')
+				.or(`fecha_pago.gte.${currentStart},fecha_emision.gte.${currentStart}`)
+				.or(`fecha_pago.lte.${currentEnd},fecha_emision.lte.${currentEnd}`)
+				.limit(200),
+			// Facturaciones período anterior
+			supabase
+				.from('facturacion')
+				.select('total, currency, fecha_pago, fecha_emision')
+				.eq('doctor_id', doctorId)
+				.eq('estado_pago', 'pagada')
+				.or(`fecha_pago.gte.${prevStart},fecha_emision.gte.${prevStart}`)
+				.or(`fecha_pago.lte.${prevEnd},fecha_emision.lte.${prevEnd}`)
+				.limit(200),
+		]);
 
-		// Período anterior
-		let query3 = supabase
-			.from('consultation')
-			.select(isLiteMode ? 'id' : '*', { count: 'exact', head: true })
-			.eq('doctor_id', doctorId)
-			.not('started_at', 'is', null)
-			.gte('started_at', previousRange.start.toISOString())
-			.lte('started_at', previousRange.end.toISOString());
-		
-		query3 = optimizeSupabaseQuery(query3, isLiteMode, 'consultation', { limit: undefined });
-		const { count: prevConsultsWithStarted } = await query3;
-
-		let query4 = supabase
-			.from('consultation')
-			.select(isLiteMode ? 'id' : '*', { count: 'exact', head: true })
-			.eq('doctor_id', doctorId)
-			.is('started_at', null)
-			.gte('created_at', previousRange.start.toISOString())
-			.lte('created_at', previousRange.end.toISOString());
-		
-		query4 = optimizeSupabaseQuery(query4, isLiteMode, 'consultation', { limit: undefined });
-		const { count: prevConsultsWithCreated } = await query4;
-
-		const prevConsultsFiltered = (prevConsultsWithStarted ?? 0) + (prevConsultsWithCreated ?? 0);
-
+		// 6️⃣ Procesar resultados de consultas
+		const currentConsultsFiltered = (currentConsultsWithStarted.count ?? 0) + (currentConsultsWithCreated.count ?? 0);
+		const prevConsultsFiltered = (prevConsultsWithStarted.count ?? 0) + (prevConsultsWithCreated.count ?? 0);
 		const consultChange = calcChange(currentConsultsFiltered, prevConsultsFiltered);
 
-		// ────────────────────────────────
-		// 📅 2️⃣ CITAS PROGRAMADAS (appointment)
-		// Incluir citas con estados: SCHEDULED, CONFIRMADA, EN ESPERA, EN_CURSO
-		// ────────────────────────────────
-		const validStatuses = ['SCHEDULED', 'CONFIRMADA', 'EN ESPERA', 'EN_CURSO', 'CONFIRMED'];
-		
-		console.log('[KPI] Buscando citas programadas:', {
-			doctorId,
-			period,
-			validStatuses,
-			currentRange: {
-				start: currentRange.start.toISOString(),
-				end: currentRange.end.toISOString(),
-			},
-		});
-
-		let query5 = supabase
-			.from('appointment')
-			.select(isLiteMode ? 'id' : '*', { count: 'exact', head: true })
-			.eq('doctor_id', doctorId)
-			.in('status', validStatuses)
-			.gte('scheduled_at', currentRange.start.toISOString())
-			.lte('scheduled_at', currentRange.end.toISOString());
-		
-		query5 = optimizeSupabaseQuery(query5, isLiteMode, 'appointment', { limit: undefined });
-		const { count: currentAppt, error: currentApptError } = await query5;
-
-		if (currentApptError) {
-			console.error('[KPI] Error obteniendo citas programadas actuales:', currentApptError);
-		} else {
-			console.log('[KPI] Citas programadas encontradas (período actual):', currentAppt);
-		}
-
-		let query6 = supabase
-			.from('appointment')
-			.select(isLiteMode ? 'id' : '*', { count: 'exact', head: true })
-			.eq('doctor_id', doctorId)
-			.in('status', validStatuses)
-			.gte('scheduled_at', previousRange.start.toISOString())
-			.lte('scheduled_at', previousRange.end.toISOString());
-		
-		query6 = optimizeSupabaseQuery(query6, isLiteMode, 'appointment', { limit: undefined });
-		const { count: prevAppt, error: prevApptError } = await query6;
-
-		if (prevApptError) {
-			console.error('[KPI] Error obteniendo citas programadas anteriores:', prevApptError);
-		} else {
-			console.log('[KPI] Citas programadas encontradas (período anterior):', prevAppt);
-		}
-
-		// Debug: Obtener todas las citas del doctor para verificar
-		const { data: allAppointments, error: allApptError } = await supabase
-			.from('appointment')
-			.select('id, status, scheduled_at, doctor_id')
-			.eq('doctor_id', doctorId)
-			.limit(10);
-
-		if (!allApptError && allAppointments) {
-			console.log('[KPI] Primeras 10 citas del doctor (para debug):', allAppointments.map((apt: any) => ({
-				id: apt.id,
-				status: apt.status,
-				scheduled_at: apt.scheduled_at,
-				doctor_id: apt.doctor_id,
-			})));
-		}
-
-		const currentApptCount = currentAppt ?? 0;
-		const prevApptCount = prevAppt ?? 0;
+		// 7️⃣ Procesar resultados de citas
+		const currentApptCount = currentApptResult.count ?? 0;
+		const prevApptCount = prevApptResult.count ?? 0;
 		const apptChange = calcChange(currentApptCount, prevApptCount);
 
-		// ────────────────────────────────
-		// 💰 3️⃣ INGRESOS (facturacion)
-		// Solo facturas con estado_pago = 'pagada'
-		// Usar fecha_pago si existe, sino fecha_emision
-		// ────────────────────────────────
-		// Consulta para facturaciones con fecha_pago en el rango actual
-		let query7 = supabase
-			.from('facturacion')
-			.select('total, currency')
-			.eq('doctor_id', doctorId)
-			.eq('estado_pago', 'pagada')
-			.not('fecha_pago', 'is', null)
-			.gte('fecha_pago', currentRange.start.toISOString())
-			.lte('fecha_pago', currentRange.end.toISOString());
-		
-		query7 = optimizeSupabaseQuery(query7, isLiteMode, 'facturacion', { limit: 100 });
-		const { data: factNowWithFechaPago } = await query7;
-
-		// Consulta para facturaciones sin fecha_pago pero con fecha_emision en el rango actual
-		let query8 = supabase
-			.from('facturacion')
-			.select('total, currency')
-			.eq('doctor_id', doctorId)
-			.eq('estado_pago', 'pagada')
-			.is('fecha_pago', null)
-			.gte('fecha_emision', currentRange.start.toISOString())
-			.lte('fecha_emision', currentRange.end.toISOString());
-		
-		query8 = optimizeSupabaseQuery(query8, isLiteMode, 'facturacion', { limit: 100 });
-		const { data: factNowWithFechaEmision } = await query8;
-
-		// Sumar todos los totales (convertir a USD si es necesario)
-		const ingresosActual =
-			(factNowWithFechaPago || []).reduce((sum, f) => {
+		// 8️⃣ Procesar resultados de facturaciones (filtrado en memoria para mayor velocidad)
+		const calculateIngresos = (facturas: any[], rangeStart: string, rangeEnd: string) => {
+			return facturas.reduce((sum, f) => {
+				const fechaPago = f.fecha_pago;
+				const fechaEmision = f.fecha_emision;
 				const total = Number(f.total || 0);
-				// Si la moneda no es USD, convertir usando tipo_cambio si está disponible
-				// Por ahora asumimos que total ya está en USD o usamos el valor directo
-				return sum + total;
-			}, 0) +
-			(factNowWithFechaEmision || []).reduce((sum, f) => {
-				const total = Number(f.total || 0);
-				return sum + total;
+
+				// Verificar si está en el rango usando fecha_pago o fecha_emision
+				const inRange = 
+					(fechaPago && fechaPago >= rangeStart && fechaPago <= rangeEnd) ||
+					(!fechaPago && fechaEmision && fechaEmision >= rangeStart && fechaEmision <= rangeEnd);
+
+				return inRange ? sum + total : sum;
 			}, 0);
+		};
 
-		// Período anterior
-		let query9 = supabase
-			.from('facturacion')
-			.select('total, currency')
-			.eq('doctor_id', doctorId)
-			.eq('estado_pago', 'pagada')
-			.not('fecha_pago', 'is', null)
-			.gte('fecha_pago', previousRange.start.toISOString())
-			.lte('fecha_pago', previousRange.end.toISOString());
-		
-		query9 = optimizeSupabaseQuery(query9, isLiteMode, 'facturacion', { limit: 100 });
-		const { data: factPrevWithFechaPago } = await query9;
-
-		let query10 = supabase
-			.from('facturacion')
-			.select('total, currency')
-			.eq('doctor_id', doctorId)
-			.eq('estado_pago', 'pagada')
-			.is('fecha_pago', null)
-			.gte('fecha_emision', previousRange.start.toISOString())
-			.lte('fecha_emision', previousRange.end.toISOString());
-		
-		query10 = optimizeSupabaseQuery(query10, isLiteMode, 'facturacion', { limit: 100 });
-		const { data: factPrevWithFechaEmision } = await query10;
-
-		const ingresosPrev =
-			(factPrevWithFechaPago || []).reduce((sum, f) => {
-				const total = Number(f.total || 0);
-				return sum + total;
-			}, 0) +
-			(factPrevWithFechaEmision || []).reduce((sum, f) => {
-				const total = Number(f.total || 0);
-				return sum + total;
-			}, 0);
-
+		const ingresosActual = calculateIngresos(currentFactResult.data || [], currentStart, currentEnd);
+		const ingresosPrev = calculateIngresos(prevFactResult.data || [], prevStart, prevEnd);
 		const ingresosChange = calcChange(ingresosActual, ingresosPrev);
 
-		// ────────────────────────────────
-		// 📊 Respuesta final
-		// ────────────────────────────────
+		// 9️⃣ Respuesta final
 		const data = [
 			{
 				title: 'Pacientes Atendidos',
@@ -327,19 +242,22 @@ export async function GET(req: NextRequest) {
 			},
 			{
 				title: 'Citas Programadas',
-				value: currentApptCount, // Asegurar que siempre sea un número
+				value: currentApptCount,
 				change: apptChange.trend === 'neutral' ? '0%' : `${apptChange.percent > 0 ? '+' : ''}${apptChange.percent}%`,
 				trend: apptChange.trend,
 			},
 			{
 				title: 'Ingresos Generados',
-				value: ingresosActual, // Retornar como número para que CurrencyDisplay funcione
+				value: ingresosActual,
 				change: ingresosChange.trend === 'neutral' ? '0%' : `${ingresosChange.percent > 0 ? '+' : ''}${ingresosChange.percent}%`,
 				trend: ingresosChange.trend,
 			},
 		];
 
-		return NextResponse.json(data, { status: 200 });
+		return NextResponse.json(data, { 
+			status: 200,
+			headers: getApiResponseHeaders('dynamic'),
+		});
 	} catch (error: any) {
 		console.error('❌ Error en /api/dashboard/medic/kpis:', error);
 		return NextResponse.json({ error: 'Error obteniendo indicadores del panel médico.', details: error?.message ?? String(error) }, { status: 500 });

@@ -3,6 +3,12 @@ import { NextResponse } from 'next/server';
 import createSupabaseServerClient from '@/app/adapters/server';
 import { apiRequireRole } from '@/lib/auth-guards';
 import { optimizeSupabaseQuery, getLiteSelectFields } from '@/lib/lite-mode-utils';
+import { getApiResponseHeaders, getRevalidateConfig } from '@/lib/api-cache-utils';
+
+// Configurar caché optimizada (dynamic: datos que cambian frecuentemente)
+const cacheConfig = getRevalidateConfig('dynamic');
+export const revalidate = cacheConfig.revalidate;
+export const dynamic = cacheConfig.dynamic;
 
 export async function GET(req: Request) {
 	try {
@@ -168,7 +174,10 @@ export async function GET(req: Request) {
 		}
 
 		if (!data || data.length === 0) {
-			return NextResponse.json([], { status: 200 });
+			return NextResponse.json([], { 
+				status: 200,
+				headers: getApiResponseHeaders('dynamic'),
+			});
 		}
 
 		// 🧮 4️⃣ Formatear resultados y obtener datos de pacientes no registrados y booked_by_patient
@@ -371,7 +380,10 @@ export async function GET(req: Request) {
 			};
 		});
 
-		return NextResponse.json(citas, { status: 200 });
+		return NextResponse.json(citas, { 
+			status: 200,
+			headers: getApiResponseHeaders('dynamic'),
+		});
 	} catch (error: any) {
 		console.error('❌ Error general al obtener citas:', error);
 		return NextResponse.json({ error: 'Error obteniendo citas médicas.' }, { status: 500 });

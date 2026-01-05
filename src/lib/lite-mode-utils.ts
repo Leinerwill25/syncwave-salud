@@ -83,10 +83,12 @@ export function getLiteAnimation(isLiteMode: boolean) {
 
 /**
  * Configuración de caché optimizada para liteMode
+ * Optimizado para tiempos de respuesta < 1 segundo
  */
 export function getLiteCacheConfig(isLiteMode: boolean) {
 	return {
-		revalidate: isLiteMode ? 60 : 30, // Revalidar cada 60 segundos en lite mode (menos frecuente)
+		// Aumentar tiempo de revalidación para reducir carga en base de datos
+		revalidate: isLiteMode ? 180 : 120, // 3 minutos en lite mode, 2 minutos normal
 		cache: 'default' as const,
 	};
 }

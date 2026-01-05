@@ -2,6 +2,12 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { getApiResponseHeaders, getRevalidateConfig } from '@/lib/api-cache-utils';
+
+// Configurar caché optimizada (semi-static: datos que cambian ocasionalmente)
+const cacheConfig = getRevalidateConfig('semi-static');
+export const revalidate = cacheConfig.revalidate;
+export const dynamic = cacheConfig.dynamic;
 
 const SUPABASE_URL = process.env.SUPABASE_URL ?? process.env.NEXT_PUBLIC_SUPABASE_URL ?? '';
 // En server puedes usar SUPABASE_SERVICE_ROLE_KEY; si no está, caerá al ANON key (menos privilegios).
@@ -55,14 +61,20 @@ export async function GET(req: NextRequest) {
 					console.error('Supabase organizations fallback error', fallback.error);
 					return NextResponse.json({ message: 'Error interno al obtener organizaciones', detail: fallback.error.message ?? String(fallback.error) }, { status: 500 });
 				}
-				return NextResponse.json(fallback.data ?? [], { status: 200 });
-			}
-
-			console.error('Supabase organizations error', error);
-			return NextResponse.json({ message: 'Error interno al obtener organizaciones', detail: error.message ?? String(error) }, { status: 500 });
+			return NextResponse.json(fallback.data ?? [], { 
+				status: 200,
+				headers: getApiResponseHeaders('semi-static'),
+			});
 		}
 
-		return NextResponse.json(data ?? [], { status: 200 });
+		console.error('Supabase organizations error', error);
+		return NextResponse.json({ message: 'Error interno al obtener organizaciones', detail: error.message ?? String(error) }, { status: 500 });
+	}
+
+	return NextResponse.json(data ?? [], { 
+		status: 200,
+		headers: getApiResponseHeaders('semi-static'),
+	});
 	} catch (err: any) {
 		console.error('GET /api/organizations error', err);
 		return NextResponse.json({ message: 'Error interno al obtener organizaciones', detail: err?.message ?? String(err) }, { status: 500 });

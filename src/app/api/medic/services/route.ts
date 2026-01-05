@@ -1,5 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import createSupabaseServerClient from '@/app/adapters/server';
+import { getApiResponseHeaders, getRevalidateConfig } from '@/lib/api-cache-utils';
+
+// Configurar caché optimizada (semi-static: servicios cambian ocasionalmente)
+const cacheConfig = getRevalidateConfig('semi-static');
+export const revalidate = cacheConfig.revalidate;
+export const dynamic = cacheConfig.dynamic;
 
 export async function GET(req: NextRequest) {
 	try {
@@ -72,6 +78,8 @@ export async function GET(req: NextRequest) {
 		return NextResponse.json({
 			success: true,
 			services: services || [],
+		}, {
+			headers: getApiResponseHeaders('semi-static'),
 		});
 	} catch (error: unknown) {
 		const errorMessage = error instanceof Error ? error.message : 'Error interno';

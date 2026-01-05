@@ -3,11 +3,12 @@ import { NextRequest, NextResponse } from 'next/server';
 import createSupabaseServerClient from '@/app/adapters/server';
 import { apiRequireRole } from '@/lib/auth-guards';
 import { optimizeSupabaseQuery, getLitePagination } from '@/lib/lite-mode-utils';
+import { getApiResponseHeaders, getRevalidateConfig } from '@/lib/api-cache-utils';
 
-// Configurar caché para esta ruta (30 segundos para datos dinámicos)
-// Mantener dinámico por seguridad pero con caché corto para mejorar rendimiento
-export const dynamic = 'force-dynamic';
-export const revalidate = 30;
+// Configurar caché optimizada para esta ruta (dynamic: datos que cambian frecuentemente)
+const cacheConfig = getRevalidateConfig('dynamic');
+export const dynamic = cacheConfig.dynamic;
+export const revalidate = cacheConfig.revalidate;
 
 export async function GET(req: NextRequest) {
 	try {
@@ -390,7 +391,10 @@ export async function GET(req: NextRequest) {
 			return normalized;
 		});
 
-		return NextResponse.json({ items: consultationsWithUnregistered, total: typeof count === 'number' ? count : consultationsWithUnregistered.length }, { status: 200 });
+		return NextResponse.json({ items: consultationsWithUnregistered, total: typeof count === 'number' ? count : consultationsWithUnregistered.length }, { 
+			status: 200,
+			headers: getApiResponseHeaders('dynamic'),
+		});
 	} catch (error: unknown) {
 		let errorMessage = 'Error interno';
 		let statusCode = 500;
