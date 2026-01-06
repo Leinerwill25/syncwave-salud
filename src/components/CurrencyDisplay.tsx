@@ -132,6 +132,7 @@ export default function CurrencyDisplay({ amount, currency = 'USD', showBoth = t
 	}
 
 	const sizeClasses = {
+		xs: 'text-xs',
 		sm: 'text-sm',
 		md: 'text-base',
 		lg: 'text-lg',
