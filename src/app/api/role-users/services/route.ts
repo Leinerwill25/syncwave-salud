@@ -85,8 +85,28 @@ export async function GET(req: NextRequest) {
 		// Los servicios están almacenados como JSON en el campo services
 		const services = parseServicesField(profile.services);
 
+		// Asegurar que todos los servicios tengan un id (para servicios antiguos que no lo tienen)
+		const servicesWithIds = services.map((s: RawService) => {
+			if (!s.id) {
+				return { ...s, id: randomUUID() };
+			}
+			return s;
+		});
+
+		// Si se agregaron IDs nuevos, actualizar en la base de datos
+		if (servicesWithIds.length !== services.length || services.some((s: RawService) => !s.id)) {
+			const { error: updateError } = await supabase
+				.from('medic_profile')
+				.update({ services: servicesWithIds })
+				.eq('doctor_id', doctorId);
+			
+			if (updateError) {
+				console.warn('[Role User Services API] Error actualizando servicios con IDs:', updateError);
+			}
+		}
+
 		// Filtrar solo servicios activos
-		const activeServices = services.filter((s: RawService) => s.is_active !== false);
+		const activeServices = servicesWithIds.filter((s: RawService) => s.is_active !== false);
 
 		return NextResponse.json({ success: true, services: activeServices }, { status: 200 });
 	} catch (err: any) {

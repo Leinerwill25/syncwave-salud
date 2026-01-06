@@ -102,9 +102,14 @@ export async function PUT(
 
 		const services = parseServicesField(profile.services);
 
+		// Buscar el servicio por id (comparación flexible para manejar diferentes formatos)
 		let found = false;
+		const serviceIdStr = String(serviceId).trim();
 		const updatedServices = services.map((s) => {
-			if (s.id === serviceId) {
+			// Comparar id de manera flexible (string, con/sin espacios, etc.)
+			const serviceIdFromArray = s.id ? String(s.id).trim() : null;
+			
+			if (serviceIdFromArray === serviceIdStr) {
 				found = true;
 				const updated: RawService = { ...s };
 
@@ -141,6 +146,13 @@ export async function PUT(
 		});
 
 		if (!found) {
+			// Log para debugging
+			console.error('[Role User Services API - [id]] Servicio no encontrado en PUT:', {
+				serviceId,
+				serviceIdStr,
+				availableIds: services.map(s => s.id).filter(Boolean),
+				servicesCount: services.length,
+			});
 			return NextResponse.json({ error: 'Servicio no encontrado' }, { status: 404 });
 		}
 
@@ -210,9 +222,14 @@ export async function DELETE(
 
 		const services = parseServicesField(profile.services);
 
+		// Buscar el servicio por id (comparación flexible para manejar diferentes formatos)
 		let found = false;
 		const updatedServices = services.map((s) => {
-			if (s.id === serviceId) {
+			// Comparar id de manera flexible (string, con/sin espacios, etc.)
+			const serviceIdStr = String(serviceId).trim();
+			const serviceIdFromArray = s.id ? String(s.id).trim() : null;
+			
+			if (serviceIdFromArray === serviceIdStr) {
 				found = true;
 				return { ...s, is_active: false };
 			}
@@ -220,6 +237,13 @@ export async function DELETE(
 		});
 
 		if (!found) {
+			// Log para debugging
+			console.error('[Role User Services API - [id]] Servicio no encontrado:', {
+				serviceId,
+				serviceIdStr: String(serviceId).trim(),
+				availableIds: services.map(s => s.id).filter(Boolean),
+				servicesCount: services.length,
+			});
 			return NextResponse.json({ error: 'Servicio no encontrado' }, { status: 404 });
 		}
 
