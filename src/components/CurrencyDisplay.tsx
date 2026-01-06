@@ -19,38 +19,27 @@ interface CurrencyDisplayProps {
 	size?: 'sm' | 'md' | 'lg';
 }
 
-export default function CurrencyDisplay({
-	amount,
-	currency = 'USD',
-	showBoth = true,
-	primaryCurrency,
-	className = '',
-	size = 'md',
-}: CurrencyDisplayProps) {
+export default function CurrencyDisplay({ amount, currency = 'USD', showBoth = true, primaryCurrency, className = '', size = 'md' }: CurrencyDisplayProps) {
 	const { preference: userPreference, loading: loadingPreference } = useCurrencyPreference();
-	
+
 	// Usar la preferencia del usuario si no se especifica primaryCurrency
-	const effectivePrimaryCurrency = primaryCurrency || (userPreference || 'USD');
-	
+	const effectivePrimaryCurrency = primaryCurrency || userPreference || 'USD';
+
 	// Obtener la tasa de la moneda ORIGINAL (la que viene en el prop currency)
 	// Esto es importante para calcular correctamente a Bs usando la tasa correcta
 	const currencyToFetch = currency && currency !== 'BS' && currency !== 'VES' ? currency : 'USD';
 	const { rate: originalCurrencyRate, loading: loadingOriginalRate } = useCurrencyRate(currencyToFetch);
-	
+
 	// Obtener la tasa de la moneda preferida (para mostrar en la preferencia del usuario)
-	const { rate: preferredRate, loading: loadingPreferredRate } = useCurrencyRate(
-		effectivePrimaryCurrency !== 'BS' && effectivePrimaryCurrency !== 'VES' 
-			? effectivePrimaryCurrency 
-			: 'USD'
-	);
-	
+	const { rate: preferredRate, loading: loadingPreferredRate } = useCurrencyRate(effectivePrimaryCurrency !== 'BS' && effectivePrimaryCurrency !== 'VES' ? effectivePrimaryCurrency : 'USD');
+
 	// También obtener USD para conversiones de referencia
 	const { rate: usdRate, loading: loadingUsdRate, convertUSDToBs, rateDate: usdRateDate } = useCurrencyConversion();
-	
+
 	// Usar la tasa de la moneda original para conversiones a Bs
-	const rateForConversion = originalCurrencyRate ? Number(originalCurrencyRate.rate) : (usdRate || 0);
+	const rateForConversion = originalCurrencyRate ? Number(originalCurrencyRate.rate) : usdRate || 0;
 	const rateDateForConversion = originalCurrencyRate ? new Date(originalCurrencyRate.rate_datetime) : usdRateDate;
-	
+
 	// Usar la tasa preferida para mostrar
 	const rate = preferredRate ? Number(preferredRate.rate) : usdRate;
 	const rateDate = preferredRate ? new Date(preferredRate.rate_datetime) : usdRateDate;
@@ -60,19 +49,19 @@ export default function CurrencyDisplay({
 	const isUSD = currency === 'USD';
 	const isEUR = currency === 'EUR';
 	const isBS = currency === 'BS' || currency === 'VES';
-	
+
 	// Determinar si la moneda preferida es USD, EUR, BS u otra (debe estar antes de usarse)
 	const isPrimaryUSD = effectivePrimaryCurrency === 'USD';
 	const isPrimaryEUR = effectivePrimaryCurrency === 'EUR';
 	const isPrimaryBS = effectivePrimaryCurrency === 'BS' || effectivePrimaryCurrency === 'VES';
-	
+
 	// Calcular montos
 	// Si la moneda original es la misma que la preferida, usar directamente
 	// Si no, convertir usando las tasas correspondientes
 	let bsAmount: number;
 	let preferredAmount: number;
 	let usdAmount: number;
-	
+
 	// Determinar la moneda original
 	if (isBS || currency === 'VES') {
 		// Si la moneda original es BS
@@ -107,21 +96,33 @@ export default function CurrencyDisplay({
 			if (preferredRate && effectivePrimaryCurrency === 'EUR') {
 				// EUR/Bs disponible, convertir USD -> BS -> EUR
 				preferredAmount = bsAmount / Number(preferredRate.rate);
-						} else {
-							// Fallback: usar tasa aproximada
-							const fallbackRate = originalCurrencyRate ? Number(originalCurrencyRate.rate) * 1.1 : (usdRate ? usdRate * 1.1 : 1);
-							preferredAmount = bsAmount / fallbackRate;
-						}
+			} else {
+				// Fallback: usar tasa aproximada
+				const fallbackRate = originalCurrencyRate ? Number(originalCurrencyRate.rate) * 1.1 : usdRate ? usdRate * 1.1 : 1;
+				preferredAmount = bsAmount / fallbackRate;
+			}
 		} else {
 			preferredAmount = bsAmount;
 		}
 	} else if (isEUR) {
 		// Si la moneda original es EUR - USAR TASA EUR/Bs
-		preferredAmount = amount;
-		// Convertir EUR a Bs usando la tasa EUR/Bs (rateForConversion ya contiene la tasa EUR/Bs)
+		// IMPORTANTE: rateForConversion ya contiene la tasa EUR/Bs (obtenida de originalCurrencyRate)
 		bsAmount = amount * (rateForConversion || 0);
-		// Calcular USD para referencia
+
+		// Calcular USD para referencia (convertir BS -> USD)
 		usdAmount = bsAmount / (usdRate || 1);
+
+		// Calcular la moneda preferida
+		if (isPrimaryUSD) {
+			// Si la preferencia es USD, mostrar el equivalente en USD
+			preferredAmount = usdAmount;
+		} else if (isPrimaryEUR) {
+			// Si la preferencia es EUR, mostrar el monto original en EUR
+			preferredAmount = amount;
+		} else {
+			// Si la preferencia es BS, mostrar en Bs
+			preferredAmount = bsAmount;
+		}
 	} else {
 		// Otra moneda (COP, MXN, ARS, etc.), usar su tasa específica
 		preferredAmount = amount;
@@ -149,9 +150,7 @@ export default function CurrencyDisplay({
 		const symbol = isUSD ? '$' : isEUR ? '€' : '';
 		return (
 			<div className={`flex items-center gap-2 ${className}`}>
-				<span className={`text-slate-400 ${sizeClasses[size]}`}>
-					{isUSD || isEUR ? `${symbol}${amount.toFixed(2)} ${currency}` : `${amount.toFixed(2)} Bs`}
-				</span>
+				<span className={`text-slate-400 ${sizeClasses[size]}`}>{isUSD || isEUR ? `${symbol}${amount.toFixed(2)} ${currency}` : `${amount.toFixed(2)} Bs`}</span>
 			</div>
 		);
 	}
@@ -179,42 +178,22 @@ export default function CurrencyDisplay({
 	if (!showBoth) {
 		// Mostrar solo la moneda preferida
 		if (isPrimaryBS) {
-			return (
-				<span className={className}>
-					{bsAmount.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} Bs
-				</span>
-			);
+			return <span className={className}>{bsAmount.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} Bs</span>;
 		} else {
-			return (
-				<span className={className}>
-					{formatAmount(preferredAmount, effectivePrimaryCurrency)}
-				</span>
-			);
+			return <span className={className}>{formatAmount(preferredAmount, effectivePrimaryCurrency)}</span>;
 		}
 	}
 
-	// Mostrar ambas monedas: preferida y Bs
+	// Mostrar ambas monedas: ORIGINAL y Bs (usando la tasa de la moneda original)
+	// Esto asegura que siempre se muestre la moneda original del servicio/combo
 	return (
 		<div className={`flex flex-col gap-1 ${className}`}>
-			{isPrimaryBS ? (
-				<>
-					<span className={`font-semibold text-slate-900 ${sizeClasses[size]}`}>
-						{bsAmount.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} Bs
-					</span>
-					<span className={`text-slate-600 ${sizeClasses[size === 'lg' ? 'md' : 'sm']}`}>
-						≈ ${usdAmount.toFixed(2)} USD
-					</span>
-				</>
-			) : (
-				<>
-					<span className={`font-semibold text-slate-900 ${sizeClasses[size]}`}>
-						{formatAmount(preferredAmount, effectivePrimaryCurrency)}
-					</span>
-					<span className={`text-slate-600 ${sizeClasses[size === 'lg' ? 'md' : 'sm']}`}>
-						≈ {bsAmount.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} Bs
-					</span>
-				</>
-			)}
+			{/* Mostrar la moneda ORIGINAL primero (no la preferida) */}
+			<span className={`font-semibold text-slate-900 ${sizeClasses[size]}`}>{formatAmount(amount, currency)}</span>
+			{/* Mostrar el equivalente en Bs usando la tasa de la moneda original */}
+			<span className={`text-slate-600 ${sizeClasses[size === 'lg' ? 'md' : 'sm']}`}>≈ {bsAmount.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} Bs</span>
+			{/* Si la moneda original no es la preferida, mostrar también el equivalente en la moneda preferida */}
+			{currency !== effectivePrimaryCurrency && !isBS && <span className={`text-slate-500 ${sizeClasses[size === 'lg' ? 'sm' : 'xs']}`}>≈ {formatAmount(preferredAmount, effectivePrimaryCurrency)}</span>}
 			{rateDateForConversion && (
 				<span className="text-xs text-slate-400">
 					Tasa actualizada: {rateDateForConversion.toLocaleDateString('es-VE')} {rateDateForConversion.toLocaleTimeString('es-VE', { hour: '2-digit', minute: '2-digit' })}
@@ -223,4 +202,3 @@ export default function CurrencyDisplay({
 		</div>
 	);
 }
-
