@@ -65,9 +65,25 @@ export default function AppointmentForm() {
 		is_active?: boolean;
 	};
 
+	type ServiceCombo = {
+		id: string;
+		name: string;
+		description?: string | null;
+		price: number;
+		currency: string;
+		serviceIds: string[];
+		is_active?: boolean;
+	};
+
 	const [services, setServices] = useState<ClinicService[]>([]);
 	const [selectedServices, setSelectedServices] = useState<string[]>([]); // IDs de servicios seleccionados
 	const [loadingServices, setLoadingServices] = useState(false);
+
+	// Combos de servicios
+	const [combos, setCombos] = useState<ServiceCombo[]>([]);
+	const [selectedCombos, setSelectedCombos] = useState<string[]>([]); // IDs de combos seleccionados
+	const [loadingCombos, setLoadingCombos] = useState(false);
+	const [serviceViewMode, setServiceViewMode] = useState<'services' | 'combos'>('services'); // Modo de vista: servicios o combos
 
 	// Facturación calculada desde servicios - En el área de salud no se aplican impuestos (IVA)
 
@@ -126,6 +142,27 @@ export default function AppointmentForm() {
 		}
 
 		loadServices();
+	}, [organizationId]);
+
+	// Cargar combos de servicios
+	useEffect(() => {
+		if (!organizationId) return;
+
+		async function loadCombos() {
+			try {
+				setLoadingCombos(true);
+				const res = await axios.get('/api/role-users/service-combos', { withCredentials: true });
+				if (res.data?.success && Array.isArray(res.data.combos)) {
+					setCombos(res.data.combos);
+				}
+			} catch (err) {
+				console.error('Error cargando combos:', err);
+			} finally {
+				setLoadingCombos(false);
+			}
+		}
+
+		loadCombos();
 	}, [organizationId]);
 
 	// Cargar ubicación del consultorio
@@ -404,17 +441,21 @@ export default function AppointmentForm() {
 			}
 		}
 
-		// Validar que se haya seleccionado al menos un servicio
-		if (selectedServices.length === 0) {
-			return showMessage('warning', 'Campo Requerido', 'Debe seleccionar al menos un servicio para la cita.');
+		// Validar que se haya seleccionado al menos un servicio o combo
+		if (selectedServices.length === 0 && selectedCombos.length === 0) {
+			return showMessage('warning', 'Campo Requerido', 'Debe seleccionar al menos un servicio o combo para la cita.');
 		}
 
-		// Calcular facturación desde servicios seleccionados - Sin impuestos (IVA) en área de salud
+		// Calcular facturación desde servicios y combos seleccionados - Sin impuestos (IVA) en área de salud
 		const selectedServicesData = services.filter((s) => selectedServices.includes(s.id));
-		const subtotal = selectedServicesData.reduce((sum, s) => sum + Number(s.price), 0);
+		const selectedCombosData = combos.filter((c) => selectedCombos.includes(c.id));
+
+		const servicesSubtotal = selectedServicesData.reduce((sum, s) => sum + Number(s.price), 0);
+		const combosSubtotal = selectedCombosData.reduce((sum, c) => sum + Number(c.price), 0);
+		const subtotal = servicesSubtotal + combosSubtotal;
 		const impuestos = 0; // No se aplican impuestos en el área de salud
 		const total = subtotal; // Total igual al subtotal sin impuestos
-		const currency = selectedServicesData[0]?.currency || 'USD'; // Usar la moneda del primer servicio
+		const currency = selectedServicesData[0]?.currency || selectedCombosData[0]?.currency || 'USD'; // Usar la moneda del primer servicio/combo
 
 		setSubmitting(true);
 		try {
@@ -456,8 +497,9 @@ export default function AppointmentForm() {
 				}
 			}
 
-			// Obtener el servicio seleccionado (tomar el primero si hay varios)
+			// Obtener el servicio o combo seleccionado (tomar el primero si hay varios)
 			const firstSelectedService = selectedServicesData.length > 0 ? selectedServicesData[0] : null;
+			const firstSelectedCombo = selectedCombosData.length > 0 ? selectedCombosData[0] : null;
 
 			// Crear la cita
 			const appointmentPayload: any = {
@@ -474,6 +516,16 @@ export default function AppointmentForm() {
 							name: firstSelectedService.name,
 							price: firstSelectedService.price,
 							currency: firstSelectedService.currency,
+							type: 'service',
+					  })
+					: firstSelectedCombo
+					? JSON.stringify({
+							id: firstSelectedCombo.id,
+							name: firstSelectedCombo.name,
+							price: firstSelectedCombo.price,
+							currency: firstSelectedCombo.currency,
+							type: 'combo',
+							serviceIds: firstSelectedCombo.serviceIds,
 					  })
 					: null,
 				billing: {
@@ -499,6 +551,8 @@ export default function AppointmentForm() {
 					setSelectedUnregisteredPatientId(null);
 					setIdentifier('');
 					setSelectedServices([]);
+					setSelectedCombos([]);
+					setServiceViewMode('services');
 					// Resetear formulario de paciente no registrado
 					setUnregisteredFirstName('');
 					setUnregisteredLastName('');
@@ -683,16 +737,8 @@ export default function AppointmentForm() {
 												<div className="font-medium text-gray-800">
 													{p.firstName} {p.lastName}
 												</div>
-												{p.identifier && (
-													<div className="text-xs text-gray-500">
-														{p.identifier}
-													</div>
-												)}
-												{patientType === 'unregistered' && (
-													<div className="text-xs text-orange-600 mt-0.5">
-														No registrado
-													</div>
-												)}
+												{p.identifier && <div className="text-xs text-gray-500">{p.identifier}</div>}
+												{patientType === 'unregistered' && <div className="text-xs text-orange-600 mt-0.5">No registrado</div>}
 											</div>
 										</li>
 									))}
@@ -816,65 +862,152 @@ export default function AppointmentForm() {
 					<section className="space-y-3 border-t border-gray-200 pt-4">
 						<div className="p-4 border border-gray-100 rounded-md bg-gray-50">
 							<h3 className={sectionTitle}>Servicios del Consultorio</h3>
-							<p className="text-xs text-gray-600 mt-1 mb-4">Selecciona los servicios para esta cita</p>
+							<p className="text-xs text-gray-600 mt-1 mb-4">Selecciona los servicios o combos para esta cita</p>
 
-							{loadingServices ? (
-								<div className="flex items-center justify-center py-8">
-									<Loader2 className="w-5 h-5 animate-spin text-gray-400" />
-									<span className="text-xs text-gray-500 ml-2">Cargando servicios...</span>
-								</div>
-							) : services.length === 0 ? (
-								<div className="text-center py-6 text-xs text-gray-500">
-									<p>No hay servicios disponibles.</p>
-									<p className="mt-1">Configura los servicios en Configuración → Perfil Profesional</p>
-								</div>
-							) : (
-								<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 w-full min-w-0">
-									{services
-										.filter((service) => service.is_active !== false) // Filtrar solo servicios activos
-										.map((service) => {
-											const isSelected = selectedServices.includes(service.id);
-											return (
-												<button
-													key={service.id}
-													type="button"
-													onClick={() => {
-														setSelectedServices((prev) => (isSelected ? prev.filter((id) => id !== service.id) : [...prev, service.id]));
-													}}
-													className={`w-full p-4 rounded-lg border-2 text-left transition-all ${isSelected ? 'border-teal-500 bg-teal-50 shadow-sm' : 'border-gray-200 bg-white hover:border-gray-300 hover:shadow-sm'}`}>
-													<div className="flex items-start justify-between gap-2">
-														<div className="flex-1 min-w-0">
-															<div className="flex items-center gap-2 mb-2">
-																{isSelected && <CheckCircle className="w-5 h-5 text-teal-600 shrink-0" />}
-																<h4 className={`text-sm font-semibold ${isSelected ? 'text-teal-900' : 'text-gray-900'}`}>{service.name}</h4>
+							{/* Botones para cambiar entre servicios y combos */}
+							<div className="flex gap-2 mb-4">
+								<button type="button" onClick={() => setServiceViewMode('services')} className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${serviceViewMode === 'services' ? 'bg-teal-600 text-white shadow-sm' : 'bg-white text-gray-700 border border-gray-200 hover:bg-gray-50'}`}>
+									Servicios Individuales
+								</button>
+								<button type="button" onClick={() => setServiceViewMode('combos')} className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${serviceViewMode === 'combos' ? 'bg-teal-600 text-white shadow-sm' : 'bg-white text-gray-700 border border-gray-200 hover:bg-gray-50'}`}>
+									Combos de Servicios
+								</button>
+							</div>
+
+							{/* Vista de Servicios Individuales */}
+							{serviceViewMode === 'services' && (
+								<>
+									{loadingServices ? (
+										<div className="flex items-center justify-center py-8">
+											<Loader2 className="w-5 h-5 animate-spin text-gray-400" />
+											<span className="text-xs text-gray-500 ml-2">Cargando servicios...</span>
+										</div>
+									) : services.length === 0 ? (
+										<div className="text-center py-6 text-xs text-gray-500">
+											<p>No hay servicios disponibles.</p>
+											<p className="mt-1">Configura los servicios en Configuración → Perfil Profesional</p>
+										</div>
+									) : (
+										<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 w-full min-w-0">
+											{services
+												.filter((service) => service.is_active !== false) // Filtrar solo servicios activos
+												.map((service) => {
+													const isSelected = selectedServices.includes(service.id);
+													return (
+														<button
+															key={service.id}
+															type="button"
+															onClick={() => {
+																setSelectedServices((prev) => (isSelected ? prev.filter((id) => id !== service.id) : [...prev, service.id]));
+															}}
+															className={`w-full p-4 rounded-lg border-2 text-left transition-all ${isSelected ? 'border-teal-500 bg-teal-50 shadow-sm' : 'border-gray-200 bg-white hover:border-gray-300 hover:shadow-sm'}`}>
+															<div className="flex items-start justify-between gap-2">
+																<div className="flex-1 min-w-0">
+																	<div className="flex items-center gap-2 mb-2">
+																		{isSelected && <CheckCircle className="w-5 h-5 text-teal-600 shrink-0" />}
+																		<h4 className={`text-sm font-semibold ${isSelected ? 'text-teal-900' : 'text-gray-900'}`}>{service.name}</h4>
+																	</div>
+																	{service.description && <p className="text-xs text-gray-600 mb-3 line-clamp-2">{service.description}</p>}
+																	<div className="mt-2">
+																		<CurrencyDisplay amount={Number(service.price)} currency={service.currency as 'USD' | 'EUR'} showBoth={true} size="sm" />
+																	</div>
+																</div>
 															</div>
-															{service.description && <p className="text-xs text-gray-600 mb-3 line-clamp-2">{service.description}</p>}
-															<div className="mt-2">
-																<CurrencyDisplay amount={Number(service.price)} currency={service.currency as 'USD' | 'EUR'} showBoth={true} size="sm" />
+														</button>
+													);
+												})}
+										</div>
+									)}
+								</>
+							)}
+
+							{/* Vista de Combos */}
+							{serviceViewMode === 'combos' && (
+								<>
+									{loadingCombos ? (
+										<div className="flex items-center justify-center py-8">
+											<Loader2 className="w-5 h-5 animate-spin text-gray-400" />
+											<span className="text-xs text-gray-500 ml-2">Cargando combos...</span>
+										</div>
+									) : combos.length === 0 ? (
+										<div className="text-center py-6 text-xs text-gray-500">
+											<p>No hay combos disponibles.</p>
+											<p className="mt-1">Configura los combos en Servicios → Combos de Servicios</p>
+										</div>
+									) : (
+										<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 w-full min-w-0">
+											{combos
+												.filter((combo) => combo.is_active !== false) // Filtrar solo combos activos
+												.map((combo) => {
+													const isSelected = selectedCombos.includes(combo.id);
+													const includedServices = services.filter((s) => (combo.serviceIds || []).includes(s.id));
+													return (
+														<button
+															key={combo.id}
+															type="button"
+															onClick={() => {
+																setSelectedCombos((prev) => (isSelected ? prev.filter((id) => id !== combo.id) : [...prev, combo.id]));
+															}}
+															className={`w-full p-4 rounded-lg border-2 text-left transition-all ${isSelected ? 'border-teal-500 bg-teal-50 shadow-sm' : 'border-gray-200 bg-white hover:border-gray-300 hover:shadow-sm'}`}>
+															<div className="flex items-start justify-between gap-2">
+																<div className="flex-1 min-w-0">
+																	<div className="flex items-center gap-2 mb-2">
+																		{isSelected && <CheckCircle className="w-5 h-5 text-teal-600 shrink-0" />}
+																		<h4 className={`text-sm font-semibold ${isSelected ? 'text-teal-900' : 'text-gray-900'}`}>{combo.name}</h4>
+																	</div>
+																	{combo.description && <p className="text-xs text-gray-600 mb-2 line-clamp-2">{combo.description}</p>}
+																	{includedServices.length > 0 && (
+																		<div className="mb-2">
+																			<p className="text-[10px] font-medium text-gray-700 mb-1">Incluye:</p>
+																			<div className="flex flex-wrap gap-1">
+																				{includedServices.slice(0, 3).map((s) => (
+																					<span key={s.id} className="text-[10px] px-2 py-0.5 rounded-full bg-gray-100 text-gray-600">
+																						{s.name}
+																					</span>
+																				))}
+																				{includedServices.length > 3 && <span className="text-[10px] px-2 py-0.5 rounded-full bg-gray-100 text-gray-600">+{includedServices.length - 3} más</span>}
+																			</div>
+																		</div>
+																	)}
+																	<div className="mt-2">
+																		<CurrencyDisplay amount={Number(combo.price)} currency={combo.currency as 'USD' | 'EUR'} showBoth={true} size="sm" />
+																	</div>
+																</div>
 															</div>
-														</div>
-													</div>
-												</button>
-											);
-										})}
-								</div>
+														</button>
+													);
+												})}
+										</div>
+									)}
+								</>
 							)}
 						</div>
 
 						{/* Resumen de facturación */}
-						{selectedServices.length > 0 && (
+						{(selectedServices.length > 0 || selectedCombos.length > 0) && (
 							<div className="p-4 border border-gray-100 rounded-md bg-white">
 								<h4 className="text-sm font-semibold text-gray-900 mb-3">Resumen de Facturación</h4>
 								<div className="space-y-2">
-									<div className="flex justify-between text-xs text-gray-600">
-										<span>Servicios seleccionados:</span>
-										<strong>{selectedServices.length}</strong>
-									</div>
+									{selectedServices.length > 0 && (
+										<div className="flex justify-between text-xs text-gray-600">
+											<span>Servicios seleccionados:</span>
+											<strong>{selectedServices.length}</strong>
+										</div>
+									)}
+									{selectedCombos.length > 0 && (
+										<div className="flex justify-between text-xs text-gray-600">
+											<span>Combos seleccionados:</span>
+											<strong>{selectedCombos.length}</strong>
+										</div>
+									)}
 									{(() => {
 										const selectedServicesData = services.filter((s) => selectedServices.includes(s.id));
-										const subtotal = selectedServicesData.reduce((sum, s) => sum + Number(s.price), 0);
+										const selectedCombosData = combos.filter((c) => selectedCombos.includes(c.id));
+										const servicesSubtotal = selectedServicesData.reduce((sum, s) => sum + Number(s.price), 0);
+										const combosSubtotal = selectedCombosData.reduce((sum, c) => sum + Number(c.price), 0);
+										const subtotal = servicesSubtotal + combosSubtotal;
 										const total = subtotal; // Sin impuestos en área de salud
-										const currency = selectedServicesData[0]?.currency || 'USD';
+										const currency = selectedServicesData[0]?.currency || selectedCombosData[0]?.currency || 'USD';
 
 										return (
 											<div>
@@ -896,10 +1029,10 @@ export default function AppointmentForm() {
 
 					{/* Botón de envío */}
 					<div className="pt-4 border-t border-gray-200">
-						<button type="submit" disabled={submitting || loadingSession || !!sessionError || selectedServices.length === 0} className="w-full py-3 bg-linear-to-r from-violet-600 to-indigo-600 text-white rounded-md text-sm font-semibold shadow-sm disabled:opacity-60 disabled:cursor-not-allowed hover:from-violet-700 hover:to-indigo-700 transition-all">
+						<button type="submit" disabled={submitting || loadingSession || !!sessionError || (selectedServices.length === 0 && selectedCombos.length === 0)} className="w-full py-3 bg-linear-to-r from-violet-600 to-indigo-600 text-white rounded-md text-sm font-semibold shadow-sm disabled:opacity-60 disabled:cursor-not-allowed hover:from-violet-700 hover:to-indigo-700 transition-all">
 							{submitting ? 'Registrando...' : 'Registrar cita'}
 						</button>
-						{selectedServices.length === 0 && <p className="text-xs text-amber-600 mt-2 text-center">Debe seleccionar al menos un servicio para continuar</p>}
+						{selectedServices.length === 0 && selectedCombos.length === 0 && <p className="text-xs text-amber-600 mt-2 text-center">Debe seleccionar al menos un servicio o combo para continuar</p>}
 					</div>
 				</div>
 			</form>

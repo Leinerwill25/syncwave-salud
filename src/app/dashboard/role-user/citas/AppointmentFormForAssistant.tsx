@@ -51,6 +51,12 @@ export default function AppointmentFormForAssistant({ onClose, organizationId }:
 					config.url = config.url.replace('/api/medic/services', '/api/role-users/services');
 				}
 
+				// Si es una llamada GET a /api/role-users/service-combos, asegurar que use las credenciales correctas
+				if (config.url?.includes('/api/role-users/service-combos') && config.method === 'get') {
+					// Ya está usando el endpoint correcto, solo asegurar credenciales
+					config.withCredentials = true;
+				}
+
 				return config;
 			},
 			(error) => {
