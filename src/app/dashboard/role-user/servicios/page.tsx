@@ -65,6 +65,8 @@ export default function RoleUserServicesPage() {
 	const [comboPrice, setComboPrice] = useState('');
 	const [comboCurrency, setComboCurrency] = useState('USD');
 	const [comboServiceIds, setComboServiceIds] = useState<string[]>([]);
+	const [editingComboId, setEditingComboId] = useState<string | null>(null);
+	const [isAddingCombo, setIsAddingCombo] = useState(false);
 
 	const loadServices = async () => {
 		try {
@@ -136,6 +138,8 @@ export default function RoleUserServicesPage() {
 		setComboPrice('');
 		setComboCurrency('USD');
 		setComboServiceIds([]);
+		setEditingComboId(null);
+		setIsAddingCombo(false);
 	};
 
 	const handleAdd = () => {
@@ -665,10 +669,25 @@ export default function RoleUserServicesPage() {
 					)}
 				</div>
 
-				{/* Formulario para crear combos - solo asistente de citas */}
-				{canEdit && services.length > 0 && (
+				{/* Botón para agregar combo */}
+				{canEdit && services.length > 0 && !isAddingCombo && !editingComboId && (
+					<div className="mb-6 flex justify-end">
+						<button
+							onClick={handleAddCombo}
+							className="inline-flex items-center gap-2 px-4 py-2 bg-teal-600 text-white rounded-lg text-sm font-medium hover:bg-teal-700 transition-colors focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-offset-1"
+						>
+							<Plus className="w-4 h-4" />
+							Agregar combo
+						</button>
+					</div>
+				)}
+
+				{/* Formulario para crear/editar combos - solo asistente de citas */}
+				{canEdit && services.length > 0 && (isAddingCombo || editingComboId) && (
 					<div className="mb-6 border border-slate-200 rounded-xl p-4 bg-slate-50/60">
-						<h3 className="text-sm font-semibold text-slate-900 mb-3">Crear nuevo combo</h3>
+						<h3 className="text-sm font-semibold text-slate-900 mb-3">
+							{isAddingCombo ? 'Crear nuevo combo' : 'Editar combo'}
+						</h3>
 						<div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
 							<div>
 								<label className="block text-xs font-medium text-slate-700 mb-1">
@@ -749,13 +768,20 @@ export default function RoleUserServicesPage() {
 								))}
 							</div>
 						</div>
-						<div className="flex justify-end">
+						<div className="flex justify-end gap-2">
+							<button
+								onClick={handleCancelCombo}
+								className="inline-flex items-center gap-2 px-4 py-2 bg-slate-100 text-slate-700 rounded-lg text-sm font-medium hover:bg-slate-200 transition-colors focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-1"
+							>
+								<X className="w-4 h-4" />
+								Cancelar
+							</button>
 							<button
 								onClick={handleSaveCombo}
 								className="inline-flex items-center gap-2 px-4 py-2 bg-teal-600 text-white rounded-lg text-sm font-medium hover:bg-teal-700 transition-colors focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-offset-1"
 							>
 								<Save className="w-4 h-4" />
-								Guardar combo
+								{isAddingCombo ? 'Guardar combo' : 'Actualizar combo'}
 							</button>
 						</div>
 					</div>
@@ -775,43 +801,165 @@ export default function RoleUserServicesPage() {
 								(combo.serviceIds || []).includes(s.id),
 							);
 
+							const isEditing = editingComboId === combo.id;
+
 							return (
 								<div
 									key={combo.id}
-									className="border border-slate-200 rounded-xl p-4 flex flex-col md:flex-row gap-4 items-start md:items-center"
+									className="border border-slate-200 rounded-xl p-4"
 								>
-									<div className="flex-1">
-										<div className="flex items-center gap-2 mb-1.5">
-											<h3 className="text-sm font-semibold text-slate-900">{combo.name}</h3>
-										</div>
-										{combo.description && (
-											<p className="text-xs text-slate-600 mb-2">{combo.description}</p>
-										)}
-										{includedServices.length > 0 && (
-											<div className="mt-1">
-												<p className="text-[11px] font-semibold text-slate-700 mb-1">
-													Servicios incluidos:
-												</p>
-												<ul className="flex flex-wrap gap-1 text-[11px] text-slate-600">
-													{includedServices.map((s) => (
-														<li
-															key={s.id}
-															className="px-2 py-0.5 rounded-full bg-slate-50 border border-slate-200"
+									{isEditing ? (
+										<div className="space-y-4">
+											<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+												<div>
+													<label className="block text-xs font-medium text-slate-700 mb-1">
+														Nombre del combo <span className="text-red-500">*</span>
+													</label>
+													<input
+														type="text"
+														value={comboName}
+														onChange={(e) => setComboName(e.target.value)}
+														className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 text-sm"
+													/>
+												</div>
+												<div>
+													<label className="block text-xs font-medium text-slate-700 mb-1">
+														Precio promocional <span className="text-red-500">*</span>
+													</label>
+													<div className="flex gap-2">
+														<input
+															type="text"
+															value={comboPrice}
+															onChange={(e) => setComboPrice(e.target.value)}
+															className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 text-sm"
+														/>
+														<select
+															value={comboCurrency}
+															onChange={(e) => setComboCurrency(e.target.value)}
+															className="px-3 py-2 border border-slate-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-teal-500 text-xs"
 														>
-															{s.name}
-														</li>
-													))}
-												</ul>
+															{CURRENCIES.map((c) => (
+																<option key={c.value} value={c.value}>
+																	{c.label}
+																</option>
+															))}
+														</select>
+													</div>
+												</div>
 											</div>
-										)}
-									</div>
-									<div className="flex flex-col items-end gap-1 min-w-[140px]">
-										<span className="text-sm font-semibold text-teal-700">
-											{Number.isNaN(numericPrice)
-												? '-'
-												: `${numericPrice.toFixed(2)} ${combo.currency}`}
-										</span>
-									</div>
+											<div>
+												<label className="block text-xs font-medium text-slate-700 mb-1">
+													Descripción del combo (opcional)
+												</label>
+												<textarea
+													value={comboDescription}
+													onChange={(e) => setComboDescription(e.target.value)}
+													rows={2}
+													className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 text-sm resize-none"
+												/>
+											</div>
+											<div>
+												<label className="block text-xs font-medium text-slate-700 mb-2">
+													Selecciona los servicios individuales que formarán parte del combo{' '}
+													<span className="text-red-500">*</span>
+												</label>
+												<div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2 max-h-48 overflow-y-auto pr-1">
+													{services.map((service) => (
+														<label
+															key={service.id}
+															className="flex items-start gap-2 text-xs text-slate-700 bg-white border border-slate-200 rounded-lg px-3 py-2 cursor-pointer hover:bg-slate-50"
+														>
+															<input
+																type="checkbox"
+																className="mt-0.5"
+																checked={comboServiceIds.includes(service.id)}
+																onChange={() => toggleServiceInCombo(service.id)}
+															/>
+															<span>
+																<span className="font-semibold block">{service.name}</span>
+																{service.description && (
+																	<span className="text-[11px] text-slate-500 block truncate">
+																		{service.description}
+																	</span>
+																)}
+															</span>
+														</label>
+													))}
+												</div>
+											</div>
+											<div className="flex justify-end gap-2">
+												<button
+													onClick={handleCancelCombo}
+													className="inline-flex items-center gap-2 px-4 py-2 bg-slate-100 text-slate-700 rounded-lg text-sm font-medium hover:bg-slate-200 transition-colors"
+												>
+													<X className="w-4 h-4" />
+													Cancelar
+												</button>
+												<button
+													onClick={handleSaveCombo}
+													className="inline-flex items-center gap-2 px-4 py-2 bg-teal-600 text-white rounded-lg text-sm font-medium hover:bg-teal-700 transition-colors"
+												>
+													<Save className="w-4 h-4" />
+													Actualizar combo
+												</button>
+											</div>
+										</div>
+									) : (
+										<div className="flex flex-col md:flex-row gap-4 items-start md:items-center">
+											<div className="flex-1">
+												<div className="flex items-center gap-2 mb-1.5">
+													<h3 className="text-sm font-semibold text-slate-900">{combo.name}</h3>
+												</div>
+												{combo.description && (
+													<p className="text-xs text-slate-600 mb-2">{combo.description}</p>
+												)}
+												{includedServices.length > 0 && (
+													<div className="mt-1">
+														<p className="text-[11px] font-semibold text-slate-700 mb-1">
+															Servicios incluidos:
+														</p>
+														<ul className="flex flex-wrap gap-1 text-[11px] text-slate-600">
+															{includedServices.map((s) => (
+																<li
+																	key={s.id}
+																	className="px-2 py-0.5 rounded-full bg-slate-50 border border-slate-200"
+																>
+																	{s.name}
+																</li>
+															))}
+														</ul>
+													</div>
+												)}
+											</div>
+											<div className="flex items-center gap-3">
+												<div className="flex flex-col items-end gap-1 min-w-[140px]">
+													<span className="text-sm font-semibold text-teal-700">
+														{Number.isNaN(numericPrice)
+															? '-'
+															: `${numericPrice.toFixed(2)} ${combo.currency}`}
+													</span>
+												</div>
+												{canEdit && (
+													<div className="flex items-center gap-2">
+														<button
+															onClick={() => handleEditCombo(combo)}
+															className="p-2 text-teal-600 hover:bg-teal-50 rounded-lg transition-colors"
+															title="Editar combo"
+														>
+															<Edit2 className="w-5 h-5" />
+														</button>
+														<button
+															onClick={() => handleDeleteCombo(combo.id)}
+															className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+															title="Eliminar combo"
+														>
+															<Trash2 className="w-5 h-5" />
+														</button>
+													</div>
+												)}
+											</div>
+										</div>
+									)}
 								</div>
 							);
 						})}

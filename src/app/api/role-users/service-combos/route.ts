@@ -74,8 +74,10 @@ export async function GET(req: NextRequest) {
 
 		const combos = parseJsonArray(profile?.service_combos || []);
 
-		// Por ahora, devolvemos todos los combos (se podría filtrar is_active en el futuro)
-		return NextResponse.json({ success: true, combos: combos || [] }, { status: 200 });
+		// Filtrar solo combos activos
+		const activeCombos = combos.filter((c: RawCombo) => c.is_active !== false);
+
+		return NextResponse.json({ success: true, combos: activeCombos || [] }, { status: 200 });
 	} catch (err: any) {
 		console.error('[Role User Service Combos API] Error en GET:', err);
 		return NextResponse.json({ error: err.message || 'Error interno' }, { status: 500 });
