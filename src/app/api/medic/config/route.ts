@@ -19,11 +19,7 @@ export async function GET(request: Request) {
 
 		// Obtener datos completos del usuario de la app usando authId (las políticas RLS funcionan con authId)
 		// apiRequireRole ya validó que existe y es MEDICO, pero necesitamos más campos (name, etc.)
-		const { data: appUser, error: userError } = await supabase
-			.from('user')
-			.select('id, name, email, organizationId, role')
-			.eq('authId', user.authId)
-			.maybeSingle();
+		const { data: appUser, error: userError } = await supabase.from('user').select('id, name, email, organizationId, role').eq('authId', user.authId).maybeSingle();
 
 		if (userError) {
 			console.error('[Medic Config API] Error obteniendo usuario de la base de datos:', userError);
@@ -41,15 +37,11 @@ export async function GET(request: Request) {
 		let clinicProfile: { legal_name: string | null; trade_name: string | null; specialties: unknown } | null = null;
 		let clinicSpecialties: string[] = [];
 		let organizationType: string | null = null;
-		
+
 		if (appUser.organizationId) {
 			// Obtener tipo de organización desde la tabla organization
 			// Esto es crítico para determinar si es consultorio privado (CONSULTORIO) o clínica (CLINICA/HOSPITAL)
-			const { data: organization, error: orgError } = await supabase
-				.from('organization')
-				.select('type')
-				.eq('id', appUser.organizationId)
-				.maybeSingle();
+			const { data: organization, error: orgError } = await supabase.from('organization').select('type').eq('id', appUser.organizationId).maybeSingle();
 
 			if (orgError) {
 				console.error('[Medic Config API] Error obteniendo tipo de organización:', orgError);
@@ -60,23 +52,13 @@ export async function GET(request: Request) {
 			// Solo obtener clinic_profile si es una CLINICA o HOSPITAL
 			// Los consultorios privados (CONSULTORIO) no tienen clinic_profile
 			if (organizationType === 'CLINICA' || organizationType === 'HOSPITAL') {
-				const { data: clinic, error: clinicError } = await supabase
-					.from('clinic_profile')
-					.select('specialties, legal_name, trade_name')
-					.eq('organization_id', appUser.organizationId)
-					.maybeSingle();
+				const { data: clinic, error: clinicError } = await supabase.from('clinic_profile').select('specialties, legal_name, trade_name').eq('organization_id', appUser.organizationId).maybeSingle();
 
 				if (!clinicError && clinic) {
 					clinicProfile = clinic;
 					try {
-						const parsed = Array.isArray(clinic.specialties) 
-							? clinic.specialties 
-							: typeof clinic.specialties === 'string' 
-								? JSON.parse(clinic.specialties) 
-								: [];
-						clinicSpecialties = Array.isArray(parsed) 
-							? parsed.map((s) => typeof s === 'string' ? s : String(s))
-							: [];
+						const parsed = Array.isArray(clinic.specialties) ? clinic.specialties : typeof clinic.specialties === 'string' ? JSON.parse(clinic.specialties) : [];
+						clinicSpecialties = Array.isArray(parsed) ? parsed.map((s) => (typeof s === 'string' ? s : String(s))) : [];
 					} catch {
 						clinicSpecialties = [];
 					}
@@ -85,11 +67,7 @@ export async function GET(request: Request) {
 		}
 
 		// Obtener perfil del médico desde medic_profile
-		const { data: medicProfile, error: profileError } = await supabase
-			.from('medic_profile')
-			.select('*')
-			.eq('doctor_id', appUser.id)
-			.maybeSingle();
+		const { data: medicProfile, error: profileError } = await supabase.from('medic_profile').select('*').eq('doctor_id', appUser.id).maybeSingle();
 
 		// Si no existe perfil, crear uno vacío
 		let profile = medicProfile;
@@ -128,7 +106,7 @@ export async function GET(request: Request) {
 
 		const services = parseJsonField<Array<Record<string, unknown>>>(profile?.services, []);
 		const serviceCombos = parseJsonField<Array<Record<string, unknown>>>(profile?.service_combos, []);
-		
+
 		// Tipar explícitamente credentials y creditHistory para validación
 		type CredentialsType = {
 			license?: string;
@@ -143,7 +121,7 @@ export async function GET(request: Request) {
 			graduationYear?: string;
 			certifications?: unknown[];
 		};
-		
+
 		const credentials = parseJsonField<CredentialsType>(profile?.credentials, {
 			license: '',
 			licenseNumber: '',
@@ -158,10 +136,7 @@ export async function GET(request: Request) {
 			certifications: [],
 		});
 		const availability = parseJsonField<Record<string, unknown>>(profile?.availability, {});
-		const notifications = parseJsonField<{ email: boolean; whatsapp: boolean; push: boolean }>(
-			profile?.notifications,
-			{ email: true, whatsapp: false, push: false }
-		);
+		const notifications = parseJsonField<{ email: boolean; whatsapp: boolean; push: boolean }>(profile?.notifications, { email: true, whatsapp: false, push: false });
 		const paymentMethods = parseJsonField<Array<Record<string, unknown>>>(profile?.payment_methods, []);
 
 		// Un médico está "afiliado" si tiene una organización de tipo CLINICA o HOSPITAL
@@ -169,7 +144,7 @@ export async function GET(request: Request) {
 		// IMPORTANTE: No asumir que tener organizationId significa ser consultorio privado
 		// Se debe validar explícitamente el tipo de organización
 		const isAffiliated = organizationType === 'CLINICA' || organizationType === 'HOSPITAL';
-		
+
 		// Si tiene organizationId pero el tipo no es CLINICA ni HOSPITAL, es consultorio privado o tipo desconocido
 		// En ambos casos, isAffiliated será false
 
@@ -181,16 +156,14 @@ export async function GET(request: Request) {
 		// 4. Al menos un documento de credenciales subido
 		// 5. Historial crediticio básico (universidad, título, año de graduación)
 		const hasName = !!appUser.name && appUser.name.trim().length > 0;
-		const hasSpecialty = isAffiliated 
-			? !!(profile?.specialty && profile.specialty.trim().length > 0)
-			: !!(profile?.private_specialty && profile.private_specialty.trim().length > 0);
-		
+		const hasSpecialty = isAffiliated ? !!(profile?.specialty && profile.specialty.trim().length > 0) : !!(profile?.private_specialty && profile.private_specialty.trim().length > 0);
+
 		// Validar credenciales de licencia médica (usando credentials ya parseado)
 		const hasLicense = !!(credentials.license && String(credentials.license).trim().length > 0);
 		const hasLicenseNumber = !!(credentials.licenseNumber && String(credentials.licenseNumber).trim().length > 0);
 		const hasIssuedBy = !!(credentials.issuedBy && String(credentials.issuedBy).trim().length > 0);
 		const hasExpirationDate = !!(credentials.expirationDate && String(credentials.expirationDate).trim().length > 0);
-		
+
 		// Verificar que la fecha de expiración no esté vencida
 		let isExpirationDateValid = false;
 		if (hasExpirationDate) {
@@ -203,19 +176,19 @@ export async function GET(request: Request) {
 				isExpirationDateValid = false;
 			}
 		}
-		
+
 		// Verificar que tenga al menos un documento de credenciales
 		const credentialFiles = Array.isArray(credentials.credentialFiles) ? credentials.credentialFiles : [];
 		const hasCredentialFiles = credentialFiles.length > 0;
-		
+
 		// Validar historial crediticio básico (usando creditHistory ya parseado)
 		const hasUniversity = !!(creditHistory.university && String(creditHistory.university).trim().length > 0);
 		const hasDegree = !!(creditHistory.degree && String(creditHistory.degree).trim().length > 0);
 		const hasGraduationYear = !!(creditHistory.graduationYear && String(creditHistory.graduationYear).trim().length > 0);
-		
+
 		const hasCompleteCredentials = hasLicense && hasLicenseNumber && hasIssuedBy && hasExpirationDate && isExpirationDateValid && hasCredentialFiles;
 		const hasCompleteCreditHistory = hasUniversity && hasDegree && hasGraduationYear;
-		
+
 		const isProfileComplete = hasName && hasSpecialty && hasCompleteCredentials && hasCompleteCreditHistory;
 
 		return NextResponse.json({
@@ -228,10 +201,12 @@ export async function GET(request: Request) {
 			isAffiliated: isAffiliated,
 			organizationType: organizationType,
 			isProfileComplete: isProfileComplete,
-			clinicProfile: clinicProfile ? {
-				name: clinicProfile.trade_name || clinicProfile.legal_name,
-				specialties: clinicSpecialties,
-			} : null,
+			clinicProfile: clinicProfile
+				? {
+						name: clinicProfile.trade_name || clinicProfile.legal_name,
+						specialties: clinicSpecialties,
+				  }
+				: null,
 			config: {
 				specialty: profile?.specialty || null,
 				privateSpecialty: profile?.private_specialty || null,
@@ -245,11 +220,7 @@ export async function GET(request: Request) {
 				serviceCombos: serviceCombos,
 				whatsappNumber: (profile as any)?.whatsapp_number || null,
 				whatsappMessageTemplate: (profile as any)?.whatsapp_message_template || null,
-				privateSpecialties: Array.isArray(profile?.private_specialty) 
-					? profile.private_specialty 
-					: profile?.private_specialty 
-						? [profile.private_specialty] 
-						: [],
+				privateSpecialties: Array.isArray(profile?.private_specialty) ? profile.private_specialty : profile?.private_specialty ? [profile.private_specialty] : [],
 				paymentMethods: paymentMethods,
 				liteMode: (profile as any)?.lite_mode ?? false,
 			},
@@ -276,11 +247,7 @@ export async function PATCH(request: Request) {
 
 		// Obtener datos del usuario de la app usando authId (las políticas RLS funcionan con authId)
 		// apiRequireRole ya validó que existe y es MEDICO
-		const { data: appUser, error: userError } = await supabase
-			.from('user')
-			.select('id, organizationId, role')
-			.eq('authId', user.authId)
-			.maybeSingle();
+		const { data: appUser, error: userError } = await supabase.from('user').select('id, organizationId, role').eq('authId', user.authId).maybeSingle();
 
 		if (userError) {
 			console.error('[Medic Config API PATCH] Error obteniendo usuario de la base de datos:', userError);
@@ -296,23 +263,13 @@ export async function PATCH(request: Request) {
 
 		// Validar que si está afiliado, la especialidad sea de la clínica
 		if (appUser.organizationId && body.specialty) {
-			const { data: clinic } = await supabase
-				.from('clinic_profile')
-				.select('specialties')
-				.eq('organization_id', appUser.organizationId)
-				.maybeSingle();
+			const { data: clinic } = await supabase.from('clinic_profile').select('specialties').eq('organization_id', appUser.organizationId).maybeSingle();
 
 			if (clinic) {
 				let clinicSpecialties: string[] = [];
 				try {
-					const parsed = Array.isArray(clinic.specialties) 
-						? clinic.specialties 
-						: typeof clinic.specialties === 'string' 
-							? JSON.parse(clinic.specialties) 
-							: [];
-					clinicSpecialties = Array.isArray(parsed) 
-						? parsed.map((s) => typeof s === 'string' ? s : String(s))
-						: [];
+					const parsed = Array.isArray(clinic.specialties) ? clinic.specialties : typeof clinic.specialties === 'string' ? JSON.parse(clinic.specialties) : [];
+					clinicSpecialties = Array.isArray(parsed) ? parsed.map((s) => (typeof s === 'string' ? s : String(s))) : [];
 				} catch {
 					clinicSpecialties = [];
 				}
@@ -320,19 +277,19 @@ export async function PATCH(request: Request) {
 				const specialtyNames = clinicSpecialties;
 
 				if (!specialtyNames.includes(body.specialty)) {
-					return NextResponse.json({ 
-						error: 'La especialidad seleccionada no está disponible en esta clínica' 
-					}, { status: 400 });
+					return NextResponse.json(
+						{
+							error: 'La especialidad seleccionada no está disponible en esta clínica',
+						},
+						{ status: 400 }
+					);
 				}
 			}
 		}
 
 		// Actualizar nombre si se proporciona
 		if (body.name !== undefined) {
-			const { error: updateError } = await supabase
-				.from('user')
-				.update({ name: body.name })
-				.eq('id', appUser.id);
+			const { error: updateError } = await supabase.from('user').update({ name: body.name }).eq('id', appUser.id);
 
 			if (updateError) {
 				console.error('[Medic Config API PATCH] Error actualizando nombre:', updateError);
@@ -349,9 +306,12 @@ export async function PATCH(request: Request) {
 		if (body.privateSpecialty !== undefined) {
 			// Validar que la especialidad sea una de las permitidas
 			if (body.privateSpecialty && !isValidPrivateSpecialty(body.privateSpecialty)) {
-				return NextResponse.json({ 
-					error: `Especialidad inválida. Debe ser una de: ${PRIVATE_SPECIALTIES.join(', ')}` 
-				}, { status: 400 });
+				return NextResponse.json(
+					{
+						error: `Especialidad inválida. Debe ser una de: ${PRIVATE_SPECIALTIES.join(', ')}`,
+					},
+					{ status: 400 }
+				);
 			}
 			profileData.private_specialty = body.privateSpecialty || null;
 		}
@@ -389,17 +349,11 @@ export async function PATCH(request: Request) {
 		}
 
 		if (body.whatsappNumber !== undefined) {
-			profileData.whatsapp_number =
-				body.whatsappNumber && String(body.whatsappNumber).trim().length > 0
-					? String(body.whatsappNumber).trim()
-					: null;
+			profileData.whatsapp_number = body.whatsappNumber && String(body.whatsappNumber).trim().length > 0 ? String(body.whatsappNumber).trim() : null;
 		}
 
 		if (body.whatsappMessageTemplate !== undefined) {
-			profileData.whatsapp_message_template =
-				body.whatsappMessageTemplate && String(body.whatsappMessageTemplate).trim().length > 0
-					? String(body.whatsappMessageTemplate)
-					: null;
+			profileData.whatsapp_message_template = body.whatsappMessageTemplate && String(body.whatsappMessageTemplate).trim().length > 0 ? String(body.whatsappMessageTemplate) : null;
 		}
 
 		if (body.paymentMethods !== undefined) {
@@ -411,47 +365,44 @@ export async function PATCH(request: Request) {
 		}
 
 		// Verificar si existe perfil
-		const { data: existingProfile } = await supabase
-			.from('medic_profile')
-			.select('id')
-			.eq('doctor_id', appUser.id)
-			.maybeSingle();
+		const { data: existingProfile } = await supabase.from('medic_profile').select('id').eq('doctor_id', appUser.id).maybeSingle();
 
 		if (existingProfile) {
 			// Actualizar perfil existente
-			const { error: updateError } = await supabase
-				.from('medic_profile')
-				.update(profileData)
-				.eq('doctor_id', appUser.id);
+			const { error: updateError } = await supabase.from('medic_profile').update(profileData).eq('doctor_id', appUser.id);
 
 			if (updateError) {
 				console.error('[Medic Config API PATCH] Error actualizando perfil:', updateError);
-				return NextResponse.json({ 
-					error: 'Error al actualizar perfil',
-					detail: updateError.message 
-				}, { status: 500 });
+				return NextResponse.json(
+					{
+						error: 'Error al actualizar perfil',
+						detail: updateError.message,
+					},
+					{ status: 500 }
+				);
 			}
 		} else {
 			// Crear nuevo perfil
-			const { error: insertError } = await supabase
-				.from('medic_profile')
-				.insert({
-					doctor_id: appUser.id,
-					...profileData,
-				});
+			const { error: insertError } = await supabase.from('medic_profile').insert({
+				doctor_id: appUser.id,
+				...profileData,
+			});
 
 			if (insertError) {
 				console.error('[Medic Config API PATCH] Error creando perfil:', insertError);
-				return NextResponse.json({ 
-					error: 'Error al crear perfil',
-					detail: insertError.message 
-				}, { status: 500 });
+				return NextResponse.json(
+					{
+						error: 'Error al crear perfil',
+						detail: insertError.message,
+					},
+					{ status: 500 }
+				);
 			}
 		}
 
-		return NextResponse.json({ 
+		return NextResponse.json({
 			success: true,
-			message: 'Configuración actualizada correctamente'
+			message: 'Configuración actualizada correctamente',
 		});
 	} catch (err) {
 		console.error('[Medic Config API PATCH] Error:', err);
@@ -459,4 +410,3 @@ export async function PATCH(request: Request) {
 		return NextResponse.json({ error: 'Error interno', detail: errorMessage }, { status: 500 });
 	}
 }
-

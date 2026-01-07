@@ -122,7 +122,7 @@ export async function POST(req: NextRequest) {
 	try {
 		// Authenticate user - allow all authenticated users for batch operations
 		// We'll check specific permissions per operation
-		const authResult = await apiRequireRole(['MEDICO', 'CLINICA', 'ADMIN']);
+		const authResult = await apiRequireRole(['MEDICO', 'ADMIN']);
 		if (authResult.response) return authResult.response;
 
 		const user = authResult.user;

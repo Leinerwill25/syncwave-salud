@@ -7,7 +7,7 @@ import { useEffect, useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { Loader2 } from 'lucide-react';
 
-type UserRole = 'ADMIN' | 'CLINICA' | 'MEDICO' | 'FARMACIA' | 'PACIENTE';
+type UserRole = 'ADMIN' | 'MEDICO' | 'ENFERMERA' | 'RECEPCION' | 'FARMACIA' | 'PACIENTE';
 
 interface DashboardGuardProps {
 	children: React.ReactNode;
@@ -42,7 +42,6 @@ export default function DashboardGuard({ children, allowedRoles }: DashboardGuar
 					let redirectPath = '/dashboard';
 					switch (userRole) {
 						case 'ADMIN':
-						case 'CLINICA':
 							redirectPath = '/dashboard/clinic';
 							break;
 						case 'MEDICO':

@@ -10,7 +10,7 @@ import { apiRequireRole } from '@/lib/auth-guards';
 export async function PATCH(req: NextRequest, context: { params: Promise<{ id: string }> }) {
 	try {
 		// 1️⃣ Autenticación - requerir que el usuario esté autenticado
-		const authResult = await apiRequireRole(['MEDICO', 'CLINICA', 'ADMIN']);
+		const authResult = await apiRequireRole(['MEDICO', 'ADMIN']);
 		if (authResult.response) return authResult.response;
 
 		const user = authResult.user;
@@ -45,7 +45,7 @@ export async function PATCH(req: NextRequest, context: { params: Promise<{ id: s
 				console.warn(`[Consultations API] Intento de edición no autorizado: médico ${user.userId} intentó editar consulta de otro médico`);
 				return NextResponse.json({ error: 'No autorizado para editar esta consulta' }, { status: 403 });
 			}
-		} else if (user.role === 'CLINICA' || user.role === 'ADMIN') {
+		} else if (user.role === 'ADMIN') {
 			if (!user.organizationId || existingConsultation.organization_id !== user.organizationId) {
 				console.warn(`[Consultations API] Intento de edición no autorizado: usuario ${user.userId} intentó editar consulta de otra org`);
 				return NextResponse.json({ error: 'No autorizado para editar esta consulta' }, { status: 403 });

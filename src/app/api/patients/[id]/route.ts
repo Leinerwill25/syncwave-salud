@@ -6,7 +6,7 @@ import { apiRequireRole } from '@/lib/auth-guards';
 export async function GET(req: NextRequest, context: { params: Promise<{ id: string }> }) {
 	try {
 		// Autenticación
-		const authResult = await apiRequireRole(['MEDICO', 'CLINICA', 'ADMIN']);
+		const authResult = await apiRequireRole(['MEDICO', 'ADMIN']);
 		if (authResult.response) return authResult.response;
 
 		const user = authResult.user;

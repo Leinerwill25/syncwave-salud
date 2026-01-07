@@ -12,7 +12,7 @@ export const revalidate = 60;
 export async function GET(req: Request) {
 	try {
 		// 1️⃣ Autenticación - requerir que el usuario esté autenticado
-		const authResult = await apiRequireRole(['MEDICO', 'CLINICA', 'ADMIN']);
+		const authResult = await apiRequireRole(['MEDICO', 'ADMIN']);
 		if (authResult.response) return authResult.response;
 
 		const user = authResult.user;
@@ -69,7 +69,7 @@ export async function GET(req: Request) {
 				console.error('[Appointments API] Médico no pertenece a la organización especificada');
 				return NextResponse.json({ error: 'Error de validación de organización' }, { status: 403 });
 			}
-		} else if (user.role === 'CLINICA' || user.role === 'ADMIN') {
+		} else if (user.role === 'ADMIN') {
 			// Clínicas y admins ven citas de su organización
 			if (!user.organizationId) {
 				console.warn('[Appointments API] Usuario CLINICA/ADMIN sin organizationId - denegando acceso');

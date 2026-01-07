@@ -56,7 +56,6 @@ export default function DashboardRedirectPage() {
 					// Redirigir según el rol
 					switch (role) {
 						case 'ADMIN':
-						case 'CLINICA':
 							router.replace('/dashboard/clinic');
 							break;
 						case 'MEDICO':

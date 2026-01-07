@@ -5,7 +5,7 @@ import { cookies } from 'next/headers';
 import { createSupabaseServerClient } from '@/app/adapters/server';
 import { NextResponse } from 'next/server';
 
-export type UserRole = 'ADMIN' | 'CLINICA' | 'MEDICO' | 'FARMACIA' | 'PACIENTE';
+export type UserRole = 'ADMIN' | 'MEDICO' | 'ENFERMERA' | 'RECEPCION' | 'FARMACIA' | 'PACIENTE';
 
 export interface AuthenticatedUser {
 	authId: string;
@@ -99,9 +99,32 @@ export async function getAuthenticatedUser(): Promise<AuthenticatedUser | null> 
 		let userError: any = null;
 		let usedTableName: string | null = null;
 
-		// Verificar sesión antes de consultar
-		const { data: sessionCheck } = await supabase.auth.getSession();
+		// Verificar sesión antes de consultar - CRÍTICO para que RLS funcione
+		const { data: sessionCheck, error: sessionCheckError } = await supabase.auth.getSession();
 		console.debug('[Auth Guard] Sesión activa:', !!sessionCheck?.session, 'authId buscado:', user.id);
+		
+		// Si no hay sesión activa, intentar restaurar antes de consultar
+		if (!sessionCheck?.session) {
+			console.warn('[Auth Guard] No hay sesión activa antes de consultar, intentando restaurar...');
+			const restored = await tryRestoreSessionFromCookies(supabase as unknown as SupabaseClient, cookieStore);
+			if (restored) {
+				console.debug('[Auth Guard] Sesión restaurada, verificando nuevamente...');
+				const afterSession = await supabase.auth.getSession();
+				if (!afterSession.data?.session) {
+					console.error('[Auth Guard] CRITICAL: Sesión no disponible después de restaurar. RLS bloqueará las consultas.');
+					console.error('[Auth Guard] auth.uid() será NULL y las políticas RLS no permitirán acceso.');
+				}
+			} else {
+				console.error('[Auth Guard] CRITICAL: No se pudo restaurar la sesión. RLS bloqueará las consultas.');
+			}
+		}
+
+		// Verificar que tenemos una sesión activa antes de consultar (necesaria para RLS)
+		const { data: finalSessionCheck } = await supabase.auth.getSession();
+		if (!finalSessionCheck?.session) {
+			console.error('[Auth Guard] CRITICAL: No hay sesión activa. Las políticas RLS requerirán auth.uid() que será NULL.');
+			console.error('[Auth Guard] Esto causará que la consulta sea bloqueada por RLS.');
+		}
 
 		for (const tableName of tableCandidates) {
 			try {
@@ -112,9 +135,22 @@ export async function getAuthenticatedUser(): Promise<AuthenticatedUser | null> 
 					.maybeSingle();
 
 				if (error) {
-					console.debug(`[Auth Guard] Error con tabla "${tableName}":`, error.code, error.message);
+					console.error(`[Auth Guard] Error con tabla "${tableName}":`, {
+						code: error.code,
+						message: error.message,
+						details: error.details,
+						hint: error.hint,
+						hasSession: !!finalSessionCheck?.session,
+					});
 					// Si es error de tabla no encontrada, probar siguiente candidato
 					if (String(error?.code) === 'PGRST205' || String(error?.message).includes('Could not find the table')) {
+						continue;
+					}
+					// Si es error de permisos RLS (42501) o PGRST116, podría ser que RLS está bloqueando
+					if (String(error?.code) === '42501' || String(error?.code) === 'PGRST116') {
+						console.error(`[Auth Guard] Error de RLS con tabla "${tableName}". Verifica que la sesión esté activa y que las políticas RLS permitan el acceso.`);
+						// Intentar siguiente candidato pero reportar el problema
+						userError = error;
 						continue;
 					}
 					// Otro error (permiso, constraint, etc.) - guardar y continuar
@@ -127,21 +163,31 @@ export async function getAuthenticatedUser(): Promise<AuthenticatedUser | null> 
 					usedTableName = tableName;
 					console.debug(`[Auth Guard] Usuario encontrado usando tabla "${tableName}"`);
 					break;
+				} else {
+					console.warn(`[Auth Guard] No se encontraron datos en tabla "${tableName}" para authId: ${user.id}. Posiblemente bloqueado por RLS o usuario no existe.`);
 				}
 			} catch (err: any) {
-				console.debug(`[Auth Guard] Excepción con tabla "${tableName}":`, err?.message);
+				console.error(`[Auth Guard] Excepción con tabla "${tableName}":`, err?.message);
 				// Continuar con siguiente candidato si hay excepción
 				continue;
 			}
 		}
 
 		if (userError && !appUser) {
-			console.error('[Auth Guard] Error obteniendo usuario de la app:', userError);
+			console.error('[Auth Guard] Error obteniendo usuario de la app:', {
+				error: userError,
+				authId: user.id,
+				hasSession: !!finalSessionCheck?.session,
+			});
 			return null;
 		}
 
 		if (!appUser) {
-			console.warn('[Auth Guard] No se encontró usuario en la tabla User para authId:', user.id, 'Intentadas tablas:', tableCandidates);
+			console.warn('[Auth Guard] No se encontró usuario en la tabla user para authId:', user.id, 'Intentadas tablas:', tableCandidates);
+			console.warn('[Auth Guard] Posibles causas:');
+			console.warn('  1. Usuario no existe en la tabla user con ese authId');
+			console.warn('  2. Las políticas RLS están bloqueando el acceso (verifica que la sesión esté activa)');
+			console.warn('  3. El nombre de la tabla es incorrecto');
 			return null;
 		}
 
@@ -347,7 +393,7 @@ export async function apiRequireRole(allowedRoles: UserRole[]): Promise<{ user?:
  * Mapeo de rutas a roles permitidos
  */
 export const ROUTE_ROLE_MAP: Record<string, UserRole[]> = {
-	'/dashboard/clinic': ['ADMIN', 'CLINICA'],
+	'/dashboard/clinic': ['ADMIN'],
 	'/dashboard/medic': ['MEDICO'],
 	'/dashboard/pharmacy': ['FARMACIA'],
 	'/dashboard/patient': ['PACIENTE'],

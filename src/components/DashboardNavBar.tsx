@@ -26,7 +26,6 @@ function getProfileUrl(role: string | null): string {
 		case 'MEDICO':
 			return '/dashboard/medic/configuracion';
 		case 'ADMIN':
-		case 'CLINICA':
 			return '/dashboard/clinic/profile';
 		case 'FARMACIA':
 			return '/dashboard/pharmacy/profile';
@@ -43,7 +42,6 @@ function getSettingsUrl(role: string | null): string {
 		case 'MEDICO':
 			return '/dashboard/medic/configuracion';
 		case 'ADMIN':
-		case 'CLINICA':
 			return '/dashboard/clinic/settings';
 		case 'FARMACIA':
 			return '/dashboard/pharmacy/settings';

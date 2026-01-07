@@ -43,7 +43,6 @@ export default function LoginFormAdvanced(): React.ReactElement {
 
 		switch ((role || '').toString().toUpperCase()) {
 			case 'ADMIN':
-			case 'CLINICA':
 				return '/dashboard/clinic';
 			case 'MEDICO':
 				return '/dashboard/medic';

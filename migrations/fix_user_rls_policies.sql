@@ -6,26 +6,26 @@
 -- ============================================================================
 
 -- Eliminar políticas existentes para recrearlas correctamente
-DROP POLICY IF EXISTS "Users can view their own profile" ON public."User";
-DROP POLICY IF EXISTS "Users can update their own profile" ON public."User";
+DROP POLICY IF EXISTS "Users can view their own profile" ON public."user";
+DROP POLICY IF EXISTS "Users can update their own profile" ON public."user";
 
 -- User: Permitir a usuarios ver su propio perfil usando authId
 -- Esta es la política más importante: permite que un usuario vea su propio perfil
 -- usando authId que coincide con auth.uid()
 CREATE POLICY "Users can view their own profile"
-    ON public."User"
+    ON public."user"
     FOR SELECT
     USING (
         -- Comparar authId (TEXT) con auth.uid() (UUID convertido a TEXT)
         "authId" = auth.uid()::text
         OR
-        -- También permitir si el id de User coincide con auth.uid() (por si acaso)
+        -- También permitir si el id de user coincide con auth.uid() (por si acaso)
         id::text = auth.uid()::text
     );
 
 -- User: Permitir a usuarios actualizar su propio perfil
 CREATE POLICY "Users can update their own profile"
-    ON public."User"
+    ON public."user"
     FOR UPDATE
     USING (
         "authId" = auth.uid()::text
@@ -39,7 +39,7 @@ CREATE POLICY "Users can update their own profile"
     );
 
 -- Verificar que RLS está habilitado
-ALTER TABLE IF EXISTS public."User" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS public."user" ENABLE ROW LEVEL SECURITY;
 
 -- Nota: Si después de ejecutar este script aún hay problemas, puede ser necesario
 -- verificar que la sesión de Supabase Auth esté correctamente establecida cuando
