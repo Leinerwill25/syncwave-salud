@@ -306,8 +306,8 @@ export async function POST(req: Request) {
 		try {
 			// Obtener información del paciente y doctor
 			const [patientRes, doctorRes] = await Promise.all([
-				supabaseAdmin.from('Patient').select('firstName, lastName').eq('id', patient_id).maybeSingle(),
-				supabaseAdmin.from('User').select('name, organizationId').eq('id', doctor_id).maybeSingle(),
+				supabaseAdmin.from('patient').select('firstName, lastName').eq('id', patient_id).maybeSingle(),
+				supabaseAdmin.from('user').select('name, organizationId').eq('id', doctor_id).maybeSingle(),
 			]);
 
 			const patientName = patientRes.data ? `${patientRes.data.firstName} ${patientRes.data.lastName}` : undefined;
@@ -327,7 +327,7 @@ export async function POST(req: Request) {
 			let patientUserId: string | null = null;
 			try {
 				const { data: patientUser } = await supabaseAdmin
-					.from('User')
+					.from('user')
 					.select('id')
 					.eq('patientProfileId', patient_id)
 					.maybeSingle();

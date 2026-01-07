@@ -20,7 +20,7 @@ export async function GET() {
 
 		// Obtener datos actuales del paciente
 		const { data: patientData, error: fetchError } = await supabase
-			.from('Patient')
+			.from('patient')
 			.select('emergency_qr_token, emergency_qr_enabled')
 			.eq('id', patient.patientId)
 			.single();
@@ -34,7 +34,7 @@ export async function GET() {
 		if (!patientData.emergency_qr_token) {
 			const newToken = randomUUID();
 			const { error: updateError } = await supabase
-				.from('Patient')
+				.from('patient')
 				.update({ emergency_qr_token: newToken })
 				.eq('id', patient.patientId);
 
@@ -79,7 +79,7 @@ export async function POST(req: NextRequest) {
 		// Si se está habilitando y no existe token, generar uno
 		if (enabled) {
 			const { data: currentPatient } = await supabase
-				.from('Patient')
+				.from('patient')
 				.select('emergency_qr_token')
 				.eq('id', patient.patientId)
 				.single();
@@ -87,7 +87,7 @@ export async function POST(req: NextRequest) {
 			if (!currentPatient?.emergency_qr_token) {
 				const newToken = randomUUID();
 				const { error: updateError } = await supabase
-					.from('Patient')
+					.from('patient')
 					.update({ 
 						emergency_qr_enabled: true,
 						emergency_qr_token: newToken,
@@ -110,7 +110,7 @@ export async function POST(req: NextRequest) {
 
 		// Actualizar estado enabled/disabled
 		const { error: updateError } = await supabase
-			.from('Patient')
+			.from('patient')
 			.update({ emergency_qr_enabled: enabled })
 			.eq('id', patient.patientId);
 
@@ -140,7 +140,7 @@ export async function DELETE() {
 		const newToken = randomUUID();
 
 		const { error: updateError } = await supabase
-			.from('Patient')
+			.from('patient')
 			.update({ emergency_qr_token: newToken })
 			.eq('id', patient.patientId);
 

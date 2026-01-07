@@ -247,7 +247,7 @@ export default function PrescriptionsPage() {
 
 				const [presRes, patRes, unregisteredRes] = await Promise.all([
 					fetch('/api/medic/prescriptions', { signal: controller.signal }),
-					supabase.from('Patient').select('id, firstName, lastName, identifier'),
+					supabase.from('patient').select('id, firstName, lastName, identifier'),
 					supabase.from('unregisteredpatients').select('id, first_name, last_name, identification')
 				]);
 

@@ -23,7 +23,7 @@ export async function GET(req: NextRequest, context: { params: Promise<{ id: str
 
 		// Obtener información del paciente
 		const { data: patient, error: patientError } = await supabase
-			.from('Patient')
+			.from('patient')
 			.select('id, firstName, lastName, dob, phone, gender, identifier, createdAt')
 			.eq('id', id)
 			.single();

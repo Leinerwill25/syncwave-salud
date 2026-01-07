@@ -35,7 +35,7 @@ export async function getCurrentOrganizationId(supabase: any): Promise<string | 
 		}
 
 		const { data: appUser, error } = await supabase
-			.from('User')
+			.from('user')
 			.select('organizationId')
 			.eq('authId', user.id)
 			.limit(1)

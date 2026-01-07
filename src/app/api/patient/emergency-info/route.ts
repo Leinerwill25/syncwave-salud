@@ -18,7 +18,7 @@ export async function GET() {
 		const supabase = await createSupabaseServerClient();
 
 		const { data: patientData, error: fetchError } = await supabase
-			.from('Patient')
+			.from('patient')
 			.select('emergency_contact_name, emergency_contact_phone, emergency_contact_relationship, advance_directives')
 			.eq('id', patient.patientId)
 			.single();
@@ -94,7 +94,7 @@ export async function PATCH(req: NextRequest) {
 		}
 
 		const { error: updateError } = await supabase
-			.from('Patient')
+			.from('patient')
 			.update(updateData)
 			.eq('id', patient.patientId);
 

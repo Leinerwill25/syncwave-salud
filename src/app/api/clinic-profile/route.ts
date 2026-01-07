@@ -210,7 +210,7 @@ export async function GET(req: Request) {
 
 		// Obtener organizationId desde tabla User usando Supabase
 		const { data: appUser, error: userError } = await supabase
-			.from('User')
+			.from('user')
 			.select('organizationId')
 			.eq('authId', authUser.id)
 			.maybeSingle();
@@ -283,7 +283,7 @@ export async function PUT(req: Request) {
 
 		// Obtener organizationId desde tabla User usando Supabase
 		const { data: appUser, error: userError } = await supabase
-			.from('User')
+			.from('user')
 			.select('organizationId')
 			.eq('authId', authUser.id)
 			.maybeSingle();

@@ -23,7 +23,7 @@ export async function POST(request: Request) {
 
 		// Verificar que el paciente es owner del grupo
 		const { data: familyGroup, error: groupError } = await supabase
-			.from('FamilyGroup')
+			.from('familygroup')
 			.select('id, maxMembers')
 			.eq('ownerId', patient.patientId)
 			.maybeSingle();

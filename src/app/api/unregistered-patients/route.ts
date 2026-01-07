@@ -109,7 +109,7 @@ export async function POST(req: NextRequest) {
 		if (identification) {
 			// Verificar en pacientes registrados
 			const { data: existingRegistered, error: registeredCheckError } = await supabase
-				.from('Patient')
+				.from('patient')
 				.select('id, identifier')
 				.eq('identifier', identification.trim())
 				.maybeSingle();
@@ -173,7 +173,7 @@ export async function POST(req: NextRequest) {
 
 		// Obtener el app user ID desde la tabla User usando authId
 		const { data: appUser, error: appUserError } = await supabase
-			.from('User')
+			.from('user')
 			.select('id')
 			.eq('authId', authUser.id)
 			.maybeSingle();

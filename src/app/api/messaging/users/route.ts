@@ -32,7 +32,7 @@ export async function GET(req: NextRequest) {
 				return NextResponse.json({ error: 'No autenticado' }, { status: 401 });
 			}
 
-			const { data: appUser } = await supabase.from('User').select('id, organizationId').eq('authId', user.id).maybeSingle();
+			const { data: appUser } = await supabase.from('user').select('id, organizationId').eq('authId', user.id).maybeSingle();
 
 			if (!appUser) {
 				return NextResponse.json({ error: 'Usuario no encontrado' }, { status: 404 });
@@ -52,7 +52,7 @@ export async function GET(req: NextRequest) {
 		// Obtener doctores de la organización
 		if (currentUserType === 'role_user') {
 			// Role-users pueden ver doctores
-			const { data: doctors } = await supabase.from('User').select('id, name, role').eq('"organizationId"', organizationId).eq('role', 'MEDICO');
+			const { data: doctors } = await supabase.from('user').select('id, name, role').eq('"organizationId"', organizationId).eq('role', 'MEDICO');
 
 			if (doctors && Array.isArray(doctors)) {
 				doctors.forEach((doc: any) => {
@@ -66,7 +66,7 @@ export async function GET(req: NextRequest) {
 		} else {
 			// Doctores pueden ver otros doctores y role-users
 			// Otros doctores
-			const { data: otherDoctors } = await supabase.from('User').select('id, name, role').eq('"organizationId"', organizationId).eq('role', 'MEDICO').neq('id', currentUserId);
+			const { data: otherDoctors } = await supabase.from('user').select('id, name, role').eq('"organizationId"', organizationId).eq('role', 'MEDICO').neq('id', currentUserId);
 
 			if (otherDoctors && Array.isArray(otherDoctors)) {
 				otherDoctors.forEach((doc: any) => {

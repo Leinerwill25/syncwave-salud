@@ -80,7 +80,7 @@ export async function GET(req: Request) {
 				let patientInfo = null;
 				if (patientId) {
 					const { data: patient } = await supabase
-						.from('Patient')
+						.from('patient')
 						.select('id, firstName, lastName')
 						.eq('id', patientId)
 						.maybeSingle();

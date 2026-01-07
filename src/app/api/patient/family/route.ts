@@ -16,7 +16,7 @@ export async function GET() {
 
 		// Obtener grupo familiar del paciente (como owner)
 		const { data: familyGroup, error: groupError } = await supabase
-			.from('FamilyGroup')
+			.from('familygroup')
 			.select('*')
 			.eq('ownerId', patient.patientId)
 			.maybeSingle();
@@ -45,7 +45,7 @@ export async function GET() {
 
 			// Obtener el grupo del que es miembro
 			const { data: memberGroup } = await supabase
-				.from('FamilyGroup')
+				.from('familygroup')
 				.select('*')
 				.eq('id', membership.familyGroupId)
 				.maybeSingle();
@@ -173,7 +173,7 @@ export async function POST(request: Request) {
 
 		// Verificar si ya tiene un grupo
 		const { data: existingGroup } = await supabase
-			.from('FamilyGroup')
+			.from('familygroup')
 			.select('id')
 			.eq('ownerId', patient.patientId)
 			.maybeSingle();
@@ -184,7 +184,7 @@ export async function POST(request: Request) {
 
 		// Crear nuevo grupo
 		const { data: newGroup, error } = await supabase
-			.from('FamilyGroup')
+			.from('familygroup')
 			.insert({
 				ownerId: patient.patientId,
 				name: name || 'Mi Grupo Familiar',

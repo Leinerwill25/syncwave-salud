@@ -44,7 +44,7 @@ export function useCurrencyPreference(): {
 			}
 
 			const { data: userData, error } = await supabase
-				.from('User')
+				.from('user')
 				.select('currency_preference')
 				.eq('authId', session.user.id)
 				.maybeSingle();

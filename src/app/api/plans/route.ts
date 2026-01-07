@@ -29,7 +29,7 @@ export async function GET(request: Request) {
 		// Obtener todos los planes activos usando Supabase
 		// Según Database.sql: Plan tiene: id, slug, name, minSpecialists, maxSpecialists, monthlyPrice, quarterlyPrice, annualPrice, description
 		const { data: plans, error: plansError } = await supabaseAdmin
-			.from('Plan')
+			.from('plan')
 			.select('id, slug, name, minSpecialists, maxSpecialists, monthlyPrice, quarterlyPrice, annualPrice, description')
 			.order('monthlyPrice', { ascending: true });
 

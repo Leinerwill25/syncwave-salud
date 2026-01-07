@@ -77,7 +77,7 @@ export async function GET(req: NextRequest) {
 		const email = supaUser.email as string | null;
 
 		// 3️⃣ Buscar en tabla User del schema público de Supabase
-		const { data: user, error: userErr } = await supabaseAdmin.from('User').select('id, role, organizationId, used').eq('authId', authId).maybeSingle();
+		const { data: user, error: userErr } = await supabaseAdmin.from('user').select('id, role, organizationId, used').eq('authId', authId).maybeSingle();
 
 		if (userErr) {
 			console.error('Error fetching user row from Supabase:', userErr);

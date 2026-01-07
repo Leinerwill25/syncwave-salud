@@ -49,7 +49,7 @@ export async function PATCH(request: Request) {
 		if (body.address !== undefined) updateData.address = body.address;
 
 		const { error } = await supabase
-			.from('Patient')
+			.from('patient')
 			.update(updateData)
 			.eq('id', patient.patientId);
 

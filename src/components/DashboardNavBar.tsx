@@ -87,7 +87,7 @@ export default function DashboardNavBar(): React.ReactElement {
 
 					// Obtener rol del usuario desde la base de datos
 					try {
-						const { data: userData } = await supabaseClient.from('User').select('role').eq('authId', u.id).maybeSingle();
+						const { data: userData } = await supabaseClient.from('user').select('role').eq('authId', u.id).maybeSingle();
 
 						if (userData?.role) {
 							setUserRole(userData.role);

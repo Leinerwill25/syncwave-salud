@@ -65,7 +65,7 @@ export async function POST(request: Request) {
 			// Verificar que el paciente autenticado es dueño de un grupo familiar
 			// y que el patient_id proporcionado pertenece a su grupo
 			const { data: familyGroup } = await supabase
-				.from('FamilyGroup')
+				.from('familygroup')
 				.select('id')
 				.eq('ownerId', patient.patientId)
 				.maybeSingle();
@@ -120,7 +120,7 @@ export async function POST(request: Request) {
 		let patientForAppointment: any = null;
 		if (finalPatientId !== patient.patientId) {
 			const { data: patientData } = await supabase
-				.from('Patient')
+				.from('patient')
 				.select('firstName, lastName')
 				.eq('id', finalPatientId)
 				.maybeSingle();
@@ -168,7 +168,7 @@ export async function POST(request: Request) {
 			let doctorName: string | undefined;
 			try {
 				const { data: doctor } = await supabase
-					.from('User')
+					.from('user')
 					.select('name')
 					.eq('id', doctor_id)
 					.maybeSingle();

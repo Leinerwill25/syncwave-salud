@@ -118,7 +118,7 @@ export async function GET(request: NextRequest) {
 
 		// Obtener información de servicios para parsear selected_service
 		// Obtener el primer médico de la organización para acceder a sus servicios
-		const { data: orgDoctor } = await supabase.from('User').select('id').eq('organizationId', session.organizationId).eq('role', 'MEDICO').limit(1).maybeSingle();
+		const { data: orgDoctor } = await supabase.from('user').select('id').eq('organizationId', session.organizationId).eq('role', 'MEDICO').limit(1).maybeSingle();
 
 		let servicesMap: Map<string, any> = new Map();
 		if (orgDoctor) {
@@ -325,7 +325,7 @@ export async function POST(request: NextRequest) {
 		}
 
 		// Obtener el doctor principal de la organización (el primer médico)
-		const { data: orgDoctor, error: doctorError } = await supabase.from('User').select('id').eq('organizationId', organization_id).eq('role', 'MEDICO').limit(1).maybeSingle();
+		const { data: orgDoctor, error: doctorError } = await supabase.from('user').select('id').eq('organizationId', organization_id).eq('role', 'MEDICO').limit(1).maybeSingle();
 
 		if (doctorError || !orgDoctor) {
 			return NextResponse.json({ error: 'No se encontró un médico asociado a esta organización' }, { status: 400 });

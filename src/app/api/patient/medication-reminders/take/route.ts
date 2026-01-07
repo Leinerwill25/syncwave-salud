@@ -75,7 +75,7 @@ export async function POST(req: Request) {
 
 		// Obtener información del paciente para la notificación
 		const { data: patientData } = await supabase
-			.from('Patient')
+			.from('patient')
 			.select('firstName, lastName')
 			.eq('id', patientAuth.patientId)
 			.single();

@@ -19,7 +19,7 @@ export async function PATCH(request: Request) {
 
 		// Verificar que es owner
 		const { data: familyGroup } = await supabase
-			.from('FamilyGroup')
+			.from('familygroup')
 			.select('id')
 			.eq('ownerId', patient.patientId)
 			.maybeSingle();
@@ -30,7 +30,7 @@ export async function PATCH(request: Request) {
 
 		// Actualizar nombre
 		const { error } = await supabase
-			.from('FamilyGroup')
+			.from('familygroup')
 			.update({ name: name || 'Mi Grupo Familiar' })
 			.eq('id', familyGroup.id);
 

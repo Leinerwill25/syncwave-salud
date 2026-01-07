@@ -16,7 +16,7 @@ export async function GET(req: NextRequest) {
 		// Buscar en pacientes registrados
 		const registeredResult = await pool.query(
 			`SELECT id, "firstName", "lastName", identifier, 'registered' as type
-       FROM "public"."Patient"
+       FROM "public"."patient"
        WHERE identifier ILIKE $1
           OR "firstName" ILIKE $1
           OR "lastName" ILIKE $1

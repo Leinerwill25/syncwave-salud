@@ -22,7 +22,7 @@ export async function GET(req: NextRequest, context: { params: Promise<{ patient
 		const supabase = await createSupabaseServerClient();
 
 		// Obtener el unregistered_patient_id del paciente (si existe)
-		const { data: patientData, error: patientDataError } = await supabase.from('Patient').select('id, unregistered_patient_id').eq('id', patientId).maybeSingle();
+		const { data: patientData, error: patientDataError } = await supabase.from('patient').select('id, unregistered_patient_id').eq('id', patientId).maybeSingle();
 
 		if (patientDataError) {
 			console.error('Error obteniendo datos del paciente:', patientDataError);
@@ -171,7 +171,7 @@ export async function GET(req: NextRequest, context: { params: Promise<{ patient
 
 		if (consultationIds.length > 0) {
 			const { data: medicalRecords, error: mrError } = await supabase
-				.from('MedicalRecord')
+				.from('medicalrecord')
 				.select('id, patientId, content, attachments, createdAt, consultation:consultation!consultation_medical_record_id_fkey(id)')
 				.in('id', consultations?.filter((c) => c.medical_record_id).map((c) => c.medical_record_id) || []);
 

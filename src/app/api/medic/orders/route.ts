@@ -82,7 +82,7 @@ export async function GET(req: Request) {
 		const registeredPatientsMap = new Map();
 		if (patientIds.size > 0) {
 			const { data: registeredPatients } = await supabase
-				.from('Patient')
+				.from('patient')
 				.select('id, firstName, lastName, identifier')
 				.in('id', Array.from(patientIds));
 			

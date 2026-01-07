@@ -147,7 +147,7 @@ export async function POST(request: NextRequest) {
 
 		// Obtener nombre del usuario desde la tabla User
 		const { data: userData } = await supabase
-			.from('User')
+			.from('user')
 			.select('name')
 			.eq('id', user.userId)
 			.maybeSingle();

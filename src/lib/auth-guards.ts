@@ -93,20 +93,55 @@ export async function getAuthenticatedUser(): Promise<AuthenticatedUser | null> 
 			return null;
 		}
 
-		// Obtener usuario de la app
-		const { data: appUser, error: userError } = await supabase
-			.from('User')
-			.select('id, email, role, organizationId, patientProfileId')
-			.eq('authId', user.id)
-			.maybeSingle();
+		// Obtener usuario de la app - usar nombre en minúsculas después del renombrado
+		const tableCandidates = ['user'];
+		let appUser: any = null;
+		let userError: any = null;
+		let usedTableName: string | null = null;
 
-		if (userError) {
+		// Verificar sesión antes de consultar
+		const { data: sessionCheck } = await supabase.auth.getSession();
+		console.debug('[Auth Guard] Sesión activa:', !!sessionCheck?.session, 'authId buscado:', user.id);
+
+		for (const tableName of tableCandidates) {
+			try {
+				const { data, error } = await supabase
+					.from(tableName === 'User' ? 'user' : tableName)
+					.select('id, email, role, organizationId, patientProfileId')
+					.eq('authId', user.id)
+					.maybeSingle();
+
+				if (error) {
+					console.debug(`[Auth Guard] Error con tabla "${tableName}":`, error.code, error.message);
+					// Si es error de tabla no encontrada, probar siguiente candidato
+					if (String(error?.code) === 'PGRST205' || String(error?.message).includes('Could not find the table')) {
+						continue;
+					}
+					// Otro error (permiso, constraint, etc.) - guardar y continuar
+					userError = error;
+					continue;
+				}
+
+				if (data) {
+					appUser = data;
+					usedTableName = tableName;
+					console.debug(`[Auth Guard] Usuario encontrado usando tabla "${tableName}"`);
+					break;
+				}
+			} catch (err: any) {
+				console.debug(`[Auth Guard] Excepción con tabla "${tableName}":`, err?.message);
+				// Continuar con siguiente candidato si hay excepción
+				continue;
+			}
+		}
+
+		if (userError && !appUser) {
 			console.error('[Auth Guard] Error obteniendo usuario de la app:', userError);
 			return null;
 		}
 
 		if (!appUser) {
-			console.warn('[Auth Guard] No se encontró usuario en la tabla User para authId:', user.id);
+			console.warn('[Auth Guard] No se encontró usuario en la tabla User para authId:', user.id, 'Intentadas tablas:', tableCandidates);
 			return null;
 		}
 

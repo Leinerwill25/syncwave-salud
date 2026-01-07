@@ -45,7 +45,7 @@ export async function POST(req: NextRequest) {
 		// Validar que el organizationId y userId existan en la base de datos
 		// Esto asegura que los datos son válidos sin requerir autenticación
 		const { data: orgData, error: orgError } = await supabaseAdmin
-			.from('Organization')
+			.from('organization')
 			.select('id')
 			.eq('id', organizationId)
 			.single();
@@ -55,7 +55,7 @@ export async function POST(req: NextRequest) {
 		}
 
 		const { data: userData, error: userError } = await supabaseAdmin
-			.from('User')
+			.from('user')
 			.select('id')
 			.eq('id', userId)
 			.single();

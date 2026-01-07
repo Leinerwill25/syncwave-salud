@@ -86,7 +86,7 @@ export async function GET(request: Request) {
 		/*
 		if (!type || type === 'FARMACIA') {
 			let pharmacyQuery = supabase
-				.from('Organization')
+				.from('organization')
 				.select(
 					`
 					id,
@@ -127,7 +127,7 @@ export async function GET(request: Request) {
 		/*
 		if (!type || type === 'LABORATORIO') {
 			let labQuery = supabase
-				.from('Organization')
+				.from('organization')
 				.select(
 					`
 					id,
@@ -173,7 +173,7 @@ export async function GET(request: Request) {
 		if (type === 'CONSULTORIO' || type === 'CONSULTORIO_PRIVADO' || !type) {
 			// PASO 1: Obtener las organizaciones únicas con type CONSULTORIO
 			let orgQuery = supabase
-				.from('Organization')
+				.from('organization')
 				.select('id, name, type, contactEmail, phone, address')
 				.eq('type', 'CONSULTORIO')
 				.range(offset, offset + perPage - 1);
@@ -218,7 +218,7 @@ export async function GET(request: Request) {
 
 				// PASO 4: Buscar todos los médicos asociados a estas organizaciones
 				const { data: users, error: usersError } = await supabase
-					.from('User')
+					.from('user')
 					.select(
 						`
 						id,

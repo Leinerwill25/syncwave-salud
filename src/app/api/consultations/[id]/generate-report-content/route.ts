@@ -59,7 +59,7 @@ async function generateReportContentFromTemplate(consultation: any, templateText
 
 	if (consultation.patient_id) {
 		// Paciente registrado - obtener desde tabla Patient
-		const { data: patientData, error: patientError } = await supabase.from('Patient').select('firstName, lastName, dob, gender, identifier, phone').eq('id', consultation.patient_id).single();
+		const { data: patientData, error: patientError } = await supabase.from('patient').select('firstName, lastName, dob, gender, identifier, phone').eq('id', consultation.patient_id).single();
 
 		if (!patientError && patientData) {
 			patientName = `${patientData.firstName || ''} ${patientData.lastName || ''}`.trim() || 'Paciente';

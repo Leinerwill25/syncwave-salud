@@ -21,7 +21,7 @@ export async function GET(
 		const labId = id;
 
 		const { data: lab, error } = await supabase
-			.from('Organization')
+			.from('organization')
 			.select(`
 				id,
 				name,

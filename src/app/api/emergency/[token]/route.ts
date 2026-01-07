@@ -29,7 +29,7 @@ export async function GET(req: NextRequest, context: { params: Promise<{ token: 
 		// Buscar paciente por token QR de emergencia
 		console.log('[Emergency API] Buscando paciente con token:', token);
 		const { data: patient, error: patientError } = await supabase
-			.from('Patient')
+			.from('patient')
 			.select(`
 				id,
 				firstName,
@@ -82,7 +82,7 @@ export async function GET(req: NextRequest, context: { params: Promise<{ token: 
 		if (!emergencyContact) {
 			// Intentar obtener desde FamilyGroup
 			const { data: familyGroup } = await supabase
-				.from('FamilyGroup')
+				.from('familygroup')
 				.select(`
 					members:FamilyGroupMember(
 						name,
@@ -176,7 +176,7 @@ export async function GET(req: NextRequest, context: { params: Promise<{ token: 
 
 		// Obtener último MedicalRecord
 		const { data: lastMedicalRecord } = await supabase
-			.from('MedicalRecord')
+			.from('medicalrecord')
 			.select('id, content, createdAt')
 			.eq('patientId', patient.id)
 			.order('createdAt', { ascending: false })

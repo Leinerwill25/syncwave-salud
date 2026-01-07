@@ -73,7 +73,7 @@ export async function GET(
 		if (task.patient_id) {
 			// Intentar obtener de pacientes registrados
 			const { data: registeredPatient } = await supabase
-				.from('Patient')
+				.from('patient')
 				.select('id, firstName, lastName, identifier, dob, gender, phone')
 				.eq('id', task.patient_id)
 				.maybeSingle();

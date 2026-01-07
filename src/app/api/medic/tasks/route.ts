@@ -85,7 +85,7 @@ export async function GET(req: Request) {
 		const registeredPatientsMap = new Map();
 		if (patientIds.size > 0) {
 			const { data: registeredPatients } = await supabase
-				.from('Patient')
+				.from('patient')
 				.select('id, firstName, lastName, identifier')
 				.in('id', Array.from(patientIds));
 
@@ -176,7 +176,7 @@ export async function POST(req: Request) {
 		if (patient_id) {
 			// Verificar si existe en Patient
 			const { data: registeredPatient } = await supabase
-				.from('Patient')
+				.from('patient')
 				.select('id')
 				.eq('id', patient_id)
 				.maybeSingle();

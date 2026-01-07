@@ -41,7 +41,7 @@ export async function POST(req: NextRequest) {
 				organizationId = roleUserOrgId;
 
 				// Obtener el primer doctor (User con role='MEDICO') asociado a esa organización
-				const doctorQuery = await client.query(`SELECT id FROM public."User" WHERE "organizationId" = $1 AND role = 'MEDICO' LIMIT 1`, [roleUserOrgId]);
+				const doctorQuery = await client.query(`SELECT id FROM public."user" WHERE "organizationId" = $1 AND role = 'MEDICO' LIMIT 1`, [roleUserOrgId]);
 
 				if (doctorQuery.rows.length === 0) {
 					return NextResponse.json({ success: false, error: 'No se encontró un médico asociado a la organización del role-user.' }, { status: 404 });
@@ -117,7 +117,7 @@ export async function POST(req: NextRequest) {
 				}
 
 				// Verificar que el paciente registrado existe
-				const patientCheck = await client.query(`SELECT id FROM public."Patient" WHERE id = $1`, [finalPatientId]);
+				const patientCheck = await client.query(`SELECT id FROM public."patient" WHERE id = $1`, [finalPatientId]);
 
 				if (patientCheck.rows.length === 0) {
 					throw new Error('Paciente registrado no encontrado.');
@@ -172,10 +172,10 @@ export async function POST(req: NextRequest) {
 			if (finalPatientId) {
 				try {
 					// Obtener información del paciente y su user_id
-					const { data: patientData } = await supabaseAdmin.from('Patient').select('firstName, lastName').eq('id', finalPatientId).maybeSingle();
+					const { data: patientData } = await supabaseAdmin.from('patient').select('firstName, lastName').eq('id', finalPatientId).maybeSingle();
 
 					// Obtener el user_id del paciente
-					const { data: userData } = await supabaseAdmin.from('User').select('id').eq('patientProfileId', finalPatientId).maybeSingle();
+					const { data: userData } = await supabaseAdmin.from('user').select('id').eq('patientProfileId', finalPatientId).maybeSingle();
 
 					const patientName = patientData ? `${patientData.firstName} ${patientData.lastName}` : 'Paciente';
 					const patientUserId = userData?.id || null;

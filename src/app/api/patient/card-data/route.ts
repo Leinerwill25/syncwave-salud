@@ -15,7 +15,7 @@ export async function GET() {
 		const supabase = await createSupabaseServerClient();
 
 		const { data: patientData, error: fetchError } = await supabase
-			.from('Patient')
+			.from('patient')
 			.select(`
 				id,
 				firstName,

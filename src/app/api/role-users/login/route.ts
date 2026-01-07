@@ -78,7 +78,7 @@ export async function POST(request: NextRequest) {
 
 		// Obtener información del usuario de la tabla User
 		const { data: appUser, error: userError } = await supabase
-			.from('User')
+			.from('user')
 			.select('id, email, role, organizationId')
 			.eq('authId', authData.user.id)
 			.maybeSingle();

@@ -56,7 +56,7 @@ export async function GET(request: NextRequest) {
 
 		// Obtener información básica de los pacientes
 		const { data: patients, error: patientsError } = await supabase
-			.from('Patient')
+			.from('patient')
 			.select('id, firstName, lastName, identifier, phone, email')
 			.in('id', Array.from(patientIds));
 

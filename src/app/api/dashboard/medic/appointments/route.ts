@@ -63,7 +63,7 @@ export async function GET(req: Request) {
 			organizationIdToFilter = user.organizationId;
 
 			// Validar que el médico realmente pertenezca a esa organización
-			const { data: doctorCheck } = await supabase.from('User').select('id, organizationId').eq('id', user.userId).eq('organizationId', user.organizationId).maybeSingle();
+			const { data: doctorCheck } = await supabase.from('user').select('id, organizationId').eq('id', user.userId).eq('organizationId', user.organizationId).maybeSingle();
 
 			if (!doctorCheck) {
 				console.error('[Appointments API] Médico no pertenece a la organización especificada');
@@ -239,7 +239,7 @@ export async function GET(req: Request) {
 
 		if (bookedByPatientIds.length > 0) {
 			const { data: bookedByPatients } = await supabase
-				.from('Patient')
+				.from('patient')
 				.select('id, firstName, lastName, identifier')
 				.in('id', bookedByPatientIds)
 				.limit(50); // Limitar para evitar queries grandes

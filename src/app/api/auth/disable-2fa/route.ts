@@ -120,7 +120,7 @@ export async function POST(request: Request) {
 		}
 
 		const { data: appUser } = await supabase
-			.from('User')
+			.from('user')
 			.select('id')
 			.eq('authId', user.id)
 			.maybeSingle();
@@ -130,7 +130,7 @@ export async function POST(request: Request) {
 		}
 
 		// TODO: Actualizar campo 2FA en User table
-		// await supabase.from('User').update({ twoFactorEnabled: false }).eq('id', appUser.id);
+		// await supabase.from('user').update({ twoFactorEnabled: false }).eq('id', appUser.id);
 
 		return NextResponse.json({ 
 			success: true, 

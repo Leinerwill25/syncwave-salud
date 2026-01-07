@@ -22,7 +22,7 @@ export async function GET(request: Request) {
 
 		// Buscar organizaciones de tipo FARMACIA
 		let query = supabase
-			.from('Organization')
+			.from('organization')
 			.select(`
 				id,
 				name,

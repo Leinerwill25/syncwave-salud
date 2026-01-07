@@ -30,7 +30,7 @@ export async function GET(req: NextRequest) {
 
 		// Verificar si es paciente registrado o no registrado
 		const { data: registeredPatient } = await supabase
-			.from('Patient')
+			.from('patient')
 			.select('id')
 			.eq('id', patientId)
 			.maybeSingle();

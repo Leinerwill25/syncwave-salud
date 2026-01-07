@@ -81,7 +81,7 @@ export default function CurrencyConfigPage() {
 
 			// Obtener preferencia del usuario desde la base de datos
 			const { data: userData, error } = await supabase
-				.from('User')
+				.from('user')
 				.select('currency_preference')
 				.eq('authId', session.user.id)
 				.maybeSingle();
@@ -118,7 +118,7 @@ export default function CurrencyConfigPage() {
 
 			// Actualizar preferencia en la base de datos
 			const { error } = await supabase
-				.from('User')
+				.from('user')
 				.update({ currency_preference: newPreference })
 				.eq('authId', session.user.id);
 

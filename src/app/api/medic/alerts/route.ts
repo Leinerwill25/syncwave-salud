@@ -404,7 +404,7 @@ export async function GET(req: Request) {
 		// 8. NOTIFICACIONES NO LEÍDAS (Notification)
 		// ────────────────────────────────────────────────────────────────
 		const { data: unreadNotifications, error: notifError } = await supabase
-			.from('Notification')
+			.from('notification')
 			.select('id, type, title, created_at')
 			.eq('userId', doctorId)
 			.eq('read', false)

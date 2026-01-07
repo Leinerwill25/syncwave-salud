@@ -95,7 +95,7 @@ export default async function EditConsultationPage({ params }: Props) {
 
 	if (consultation.patient_id) {
 		// Paciente registrado - obtener datos directamente de la tabla Patient
-		const { data: fullPatientData } = await supabase.from('Patient').select('id, firstName, lastName, dob, identifier, phone, address, profession, blood_type, allergies, chronic_conditions, current_medication').eq('id', consultation.patient_id).maybeSingle();
+		const { data: fullPatientData } = await supabase.from('patient').select('id, firstName, lastName, dob, identifier, phone, address, profession, blood_type, allergies, chronic_conditions, current_medication').eq('id', consultation.patient_id).maybeSingle();
 
 		if (fullPatientData) {
 			patient = {

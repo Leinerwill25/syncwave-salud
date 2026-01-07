@@ -82,7 +82,7 @@ export default function UserNotificationsBell({ user }: Props) {
 	async function markAsRead(id: string) {
 		setNotifications((prev) => prev.map((n) => (n.id === id ? { ...n, read: true } : n)));
 		try {
-			await supabase.from('Notification').update({ read: true }).eq('id', id);
+			await supabase.from('notification').update({ read: true }).eq('id', id);
 		} catch (err) {
 			console.error('[NOTIFS] markAsRead error', err);
 		}
@@ -93,7 +93,7 @@ export default function UserNotificationsBell({ user }: Props) {
 		if (!ids.length) return;
 		setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
 		try {
-			await supabase.from('Notification').update({ read: true }).in('id', ids);
+			await supabase.from('notification').update({ read: true }).in('id', ids);
 		} catch (err) {
 			console.error('[NOTIFS] markAllRead error', err);
 		}
@@ -244,7 +244,7 @@ export default function UserNotificationsBell({ user }: Props) {
 					try {
 						const authUserId = sessionData?.session?.user?.id ?? user?.id;
 						if (authUserId) {
-							const { data: appUserRow, error } = await supabase.from('User').select('id, "organizationId"').eq('authId', authUserId).limit(1).maybeSingle();
+							const { data: appUserRow, error } = await supabase.from('user').select('id, "organizationId"').eq('authId', authUserId).limit(1).maybeSingle();
 
 							if (!error && appUserRow?.id) {
 								appUserIdRef.current = appUserRow.id;

@@ -66,10 +66,10 @@ export async function PATCH(req: Request, context: { params: Promise<{ id: strin
 						// Crear notificación al paciente sobre el pago disponible
 						try {
 							// Obtener información del paciente y su user_id
-							const { data: patientData } = await supabaseAdmin.from('Patient').select('firstName, lastName').eq('id', patient_id).maybeSingle();
+							const { data: patientData } = await supabaseAdmin.from('patient').select('firstName, lastName').eq('id', patient_id).maybeSingle();
 
 							// Obtener el user_id del paciente
-							const { data: userData } = await supabaseAdmin.from('User').select('id').eq('patientProfileId', patient_id).maybeSingle();
+							const { data: userData } = await supabaseAdmin.from('user').select('id').eq('patientProfileId', patient_id).maybeSingle();
 
 							const patientName = patientData ? `${patientData.firstName} ${patientData.lastName}` : 'Paciente';
 							const patientUserId = userData?.id || null;
@@ -133,7 +133,7 @@ export async function PATCH(req: Request, context: { params: Promise<{ id: strin
 			let patientName: string | undefined;
 			let doctorName: string | undefined;
 			try {
-				const [patientRes, doctorRes] = await Promise.all([supabaseAdmin.from('Patient').select('firstName, lastName').eq('id', patient_id).maybeSingle(), doctor_id ? supabaseAdmin.from('User').select('name').eq('id', doctor_id).maybeSingle() : Promise.resolve({ data: null })]);
+				const [patientRes, doctorRes] = await Promise.all([supabaseAdmin.from('patient').select('firstName, lastName').eq('id', patient_id).maybeSingle(), doctor_id ? supabaseAdmin.from('user').select('name').eq('id', doctor_id).maybeSingle() : Promise.resolve({ data: null })]);
 				if (patientRes.data) {
 					patientName = `${patientRes.data.firstName} ${patientRes.data.lastName}`;
 				}

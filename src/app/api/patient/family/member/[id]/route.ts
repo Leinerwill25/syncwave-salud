@@ -22,7 +22,7 @@ export async function GET(
 
 		// Verificar que el paciente pertenece al mismo grupo familiar
 		const { data: patientGroup } = await supabase
-			.from('FamilyGroup')
+			.from('familygroup')
 			.select('id')
 			.eq('ownerId', patient.patientId)
 			.maybeSingle();
@@ -60,7 +60,7 @@ export async function GET(
 
 		// Obtener datos del paciente
 		const { data: memberPatient } = await supabase
-			.from('Patient')
+			.from('patient')
 			.select('*')
 			.eq('id', memberPatientId)
 			.maybeSingle();

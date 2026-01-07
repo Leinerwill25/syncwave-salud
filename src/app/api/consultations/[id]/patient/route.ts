@@ -146,7 +146,7 @@ export async function PATCH(req: NextRequest, context: { params: Promise<{ id: s
 			});
 
 			const { data, error } = await supabase
-				.from('Patient')
+				.from('patient')
 				.update(updatePayload)
 				.eq('id', patientId)
 				.select()

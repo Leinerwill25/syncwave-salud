@@ -108,7 +108,7 @@ export default async function EspecialistasPage() {
 	const authId = authUser.id;
 
 	// Buscar fila local en tabla User
-	const { data: me, error: meErr } = await supabase.from('User').select('id, organizationId').eq('authId', authId).single();
+	const { data: me, error: meErr } = await supabase.from('user').select('id, organizationId').eq('authId', authId).single();
 
 	if (meErr || !me) {
 		console.error('Error fetching local User by authId OR user not found:', meErr);
@@ -133,7 +133,7 @@ export default async function EspecialistasPage() {
 	}
 
 	// Traer invitaciones
-	const { data: invites, error: invitesErr } = await supabase.from('Invite').select('id, email, token, role, invitedById, used, expiresAt, createdAt').eq('organizationId', organizationId).not('email', 'is', null).order('createdAt', { ascending: false });
+	const { data: invites, error: invitesErr } = await supabase.from('invite').select('id, email, token, role, invitedById, used, expiresAt, createdAt').eq('organizationId', organizationId).not('email', 'is', null).order('createdAt', { ascending: false });
 
 	if (invitesErr) console.error('Error fetching invites:', invitesErr);
 

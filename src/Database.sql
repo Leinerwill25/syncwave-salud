@@ -93,6 +93,12 @@ CREATE TABLE public.Patient (
   elderly_conditions text,
   unregistered_patient_id uuid UNIQUE,
   profession text,
+  advance_directives jsonb,
+  emergency_contact_name text,
+  emergency_contact_phone text,
+  emergency_contact_relationship text,
+  emergency_qr_token text UNIQUE,
+  emergency_qr_enabled boolean DEFAULT false,
   CONSTRAINT Patient_pkey PRIMARY KEY (id)
 );
 CREATE TABLE public.Plan (
@@ -321,6 +327,7 @@ CREATE TABLE public.consultorio_role_users (
   created_at timestamp with time zone DEFAULT now(),
   updated_at timestamp with time zone DEFAULT now(),
   password_hash character varying,
+  whatsapp_number text,
   CONSTRAINT consultorio_role_users_pkey PRIMARY KEY (id),
   CONSTRAINT consultorio_role_users_role_id_fkey FOREIGN KEY (role_id) REFERENCES public.consultorio_roles(id),
   CONSTRAINT consultorio_role_users_organization_id_fkey FOREIGN KEY (organization_id) REFERENCES public.Organization(id)
@@ -421,6 +428,14 @@ CREATE TABLE public.medic_profile (
   prescription_template_text text,
   prescription_font_family text DEFAULT 'Arial'::text,
   service_combos jsonb DEFAULT '[]'::jsonb,
+  whatsapp_number text,
+  whatsapp_message_template text DEFAULT 'Hola {NOMBRE_PACIENTE}, le recordamos su cita el {FECHA} a las {HORA} con el Dr/a {NOMBRE_DOCTORA} en {CLÍNICA}. Por los servicios de:
+
+{SERVICIOS}
+
+por favor confirmar con un "Asistiré" o "No Asistiré"'::text,
+  lite_mode boolean DEFAULT false,
+  report_templates_by_specialty jsonb,
   CONSTRAINT medic_profile_pkey PRIMARY KEY (id),
   CONSTRAINT fk_medic_profile_doctor FOREIGN KEY (doctor_id) REFERENCES public.User(id)
 );

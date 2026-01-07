@@ -46,7 +46,7 @@ export async function getCurrentOrganizationId(supabase: any): Promise<string | 
 
 		// Usamos tabla "User" y buscamos organizationId por authId
 		const { data, error } = await supabase
-			.from('User')
+			.from('user')
 			.select('organizationId, role, id')
 			.eq('authId', user.id)
 			.limit(1)
@@ -83,7 +83,7 @@ async function fetchRecentPatientsForOrgViaSupabase(supabase: any, organizationI
 		
 		// Obtener users con role = 'PACIENTE' y organizationId = organizationId
 		const { data: patientUsers, error: usersErr } = await supabase
-			.from('User')
+			.from('user')
 			.select('id, email, organizationId, role, patientProfileId')
 			.eq('role', 'PACIENTE')
 			.eq('organizationId', organizationId);
@@ -108,7 +108,7 @@ async function fetchRecentPatientsForOrgViaSupabase(supabase: any, organizationI
 
 		// Traer los pacientes que coincidan con esos IDs
 		const { data: matchedPatients, error: patientsErr } = await supabase
-			.from('Patient')
+			.from('patient')
 			.select('*')
 			.in('id', patientProfileIds)
 			.order('createdAt', { ascending: false })
@@ -171,8 +171,8 @@ export default async function ClinicDashboardPage() {
 		invitesResponse
 	] = await Promise.all([
 		supabase.from('organization').select('id, name, type, address, phone, specialistCount, planId, inviteBaseUrl').eq('id', organizationId).single(),
-		supabase.from('User').select('*', { count: 'exact', head: true }).eq('organizationId', organizationId).eq('role', 'MEDICO'),
-		supabase.from('User').select('id, email, name, createdAt').eq('organizationId', organizationId).eq('role', 'MEDICO').order('createdAt', { ascending: false }).limit(8),
+		supabase.from('user').select('*', { count: 'exact', head: true }).eq('organizationId', organizationId).eq('role', 'MEDICO'),
+		supabase.from('user').select('id, email, name, createdAt').eq('organizationId', organizationId).eq('role', 'MEDICO').order('createdAt', { ascending: false }).limit(8),
 		fetchRecentPatientsForOrgViaSupabase(supabase, organizationId, 8),
 		supabase.from('invite').select('id, email, token, role, used, expiresAt, createdAt').eq('organizationId', organizationId).order('createdAt', { ascending: false }).limit(5)
 	]);

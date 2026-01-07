@@ -35,11 +35,11 @@ async function tryFromVariants(supabase: Supa, variants: string | string[], sele
 	return { name: null, data: null, error: new Error('No se encontró la tabla en las variantes probadas') };
 }
 
-const PLAN_VARIANTS = ['Plan', 'plan', '"Plan"', '"public"."Plan"'];
-const ORG_VARIANTS = ['Organization', 'organization', '"Organization"', '"public"."Organization"'];
-const USER_VARIANTS = ['User', 'user', '"User"', '"public"."User"'];
-const SUBS_VARIANTS = ['Subscription', 'subscription', '"Subscription"', '"public"."Subscription"'];
-const INVITE_VARIANTS = ['Invite', 'invite', '"Invite"', '"public"."Invite"'];
+const PLAN_VARIANTS = ['plan', '"plan"', '"public"."plan"'];
+const ORG_VARIANTS = ['organization', '"organization"', '"public"."organization"'];
+const USER_VARIANTS = ['user', '"user"', '"public"."user"'];
+const SUBS_VARIANTS = ['subscription', '"subscription"', '"public"."subscription"'];
+const INVITE_VARIANTS = ['invite', '"invite"', '"public"."invite"'];
 const CLINIC_PROFILE_VARIANTS = ['clinic_profile', '"clinic_profile"', '"public"."clinic_profile"', 'clinicProfile'];
 
 interface CookieStore {

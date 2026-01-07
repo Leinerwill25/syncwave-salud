@@ -100,7 +100,7 @@ async function resolveDbUserFromToken(token: string | null) {
 		if (supUser?.id) {
 			// buscar en DB por authId usando Supabase (tabla User según Database.sql)
 			const { data: dbUser } = await supabaseAdmin
-				.from('User')
+				.from('user')
 				.select('id, email, role, organizationId, authId')
 				.eq('authId', supUser.id)
 				.maybeSingle();
@@ -108,7 +108,7 @@ async function resolveDbUserFromToken(token: string | null) {
 			// si no existe por authId, intentar por email si la respuesta lo tiene
 			if (supUser?.email) {
 				const { data: dbByEmail } = await supabaseAdmin
-					.from('User')
+					.from('user')
 					.select('id, email, role, organizationId, authId')
 					.eq('email', supUser.email)
 					.maybeSingle();
@@ -126,7 +126,7 @@ async function resolveDbUserFromToken(token: string | null) {
 	const email = payload.email ?? null;
 	if (authId && supabaseAdmin) {
 		const { data: dbUser } = await supabaseAdmin
-			.from('User')
+			.from('user')
 			.select('id, email, role, organizationId, authId')
 			.eq('authId', authId)
 			.maybeSingle();
@@ -134,7 +134,7 @@ async function resolveDbUserFromToken(token: string | null) {
 	}
 	if (email && supabaseAdmin) {
 		const { data: dbByEmail } = await supabaseAdmin
-			.from('User')
+			.from('user')
 			.select('id, email, role, organizationId, authId')
 			.eq('email', email)
 			.maybeSingle();
@@ -195,7 +195,7 @@ export async function POST(req: Request) {
 		}
 
 		const { data: invite, error: inviteError } = await supabaseAdmin
-			.from('Invite')
+			.from('invite')
 			.insert({
 				organizationId: orgId,
 				email,
@@ -251,7 +251,7 @@ export async function DELETE(req: Request) {
 		}
 
 		const { data: existing, error: findError } = await supabaseAdmin
-			.from('Invite')
+			.from('invite')
 			.select('organizationId')
 			.eq('id', id)
 			.maybeSingle();
@@ -264,7 +264,7 @@ export async function DELETE(req: Request) {
 		}
 
 		const { error: deleteError } = await supabaseAdmin
-			.from('Invite')
+			.from('invite')
 			.delete()
 			.eq('id', id);
 

@@ -80,7 +80,7 @@ export async function POST(req: NextRequest) {
 			// También actualizar MedicalRecord.attachments si existe
 			if (consultation.medical_record_id && publicURL) {
 				const { data: medicalRecord } = await supabase
-					.from('MedicalRecord')
+					.from('medicalrecord')
 					.select('attachments')
 					.eq('id', consultation.medical_record_id)
 					.single();
@@ -90,7 +90,7 @@ export async function POST(req: NextRequest) {
 					if (!attachments.includes(publicURL)) {
 						const updatedAttachments = [...attachments, publicURL];
 						await supabase
-							.from('MedicalRecord')
+							.from('medicalrecord')
 							.update({ attachments: updatedAttachments })
 							.eq('id', consultation.medical_record_id);
 					}
@@ -198,7 +198,7 @@ export async function DELETE(req: NextRequest) {
 			// Eliminar de MedicalRecord.attachments si existe y tenemos la URL
 			if (consultation?.medical_record_id && fileUrl) {
 				const { data: medicalRecord } = await supabase
-					.from('MedicalRecord')
+					.from('medicalrecord')
 					.select('attachments')
 					.eq('id', consultation.medical_record_id)
 					.single();
@@ -207,7 +207,7 @@ export async function DELETE(req: NextRequest) {
 					const attachments = Array.isArray(medicalRecord.attachments) ? medicalRecord.attachments : [];
 					const updatedAttachments = attachments.filter((url: string) => url !== fileUrl);
 					await supabase
-						.from('MedicalRecord')
+						.from('medicalrecord')
 						.update({ attachments: updatedAttachments })
 						.eq('id', consultation.medical_record_id);
 				}

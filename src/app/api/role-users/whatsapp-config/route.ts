@@ -24,7 +24,7 @@ export async function GET(req: NextRequest) {
 
 		// Obtener el primer médico de la organización para la plantilla y nombre del doctor
 		const { data: doctor, error: doctorError } = await supabase
-			.from('User')
+			.from('user')
 			.select('id, name')
 			.eq('organizationId', session.organizationId)
 			.eq('role', 'MEDICO')
@@ -104,7 +104,7 @@ export async function PATCH(req: NextRequest) {
 		if (whatsappMessageTemplate !== undefined) {
 			// Obtener el primer médico de la organización
 			const { data: doctor, error: doctorError } = await supabase
-				.from('User')
+				.from('user')
 				.select('id')
 				.eq('organizationId', session.organizationId)
 				.eq('role', 'MEDICO')

@@ -59,7 +59,7 @@ export async function POST(req: NextRequest) {
 
 		// Si hay sesión server-side, obtener información del usuario
 		if (sessionUser?.id) {
-			const { data: appUser, error: appUserErr } = await supabase.from('User').select('id, organizationId').eq('authId', sessionUser.id).maybeSingle();
+			const { data: appUser, error: appUserErr } = await supabase.from('user').select('id, organizationId').eq('authId', sessionUser.id).maybeSingle();
 
 			if (appUserErr) {
 				console.error('Error buscando User por authId:', appUserErr);
@@ -184,7 +184,7 @@ export async function POST(req: NextRequest) {
 			if (patient_id) {
 				// Obtener información del paciente registrado
 				const { data: patientData } = await supabase
-					.from('Patient')
+					.from('patient')
 					.select('firstName, lastName')
 					.eq('id', patient_id)
 					.maybeSingle();
@@ -194,7 +194,7 @@ export async function POST(req: NextRequest) {
 				// Obtener userId del paciente
 				try {
 					const { data: patientUser } = await supabase
-						.from('User')
+						.from('user')
 						.select('id')
 						.eq('patientProfileId', patient_id)
 						.maybeSingle();

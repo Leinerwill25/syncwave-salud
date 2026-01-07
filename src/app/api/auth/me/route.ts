@@ -7,19 +7,14 @@ import createSupabaseServerClient from '@/app/adapters/server';
  * porque PostgREST / Supabase puede exponerla con diferente case/format.
  */
 async function queryUserByAuthId(supabase: any, authId: string) {
-	const candidates = [
-		'User', // común en PostgREST cuando tabla se registró sin comillas
-		'user', // lowercase
-		'"User"', // el identificador con comillas (si se creó exactamente así)
-		'public.User', // con esquema (a veces sirve)
-		'public."User"',
-	];
+	// Después del renombrado, usar 'user' en minúsculas
+	const candidates = ['user'];
 
 	let lastError: any = null;
 
 	for (const name of candidates) {
 		try {
-			const { data, error } = await supabase.from(name).select('id, organizationId').eq('authId', authId).limit(1).single();
+			const { data, error } = await supabase.from(name).select('id, organizationId').eq('authId', authId).maybeSingle();
 
 			if (error) {
 				// Si hubo un error que no sea "tabla no encontrada", retornamos ese error
@@ -30,7 +25,13 @@ async function queryUserByAuthId(supabase: any, authId: string) {
 					// intentar siguiente candidato
 					continue;
 				}
-				// otro error (p. ej. permiso, constraint) -> retornarlo
+				// PGRST116 = no rows found (pero esto no debería pasar con maybeSingle, solo con single)
+				// Si es un error de permisos RLS, continuar con siguiente candidato
+				if (String(error?.code) === 'PGRST116' || String(error?.code) === '42501') {
+					// Error de permisos o RLS bloqueando - probar siguiente candidato
+					continue;
+				}
+				// otro error (p. ej. constraint) -> retornarlo
 				return { data: null, error, usedName: name };
 			}
 
@@ -39,8 +40,9 @@ async function queryUserByAuthId(supabase: any, authId: string) {
 				return { data, error: null, usedName: name };
 			}
 
-			// Si no hay data pero tampoco error, continuamos (aunque improbable)
-			lastError = { message: 'No data returned and no error', code: 'NO_DATA' };
+			// Si no hay data pero tampoco error, puede ser que RLS bloqueó o realmente no existe
+			// Continuamos con siguiente candidato
+			lastError = { message: 'No data returned (possibly blocked by RLS or user does not exist)', code: 'NO_DATA' };
 		} catch (err: any) {
 			lastError = err;
 			// si excepciones inesperadas, probamos siguiente
@@ -55,6 +57,10 @@ async function queryUserByAuthId(supabase: any, authId: string) {
 export async function GET(request: Request) {
 	try {
 		const supabase = await createSupabaseServerClient();
+
+		// Verificar sesión primero para asegurar que auth.uid() esté disponible
+		const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+		console.debug('[Auth /me] Sesión activa:', !!sessionData?.session, 'Error:', sessionError?.message);
 
 		// Intento primario: obtener usuario por cookie (session)
 		const { data: authData, error: authError } = await supabase.auth.getUser();
@@ -85,6 +91,8 @@ export async function GET(request: Request) {
 		if (!userIdFromAuth) {
 			return NextResponse.json({ error: 'No authenticated user id' }, { status: 401 });
 		}
+
+		console.debug('[Auth /me] Buscando usuario con authId:', userIdFromAuth);
 
 		// Intentar consultar la tabla User probando varios identificadores
 		const result = await queryUserByAuthId(supabase, userIdFromAuth);

@@ -94,7 +94,7 @@ export async function GET(
 		// Intentar obtener la organización directamente
 		if (!clinic && !clinicError) {
 			const { data: organization, error: orgError } = await supabase
-				.from('Organization')
+				.from('organization')
 				.select(`
 					id,
 					name,
@@ -221,7 +221,7 @@ export async function GET(
 
 		// Obtener médicos del consultorio con información completa del perfil
 		const { data: doctors, error: doctorsError } = await supabase
-			.from('User')
+			.from('user')
 			.select(`
 				id,
 				name,

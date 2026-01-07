@@ -107,7 +107,7 @@ export async function POST(
 					if (consultation.patient_id) {
 						try {
 							const { data: userData } = await supabase
-								.from('User')
+								.from('user')
 								.select('id')
 								.eq('patientProfileId', consultation.patient_id)
 								.maybeSingle();

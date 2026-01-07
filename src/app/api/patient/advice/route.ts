@@ -306,7 +306,7 @@ export async function POST(request: Request) {
 		try {
 			let userRow: any = null;
 			try {
-				const res = await supabase.from('User').select('patientProfileId').eq('authId', user.id).maybeSingle();
+				const res = await supabase.from('user').select('patientProfileId').eq('authId', user.id).maybeSingle();
 				if (!res?.error && res?.data) userRow = res.data;
 			} catch (err) {
 				console.warn('[ADVICE_API] reading User table failed (possible schema mismatch)', err);
@@ -315,7 +315,7 @@ export async function POST(request: Request) {
 
 			if (!userRow || !userRow.patientProfileId) {
 				try {
-					const pAltRes = await supabase.from('Patient').select('*').eq('authId', user.id).maybeSingle();
+					const pAltRes = await supabase.from('patient').select('*').eq('authId', user.id).maybeSingle();
 					if (!pAltRes?.error && pAltRes?.data) {
 						patientProfile = pAltRes.data;
 					}
@@ -328,7 +328,7 @@ export async function POST(request: Request) {
 				}
 			} else {
 				const patientId = String(userRow.patientProfileId);
-				const patientRowRes = await supabase.from('Patient').select('*').eq('id', patientId).maybeSingle();
+				const patientRowRes = await supabase.from('patient').select('*').eq('id', patientId).maybeSingle();
 				if (!patientRowRes || patientRowRes.error || !patientRowRes.data) {
 					return new NextResponse(JSON.stringify({ error: 'Perfil de paciente no encontrado' }), { status: 404, headers: { 'Content-Type': 'application/json' } });
 				}
@@ -336,7 +336,7 @@ export async function POST(request: Request) {
 
 				let records: any[] = [];
 				try {
-					const recRes = await supabase.from('MedicalRecord').select('*').eq('patientId', patientRow.id).order('createdAt', { ascending: false }).limit(5);
+					const recRes = await supabase.from('medicalrecord').select('*').eq('patientId', patientRow.id).order('createdAt', { ascending: false }).limit(5);
 					if (!recRes?.error && Array.isArray(recRes?.data)) records = recRes.data;
 				} catch (err) {
 					console.warn('[ADVICE_API] load medical records error', err);

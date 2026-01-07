@@ -54,7 +54,7 @@ export async function GET(req: NextRequest) {
 			
 			// Validar que el médico realmente pertenezca a esa organización
 			const { data: doctorCheck } = await supabase
-				.from('User')
+				.from('user')
 				.select('id, organizationId')
 				.eq('id', user.userId)
 				.eq('organizationId', user.organizationId)
@@ -77,7 +77,7 @@ export async function GET(req: NextRequest) {
 			// Si se solicita un doctor_id específico, validar que pertenezca a la misma organización
 			if (requestedDoctorId) {
 				const { data: requestedDoctor } = await supabase
-					.from('User')
+					.from('user')
 					.select('id, organizationId')
 					.eq('id', requestedDoctorId)
 					.maybeSingle();
@@ -169,7 +169,7 @@ export async function GET(req: NextRequest) {
 			// Buscar el paciente registrado para obtener su unregisteredPatientId usando Supabase
 			try {
 				const { data: patientRecord, error: patientError } = await supabase
-					.from('Patient')
+					.from('patient')
 					.select('unregistered_patient_id')
 					.eq('id', patientId)
 					.maybeSingle();
@@ -279,7 +279,7 @@ export async function GET(req: NextRequest) {
 		if (needsRegisteredPatients && registeredPatientIds.length > 0) {
 			try {
 				const { data: registeredData, error: registeredError } = await supabase
-					.from('Patient')
+					.from('patient')
 					.select('id, firstName, lastName, identifier')
 					.in('id', registeredPatientIds)
 					.limit(50);
@@ -482,7 +482,7 @@ export async function POST(req: NextRequest) {
 
 		// 1) Si hay sesión server-side, mapear auth user -> User.id usando authId
 		if (sessionUser?.id) {
-			const { data: appUser, error: appUserErr } = await supabase.from('User').select('id, organizationId').eq('authId', sessionUser.id).maybeSingle();
+			const { data: appUser, error: appUserErr } = await supabase.from('user').select('id, organizationId').eq('authId', sessionUser.id).maybeSingle();
 
 			if (appUserErr) {
 				console.error('Error buscando User por authId:', appUserErr);
@@ -515,7 +515,7 @@ export async function POST(req: NextRequest) {
 				return NextResponse.json({ error: 'No hay sesión activa ni doctor_id proporcionado' }, { status: 401 });
 			}
 
-			const { data: doctorRow, error: doctorErr } = await supabase.from('User').select('id').eq('id', providedDoctorId).maybeSingle();
+			const { data: doctorRow, error: doctorErr } = await supabase.from('user').select('id').eq('id', providedDoctorId).maybeSingle();
 			if (doctorErr) {
 				console.error('Error verificando doctor_id:', doctorErr);
 				return NextResponse.json({ error: 'Error interno verificando doctor_id' }, { status: 500 });

@@ -136,7 +136,7 @@ export async function POST(request: Request) {
 
 		// Por ahora, simulamos éxito
 		const { data: appUser } = await supabase
-			.from('User')
+			.from('user')
 			.select('id')
 			.eq('authId', user.id)
 			.maybeSingle();
@@ -146,7 +146,7 @@ export async function POST(request: Request) {
 		}
 
 		// TODO: Actualizar campo 2FA en User table
-		// await supabase.from('User').update({ twoFactorEnabled: true }).eq('id', appUser.id);
+		// await supabase.from('user').update({ twoFactorEnabled: true }).eq('id', appUser.id);
 
 		return NextResponse.json({ 
 			success: true, 

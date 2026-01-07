@@ -31,7 +31,7 @@ export async function POST(req: Request) {
 		// Resolve orgId (same approach as GET)
 		let orgId = (user.user_metadata as any)?.organizationId ?? null;
 		if (!orgId) {
-			const { data: urow } = await supabaseAdmin.from('User').select('organizationId').eq('authId', user.id).limit(1).maybeSingle();
+			const { data: urow } = await supabaseAdmin.from('user').select('organizationId').eq('authId', user.id).limit(1).maybeSingle();
 			orgId = urow?.organizationId ?? orgId;
 		}
 
@@ -39,7 +39,7 @@ export async function POST(req: Request) {
 
 		if (body.all) {
 			// mark all for org as read
-			const { error } = await supabaseAdmin.from('Notification').update({ read: true }).eq('organizationId', orgId).is('read', false);
+			const { error } = await supabaseAdmin.from('notification').update({ read: true }).eq('organizationId', orgId).is('read', false);
 			if (error) return NextResponse.json({ error: 'DB error' }, { status: 500 });
 			return NextResponse.json({ ok: true });
 		}
@@ -49,7 +49,7 @@ export async function POST(req: Request) {
 		}
 
 		// Mark only those notifications that belong to this organization (avoid marking others)
-		const { error } = await supabaseAdmin.from('Notification').update({ read: true }).in('id', ids).eq('organizationId', orgId);
+		const { error } = await supabaseAdmin.from('notification').update({ read: true }).in('id', ids).eq('organizationId', orgId);
 
 		if (error) {
 			console.error('Error marking read', error);

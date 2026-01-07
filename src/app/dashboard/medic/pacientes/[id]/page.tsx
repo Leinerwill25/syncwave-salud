@@ -75,7 +75,7 @@ export default async function PatientHistory({ params }: Props) {
 		}
 
 		// Obtener paciente (campos del schema: firstName, lastName, dob, phone, gender, id)
-		const { data: patient, error: patientError } = await supabase.from('Patient').select('id, firstName, lastName, dob, phone, gender, createdAt').eq('id', id).maybeSingle();
+		const { data: patient, error: patientError } = await supabase.from('patient').select('id, firstName, lastName, dob, phone, gender, createdAt').eq('id', id).maybeSingle();
 
 		if (patientError || !patient) {
 			return <ErrorBox message={`No se encontró el paciente: ${patientError?.message ?? 'Paciente no encontrado.'}`} />;

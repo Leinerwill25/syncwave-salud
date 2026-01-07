@@ -100,7 +100,7 @@ export async function getCurrentOrganizationId(): Promise<string | null> {
 	if (!supabaseAdmin) return null;
 
 	try {
-		const { data, error } = await supabaseAdmin.from('User').select('organizationId').eq('authId', authId).limit(1).maybeSingle();
+		const { data, error } = await supabaseAdmin.from('user').select('organizationId').eq('authId', authId).limit(1).maybeSingle();
 
 		if (error) {
 			console.warn('Supabase: error fetching user organizationId:', error);

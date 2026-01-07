@@ -210,7 +210,7 @@ export async function GET(req: Request) {
 		const userId = session.user.id;
 
 		// Obtener organizationId del user (maybeSingle)
-		const { data: me, error: meErr } = await supabase.from('User').select('organizationId').eq('id', userId).maybeSingle();
+		const { data: me, error: meErr } = await supabase.from('user').select('organizationId').eq('id', userId).maybeSingle();
 		if (meErr) {
 			console.error('[api/specialists][GET] get user org error', meErr);
 			return NextResponse.json({ message: 'No se pudo obtener la organización' }, { status: 500 });
@@ -220,7 +220,7 @@ export async function GET(req: Request) {
 		const organizationId = (me as any).organizationId;
 		if (!organizationId) return NextResponse.json({ message: 'Usuario sin organización' }, { status: 400 });
 
-		const { data: invites, error: invitesErr } = await supabase.from('Invite').select('id, email, token, role, invitedById, used, expiresAt, createdAt').eq('organizationId', organizationId).eq('used', false).not('email', 'is', null).neq('email', '').order('createdAt', { ascending: false });
+		const { data: invites, error: invitesErr } = await supabase.from('invite').select('id, email, token, role, invitedById, used, expiresAt, createdAt').eq('organizationId', organizationId).eq('used', false).not('email', 'is', null).neq('email', '').order('createdAt', { ascending: false });
 
 		if (invitesErr) {
 			console.error('[api/specialists][GET] invites error', invitesErr);
@@ -267,7 +267,7 @@ export async function POST(req: Request) {
 		const { supabase } = client as any;
 
 		// 1) Buscar invitación en Invite
-		const { data: invite, error: inviteErr } = await supabase.from('Invite').select('id, organizationId, email, used').eq('id', inviteId).maybeSingle();
+		const { data: invite, error: inviteErr } = await supabase.from('invite').select('id, organizationId, email, used').eq('id', inviteId).maybeSingle();
 
 		if (inviteErr) {
 			console.error('[api/specialists][POST] fetch invite error', inviteErr);
@@ -304,7 +304,7 @@ export async function POST(req: Request) {
 		if (!actorOrgId && actorUserId) {
 			// 1) intentar buscar por id (existing behavior)
 			try {
-				const { data: meById, error: meByIdErr } = await supabase.from('User').select('organizationId').eq('id', actorUserId).maybeSingle();
+				const { data: meById, error: meByIdErr } = await supabase.from('user').select('organizationId').eq('id', actorUserId).maybeSingle();
 				if (!meByIdErr && meById) {
 					actorOrgId = (meById as any).organizationId;
 					console.log('[api/specialists][POST] actorOrgId resolved via User.id ->', actorOrgId);
@@ -316,7 +316,7 @@ export async function POST(req: Request) {
 			// 2) intentar buscar por authId (campo que usas en suspensión)
 			if (!actorOrgId) {
 				try {
-					const { data: meByAuth, error: meByAuthErr } = await supabase.from('User').select('organizationId').eq('authId', actorUserId).maybeSingle();
+					const { data: meByAuth, error: meByAuthErr } = await supabase.from('user').select('organizationId').eq('authId', actorUserId).maybeSingle();
 					if (!meByAuthErr && meByAuth) {
 						actorOrgId = (meByAuth as any).organizationId;
 						console.log('[api/specialists][POST] actorOrgId resolved via User.authId ->', actorOrgId);
@@ -331,7 +331,7 @@ export async function POST(req: Request) {
 				const orgCandidateCols = ['authId', 'ownerAuthId', 'ownerId', 'createdBy', 'adminAuthId'];
 				for (const col of orgCandidateCols) {
 					try {
-						const q = await supabase.from('Organization').select('id').eq(col, actorUserId).maybeSingle();
+						const q = await supabase.from('organization').select('id').eq(col, actorUserId).maybeSingle();
 						if (q && (q as any).data) {
 							actorOrgId = (q as any).data.id;
 							console.log(`[api/specialists][POST] actorOrgId resolved via Organization.${col} ->`, actorOrgId);
@@ -364,7 +364,7 @@ export async function POST(req: Request) {
 			// si tenemos actorUserId lo registramos como cancelledbyid, si no, dejamos null
 			if (actorUserId) updatePayload.cancelledbyid = actorUserId;
 
-			const { error: updErr } = await supabase.from('Invite').update(updatePayload).eq('id', inviteId).eq('organizationId', inviteOrgId);
+			const { error: updErr } = await supabase.from('invite').update(updatePayload).eq('id', inviteId).eq('organizationId', inviteOrgId);
 
 			if (updErr) {
 				console.error('[api/specialists][POST] Error cancel invite', updErr);
@@ -384,7 +384,7 @@ export async function POST(req: Request) {
 			}
 
 			// Buscar usuario por email dentro de la misma organización
-			const { data: userRow, error: userErr } = await supabase.from('User').select('id, email, role, organizationId, used').eq('email', email).eq('organizationId', inviteOrgId).maybeSingle();
+			const { data: userRow, error: userErr } = await supabase.from('user').select('id, email, role, organizationId, used').eq('email', email).eq('organizationId', inviteOrgId).maybeSingle();
 
 			if (userErr) {
 				console.error('[api/specialists][POST] Error fetching user to suspend', userErr);
@@ -404,7 +404,7 @@ export async function POST(req: Request) {
 
 			// Actualizar el estado de actividad
 			const { error: suspendErr } = await supabase
-				.from('User')
+				.from('user')
 				.update({
 					used: false, // nuevo campo de estado
 					authId: null, // opcional: desasocia sesión

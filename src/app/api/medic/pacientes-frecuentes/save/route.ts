@@ -63,7 +63,7 @@ export async function POST(req: NextRequest) {
 			if (patient.identification) {
 				// Verificar en Patient
 				const { data: existingPatient } = await supabase
-					.from('Patient')
+					.from('patient')
 					.select('id')
 					.eq('identifier', patient.identification)
 					.maybeSingle();

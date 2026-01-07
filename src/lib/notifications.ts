@@ -30,7 +30,7 @@ export async function createNotification(options: CreateNotificationOptions): Pr
 
 		// Crear notificación en la base de datos
 		const { data: notification, error: notifError } = await supabase
-			.from('Notification')
+			.from('notification')
 			.insert({
 				userId: options.userId || null,
 				organizationId: options.organizationId || null,
@@ -54,7 +54,7 @@ export async function createNotification(options: CreateNotificationOptions): Pr
 			try {
 				// Obtener email del usuario
 				const { data: user, error: userError } = await supabase
-					.from('User')
+					.from('user')
 					.select('email, role')
 					.eq('id', options.userId)
 					.maybeSingle();

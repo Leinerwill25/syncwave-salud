@@ -62,7 +62,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 			// a través de unregisteredPatientId en la tabla Patient
 			if (consultation.unregistered_patient_id) {
 				const { data: patientFromUnregistered } = await supabase
-					.from('Patient')
+					.from('patient')
 					.select('id')
 					.eq('unregistered_patient_id', consultation.unregistered_patient_id)
 					.maybeSingle();
@@ -100,7 +100,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 		if (existingRecordId) {
 			// Actualizar MedicalRecord existente
 			const { data: updatedRecord, error: updateRecordError } = await supabase
-				.from('MedicalRecord')
+				.from('medicalrecord')
 				.update({
 					content: medicalRecordContent,
 					attachments: [consultation.report_url],
@@ -119,7 +119,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 		} else {
 			// Crear nuevo MedicalRecord
 			const { data: newRecord, error: createRecordError } = await supabase
-				.from('MedicalRecord')
+				.from('medicalrecord')
 				.insert({
 					patientId: patientIdForRecord,
 					authorId: doctorId,

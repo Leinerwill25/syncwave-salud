@@ -35,7 +35,7 @@ export async function GET(req: NextRequest) {
 
 		// Verificar en pacientes registrados usando Supabase (tabla Patient según Database.sql)
 		const { data: existingRegistered, error: registeredError } = await supabaseAdmin
-			.from('Patient')
+			.from('patient')
 			.select('id, identifier')
 			.eq('identifier', identifier)
 			.maybeSingle();

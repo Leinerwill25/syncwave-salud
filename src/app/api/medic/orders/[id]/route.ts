@@ -68,7 +68,7 @@ export async function GET(
 		if (order.patient_id) {
 			// Intentar obtener de pacientes registrados primero
 			const { data: registeredPatient } = await supabase
-				.from('Patient')
+				.from('patient')
 				.select('id, firstName, lastName, identifier, dob, gender, phone')
 				.eq('id', order.patient_id)
 				.maybeSingle();

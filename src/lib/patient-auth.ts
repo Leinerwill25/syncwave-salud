@@ -163,7 +163,7 @@ export async function getAuthenticatedPatient(): Promise<{
 
 		// Obtener usuario de la app
 		const { data: appUser, error: userError } = await supabase
-			.from('User')
+			.from('user')
 			.select('id, role, patientProfileId')
 			.eq('authId', user.id)
 			.maybeSingle();
@@ -184,7 +184,7 @@ export async function getAuthenticatedPatient(): Promise<{
 		}
 
 		const { data: patient, error: patientError } = await supabase
-			.from('Patient')
+			.from('patient')
 			.select('*')
 			.eq('id', appUser.patientProfileId)
 			.maybeSingle();
@@ -214,7 +214,7 @@ export async function hasFamilyPlan(patientId: string): Promise<boolean> {
 		const supabase = await createSupabaseServerClient();
 
 		const { data: subscription, error } = await supabase
-			.from('Subscription')
+			.from('subscription')
 			.select('planSnapshot, status')
 			.eq('patientId', patientId)
 			.eq('status', 'ACTIVE')

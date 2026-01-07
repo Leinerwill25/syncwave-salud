@@ -138,7 +138,7 @@ export async function GET(req: NextRequest) {
 		}
 
 		// 5) Buscar el perfil en la tabla User usando authId
-		const { data: appUser, error: appUserErr } = await supabase.from('User').select('id, organizationId').eq('authId', authUser.id).maybeSingle();
+		const { data: appUser, error: appUserErr } = await supabase.from('user').select('id, organizationId').eq('authId', authUser.id).maybeSingle();
 
 		if (appUserErr) {
 			console.error('/api/auth/met error buscando User por authId:', appUserErr);
@@ -153,7 +153,7 @@ export async function GET(req: NextRequest) {
 		// 6) Opcional: intentar obtener nombre de la organización
 		let orgName: string | null = null;
 		if (appUser.organizationId) {
-			const { data: org, error: orgErr } = await supabase.from('Organization').select('name').eq('id', appUser.organizationId).maybeSingle();
+			const { data: org, error: orgErr } = await supabase.from('organization').select('name').eq('id', appUser.organizationId).maybeSingle();
 			if (!orgErr && org) orgName = (org as any).name ?? null;
 		}
 

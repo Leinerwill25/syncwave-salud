@@ -87,7 +87,7 @@ export async function GET(request: Request) {
 					// Obtener información del médico si existe
 					if (doctorUserId) {
 						const { data: doctorUser } = await supabase
-							.from('User')
+							.from('user')
 							.select(`
 								id,
 								name,

@@ -1,175 +1,38 @@
 // app/api/medic/config/route.ts
 import { NextResponse } from 'next/server';
-import { cookies } from 'next/headers';
 import { createSupabaseServerClient } from '@/app/adapters/server';
+import { apiRequireRole } from '@/lib/auth-guards';
 import { PRIVATE_SPECIALTIES, isValidPrivateSpecialty } from '@/lib/constants/specialties';
-
-interface CookieStore {
-	get?: (name: string) => { value?: string } | undefined;
-}
-
-async function tryRestoreSessionFromCookies(supabase: any, cookieStore: CookieStore): Promise<boolean> {
-	if (!cookieStore) return false;
-
-	const cookieCandidates = ['sb-session', 'sb:token', 'supabase-auth-token', 'sb-access-token', 'sb-refresh-token'];
-
-	for (const name of cookieCandidates) {
-		try {
-			const c = typeof cookieStore.get === 'function' ? cookieStore.get(name) : undefined;
-			const raw = c?.value ?? null;
-			if (!raw) continue;
-
-			let parsed: Record<string, unknown> | null = null;
-			try {
-				parsed = JSON.parse(raw) as Record<string, unknown>;
-			} catch {
-				parsed = null;
-			}
-
-			let access_token: string | null = null;
-			let refresh_token: string | null = null;
-
-			if (parsed) {
-				const getNestedValue = (obj: Record<string, unknown>, ...paths: string[]): unknown => {
-					for (const path of paths) {
-						const keys = path.split('.');
-						let current: unknown = obj;
-						for (const key of keys) {
-							if (current && typeof current === 'object' && key in current) {
-								current = (current as Record<string, unknown>)[key];
-							} else {
-								return null;
-							}
-						}
-						if (current) return current;
-					}
-					return null;
-				};
-
-				if (name === 'sb-session') {
-					access_token = (getNestedValue(parsed, 'access_token', 'session.access_token', 'currentSession.access_token') as string | null) ?? null;
-					refresh_token = (getNestedValue(parsed, 'refresh_token', 'session.refresh_token', 'currentSession.refresh_token') as string | null) ?? null;
-					if (!access_token && parsed.user) {
-						access_token = (parsed.access_token as string | null) ?? null;
-						refresh_token = (parsed.refresh_token as string | null) ?? null;
-					}
-				} else {
-					access_token = (getNestedValue(parsed, 'access_token', 'currentSession.access_token', 'current_session.access_token') as string | null) ?? null;
-					refresh_token = (getNestedValue(parsed, 'refresh_token', 'currentSession.refresh_token', 'current_session.refresh_token') as string | null) ?? null;
-					if (!access_token && parsed.currentSession && typeof parsed.currentSession === 'object') {
-						const currentSession = parsed.currentSession as Record<string, unknown>;
-						access_token = (currentSession.access_token as string | null) ?? null;
-						refresh_token = (currentSession.refresh_token as string | null) ?? null;
-					}
-				}
-			} else {
-				if (name === 'sb-access-token') {
-					access_token = raw;
-				} else if (name === 'sb-refresh-token') {
-					refresh_token = raw;
-				}
-			}
-
-			if (!access_token && !refresh_token) continue;
-
-			// Solo intentar setSession si tenemos al menos access_token
-			if (access_token) {
-				const payload: { access_token: string; refresh_token: string } = {
-					access_token,
-					refresh_token: refresh_token || '',
-				};
-
-				const { data, error } = await supabase.auth.setSession(payload);
-				if (error) {
-					// Si falla y tenemos refresh_token, intentar refresh
-					if (refresh_token) {
-						try {
-							const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession({ refresh_token });
-							if (!refreshError && refreshData?.session) {
-								return true;
-							}
-						} catch {
-							// ignore
-						}
-					}
-					continue;
-				}
-
-				if (data?.session) return true;
-
-				const { data: sessionAfter } = await supabase.auth.getSession();
-				if (sessionAfter?.session) return true;
-			} else if (refresh_token) {
-				// Si solo tenemos refresh_token, intentar refresh
-				try {
-					const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession({ refresh_token });
-					if (!refreshError && refreshData?.session) {
-						return true;
-					}
-				} catch {
-					// ignore
-				}
-			}
-		} catch {
-			continue;
-		}
-	}
-
-	return false;
-}
 
 export async function GET(request: Request) {
 	try {
-		const cookieStore = await cookies();
+		// 1️⃣ Autenticación usando apiRequireRole (maneja correctamente la restauración de sesión y consulta de User)
+		const authResult = await apiRequireRole(['MEDICO']);
+		if (authResult.response) return authResult.response;
+
+		const user = authResult.user;
+		if (!user) {
+			return NextResponse.json({ error: 'Usuario no autenticado' }, { status: 401 });
+		}
+
 		const supabase = await createSupabaseServerClient();
 
-		let accessTokenFromCookie: string | null = null;
-		try {
-			const sbAccessToken = cookieStore.get('sb-access-token');
-			if (sbAccessToken?.value) {
-				accessTokenFromCookie = sbAccessToken.value;
-			}
-		} catch (err) {
-			console.debug('[Medic Config API] Error leyendo sb-access-token:', err);
-		}
-
-		let {
-			data: { user },
-			error: authError,
-		} = accessTokenFromCookie 
-			? await supabase.auth.getUser(accessTokenFromCookie)
-			: await supabase.auth.getUser();
-
-		if (authError) {
-			console.error('[Medic Config API] Auth error:', authError);
-		}
-
-		if (!user) {
-			const restored = await tryRestoreSessionFromCookies(supabase, cookieStore);
-			if (restored) {
-				const after = await supabase.auth.getUser();
-				user = after.data?.user ?? null;
-			}
-		}
-
-		if (!user) {
-			return NextResponse.json({ error: 'No autenticado' }, { status: 401 });
-		}
-
-		// Obtener usuario de la app
+		// Obtener datos completos del usuario de la app usando authId (las políticas RLS funcionan con authId)
+		// apiRequireRole ya validó que existe y es MEDICO, pero necesitamos más campos (name, etc.)
 		const { data: appUser, error: userError } = await supabase
-			.from('User')
+			.from('user')
 			.select('id, name, email, organizationId, role')
-			.eq('authId', user.id)
+			.eq('authId', user.authId)
 			.maybeSingle();
 
-		if (userError || !appUser) {
-			console.error('[Medic Config API] Error obteniendo usuario:', userError);
+		if (userError) {
+			console.error('[Medic Config API] Error obteniendo usuario de la base de datos:', userError);
 			return NextResponse.json({ error: 'Error al obtener datos del usuario' }, { status: 500 });
 		}
 
-		if (appUser.role !== 'MEDICO') {
-			return NextResponse.json({ error: 'Acceso denegado: solo médicos' }, { status: 403 });
+		if (!appUser) {
+			console.error('[Medic Config API] Usuario no encontrado en la tabla User. userId:', user.userId, 'authId:', user.authId, 'email:', user.email);
+			return NextResponse.json({ error: 'Usuario no encontrado en el sistema' }, { status: 404 });
 		}
 
 		// Obtener perfil de clínica y tipo de organización
@@ -180,10 +43,10 @@ export async function GET(request: Request) {
 		let organizationType: string | null = null;
 		
 		if (appUser.organizationId) {
-			// Obtener tipo de organización desde la tabla Organization
+			// Obtener tipo de organización desde la tabla organization
 			// Esto es crítico para determinar si es consultorio privado (CONSULTORIO) o clínica (CLINICA/HOSPITAL)
 			const { data: organization, error: orgError } = await supabase
-				.from('Organization')
+				.from('organization')
 				.select('type')
 				.eq('id', appUser.organizationId)
 				.maybeSingle();
@@ -400,55 +263,33 @@ export async function GET(request: Request) {
 
 export async function PATCH(request: Request) {
 	try {
-		const cookieStore = await cookies();
+		// 1️⃣ Autenticación usando apiRequireRole (maneja correctamente la restauración de sesión y consulta de User)
+		const authResult = await apiRequireRole(['MEDICO']);
+		if (authResult.response) return authResult.response;
+
+		const user = authResult.user;
+		if (!user) {
+			return NextResponse.json({ error: 'Usuario no autenticado' }, { status: 401 });
+		}
+
 		const supabase = await createSupabaseServerClient();
 
-		let accessTokenFromCookie: string | null = null;
-		try {
-			const sbAccessToken = cookieStore.get('sb-access-token');
-			if (sbAccessToken?.value) {
-				accessTokenFromCookie = sbAccessToken.value;
-			}
-		} catch (err) {
-			console.debug('[Medic Config API PATCH] Error leyendo sb-access-token:', err);
-		}
-
-		let {
-			data: { user },
-			error: authError,
-		} = accessTokenFromCookie 
-			? await supabase.auth.getUser(accessTokenFromCookie)
-			: await supabase.auth.getUser();
-
-		if (authError) {
-			console.error('[Medic Config API PATCH] Auth error:', authError);
-		}
-
-		if (!user) {
-			const restored = await tryRestoreSessionFromCookies(supabase, cookieStore);
-			if (restored) {
-				const after = await supabase.auth.getUser();
-				user = after.data?.user ?? null;
-			}
-		}
-
-		if (!user) {
-			return NextResponse.json({ error: 'No autenticado' }, { status: 401 });
-		}
-
-		// Obtener usuario de la app
+		// Obtener datos del usuario de la app usando authId (las políticas RLS funcionan con authId)
+		// apiRequireRole ya validó que existe y es MEDICO
 		const { data: appUser, error: userError } = await supabase
-			.from('User')
+			.from('user')
 			.select('id, organizationId, role')
-			.eq('authId', user.id)
+			.eq('authId', user.authId)
 			.maybeSingle();
 
-		if (userError || !appUser) {
+		if (userError) {
+			console.error('[Medic Config API PATCH] Error obteniendo usuario de la base de datos:', userError);
 			return NextResponse.json({ error: 'Error al obtener datos del usuario' }, { status: 500 });
 		}
 
-		if (appUser.role !== 'MEDICO') {
-			return NextResponse.json({ error: 'Acceso denegado: solo médicos' }, { status: 403 });
+		if (!appUser) {
+			console.error('[Medic Config API PATCH] Usuario no encontrado en la tabla User. userId:', user.userId, 'authId:', user.authId, 'email:', user.email);
+			return NextResponse.json({ error: 'Usuario no encontrado en el sistema' }, { status: 404 });
 		}
 
 		const body = await request.json();
@@ -489,7 +330,7 @@ export async function PATCH(request: Request) {
 		// Actualizar nombre si se proporciona
 		if (body.name !== undefined) {
 			const { error: updateError } = await supabase
-				.from('User')
+				.from('user')
 				.update({ name: body.name })
 				.eq('id', appUser.id);
 

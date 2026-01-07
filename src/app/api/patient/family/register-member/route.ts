@@ -40,7 +40,7 @@ export async function POST(request: Request) {
 
 		// Verificar que el paciente es owner del grupo
 		const { data: familyGroup, error: groupError } = await supabase
-			.from('FamilyGroup')
+			.from('familygroup')
 			.select('id, maxMembers')
 			.eq('ownerId', patient.patientId)
 			.maybeSingle();
@@ -61,7 +61,7 @@ export async function POST(request: Request) {
 
 		// Crear el nuevo paciente
 		const { data: newPatient, error: patientError } = await supabase
-			.from('Patient')
+			.from('patient')
 			.insert({
 				firstName: firstName.trim(),
 				lastName: lastName.trim(),
@@ -119,7 +119,7 @@ export async function POST(request: Request) {
 		if (addError) {
 			console.error('[Register Family Member API] Error agregando al grupo:', addError);
 			// Intentar eliminar el paciente creado si falla la inserción en el grupo
-			await supabase.from('Patient').delete().eq('id', newPatient.id);
+			await supabase.from('patient').delete().eq('id', newPatient.id);
 			return NextResponse.json({ 
 				error: 'Error al agregar al grupo familiar', 
 				detail: addError.message 

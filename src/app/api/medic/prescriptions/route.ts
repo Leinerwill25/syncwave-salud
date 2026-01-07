@@ -176,8 +176,8 @@ export async function POST(req: Request) {
 			if (body.patient_id) {
 				// Paciente registrado
 				const [patientRes, doctorRes] = await Promise.all([
-					supabase.from('Patient').select('firstName, lastName').eq('id', body.patient_id).maybeSingle(),
-					supabase.from('User').select('name, organizationId').eq('id', doctor_id).maybeSingle(),
+					supabase.from('patient').select('firstName, lastName').eq('id', body.patient_id).maybeSingle(),
+					supabase.from('user').select('name, organizationId').eq('id', doctor_id).maybeSingle(),
 				]);
 
 				patientName = patientRes.data ? `${patientRes.data.firstName} ${patientRes.data.lastName}` : undefined;
@@ -196,7 +196,7 @@ export async function POST(req: Request) {
 				// Obtener userId del paciente (si existe en User table)
 				try {
 					const { data: patientUser } = await supabase
-						.from('User')
+						.from('user')
 						.select('id')
 						.eq('patientProfileId', body.patient_id)
 						.maybeSingle();

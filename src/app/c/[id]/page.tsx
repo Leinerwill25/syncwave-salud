@@ -12,7 +12,7 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
 	try {
 		// Obtener datos del consultorio
 		const { data: organization } = await supabase
-			.from('Organization')
+			.from('organization')
 			.select(`
 				id,
 				name,
@@ -75,7 +75,7 @@ export default async function ConsultorioPublicRoute({ params }: { params: Promi
 	try {
 		// Obtener datos del consultorio
 		const { data: organization, error: orgError } = await supabase
-			.from('Organization')
+			.from('organization')
 			.select(`
 				id,
 				name,
@@ -123,7 +123,7 @@ export default async function ConsultorioPublicRoute({ params }: { params: Promi
 
 		// Obtener médicos del consultorio
 		const { data: doctors } = await supabase
-			.from('User')
+			.from('user')
 			.select(`
 				id,
 				name,

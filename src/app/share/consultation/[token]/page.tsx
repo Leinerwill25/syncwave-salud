@@ -77,7 +77,7 @@ export default async function ConsultationSharePage({ params }: Props) {
 
 	// Obtener datos del paciente
 	const { data: patient, error: patientError } = await supabase
-		.from('Patient')
+		.from('patient')
 		.select('*')
 		.eq('id', shareLink.patient_id)
 		.single();
@@ -266,7 +266,7 @@ export default async function ConsultationSharePage({ params }: Props) {
 	if (consultation.medical_record_id) {
 		try {
 			const { data: medicalRecord } = await supabase
-				.from('MedicalRecord')
+				.from('medicalrecord')
 				.select('attachments')
 				.eq('id', consultation.medical_record_id)
 				.single();

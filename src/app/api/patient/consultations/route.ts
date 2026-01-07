@@ -15,7 +15,7 @@ export async function GET() {
 		const supabase = await createSupabaseServerClient();
 
 		// Obtener el unregistered_patient_id del paciente registrado (si existe)
-		const { data: patientData, error: patientError } = await supabase.from('Patient').select('id, unregistered_patient_id').eq('id', patient.patientId).maybeSingle();
+		const { data: patientData, error: patientError } = await supabase.from('patient').select('id, unregistered_patient_id').eq('id', patient.patientId).maybeSingle();
 
 		if (patientError) {
 			console.error('[Patient Consultations API] Error obteniendo datos del paciente:', patientError);

@@ -93,7 +93,7 @@ export async function GET(req: NextRequest) {
 		// Obtener el médico principal de la organización (rol MEDICO) para usar su nombre en recordatorios
 		let orgDoctorName: string | null = null;
 		const { data: orgDoctor, error: orgDoctorError } = await supabase
-			.from('User')
+			.from('user')
 			.select('id, name')
 			.eq('organizationId', session.organizationId)
 			.eq('role', 'MEDICO')

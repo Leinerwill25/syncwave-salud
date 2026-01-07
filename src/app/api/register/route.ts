@@ -164,7 +164,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
 		// Prevent duplicates - Email usando Supabase (tabla User según Database.sql)
 		const { data: existing, error: userCheckError } = await supabaseAdmin
-			.from('User')
+			.from('user')
 			.select('id, email')
 			.eq('email', account.email)
 			.maybeSingle();
@@ -197,7 +197,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
 			// Verificar en pacientes registrados usando Supabase (tabla Patient según Database.sql)
 			const { data: existingRegistered, error: registeredCheckError } = await supabaseAdmin
-				.from('Patient')
+				.from('patient')
 				.select('id, identifier')
 				.eq('identifier', identifier)
 				.maybeSingle();
@@ -335,7 +335,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 				
 				// Según Database.sql: Organization tiene campos: name, type, address, contactEmail, phone, specialistCount
 				const { data: orgData, error: orgError } = await supabaseAdmin
-					.from('Organization')
+					.from('organization')
 					.insert({
 						name: organization.orgName,
 						type: orgTypeCast, // USER-DEFINED type según Database.sql
@@ -373,7 +373,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 				})();
 
 				const { data: patientData, error: patientError } = await supabaseAdmin
-					.from('Patient')
+					.from('patient')
 					.insert({
 						firstName: patient.firstName,
 						lastName: patient.lastName,
@@ -398,7 +398,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 					console.error('[Register API] Error creando Patient:', patientError);
 					// Rollback: eliminar Organization si se creó
 					if (orgRecord) {
-						await supabaseAdmin.from('Organization').delete().eq('id', orgRecord.id);
+						await supabaseAdmin.from('organization').delete().eq('id', orgRecord.id);
 					}
 					throw new Error(`Error al crear paciente: ${patientError.message}`);
 				}
@@ -415,7 +415,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 				if (plan?.selectedPlan === 'paciente-family') {
 					// Según Database.sql: FamilyGroup tiene: name, ownerId, maxMembers
 					const { error: familyGroupError } = await supabaseAdmin
-						.from('FamilyGroup')
+						.from('familygroup')
 						.insert({
 							name: `${patient.firstName} ${patient.lastName} - Grupo familiar`,
 							ownerId: patientRecord.id,
@@ -451,7 +451,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 			// Verificar organizationId si es paciente con referredOrgId
 			if (String(role).toUpperCase() === 'PACIENTE' && referredOrgIdFromForm) {
 				const { data: maybeOrg, error: orgCheckError } = await supabaseAdmin
-					.from('Organization')
+					.from('organization')
 					.select('id')
 					.eq('id', referredOrgIdFromForm)
 					.maybeSingle();
@@ -478,7 +478,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 			// 4. Crear User
 			// Según Database.sql: User tiene: email, name, passwordHash, role, organizationId, patientProfileId, authId, used
 			const { data: userData, error: userError } = await supabaseAdmin
-				.from('User')
+				.from('user')
 				.insert({
 					email: userCreateData.email,
 					name: userCreateData.name,
@@ -496,10 +496,10 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 				console.error('[Register API] Error creando User:', userError);
 				// Rollback: eliminar lo creado
 				if (patientRecord) {
-					await supabaseAdmin.from('Patient').delete().eq('id', patientRecord.id);
+					await supabaseAdmin.from('patient').delete().eq('id', patientRecord.id);
 				}
 				if (orgRecord) {
-					await supabaseAdmin.from('Organization').delete().eq('id', orgRecord.id);
+					await supabaseAdmin.from('organization').delete().eq('id', orgRecord.id);
 				}
 				throw new Error(`Error al crear usuario: ${userError.message}`);
 			}
@@ -512,7 +512,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 				const now = new Date();
 				// Según Database.sql: Subscription tiene: organizationId, patientId, planId, stripeSubscriptionId, status, startDate, endDate, planSnapshot
 				const { data: subData, error: subError } = await supabaseAdmin
-					.from('Subscription')
+					.from('subscription')
 					.insert({
 						organizationId: orgRecord?.id ?? null,
 						patientId: patientRecord?.id ?? null,
@@ -657,7 +657,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
 				// Insertar invites usando Supabase
 				const { error: invitesError } = await supabaseAdmin
-					.from('Invite')
+					.from('invite')
 					.insert(invitesData);
 
 				if (invitesError) {

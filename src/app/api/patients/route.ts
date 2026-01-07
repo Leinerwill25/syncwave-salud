@@ -183,7 +183,7 @@ export async function GET(request: Request) {
 		const historyFor = qp.get('historyFor');
 		if (historyFor) {
 			// Obtener el app user ID (necesario para doctor_id en consultation)
-			const { data: appUserData, error: appUserError } = await supabase.from('User').select('id').eq('authId', authId).maybeSingle();
+			const { data: appUserData, error: appUserError } = await supabase.from('user').select('id').eq('authId', authId).maybeSingle();
 
 			if (appUserError || !appUserData) {
 				console.error('Error fetching app user for history', appUserError);
@@ -194,7 +194,7 @@ export async function GET(request: Request) {
 
 			// Verificar si es un paciente registrado o no registrado
 			// Primero verificamos en la tabla Patient
-			const { data: registeredPatient } = await supabase.from('Patient').select('id').eq('id', historyFor).maybeSingle();
+			const { data: registeredPatient } = await supabase.from('patient').select('id').eq('id', historyFor).maybeSingle();
 			const isRegistered = !!registeredPatient;
 
 			// Verificar relación médico-paciente: buscar en appointments O consultations (doctor_id usa app user ID)
@@ -324,7 +324,7 @@ export async function GET(request: Request) {
 			// Obtener nombres de doctores
 			const doctorNamesMap = new Map<string, string>();
 			if (doctorIds.length > 0) {
-				const { data: doctors } = await supabase.from('User').select('id, name').in('id', doctorIds);
+				const { data: doctors } = await supabase.from('user').select('id, name').in('id', doctorIds);
 
 				if (doctors) {
 					doctors.forEach((doc: any) => {
@@ -551,7 +551,7 @@ export async function GET(request: Request) {
 		const includeSummary = qp.get('include_summary') === 'true';
 
 		// Buscar el usuario en la tabla User usando authId
-		const { data: userData, error: userError } = await supabase.from('User').select('id, role').eq('authId', authId).maybeSingle();
+		const { data: userData, error: userError } = await supabase.from('user').select('id, role').eq('authId', authId).maybeSingle();
 
 		if (userError || !userData) {
 			console.error('Error fetching user role', userError);
@@ -562,7 +562,7 @@ export async function GET(request: Request) {
 		const appUserId = userData.id;
 		const isMedic = userData.role === 'MEDICO';
 
-		let baseQuery = supabase.from('Patient').select('id,firstName,lastName,identifier,dob,gender,phone,address,createdAt,updatedAt', { count: 'exact' });
+		let baseQuery = supabase.from('patient').select('id,firstName,lastName,identifier,dob,gender,phone,address,createdAt,updatedAt', { count: 'exact' });
 
 		if (isMedic) {
 			// doctor_id en consultation referencia User.id (app user ID), no authId
@@ -938,7 +938,7 @@ export async function POST(request: Request) {
 			
 			// Verificar en pacientes registrados
 			const { data: existingRegistered, error: registeredCheckError } = await supabase
-				.from('Patient')
+				.from('patient')
 				.select('id, identifier')
 				.eq('identifier', identifier)
 				.maybeSingle();
@@ -991,7 +991,7 @@ export async function POST(request: Request) {
 			address: body.address ?? null,
 		};
 
-		const { data, error } = await supabase.from('Patient').insert(payload).select().maybeSingle();
+		const { data, error } = await supabase.from('patient').insert(payload).select().maybeSingle();
 
 		if (error) {
 			console.error('Error creando paciente', error);

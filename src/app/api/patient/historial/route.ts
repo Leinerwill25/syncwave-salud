@@ -201,7 +201,7 @@ export async function GET(request: Request) {
 		// Obtener registros médicos relacionados con consultas
 		// Nota: MedicalRecord puede estar relacionado con consultas a través de consultation.medical_record_id
 		const { data: medicalRecords, error: recordsError } = await supabase
-			.from('MedicalRecord')
+			.from('medicalrecord')
 			.select(`
 				id,
 				patientId,
@@ -233,7 +233,7 @@ export async function GET(request: Request) {
 		const authorsMap: Record<string, AuthorData> = {};
 		if (authorIds.length > 0) {
 			const { data: authors } = await supabase
-				.from('User')
+				.from('user')
 				.select('id, name, email')
 				.in('id', authorIds);
 			

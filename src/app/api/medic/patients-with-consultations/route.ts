@@ -52,7 +52,7 @@ export async function GET(req: NextRequest) {
 		const registeredPatients: any[] = [];
 		if (registeredPatientIds.size > 0) {
 			const { data: registeredData, error: registeredError } = await supabase
-				.from('Patient')
+				.from('patient')
 				.select('id, firstName, lastName, identifier')
 				.in('id', Array.from(registeredPatientIds));
 

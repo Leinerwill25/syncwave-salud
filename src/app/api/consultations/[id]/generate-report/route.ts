@@ -59,7 +59,7 @@ async function generateReportContentFromTemplate(consultation: any, templateText
 	// Obtener datos del paciente según si está registrado o no
 	if (consultation.patient_id) {
 		// Paciente registrado - obtener desde tabla Patient
-		const { data: patientData, error: patientError } = await supabase.from('Patient').select('firstName, lastName, dob, gender').eq('id', consultation.patient_id).single();
+		const { data: patientData, error: patientError } = await supabase.from('patient').select('firstName, lastName, dob, gender').eq('id', consultation.patient_id).single();
 
 		if (!patientError && patientData) {
 			patientName = `${patientData.firstName || ''} ${patientData.lastName || ''}`.trim() || 'Paciente';
@@ -243,7 +243,7 @@ async function getCurrentDoctorId(supabase: any, request?: Request): Promise<str
 		return null;
 	}
 
-	const { data: appUser, error: userError } = await supabase.from('User').select('id, role').eq('authId', authData.user.id).maybeSingle();
+	const { data: appUser, error: userError } = await supabase.from('user').select('id, role').eq('authId', authData.user.id).maybeSingle();
 
 	if (userError || !appUser || appUser.role !== 'MEDICO') {
 		return null;
@@ -469,7 +469,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 		let patientAge = 'N/A';
 		if (consultation.patient_id) {
 			// Obtener datos del paciente registrado desde la tabla Patient
-			const { data: patientData, error: patientError } = await supabase.from('Patient').select('firstName, lastName, identifier, phone, dob').eq('id', consultation.patient_id).single();
+			const { data: patientData, error: patientError } = await supabase.from('patient').select('firstName, lastName, identifier, phone, dob').eq('id', consultation.patient_id).single();
 
 			if (!patientError && patientData) {
 				patientName = `${patientData.firstName || ''} ${patientData.lastName || ''}`.trim() || 'Paciente';
@@ -496,7 +496,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 		// Obtener datos del médico desde la tabla User usando doctor_id
 		let doctorName = 'Médico';
 		if (consultation.doctor_id) {
-			const { data: doctorData } = await supabase.from('User').select('name, email').eq('id', consultation.doctor_id).single();
+			const { data: doctorData } = await supabase.from('user').select('name, email').eq('id', consultation.doctor_id).single();
 
 			if (doctorData) {
 				doctorName = doctorData.name || doctorData.email || 'Médico';
