@@ -138,9 +138,19 @@ export default function ConsultationsPage() {
 		}
 	}
 
-	// primera carga
+	// primera carga - optimizado para carga inicial más rápida
 	useEffect(() => {
-		loadConsultations({ reset: true });
+		// Usar requestIdleCallback si está disponible para no bloquear el render inicial
+		if ('requestIdleCallback' in window) {
+			requestIdleCallback(() => {
+				loadConsultations({ reset: true });
+			}, { timeout: 100 });
+		} else {
+			// Fallback para navegadores sin requestIdleCallback
+			setTimeout(() => {
+				loadConsultations({ reset: true });
+			}, 0);
+		}
 		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, []);
 
@@ -174,6 +184,10 @@ export default function ConsultationsPage() {
 				next: { revalidate: cacheConfig.revalidate },
 				cache: cacheConfig.cache,
 				credentials: 'include',
+				// Headers para mejor caché del navegador
+				headers: {
+					'Cache-Control': `max-age=${cacheConfig.revalidate || 60}`,
+				},
 			});
 			const data = await res.json();
 			if (!res.ok) throw new Error(data?.error || 'Error cargando más consultas');

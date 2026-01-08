@@ -7,8 +7,9 @@ import AlertsButton from '@/components/medic/AlertsButton';
 import ProfileCompleteGuard from '@/components/medic/ProfileCompleteGuard';
 import { LiteModeProvider } from '@/contexts/LiteModeContext';
 
-// Forzar renderizado dinámico ya que usa cookies para autenticación
-export const dynamic = 'force-dynamic';
+// Usar renderizado dinámico solo cuando sea necesario
+// Las páginas individuales pueden sobrescribir esto si necesitan datos dinámicos
+export const dynamic = 'auto';
 
 export const metadata = {
 	title: 'Dashboard — Medico',

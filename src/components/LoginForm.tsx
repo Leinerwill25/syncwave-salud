@@ -113,40 +113,83 @@ export default function LoginFormAdvanced(): React.ReactElement {
 			const refresh_token = session?.refresh_token;
 			const expires_in = session?.expires_in;
 
-			if (access_token) {
-				await postSessionToServer({ access_token, refresh_token, expires_in, session }, rememberMe);
-				// Guardar preferencia de "recuérdame" en localStorage
-				if (rememberMe) {
-					localStorage.setItem('rememberMe', 'true');
-					localStorage.setItem('userEmail', email);
-				} else {
-					localStorage.removeItem('rememberMe');
-					localStorage.removeItem('userEmail');
-				}
+			// Guardar preferencia de "recuérdame" en localStorage inmediatamente (no bloquea)
+			if (rememberMe) {
+				localStorage.setItem('rememberMe', 'true');
+				localStorage.setItem('userEmail', email);
+			} else {
+				localStorage.removeItem('rememberMe');
+				localStorage.removeItem('userEmail');
 			}
 
-			// Siempre obtener el rol desde la base de datos para asegurar que sea el correcto
-			// El user_metadata puede estar desactualizado o incorrecto
-			let roleToUse: Role | null = null;
+			// Ejecutar llamadas en paralelo para mayor velocidad
 			const isRoleUser = (user.user_metadata as any)?.isRoleUser === true;
 			
-			if (user.id) {
-				const fromServer = await fetchRoleFromServer(user.id);
-				if (fromServer) {
-					roleToUse = fromServer;
-				} else {
-					// Fallback a user_metadata solo si no se puede obtener de la BD
-					const metadataRole = (user.user_metadata as any)?.role as Role | undefined;
-					roleToUse = metadataRole ?? null;
-				}
+			// Hacer ambas llamadas en paralelo
+			const [sessionResult, roleFromServer] = await Promise.all([
+				access_token ? postSessionToServer({ access_token, refresh_token, expires_in, session }, rememberMe) : Promise.resolve(true),
+				user.id ? fetchRoleFromServer(user.id) : Promise.resolve(null),
+			]);
+
+			// Precargar datos de sesión en background (no bloquea la redirección)
+			if (access_token && sessionResult) {
+				// Prefetch de /api/auth/me para cachear la sesión
+				fetch('/api/auth/me', {
+					credentials: 'include',
+					headers: { Authorization: `Bearer ${access_token}` },
+				})
+					.then((res) => res.json())
+					.then((data) => {
+						if (data?.id && data?.organizationId && typeof window !== 'undefined') {
+							// Guardar en caché para uso inmediato en el dashboard
+							try {
+								const cache = {
+									userId: data.id,
+									organizationId: data.organizationId,
+									timestamp: Date.now(),
+								};
+								localStorage.setItem('user_session_cache', JSON.stringify(cache));
+							} catch {
+								// Ignorar errores de localStorage
+							}
+						}
+					})
+					.catch(() => {
+						// Ignorar errores de prefetch
+					});
 			}
 
-			// Si es un usuario de rol, redirigir al dashboard de usuarios de rol
-			if (isRoleUser) {
-				setDetectedRole(roleToUse ?? 'UNKNOWN');
-				await new Promise((r) => setTimeout(r, 400));
-				router.push('/dashboard/role-user');
-				return;
+			// Determinar el rol a usar
+			let roleToUse: Role | null = null;
+			if (roleFromServer) {
+				roleToUse = roleFromServer;
+			} else {
+				// Fallback a user_metadata solo si no se puede obtener de la BD
+				const metadataRole = (user.user_metadata as any)?.role as Role | undefined;
+				roleToUse = metadataRole ?? null;
+			}
+
+			// Determinar la ruta de destino ANTES de cualquier delay
+			const targetRoute = routeForRole(roleToUse ?? '', isRoleUser);
+			
+			// Prefetch del dashboard y datos críticos ANTES de redirigir (no bloquea)
+			if (targetRoute && targetRoute !== '/dashboard/role-user') {
+				router.prefetch(targetRoute);
+				
+				// Prefetch de datos críticos según el rol (en background, no bloquea)
+				if (roleToUse === 'MEDICO') {
+					// Prefetch de APIs críticas para médico
+					Promise.all([
+						fetch('/api/medic/config', { credentials: 'include' }).catch(() => null),
+						fetch('/api/consultations?page=1&pageSize=8', { credentials: 'include' }).catch(() => null),
+						fetch('/api/dashboard/medic/kpis?period=week', { credentials: 'include' }).catch(() => null),
+					]).catch(() => {
+						// Ignorar errores de prefetch
+					});
+				} else if (roleToUse === 'ADMIN') {
+					// Prefetch de APIs críticas para admin
+					fetch('/api/clinic/profile', { credentials: 'include' }).catch(() => null);
+				}
 			}
 
 			setDetectedRole(roleToUse ?? 'UNKNOWN');
@@ -157,20 +200,23 @@ export default function LoginFormAdvanced(): React.ReactElement {
 			const pendingPaymentAmount = localStorage.getItem('pendingPayment_amount');
 			const pendingPaymentRole = localStorage.getItem('pendingPayment_role');
 
+			// Si es un usuario de rol, redirigir al dashboard de usuarios de rol
+			if (isRoleUser) {
+				router.push('/dashboard/role-user');
+				return;
+			}
+
 			// Si hay pago pendiente y el rol coincide (MEDICO o ADMIN), redirigir a página de pago
 			if (pendingPaymentOrgId && pendingPaymentUserId && pendingPaymentAmount && 
 				(pendingPaymentRole === 'MEDICO' || pendingPaymentRole === 'ADMIN') &&
 				(roleToUse === 'MEDICO' || roleToUse === 'ADMIN')) {
 				// NO limpiar localStorage aquí - la página de pago lo limpiará después de cargar correctamente
-				// breve pausa visual
-				await new Promise((r) => setTimeout(r, 400));
 				router.push(`/register/payment?organizationId=${pendingPaymentOrgId}&userId=${pendingPaymentUserId}&amount=${pendingPaymentAmount}`);
 				return;
 			}
 
-			// breve pausa visual para que el usuario identifique el role
-			await new Promise((r) => setTimeout(r, 400));
-			router.push(routeForRole(roleToUse ?? '', isRoleUser));
+			// Redirigir inmediatamente sin delays innecesarios
+			router.push(targetRoute);
 		} catch (err: any) {
 			console.error('Login error', err);
 			setErrorMsg(err?.message || 'Error inesperado');

@@ -1,8 +1,9 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { usePrefetchApiData } from '@/hooks/usePrefetchRoute';
 import { LayoutDashboard, CalendarDays, User, ClipboardList, FileText, Settings, MessageCircle, CheckSquare, Folder, ChevronRight, ChevronDown, Search, FileCheck, CreditCard, DollarSign, Users, FileType, Share2, Zap } from 'lucide-react';
 import type { MedicConfig } from '@/types/medic-config';
 import PaymentsModal from '@/components/medic/PaymentsModal';
@@ -107,6 +108,10 @@ const LINKS: LinkItem[] = [
 	},
 ];
 
+// Caché simple en memoria para la configuración del médico
+let medicConfigCache: { data: MedicConfig | null; timestamp: number } | null = null;
+const CACHE_DURATION = 5 * 60 * 1000; // 5 minutos
+
 export default function MedicSidebar() {
 	const pathname = usePathname() ?? '/';
 	const [openMenus, setOpenMenus] = useState<string[]>([]);
@@ -116,37 +121,32 @@ export default function MedicSidebar() {
 	const [publicLinkModalOpen, setPublicLinkModalOpen] = useState(false);
 	const { isLiteMode, toggleLiteMode, loading: liteModeLoading } = useLiteMode();
 
-	useEffect(() => {
-		loadMedicConfig();
-	}, []);
+	// Prefetch de datos críticos para rutas comunes
+	usePrefetchApiData('/api/consultations?page=1&pageSize=8', pathname !== '/dashboard/medic/consultas');
+	usePrefetchApiData('/api/patients?page=1&pageSize=10', pathname !== '/dashboard/medic/pacientes');
 
-	// Recargar configuración cuando cambia la ruta (por si se completó el perfil)
-	useEffect(() => {
-		if (pathname?.includes('/configuracion')) {
-			loadMedicConfig();
+	// Cargar configuración con caché optimizado
+	const loadMedicConfig = useCallback(async (force = false) => {
+		// Verificar caché primero
+		if (!force && medicConfigCache && Date.now() - medicConfigCache.timestamp < CACHE_DURATION) {
+			setMedicConfig(medicConfigCache.data);
+			setLoadingConfig(false);
+			return;
 		}
-	}, [pathname]);
 
-	// Escuchar evento personalizado para recargar configuración después de guardar
-	useEffect(() => {
-		const handleConfigUpdate = () => {
-			loadMedicConfig();
-		};
-
-		window.addEventListener('medicConfigUpdated', handleConfigUpdate);
-		return () => {
-			window.removeEventListener('medicConfigUpdated', handleConfigUpdate);
-		};
-	}, []);
-
-	const loadMedicConfig = async () => {
 		try {
 			const res = await fetch('/api/medic/config', {
 				credentials: 'include',
+				// Agregar headers para caché del navegador
+				headers: {
+					'Cache-Control': 'max-age=300', // 5 minutos
+				},
 			});
 
 			if (res.ok) {
 				const data = await res.json();
+				// Actualizar caché
+				medicConfigCache = { data, timestamp: Date.now() };
 				setMedicConfig(data);
 			}
 		} catch (err) {
@@ -154,7 +154,30 @@ export default function MedicSidebar() {
 		} finally {
 			setLoadingConfig(false);
 		}
-	};
+	}, []);
+
+	useEffect(() => {
+		loadMedicConfig();
+	}, [loadMedicConfig]);
+
+	// Recargar configuración cuando cambia la ruta (solo si es necesario)
+	useEffect(() => {
+		if (pathname?.includes('/configuracion')) {
+			loadMedicConfig(true); // Forzar recarga en configuración
+		}
+	}, [pathname, loadMedicConfig]);
+
+	// Escuchar evento personalizado para recargar configuración después de guardar
+	useEffect(() => {
+		const handleConfigUpdate = () => {
+			loadMedicConfig(true); // Forzar recarga
+		};
+
+		window.addEventListener('medicConfigUpdated', handleConfigUpdate);
+		return () => {
+			window.removeEventListener('medicConfigUpdated', handleConfigUpdate);
+		};
+	}, [loadMedicConfig]);
 
 	const toggleMenu = (label: string) => {
 		setOpenMenus((prev) => (prev.includes(label) ? prev.filter((m) => m !== label) : [...prev, label]));
@@ -230,6 +253,7 @@ export default function MedicSidebar() {
 					<li key={link.label}>
 						<Link
 							href={singleItem.href!}
+							prefetch={true}
 							aria-current={singleActive ? 'page' : undefined}
 							className={`group flex items-center gap-3 w-full px-3 py-2 rounded-lg text-sm font-medium transition
 							${singleActive ? 'bg-gradient-to-r from-teal-600 to-cyan-600 text-white shadow-md' : 'text-slate-700 hover:bg-blue-50'}`}>
@@ -280,6 +304,7 @@ export default function MedicSidebar() {
 								<li key={sub.label}>
 									<Link
 										href={sub.href!}
+										prefetch={true}
 										aria-current={subActive ? 'page' : undefined}
 										className={`group block px-3 py-2 rounded-lg text-sm transition
 											${subActive ? 'bg-teal-100 text-teal-700 font-semibold' : 'text-slate-700 hover:bg-blue-50'}`}>
@@ -313,6 +338,7 @@ export default function MedicSidebar() {
 			<li key={link.label}>
 				<Link
 					href={link.href!}
+					prefetch={true}
 					aria-current={isActive ? 'page' : undefined}
 					className={`group flex items-center gap-3 w-full px-3 py-2 rounded-lg text-sm font-medium transition
 					${isActive ? 'bg-gradient-to-r from-teal-600 to-cyan-600 text-white shadow-md' : 'text-slate-700 hover:bg-blue-50'}`}>
