@@ -236,22 +236,14 @@ export default function EditConsultationForm({ initial, patient, doctor, doctorS
 	// init grouped vitals from initial.vitals
 	const initVitals = (initial.vitals ?? {}) as Record<string, any>;
 
-	// Inicializar expandedSpecialties con las especialidades guardadas del doctor
-	// Expandir automáticamente todas las especialidades guardadas del doctor y 'general'
+	// Inicializar expandedSpecialties - SOLO 'general' por defecto (todas las especialidades minimizadas)
+	// El usuario debe expandir manualmente las especialidades que desea usar
 	const initialExpandedSpecialties = useMemo(() => {
 		const specialties = new Set<string>(['general']);
-
-		// Agregar todas las especialidades guardadas del doctor
-		if (allowedSpecialtyCodes && allowedSpecialtyCodes.length > 0) {
-			allowedSpecialtyCodes.forEach((code) => {
-				if (code) {
-					specialties.add(code);
-				}
-			});
-		}
-
+		// NO agregar automáticamente las especialidades del doctor
+		// Todas las especialidades estarán minimizadas por defecto
 		return specialties;
-	}, [allowedSpecialtyCodes]);
+	}, []);
 
 	const [expandedSpecialties, setExpandedSpecialties] = useState<Set<string>>(initialExpandedSpecialties);
 
@@ -676,6 +668,105 @@ export default function EditConsultationForm({ initial, patient, doctor, doctorS
 	}, [activeTab, initial.id, selectedReportType]);
 
 	/* -------------------------
+     Helper: Detectar si hay datos reales de ginecología (no solo valores predeterminados)
+     ------------------------- */
+	function hasRealGynecologyData(): boolean {
+		// Valores predeterminados comunes en el formulario de ginecología
+		const defaultValues = new Set([
+			'NIEGA', 'VIVA SANA', 'VIVO SANO', 'REGULARES', 'NO', 'ESTABLES',
+			'MEDIANO TAMAÑO', 'ASIMÉTRICAS', 'SIN ALTERACIONES',
+			'NO SE EVIDENCIA SALIDA DE SECRECIÓN', 'LIBRES',
+			'BLANDO, DEPRIMIBLE NO DOLOROSO A LA PALPACIÓN', 'NORMOCONFIGURADOS',
+			'sin secreciones', 'CUELLO MACROSCÓPICAMENTE SANO',
+			'CUELLO RENITENTE NO DOLOROSO A LA MOVILIZACIÓN', 'NO PALPABLES',
+			'NEGATIVO', 'SATISFACTORIO', 'ALTERADA', 'Negativo', 'No',
+			'NO SE EVIDENCIA LÍQUIDO EN FONDO DE SACO', ''
+		]);
+
+		// Campos que se consideran "reales" si tienen valor (incluso si es predeterminado)
+		// porque son campos que el usuario debe llenar explícitamente
+		const importantFields = [
+			lmp, // Last menstrual period - importante
+			cervicalExamNotes, // Notas del examen cervical
+			currentIllnessHistory, // Historia de enfermedad actual
+			contraceptiveUse, // Uso de anticonceptivos
+			menstruationPattern, // Patrón de menstruación
+			firstSexualRelation, // Primera relación sexual
+			sexualPartners, // Parejas sexuales
+			uterusDimensions, // Dimensiones del útero
+			endometrialInterface, // Interfaz endometrial
+			endometrialInterfaceType, // Tipo de interfaz endometrial
+			endometrialInterfacePhase, // Fase de interfaz endometrial
+			leftOvaryDimensions, // Dimensiones ovario izquierdo
+			rightOvaryDimensions, // Dimensiones ovario derecho
+			ho, // HO
+			colposcopyEctocervix, // Ectocérvix en colposcopia
+			colposcopyExtension, // Extensión en colposcopia
+			colposcopyDescription, // Descripción en colposcopia
+			colposcopyLocation, // Ubicación en colposcopia
+			colposcopyAcetowhiteDetails, // Detalles de acetoblanqueamiento
+			colposcopyBiopsyLocation, // Ubicación de biopsia
+			colposcopyImage, // Imagen de colposcopia
+			colposcopyAdditionalDetails, // Detalles adicionales
+		];
+
+		// Si algún campo importante tiene valor, considerar que hay datos reales
+		if (importantFields.some(field => field && field.trim() !== '')) {
+			return true;
+		}
+
+		// Verificar campos que pueden tener valores predeterminados pero que el usuario puede haber modificado
+		const checkableFields = [
+			{ value: allergies, default: 'NIEGA' },
+			{ value: surgicalHistory, default: 'NIEGA' },
+			{ value: familyHistoryMother, default: 'VIVA SANA' },
+			{ value: familyHistoryFather, default: 'VIVO SANO' },
+			{ value: familyHistoryBreastCancer, default: 'NIEGA' },
+			{ value: its, default: 'NIEGA' },
+			{ value: menstruationType, default: 'REGULARES' },
+			{ value: dysmenorrhea, default: 'NO' },
+			{ value: generalConditions, default: 'ESTABLES' },
+			{ value: breastSize, default: 'MEDIANO TAMAÑO' },
+			{ value: breastSymmetry, default: 'ASIMÉTRICAS' },
+			{ value: breastCap, default: 'SIN ALTERACIONES' },
+			{ value: breastSecretion, default: 'NO SE EVIDENCIA SALIDA DE SECRECIÓN' },
+			{ value: axillaryFossae, default: 'LIBRES' },
+			{ value: abdomen, default: 'BLANDO, DEPRIMIBLE NO DOLOROSO A LA PALPACIÓN' },
+			{ value: externalGenitals, default: 'NORMOCONFIGURADOS' },
+			{ value: vaginalDischarge, default: 'sin secreciones' },
+			{ value: speculumCervix, default: 'CUELLO MACROSCÓPICAMENTE SANO' },
+			{ value: tactCervix, default: 'CUELLO RENITENTE NO DOLOROSO A LA MOVILIZACIÓN' },
+			{ value: fundusSacs, default: 'LIBRES' },
+			{ value: adnexa, default: 'NO PALPABLES' },
+			{ value: hinselmannTest, default: 'NEGATIVO' },
+			{ value: schillerTest, default: 'NEGATIVO' },
+			{ value: fundusFluid, default: 'NO SE EVIDENCIA LÍQUIDO EN FONDO DE SACO' },
+			{ value: colposcopyAcetic5, default: 'SATISFACTORIO' },
+			{ value: colposcopyType, default: 'ALTERADA' },
+			{ value: colposcopyAcetowhite, default: 'Negativo' },
+			{ value: colposcopyMosaic, default: 'No' },
+			{ value: colposcopyPunctation, default: 'No' },
+			{ value: colposcopyAtypicalVessels, default: 'No' },
+			{ value: colposcopyInvasiveCarcinoma, default: 'No' },
+			{ value: colposcopyBorders, default: 'No' },
+			{ value: colposcopySituation, default: 'No' },
+			{ value: colposcopyElevation, default: 'No' },
+			{ value: colposcopyBiopsy, default: 'No' },
+			{ value: colposcopyLugol, default: '' },
+		];
+
+		// Si algún campo tiene un valor diferente al predeterminado, hay datos reales
+		for (const field of checkableFields) {
+			if (field.value && field.value.trim() !== '' && field.value !== field.default) {
+				return true;
+			}
+		}
+
+		// Si no hay datos reales, retornar false
+		return false;
+	}
+
+	/* -------------------------
      Build vitals object
      ------------------------- */
 	function buildVitalsObject() {
@@ -702,8 +793,8 @@ export default function EditConsultationForm({ initial, patient, doctor, doctorS
 			return Object.keys(out).length ? out : null;
 		}
 
-		// Cardiology - solo si la especialidad está permitida
-		if (allowedSpecialtyCodes.includes('cardiology')) {
+		// Cardiology - solo si la especialidad está permitida Y está expandida (activa)
+		if (allowedSpecialtyCodes.includes('cardiology') && expandedSpecialties.has('cardiology')) {
 			const cardio: Record<string, any> = {};
 			if (ekgRhythm) cardio.ekg_rhythm = ekgRhythm;
 			if (bnp) cardio.bnp = bnp;
@@ -712,8 +803,8 @@ export default function EditConsultationForm({ initial, patient, doctor, doctorS
 			if (Object.keys(cardio).length) out.cardiology = cardio;
 		}
 
-		// Pulmonology - solo si la especialidad está permitida
-		if (allowedSpecialtyCodes.includes('pulmonology')) {
+		// Pulmonology - solo si la especialidad está permitida Y está expandida (activa)
+		if (allowedSpecialtyCodes.includes('pulmonology') && expandedSpecialties.has('pulmonology')) {
 			const pulmo: Record<string, any> = {};
 			if (fev1) pulmo.fev1 = fev1;
 			if (fvc) pulmo.fvc = fvc;
@@ -722,8 +813,8 @@ export default function EditConsultationForm({ initial, patient, doctor, doctorS
 			if (Object.keys(pulmo).length) out.pulmonology = pulmo;
 		}
 
-		// Neurology - solo si la especialidad está permitida
-		if (allowedSpecialtyCodes.includes('neurology')) {
+		// Neurology - solo si la especialidad está permitida Y está expandida (activa)
+		if (allowedSpecialtyCodes.includes('neurology') && expandedSpecialties.has('neurology')) {
 			const neuro: Record<string, any> = {};
 			if (gcsTotal) neuro.gcs_total = gcsTotal;
 			if (pupillaryReactivity) neuro.pupillary_reactivity = pupillaryReactivity;
@@ -731,9 +822,10 @@ export default function EditConsultationForm({ initial, patient, doctor, doctorS
 			if (Object.keys(neuro).length) out.neurology = neuro;
 		}
 
-		// Obstetrics - solo si la especialidad está permitida Y se está usando
+		// Obstetrics - solo si la especialidad está permitida, está expandida (activa) Y se está usando
 		// Solo guardar si el report_type es de obstetricia (first_trimester o second_third_trimester)
 		if (allowedSpecialtyCodes.includes('obstetrics') && 
+			expandedSpecialties.has('obstetrics') &&
 			(obstetricReportType === 'first_trimester' || obstetricReportType === 'second_third_trimester')) {
 			const obst: Record<string, any> = {
 				report_type: obstetricReportType,
@@ -847,40 +939,40 @@ export default function EditConsultationForm({ initial, patient, doctor, doctorS
 			}
 		}
 
-		// Nutrition - solo si la especialidad está permitida
-		if (allowedSpecialtyCodes.includes('nutrition')) {
+		// Nutrition - solo si la especialidad está permitida Y está expandida (activa)
+		if (allowedSpecialtyCodes.includes('nutrition') && expandedSpecialties.has('nutrition')) {
 			const nutr: Record<string, any> = {};
 			if (waistCircumference) nutr.waist_cm = waistCircumference;
 			if (bmiOverride) nutr.bmi_override = bmiOverride;
 			if (Object.keys(nutr).length) out.nutrition = nutr;
 		}
 
-		// Dermatology - solo si la especialidad está permitida
-		if (allowedSpecialtyCodes.includes('dermatology')) {
+		// Dermatology - solo si la especialidad está permitida Y está expandida (activa)
+		if (allowedSpecialtyCodes.includes('dermatology') && expandedSpecialties.has('dermatology')) {
 			const derma: Record<string, any> = {};
 			if (lesionDesc) derma.lesion_description = lesionDesc;
 			if (lesionSize) derma.lesion_size_cm = lesionSize;
 			if (Object.keys(derma).length) out.dermatology = derma;
 		}
 
-		// Psychiatry - solo si la especialidad está permitida
-		if (allowedSpecialtyCodes.includes('psychiatry')) {
+		// Psychiatry - solo si la especialidad está permitida Y está expandida (activa)
+		if (allowedSpecialtyCodes.includes('psychiatry') && expandedSpecialties.has('psychiatry')) {
 			const psych: Record<string, any> = {};
 			if (moodScale) psych.mood_scale = moodScale;
 			if (phq9) psych.phq9 = phq9;
 			if (Object.keys(psych).length) out.psychiatry = psych;
 		}
 
-		// Orthopedics - solo si la especialidad está permitida
-		if (allowedSpecialtyCodes.includes('orthopedics')) {
+		// Orthopedics - solo si la especialidad está permitida Y está expandida (activa)
+		if (allowedSpecialtyCodes.includes('orthopedics') && expandedSpecialties.has('orthopedics')) {
 			const ortho: Record<string, any> = {};
 			if (romNotes) ortho.range_of_motion = romNotes;
 			if (limbStrength) ortho.limb_strength = limbStrength;
 			if (Object.keys(ortho).length) out.orthopedics = ortho;
 		}
 
-		// ENT - solo si la especialidad está permitida
-		if (allowedSpecialtyCodes.includes('ent')) {
+		// ENT - solo si la especialidad está permitida Y está expandida (activa)
+		if (allowedSpecialtyCodes.includes('ent') && expandedSpecialties.has('ent')) {
 			const ent: Record<string, any> = {};
 			if (hearingLeft) ent.hearing_left_db = hearingLeft;
 			if (hearingRight) ent.hearing_right_db = hearingRight;
@@ -888,14 +980,24 @@ export default function EditConsultationForm({ initial, patient, doctor, doctorS
 			if (Object.keys(ent).length) out.ent = ent;
 		}
 
-		// Gynecology - solo si la especialidad está permitida Y se está usando
-		// Solo guardar si NO es un informe de obstetricia (first_trimester o second_third_trimester)
-		// O si el report_type es explícitamente 'gynecology'
-		const isUsingGynecology = !allowedSpecialtyCodes.includes('obstetrics') || 
-			obstetricReportType === 'gynecology' || 
-			(obstetricReportType !== 'first_trimester' && obstetricReportType !== 'second_third_trimester');
+		// Gynecology - solo si la especialidad está permitida, está expandida (activa) Y se está usando
+		// Lógica mejorada:
+		// 1. Debe estar expandida (activa) en expandedSpecialties
+		// 2. Si es un informe de obstetricia (first_trimester o second_third_trimester), NO guardar ginecología
+		// 3. Si NO es informe de obstetricia, verificar si hay datos reales de ginecología
+		// 4. Solo guardar si hay datos reales (no solo valores predeterminados) O si el report_type es explícitamente 'gynecology'
+		const isObstetricReport = obstetricReportType === 'first_trimester' || obstetricReportType === 'second_third_trimester';
+		const hasRealGynData = hasRealGynecologyData();
+		const isExplicitlyGynecology = obstetricReportType === 'gynecology' || selectedReportType === 'gynecology';
+		const isGynecologyExpanded = expandedSpecialties.has('gynecology');
 		
-		if (allowedSpecialtyCodes.includes('gynecology') && isUsingGynecology) {
+		// Solo guardar ginecología si:
+		// - Está expandida (activa) Y
+		// - NO es un informe de obstetricia Y
+		// - (Hay datos reales de ginecología O es explícitamente ginecología)
+		const shouldSaveGynecology = isGynecologyExpanded && !isObstetricReport && (hasRealGynData || isExplicitlyGynecology);
+		
+		if (allowedSpecialtyCodes.includes('gynecology') && shouldSaveGynecology) {
 			const gyn: Record<string, any> = {};
 			// LMP es obligatorio si hay datos de ginecología, así que siempre lo incluimos
 			if (lmp) gyn.last_menstrual_period = lmp;
@@ -966,16 +1068,16 @@ export default function EditConsultationForm({ initial, patient, doctor, doctorS
 			if (Object.keys(gyn).length > 0) out.gynecology = gyn;
 		}
 
-		// Endocrinology - solo si la especialidad está permitida
-		if (allowedSpecialtyCodes.includes('endocrinology')) {
+		// Endocrinology - solo si la especialidad está permitida Y está expandida (activa)
+		if (allowedSpecialtyCodes.includes('endocrinology') && expandedSpecialties.has('endocrinology')) {
 			const endo: Record<string, any> = {};
 			if (tsh) endo.tsh = tsh;
 			if (hba1c) endo.hba1c = hba1c;
 			if (Object.keys(endo).length) out.endocrinology = endo;
 		}
 
-		// Ophthalmology - solo si la especialidad está permitida
-		if (allowedSpecialtyCodes.includes('ophthalmology')) {
+		// Ophthalmology - solo si la especialidad está permitida Y está expandida (activa)
+		if (allowedSpecialtyCodes.includes('ophthalmology') && expandedSpecialties.has('ophthalmology')) {
 			const oph: Record<string, any> = {};
 			if (visualAcuity) oph.visual_acuity = visualAcuity;
 			if (iop) oph.iop = iop;
