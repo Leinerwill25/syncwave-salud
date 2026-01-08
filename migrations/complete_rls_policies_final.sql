@@ -151,18 +151,26 @@ CREATE POLICY "Users can update their own profile"
         id::text = auth.uid()::text
     );
 
--- User: Ver usuarios de la misma organización (para mensajería, roles, etc.)
-CREATE POLICY "Users can view users in their organization"
-    ON public."user"
-    FOR SELECT
-    USING (
-        EXISTS (
-            SELECT 1 FROM public."user" u
-            WHERE (u."authId" = auth.uid()::text OR u.id::text = auth.uid()::text)
-            AND u."organizationId" IS NOT NULL
-            AND u."organizationId" = "user"."organizationId"
-        )
-    );
+-- NOTA: Política eliminada para evitar recursión infinita
+-- La política anterior "Users can view their own profile" ya permite que cada usuario
+-- vea su propio perfil, que es suficiente para que /api/auth/me funcione.
+--
+-- Para permitir que los usuarios vean otros usuarios de su organización (para mensajería, roles, etc.),
+-- esto se debe manejar en el código de la aplicación usando service_role_key o creando
+-- una función SECURITY DEFINER que evite la recursión.
+--
+-- Si necesitas esta funcionalidad, puedes crear una función como esta:
+--
+-- CREATE OR REPLACE FUNCTION public.get_user_organization_id(p_auth_id TEXT)
+-- RETURNS UUID
+-- LANGUAGE sql
+-- SECURITY DEFINER
+-- STABLE
+-- AS $$
+--   SELECT "organizationId" FROM public."user" WHERE "authId" = p_auth_id LIMIT 1;
+-- $$;
+--
+-- Y luego usar esa función en las políticas RLS para evitar la recursión.
 
 -- ============================================================================
 -- TABLA: organization

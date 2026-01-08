@@ -99,6 +99,13 @@ export async function GET(request: Request) {
 			}
 		}
 
+		// Helper para normalizar el nombre de obstetricia
+		const normalizeObstetricia = (specialty: string | null): boolean => {
+			if (!specialty) return false;
+			const normalized = specialty.toLowerCase().trim();
+			return normalized === 'obstetricia' || normalized === 'obstétricia' || normalized === 'obstetrics';
+		};
+
 		// Si hay plantillas por especialidad (nuevo formato), usarlas
 		if (templates && typeof templates === 'object') {
 			const result: any = {
@@ -109,33 +116,185 @@ export async function GET(request: Request) {
 
 			// Buscar plantilla para specialty1 (buscar en todas las claves disponibles)
 			if (specialty1) {
+				const isObstetricia = normalizeObstetricia(specialty1);
 				let templateData1 = templates[specialty1];
-				// Si no se encuentra con el nombre exacto, buscar la primera clave disponible
-				if (!templateData1 && Object.keys(templates).length > 0) {
-					const firstKey = Object.keys(templates)[0];
-					templateData1 = templates[firstKey];
-				}
 				
-				if (templateData1) {
-					result.template1 = {
-						specialty: specialty1,
-						template_url: templateData1.template_url || null,
-						template_name: templateData1.template_name || null,
-						template_text: templateData1.template_text || null,
-						font_family: templateData1.font_family || 'Arial',
-					};
+				// Si no se encuentra con el nombre exacto, buscar en claves que puedan contener esta especialidad
+				// (por ejemplo, si hay una clave como "[\"Ginecología\",\"Obstetricia\"]")
+				if (!templateData1) {
+					for (const key in templates) {
+						// Si la clave es un array stringificado, intentar parsearlo
+						if (key.startsWith('[') && key.endsWith(']')) {
+							try {
+								const parsedArray = JSON.parse(key);
+								if (Array.isArray(parsedArray) && parsedArray.includes(specialty1)) {
+									templateData1 = templates[key];
+									console.log(`[Report Template API] Encontrada plantilla para "${specialty1}" en clave array: "${key}"`);
+									break;
+								}
+							} catch {
+								// Continuar buscando
+							}
+						}
+					}
+				}
+
+				// Si es obstetricia, SIEMPRE devolver estructura con múltiples variantes
+				if (isObstetricia) {
+					if (templateData1 && typeof templateData1 === 'object') {
+						// Verificar si tiene estructura de múltiples plantillas (trimestres)
+						if (templateData1.trimestre1 || templateData1.trimestre2_3 || templateData1.variants) {
+							// Es un objeto con múltiples variantes
+							const variants = templateData1.variants || {
+								trimestre1: templateData1.trimestre1,
+								trimestre2_3: templateData1.trimestre2_3,
+							};
+							
+							result.template1 = {
+								specialty: specialty1,
+								hasMultipleVariants: true,
+								variants: {
+									trimestre1: variants.trimestre1 ? {
+										template_url: variants.trimestre1.template_url || null,
+										template_name: variants.trimestre1.template_name || null,
+										template_text: variants.trimestre1.template_text || null,
+										font_family: variants.trimestre1.font_family || 'Arial',
+									} : null,
+									trimestre2_3: variants.trimestre2_3 ? {
+										template_url: variants.trimestre2_3.template_url || null,
+										template_name: variants.trimestre2_3.template_name || null,
+										template_text: variants.trimestre2_3.template_text || null,
+										font_family: variants.trimestre2_3.font_family || 'Arial',
+									} : null,
+								},
+							};
+						} else {
+							// Es una plantilla simple (compatibilidad hacia atrás), pero convertir a estructura de variantes
+							result.template1 = {
+								specialty: specialty1,
+								hasMultipleVariants: true,
+								variants: {
+									trimestre1: null,
+									trimestre2_3: null,
+								},
+							};
+						}
+					} else {
+						// No hay plantillas guardadas aún, pero es obstetricia, devolver estructura de variantes vacía
+						result.template1 = {
+							specialty: specialty1,
+							hasMultipleVariants: true,
+							variants: {
+								trimestre1: null,
+								trimestre2_3: null,
+							},
+						};
+					}
+				} else {
+					// No es obstetricia, manejo normal
+					// Si no se encuentra con el nombre exacto, buscar la primera clave disponible
+					if (!templateData1 && Object.keys(templates).length > 0) {
+						const firstKey = Object.keys(templates)[0];
+						templateData1 = templates[firstKey];
+					}
+					
+					if (templateData1 && typeof templateData1 === 'object' && !Array.isArray(templateData1)) {
+						// Plantilla simple
+						result.template1 = {
+							specialty: specialty1,
+							hasMultipleVariants: false,
+							template_url: templateData1.template_url || null,
+							template_name: templateData1.template_name || null,
+							template_text: templateData1.template_text || null,
+							font_family: templateData1.font_family || 'Arial',
+						};
+					}
 				}
 			}
 
-			// Buscar plantilla para specialty2
-			if (specialty2 && templates[specialty2]) {
-				result.template2 = {
-					specialty: specialty2,
-					template_url: templates[specialty2].template_url || null,
-					template_name: templates[specialty2].template_name || null,
-					template_text: templates[specialty2].template_text || null,
-					font_family: templates[specialty2].font_family || 'Arial',
-				};
+			// Buscar plantilla para specialty2 (similar lógica)
+			if (specialty2) {
+				const isObstetricia = normalizeObstetricia(specialty2);
+				let templateData2 = templates[specialty2];
+				
+				// Si no se encuentra con el nombre exacto, buscar en claves que puedan contener esta especialidad
+				if (!templateData2) {
+					for (const key in templates) {
+						// Si la clave es un array stringificado, intentar parsearlo
+						if (key.startsWith('[') && key.endsWith(']')) {
+							try {
+								const parsedArray = JSON.parse(key);
+								if (Array.isArray(parsedArray) && parsedArray.includes(specialty2)) {
+									templateData2 = templates[key];
+									console.log(`[Report Template API] Encontrada plantilla para "${specialty2}" en clave array: "${key}"`);
+									break;
+								}
+							} catch {
+								// Continuar buscando
+							}
+						}
+					}
+				}
+
+				// Si es obstetricia, SIEMPRE devolver estructura con múltiples variantes
+				if (isObstetricia) {
+					if (templateData2 && typeof templateData2 === 'object') {
+						if (templateData2.trimestre1 || templateData2.trimestre2_3 || templateData2.variants) {
+							const variants = templateData2.variants || {
+								trimestre1: templateData2.trimestre1,
+								trimestre2_3: templateData2.trimestre2_3,
+							};
+							
+							result.template2 = {
+								specialty: specialty2,
+								hasMultipleVariants: true,
+								variants: {
+									trimestre1: variants.trimestre1 ? {
+										template_url: variants.trimestre1.template_url || null,
+										template_name: variants.trimestre1.template_name || null,
+										template_text: variants.trimestre1.template_text || null,
+										font_family: variants.trimestre1.font_family || 'Arial',
+									} : null,
+									trimestre2_3: variants.trimestre2_3 ? {
+										template_url: variants.trimestre2_3.template_url || null,
+										template_name: variants.trimestre2_3.template_name || null,
+										template_text: variants.trimestre2_3.template_text || null,
+										font_family: variants.trimestre2_3.font_family || 'Arial',
+									} : null,
+								},
+							};
+						} else {
+							// Es una plantilla simple (compatibilidad hacia atrás), pero convertir a estructura de variantes
+							result.template2 = {
+								specialty: specialty2,
+								hasMultipleVariants: true,
+								variants: {
+									trimestre1: null,
+									trimestre2_3: null,
+								},
+							};
+						}
+					} else {
+						// No hay plantillas guardadas aún, pero es obstetricia, devolver estructura de variantes vacía
+						result.template2 = {
+							specialty: specialty2,
+							hasMultipleVariants: true,
+							variants: {
+								trimestre1: null,
+								trimestre2_3: null,
+							},
+						};
+					}
+				} else if (templateData2 && typeof templateData2 === 'object' && !Array.isArray(templateData2)) {
+					result.template2 = {
+						specialty: specialty2,
+						hasMultipleVariants: false,
+						template_url: templateData2.template_url || null,
+						template_name: templateData2.template_name || null,
+						template_text: templateData2.template_text || null,
+						font_family: templateData2.font_family || 'Arial',
+					};
+				}
 			}
 
 			// Asegurar que siempre se retornen specialty1 y specialty2 incluso si no hay plantillas
@@ -186,6 +345,7 @@ export async function POST(request: NextRequest) {
 		const formData = await request.formData();
 		const templateFile = formData.get('template') as File | null;
 		const specialty = formData.get('specialty') as string | null; // Nueva: indica para qué especialidad es la plantilla
+		const variant = formData.get('variant') as string | null; // Nueva: indica la variante (trimestre1, trimestre2_3) para obstetricia
 
 		if (!templateFile) {
 			return NextResponse.json({ error: 'No se proporcionó archivo' }, { status: 400 });
@@ -208,20 +368,71 @@ export async function POST(request: NextRequest) {
 			}, { status: 400 });
 		}
 
+		// Helper para normalizar el nombre de obstetricia
+		const normalizeObstetricia = (specialty: string | null): boolean => {
+			if (!specialty) return false;
+			const normalized = specialty.toLowerCase().trim();
+			return normalized === 'obstetricia' || normalized === 'obstétricia' || normalized === 'obstetrics';
+		};
+
 		// Obtener especialidades del doctor
 		const { specialty1, specialty2 } = await getDoctorSpecialties(doctorId, supabase);
 		
-		// Si se especifica specialty, validar que sea una de las especialidades del doctor
+		// Obtener todas las especialidades del doctor para validación
+		const { data: medicProfileForSpecialties } = await supabase
+			.from('medic_profile')
+			.select('specialty, private_specialty')
+			.eq('doctor_id', doctorId)
+			.maybeSingle();
+		
+		const allDoctorSpecialties = Array.from(new Set([
+			...parseSpecialtyField(medicProfileForSpecialties?.private_specialty),
+			...parseSpecialtyField(medicProfileForSpecialties?.specialty)
+		]));
+		
+		// Si se especifica specialty, validar y normalizar
 		let targetSpecialty = specialty1;
 		if (specialty) {
-			if (specialty !== specialty1 && specialty !== specialty2) {
-				return NextResponse.json({ error: 'La especialidad especificada no corresponde a las especialidades del doctor' }, { status: 400 });
+			// Normalizar: si viene como array stringificado, parsearlo
+			let normalizedSpecialty = specialty;
+			if (specialty.startsWith('[') && specialty.endsWith(']')) {
+				try {
+					const parsed = JSON.parse(specialty);
+					if (Array.isArray(parsed) && parsed.length > 0) {
+						normalizedSpecialty = parsed[0]; // Usar la primera especialidad del array
+					}
+				} catch {
+					// Si no se puede parsear, usar el valor original
+				}
 			}
-			targetSpecialty = specialty;
+			
+			// Validar que la especialidad normalizada sea una de las especialidades del doctor
+			if (!allDoctorSpecialties.includes(normalizedSpecialty)) {
+				return NextResponse.json({ 
+					error: `La especialidad especificada "${normalizedSpecialty}" no corresponde a las especialidades del doctor: ${allDoctorSpecialties.join(', ')}` 
+				}, { status: 400 });
+			}
+			targetSpecialty = normalizedSpecialty;
 		}
 
 		if (!targetSpecialty) {
 			return NextResponse.json({ error: 'No se pudo determinar la especialidad' }, { status: 400 });
+		}
+		
+		// Log para debugging
+		console.log('[Report Template API] Especialidad objetivo:', targetSpecialty);
+		console.log('[Report Template API] Todas las especialidades del doctor:', allDoctorSpecialties);
+
+		// Validar variant si es obstetricia
+		const isObstetricia = normalizeObstetricia(targetSpecialty);
+		if (isObstetricia && variant) {
+			const validVariants = ['trimestre1', 'trimestre2_3'];
+			if (!validVariants.includes(variant)) {
+				return NextResponse.json({ error: `Variante inválida. Debe ser una de: ${validVariants.join(', ')}` }, { status: 400 });
+			}
+		} else if (isObstetricia && !variant) {
+			// Si es obstetricia pero no se especifica variant, usar trimestre1 por defecto
+			// o permitir guardar como plantilla simple (compatibilidad)
 		}
 
 		// Crear cliente admin para subir archivo (bypass RLS)
@@ -258,7 +469,11 @@ export async function POST(request: NextRequest) {
 			sanitizedFileName = sanitizedFileName.replace(/\.[^.]+$/, '') + fileExtension;
 		}
 		
-		const fileNameUnique = `${doctorId}/${targetSpecialty}/${Date.now()}-${sanitizedFileName}`;
+		// Si es obstetricia y tiene variant, incluir en la ruta
+		const specialtyPath = isObstetricia && variant 
+			? `${targetSpecialty}/${variant}` 
+			: targetSpecialty;
+		const fileNameUnique = `${doctorId}/${specialtyPath}/${Date.now()}-${sanitizedFileName}`;
 		
 		console.log('[Report Template API] Nombre original:', templateFile.name);
 		console.log('[Report Template API] Especialidad:', targetSpecialty);
@@ -364,25 +579,62 @@ export async function POST(request: NextRequest) {
 			.maybeSingle();
 
 		// Actualizar o crear plantillas por especialidad
-		let templatesBySpecialty = existingProfile?.report_templates_by_specialty || {};
-		if (typeof templatesBySpecialty === 'string') {
-			try {
-				templatesBySpecialty = JSON.parse(templatesBySpecialty);
-			} catch {
-				templatesBySpecialty = {};
+		// IMPORTANTE: Preservar todas las especialidades existentes
+		let templatesBySpecialty: Record<string, any> = {};
+		if (existingProfile?.report_templates_by_specialty) {
+			if (typeof existingProfile.report_templates_by_specialty === 'string') {
+				try {
+					templatesBySpecialty = JSON.parse(existingProfile.report_templates_by_specialty);
+				} catch {
+					templatesBySpecialty = {};
+				}
+			} else if (typeof existingProfile.report_templates_by_specialty === 'object' && existingProfile.report_templates_by_specialty !== null) {
+				// Asegurar que es un objeto y hacer una copia profunda para no mutar el original
+				templatesBySpecialty = JSON.parse(JSON.stringify(existingProfile.report_templates_by_specialty));
 			}
 		}
+		
+		// Log para debugging (puede removerse en producción)
+		console.log('[Report Template API] Templates existentes antes de actualizar:', JSON.stringify(templatesBySpecialty, null, 2));
 
-		// Actualizar plantilla para la especialidad específica
-		templatesBySpecialty[targetSpecialty] = {
-			template_url: templateUrl,
-			template_name: templateFile.name,
-			font_family: templatesBySpecialty[targetSpecialty]?.font_family || 'Arial',
-			// Preservar template_text si existe
-			template_text: templatesBySpecialty[targetSpecialty]?.template_text || null,
-		};
+		// Si es obstetricia con variant, crear estructura de múltiples variantes
+		if (isObstetricia && variant) {
+			const existingData = templatesBySpecialty[targetSpecialty] || {};
+			const existingVariants = existingData.variants || {
+				trimestre1: existingData.trimestre1 || null,
+				trimestre2_3: existingData.trimestre2_3 || null,
+			};
+
+			// Actualizar la variante específica
+			existingVariants[variant] = {
+				template_url: templateUrl,
+				template_name: templateFile.name,
+				font_family: existingVariants[variant]?.font_family || 'Arial',
+				// Preservar template_text si existe
+				template_text: existingVariants[variant]?.template_text || null,
+			};
+
+			// Guardar estructura de múltiples variantes
+			templatesBySpecialty[targetSpecialty] = {
+				variants: existingVariants,
+			};
+		} else {
+			// Plantilla simple (compatibilidad hacia atrás o especialidad no obstetricia)
+			templatesBySpecialty[targetSpecialty] = {
+				template_url: templateUrl,
+				template_name: templateFile.name,
+				font_family: templatesBySpecialty[targetSpecialty]?.font_family || 'Arial',
+				// Preservar template_text si existe
+				template_text: templatesBySpecialty[targetSpecialty]?.template_text || null,
+			};
+		}
+
+		// Log para debugging (puede removerse en producción)
+		console.log('[Report Template API] Templates después de actualizar:', JSON.stringify(templatesBySpecialty, null, 2));
+		console.log('[Report Template API] Especialidades en el objeto:', Object.keys(templatesBySpecialty));
 
 		// Actualizar perfil
+		// IMPORTANTE: Usar JSON.stringify para asegurar que Supabase reciba el JSON correctamente
 		const { error: updateError } = await supabase
 			.from('medic_profile')
 			.update({
@@ -425,7 +677,7 @@ export async function PUT(request: NextRequest) {
 		const supabase = await createSupabaseServerClient();
 
 		const body = await request.json();
-		const { template_text, font_family, specialty } = body; // Nueva: specialty para indicar para qué especialidad
+		const { template_text, font_family, specialty, variant } = body; // Nueva: specialty y variant para indicar para qué especialidad y variante
 
 		if (template_text !== undefined && typeof template_text !== 'string') {
 			return NextResponse.json({ error: 'template_text debe ser una cadena de texto' }, { status: 400 });
@@ -441,20 +693,64 @@ export async function PUT(request: NextRequest) {
 			}
 		}
 
+		// Helper para normalizar el nombre de obstetricia
+		const normalizeObstetricia = (specialty: string | null): boolean => {
+			if (!specialty) return false;
+			const normalized = specialty.toLowerCase().trim();
+			return normalized === 'obstetricia' || normalized === 'obstétricia' || normalized === 'obstetrics';
+		};
+
 		// Obtener especialidades
 		const { specialty1, specialty2 } = await getDoctorSpecialties(doctorId, supabase);
 		
-		// Si se especifica specialty, validar
+		// Obtener todas las especialidades del doctor para validación
+		const { data: medicProfileForSpecialties } = await supabase
+			.from('medic_profile')
+			.select('specialty, private_specialty')
+			.eq('doctor_id', doctorId)
+			.maybeSingle();
+		
+		const allDoctorSpecialties = Array.from(new Set([
+			...parseSpecialtyField(medicProfileForSpecialties?.private_specialty),
+			...parseSpecialtyField(medicProfileForSpecialties?.specialty)
+		]));
+		
+		// Si se especifica specialty, validar y normalizar
 		let targetSpecialty = specialty1;
 		if (specialty) {
-			if (specialty !== specialty1 && specialty !== specialty2) {
-				return NextResponse.json({ error: 'La especialidad especificada no corresponde a las especialidades del doctor' }, { status: 400 });
+			// Normalizar: si viene como array stringificado, parsearlo
+			let normalizedSpecialty = specialty;
+			if (specialty.startsWith('[') && specialty.endsWith(']')) {
+				try {
+					const parsed = JSON.parse(specialty);
+					if (Array.isArray(parsed) && parsed.length > 0) {
+						normalizedSpecialty = parsed[0]; // Usar la primera especialidad del array
+					}
+				} catch {
+					// Si no se puede parsear, usar el valor original
+				}
 			}
-			targetSpecialty = specialty;
+			
+			// Validar que la especialidad normalizada sea una de las especialidades del doctor
+			if (!allDoctorSpecialties.includes(normalizedSpecialty)) {
+				return NextResponse.json({ 
+					error: `La especialidad especificada "${normalizedSpecialty}" no corresponde a las especialidades del doctor: ${allDoctorSpecialties.join(', ')}` 
+				}, { status: 400 });
+			}
+			targetSpecialty = normalizedSpecialty;
 		}
 
 		if (!targetSpecialty) {
 			return NextResponse.json({ error: 'No se pudo determinar la especialidad' }, { status: 400 });
+		}
+
+		// Validar variant si es obstetricia
+		const isObstetricia = normalizeObstetricia(targetSpecialty);
+		if (isObstetricia && variant) {
+			const validVariants = ['trimestre1', 'trimestre2_3'];
+			if (!validVariants.includes(variant)) {
+				return NextResponse.json({ error: `Variante inválida. Debe ser una de: ${validVariants.join(', ')}` }, { status: 400 });
+			}
 		}
 
 		// Obtener perfil actual
@@ -465,28 +761,63 @@ export async function PUT(request: NextRequest) {
 			.maybeSingle();
 
 		// Inicializar templatesBySpecialty
-		let templatesBySpecialty = existingProfile?.report_templates_by_specialty || {};
-		if (typeof templatesBySpecialty === 'string') {
-			try {
-				templatesBySpecialty = JSON.parse(templatesBySpecialty);
-			} catch {
-				templatesBySpecialty = {};
+		// IMPORTANTE: Preservar todas las especialidades existentes
+		let templatesBySpecialty: Record<string, any> = {};
+		if (existingProfile?.report_templates_by_specialty) {
+			if (typeof existingProfile.report_templates_by_specialty === 'string') {
+				try {
+					templatesBySpecialty = JSON.parse(existingProfile.report_templates_by_specialty);
+				} catch {
+					templatesBySpecialty = {};
+				}
+			} else if (typeof existingProfile.report_templates_by_specialty === 'object' && existingProfile.report_templates_by_specialty !== null) {
+				// Asegurar que es un objeto y hacer una copia profunda para no mutar el original
+				templatesBySpecialty = JSON.parse(JSON.stringify(existingProfile.report_templates_by_specialty));
 			}
 		}
 
-		// Inicializar plantilla para la especialidad si no existe
-		if (!templatesBySpecialty[targetSpecialty]) {
-			templatesBySpecialty[targetSpecialty] = {
-				font_family: 'Arial',
+		// Si es obstetricia con variant, usar estructura de múltiples variantes
+		if (isObstetricia && variant) {
+			const existingData = templatesBySpecialty[targetSpecialty] || {};
+			const existingVariants = existingData.variants || {
+				trimestre1: existingData.trimestre1 || null,
+				trimestre2_3: existingData.trimestre2_3 || null,
 			};
-		}
 
-		// Actualizar campos
-		if (template_text !== undefined) {
-			templatesBySpecialty[targetSpecialty].template_text = template_text;
-		}
-		if (font_family !== undefined) {
-			templatesBySpecialty[targetSpecialty].font_family = font_family;
+			// Inicializar variante si no existe
+			if (!existingVariants[variant]) {
+				existingVariants[variant] = {
+					font_family: 'Arial',
+				};
+			}
+
+			// Actualizar campos de la variante específica
+			if (template_text !== undefined) {
+				existingVariants[variant].template_text = template_text;
+			}
+			if (font_family !== undefined) {
+				existingVariants[variant].font_family = font_family;
+			}
+
+			// Guardar estructura de múltiples variantes
+			templatesBySpecialty[targetSpecialty] = {
+				variants: existingVariants,
+			};
+		} else {
+			// Plantilla simple (compatibilidad hacia atrás o especialidad no obstetricia)
+			if (!templatesBySpecialty[targetSpecialty]) {
+				templatesBySpecialty[targetSpecialty] = {
+					font_family: 'Arial',
+				};
+			}
+
+			// Actualizar campos
+			if (template_text !== undefined) {
+				templatesBySpecialty[targetSpecialty].template_text = template_text;
+			}
+			if (font_family !== undefined) {
+				templatesBySpecialty[targetSpecialty].font_family = font_family;
+			}
 		}
 
 		// Actualizar en BD
@@ -528,20 +859,31 @@ export async function DELETE(request: NextRequest) {
 		const cookieStore = await cookies();
 		const supabase = await createSupabaseServerClient();
 
-		// Obtener specialty del query param o body
+		// Helper para normalizar el nombre de obstetricia
+		const normalizeObstetricia = (specialty: string | null): boolean => {
+			if (!specialty) return false;
+			const normalized = specialty.toLowerCase().trim();
+			return normalized === 'obstetricia' || normalized === 'obstétricia' || normalized === 'obstetrics';
+		};
+
+		// Obtener specialty y variant del query param o body
 		const url = new URL(request.url);
 		const specialty = url.searchParams.get('specialty');
+		const variant = url.searchParams.get('variant');
 		
 		// Si no viene en query, intentar del body
 		let bodySpecialty: string | null = null;
+		let bodyVariant: string | null = null;
 		try {
 			const body = await request.json().catch(() => ({}));
 			bodySpecialty = body.specialty || null;
+			bodyVariant = body.variant || null;
 		} catch {
 			// Si no hay body, continuar
 		}
 
 		const targetSpecialty = specialty || bodySpecialty;
+		const targetVariant = variant || bodyVariant;
 
 		// Obtener información de las plantillas actuales
 		const { data: medicProfile, error: profileError } = await supabase
@@ -566,8 +908,65 @@ export async function DELETE(request: NextRequest) {
 				}
 			}
 
-			if (targetSpecialty && templatesBySpecialty[targetSpecialty]) {
-				// Eliminar archivo de Storage si existe
+			const isObstetricia = normalizeObstetricia(targetSpecialty);
+
+			// Si es obstetricia con variant, eliminar solo la variante específica
+			if (isObstetricia && targetVariant && targetSpecialty && templatesBySpecialty[targetSpecialty]) {
+				const existingData = templatesBySpecialty[targetSpecialty];
+				const existingVariants = existingData.variants || {
+					trimestre1: existingData.trimestre1 || null,
+					trimestre2_3: existingData.trimestre2_3 || null,
+				};
+
+				const variantData = existingVariants[targetVariant];
+				if (variantData && variantData.template_url) {
+					try {
+						const SUPABASE_URL = process.env.SUPABASE_URL ?? process.env.NEXT_PUBLIC_SUPABASE_URL ?? '';
+						const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY ?? '';
+
+						if (SUPABASE_URL && SUPABASE_SERVICE_ROLE_KEY) {
+							const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
+								auth: { persistSession: false },
+							});
+
+							const bucket = 'report-templates';
+							let filePath = '';
+
+							if (variantData.template_url.includes(bucket)) {
+								const parts = variantData.template_url.split(`${bucket}/`);
+								if (parts.length > 1) {
+									filePath = parts[1].split('?')[0];
+								}
+							} else {
+								filePath = variantData.template_url.replace(/^\/+/, '');
+							}
+
+							if (filePath) {
+								const { error: deleteError } = await supabaseAdmin.storage.from(bucket).remove([filePath]);
+								if (deleteError) {
+									console.warn('[Report Template API] Error eliminando archivo de Storage:', deleteError);
+								}
+							}
+						}
+					} catch (storageError) {
+						console.warn('[Report Template API] Error eliminando archivo de Storage:', storageError);
+					}
+				}
+
+				// Eliminar solo la variante específica
+				delete existingVariants[targetVariant];
+
+				// Actualizar estructura de variantes
+				if (Object.keys(existingVariants).length > 0) {
+					templatesBySpecialty[targetSpecialty] = {
+						variants: existingVariants,
+					};
+				} else {
+					// Si no quedan variantes, eliminar toda la especialidad
+					delete templatesBySpecialty[targetSpecialty];
+				}
+			} else if (targetSpecialty && templatesBySpecialty[targetSpecialty]) {
+				// Eliminar toda la plantilla de la especialidad (comportamiento original)
 				const templateData = templatesBySpecialty[targetSpecialty];
 				if (templateData.template_url) {
 					try {

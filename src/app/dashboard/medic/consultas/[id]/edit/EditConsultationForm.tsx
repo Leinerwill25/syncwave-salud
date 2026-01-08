@@ -46,32 +46,29 @@ function isNumericOrEmpty(s: string | number | null | undefined) {
 	return !Number.isNaN(Number(String(s).toString().replace(',', '.')));
 }
 
-export default function EditConsultationForm({ initial, patient, doctor, doctorSpecialty }: { initial: ConsultationShape; patient?: any; doctor?: any; doctorSpecialty?: string | null }) {
+export default function EditConsultationForm({ initial, patient, doctor, doctorSpecialties }: { initial: ConsultationShape; patient?: any; doctor?: any; doctorSpecialties?: string[] }) {
 	const router = useRouter();
 	const { saveOptimistically } = useOptimisticSave();
 	const { isLiteMode } = useLiteMode();
 
+	// Función auxiliar para normalizar texto (eliminar acentos, espacios extra, convertir a minúsculas)
+	const normalizeText = (text: string): string => {
+		return text
+			.toLowerCase()
+			.trim()
+			.replace(/\s+/g, ' ') // Reemplazar múltiples espacios con uno solo
+			.normalize('NFD') // Descomponer caracteres acentuados
+			.replace(/[\u0300-\u036f]/g, ''); // Eliminar diacríticos
+	};
+
 	// Función para mapear el nombre de la especialidad al código interno
 	// Las especialidades vienen en español desde la base de datos (ej: "Ginecología", "Medicina General")
-	const mapSpecialtyNameToCode = (specialtyName: string | null | undefined): string | null => {
-		if (!specialtyName) {
-			console.log('[EditConsultationForm] No hay especialidad del doctor');
+	const mapSpecialtyNameToCode = (specialtyName: string): string | null => {
+		if (!specialtyName || typeof specialtyName !== 'string') {
 			return null;
 		}
 
-		// Función auxiliar para normalizar texto (eliminar acentos, espacios extra, convertir a minúsculas)
-		const normalizeText = (text: string): string => {
-			return text
-				.toLowerCase()
-				.trim()
-				.replace(/\s+/g, ' ') // Reemplazar múltiples espacios con uno solo
-				.normalize('NFD') // Descomponer caracteres acentuados
-				.replace(/[\u0300-\u036f]/g, ''); // Eliminar diacríticos
-		};
-
 		const normalized = normalizeText(specialtyName);
-		console.log('[EditConsultationForm] Especialidad original:', specialtyName);
-		console.log('[EditConsultationForm] Especialidad normalizada:', normalized);
 
 		// Mapeo de nombres comunes de especialidades en español a códigos internos
 		// Las claves están normalizadas (sin tildes, minúsculas) para comparación flexible
@@ -137,7 +134,6 @@ export default function EditConsultationForm({ initial, patient, doctor, doctorS
 		// Buscar coincidencia exacta primero
 		const exactMatch = normalizedMap[normalized];
 		if (exactMatch !== undefined) {
-			console.log('[EditConsultationForm] Coincidencia exacta encontrada:', normalized, '->', exactMatch);
 			return exactMatch; // Puede ser string o null
 		}
 
@@ -154,35 +150,41 @@ export default function EditConsultationForm({ initial, patient, doctor, doctorS
 			// Ordenar por longitud descendente para priorizar coincidencias más específicas
 			matches.sort((a, b) => b.length - a.length);
 			const bestMatch = matches[0];
-			console.log('[EditConsultationForm] Coincidencia parcial encontrada:', bestMatch.key, '->', bestMatch.value);
 			return bestMatch.value;
 		}
 
-		// Si no se encuentra coincidencia, retornar null (se mostrarán todas las especialidades)
-		console.warn('[EditConsultationForm] No se encontró coincidencia para:', normalized);
-		console.log('[EditConsultationForm] Claves disponibles en el mapa normalizado:', Object.keys(normalizedMap));
+		// Si no se encuentra coincidencia, retornar null
 		return null;
 	};
 
-	// Obtener el código de especialidad del doctor
-	const doctorSpecialtyCode = mapSpecialtyNameToCode(doctorSpecialty);
-
-	// Log para debugging
-	console.log('[EditConsultationForm] Especialidad del doctor:', doctorSpecialty);
-	console.log('[EditConsultationForm] Código de especialidad mapeado:', doctorSpecialtyCode);
+	// Mapear todas las especialidades guardadas a sus códigos internos
+	const allowedSpecialtyCodes = useMemo(() => {
+		if (!doctorSpecialties || doctorSpecialties.length === 0) {
+			// Si no hay especialidades guardadas, mostrar todas
+			return null;
+		}
+		
+		const codes: (string | null)[] = doctorSpecialties
+			.map((specialty) => mapSpecialtyNameToCode(specialty))
+			.filter((code): code is string => code !== null);
+		
+		return codes.length > 0 ? codes : null;
+	}, [doctorSpecialties]);
 
 	// Función para verificar si una especialidad debe mostrarse
 	const shouldShowSpecialty = (specialtyCode: string): boolean => {
-		// Si no hay especialidad del doctor, mostrar todas
-		if (!doctorSpecialtyCode) {
-			console.log(`[EditConsultationForm] shouldShowSpecialty(${specialtyCode}): true (sin especialidad del doctor)`);
+		// Si no hay especialidades guardadas, mostrar todas
+		if (!allowedSpecialtyCodes) {
 			return true;
 		}
-		// Si hay especialidad del doctor, solo mostrar esa
-		const shouldShow = specialtyCode === doctorSpecialtyCode;
-		console.log(`[EditConsultationForm] shouldShowSpecialty(${specialtyCode}): ${shouldShow} (doctorSpecialtyCode: ${doctorSpecialtyCode})`);
-		return shouldShow;
+		// Si hay especialidades guardadas, solo mostrar las que están en la lista
+		return allowedSpecialtyCodes.includes(specialtyCode);
 	};
+
+	// Verificar si el doctor tiene Obstetricia guardada
+	const hasObstetrics = useMemo(() => {
+		return allowedSpecialtyCodes?.includes('obstetrics') || false;
+	}, [allowedSpecialtyCodes]);
 
 	// Core
 	const [chiefComplaint, setChiefComplaint] = useState(initial.chief_complaint ?? '');
@@ -216,6 +218,7 @@ export default function EditConsultationForm({ initial, patient, doctor, doctorS
 	const [reportSuccess, setReportSuccess] = useState<string | null>(null);
 	const [reportUrl, setReportUrl] = useState<string | null>((initial as any).report_url || null);
 	const [fontFamily, setFontFamily] = useState<string>('Arial');
+	const [selectedReportType, setSelectedReportType] = useState<'gynecology' | 'first_trimester' | 'second_third_trimester'>('gynecology');
 
 	// Fuentes profesionales disponibles (no similares a Times New Roman)
 	const availableFonts = [
@@ -233,19 +236,22 @@ export default function EditConsultationForm({ initial, patient, doctor, doctorS
 	// init grouped vitals from initial.vitals
 	const initVitals = (initial.vitals ?? {}) as Record<string, any>;
 
-	// Inicializar expandedSpecialties con la especialidad del doctor
-	// Solo expandir automáticamente la especialidad del doctor y 'general'
-	// Las demás especialidades solo se validarán si el usuario las expande manualmente
+	// Inicializar expandedSpecialties con las especialidades guardadas del doctor
+	// Expandir automáticamente todas las especialidades guardadas del doctor y 'general'
 	const initialExpandedSpecialties = useMemo(() => {
 		const specialties = new Set<string>(['general']);
 
-		// Solo agregar la especialidad del doctor si existe
-		if (doctorSpecialtyCode) {
-			specialties.add(doctorSpecialtyCode);
+		// Agregar todas las especialidades guardadas del doctor
+		if (allowedSpecialtyCodes && allowedSpecialtyCodes.length > 0) {
+			allowedSpecialtyCodes.forEach((code) => {
+				if (code) {
+					specialties.add(code);
+				}
+			});
 		}
 
 		return specialties;
-	}, [doctorSpecialtyCode]);
+	}, [allowedSpecialtyCodes]);
 
 	const [expandedSpecialties, setExpandedSpecialties] = useState<Set<string>>(initialExpandedSpecialties);
 
@@ -383,10 +389,110 @@ export default function EditConsultationForm({ initial, patient, doctor, doctorS
 	/* -------------------------
      Obstetrics
      ------------------------- */
+	// Selector de tipo de informe
+	const [obstetricReportType, setObstetricReportType] = useState<string>(initObst.report_type ?? 'gynecology');
+	
+	// Campos comunes antiguos (para compatibilidad)
 	const [fundalHeight, setFundalHeight] = useState<string>(initObst.fundal_height_cm ?? '');
 	const [fetalHr, setFetalHr] = useState<string>(initObst.fetal_heart_rate ?? '');
 	const [gravida, setGravida] = useState<string>(initObst.gravida ?? '');
 	const [para, setPara] = useState<string>(initObst.para ?? '');
+
+	// === PRIMER TRIMESTRE ===
+	// Datos de la Paciente
+	const [edadGestacional, setEdadGestacional] = useState<string>(initObst.first_trimester?.edad_gestacional ?? '');
+	const [fur, setFur] = useState<string>(initObst.first_trimester?.fur ?? '');
+	const [fpp, setFpp] = useState<string>(initObst.first_trimester?.fpp ?? '');
+	const [gestas, setGestas] = useState<string>(initObst.first_trimester?.gestas ?? '');
+	const [paras, setParas] = useState<string>(initObst.first_trimester?.paras ?? '');
+	const [cesareas, setCesareas] = useState<string>(initObst.first_trimester?.cesareas ?? '');
+	const [abortors, setAbortors] = useState<string>(initObst.first_trimester?.abortors ?? '');
+	const [otros, setOtros] = useState<string>(initObst.first_trimester?.otros ?? '');
+	const [motivoConsulta, setMotivoConsulta] = useState<string>(initObst.first_trimester?.motivo_consulta ?? 'Captación de embarazo');
+	const [referencia, setReferencia] = useState<string>(initObst.first_trimester?.referencia ?? '');
+
+	// Datos Obstétricos del 1er Trimestre
+	const [posicion, setPosicion] = useState<string>(initObst.first_trimester?.posicion ?? '');
+	const [superficie, setSuperficie] = useState<string>(initObst.first_trimester?.superficie ?? 'Regular');
+	const [miometrio, setMiometrio] = useState<string>(initObst.first_trimester?.miometrio ?? 'HOMOGENEO');
+	const [endometrio, setEndometrio] = useState<string>(initObst.first_trimester?.endometrio ?? 'Ocupado Por Saco Gestacional.');
+	const [ovarioDerecho, setOvarioDerecho] = useState<string>(initObst.first_trimester?.ovario_derecho ?? 'Normal');
+	const [ovarioIzquierdo, setOvarioIzquierdo] = useState<string>(initObst.first_trimester?.ovario_izquierdo ?? 'Normal');
+	const [anexosEcopatron, setAnexosEcopatron] = useState<string>(initObst.first_trimester?.anexos_ecopatron ?? 'Normal');
+	const [fondoDeSaco, setFondoDeSaco] = useState<string>(initObst.first_trimester?.fondo_de_saco ?? 'Libre');
+	const [cuerpoLuteo, setCuerpoLuteo] = useState<string>(initObst.first_trimester?.cuerpo_luteo ?? '');
+
+	// Saco Gestacional
+	const [gestacion, setGestacion] = useState<string>(initObst.first_trimester?.gestacion ?? '');
+	const [localizacion, setLocalizacion] = useState<string>(initObst.first_trimester?.localizacion ?? '');
+	const [vesicula, setVesicula] = useState<string>(initObst.first_trimester?.vesicula ?? '');
+	const [cavidadExocelomica, setCavidadExocelomica] = useState<string>(initObst.first_trimester?.cavidad_exocelomica ?? '');
+
+	// Embrión
+	const [embrionVisto, setEmbrionVisto] = useState<string>(initObst.first_trimester?.embrion_visto ?? '');
+	const [ecoanatomia, setEcoanatomia] = useState<string>(initObst.first_trimester?.ecoanatomia ?? '');
+	const [lcr, setLcr] = useState<string>(initObst.first_trimester?.lcr ?? '');
+	const [acordeA, setAcordeA] = useState<string>(initObst.first_trimester?.acorde_a ?? '');
+	const [actividadCardiaca, setActividadCardiaca] = useState<string>(initObst.first_trimester?.actividad_cardiaca ?? '');
+	const [movimientosEmbrionarios, setMovimientosEmbrionarios] = useState<string>(initObst.first_trimester?.movimientos_embrionarios ?? '');
+
+	// Conclusiones (con numeración automática)
+	const [conclusiones, setConclusiones] = useState<string>(initObst.first_trimester?.conclusiones ?? '');
+
+	// === SEGUNDO Y TERCER TRIMESTRE ===
+	const initSecond = initObst.second_third_trimester ?? {};
+	// Primera sección: Datos de la Paciente
+	const [edadGestacional_t2, setEdadGestacional_t2] = useState<string>(initSecond.edad_gestacional ?? '');
+	const [fur_t2, setFur_t2] = useState<string>(initSecond.fur ?? '');
+	const [fpp_t2, setFpp_t2] = useState<string>(initSecond.fpp ?? '');
+	const [gestas_t2, setGestas_t2] = useState<string>(initSecond.gestas ?? '');
+	const [paras_t2, setParas_t2] = useState<string>(initSecond.paras ?? '');
+	const [cesareas_t2, setCesareas_t2] = useState<string>(initSecond.cesareas ?? '');
+	const [abortos_t2, setAbortos_t2] = useState<string>(initSecond.abortos ?? '');
+	const [otros_t2, setOtros_t2] = useState<string>(initSecond.otros ?? '');
+	const [motivoConsulta_t2, setMotivoConsulta_t2] = useState<string>(initSecond.motivo_consulta ?? '');
+	const [referencia_t2, setReferencia_t2] = useState<string>(initSecond.referencia ?? '');
+	// Segunda sección: Datos Obstétricos
+	const [numFetos, setNumFetos] = useState<string>(initSecond.num_fetos ?? '01');
+	const [actividadCardiaca_t2, setActividadCardiaca_t2] = useState<string>(initSecond.actividad_cardiaca ?? '');
+	const [situacion_t2, setSituacion_t2] = useState<string>(initSecond.situacion ?? '');
+	const [presentacion_t2, setPresentacion_t2] = useState<string>(initSecond.presentacion ?? '');
+	const [dorso_t2, setDorso_t2] = useState<string>(initSecond.dorso ?? '');
+	// Tercera sección: Datos Biométricos
+	const [dbp, setDbp] = useState<string>(initSecond.dbp ?? '');
+	const [cc, setCc] = useState<string>(initSecond.cc ?? '');
+	const [ca, setCa] = useState<string>(initSecond.ca ?? '');
+	const [lf, setLf] = useState<string>(initSecond.lf ?? '');
+	const [pesoEstimadoFetal, setPesoEstimadoFetal] = useState<string>(initSecond.peso_estimado_fetal ?? '');
+	const [para_t2, setPara_t2] = useState<string>(initSecond.para ?? '');
+	// Cuarta sección: Datos Placenta Foliculares
+	const [placenta_t2, setPlacenta_t2] = useState<string>(initSecond.placenta ?? '');
+	const [ubi_t2, setUbi_t2] = useState<string>(initSecond.ubi ?? '');
+	const [insercion_t2, setInsercion_t2] = useState<string>(initSecond.insercion ?? '');
+	const [grado_t2, setGrado_t2] = useState<string>(initSecond.grado ?? 'I/III');
+	const [cordonUmbilical_t2, setCordonUmbilical_t2] = useState<string>(initSecond.cordon_umbilical ?? '');
+	const [liquAmniotico_t2, setLiquAmniotico_t2] = useState<string>(initSecond.liqu_amniotico ?? '');
+	const [p_t2, setP_t2] = useState<string>(initSecond.p ?? '');
+	const [ila_t2, setIla_t2] = useState<string>(initSecond.ila ?? '');
+	// Quinta sección: Datos Anatomofuncionales
+	const [craneo_t2, setCraneo_t2] = useState<string>(initSecond.craneo ?? '');
+	const [corazon_t2, setCorazon_t2] = useState<string>(initSecond.corazon ?? '');
+	const [fcf, setFcf] = useState<string>(initSecond.fcf ?? '');
+	const [pulmones_t2, setPulmones_t2] = useState<string>(initSecond.pulmones ?? '');
+	const [situsVisceral_t2, setSitusVisceral_t2] = useState<string>(initSecond.situs_visceral ?? '');
+	const [intestino_t2, setIntestino_t2] = useState<string>(initSecond.intestino ?? '');
+	const [vejiga_t2, setVejiga_t2] = useState<string>(initSecond.vejiga ?? '');
+	const [vejigaExtra_t2, setVejigaExtra_t2] = useState<string>(initSecond.vejiga_extra ?? '');
+	const [estomago_t2, setEstomago_t2] = useState<string>(initSecond.estomago ?? '');
+	const [estomagoExtra_t2, setEstomagoExtra_t2] = useState<string>(initSecond.estomago_extra ?? '');
+	const [rinones_t2, setRinones_t2] = useState<string>(initSecond.rinones ?? '');
+	const [rinonesExtra_t2, setRinonesExtra_t2] = useState<string>(initSecond.rinones_extra ?? '');
+	const [genitales_t2, setGenitales_t2] = useState<string>(initSecond.genitales ?? '');
+	const [miembrosSuperiores_t2, setMiembrosSuperiores_t2] = useState<string>(initSecond.miembros_superiores ?? '');
+	const [manos_t2, setManos_t2] = useState<string>(initSecond.manos ?? '');
+	const [miembrosInferiores_t2, setMiembrosInferiores_t2] = useState<string>(initSecond.miembros_inferiores ?? '');
+	const [pies_t2, setPies_t2] = useState<string>(initSecond.pies ?? '');
+	const [conclusiones_t2, setConclusiones_t2] = useState<string>(initSecond.conclusiones ?? '');
 
 	/* -------------------------
      Nutrition
@@ -534,29 +640,40 @@ export default function EditConsultationForm({ initial, patient, doctor, doctorS
 		}
 	}, [icd11Code, icd11Title]); // Solo ejecutar cuando cambie el CIE-11
 
-	// Cargar contenido generado automáticamente y fuente cuando se abre la pestaña de informe
+	// Cargar contenido generado automáticamente y fuente cuando se abre la pestaña de informe o cambia el tipo
 	useEffect(() => {
 		if (activeTab === 'report') {
-			// Cargar contenido generado automáticamente
-			if (!reportContent.trim()) {
-				const loadGeneratedContent = async () => {
-					try {
-						const res = await fetch(`/api/consultations/${initial.id}/generate-report-content`, {
-							credentials: 'include',
-						});
-						const data = await res.json();
-						if (res.ok && data.content) {
-							setReportContent(data.content);
+			const loadGeneratedContent = async () => {
+				try {
+					// Determinar el tipo de informe
+					const vitals = initial.vitals || {};
+					const obst = vitals.obstetrics || {};
+					const reportType = obst.report_type || selectedReportType;
+					
+					const res = await fetch(`/api/consultations/${initial.id}/generate-report-content?report_type=${reportType}`, {
+						credentials: 'include',
+					});
+					const data = await res.json();
+					if (res.ok && data.content) {
+						setReportContent(data.content);
+						if (data.font_family) {
+							setFontFamily(data.font_family);
 						}
-					} catch (err) {
-						// Silenciar errores, el usuario puede escribir manualmente
-						console.warn('No se pudo cargar contenido generado automáticamente:', err);
+						setReportError(null);
+					} else {
+						// Si hay error, mostrar mensaje pero no bloquear
+						if (data.error) {
+							setReportError(data.error);
+						}
 					}
-				};
-				loadGeneratedContent();
-			}
+				} catch (err) {
+					// Silenciar errores, el usuario puede escribir manualmente
+					console.warn('No se pudo cargar contenido generado automáticamente:', err);
+				}
+			};
+			loadGeneratedContent();
 		}
-	}, [activeTab, initial.id]);
+	}, [activeTab, initial.id, selectedReportType]);
 
 	/* -------------------------
      Build vitals object
@@ -579,14 +696,14 @@ export default function EditConsultationForm({ initial, patient, doctor, doctorS
 		const out: Record<string, any> = {};
 		if (Object.keys(g).length) out.general = g;
 
-		// Solo incluir especialidades si corresponden a la especialidad activa del doctor
-		// Si no hay especialidad del doctor, no incluir ninguna especialidad (solo general)
-		if (!doctorSpecialtyCode) {
+		// Solo incluir especialidades si corresponden a las especialidades permitidas del doctor
+		// Si no hay especialidades del doctor, no incluir ninguna especialidad (solo general)
+		if (!allowedSpecialtyCodes || allowedSpecialtyCodes.length === 0) {
 			return Object.keys(out).length ? out : null;
 		}
 
-		// Cardiology - solo si la especialidad activa es cardiology
-		if (doctorSpecialtyCode === 'cardiology') {
+		// Cardiology - solo si la especialidad está permitida
+		if (allowedSpecialtyCodes.includes('cardiology')) {
 			const cardio: Record<string, any> = {};
 			if (ekgRhythm) cardio.ekg_rhythm = ekgRhythm;
 			if (bnp) cardio.bnp = bnp;
@@ -595,8 +712,8 @@ export default function EditConsultationForm({ initial, patient, doctor, doctorS
 			if (Object.keys(cardio).length) out.cardiology = cardio;
 		}
 
-		// Pulmonology - solo si la especialidad activa es pulmonology
-		if (doctorSpecialtyCode === 'pulmonology') {
+		// Pulmonology - solo si la especialidad está permitida
+		if (allowedSpecialtyCodes.includes('pulmonology')) {
 			const pulmo: Record<string, any> = {};
 			if (fev1) pulmo.fev1 = fev1;
 			if (fvc) pulmo.fvc = fvc;
@@ -605,8 +722,8 @@ export default function EditConsultationForm({ initial, patient, doctor, doctorS
 			if (Object.keys(pulmo).length) out.pulmonology = pulmo;
 		}
 
-		// Neurology - solo si la especialidad activa es neurology
-		if (doctorSpecialtyCode === 'neurology') {
+		// Neurology - solo si la especialidad está permitida
+		if (allowedSpecialtyCodes.includes('neurology')) {
 			const neuro: Record<string, any> = {};
 			if (gcsTotal) neuro.gcs_total = gcsTotal;
 			if (pupillaryReactivity) neuro.pupillary_reactivity = pupillaryReactivity;
@@ -614,50 +731,154 @@ export default function EditConsultationForm({ initial, patient, doctor, doctorS
 			if (Object.keys(neuro).length) out.neurology = neuro;
 		}
 
-		// Obstetrics - solo si la especialidad activa es obstetrics
-		if (doctorSpecialtyCode === 'obstetrics') {
-			const obst: Record<string, any> = {};
+		// Obstetrics - solo si la especialidad está permitida
+		if (allowedSpecialtyCodes.includes('obstetrics')) {
+			const obst: Record<string, any> = {
+				report_type: obstetricReportType,
+			};
+
+			// Campos antiguos (para compatibilidad)
 			if (fundalHeight) obst.fundal_height_cm = fundalHeight;
 			if (fetalHr) obst.fetal_heart_rate = fetalHr;
 			if (gravida) obst.gravida = gravida;
 			if (para) obst.para = para;
-			if (Object.keys(obst).length) out.obstetrics = obst;
+
+			// Primer Trimestre - guardar siempre si el doctor tiene Obstetricia, o si está seleccionado
+			if (hasObstetrics || obstetricReportType === 'first_trimester') {
+				const firstTrim: Record<string, any> = {};
+				if (edadGestacional) firstTrim.edad_gestacional = edadGestacional;
+				if (fur) firstTrim.fur = fur;
+				if (fpp) firstTrim.fpp = fpp;
+				if (gestas) firstTrim.gestas = gestas;
+				if (paras) firstTrim.paras = paras;
+				if (cesareas) firstTrim.cesareas = cesareas;
+				if (abortors) firstTrim.abortors = abortors;
+				if (otros) firstTrim.otros = otros;
+				if (motivoConsulta) firstTrim.motivo_consulta = motivoConsulta;
+				if (referencia) firstTrim.referencia = referencia;
+				if (posicion) firstTrim.posicion = posicion;
+				if (superficie) firstTrim.superficie = superficie;
+				if (miometrio) firstTrim.miometrio = miometrio;
+				if (endometrio) firstTrim.endometrio = endometrio;
+				if (ovarioDerecho) firstTrim.ovario_derecho = ovarioDerecho;
+				if (ovarioIzquierdo) firstTrim.ovario_izquierdo = ovarioIzquierdo;
+				if (anexosEcopatron) firstTrim.anexos_ecopatron = anexosEcopatron;
+				if (fondoDeSaco) firstTrim.fondo_de_saco = fondoDeSaco;
+				if (cuerpoLuteo) firstTrim.cuerpo_luteo = cuerpoLuteo;
+				if (gestacion) firstTrim.gestacion = gestacion;
+				if (localizacion) firstTrim.localizacion = localizacion;
+				if (vesicula) firstTrim.vesicula = vesicula;
+				if (cavidadExocelomica) firstTrim.cavidad_exocelomica = cavidadExocelomica;
+				if (embrionVisto) firstTrim.embrion_visto = embrionVisto;
+				if (ecoanatomia) firstTrim.ecoanatomia = ecoanatomia;
+				if (lcr) firstTrim.lcr = lcr;
+				if (acordeA) firstTrim.acorde_a = acordeA;
+				if (actividadCardiaca) firstTrim.actividad_cardiaca = actividadCardiaca;
+				if (movimientosEmbrionarios) firstTrim.movimientos_embrionarios = movimientosEmbrionarios;
+				if (conclusiones) firstTrim.conclusiones = conclusiones;
+				if (Object.keys(firstTrim).length > 0) obst.first_trimester = firstTrim;
+			}
+
+			// Segundo y Tercer Trimestre - guardar siempre si el doctor tiene Obstetricia, o si está seleccionado
+			if (hasObstetrics || obstetricReportType === 'second_third_trimester') {
+				const secondTrim: Record<string, any> = {};
+				// Primera sección: Datos de la Paciente
+				if (edadGestacional_t2) secondTrim.edad_gestacional = edadGestacional_t2;
+				if (fur_t2) secondTrim.fur = fur_t2;
+				if (fpp_t2) secondTrim.fpp = fpp_t2;
+				if (gestas_t2) secondTrim.gestas = gestas_t2;
+				if (paras_t2) secondTrim.paras = paras_t2;
+				if (cesareas_t2) secondTrim.cesareas = cesareas_t2;
+				if (abortos_t2) secondTrim.abortos = abortos_t2;
+				if (otros_t2) secondTrim.otros = otros_t2;
+				if (motivoConsulta_t2) secondTrim.motivo_consulta = motivoConsulta_t2;
+				if (referencia_t2) secondTrim.referencia = referencia_t2;
+				// Segunda sección: Datos Obstétricos
+				if (numFetos) secondTrim.num_fetos = numFetos;
+				if (actividadCardiaca_t2) secondTrim.actividad_cardiaca = actividadCardiaca_t2;
+				if (situacion_t2) secondTrim.situacion = situacion_t2;
+				if (presentacion_t2) secondTrim.presentacion = presentacion_t2;
+				if (dorso_t2) secondTrim.dorso = dorso_t2;
+				// Tercera sección: Datos Biométricos
+				if (dbp) secondTrim.dbp = dbp;
+				if (cc) secondTrim.cc = cc;
+				if (ca) secondTrim.ca = ca;
+				if (lf) secondTrim.lf = lf;
+				if (pesoEstimadoFetal) secondTrim.peso_estimado_fetal = pesoEstimadoFetal;
+				if (para_t2) secondTrim.para = para_t2;
+				// Cuarta sección: Datos Placenta Foliculares
+				if (placenta_t2) secondTrim.placenta = placenta_t2;
+				if (ubi_t2) secondTrim.ubi = ubi_t2;
+				if (insercion_t2) secondTrim.insercion = insercion_t2;
+				if (grado_t2) secondTrim.grado = grado_t2;
+				if (cordonUmbilical_t2) secondTrim.cordon_umbilical = cordonUmbilical_t2;
+				if (liquAmniotico_t2) secondTrim.liqu_amniotico = liquAmniotico_t2;
+				if (p_t2) secondTrim.p = p_t2;
+				if (ila_t2) secondTrim.ila = ila_t2;
+				// Quinta sección: Datos Anatomofuncionales
+				if (craneo_t2) secondTrim.craneo = craneo_t2;
+				if (corazon_t2) secondTrim.corazon = corazon_t2;
+				if (fcf) secondTrim.fcf = fcf;
+				if (pulmones_t2) secondTrim.pulmones = pulmones_t2;
+				if (situsVisceral_t2) secondTrim.situs_visceral = situsVisceral_t2;
+				if (intestino_t2) secondTrim.intestino = intestino_t2;
+				if (vejiga_t2) secondTrim.vejiga = vejiga_t2;
+				if (vejigaExtra_t2) secondTrim.vejiga_extra = vejigaExtra_t2;
+				if (estomago_t2) secondTrim.estomago = estomago_t2;
+				if (estomagoExtra_t2) secondTrim.estomago_extra = estomagoExtra_t2;
+				if (rinones_t2) secondTrim.rinones = rinones_t2;
+				if (rinonesExtra_t2) secondTrim.rinones_extra = rinonesExtra_t2;
+				if (genitales_t2) secondTrim.genitales = genitales_t2;
+				if (miembrosSuperiores_t2) secondTrim.miembros_superiores = miembrosSuperiores_t2;
+				if (manos_t2) secondTrim.manos = manos_t2;
+				if (miembrosInferiores_t2) secondTrim.miembros_inferiores = miembrosInferiores_t2;
+				if (pies_t2) secondTrim.pies = pies_t2;
+				if (conclusiones_t2) secondTrim.conclusiones = conclusiones_t2;
+				if (Object.keys(secondTrim).length > 0) {
+					obst.second_third_trimester = secondTrim;
+				}
+			}
+
+			// Si tiene Obstetricia guardada, siempre incluir el objeto obstetrics
+			if (hasObstetrics || Object.keys(obst).length > 1 || obstetricReportType) {
+				out.obstetrics = obst;
+			}
 		}
 
-		// Nutrition - solo si la especialidad activa es nutrition
-		if (doctorSpecialtyCode === 'nutrition') {
+		// Nutrition - solo si la especialidad está permitida
+		if (allowedSpecialtyCodes.includes('nutrition')) {
 			const nutr: Record<string, any> = {};
 			if (waistCircumference) nutr.waist_cm = waistCircumference;
 			if (bmiOverride) nutr.bmi_override = bmiOverride;
 			if (Object.keys(nutr).length) out.nutrition = nutr;
 		}
 
-		// Dermatology - solo si la especialidad activa es dermatology
-		if (doctorSpecialtyCode === 'dermatology') {
+		// Dermatology - solo si la especialidad está permitida
+		if (allowedSpecialtyCodes.includes('dermatology')) {
 			const derma: Record<string, any> = {};
 			if (lesionDesc) derma.lesion_description = lesionDesc;
 			if (lesionSize) derma.lesion_size_cm = lesionSize;
 			if (Object.keys(derma).length) out.dermatology = derma;
 		}
 
-		// Psychiatry - solo si la especialidad activa es psychiatry
-		if (doctorSpecialtyCode === 'psychiatry') {
+		// Psychiatry - solo si la especialidad está permitida
+		if (allowedSpecialtyCodes.includes('psychiatry')) {
 			const psych: Record<string, any> = {};
 			if (moodScale) psych.mood_scale = moodScale;
 			if (phq9) psych.phq9 = phq9;
 			if (Object.keys(psych).length) out.psychiatry = psych;
 		}
 
-		// Orthopedics - solo si la especialidad activa es orthopedics
-		if (doctorSpecialtyCode === 'orthopedics') {
+		// Orthopedics - solo si la especialidad está permitida
+		if (allowedSpecialtyCodes.includes('orthopedics')) {
 			const ortho: Record<string, any> = {};
 			if (romNotes) ortho.range_of_motion = romNotes;
 			if (limbStrength) ortho.limb_strength = limbStrength;
 			if (Object.keys(ortho).length) out.orthopedics = ortho;
 		}
 
-		// ENT - solo si la especialidad activa es ent
-		if (doctorSpecialtyCode === 'ent') {
+		// ENT - solo si la especialidad está permitida
+		if (allowedSpecialtyCodes.includes('ent')) {
 			const ent: Record<string, any> = {};
 			if (hearingLeft) ent.hearing_left_db = hearingLeft;
 			if (hearingRight) ent.hearing_right_db = hearingRight;
@@ -665,8 +886,8 @@ export default function EditConsultationForm({ initial, patient, doctor, doctorS
 			if (Object.keys(ent).length) out.ent = ent;
 		}
 
-		// Gynecology - solo si la especialidad activa es gynecology
-		if (doctorSpecialtyCode === 'gynecology') {
+		// Gynecology - solo si la especialidad está permitida
+		if (allowedSpecialtyCodes.includes('gynecology')) {
 			const gyn: Record<string, any> = {};
 			// LMP es obligatorio si hay datos de ginecología, así que siempre lo incluimos
 			if (lmp) gyn.last_menstrual_period = lmp;
@@ -737,16 +958,16 @@ export default function EditConsultationForm({ initial, patient, doctor, doctorS
 			if (Object.keys(gyn).length > 0) out.gynecology = gyn;
 		}
 
-		// Endocrinology - solo si la especialidad activa es endocrinology
-		if (doctorSpecialtyCode === 'endocrinology') {
+		// Endocrinology - solo si la especialidad está permitida
+		if (allowedSpecialtyCodes.includes('endocrinology')) {
 			const endo: Record<string, any> = {};
 			if (tsh) endo.tsh = tsh;
 			if (hba1c) endo.hba1c = hba1c;
 			if (Object.keys(endo).length) out.endocrinology = endo;
 		}
 
-		// Ophthalmology - solo si la especialidad activa es ophthalmology
-		if (doctorSpecialtyCode === 'ophthalmology') {
+		// Ophthalmology - solo si la especialidad está permitida
+		if (allowedSpecialtyCodes.includes('ophthalmology')) {
 			const oph: Record<string, any> = {};
 			if (visualAcuity) oph.visual_acuity = visualAcuity;
 			if (iop) oph.iop = iop;
@@ -764,19 +985,19 @@ export default function EditConsultationForm({ initial, patient, doctor, doctorS
 		const vitals = buildVitalsObject() ?? {};
 
 		const requiredMap: Record<string, string[]> = {
-			cardiology: ['ekg_rhythm', 'bnp'],
-			pulmonology: ['fev1', 'fvc'],
-			neurology: ['gcs_total'],
-			obstetrics: ['fundal_height_cm', 'fetal_heart_rate'],
-			nutrition: ['waist_cm'],
-			dermatology: ['lesion_description'],
+			cardiology: [], // Campos opcionales
+			pulmonology: [], // Campos opcionales
+			neurology: [], // Campos opcionales
+			obstetrics: [], // Campos opcionales - los datos se guardan en first_trimester o second_third_trimester
+			nutrition: [], // Campos opcionales
+			dermatology: [], // Campos opcionales
 			psychiatry: [],
-			orthopedics: ['limb_strength'],
-			ent: ['hearing_left_db', 'hearing_right_db'],
-			gynecology: ['last_menstrual_period'],
-			endocrinology: ['tsh'],
-			ophthalmology: ['visual_acuity'],
-			general: ['weight', 'height', 'heart_rate', 'bp_systolic', 'bp_diastolic'],
+			orthopedics: [], // Campos opcionales
+			ent: [], // Campos opcionales
+			gynecology: [], // Campos opcionales
+			endocrinology: [], // Campos opcionales
+			ophthalmology: [], // Campos opcionales
+			general: [], // Campos opcionales - se puede guardar sin datos completos
 		};
 
 		// Solo validar especialidades que están expandidas/activas
@@ -1085,9 +1306,12 @@ export default function EditConsultationForm({ initial, patient, doctor, doctorS
 	}
 
 	async function handleGenerateReport() {
-		if (!reportContent.trim()) {
-			setReportError('Por favor, escribe el contenido del informe');
-			return;
+		// Solo validar contenido para informes que no son de obstetricia (1er trimestre o 2do/3er trimestre)
+		if (selectedReportType !== 'first_trimester' && selectedReportType !== 'second_third_trimester') {
+			if (!reportContent.trim()) {
+				setReportError('Por favor, escribe el contenido del informe');
+				return;
+			}
 		}
 
 		setGeneratingReport(true);
@@ -1095,10 +1319,27 @@ export default function EditConsultationForm({ initial, patient, doctor, doctorS
 		setReportSuccess(null);
 
 		try {
+			// Determinar el tipo de informe
+			const vitals = initial.vitals || {};
+			const obst = vitals.obstetrics || {};
+			const reportType = obst.report_type || selectedReportType;
+			
+			// Para informes de obstetricia (1er trimestre o 2do/3er trimestre), no enviar content
+			// Solo se usarán las variables del formulario directamente en el Word
+			const requestBody: any = {
+				font_family: fontFamily,
+				report_type: reportType
+			};
+			
+			// Solo incluir content si NO es un informe de obstetricia
+			if (reportType !== 'first_trimester' && reportType !== 'second_third_trimester') {
+				requestBody.content = reportContent;
+			}
+			
 			const res = await fetch(`/api/consultations/${initial.id}/generate-report`, {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ content: reportContent, font_family: fontFamily }),
+				body: JSON.stringify(requestBody),
 			});
 
 			const data = await res.json();
@@ -1498,23 +1739,1393 @@ export default function EditConsultationForm({ initial, patient, doctor, doctorS
 											{expandedSpecialties.has('obstetrics') ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
 										</button>
 										{expandedSpecialties.has('obstetrics') && (
-											<div className="p-4 pt-0 grid grid-cols-1 md:grid-cols-4 gap-4">
-												<div>
-													<label className={labelClass}>Altura Uterina (cm)</label>
-													<input value={fundalHeight} onChange={(e) => setFundalHeight(e.target.value)} className={`${inputBase} ${inputDark}`} type="number" inputMode="decimal" />
-												</div>
-												<div>
-													<label className={labelClass}>FC Fetal (bpm)</label>
-													<input value={fetalHr} onChange={(e) => setFetalHr(e.target.value)} className={`${inputBase} ${inputDark}`} type="number" inputMode="numeric" />
-												</div>
-												<div>
-													<label className={labelClass}>Gravida</label>
-													<input value={gravida} onChange={(e) => setGravida(e.target.value)} className={`${inputBase} ${inputDark}`} type="number" inputMode="numeric" />
-												</div>
-												<div>
-													<label className={labelClass}>Para</label>
-													<input value={para} onChange={(e) => setPara(e.target.value)} className={`${inputBase} ${inputDark}`} type="number" inputMode="numeric" />
-												</div>
+											<div className="p-4 pt-0 space-y-6">
+												{/* Si el doctor tiene Obstetricia guardada, mostrar ambos formularios directamente */}
+												{hasObstetrics && (
+													<>
+													{/* Formulario del Primer Trimestre - Siempre visible si tiene Obstetricia */}
+													<div className="bg-gradient-to-br from-pink-50 to-rose-50 dark:from-pink-950/20 dark:to-rose-950/20 rounded-xl border border-pink-200 dark:border-pink-800 shadow-sm p-6 mb-6">
+														<div className="flex items-center gap-3 mb-6 pb-4 border-b border-pink-200 dark:border-pink-800">
+															<div className="w-10 h-10 rounded-lg bg-pink-500 dark:bg-pink-600 flex items-center justify-center">
+																<FileText className="w-5 h-5 text-white" />
+															</div>
+															<h3 className="text-xl font-bold text-slate-900 dark:text-slate-100">Formulario del Primer Trimestre</h3>
+														</div>
+														<div className="space-y-6">
+														{/* Sección: Datos de la Paciente */}
+														<div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 shadow-sm p-5">
+															<h4 className="font-bold text-slate-900 dark:text-slate-100 mb-5 text-base flex items-center gap-2 pb-3 border-b border-slate-200 dark:border-slate-700">
+																<span className="w-1.5 h-1.5 rounded-full bg-pink-500"></span>
+																Datos De La Paciente
+															</h4>
+															<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+																<div>
+																	<label className={labelClass}>Edad Gestacional</label>
+																	<input value={edadGestacional} onChange={(e) => setEdadGestacional(e.target.value)} className={`${inputBase} ${inputDark}`} />
+																</div>
+																<div>
+																	<label className={labelClass}>FUR</label>
+																	<input value={fur} onChange={(e) => setFur(e.target.value)} className={`${inputBase} ${inputDark}`} />
+																</div>
+																<div>
+																	<label className={labelClass}>FPP</label>
+																	<input value={fpp} onChange={(e) => setFpp(e.target.value)} type="date" className={`${inputBase} ${inputDark}`} />
+																</div>
+																<div>
+																	<label className={labelClass}>Gestas</label>
+																	<input value={gestas} onChange={(e) => setGestas(e.target.value)} type="number" className={`${inputBase} ${inputDark}`} />
+																</div>
+																<div>
+																	<label className={labelClass}>Paras</label>
+																	<input value={paras} onChange={(e) => setParas(e.target.value)} className={`${inputBase} ${inputDark}`} />
+																</div>
+																<div>
+																	<label className={labelClass}>Cesareas</label>
+																	<input value={cesareas} onChange={(e) => setCesareas(e.target.value)} className={`${inputBase} ${inputDark}`} />
+																</div>
+																<div>
+																	<label className={labelClass}>Abortors</label>
+																	<input value={abortors} onChange={(e) => setAbortors(e.target.value)} className={`${inputBase} ${inputDark}`} />
+																</div>
+																<div>
+																	<label className={labelClass}>Otros</label>
+																	<input value={otros} onChange={(e) => setOtros(e.target.value)} className={`${inputBase} ${inputDark}`} />
+																</div>
+																<div>
+																	<label className={labelClass}>Motivo de la consulta</label>
+																	<input value={motivoConsulta} onChange={(e) => setMotivoConsulta(e.target.value)} className={`${inputBase} ${inputDark}`} placeholder="Captación de embarazo" />
+																</div>
+																<div>
+																	<label className={labelClass}>Referencia</label>
+																	<input value={referencia} onChange={(e) => setReferencia(e.target.value)} className={`${inputBase} ${inputDark}`} />
+																</div>
+															</div>
+														</div>
+
+														{/* Sección: Datos Obstétricos Del 1er Trimestre */}
+														<div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 shadow-sm p-5">
+															<h4 className="font-bold text-slate-900 dark:text-slate-100 mb-5 text-base flex items-center gap-2 pb-3 border-b border-slate-200 dark:border-slate-700">
+																<span className="w-1.5 h-1.5 rounded-full bg-pink-500"></span>
+																Datos Obstétricos Del 1er Trimestre
+															</h4>
+															<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+																<div>
+																	<label className={labelClass}>Posición</label>
+																	<input value={posicion} onChange={(e) => setPosicion(e.target.value)} className={`${inputBase} ${inputDark}`} />
+																</div>
+																<div>
+																	<label className={labelClass}>Superficie</label>
+																	<input value={superficie} onChange={(e) => setSuperficie(e.target.value)} className={`${inputBase} ${inputDark}`} placeholder="Regular" />
+																</div>
+																<div>
+																	<label className={labelClass}>Miometrio</label>
+																	<input value={miometrio} onChange={(e) => setMiometrio(e.target.value)} className={`${inputBase} ${inputDark}`} placeholder="HOMOGENEO" />
+																</div>
+																<div>
+																	<label className={labelClass}>Endometrio</label>
+																	<input value={endometrio} onChange={(e) => setEndometrio(e.target.value)} className={`${inputBase} ${inputDark}`} placeholder="Ocupado Por Saco Gestacional." />
+																</div>
+																<div>
+																	<label className={labelClass}>Ovario Derecho</label>
+																	<input value={ovarioDerecho} onChange={(e) => setOvarioDerecho(e.target.value)} className={`${inputBase} ${inputDark}`} placeholder="Normal" />
+																</div>
+																<div>
+																	<label className={labelClass}>Ovario Izquierdo</label>
+																	<input value={ovarioIzquierdo} onChange={(e) => setOvarioIzquierdo(e.target.value)} className={`${inputBase} ${inputDark}`} placeholder="Normal" />
+																</div>
+																<div>
+																	<label className={labelClass}>Anexos Ecopatron</label>
+																	<input value={anexosEcopatron} onChange={(e) => setAnexosEcopatron(e.target.value)} className={`${inputBase} ${inputDark}`} placeholder="Normal" />
+																</div>
+																<div>
+																	<label className={labelClass}>Fondo De Saco</label>
+																	<input value={fondoDeSaco} onChange={(e) => setFondoDeSaco(e.target.value)} className={`${inputBase} ${inputDark}`} placeholder="Libre" />
+																</div>
+																<div>
+																	<label className={labelClass}>Cuerpo Lúteo</label>
+																	<select value={cuerpoLuteo} onChange={(e) => setCuerpoLuteo(e.target.value)} className={`${inputBase} ${inputDark}`}>
+																		<option value="">Seleccionar...</option>
+																		<option value="Presente">Presente</option>
+																		<option value="Ausente">Ausente</option>
+																		<option value="Otro">Otro</option>
+																	</select>
+																</div>
+															</div>
+														</div>
+
+														{/* Sección: Saco Gestacional */}
+														<div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 shadow-sm p-5">
+															<h4 className="font-bold text-slate-900 dark:text-slate-100 mb-5 text-base flex items-center gap-2 pb-3 border-b border-slate-200 dark:border-slate-700">
+																<span className="w-1.5 h-1.5 rounded-full bg-pink-500"></span>
+																Saco Gestacional
+															</h4>
+															<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+																<div>
+																	<label className={labelClass}>Gestación</label>
+																	<select value={gestacion} onChange={(e) => setGestacion(e.target.value)} className={`${inputBase} ${inputDark}`}>
+																		<option value="">Seleccionar...</option>
+																		<option value="Única">Única</option>
+																		<option value="Múltiple">Múltiple</option>
+																	</select>
+																</div>
+																<div>
+																	<label className={labelClass}>Localización</label>
+																	<select value={localizacion} onChange={(e) => setLocalizacion(e.target.value)} className={`${inputBase} ${inputDark}`}>
+																		<option value="">Seleccionar...</option>
+																		<option value="Intrauterina">Intrauterina</option>
+																		<option value="Extrauterina">Extrauterina</option>
+																		<option value="Otro">Otro</option>
+																	</select>
+																</div>
+																<div>
+																	<label className={labelClass}>Vesícula</label>
+																	<select value={vesicula} onChange={(e) => setVesicula(e.target.value)} className={`${inputBase} ${inputDark}`}>
+																		<option value="">Seleccionar...</option>
+																		<option value="No Visible">No Visible</option>
+																		<option value="Visible">Visible</option>
+																		<option value="Otro">Otro</option>
+																	</select>
+																</div>
+																<div>
+																	<label className={labelClass}>Cavidad Exocelomica</label>
+																	<select value={cavidadExocelomica} onChange={(e) => setCavidadExocelomica(e.target.value)} className={`${inputBase} ${inputDark}`}>
+																		<option value="">Seleccionar...</option>
+																		<option value="No Visible">No Visible</option>
+																		<option value="Visible">Visible</option>
+																		<option value="Otro">Otro</option>
+																	</select>
+																</div>
+															</div>
+														</div>
+
+														{/* Sección: Embrión */}
+														<div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 shadow-sm p-5">
+															<h4 className="font-bold text-slate-900 dark:text-slate-100 mb-5 text-base flex items-center gap-2 pb-3 border-b border-slate-200 dark:border-slate-700">
+																<span className="w-1.5 h-1.5 rounded-full bg-pink-500"></span>
+																Embrión
+															</h4>
+															<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+																<div>
+																	<label className={labelClass}>Embrión Visto</label>
+																	<select value={embrionVisto} onChange={(e) => setEmbrionVisto(e.target.value)} className={`${inputBase} ${inputDark}`}>
+																		<option value="">Seleccionar...</option>
+																		<option value="Si">Si</option>
+																		<option value="No">No</option>
+																	</select>
+																</div>
+																<div>
+																	<label className={labelClass}>Ecoanatomía</label>
+																	<select value={ecoanatomia} onChange={(e) => setEcoanatomia(e.target.value)} className={`${inputBase} ${inputDark}`}>
+																		<option value="">Seleccionar...</option>
+																		<option value="Acorde a Edad Gestacional">Acorde a Edad Gestacional</option>
+																		<option value="No Acorde a Edad Gestacional">No Acorde a Edad Gestacional</option>
+																		<option value="Otro">Otro</option>
+																	</select>
+																</div>
+																<div>
+																	<label className={labelClass}>LCR</label>
+																	<input value={lcr} onChange={(e) => setLcr(e.target.value)} className={`${inputBase} ${inputDark}`} />
+																</div>
+																<div>
+																	<label className={labelClass}>Acorde A</label>
+																	<input value={acordeA} onChange={(e) => setAcordeA(e.target.value)} className={`${inputBase} ${inputDark}`} />
+																</div>
+																<div>
+																	<label className={labelClass}>Actividad Cardiaca</label>
+																	<select value={actividadCardiaca} onChange={(e) => setActividadCardiaca(e.target.value)} className={`${inputBase} ${inputDark}`}>
+																		<option value="">Seleccionar...</option>
+																		<option value="Presente">Presente</option>
+																		<option value="Ausente">Ausente</option>
+																		<option value="Otro">Otro</option>
+																	</select>
+																</div>
+																<div>
+																	<label className={labelClass}>Movimientos Embrionarios</label>
+																	<select value={movimientosEmbrionarios} onChange={(e) => setMovimientosEmbrionarios(e.target.value)} className={`${inputBase} ${inputDark}`}>
+																		<option value="">Seleccionar...</option>
+																		<option value="Normal">Normal</option>
+																		<option value="Lentos">Lentos</option>
+																		<option value="Ausentes">Ausentes</option>
+																		<option value="Otro">Otro</option>
+																	</select>
+																</div>
+															</div>
+														</div>
+
+														{/* Sección: Conclusiones */}
+														<div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 shadow-sm p-5">
+															<h4 className="font-bold text-slate-900 dark:text-slate-100 mb-5 text-base flex items-center gap-2 pb-3 border-b border-slate-200 dark:border-slate-700">
+																<span className="w-1.5 h-1.5 rounded-full bg-pink-500"></span>
+																Conclusiones
+															</h4>
+															<textarea
+																value={conclusiones}
+																onChange={(e) => {
+																	const value = e.target.value;
+																	// Si el usuario presiona Enter, agregar numeración automática
+																	if (value.length > conclusiones.length && value.endsWith('\n')) {
+																		const lines = value.split('\n');
+																		const lastLine = lines[lines.length - 2] || '';
+																		const lastLineMatch = lastLine.match(/^(\d+)\.\s*(.*)$/);
+																		if (lastLineMatch || lastLine.trim() === '') {
+																			const nextNumber = lastLineMatch ? parseInt(lastLineMatch[1]) + 1 : 1;
+																			const newValue = value.slice(0, -1) + `\n${nextNumber}. `;
+																			setConclusiones(newValue);
+																			return;
+																		}
+																	}
+																	setConclusiones(value);
+																}}
+																onKeyDown={(e) => {
+																	// Si presiona Enter, agregar numeración
+																	if (e.key === 'Enter' && !e.shiftKey) {
+																		e.preventDefault();
+																		const lines = conclusiones.split('\n');
+																		const lastLine = lines[lines.length - 1] || '';
+																		const lastLineMatch = lastLine.match(/^(\d+)\.\s*(.*)$/);
+																		const nextNumber = lastLineMatch ? parseInt(lastLineMatch[1]) + 1 : lines.filter(l => l.match(/^\d+\./)).length + 1;
+																		setConclusiones(conclusiones + (conclusiones ? '\n' : '') + `${nextNumber}. `);
+																	}
+																}}
+																rows={8}
+																className={`${inputBase} ${inputDark} font-mono text-sm`}
+																placeholder="1. Escribe la primera conclusión y presiona Enter para la siguiente..."
+															/>
+															<p className="text-xs text-slate-500 mt-2">Presiona Enter para agregar automáticamente el siguiente número de conclusión.</p>
+														</div>
+														</div>
+													</div>
+													{/* Formulario del Segundo y Tercer Trimestre */}
+													<div className="bg-gradient-to-br from-indigo-50 to-blue-50 dark:from-indigo-950/20 dark:to-blue-950/20 rounded-xl border border-indigo-200 dark:border-indigo-800 shadow-sm p-6 mt-6">
+														<div className="flex items-center gap-3 mb-6 pb-4 border-b border-indigo-200 dark:border-indigo-800">
+															<div className="w-10 h-10 rounded-lg bg-indigo-500 dark:bg-indigo-600 flex items-center justify-center">
+																<FileText className="w-5 h-5 text-white" />
+															</div>
+															<h3 className="text-xl font-bold text-slate-900 dark:text-slate-100">Formulario del Segundo y Tercer Trimestre</h3>
+														</div>
+														<div className="space-y-6">
+															{/* Primera sección: Datos de la Paciente */}
+															<div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 shadow-sm p-5">
+																<h4 className="font-bold text-slate-900 dark:text-slate-100 mb-5 text-base flex items-center gap-2 pb-3 border-b border-slate-200 dark:border-slate-700">
+																	<span className="w-1.5 h-1.5 rounded-full bg-indigo-500"></span>
+																	Datos De La Paciente
+																</h4>
+																<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+																	<div>
+																		<label className={labelClass}>Edad Gestacional</label>
+																		<input value={edadGestacional_t2} onChange={(e) => setEdadGestacional_t2(e.target.value)} className={`${inputBase} ${inputDark}`} />
+																	</div>
+																	<div>
+																		<label className={labelClass}>FUR</label>
+																		<input value={fur_t2} onChange={(e) => setFur_t2(e.target.value)} className={`${inputBase} ${inputDark}`} />
+																	</div>
+																	<div>
+																		<label className={labelClass}>FPP</label>
+																		<input value={fpp_t2} onChange={(e) => setFpp_t2(e.target.value)} type="date" className={`${inputBase} ${inputDark}`} />
+																	</div>
+																	<div>
+																		<label className={labelClass}>Gestas</label>
+																		<input value={gestas_t2} onChange={(e) => setGestas_t2(e.target.value)} type="number" className={`${inputBase} ${inputDark}`} />
+																	</div>
+																	<div>
+																		<label className={labelClass}>Paras</label>
+																		<input value={paras_t2} onChange={(e) => setParas_t2(e.target.value)} className={`${inputBase} ${inputDark}`} />
+																	</div>
+																	<div>
+																		<label className={labelClass}>Cesáreas</label>
+																		<input value={cesareas_t2} onChange={(e) => setCesareas_t2(e.target.value)} className={`${inputBase} ${inputDark}`} />
+																	</div>
+																	<div>
+																		<label className={labelClass}>Abortos</label>
+																		<input value={abortos_t2} onChange={(e) => setAbortos_t2(e.target.value)} className={`${inputBase} ${inputDark}`} />
+																	</div>
+																	<div>
+																		<label className={labelClass}>Otros</label>
+																		<input value={otros_t2} onChange={(e) => setOtros_t2(e.target.value)} className={`${inputBase} ${inputDark}`} />
+																	</div>
+																	<div>
+																		<label className={labelClass}>Motivo de la consulta</label>
+																		<input value={motivoConsulta_t2} onChange={(e) => setMotivoConsulta_t2(e.target.value)} className={`${inputBase} ${inputDark}`} />
+																	</div>
+																	<div>
+																		<label className={labelClass}>Referencia</label>
+																		<input value={referencia_t2} onChange={(e) => setReferencia_t2(e.target.value)} className={`${inputBase} ${inputDark}`} />
+																	</div>
+																</div>
+															</div>
+
+															{/* Segunda sección: Datos Obstétricos */}
+															<div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 shadow-sm p-5">
+																<h4 className="font-bold text-slate-900 dark:text-slate-100 mb-5 text-base flex items-center gap-2 pb-3 border-b border-slate-200 dark:border-slate-700">
+																	<span className="w-1.5 h-1.5 rounded-full bg-indigo-500"></span>
+																	Datos Obstétricos
+																</h4>
+																<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+																	<div>
+																		<label className={labelClass}>Nº de Fetos</label>
+																		<input value={numFetos} onChange={(e) => setNumFetos(e.target.value)} className={`${inputBase} ${inputDark}`} />
+																	</div>
+																	<div>
+																		<label className={labelClass}>Actividad Cardiaca</label>
+																		<select value={actividadCardiaca_t2} onChange={(e) => setActividadCardiaca_t2(e.target.value)} className={`${inputBase} ${inputDark}`}>
+																			<option value="">Seleccionar...</option>
+																			<option value="Presente">Presente</option>
+																			<option value="Ausente">Ausente</option>
+																			<option value="Otro">Otro</option>
+																		</select>
+																	</div>
+																	<div>
+																		<label className={labelClass}>Situación</label>
+																		<input value={situacion_t2} onChange={(e) => setSituacion_t2(e.target.value)} className={`${inputBase} ${inputDark}`} />
+																	</div>
+																	<div>
+																		<label className={labelClass}>Presentación</label>
+																		<input value={presentacion_t2} onChange={(e) => setPresentacion_t2(e.target.value)} className={`${inputBase} ${inputDark}`} />
+																	</div>
+																	<div>
+																		<label className={labelClass}>Dorso</label>
+																		<input value={dorso_t2} onChange={(e) => setDorso_t2(e.target.value)} className={`${inputBase} ${inputDark}`} />
+																	</div>
+																</div>
+															</div>
+
+															{/* Tercera sección: Datos Biométricos */}
+															<div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 shadow-sm p-5">
+																<h4 className="font-bold text-slate-900 dark:text-slate-100 mb-5 text-base flex items-center gap-2 pb-3 border-b border-slate-200 dark:border-slate-700">
+																	<span className="w-1.5 h-1.5 rounded-full bg-indigo-500"></span>
+																	Datos Biométricos
+																</h4>
+																<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+																	<div>
+																		<label className={labelClass}>DBP (mm)</label>
+																		<input value={dbp} onChange={(e) => setDbp(e.target.value)} type="number" className={`${inputBase} ${inputDark}`} />
+																	</div>
+																	<div>
+																		<label className={labelClass}>CC (mm)</label>
+																		<input value={cc} onChange={(e) => setCc(e.target.value)} type="number" className={`${inputBase} ${inputDark}`} />
+																	</div>
+																	<div>
+																		<label className={labelClass}>CA (mm)</label>
+																		<input value={ca} onChange={(e) => setCa(e.target.value)} type="number" className={`${inputBase} ${inputDark}`} />
+																	</div>
+																	<div>
+																		<label className={labelClass}>LF (mm)</label>
+																		<input value={lf} onChange={(e) => setLf(e.target.value)} type="number" className={`${inputBase} ${inputDark}`} />
+																	</div>
+																	<div>
+																		<label className={labelClass}>Peso Estimado Fetal</label>
+																		<input value={pesoEstimadoFetal} onChange={(e) => setPesoEstimadoFetal(e.target.value)} type="number" className={`${inputBase} ${inputDark}`} />
+																	</div>
+																	<div>
+																		<label className={labelClass}>Para</label>
+																		<input value={para_t2} onChange={(e) => setPara_t2(e.target.value)} className={`${inputBase} ${inputDark}`} />
+																	</div>
+																</div>
+															</div>
+
+															{/* Cuarta sección: Datos Placenta Foliculares */}
+															<div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 shadow-sm p-5">
+																<h4 className="font-bold text-slate-900 dark:text-slate-100 mb-5 text-base flex items-center gap-2 pb-3 border-b border-slate-200 dark:border-slate-700">
+																	<span className="w-1.5 h-1.5 rounded-full bg-indigo-500"></span>
+																	Datos Placenta Foliculares
+																</h4>
+																<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+																	<div>
+																		<label className={labelClass}>Placenta</label>
+																		<input value={placenta_t2} onChange={(e) => setPlacenta_t2(e.target.value)} className={`${inputBase} ${inputDark}`} />
+																	</div>
+																	<div>
+																		<label className={labelClass}>UBI.</label>
+																		<input value={ubi_t2} onChange={(e) => setUbi_t2(e.target.value)} className={`${inputBase} ${inputDark}`} />
+																	</div>
+																	<div>
+																		<label className={labelClass}>Inserción</label>
+																		<input value={insercion_t2} onChange={(e) => setInsercion_t2(e.target.value)} className={`${inputBase} ${inputDark}`} />
+																	</div>
+																	<div>
+																		<label className={labelClass}>Grado</label>
+																		<input value={grado_t2} onChange={(e) => setGrado_t2(e.target.value)} className={`${inputBase} ${inputDark}`} />
+																	</div>
+																	<div>
+																		<label className={labelClass}>Cordón Umbilical</label>
+																		<select value={cordonUmbilical_t2} onChange={(e) => setCordonUmbilical_t2(e.target.value)} className={`${inputBase} ${inputDark}`}>
+																			<option value="">Seleccionar...</option>
+																			<option value="3 ELEMENTOS">3 ELEMENTOS</option>
+																			<option value="Otro">Otro</option>
+																		</select>
+																	</div>
+																	<div>
+																		<label className={labelClass}>Liqu. Amniótico</label>
+																		<input value={liquAmniotico_t2} onChange={(e) => setLiquAmniotico_t2(e.target.value)} className={`${inputBase} ${inputDark}`} />
+																	</div>
+																	<div>
+																		<label className={labelClass}>P</label>
+																		<input value={p_t2} onChange={(e) => setP_t2(e.target.value)} className={`${inputBase} ${inputDark}`} />
+																	</div>
+																	<div>
+																		<label className={labelClass}>ILA</label>
+																		<input value={ila_t2} onChange={(e) => setIla_t2(e.target.value)} className={`${inputBase} ${inputDark}`} />
+																	</div>
+																</div>
+															</div>
+
+															{/* Quinta sección: Datos Anatomofuncionales */}
+															<div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 shadow-sm p-5">
+																<h4 className="font-bold text-slate-900 dark:text-slate-100 mb-6 text-base flex items-center gap-2 pb-3 border-b border-slate-200 dark:border-slate-700">
+																	<span className="w-1.5 h-1.5 rounded-full bg-indigo-500"></span>
+																	Datos Anatomofuncionales
+																</h4>
+																
+																{/* Subsección: CABEZA, CUELLO, SNC */}
+																<div className="mb-6 pb-4 border-b border-slate-100 dark:border-slate-700">
+																	<h5 className="font-semibold text-slate-800 dark:text-slate-200 mb-4 text-sm uppercase tracking-wide text-slate-600 dark:text-slate-400">CABEZA, CUELLO, SNC</h5>
+																	<div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+																		<div>
+																			<label className={labelClass}>Cráneo</label>
+																			<select value={craneo_t2} onChange={(e) => setCraneo_t2(e.target.value)} className={`${inputBase} ${inputDark}`}>
+																				<option value="">Seleccionar...</option>
+																				<option value="Normal">Normal</option>
+																				<option value="Anormal">Anormal</option>
+																				<option value="Otro">Otro</option>
+																			</select>
+																		</div>
+																	</div>
+																</div>
+
+																{/* Subsección: TÓRAX */}
+																<div className="mb-6 pb-4 border-b border-slate-100 dark:border-slate-700">
+																	<h5 className="font-semibold text-slate-800 dark:text-slate-200 mb-4 text-sm uppercase tracking-wide text-slate-600 dark:text-slate-400">TÓRAX</h5>
+																	<div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+																		<div>
+																			<label className={labelClass}>Corazón</label>
+																			<select value={corazon_t2} onChange={(e) => setCorazon_t2(e.target.value)} className={`${inputBase} ${inputDark}`}>
+																				<option value="">Seleccionar...</option>
+																				<option value="Normal">Normal</option>
+																				<option value="Anormal">Anormal</option>
+																				<option value="Otro">Otro</option>
+																			</select>
+																		</div>
+																		<div>
+																			<label className={labelClass}>FCF</label>
+																			<input value={fcf} onChange={(e) => setFcf(e.target.value)} className={`${inputBase} ${inputDark}`} />
+																		</div>
+																		<div>
+																			<label className={labelClass}>Pulmones</label>
+																			<select value={pulmones_t2} onChange={(e) => setPulmones_t2(e.target.value)} className={`${inputBase} ${inputDark}`}>
+																				<option value="">Seleccionar...</option>
+																				<option value="Normal">Normal</option>
+																				<option value="Anormal">Anormal</option>
+																				<option value="Otro">Otro</option>
+																			</select>
+																		</div>
+																	</div>
+																</div>
+
+																{/* Subsección: ABDOMEN */}
+																<div className="mb-6 pb-4 border-b border-slate-100 dark:border-slate-700">
+																	<h5 className="font-semibold text-slate-800 dark:text-slate-200 mb-4 text-sm uppercase tracking-wide text-slate-600 dark:text-slate-400">ABDOMEN</h5>
+																	<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+																		<div>
+																			<label className={labelClass}>Situs Visceral</label>
+																			<select value={situsVisceral_t2} onChange={(e) => setSitusVisceral_t2(e.target.value)} className={`${inputBase} ${inputDark}`}>
+																				<option value="">Seleccionar...</option>
+																				<option value="Normal">Normal</option>
+																				<option value="Anormal">Anormal</option>
+																				<option value="Otro">Otro</option>
+																			</select>
+																		</div>
+																		<div>
+																			<label className={labelClass}>Intestino</label>
+																			<select value={intestino_t2} onChange={(e) => setIntestino_t2(e.target.value)} className={`${inputBase} ${inputDark}`}>
+																				<option value="">Seleccionar...</option>
+																				<option value="Normal">Normal</option>
+																				<option value="Anormal">Anormal</option>
+																				<option value="Otro">Otro</option>
+																			</select>
+																		</div>
+																		<div className="md:col-span-2 lg:col-span-1 grid grid-cols-2 gap-2">
+																			<div>
+																				<label className={labelClass}>Vejiga</label>
+																				<select value={vejiga_t2} onChange={(e) => setVejiga_t2(e.target.value)} className={`${inputBase} ${inputDark}`}>
+																					<option value="">Seleccionar...</option>
+																					<option value="Normal">Normal</option>
+																					<option value="Anormal">Anormal</option>
+																					<option value="Otro">Otro</option>
+																				</select>
+																			</div>
+																			<div>
+																				<label className={labelClass}>Datos Extra</label>
+																				<input value={vejigaExtra_t2} onChange={(e) => setVejigaExtra_t2(e.target.value)} className={`${inputBase} ${inputDark}`} placeholder="Ej: LLENA" />
+																			</div>
+																		</div>
+																		<div className="md:col-span-2 lg:col-span-1 grid grid-cols-2 gap-2">
+																			<div>
+																				<label className={labelClass}>Estómago</label>
+																				<select value={estomago_t2} onChange={(e) => setEstomago_t2(e.target.value)} className={`${inputBase} ${inputDark}`}>
+																					<option value="">Seleccionar...</option>
+																					<option value="Normal">Normal</option>
+																					<option value="Anormal">Anormal</option>
+																					<option value="Otro">Otro</option>
+																				</select>
+																			</div>
+																			<div>
+																				<label className={labelClass}>Datos Extra</label>
+																				<input value={estomagoExtra_t2} onChange={(e) => setEstomagoExtra_t2(e.target.value)} className={`${inputBase} ${inputDark}`} placeholder="Ej: LLENO" />
+																			</div>
+																		</div>
+																		<div className="md:col-span-2 lg:col-span-1 grid grid-cols-2 gap-2">
+																			<div>
+																				<label className={labelClass}>Riñones</label>
+																				<select value={rinones_t2} onChange={(e) => setRinones_t2(e.target.value)} className={`${inputBase} ${inputDark}`}>
+																					<option value="">Seleccionar...</option>
+																					<option value="Normal">Normal</option>
+																					<option value="Anormal">Anormal</option>
+																					<option value="Otro">Otro</option>
+																				</select>
+																			</div>
+																			<div>
+																				<label className={labelClass}>Datos Extra</label>
+																				<input value={rinonesExtra_t2} onChange={(e) => setRinonesExtra_t2(e.target.value)} className={`${inputBase} ${inputDark}`} placeholder="Ej: 2 VISTOS" />
+																			</div>
+																		</div>
+																		<div>
+																			<label className={labelClass}>Genitales</label>
+																			<input value={genitales_t2} onChange={(e) => setGenitales_t2(e.target.value)} className={`${inputBase} ${inputDark}`} />
+																		</div>
+																	</div>
+																</div>
+
+																{/* Subsección: EXTREMIDADES */}
+																<div className="mb-6">
+																	<h5 className="font-semibold text-slate-800 dark:text-slate-200 mb-4 text-sm uppercase tracking-wide text-slate-600 dark:text-slate-400">EXTREMIDADES</h5>
+																	<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+																		<div>
+																			<label className={labelClass}>Miembros Superiores</label>
+																			<select value={miembrosSuperiores_t2} onChange={(e) => setMiembrosSuperiores_t2(e.target.value)} className={`${inputBase} ${inputDark}`}>
+																				<option value="">Seleccionar...</option>
+																				<option value="Normal">Normal</option>
+																				<option value="Anormal">Anormal</option>
+																				<option value="Otro">Otro</option>
+																			</select>
+																		</div>
+																		<div>
+																			<label className={labelClass}>Manos</label>
+																			<select value={manos_t2} onChange={(e) => setManos_t2(e.target.value)} className={`${inputBase} ${inputDark}`}>
+																				<option value="">Seleccionar...</option>
+																				<option value="Normal">Normal</option>
+																				<option value="Anormal">Anormal</option>
+																				<option value="Otro">Otro</option>
+																			</select>
+																		</div>
+																		<div>
+																			<label className={labelClass}>Miembros Inferiores</label>
+																			<select value={miembrosInferiores_t2} onChange={(e) => setMiembrosInferiores_t2(e.target.value)} className={`${inputBase} ${inputDark}`}>
+																				<option value="">Seleccionar...</option>
+																				<option value="Normal">Normal</option>
+																				<option value="Anormal">Anormal</option>
+																				<option value="Otro">Otro</option>
+																			</select>
+																		</div>
+																		<div>
+																			<label className={labelClass}>Pies</label>
+																			<select value={pies_t2} onChange={(e) => setPies_t2(e.target.value)} className={`${inputBase} ${inputDark}`}>
+																				<option value="">Seleccionar...</option>
+																				<option value="Normal">Normal</option>
+																				<option value="Anormal">Anormal</option>
+																				<option value="Otro">Otro</option>
+																			</select>
+																		</div>
+																	</div>
+																</div>
+															</div>
+
+															{/* Sección: Conclusiones */}
+															<div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 shadow-sm p-5">
+																<h4 className="font-bold text-slate-900 dark:text-slate-100 mb-5 text-base flex items-center gap-2 pb-3 border-b border-slate-200 dark:border-slate-700">
+																	<span className="w-1.5 h-1.5 rounded-full bg-indigo-500"></span>
+																	Conclusiones
+																</h4>
+																<textarea
+																	value={conclusiones_t2}
+																	onChange={(e) => {
+																		const value = e.target.value;
+																		setConclusiones_t2(value);
+																	}}
+																	onKeyDown={(e) => {
+																		// Si presiona Enter sin Shift, agregar numeración automática
+																		if (e.key === 'Enter' && !e.shiftKey) {
+																			e.preventDefault();
+																			
+																			const textarea = e.currentTarget;
+																			const startPos = textarea.selectionStart;
+																			const endPos = textarea.selectionEnd;
+																			const currentValue = conclusiones_t2;
+																			
+																			const beforeCursor = currentValue.substring(0, startPos);
+																			const afterCursor = currentValue.substring(endPos);
+																			
+																			const linesBefore = beforeCursor.split('\n');
+																			const currentLineIndex = linesBefore.length - 1;
+																			const currentLine = linesBefore[currentLineIndex] || '';
+																			
+																			const lineMatch = currentLine.match(/^(\d+)\.\s*(.*)$/);
+																			
+																			let nextNumber = 1;
+																			
+																			if (lineMatch) {
+																				nextNumber = parseInt(lineMatch[1]) + 1;
+																			} else {
+																				const allLines = currentValue.split('\n');
+																				const numberedLines = allLines
+																					.map((line: string) => {
+																						const match = line.match(/^(\d+)\./);
+																						return match ? parseInt(match[1]) : 0;
+																					})
+																					.filter((num: number) => num > 0);
+																				
+																				if (numberedLines.length > 0) {
+																					nextNumber = Math.max(...numberedLines) + 1;
+																				} else if (currentLine.trim() !== '' || currentValue.trim() !== '') {
+																					nextNumber = 1;
+																				}
+																			}
+																			
+																			const needsNewline = beforeCursor.trim() !== '' && !beforeCursor.endsWith('\n');
+																			const newLineWithNumber = `${needsNewline ? '\n' : ''}${nextNumber}. `;
+																			
+																			const newValue = beforeCursor + newLineWithNumber + afterCursor;
+																			setConclusiones_t2(newValue);
+																			
+																			setTimeout(() => {
+																				const newCursorPos = startPos + newLineWithNumber.length;
+																				textarea.setSelectionRange(newCursorPos, newCursorPos);
+																				textarea.focus();
+																			}, 10);
+																		}
+																	}}
+																	rows={8}
+																	className={`${inputBase} ${inputDark} font-mono text-sm`}
+																	placeholder="1. Escribe la primera conclusión y presiona Enter para la siguiente..."
+																/>
+																<p className="text-xs text-slate-500 mt-2">Presiona Enter para agregar automáticamente el siguiente número de conclusión.</p>
+															</div>
+														</div>
+													</div>
+												</>
+												)}
+												
+												{/* Si no tiene Obstetricia guardada pero la especialidad está en shouldShowSpecialty, mostrar selector (compatibilidad) */}
+												{!hasObstetrics && (
+													<React.Fragment>
+														{/* Selector de tipo de informe */}
+														<div>
+															<label className={labelClass}>Tipo de Informe a Generar</label>
+															<select
+																value={obstetricReportType}
+																onChange={(e) => setObstetricReportType(e.target.value)}
+																className={`${inputBase} ${inputDark}`}
+															>
+																<option value="gynecology">Informe de Ginecología</option>
+																<option value="first_trimester">Informe del Primer Trimestre</option>
+																<option value="second_third_trimester">Informe del Segundo y Tercer Trimestre</option>
+															</select>
+														</div>
+														
+														{/* Formulario del Primer Trimestre */}
+														{obstetricReportType === 'first_trimester' && (
+															<div className="bg-gradient-to-br from-pink-50 to-rose-50 dark:from-pink-950/20 dark:to-rose-950/20 rounded-xl border border-pink-200 dark:border-pink-800 shadow-sm p-6 mt-6">
+																<div className="flex items-center gap-3 mb-6 pb-4 border-b border-pink-200 dark:border-pink-800">
+																	<div className="w-10 h-10 rounded-lg bg-pink-500 dark:bg-pink-600 flex items-center justify-center">
+																		<FileText className="w-5 h-5 text-white" />
+																	</div>
+																	<h3 className="text-xl font-bold text-slate-900 dark:text-slate-100">Formulario del Primer Trimestre</h3>
+																</div>
+																<div className="space-y-6">
+																{/* Sección: Datos de la Paciente */}
+																<div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 shadow-sm p-5">
+																	<h4 className="font-bold text-slate-900 dark:text-slate-100 mb-5 text-base flex items-center gap-2 pb-3 border-b border-slate-200 dark:border-slate-700">
+																		<span className="w-1.5 h-1.5 rounded-full bg-pink-500"></span>
+																		Datos De La Paciente
+																	</h4>
+																	<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+																		<div>
+																			<label className={labelClass}>Edad Gestacional</label>
+																			<input value={edadGestacional} onChange={(e) => setEdadGestacional(e.target.value)} className={`${inputBase} ${inputDark}`} />
+																		</div>
+																		<div>
+																			<label className={labelClass}>FUR</label>
+																			<input value={fur} onChange={(e) => setFur(e.target.value)} className={`${inputBase} ${inputDark}`} />
+																		</div>
+																		<div>
+																			<label className={labelClass}>FPP</label>
+																			<input value={fpp} onChange={(e) => setFpp(e.target.value)} type="date" className={`${inputBase} ${inputDark}`} />
+																		</div>
+																		<div>
+																			<label className={labelClass}>Gestas</label>
+																			<input value={gestas} onChange={(e) => setGestas(e.target.value)} type="number" className={`${inputBase} ${inputDark}`} />
+																		</div>
+																		<div>
+																			<label className={labelClass}>Paras</label>
+																			<input value={paras} onChange={(e) => setParas(e.target.value)} className={`${inputBase} ${inputDark}`} />
+																		</div>
+																		<div>
+																			<label className={labelClass}>Cesareas</label>
+																			<input value={cesareas} onChange={(e) => setCesareas(e.target.value)} className={`${inputBase} ${inputDark}`} />
+																		</div>
+																		<div>
+																			<label className={labelClass}>Abortors</label>
+																			<input value={abortors} onChange={(e) => setAbortors(e.target.value)} className={`${inputBase} ${inputDark}`} />
+																		</div>
+																		<div>
+																			<label className={labelClass}>Otros</label>
+																			<input value={otros} onChange={(e) => setOtros(e.target.value)} className={`${inputBase} ${inputDark}`} />
+																		</div>
+																		<div>
+																			<label className={labelClass}>Motivo de la consulta</label>
+																			<input value={motivoConsulta} onChange={(e) => setMotivoConsulta(e.target.value)} className={`${inputBase} ${inputDark}`} placeholder="Captación de embarazo" />
+																		</div>
+																		<div>
+																			<label className={labelClass}>Referencia</label>
+																			<input value={referencia} onChange={(e) => setReferencia(e.target.value)} className={`${inputBase} ${inputDark}`} />
+																		</div>
+																	</div>
+																</div>
+
+																{/* Sección: Datos Obstétricos Del 1er Trimestre */}
+																<div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 shadow-sm p-5">
+																	<h4 className="font-bold text-slate-900 dark:text-slate-100 mb-5 text-base flex items-center gap-2 pb-3 border-b border-slate-200 dark:border-slate-700">
+																		<span className="w-1.5 h-1.5 rounded-full bg-pink-500"></span>
+																		Datos Obstétricos Del 1er Trimestre
+																	</h4>
+																	<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+																		<div>
+																			<label className={labelClass}>Posición</label>
+																			<input value={posicion} onChange={(e) => setPosicion(e.target.value)} className={`${inputBase} ${inputDark}`} />
+																		</div>
+																		<div>
+																			<label className={labelClass}>Superficie</label>
+																			<input value={superficie} onChange={(e) => setSuperficie(e.target.value)} className={`${inputBase} ${inputDark}`} placeholder="Regular" />
+																		</div>
+																		<div>
+																			<label className={labelClass}>Miometrio</label>
+																			<input value={miometrio} onChange={(e) => setMiometrio(e.target.value)} className={`${inputBase} ${inputDark}`} placeholder="HOMOGENEO" />
+																		</div>
+																		<div>
+																			<label className={labelClass}>Endometrio</label>
+																			<input value={endometrio} onChange={(e) => setEndometrio(e.target.value)} className={`${inputBase} ${inputDark}`} placeholder="Ocupado Por Saco Gestacional." />
+																		</div>
+																		<div>
+																			<label className={labelClass}>Ovario Derecho</label>
+																			<input value={ovarioDerecho} onChange={(e) => setOvarioDerecho(e.target.value)} className={`${inputBase} ${inputDark}`} placeholder="Normal" />
+																		</div>
+																		<div>
+																			<label className={labelClass}>Ovario Izquierdo</label>
+																			<input value={ovarioIzquierdo} onChange={(e) => setOvarioIzquierdo(e.target.value)} className={`${inputBase} ${inputDark}`} placeholder="Normal" />
+																		</div>
+																		<div>
+																			<label className={labelClass}>Anexos Ecopatron</label>
+																			<input value={anexosEcopatron} onChange={(e) => setAnexosEcopatron(e.target.value)} className={`${inputBase} ${inputDark}`} placeholder="Normal" />
+																		</div>
+																		<div>
+																			<label className={labelClass}>Fondo De Saco</label>
+																			<input value={fondoDeSaco} onChange={(e) => setFondoDeSaco(e.target.value)} className={`${inputBase} ${inputDark}`} placeholder="Libre" />
+																		</div>
+																		<div>
+																			<label className={labelClass}>Cuerpo Lúteo</label>
+																			<select value={cuerpoLuteo} onChange={(e) => setCuerpoLuteo(e.target.value)} className={`${inputBase} ${inputDark}`}>
+																				<option value="">Seleccionar...</option>
+																				<option value="Presente">Presente</option>
+																				<option value="Ausente">Ausente</option>
+																				<option value="Otro">Otro</option>
+																			</select>
+																		</div>
+																	</div>
+																</div>
+
+																{/* Sección: Saco Gestacional */}
+																<div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 shadow-sm p-5">
+																	<h4 className="font-bold text-slate-900 dark:text-slate-100 mb-5 text-base flex items-center gap-2 pb-3 border-b border-slate-200 dark:border-slate-700">
+																		<span className="w-1.5 h-1.5 rounded-full bg-pink-500"></span>
+																		Saco Gestacional
+																	</h4>
+																	<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+																		<div>
+																			<label className={labelClass}>Gestación</label>
+																			<select value={gestacion} onChange={(e) => setGestacion(e.target.value)} className={`${inputBase} ${inputDark}`}>
+																				<option value="">Seleccionar...</option>
+																				<option value="Única">Única</option>
+																				<option value="Múltiple">Múltiple</option>
+																			</select>
+																		</div>
+																		<div>
+																			<label className={labelClass}>Localización</label>
+																			<select value={localizacion} onChange={(e) => setLocalizacion(e.target.value)} className={`${inputBase} ${inputDark}`}>
+																				<option value="">Seleccionar...</option>
+																				<option value="Intrauterina">Intrauterina</option>
+																				<option value="Extrauterina">Extrauterina</option>
+																				<option value="Otro">Otro</option>
+																			</select>
+																		</div>
+																		<div>
+																			<label className={labelClass}>Vesícula</label>
+																			<select value={vesicula} onChange={(e) => setVesicula(e.target.value)} className={`${inputBase} ${inputDark}`}>
+																				<option value="">Seleccionar...</option>
+																				<option value="No Visible">No Visible</option>
+																				<option value="Visible">Visible</option>
+																				<option value="Otro">Otro</option>
+																			</select>
+																		</div>
+																		<div>
+																			<label className={labelClass}>Cavidad Exocelomica</label>
+																			<select value={cavidadExocelomica} onChange={(e) => setCavidadExocelomica(e.target.value)} className={`${inputBase} ${inputDark}`}>
+																				<option value="">Seleccionar...</option>
+																				<option value="No Visible">No Visible</option>
+																				<option value="Visible">Visible</option>
+																				<option value="Otro">Otro</option>
+																			</select>
+																		</div>
+																	</div>
+																</div>
+
+																{/* Sección: Embrión */}
+																<div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 shadow-sm p-5">
+																	<h4 className="font-bold text-slate-900 dark:text-slate-100 mb-5 text-base flex items-center gap-2 pb-3 border-b border-slate-200 dark:border-slate-700">
+																		<span className="w-1.5 h-1.5 rounded-full bg-pink-500"></span>
+																		Embrión
+																	</h4>
+																	<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+																		<div>
+																			<label className={labelClass}>Embrión Visto</label>
+																			<select value={embrionVisto} onChange={(e) => setEmbrionVisto(e.target.value)} className={`${inputBase} ${inputDark}`}>
+																				<option value="">Seleccionar...</option>
+																				<option value="Si">Si</option>
+																				<option value="No">No</option>
+																			</select>
+																		</div>
+																		<div>
+																			<label className={labelClass}>Ecoanatomía</label>
+																			<select value={ecoanatomia} onChange={(e) => setEcoanatomia(e.target.value)} className={`${inputBase} ${inputDark}`}>
+																				<option value="">Seleccionar...</option>
+																				<option value="Acorde a Edad Gestacional">Acorde a Edad Gestacional</option>
+																				<option value="No Acorde a Edad Gestacional">No Acorde a Edad Gestacional</option>
+																				<option value="Otro">Otro</option>
+																			</select>
+																		</div>
+																		<div>
+																			<label className={labelClass}>LCR</label>
+																			<input value={lcr} onChange={(e) => setLcr(e.target.value)} className={`${inputBase} ${inputDark}`} />
+																		</div>
+																		<div>
+																			<label className={labelClass}>Acorde A</label>
+																			<input value={acordeA} onChange={(e) => setAcordeA(e.target.value)} className={`${inputBase} ${inputDark}`} />
+																		</div>
+																		<div>
+																			<label className={labelClass}>Actividad Cardiaca</label>
+																			<select value={actividadCardiaca} onChange={(e) => setActividadCardiaca(e.target.value)} className={`${inputBase} ${inputDark}`}>
+																				<option value="">Seleccionar...</option>
+																				<option value="Presente">Presente</option>
+																				<option value="Ausente">Ausente</option>
+																				<option value="Otro">Otro</option>
+																			</select>
+																		</div>
+																		<div>
+																			<label className={labelClass}>Movimientos Embrionarios</label>
+																			<select value={movimientosEmbrionarios} onChange={(e) => setMovimientosEmbrionarios(e.target.value)} className={`${inputBase} ${inputDark}`}>
+																				<option value="">Seleccionar...</option>
+																				<option value="Normal">Normal</option>
+																				<option value="Lentos">Lentos</option>
+																				<option value="Ausentes">Ausentes</option>
+																				<option value="Otro">Otro</option>
+																			</select>
+																		</div>
+																	</div>
+																</div>
+
+																{/* Sección: Conclusiones */}
+																<div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 shadow-sm p-5">
+																	<h4 className="font-bold text-slate-900 dark:text-slate-100 mb-5 text-base flex items-center gap-2 pb-3 border-b border-slate-200 dark:border-slate-700">
+																		<span className="w-1.5 h-1.5 rounded-full bg-pink-500"></span>
+																		Conclusiones
+																	</h4>
+																	<textarea
+																		value={conclusiones}
+																		onChange={(e) => {
+																			const value = e.target.value;
+																			if (value.length > conclusiones.length && value.endsWith('\n')) {
+																				const lines = value.split('\n');
+																				const lastLine = lines[lines.length - 2] || '';
+																				const lastLineMatch = lastLine.match(/^(\d+)\.\s*(.*)$/);
+																				if (lastLineMatch || lastLine.trim() === '') {
+																					const nextNumber = lastLineMatch ? parseInt(lastLineMatch[1]) + 1 : 1;
+																					const newValue = value.slice(0, -1) + `\n${nextNumber}. `;
+																					setConclusiones(newValue);
+																					return;
+																				}
+																			}
+																			setConclusiones(value);
+																		}}
+																		onKeyDown={(e) => {
+																			if (e.key === 'Enter' && !e.shiftKey) {
+																				e.preventDefault();
+																				const lines = conclusiones.split('\n');
+																				const lastLine = lines[lines.length - 1] || '';
+																				const lastLineMatch = lastLine.match(/^(\d+)\.\s*(.*)$/);
+																				const nextNumber = lastLineMatch ? parseInt(lastLineMatch[1]) + 1 : lines.filter(l => l.match(/^\d+\./)).length + 1;
+																				setConclusiones(conclusiones + (conclusiones ? '\n' : '') + `${nextNumber}. `);
+																			}
+																		}}
+																		rows={8}
+																		className={`${inputBase} ${inputDark} font-mono text-sm`}
+																		placeholder="1. Escribe la primera conclusión y presiona Enter para la siguiente..."
+																	/>
+																	<p className="text-xs text-slate-500 mt-2">Presiona Enter para agregar automáticamente el siguiente número de conclusión.</p>
+																</div>
+																</div>
+															</div>
+														)}
+
+														{/* Formulario del Segundo y Tercer Trimestre */}
+														{obstetricReportType === 'second_third_trimester' && (
+															<div className="bg-gradient-to-br from-indigo-50 to-blue-50 dark:from-indigo-950/20 dark:to-blue-950/20 rounded-xl border border-indigo-200 dark:border-indigo-800 shadow-sm p-6 mt-6">
+																<div className="flex items-center gap-3 mb-6 pb-4 border-b border-indigo-200 dark:border-indigo-800">
+																	<div className="w-10 h-10 rounded-lg bg-indigo-500 dark:bg-indigo-600 flex items-center justify-center">
+																		<FileText className="w-5 h-5 text-white" />
+																	</div>
+																	<h3 className="text-xl font-bold text-slate-900 dark:text-slate-100">Formulario del Segundo y Tercer Trimestre</h3>
+																</div>
+																<div className="space-y-6">
+																	{/* Primera sección: Datos de la Paciente */}
+																	<div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 shadow-sm p-5">
+																		<h4 className="font-bold text-slate-900 dark:text-slate-100 mb-5 text-base flex items-center gap-2 pb-3 border-b border-slate-200 dark:border-slate-700">
+																			<span className="w-1.5 h-1.5 rounded-full bg-indigo-500"></span>
+																			Datos De La Paciente
+																		</h4>
+																		<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+																			<div>
+																				<label className={labelClass}>Edad Gestacional</label>
+																				<input value={edadGestacional_t2} onChange={(e) => setEdadGestacional_t2(e.target.value)} className={`${inputBase} ${inputDark}`} />
+																			</div>
+																			<div>
+																				<label className={labelClass}>FUR</label>
+																				<input value={fur_t2} onChange={(e) => setFur_t2(e.target.value)} className={`${inputBase} ${inputDark}`} />
+																			</div>
+																			<div>
+																				<label className={labelClass}>FPP</label>
+																				<input value={fpp_t2} onChange={(e) => setFpp_t2(e.target.value)} type="date" className={`${inputBase} ${inputDark}`} />
+																			</div>
+																			<div>
+																				<label className={labelClass}>Gestas</label>
+																				<input value={gestas_t2} onChange={(e) => setGestas_t2(e.target.value)} type="number" className={`${inputBase} ${inputDark}`} />
+																			</div>
+																			<div>
+																				<label className={labelClass}>Paras</label>
+																				<input value={paras_t2} onChange={(e) => setParas_t2(e.target.value)} className={`${inputBase} ${inputDark}`} />
+																			</div>
+																			<div>
+																				<label className={labelClass}>Cesáreas</label>
+																				<input value={cesareas_t2} onChange={(e) => setCesareas_t2(e.target.value)} className={`${inputBase} ${inputDark}`} />
+																			</div>
+																			<div>
+																				<label className={labelClass}>Abortos</label>
+																				<input value={abortos_t2} onChange={(e) => setAbortos_t2(e.target.value)} className={`${inputBase} ${inputDark}`} />
+																			</div>
+																			<div>
+																				<label className={labelClass}>Otros</label>
+																				<input value={otros_t2} onChange={(e) => setOtros_t2(e.target.value)} className={`${inputBase} ${inputDark}`} />
+																			</div>
+																			<div>
+																				<label className={labelClass}>Motivo de la consulta</label>
+																				<input value={motivoConsulta_t2} onChange={(e) => setMotivoConsulta_t2(e.target.value)} className={`${inputBase} ${inputDark}`} />
+																			</div>
+																			<div>
+																				<label className={labelClass}>Referencia</label>
+																				<input value={referencia_t2} onChange={(e) => setReferencia_t2(e.target.value)} className={`${inputBase} ${inputDark}`} />
+																			</div>
+																		</div>
+																	</div>
+
+																	{/* Segunda sección: Datos Obstétricos */}
+																	<div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 shadow-sm p-5">
+																		<h4 className="font-bold text-slate-900 dark:text-slate-100 mb-5 text-base flex items-center gap-2 pb-3 border-b border-slate-200 dark:border-slate-700">
+																			<span className="w-1.5 h-1.5 rounded-full bg-indigo-500"></span>
+																			Datos Obstétricos
+																		</h4>
+																		<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+																			<div>
+																				<label className={labelClass}>Nº de Fetos</label>
+																				<input value={numFetos} onChange={(e) => setNumFetos(e.target.value)} className={`${inputBase} ${inputDark}`} />
+																			</div>
+																			<div>
+																				<label className={labelClass}>Actividad Cardiaca</label>
+																				<select value={actividadCardiaca_t2} onChange={(e) => setActividadCardiaca_t2(e.target.value)} className={`${inputBase} ${inputDark}`}>
+																					<option value="">Seleccionar...</option>
+																					<option value="Presente">Presente</option>
+																					<option value="Ausente">Ausente</option>
+																					<option value="Otro">Otro</option>
+																				</select>
+																			</div>
+																			<div>
+																				<label className={labelClass}>Situación</label>
+																				<input value={situacion_t2} onChange={(e) => setSituacion_t2(e.target.value)} className={`${inputBase} ${inputDark}`} />
+																			</div>
+																			<div>
+																				<label className={labelClass}>Presentación</label>
+																				<input value={presentacion_t2} onChange={(e) => setPresentacion_t2(e.target.value)} className={`${inputBase} ${inputDark}`} />
+																			</div>
+																			<div>
+																				<label className={labelClass}>Dorso</label>
+																				<input value={dorso_t2} onChange={(e) => setDorso_t2(e.target.value)} className={`${inputBase} ${inputDark}`} />
+																			</div>
+																		</div>
+																	</div>
+
+																	{/* Tercera sección: Datos Biométricos */}
+																	<div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 shadow-sm p-5">
+																		<h4 className="font-bold text-slate-900 dark:text-slate-100 mb-5 text-base flex items-center gap-2 pb-3 border-b border-slate-200 dark:border-slate-700">
+																			<span className="w-1.5 h-1.5 rounded-full bg-indigo-500"></span>
+																			Datos Biométricos
+																		</h4>
+																		<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+																			<div>
+																				<label className={labelClass}>DBP (mm)</label>
+																				<input value={dbp} onChange={(e) => setDbp(e.target.value)} type="number" className={`${inputBase} ${inputDark}`} />
+																			</div>
+																			<div>
+																				<label className={labelClass}>CC (mm)</label>
+																				<input value={cc} onChange={(e) => setCc(e.target.value)} type="number" className={`${inputBase} ${inputDark}`} />
+																			</div>
+																			<div>
+																				<label className={labelClass}>CA (mm)</label>
+																				<input value={ca} onChange={(e) => setCa(e.target.value)} type="number" className={`${inputBase} ${inputDark}`} />
+																			</div>
+																			<div>
+																				<label className={labelClass}>LF (mm)</label>
+																				<input value={lf} onChange={(e) => setLf(e.target.value)} type="number" className={`${inputBase} ${inputDark}`} />
+																			</div>
+																			<div>
+																				<label className={labelClass}>Peso Estimado Fetal</label>
+																				<input value={pesoEstimadoFetal} onChange={(e) => setPesoEstimadoFetal(e.target.value)} type="number" className={`${inputBase} ${inputDark}`} />
+																			</div>
+																			<div>
+																				<label className={labelClass}>Para</label>
+																				<input value={para_t2} onChange={(e) => setPara_t2(e.target.value)} className={`${inputBase} ${inputDark}`} />
+																			</div>
+																		</div>
+																	</div>
+
+																	{/* Cuarta sección: Datos Placenta Foliculares */}
+																	<div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 shadow-sm p-5">
+																		<h4 className="font-bold text-slate-900 dark:text-slate-100 mb-5 text-base flex items-center gap-2 pb-3 border-b border-slate-200 dark:border-slate-700">
+																			<span className="w-1.5 h-1.5 rounded-full bg-indigo-500"></span>
+																			Datos Placenta Foliculares
+																		</h4>
+																		<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+																			<div>
+																				<label className={labelClass}>Placenta</label>
+																				<input value={placenta_t2} onChange={(e) => setPlacenta_t2(e.target.value)} className={`${inputBase} ${inputDark}`} />
+																			</div>
+																			<div>
+																				<label className={labelClass}>UBI.</label>
+																				<input value={ubi_t2} onChange={(e) => setUbi_t2(e.target.value)} className={`${inputBase} ${inputDark}`} />
+																			</div>
+																			<div>
+																				<label className={labelClass}>Inserción</label>
+																				<input value={insercion_t2} onChange={(e) => setInsercion_t2(e.target.value)} className={`${inputBase} ${inputDark}`} />
+																			</div>
+																			<div>
+																				<label className={labelClass}>Grado</label>
+																				<input value={grado_t2} onChange={(e) => setGrado_t2(e.target.value)} className={`${inputBase} ${inputDark}`} />
+																			</div>
+																			<div>
+																				<label className={labelClass}>Cordón Umbilical</label>
+																				<select value={cordonUmbilical_t2} onChange={(e) => setCordonUmbilical_t2(e.target.value)} className={`${inputBase} ${inputDark}`}>
+																					<option value="">Seleccionar...</option>
+																					<option value="3 ELEMENTOS">3 ELEMENTOS</option>
+																					<option value="Otro">Otro</option>
+																				</select>
+																			</div>
+																			<div>
+																				<label className={labelClass}>Liqu. Amniótico</label>
+																				<input value={liquAmniotico_t2} onChange={(e) => setLiquAmniotico_t2(e.target.value)} className={`${inputBase} ${inputDark}`} />
+																			</div>
+																			<div>
+																				<label className={labelClass}>P</label>
+																				<input value={p_t2} onChange={(e) => setP_t2(e.target.value)} className={`${inputBase} ${inputDark}`} />
+																			</div>
+																			<div>
+																				<label className={labelClass}>ILA</label>
+																				<input value={ila_t2} onChange={(e) => setIla_t2(e.target.value)} className={`${inputBase} ${inputDark}`} />
+																			</div>
+																		</div>
+																	</div>
+
+																	{/* Quinta sección: Datos Anatomofuncionales */}
+																	<div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 shadow-sm p-5">
+																		<h4 className="font-bold text-slate-900 dark:text-slate-100 mb-6 text-base flex items-center gap-2 pb-3 border-b border-slate-200 dark:border-slate-700">
+																			<span className="w-1.5 h-1.5 rounded-full bg-indigo-500"></span>
+																			Datos Anatomofuncionales
+																		</h4>
+																		
+																		{/* Subsección: CABEZA, CUELLO, SNC */}
+																		<div className="mb-6 pb-4 border-b border-slate-100 dark:border-slate-700">
+																			<h5 className="font-semibold text-slate-800 dark:text-slate-200 mb-4 text-sm uppercase tracking-wide text-slate-600 dark:text-slate-400">CABEZA, CUELLO, SNC</h5>
+																			<div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+																				<div>
+																					<label className={labelClass}>Cráneo</label>
+																					<select value={craneo_t2} onChange={(e) => setCraneo_t2(e.target.value)} className={`${inputBase} ${inputDark}`}>
+																						<option value="">Seleccionar...</option>
+																						<option value="Normal">Normal</option>
+																						<option value="Anormal">Anormal</option>
+																						<option value="Otro">Otro</option>
+																					</select>
+																				</div>
+																			</div>
+																		</div>
+
+																		{/* Subsección: TÓRAX */}
+																		<div className="mb-6 pb-4 border-b border-slate-100 dark:border-slate-700">
+																			<h5 className="font-semibold text-slate-800 dark:text-slate-200 mb-4 text-sm uppercase tracking-wide text-slate-600 dark:text-slate-400">TÓRAX</h5>
+																			<div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+																				<div>
+																					<label className={labelClass}>Corazón</label>
+																					<select value={corazon_t2} onChange={(e) => setCorazon_t2(e.target.value)} className={`${inputBase} ${inputDark}`}>
+																						<option value="">Seleccionar...</option>
+																						<option value="Normal">Normal</option>
+																						<option value="Anormal">Anormal</option>
+																						<option value="Otro">Otro</option>
+																					</select>
+																				</div>
+																				<div>
+																					<label className={labelClass}>FCF</label>
+																					<input value={fcf} onChange={(e) => setFcf(e.target.value)} className={`${inputBase} ${inputDark}`} />
+																				</div>
+																				<div>
+																					<label className={labelClass}>Pulmones</label>
+																					<select value={pulmones_t2} onChange={(e) => setPulmones_t2(e.target.value)} className={`${inputBase} ${inputDark}`}>
+																						<option value="">Seleccionar...</option>
+																						<option value="Normal">Normal</option>
+																						<option value="Anormal">Anormal</option>
+																						<option value="Otro">Otro</option>
+																					</select>
+																				</div>
+																			</div>
+																		</div>
+
+																		{/* Subsección: ABDOMEN */}
+																		<div className="mb-6 pb-4 border-b border-slate-100 dark:border-slate-700">
+																			<h5 className="font-semibold text-slate-800 dark:text-slate-200 mb-4 text-sm uppercase tracking-wide text-slate-600 dark:text-slate-400">ABDOMEN</h5>
+																			<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+																				<div>
+																					<label className={labelClass}>Situs Visceral</label>
+																					<select value={situsVisceral_t2} onChange={(e) => setSitusVisceral_t2(e.target.value)} className={`${inputBase} ${inputDark}`}>
+																						<option value="">Seleccionar...</option>
+																						<option value="Normal">Normal</option>
+																						<option value="Anormal">Anormal</option>
+																						<option value="Otro">Otro</option>
+																					</select>
+																				</div>
+																				<div>
+																					<label className={labelClass}>Intestino</label>
+																					<select value={intestino_t2} onChange={(e) => setIntestino_t2(e.target.value)} className={`${inputBase} ${inputDark}`}>
+																						<option value="">Seleccionar...</option>
+																						<option value="Normal">Normal</option>
+																						<option value="Anormal">Anormal</option>
+																						<option value="Otro">Otro</option>
+																					</select>
+																				</div>
+																				<div className="md:col-span-2 lg:col-span-1 grid grid-cols-2 gap-2">
+																					<div>
+																						<label className={labelClass}>Vejiga</label>
+																						<select value={vejiga_t2} onChange={(e) => setVejiga_t2(e.target.value)} className={`${inputBase} ${inputDark}`}>
+																							<option value="">Seleccionar...</option>
+																							<option value="Normal">Normal</option>
+																							<option value="Anormal">Anormal</option>
+																							<option value="Otro">Otro</option>
+																						</select>
+																					</div>
+																					<div>
+																						<label className={labelClass}>Datos Extra</label>
+																						<input value={vejigaExtra_t2} onChange={(e) => setVejigaExtra_t2(e.target.value)} className={`${inputBase} ${inputDark}`} placeholder="Ej: LLENA" />
+																					</div>
+																				</div>
+																				<div className="md:col-span-2 lg:col-span-1 grid grid-cols-2 gap-2">
+																					<div>
+																						<label className={labelClass}>Estómago</label>
+																						<select value={estomago_t2} onChange={(e) => setEstomago_t2(e.target.value)} className={`${inputBase} ${inputDark}`}>
+																							<option value="">Seleccionar...</option>
+																							<option value="Normal">Normal</option>
+																							<option value="Anormal">Anormal</option>
+																							<option value="Otro">Otro</option>
+																						</select>
+																					</div>
+																					<div>
+																						<label className={labelClass}>Datos Extra</label>
+																						<input value={estomagoExtra_t2} onChange={(e) => setEstomagoExtra_t2(e.target.value)} className={`${inputBase} ${inputDark}`} placeholder="Ej: LLENO" />
+																					</div>
+																				</div>
+																				<div className="md:col-span-2 lg:col-span-1 grid grid-cols-2 gap-2">
+																					<div>
+																						<label className={labelClass}>Riñones</label>
+																						<select value={rinones_t2} onChange={(e) => setRinones_t2(e.target.value)} className={`${inputBase} ${inputDark}`}>
+																							<option value="">Seleccionar...</option>
+																							<option value="Normal">Normal</option>
+																							<option value="Anormal">Anormal</option>
+																							<option value="Otro">Otro</option>
+																						</select>
+																					</div>
+																					<div>
+																						<label className={labelClass}>Datos Extra</label>
+																						<input value={rinonesExtra_t2} onChange={(e) => setRinonesExtra_t2(e.target.value)} className={`${inputBase} ${inputDark}`} placeholder="Ej: 2 VISTOS" />
+																					</div>
+																				</div>
+																				<div>
+																					<label className={labelClass}>Genitales</label>
+																					<input value={genitales_t2} onChange={(e) => setGenitales_t2(e.target.value)} className={`${inputBase} ${inputDark}`} />
+																				</div>
+																			</div>
+																		</div>
+
+																		{/* Subsección: EXTREMIDADES */}
+																		<div className="mb-6">
+																			<h5 className="font-semibold text-slate-800 dark:text-slate-200 mb-4 text-sm uppercase tracking-wide text-slate-600 dark:text-slate-400">EXTREMIDADES</h5>
+																			<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+																				<div>
+																					<label className={labelClass}>Miembros Superiores</label>
+																					<select value={miembrosSuperiores_t2} onChange={(e) => setMiembrosSuperiores_t2(e.target.value)} className={`${inputBase} ${inputDark}`}>
+																						<option value="">Seleccionar...</option>
+																						<option value="Normal">Normal</option>
+																						<option value="Anormal">Anormal</option>
+																						<option value="Otro">Otro</option>
+																					</select>
+																				</div>
+																				<div>
+																					<label className={labelClass}>Manos</label>
+																					<select value={manos_t2} onChange={(e) => setManos_t2(e.target.value)} className={`${inputBase} ${inputDark}`}>
+																						<option value="">Seleccionar...</option>
+																						<option value="Normal">Normal</option>
+																						<option value="Anormal">Anormal</option>
+																						<option value="Otro">Otro</option>
+																					</select>
+																				</div>
+																				<div>
+																					<label className={labelClass}>Miembros Inferiores</label>
+																					<select value={miembrosInferiores_t2} onChange={(e) => setMiembrosInferiores_t2(e.target.value)} className={`${inputBase} ${inputDark}`}>
+																						<option value="">Seleccionar...</option>
+																						<option value="Normal">Normal</option>
+																						<option value="Anormal">Anormal</option>
+																						<option value="Otro">Otro</option>
+																					</select>
+																				</div>
+																				<div>
+																					<label className={labelClass}>Pies</label>
+																					<select value={pies_t2} onChange={(e) => setPies_t2(e.target.value)} className={`${inputBase} ${inputDark}`}>
+																						<option value="">Seleccionar...</option>
+																						<option value="Normal">Normal</option>
+																						<option value="Anormal">Anormal</option>
+																						<option value="Otro">Otro</option>
+																					</select>
+																				</div>
+																			</div>
+																		</div>
+																	</div>
+
+																	{/* Sección: Conclusiones */}
+																	<div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 shadow-sm p-5">
+																		<h4 className="font-bold text-slate-900 dark:text-slate-100 mb-5 text-base flex items-center gap-2 pb-3 border-b border-slate-200 dark:border-slate-700">
+																			<span className="w-1.5 h-1.5 rounded-full bg-indigo-500"></span>
+																			Conclusiones
+																		</h4>
+																		<textarea
+																			value={conclusiones_t2}
+																			onChange={(e) => {
+																				const value = e.target.value;
+																				setConclusiones_t2(value);
+																			}}
+																			onKeyDown={(e) => {
+																				// Si presiona Enter sin Shift, agregar numeración automática
+																				if (e.key === 'Enter' && !e.shiftKey) {
+																					e.preventDefault();
+																					
+																					const textarea = e.currentTarget;
+																					const startPos = textarea.selectionStart;
+																					const endPos = textarea.selectionEnd;
+																					const currentValue = conclusiones_t2;
+																					
+																					const beforeCursor = currentValue.substring(0, startPos);
+																					const afterCursor = currentValue.substring(endPos);
+																					
+																					const linesBefore = beforeCursor.split('\n');
+																					const currentLineIndex = linesBefore.length - 1;
+																					const currentLine = linesBefore[currentLineIndex] || '';
+																					
+																					const lineMatch = currentLine.match(/^(\d+)\.\s*(.*)$/);
+																					
+																					let nextNumber = 1;
+																					
+																					if (lineMatch) {
+																						nextNumber = parseInt(lineMatch[1]) + 1;
+																					} else {
+																						const allLines = currentValue.split('\n');
+																						const numberedLines = allLines
+																							.map((line: string) => {
+																								const match = line.match(/^(\d+)\./);
+																								return match ? parseInt(match[1]) : 0;
+																							})
+																							.filter((num: number) => num > 0);
+																						
+																						if (numberedLines.length > 0) {
+																							nextNumber = Math.max(...numberedLines) + 1;
+																						} else if (currentLine.trim() !== '' || currentValue.trim() !== '') {
+																							nextNumber = 1;
+																						}
+																					}
+																					
+																					const needsNewline = beforeCursor.trim() !== '' && !beforeCursor.endsWith('\n');
+																					const newLineWithNumber = `${needsNewline ? '\n' : ''}${nextNumber}. `;
+																					
+																					const newValue = beforeCursor + newLineWithNumber + afterCursor;
+																					setConclusiones_t2(newValue);
+																					
+																					setTimeout(() => {
+																						const newCursorPos = startPos + newLineWithNumber.length;
+																						textarea.setSelectionRange(newCursorPos, newCursorPos);
+																						textarea.focus();
+																					}, 10);
+																				}
+																			}}
+																			rows={8}
+																			className={`${inputBase} ${inputDark} font-mono text-sm`}
+																			placeholder="1. Escribe la primera conclusión y presiona Enter para la siguiente..."
+																		/>
+																		<p className="text-xs text-slate-500 mt-2">Presiona Enter para agregar automáticamente el siguiente número de conclusión.</p>
+																	</div>
+																</div>
+															</div>
+														)}
+
+														{/* Formulario de Ginecología (campos antiguos) */}
+														{obstetricReportType === 'gynecology' && (
+															<div className="grid grid-cols-1 md:grid-cols-4 gap-4 border-t border-slate-200 dark:border-slate-700 pt-4">
+																<div>
+																	<label className={labelClass}>Altura Uterina (cm)</label>
+																	<input value={fundalHeight} onChange={(e) => setFundalHeight(e.target.value)} className={`${inputBase} ${inputDark}`} type="number" inputMode="decimal" />
+																</div>
+																<div>
+																	<label className={labelClass}>FC Fetal (bpm)</label>
+																	<input value={fetalHr} onChange={(e) => setFetalHr(e.target.value)} className={`${inputBase} ${inputDark}`} type="number" inputMode="numeric" />
+																</div>
+																<div>
+																	<label className={labelClass}>Gravida</label>
+																	<input value={gravida} onChange={(e) => setGravida(e.target.value)} className={`${inputBase} ${inputDark}`} type="number" inputMode="numeric" />
+																</div>
+																<div>
+																	<label className={labelClass}>Para</label>
+																	<input value={para} onChange={(e) => setPara(e.target.value)} className={`${inputBase} ${inputDark}`} type="number" inputMode="numeric" />
+																</div>
+															</div>
+														)}
+													</React.Fragment>
+												)}
 											</div>
 										)}
 									</div>
@@ -2274,11 +3885,101 @@ export default function EditConsultationForm({ initial, patient, doctor, doctorS
 								</h2>
 							</div>
 
-							<div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4 mb-6">
-								<p className="text-sm text-blue-800 dark:text-blue-200">
-									<strong>Instrucciones:</strong> El contenido del informe se genera automáticamente desde la plantilla de texto configurada. Puedes revisar y editar el contenido antes de generar el informe. El contenido se insertará en el marcador <code className="bg-blue-100 dark:bg-blue-900 px-1.5 py-0.5 rounded font-mono text-xs">{'{{contenido}}'}</code> de tu plantilla Word.
-								</p>
-							</div>
+							{hasObstetrics ? (
+								<div className="bg-pink-50 dark:bg-pink-900/20 border border-pink-200 dark:border-pink-800 rounded-lg p-4 mb-6">
+									<p className="text-sm text-pink-800 dark:text-pink-200 mb-3">
+										<strong>Tipo de Informe:</strong> Selecciona el tipo de informe que deseas generar.
+									</p>
+									<div className="flex flex-wrap gap-3">
+										<button
+											type="button"
+											onClick={() => {
+												setSelectedReportType('gynecology');
+												setReportContent('');
+												setReportError(null);
+												setReportSuccess(null);
+											}}
+											className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+												selectedReportType === 'gynecology'
+													? 'bg-teal-600 text-white shadow-md'
+													: 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-teal-300 dark:border-teal-700 hover:bg-teal-100 dark:hover:bg-teal-900/30'
+											}`}>
+											📋 Informe de Ginecología
+										</button>
+										<button
+											type="button"
+											onClick={() => {
+												setSelectedReportType('first_trimester');
+												setReportContent('');
+												setReportError(null);
+												setReportSuccess(null);
+											}}
+											className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+												selectedReportType === 'first_trimester'
+													? 'bg-pink-600 text-white shadow-md'
+													: 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-pink-300 dark:border-pink-700 hover:bg-pink-100 dark:hover:bg-pink-900/30'
+											}`}>
+											📋 Informe del Primer Trimestre
+										</button>
+										<button
+											type="button"
+											onClick={() => {
+												setSelectedReportType('second_third_trimester');
+												setReportContent('');
+												setReportError(null);
+												setReportSuccess(null);
+											}}
+											className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+												selectedReportType === 'second_third_trimester'
+													? 'bg-indigo-600 text-white shadow-md'
+													: 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-indigo-300 dark:border-indigo-700 hover:bg-indigo-100 dark:hover:bg-indigo-900/30'
+											}`}>
+											📋 Informe del 2do y 3er Trimestre
+										</button>
+									</div>
+								</div>
+							) : (
+								<div className="bg-teal-50 dark:bg-teal-900/20 border border-teal-200 dark:border-teal-800 rounded-lg p-4 mb-6">
+									<p className="text-sm text-teal-800 dark:text-teal-200">
+										<strong>Informe de Ginecología:</strong> Se generará el informe de ginecología estándar.
+									</p>
+								</div>
+							)}
+
+							{/* Instrucciones diferentes según el tipo de informe */}
+							{selectedReportType === 'first_trimester' || selectedReportType === 'second_third_trimester' ? (
+								<div className="bg-pink-50 dark:bg-pink-900/20 border border-pink-200 dark:border-pink-800 rounded-lg p-4 mb-6">
+									<p className="text-sm text-pink-800 dark:text-pink-200">
+										<strong>Instrucciones:</strong> Este informe se genera directamente desde la plantilla de Word cargada. Las variables del formulario se insertarán automáticamente en el documento Word.
+										<span className="block mt-2">
+											<strong>Importante:</strong> Asegúrate de haber cargado la plantilla de Word correspondiente en{' '}
+											<Link 
+												href="/dashboard/medic/plantilla-informe" 
+												className="text-pink-700 dark:text-pink-300 underline font-semibold hover:text-pink-800 dark:hover:text-pink-200 transition-colors"
+											>
+												"dashboard/medic/plantilla-informe"
+											</Link>
+											{' '}para el tipo de informe seleccionado ({selectedReportType === 'first_trimester' ? 'Primer Trimestre' : 'Segundo y Tercer Trimestre'}).
+										</span>
+									</p>
+								</div>
+							) : (
+								<div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4 mb-6">
+									<p className="text-sm text-blue-800 dark:text-blue-200">
+										<strong>Instrucciones:</strong> El contenido del informe se genera automáticamente desde la plantilla de texto configurada. Puedes revisar y editar el contenido antes de generar el informe. El contenido se insertará en el marcador <code className="bg-blue-100 dark:bg-blue-900 px-1.5 py-0.5 rounded font-mono text-xs">{'{{contenido}}'}</code> de tu plantilla Word.
+										<span className="block mt-2">
+											<strong>Importante:</strong> Asegúrate de haber cargado la plantilla de Word correspondiente en{' '}
+											<Link 
+												href="/dashboard/medic/plantilla-informe" 
+												className="text-blue-700 dark:text-blue-300 underline font-semibold hover:text-blue-800 dark:hover:text-blue-200 transition-colors"
+											>
+												"dashboard/medic/plantilla-informe"
+											</Link>
+											{' '}para el tipo de informe seleccionado.
+										</span>
+									</p>
+								</div>
+							)}
 
 							<div className="space-y-4">
 								{/* Selector de Fuente */}
@@ -2294,31 +3995,47 @@ export default function EditConsultationForm({ initial, patient, doctor, doctorS
 									<p className="mt-2 text-xs text-slate-500 dark:text-slate-400">La fuente seleccionada se aplicará al generar el informe.</p>
 								</div>
 
-								<div className="flex items-center justify-between">
-									<label className={labelClass}>Contenido del Informe</label>
-									<button
-										type="button"
-										onClick={async () => {
-											try {
-												const res = await fetch(`/api/consultations/${initial.id}/generate-report-content`, {
-													credentials: 'include',
-												});
-												const data = await res.json();
-												if (res.ok && data.content) {
-													setReportContent(data.content);
-													setReportSuccess('Contenido generado automáticamente desde la plantilla');
-												} else {
-													setReportError(data.error || 'Error al generar contenido automáticamente');
-												}
-											} catch (err: any) {
-												setReportError(err.message || 'Error al generar contenido automáticamente');
-											}
-										}}
-										className="px-4 py-2 rounded-lg bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-700 transition-colors">
-										🔄 Generar Automáticamente
-									</button>
-								</div>
-								<textarea value={reportContent} onChange={(e) => setReportContent(e.target.value)} rows={16} className={`${inputBase} ${inputDark} resize-none font-mono text-sm`} placeholder="El contenido se generará automáticamente desde la plantilla de texto. Haz clic en 'Generar Automáticamente' o escribe el contenido manualmente..." />
+								{/* Campo de Contenido del Informe - Solo para informes que NO son de obstetricia (1er trimestre o 2do/3er trimestre) */}
+								{(selectedReportType !== 'first_trimester' && selectedReportType !== 'second_third_trimester') && (
+									<>
+										<div className="flex items-center justify-between">
+											<label className={labelClass}>Contenido del Informe</label>
+											<button
+												type="button"
+												onClick={async () => {
+													try {
+														// Determinar el tipo de informe
+														const vitals = initial.vitals || {};
+														const obst = vitals.obstetrics || {};
+														const reportType = obst.report_type || selectedReportType;
+														
+														const res = await fetch(`/api/consultations/${initial.id}/generate-report-content?report_type=${reportType}`, {
+															credentials: 'include',
+														});
+														const data = await res.json();
+														if (res.ok && data.content) {
+															setReportContent(data.content);
+															if (data.font_family) {
+																setFontFamily(data.font_family);
+															}
+															setReportSuccess('Contenido generado automáticamente desde la plantilla');
+															setReportError(null);
+														} else {
+															setReportError(data.error || 'Error al generar contenido automáticamente');
+															setReportSuccess(null);
+														}
+													} catch (err: any) {
+														setReportError(err.message || 'Error al generar contenido automáticamente');
+														setReportSuccess(null);
+													}
+												}}
+												className="px-4 py-2 rounded-lg bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-700 transition-colors">
+												🔄 Generar Automáticamente
+											</button>
+										</div>
+										<textarea value={reportContent} onChange={(e) => setReportContent(e.target.value)} rows={16} className={`${inputBase} ${inputDark} resize-none font-mono text-sm`} placeholder="El contenido se generará automáticamente desde la plantilla de texto. Haz clic en 'Generar Automáticamente' o escribe el contenido manualmente..." />
+									</>
+								)}
 
 								{reportError && <div className="rounded-lg bg-rose-50 dark:bg-rose-900/20 border border-rose-200 dark:border-rose-800 text-rose-700 dark:text-rose-300 p-4 text-sm">{reportError}</div>}
 
@@ -2328,7 +4045,16 @@ export default function EditConsultationForm({ initial, patient, doctor, doctorS
 								<div className="flex flex-col gap-3">
 									{/* Fila 1: Generar y Descargar lado a lado */}
 									<div className="flex items-center gap-3">
-										<button type="button" onClick={handleGenerateReport} disabled={generatingReport || !reportContent.trim()} className="flex-1 inline-flex items-center justify-center gap-2 px-6 py-3 rounded-lg bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-semibold shadow-lg hover:shadow-xl hover:scale-[1.02] transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100">
+										<button 
+											type="button" 
+											onClick={handleGenerateReport} 
+											disabled={
+												generatingReport || 
+												(selectedReportType !== 'first_trimester' && 
+												 selectedReportType !== 'second_third_trimester' && 
+												 !reportContent.trim())
+											} 
+											className="flex-1 inline-flex items-center justify-center gap-2 px-6 py-3 rounded-lg bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-semibold shadow-lg hover:shadow-xl hover:scale-[1.02] transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100">
 											{generatingReport ? (
 												<>
 													<Loader2 className="w-5 h-5 animate-spin" />

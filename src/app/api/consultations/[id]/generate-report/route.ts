@@ -8,7 +8,7 @@ import Docxtemplater from 'docxtemplater';
 import PizZip from 'pizzip';
 
 // Función para generar el contenido del informe desde la plantilla de texto
-async function generateReportContentFromTemplate(consultation: any, templateText: string, supabase: any): Promise<string> {
+async function generateReportContentFromTemplate(consultation: any, templateText: string, supabase: any, reportType: string = 'gynecology'): Promise<string> {
 	let content = templateText;
 
 	// Función auxiliar para calcular edad desde fecha de nacimiento
@@ -55,16 +55,20 @@ async function generateReportContentFromTemplate(consultation: any, templateText
 	let patientName = 'Paciente no registrado';
 	let patientAge = '';
 	let patientGender = '';
+	let patientId = 'N/A';
+	let patientPhone = 'N/A';
 
 	// Obtener datos del paciente según si está registrado o no
 	if (consultation.patient_id) {
 		// Paciente registrado - obtener desde tabla Patient
-		const { data: patientData, error: patientError } = await supabase.from('patient').select('firstName, lastName, dob, gender').eq('id', consultation.patient_id).single();
+		const { data: patientData, error: patientError } = await supabase.from('patient').select('firstName, lastName, dob, gender, identifier, phone').eq('id', consultation.patient_id).single();
 
 		if (!patientError && patientData) {
 			patientName = `${patientData.firstName || ''} ${patientData.lastName || ''}`.trim() || 'Paciente';
 			patientAge = calculateAge(patientData.dob);
 			patientGender = patientData.gender || '';
+			patientId = patientData.identifier || 'N/A';
+			patientPhone = patientData.phone || 'N/A';
 			console.log('[Generate Report] Paciente registrado:', {
 				name: patientName,
 				dob: patientData.dob,
@@ -77,12 +81,14 @@ async function generateReportContentFromTemplate(consultation: any, templateText
 	} else if (consultation.unregistered_patient_id) {
 		// Paciente no registrado - obtener desde tabla unregisteredpatients
 		// Nota: la tabla usa birth_date (no dob) y sex (no gender)
-		const { data: unregisteredPatient, error: unregisteredError } = await supabase.from('unregisteredpatients').select('first_name, last_name, birth_date, sex').eq('id', consultation.unregistered_patient_id).single();
+		const { data: unregisteredPatient, error: unregisteredError } = await supabase.from('unregisteredpatients').select('first_name, last_name, birth_date, sex, identification, phone').eq('id', consultation.unregistered_patient_id).single();
 
 		if (!unregisteredError && unregisteredPatient) {
 			patientName = `${unregisteredPatient.first_name || ''} ${unregisteredPatient.last_name || ''}`.trim() || 'Paciente no registrado';
 			patientAge = calculateAge(unregisteredPatient.birth_date);
 			patientGender = unregisteredPatient.sex || '';
+			patientId = unregisteredPatient.identification || 'N/A';
+			patientPhone = unregisteredPatient.phone || 'N/A';
 			console.log('[Generate Report] Paciente no registrado:', {
 				name: patientName,
 				birth_date: unregisteredPatient.birth_date,
@@ -96,101 +102,201 @@ async function generateReportContentFromTemplate(consultation: any, templateText
 		console.warn('[Generate Report] No se encontró patient_id ni unregistered_patient_id en la consulta');
 	}
 
-	// Obtener datos de vitals de ginecología
+	// Obtener datos de vitals
 	const vitals = consultation.vitals || {};
 	const gyn = vitals.gynecology || {};
 	const colposcopy = gyn.colposcopy || {};
+	const obst = vitals.obstetrics || {};
+	const firstTrim = obst.first_trimester || {};
+	const secondTrim = obst.second_third_trimester || {};
 
-	// Mapeo de marcadores a valores (todos en español para mejor entendimiento)
-	const replacements: Record<string, string> = {
+	// Variables básicas comunes a todos los informes
+	const baseReplacements: Record<string, string> = {
 		// Datos básicos del paciente
 		paciente: patientName,
 		edad: patientAge || 'N/A',
 		genero: patientGender || 'N/A',
-
-		// Antecedentes médicos
-		alergicos: gyn.allergies || 'NIEGA',
-		quirurgicos: gyn.surgical_history || 'NIEGA',
-
-		// Antecedentes familiares
-		antecedentes_madre: gyn.family_history_mother || 'VIVA SANA',
-		antecedentes_padre: gyn.family_history_father || 'VIVO SANO',
-		antecedentes_cancer_mama: gyn.family_history_breast_cancer || 'NIEGA',
-
-		// Antecedentes ginecológicos
-		motivo_consulta: gyn.evaluation_reason || consultation.chief_complaint || 'No especificado',
-		motivo_evaluacion: gyn.evaluation_reason || consultation.chief_complaint || 'No especificado',
-		its: gyn.its || 'NIEGA',
-		tipo_menstruacion: gyn.menstruation_type || 'REGULARES',
-		patron_menstruacion: gyn.menstruation_pattern || '',
-		dismenorrea: gyn.dysmenorrhea || 'NO',
-		primera_relacion_sexual: gyn.first_sexual_relation || '',
-		parejas_sexuales: gyn.sexual_partners || '',
-		ultima_regla: gyn.last_menstrual_period || '',
-		metodo_anticonceptivo: gyn.contraceptive || '',
-
-		// Examen físico
-		condiciones_generales: gyn.general_conditions || 'ESTABLES',
-		tamano_mamas: gyn.breast_size || 'MEDIANO TAMAÑO',
-		simetria_mamas: gyn.breast_symmetry || 'ASIMÉTRICAS',
-		cap_mamas: gyn.breast_cap || 'SIN ALTERACIONES',
-		secrecion_mamas: gyn.breast_secretion || 'NO SE EVIDENCIA SALIDA DE SECRECIÓN',
-		fosas_axilares: gyn.axillary_fossae || 'LIBRES',
-		abdomen: gyn.abdomen || 'BLANDO, DEPRIMIBLE NO DOLOROSO A LA PALPACIÓN',
-		genitales_externos: gyn.external_genitals || 'NORMOCONFIGURADOS',
-		especuloscopia: gyn.speculum_cervix || 'CUELLO MACROSCÓPICAMENTE SANO',
-		tacto_cervix: gyn.tact_cervix || 'CUELLO RENITENTE NO DOLOROSO A LA MOVILIZACIÓN',
-		fondo_sacos: gyn.fundus_sacs || 'LIBRES',
-		anexos: gyn.adnexa || 'NO PALPABLES',
-
-		// Colposcopia - Tests básicos
-		test_hinselmann: gyn.hinselmann_test || 'NEGATIVO',
-		test_schiller: gyn.schiller_test || 'NEGATIVO',
-
-		// Colposcopia - Información General
-		colposcopia_acetico_5: colposcopy.acetic_5 || '',
-		colposcopia_ectocervix: colposcopy.ectocervix || '',
-		colposcopia_tipo: colposcopy.type || '',
-		colposcopia_extension: colposcopy.extension || '',
-		colposcopia_descripcion: colposcopy.description || '',
-		colposcopia_localizacion: colposcopy.location || '',
-
-		// Colposcopia - Epitelio Acetoblanco
-		colposcopia_acetowhite: colposcopy.acetowhite || '',
-		colposcopia_acetowhite_detalles: colposcopy.acetowhite_details || '',
-
-		// Colposcopia - Patrones de Vascularización
-		colposcopia_mosaico: colposcopy.mosaic || '',
-		colposcopia_punteado: colposcopy.punctation || '',
-		colposcopia_vasos_atipicos: colposcopy.atypical_vessels || '',
-
-		// Colposcopia - Características de la Lesión
-		colposcopia_carcinoma_invasivo: colposcopy.invasive_carcinoma || '',
-		colposcopia_bordes: colposcopy.borders || '',
-		colposcopia_situacion: colposcopy.situation || '',
-		colposcopia_elevacion: colposcopy.elevation || '',
-
-		// Colposcopia - Pruebas Complementarias
-		colposcopia_biopsia: colposcopy.biopsy || '',
-		colposcopia_biopsia_localizacion: colposcopy.biopsy_location || '',
-		colposcopia_lugol: colposcopy.lugol || '',
-
-		// Ecografía transvaginal
-		dimensiones_utero: gyn.uterus_dimensions || '',
-		interfase_endometrial: gyn.endometrial_interface || '',
-		tipo_interfase_endometrial: gyn.endometrial_interface_type || 'TRILAMINAR',
-		dimensiones_ovario_izquierdo: gyn.left_ovary_dimensions || '',
-		dimensiones_ovario_derecho: gyn.right_ovary_dimensions || '',
-		liquido_fondo_saco: gyn.fundus_fluid || 'NO SE EVIDENCIA LÍQUIDO EN FONDO DE SACO',
-
-		// Examen cervical
-		examen_cervical: gyn.cervical_exam || '',
-
+		cedula: patientId || 'N/A',
+		identificacion: patientId || 'N/A',
+		telefono: patientPhone || 'N/A',
+		phone: patientPhone || 'N/A',
+		
 		// Datos generales de la consulta
 		diagnostico: consultation.diagnosis || 'No especificado',
 		motivo: consultation.chief_complaint || 'No especificado',
+		notes: consultation.notes || '',
 		notas: consultation.notes || '',
 	};
+
+	// Construir replacements según el tipo de informe
+	let replacements: Record<string, string>;
+
+	if (reportType === 'first_trimester') {
+		// Variables SOLO del Primer Trimestre (sin ginecología)
+		replacements = {
+			...baseReplacements,
+			// Datos de la Paciente
+			edad_gestacional: firstTrim.edad_gestacional || '',
+			fur: firstTrim.fur || '',
+			fpp: firstTrim.fpp || '',
+			gestas: firstTrim.gestas || '',
+			paras: firstTrim.paras || '',
+			cesareas: firstTrim.cesareas || '',
+			abortos: firstTrim.abortors || firstTrim.abortos || '',
+			otros: firstTrim.otros || '',
+			motivo_consulta: firstTrim.motivo_consulta || consultation.chief_complaint || 'No especificado',
+			referencia: firstTrim.referencia || '',
+			
+			// Datos Obstétricos del 1er Trimestre
+			posicion: firstTrim.posicion || '',
+			superficie: firstTrim.superficie || 'Regular',
+			miometrio: firstTrim.miometrio || 'HOMOGENEO',
+			endometrio: firstTrim.endometrio || 'Ocupado Por Saco Gestacional.',
+			ovario_derecho: firstTrim.ovario_derecho || 'Normal',
+			ovario_izquierdo: firstTrim.ovario_izquierdo || 'Normal',
+			anexos_ecopatron: firstTrim.anexos_ecopatron || 'Normal',
+			fondo_de_saco: firstTrim.fondo_de_saco || 'Libre',
+			cuerpo_luteo: firstTrim.cuerpo_luteo || '',
+			
+			// Saco Gestacional
+			gestacion: firstTrim.gestacion || '',
+			localizacion: firstTrim.localizacion || '',
+			vesicula: firstTrim.vesicula || '',
+			cavidad_exocelomica: firstTrim.cavidad_exocelomica || '',
+			
+			// Embrión
+			embrion_visto: firstTrim.embrion_visto || '',
+			ecoanatomia: firstTrim.ecoanatomia || '',
+			lcr: firstTrim.lcr || '',
+			acorde_a: firstTrim.acorde_a || '',
+			actividad_cardiaca: firstTrim.actividad_cardiaca || '',
+			movimientos_embrionarios: firstTrim.movimientos_embrionarios || '',
+			
+			// Conclusiones
+			conclusiones: firstTrim.conclusiones || '',
+		};
+	} else if (reportType === 'second_third_trimester') {
+		// Variables SOLO del Segundo y Tercer Trimestre (sin ginecología)
+		replacements = {
+			...baseReplacements,
+			// Datos de la Paciente
+			edad_gestacional: secondTrim.edad_gestacional || '',
+			fur: secondTrim.fur || '',
+			fpp: secondTrim.fpp || '',
+			gestas: secondTrim.gestas || '',
+			paras: secondTrim.paras || '',
+			cesareas: secondTrim.cesareas || '',
+			abortos: secondTrim.abortos || '',
+			otros: secondTrim.otros || '',
+			motivo_consulta: secondTrim.motivo_consulta || consultation.chief_complaint || 'No especificado',
+			referencia: secondTrim.referencia || '',
+			
+			// Datos Obstétricos
+			num_fetos: secondTrim.num_fetos || '01',
+			actividad_cardiaca: secondTrim.actividad_cardiaca || '',
+			situacion: secondTrim.situacion || '',
+			presentacion: secondTrim.presentacion || '',
+			dorso: secondTrim.dorso || '',
+			
+			// Datos Biométricos
+			dbp: secondTrim.dbp || '',
+			cc: secondTrim.cc || '',
+			ca: secondTrim.ca || '',
+			lf: secondTrim.lf || '',
+			peso_estimado_fetal: secondTrim.peso_estimado_fetal || '',
+			para: secondTrim.para || '',
+			
+			// Datos Placenta Foliculares
+			placenta: secondTrim.placenta || '',
+			ubi: secondTrim.ubi || '',
+			insercion: secondTrim.insercion || '',
+			grado: secondTrim.grado || 'I/III',
+			cordon_umbilical: secondTrim.cordon_umbilical || '',
+			liqu_amniotico: secondTrim.liqu_amniotico || '',
+			p: secondTrim.p || '',
+			ila: secondTrim.ila || '',
+			
+			// Datos Anatomofuncionales
+			craneo: secondTrim.craneo || '',
+			corazon: secondTrim.corazon || '',
+			fcf: secondTrim.fcf || '',
+			pulmones: secondTrim.pulmones || '',
+			situs_visceral: secondTrim.situs_visceral || '',
+			intestino: secondTrim.intestino || '',
+			vejiga: secondTrim.vejiga || '',
+			vejiga_extra: secondTrim.vejiga_extra || '',
+			estomago: secondTrim.estomago || '',
+			estomago_extra: secondTrim.estomago_extra || '',
+			rinones: secondTrim.rinones || '',
+			rinones_extra: secondTrim.rinones_extra || '',
+			genitales: secondTrim.genitales || '',
+			miembros_superiores: secondTrim.miembros_superiores || '',
+			manos: secondTrim.manos || '',
+			miembros_inferiores: secondTrim.miembros_inferiores || '',
+			pies: secondTrim.pies || '',
+			
+			// Conclusiones
+			conclusiones: secondTrim.conclusiones || '',
+		};
+	} else {
+		// Variables de Ginecología (comportamiento original)
+		replacements = {
+			...baseReplacements,
+			// Antecedentes médicos
+			alergicos: gyn.allergies || 'NIEGA',
+			quirurgicos: gyn.surgical_history || 'NIEGA',
+
+			// Antecedentes familiares
+			antecedentes_madre: gyn.family_history_mother || 'VIVA SANA',
+			antecedentes_padre: gyn.family_history_father || 'VIVO SANO',
+			antecedentes_cancer_mama: gyn.family_history_breast_cancer || 'NIEGA',
+
+			// Antecedentes ginecológicos
+			motivo_consulta: gyn.evaluation_reason || consultation.chief_complaint || 'No especificado',
+			motivo_evaluacion: gyn.evaluation_reason || consultation.chief_complaint || 'No especificado',
+			its: gyn.its || 'NIEGA',
+			tipo_menstruacion: gyn.menstruation_type || 'REGULARES',
+			patron_menstruacion: gyn.menstruation_pattern || '',
+			dismenorrea: gyn.dysmenorrhea || 'NO',
+			primera_relacion_sexual: gyn.first_sexual_relation || '',
+			parejas_sexuales: gyn.sexual_partners || '',
+			ultima_regla: gyn.last_menstrual_period || '',
+			metodo_anticonceptivo: gyn.contraceptive || '',
+			método_anticonceptivo: gyn.contraceptive || '', // Con tilde para compatibilidad
+
+			// Colposcopia - Tests básicos
+			test_hinselmann: gyn.hinselmann_test || 'NEGATIVO',
+			test_schiller: gyn.schiller_test || 'NEGATIVO',
+
+			// Colposcopia - Información General
+			colposcopia_acetico_5: colposcopy.acetic_5 || '',
+			colposcopia_ectocervix: colposcopy.ectocervix || '',
+			colposcopia_tipo: colposcopy.type || '',
+			colposcopia_extension: colposcopy.extension || '',
+			colposcopia_descripcion: colposcopy.description || '',
+			colposcopia_localizacion: colposcopy.location || '',
+
+			// Colposcopia - Epitelio Acetoblanco
+			colposcopia_acetowhite: colposcopy.acetowhite || '',
+			colposcopia_acetowhite_detalles: colposcopy.acetowhite_details || '',
+
+			// Colposcopia - Patrones de Vascularización
+			colposcopia_mosaico: colposcopy.mosaic || '',
+			colposcopia_punteado: colposcopy.punctation || '',
+			colposcopia_vasos_atipicos: colposcopy.atypical_vessels || '',
+
+			// Colposcopia - Características de la Lesión
+			colposcopia_carcinoma_invasivo: colposcopy.invasive_carcinoma || '',
+			colposcopia_bordes: colposcopy.borders || '',
+			colposcopia_situacion: colposcopy.situation || '',
+			colposcopia_elevacion: colposcopy.elevation || '',
+
+			// Colposcopia - Pruebas Complementarias
+			colposcopia_biopsia: colposcopy.biopsy || '',
+			colposcopia_biopsia_localizacion: colposcopy.biopsy_location || '',
+			colposcopia_lugol: colposcopy.lugol || '',
+		};
+	}
 
 	// Reemplazar todos los marcadores {{variable}} en la plantilla
 	content = content.replace(/\{\{(\w+)\}\}/g, (match, key) => {
@@ -308,23 +414,173 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 		const body = await request.json();
 		let reportContent = body.content || '';
 		const fontFamilyFromRequest: string | undefined = body.font_family;
+		const reportTypeFromRequest: string | undefined = body.report_type; // 'gynecology', 'first_trimester', 'second_third_trimester'
 
-		// Obtener plantilla del médico (incluyendo plantilla de texto y fuente)
-		const { data: medicProfile, error: profileError } = await supabase.from('medic_profile').select('report_template_url, report_template_name, report_template_text, report_font_family').eq('doctor_id', doctorId).maybeSingle();
+		// Verificar si la consulta tiene datos de obstetricia
+		const vitals = consultation.vitals || {};
+		const obstParams = vitals.obstetrics || {};
+		const reportType = reportTypeFromRequest || obstParams.report_type || 'gynecology';
+		const isObstetrics = reportType === 'first_trimester' || reportType === 'second_third_trimester';
+		
+		// Extraer datos de ginecología y obstetricia para uso en templateDataObj
+		const gyn = vitals.gynecology || {};
+		const colposcopy = gyn.colposcopy || {};
+		const obst = vitals.obstetrics || {};
+		const firstTrim = obst.first_trimester || {};
+		const secondTrim = obst.second_third_trimester || {};
 
-		if (profileError || !medicProfile?.report_template_url) {
-			return NextResponse.json({ error: 'No se encontró plantilla de informe. Por favor, carga una plantilla primero.' }, { status: 400 });
+		// Obtener plantillas del médico (incluyendo plantillas por especialidad)
+		const { data: medicProfile, error: profileError } = await supabase
+			.from('medic_profile')
+			.select('report_template_url, report_template_name, report_template_text, report_font_family, report_templates_by_specialty')
+			.eq('doctor_id', doctorId)
+			.maybeSingle();
+
+		if (profileError) {
+			return NextResponse.json({ error: 'Error al obtener plantilla' }, { status: 500 });
+		}
+
+		// Si es obstetricia, buscar plantilla específica de Word
+		let templateUrl: string | null = null;
+		let templateName: string | null = null;
+		let templateText: string | null = null;
+		let templateFontFamily: string = 'Arial';
+
+		if (isObstetrics) {
+			// Parsear report_templates_by_specialty
+			let templatesBySpecialty: any = null;
+			if (medicProfile?.report_templates_by_specialty) {
+				if (typeof medicProfile.report_templates_by_specialty === 'string') {
+					try {
+						templatesBySpecialty = JSON.parse(medicProfile.report_templates_by_specialty);
+					} catch {
+						templatesBySpecialty = null;
+					}
+				} else {
+					templatesBySpecialty = medicProfile.report_templates_by_specialty;
+				}
+			}
+
+			// Buscar plantilla de Obstetricia
+			const obstetriciaKey = Object.keys(templatesBySpecialty || {}).find(
+				key => key.toLowerCase().includes('obstetric') || key.toLowerCase().includes('obstétric')
+			);
+
+			if (obstetriciaKey && templatesBySpecialty[obstetriciaKey]) {
+				const obstTemplate = templatesBySpecialty[obstetriciaKey];
+				
+				// Si tiene estructura de variantes
+				if (obstTemplate.variants) {
+					if (reportType === 'first_trimester' && obstTemplate.variants.trimestre1) {
+						templateUrl = obstTemplate.variants.trimestre1.template_url || null;
+						templateName = obstTemplate.variants.trimestre1.template_name || null;
+						templateText = obstTemplate.variants.trimestre1.template_text || null;
+						templateFontFamily = obstTemplate.variants.trimestre1.font_family || 'Arial';
+					} else if (reportType === 'second_third_trimester' && obstTemplate.variants.trimestre2_3) {
+						templateUrl = obstTemplate.variants.trimestre2_3.template_url || null;
+						templateName = obstTemplate.variants.trimestre2_3.template_name || null;
+						templateText = obstTemplate.variants.trimestre2_3.template_text || null;
+						templateFontFamily = obstTemplate.variants.trimestre2_3.font_family || 'Arial';
+					}
+				} else if (obstTemplate.trimestre1 && reportType === 'first_trimester') {
+					templateUrl = obstTemplate.trimestre1.template_url || null;
+					templateName = obstTemplate.trimestre1.template_name || null;
+					templateText = obstTemplate.trimestre1.template_text || null;
+					templateFontFamily = obstTemplate.trimestre1.font_family || 'Arial';
+				} else if (obstTemplate.trimestre2_3 && reportType === 'second_third_trimester') {
+					templateUrl = obstTemplate.trimestre2_3.template_url || null;
+					templateName = obstTemplate.trimestre2_3.template_name || null;
+					templateText = obstTemplate.trimestre2_3.template_text || null;
+					templateFontFamily = obstTemplate.trimestre2_3.font_family || 'Arial';
+				}
+			}
+
+			// Si no se encontró plantilla específica, usar plantilla general
+			if (!templateUrl) {
+				templateUrl = medicProfile?.report_template_url || null;
+				templateName = medicProfile?.report_template_name || null;
+				templateText = medicProfile?.report_template_text || null;
+				templateFontFamily = medicProfile?.report_font_family || 'Arial';
+			}
+		} else {
+			// No es obstetricia, usar plantilla general
+			templateUrl = medicProfile?.report_template_url || null;
+			templateName = medicProfile?.report_template_name || null;
+			templateText = medicProfile?.report_template_text || null;
+			templateFontFamily = medicProfile?.report_font_family || 'Arial';
+		}
+
+		if (!templateUrl) {
+			const errorMessage = isObstetrics
+				? `No se encontró plantilla de Word para el informe de ${reportType === 'first_trimester' ? 'Primer Trimestre' : 'Segundo y Tercer Trimestre'}. Por favor, carga una plantilla en "dashboard/medic/plantilla-informe" primero.`
+				: 'No se encontró plantilla de informe. Por favor, carga una plantilla primero.';
+			
+			return NextResponse.json({ error: errorMessage }, { status: 400 });
 		}
 
 		// Si existe plantilla de texto y no se proporcionó contenido, generar automáticamente
-		if (medicProfile.report_template_text && !reportContent.trim()) {
+		if (templateText && templateText.trim() && !reportContent.trim()) {
 			console.log('[Generate Report API] Generando contenido automáticamente desde plantilla de texto');
-			reportContent = await generateReportContentFromTemplate(consultation, medicProfile.report_template_text, supabase);
-			console.log('[Generate Report API] Contenido generado automáticamente:', reportContent.substring(0, 200) + '...');
+			console.log('[Generate Report API] Template text length:', templateText?.length || 0);
+			console.log('[Generate Report API] Report type:', reportType);
+			try {
+				const generatedContent = await generateReportContentFromTemplate(consultation, templateText, supabase, reportType);
+				if (generatedContent && generatedContent.trim()) {
+					reportContent = generatedContent;
+					console.log('[Generate Report API] Contenido generado automáticamente, longitud:', reportContent.length);
+					console.log('[Generate Report API] Contenido generado (primeros 200 chars):', reportContent.substring(0, 200) + '...');
+				} else {
+					console.warn('[Generate Report API] generateReportContentFromTemplate retornó contenido vacío');
+				}
+			} catch (error) {
+				console.error('[Generate Report API] Error al generar contenido desde plantilla:', error);
+			}
 		}
 
-		if (!reportContent.trim()) {
-			return NextResponse.json({ error: 'El contenido del informe no puede estar vacío' }, { status: 400 });
+		// Si después de intentar generar el contenido sigue vacío, crear un contenido mínimo
+		if (!reportContent || !reportContent.trim()) {
+			console.warn('[Generate Report API] No se pudo generar contenido automáticamente, creando contenido mínimo');
+			
+			// Generar contenido mínimo básico con información del paciente
+			let patientName = 'Paciente no registrado';
+			if (consultation.patient_id) {
+				const { data: patientData } = await supabase.from('patient').select('firstName, lastName').eq('id', consultation.patient_id).single();
+				if (patientData) {
+					patientName = `${patientData.firstName || ''} ${patientData.lastName || ''}`.trim() || 'Paciente';
+				}
+			} else if (consultation.unregistered_patient_id) {
+				const { data: unregisteredPatient } = await supabase.from('unregisteredpatients').select('first_name, last_name').eq('id', consultation.unregistered_patient_id).single();
+				if (unregisteredPatient) {
+					patientName = `${unregisteredPatient.first_name || ''} ${unregisteredPatient.last_name || ''}`.trim() || 'Paciente no registrado';
+				}
+			}
+
+			const consultationDate = consultation.started_at
+				? new Date(consultation.started_at).toLocaleDateString('es-ES', {
+						year: 'numeric',
+						month: 'long',
+						day: 'numeric',
+				  })
+				: consultation.created_at
+				? new Date(consultation.created_at).toLocaleDateString('es-ES', {
+						year: 'numeric',
+						month: 'long',
+						day: 'numeric',
+				  })
+				: new Date().toLocaleDateString('es-ES');
+
+			reportContent = `Informe de Consulta
+
+Paciente: ${patientName}
+Fecha: ${consultationDate}
+${consultation.diagnosis ? `Diagnóstico: ${consultation.diagnosis}` : ''}
+${consultation.chief_complaint ? `Motivo de consulta: ${consultation.chief_complaint}` : ''}
+${consultation.notes ? `Notas: ${consultation.notes}` : ''}
+
+${isObstetrics ? `Tipo de informe: ${reportType === 'first_trimester' ? 'Primer Trimestre' : 'Segundo y Tercer Trimestre'}` : ''}
+`;
+			
+			console.log('[Generate Report API] Contenido mínimo generado, longitud:', reportContent.length);
 		}
 
 		// Crear cliente admin para descargar plantilla (bypass RLS)
@@ -341,7 +597,6 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 		});
 
 		// Descargar plantilla desde Supabase Storage
-		const templateUrl = medicProfile.report_template_url;
 		const bucket = 'report-templates';
 
 		console.log('[Generate Report API] URL de plantilla:', templateUrl);
@@ -488,11 +743,6 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 			}
 		}
 
-		// Obtener datos de ginecología de los vitals
-		const vitals = consultation.vitals || {};
-		const gyn = vitals.gynecology || {};
-		const colposcopy = gyn.colposcopy || {};
-
 		// Obtener datos del médico desde la tabla User usando doctor_id
 		let doctorName = 'Médico';
 		if (consultation.doctor_id) {
@@ -521,7 +771,9 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 		// Preparar datos para la plantilla
 		// Nota: Los nombres de las claves deben coincidir EXACTAMENTE con los marcadores en la plantilla Word
 		// Por ejemplo, si en Word tienes {{edad}}, aquí debe ser 'edad'
-		const templateDataObj: Record<string, string> = {
+		
+		// Variables básicas comunes a todos los informes
+		const baseTemplateData: Record<string, string> = {
 			contenido: reportContent,
 			content: reportContent, // Variante en inglés por si acaso
 			informe: reportContent, // Otra variante posible
@@ -543,44 +795,161 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 			complaint: consultation.chief_complaint || 'No especificado', // Variante en inglés
 			notas: consultation.notes || '',
 			notes: consultation.notes || '', // Variante en inglés
-			// Datos de ginecología
-			ultima_regla: gyn.last_menstrual_period || '',
-			ho: gyn.ho || '',
-			metodo_anticonceptivo: gyn.contraceptive || '',
-			método_anticonceptivo: gyn.contraceptive || '', // Con tilde para compatibilidad
-
-			// Colposcopia - Tests básicos
-			test_hinselmann: gyn.hinselmann_test || 'NEGATIVO',
-			test_schiller: gyn.schiller_test || 'NEGATIVO',
-
-			// Colposcopia - Información General
-			colposcopia_acetico_5: colposcopy.acetic_5 || '',
-			colposcopia_ectocervix: colposcopy.ectocervix || '',
-			colposcopia_tipo: colposcopy.type || '',
-			colposcopia_extension: colposcopy.extension || '',
-			colposcopia_descripcion: colposcopy.description || '',
-			colposcopia_localizacion: colposcopy.location || '',
-
-			// Colposcopia - Epitelio Acetoblanco
-			colposcopia_acetowhite: colposcopy.acetowhite || '',
-			colposcopia_acetowhite_detalles: colposcopy.acetowhite_details || '',
-
-			// Colposcopia - Patrones de Vascularización
-			colposcopia_mosaico: colposcopy.mosaic || '',
-			colposcopia_punteado: colposcopy.punctation || '',
-			colposcopia_vasos_atipicos: colposcopy.atypical_vessels || '',
-
-			// Colposcopia - Características de la Lesión
-			colposcopia_carcinoma_invasivo: colposcopy.invasive_carcinoma || '',
-			colposcopia_bordes: colposcopy.borders || '',
-			colposcopia_situacion: colposcopy.situation || '',
-			colposcopia_elevacion: colposcopy.elevation || '',
-
-			// Colposcopia - Pruebas Complementarias
-			colposcopia_biopsia: colposcopy.biopsy || '',
-			colposcopia_biopsia_localizacion: colposcopy.biopsy_location || '',
-			colposcopia_lugol: colposcopy.lugol || '',
 		};
+
+		// Construir templateDataObj según el tipo de informe
+		let templateDataObj: Record<string, string>;
+
+		if (reportType === 'first_trimester') {
+			// Variables SOLO del Primer Trimestre (sin ginecología)
+			templateDataObj = {
+				...baseTemplateData,
+				// Datos de la Paciente
+				edad_gestacional: firstTrim.edad_gestacional || '',
+				fur: firstTrim.fur || '',
+				fpp: firstTrim.fpp || '',
+				gestas: firstTrim.gestas || '',
+				paras: firstTrim.paras || '',
+				cesareas: firstTrim.cesareas || '',
+				abortos: firstTrim.abortors || firstTrim.abortos || '',
+				otros: firstTrim.otros || '',
+				motivo_consulta: firstTrim.motivo_consulta || consultation.chief_complaint || 'No especificado',
+				referencia: firstTrim.referencia || '',
+				
+				// Datos Obstétricos del 1er Trimestre
+				posicion: firstTrim.posicion || '',
+				superficie: firstTrim.superficie || 'Regular',
+				miometrio: firstTrim.miometrio || 'HOMOGENEO',
+				endometrio: firstTrim.endometrio || 'Ocupado Por Saco Gestacional.',
+				ovario_derecho: firstTrim.ovario_derecho || 'Normal',
+				ovario_izquierdo: firstTrim.ovario_izquierdo || 'Normal',
+				anexos_ecopatron: firstTrim.anexos_ecopatron || 'Normal',
+				fondo_de_saco: firstTrim.fondo_de_saco || 'Libre',
+				cuerpo_luteo: firstTrim.cuerpo_luteo || '',
+				
+				// Saco Gestacional
+				gestacion: firstTrim.gestacion || '',
+				localizacion: firstTrim.localizacion || '',
+				vesicula: firstTrim.vesicula || '',
+				cavidad_exocelomica: firstTrim.cavidad_exocelomica || '',
+				
+				// Embrión
+				embrion_visto: firstTrim.embrion_visto || '',
+				ecoanatomia: firstTrim.ecoanatomia || '',
+				lcr: firstTrim.lcr || '',
+				acorde_a: firstTrim.acorde_a || '',
+				actividad_cardiaca: firstTrim.actividad_cardiaca || '',
+				movimientos_embrionarios: firstTrim.movimientos_embrionarios || '',
+				
+				// Conclusiones
+				conclusiones: firstTrim.conclusiones || '',
+			};
+		} else if (reportType === 'second_third_trimester') {
+			// Variables SOLO del Segundo y Tercer Trimestre (sin ginecología)
+			templateDataObj = {
+				...baseTemplateData,
+				// Datos de la Paciente
+				edad_gestacional: secondTrim.edad_gestacional || '',
+				fur: secondTrim.fur || '',
+				fpp: secondTrim.fpp || '',
+				gestas: secondTrim.gestas || '',
+				paras: secondTrim.paras || '',
+				cesareas: secondTrim.cesareas || '',
+				abortos: secondTrim.abortos || '',
+				otros: secondTrim.otros || '',
+				motivo_consulta: secondTrim.motivo_consulta || consultation.chief_complaint || 'No especificado',
+				referencia: secondTrim.referencia || '',
+				
+				// Datos Obstétricos
+				num_fetos: secondTrim.num_fetos || '01',
+				actividad_cardiaca: secondTrim.actividad_cardiaca || '',
+				situacion: secondTrim.situacion || '',
+				presentacion: secondTrim.presentacion || '',
+				dorso: secondTrim.dorso || '',
+				
+				// Datos Biométricos
+				dbp: secondTrim.dbp || '',
+				cc: secondTrim.cc || '',
+				ca: secondTrim.ca || '',
+				lf: secondTrim.lf || '',
+				peso_estimado_fetal: secondTrim.peso_estimado_fetal || '',
+				para: secondTrim.para || '',
+				
+				// Datos Placenta Foliculares
+				placenta: secondTrim.placenta || '',
+				ubi: secondTrim.ubi || '',
+				insercion: secondTrim.insercion || '',
+				grado: secondTrim.grado || 'I/III',
+				cordon_umbilical: secondTrim.cordon_umbilical || '',
+				liqu_amniotico: secondTrim.liqu_amniotico || '',
+				p: secondTrim.p || '',
+				ila: secondTrim.ila || '',
+				
+				// Datos Anatomofuncionales
+				craneo: secondTrim.craneo || '',
+				corazon: secondTrim.corazon || '',
+				fcf: secondTrim.fcf || '',
+				pulmones: secondTrim.pulmones || '',
+				situs_visceral: secondTrim.situs_visceral || '',
+				intestino: secondTrim.intestino || '',
+				vejiga: secondTrim.vejiga || '',
+				vejiga_extra: secondTrim.vejiga_extra || '',
+				estomago: secondTrim.estomago || '',
+				estomago_extra: secondTrim.estomago_extra || '',
+				rinones: secondTrim.rinones || '',
+				rinones_extra: secondTrim.rinones_extra || '',
+				genitales: secondTrim.genitales || '',
+				miembros_superiores: secondTrim.miembros_superiores || '',
+				manos: secondTrim.manos || '',
+				miembros_inferiores: secondTrim.miembros_inferiores || '',
+				pies: secondTrim.pies || '',
+				
+				// Conclusiones
+				conclusiones: secondTrim.conclusiones || '',
+			};
+		} else {
+			// Variables de Ginecología (comportamiento original)
+			templateDataObj = {
+				...baseTemplateData,
+				// Datos de ginecología
+				ultima_regla: gyn.last_menstrual_period || '',
+				ho: gyn.ho || '',
+				metodo_anticonceptivo: gyn.contraceptive || '',
+				método_anticonceptivo: gyn.contraceptive || '', // Con tilde para compatibilidad
+
+				// Colposcopia - Tests básicos
+				test_hinselmann: gyn.hinselmann_test || 'NEGATIVO',
+				test_schiller: gyn.schiller_test || 'NEGATIVO',
+
+				// Colposcopia - Información General
+				colposcopia_acetico_5: colposcopy.acetic_5 || '',
+				colposcopia_ectocervix: colposcopy.ectocervix || '',
+				colposcopia_tipo: colposcopy.type || '',
+				colposcopia_extension: colposcopy.extension || '',
+				colposcopia_descripcion: colposcopy.description || '',
+				colposcopia_localizacion: colposcopy.location || '',
+
+				// Colposcopia - Epitelio Acetoblanco
+				colposcopia_acetowhite: colposcopy.acetowhite || '',
+				colposcopia_acetowhite_detalles: colposcopy.acetowhite_details || '',
+
+				// Colposcopia - Patrones de Vascularización
+				colposcopia_mosaico: colposcopy.mosaic || '',
+				colposcopia_punteado: colposcopy.punctation || '',
+				colposcopia_vasos_atipicos: colposcopy.atypical_vessels || '',
+
+				// Colposcopia - Características de la Lesión
+				colposcopia_carcinoma_invasivo: colposcopy.invasive_carcinoma || '',
+				colposcopia_bordes: colposcopy.borders || '',
+				colposcopia_situacion: colposcopy.situation || '',
+				colposcopia_elevacion: colposcopy.elevation || '',
+
+				// Colposcopia - Pruebas Complementarias
+				colposcopia_biopsia: colposcopy.biopsy || '',
+				colposcopia_biopsia_localizacion: colposcopy.biopsy_location || '',
+				colposcopia_lugol: colposcopy.lugol || '',
+			};
+		}
 
 		console.log('[Generate Report API] Datos que se pasarán a la plantilla:', {
 			contenido: reportContent.substring(0, 100) + (reportContent.length > 100 ? '...' : ''),
@@ -623,8 +992,8 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 				let xmlContent = documentXml.asText();
 
 				// Obtener la fuente seleccionada (por defecto Arial)
-				// La fuente del request tiene prioridad, si no, del perfil, si no, Arial por defecto
-				const selectedFont = fontFamilyFromRequest || medicProfile?.report_font_family || 'Arial';
+				// La fuente del request tiene prioridad, si no, de la plantilla específica, si no, del perfil, si no, Arial por defecto
+				const selectedFont = fontFamilyFromRequest || templateFontFamily || medicProfile?.report_font_family || 'Arial';
 
 				// Cambiar tamaño de fuente a 9pt (en half-points: 9 * 2 = 18)
 				// Reemplazar todos los valores de w:sz a 18

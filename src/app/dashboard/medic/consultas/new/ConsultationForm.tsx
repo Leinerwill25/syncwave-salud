@@ -47,12 +47,20 @@ function TextInput({ id, label, value, onChange, placeholder, icon, error, type 
 	);
 }
 
-function TextareaInput({ id, label, value, onChange, placeholder, rows = 4, error, hint }: any) {
+function TextareaInput({ id, label, value, onChange, placeholder, rows = 4, error, hint, onKeyDown }: any) {
 	return (
 		<FieldShell>
 			<Label htmlFor={id}>{label}</Label>
 			<div className="rounded-lg border border-blue-200 bg-white shadow-sm">
-				<textarea id={id} value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} rows={rows} className="w-full rounded-lg px-4 py-3 bg-transparent text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-400 transition" />
+				<textarea 
+					id={id} 
+					value={value} 
+					onChange={(e) => onChange(e.target.value)} 
+					onKeyDown={onKeyDown}
+					placeholder={placeholder} 
+					rows={rows} 
+					className="w-full rounded-lg px-4 py-3 bg-transparent text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-400 transition font-mono text-sm" 
+				/>
 			</div>
 			{hint && !error && <p className="mt-2 text-xs text-slate-700">{hint}</p>}
 			{error && <p className="mt-2 text-xs text-rose-600">{error}</p>}
@@ -175,8 +183,6 @@ export default function ConsultationForm() {
 	const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
 	const [consultationDate, setConsultationDate] = useState('');
 	const [chiefComplaint, setChiefComplaint] = useState('');
-	const [diagnosis, setDiagnosis] = useState('');
-	const [notes, setNotes] = useState('');
 	const [loading, setLoading] = useState(false);
 	const [error, setError] = useState<string | null>(null);
 	const [fetchingSession, setFetchingSession] = useState(true);
@@ -192,11 +198,41 @@ export default function ConsultationForm() {
 	const [spo2, setSpo2] = useState('');
 	const [glucose, setGlucose] = useState('');
 
-	// Especialidad seleccionada
-	const [selectedSpecialty, setSelectedSpecialty] = useState<string>('');
 
-	// Campos por especialidad (simplificados)
-	const [specialtyFields, setSpecialtyFields] = useState<Record<string, any>>({});
+	// Campos del formulario del Primer Trimestre
+	const [edadGestacional, setEdadGestacional] = useState('');
+	const [fur, setFur] = useState('');
+	const [fpp, setFpp] = useState('');
+	const [gestas, setGestas] = useState('');
+	const [paras, setParas] = useState('');
+	const [cesareas, setCesareas] = useState('');
+	const [abortors, setAbortors] = useState('');
+	const [otros, setOtros] = useState('');
+	const [motivoConsulta, setMotivoConsulta] = useState('Captación de embarazo');
+	const [referencia, setReferencia] = useState('');
+	const [posicion, setPosicion] = useState('');
+	const [superficie, setSuperficie] = useState('Regular');
+	const [miometrio, setMiometrio] = useState('HOMOGENEO');
+	const [endometrio, setEndometrio] = useState('Ocupado Por Saco Gestacional.');
+	const [ovarioDerecho, setOvarioDerecho] = useState('Normal');
+	const [ovarioIzquierdo, setOvarioIzquierdo] = useState('Normal');
+	const [anexosEcopatron, setAnexosEcopatron] = useState('Normal');
+	const [fondoDeSaco, setFondoDeSaco] = useState('Libre');
+	const [cuerpoLuteo, setCuerpoLuteo] = useState('');
+	const [gestacion, setGestacion] = useState('');
+	const [localizacion, setLocalizacion] = useState('');
+	const [vesicula, setVesicula] = useState('');
+	const [cavidadExocelomica, setCavidadExocelomica] = useState('');
+	const [embrionVisto, setEmbrionVisto] = useState('');
+	const [ecoanatomia, setEcoanatomia] = useState('');
+	const [lcr, setLcr] = useState('Libre');
+	const [acordeA, setAcordeA] = useState('Libre');
+	const [actividadCardiaca, setActividadCardiaca] = useState('');
+	const [movimientosEmbrionarios, setMovimientosEmbrionarios] = useState('');
+	const [conclusiones, setConclusiones] = useState('');
+
+	// Campos del formulario del Segundo y Tercer Trimestre (a agregar cuando se especifiquen)
+	const [secondThirdTrimesterFields, setSecondThirdTrimesterFields] = useState<Record<string, any>>({});
 
 	// Datos del paciente no registrado
 	const [unregisteredFirstName, setUnregisteredFirstName] = useState('');
@@ -222,8 +258,19 @@ export default function ConsultationForm() {
 		is_active?: boolean;
 	};
 
-	const [services, setServices] = useState<ClinicService[]>([]);
-	const [selectedServices, setSelectedServices] = useState<string[]>([]); // IDs de servicios seleccionados
+	type ClinicServiceCombo = {
+		id: string;
+		name: string;
+		description?: string | null;
+		price: string;
+		currency: string;
+		serviceIds: string[];
+	};
+
+	type ServiceOrCombo = (ClinicService & { type: 'service' }) | (ClinicServiceCombo & { type: 'combo' });
+
+	const [services, setServices] = useState<ServiceOrCombo[]>([]);
+	const [selectedServices, setSelectedServices] = useState<string[]>([]); // IDs de servicios/combos seleccionados
 	const [loadingServices, setLoadingServices] = useState(false);
 	// No se aplican impuestos (IVA) en el área de salud
 
@@ -335,26 +382,47 @@ export default function ConsultationForm() {
 		loadAppointmentData();
 	}, [appointmentId]);
 
-	// Cargar servicios del consultorio
+	// Cargar servicios y combos del consultorio
 	useEffect(() => {
 		if (!doctorId) return;
 
-		async function loadServices() {
+		async function loadServicesAndCombos() {
 			try {
 				setLoadingServices(true);
-				const res = await axios.get('/api/medic/services?active=true', { withCredentials: true });
-				if (res.data?.success && Array.isArray(res.data.services)) {
-					setServices(res.data.services);
-				}
+				// Cargar servicios
+				const servicesRes = await axios.get('/api/medic/services?active=true', { withCredentials: true });
+				const servicesData: ClinicService[] = servicesRes.data?.success && Array.isArray(servicesRes.data.services) 
+					? servicesRes.data.services 
+					: [];
+
+				// Cargar combos desde /api/medic/config
+				const configRes = await axios.get('/api/medic/config', { withCredentials: true });
+				const serviceCombos: ClinicServiceCombo[] = configRes.data?.config?.serviceCombos || [];
+
+				// Combinar servicios y combos, agregando un ID único si no lo tienen
+				const allItems: ServiceOrCombo[] = [
+					...servicesData.map((s, idx) => ({
+						...s,
+						type: 'service' as const,
+						id: s.id || `service-${idx}`,
+					})),
+					...serviceCombos.map((c, idx) => ({
+						...c,
+						type: 'combo' as const,
+						id: c.id || `combo-${idx}`,
+					})),
+				];
+
+				setServices(allItems);
 			} catch (err) {
-				console.error('Error cargando servicios:', err);
+				console.error('Error cargando servicios y combos:', err);
 				setServices([]);
 			} finally {
 				setLoadingServices(false);
 			}
 		}
 
-		loadServices();
+		loadServicesAndCombos();
 	}, [doctorId]);
 
 	const handlePatientSelect = (patient: Patient) => {
@@ -453,8 +521,8 @@ export default function ConsultationForm() {
 				doctor_id: doctorId,
 				organization_id: organizationId,
 				chief_complaint: chiefComplaint,
-				diagnosis: diagnosis || null,
-				notes: notes || null,
+				diagnosis: null,
+				notes: null,
 			};
 
 			// Si hay appointment_id, incluirlo para que el API pueda obtener el unregistered_patient_id automáticamente
@@ -498,11 +566,6 @@ export default function ConsultationForm() {
 				vitalsObj.general = generalVitals;
 			}
 
-			// Agregar campos de especialidad si hay alguno
-			if (selectedSpecialty && Object.keys(specialtyFields).length > 0) {
-				const specialtyKey = selectedSpecialty.toLowerCase();
-				vitalsObj[specialtyKey] = specialtyFields;
-			}
 
 			// Agregar fecha de consulta si está disponible (guardar en vitals para consultas programadas)
 			if (consultationDate) {
@@ -753,43 +816,6 @@ export default function ConsultationForm() {
 									/>
 								</div>
 
-								<div className="border-t border-gray-200 pt-4 mt-4">
-									<h4 className="text-sm font-semibold text-slate-900 mb-3">Información Médica Relevante</h4>
-									<div className="grid grid-cols-1 gap-4">
-										<TextareaInput
-											id="unregisteredAllergies"
-											label="Alergias"
-											value={unregisteredAllergies}
-											onChange={setUnregisteredAllergies}
-											placeholder="Liste las alergias conocidas del paciente"
-											rows={3}
-										/>
-										<TextareaInput
-											id="unregisteredChronicConditions"
-											label="Condiciones Crónicas"
-											value={unregisteredChronicConditions}
-											onChange={setUnregisteredChronicConditions}
-											placeholder="Enfermedades crónicas, condiciones previas..."
-											rows={3}
-										/>
-										<TextareaInput
-											id="unregisteredCurrentMedication"
-											label="Medicamentos Actuales"
-											value={unregisteredCurrentMedication}
-											onChange={setUnregisteredCurrentMedication}
-											placeholder="Medicamentos que el paciente está tomando actualmente"
-											rows={3}
-										/>
-										<TextareaInput
-											id="unregisteredFamilyHistory"
-											label="Historial Familiar"
-											value={unregisteredFamilyHistory}
-											onChange={setUnregisteredFamilyHistory}
-											placeholder="Enfermedades o condiciones en la familia"
-											rows={3}
-										/>
-									</div>
-								</div>
 							</div>
 						</Card>
 					)}
@@ -836,9 +862,7 @@ export default function ConsultationForm() {
 						placeholder="Fecha y hora de la consulta"
 						icon={<Calendar size={16} />}
 					/>
-					<TextInput id="chiefComplaint" label="Motivo de consulta *" value={chiefComplaint} onChange={setChiefComplaint} placeholder="Ej: dolor abdominal, cefalea..." icon={<Stethoscope size={16} />} />
-					<TextareaInput id="diagnosis" label="Diagnóstico (opcional)" value={diagnosis} onChange={setDiagnosis} placeholder="Diagnóstico..." rows={3} />
-					<TextareaInput id="notes" label="Notas clínicas (opcional)" value={notes} onChange={setNotes} placeholder="Observaciones, recomendaciones, plan" rows={4} />
+					<TextInput id="chiefComplaint" label="Motivo de consulta" value={chiefComplaint} onChange={setChiefComplaint} placeholder="Ej: dolor abdominal, cefalea..." icon={<Stethoscope size={16} />} />
 				</div>
 			</Card>
 
@@ -861,198 +885,6 @@ export default function ConsultationForm() {
 				</div>
 			</Card>
 
-			{/* Especialidad y Campos Específicos */}
-			<Card className="space-y-4">
-				<div className="flex items-center gap-2 mb-4">
-					<Stethoscope className="w-5 h-5 text-indigo-600" />
-					<h3 className="text-lg font-semibold text-slate-900">Especialidad (Opcional)</h3>
-				</div>
-				<div>
-					<Label htmlFor="specialty">Seleccionar Especialidad</Label>
-					<select
-						id="specialty"
-						value={selectedSpecialty}
-						onChange={(e) => {
-							setSelectedSpecialty(e.target.value);
-							setSpecialtyFields({}); // Limpiar campos al cambiar especialidad
-						}}
-						className="w-full rounded-lg border border-blue-200 px-4 py-3 bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-teal-400 transition"
-					>
-						<option value="">Ninguna (Consulta General)</option>
-						<option value="cardiology">Cardiología</option>
-						<option value="pulmonology">Neumología</option>
-						<option value="neurology">Neurología</option>
-						<option value="obstetrics">Obstetricia</option>
-						<option value="nutrition">Nutrición</option>
-						<option value="dermatology">Dermatología</option>
-						<option value="psychiatry">Psiquiatría</option>
-						<option value="orthopedics">Ortopedia</option>
-						<option value="ent">Otorrinolaringología (ENT)</option>
-						<option value="gynecology">Ginecología</option>
-						<option value="endocrinology">Endocrinología</option>
-						<option value="ophthalmology">Oftalmología</option>
-					</select>
-				</div>
-
-				{/* Campos específicos por especialidad - versión simplificada */}
-				{selectedSpecialty === 'cardiology' && (
-					<div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 bg-red-50 rounded-lg border border-red-200">
-						<TextInput
-							id="ekgRhythm"
-							label="Ritmo ECG"
-							value={specialtyFields.ekg_rhythm || ''}
-							onChange={(val: string) => setSpecialtyFields({ ...specialtyFields, ekg_rhythm: val })}
-							placeholder="Ej: Ritmo sinusal"
-						/>
-						<TextInput
-							id="bnp"
-							label="BNP (pg/mL)"
-							type="number"
-							value={specialtyFields.bnp || ''}
-							onChange={(val: string) => setSpecialtyFields({ ...specialtyFields, bnp: val })}
-							placeholder="Ej: 100"
-						/>
-						<div className="flex items-center gap-2">
-							<input
-								type="checkbox"
-								id="edema"
-								checked={specialtyFields.edema || false}
-								onChange={(e) => setSpecialtyFields({ ...specialtyFields, edema: e.target.checked })}
-								className="rounded"
-							/>
-							<Label htmlFor="edema">Edema presente</Label>
-						</div>
-					</div>
-				)}
-
-				{selectedSpecialty === 'pulmonology' && (
-					<div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 bg-blue-50 rounded-lg border border-blue-200">
-						<TextInput
-							id="fev1"
-							label="FEV1 (L)"
-							type="number"
-							step="0.1"
-							value={specialtyFields.fev1 || ''}
-							onChange={(val: string) => setSpecialtyFields({ ...specialtyFields, fev1: val })}
-							placeholder="Ej: 2.5"
-						/>
-						<TextInput
-							id="fvc"
-							label="FVC (L)"
-							type="number"
-							step="0.1"
-							value={specialtyFields.fvc || ''}
-							onChange={(val: string) => setSpecialtyFields({ ...specialtyFields, fvc: val })}
-							placeholder="Ej: 3.2"
-						/>
-					</div>
-				)}
-
-				{selectedSpecialty === 'neurology' && (
-					<div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 bg-purple-50 rounded-lg border border-purple-200">
-						<TextInput
-							id="gcsTotal"
-							label="GCS Total"
-							type="number"
-							value={specialtyFields.gcs_total || ''}
-							onChange={(val: string) => setSpecialtyFields({ ...specialtyFields, gcs_total: val })}
-							placeholder="Ej: 15"
-						/>
-						<TextInput
-							id="pupillaryReactivity"
-							label="Reactividad Pupilar"
-							value={specialtyFields.pupillary_reactivity || ''}
-							onChange={(val: string) => setSpecialtyFields({ ...specialtyFields, pupillary_reactivity: val })}
-							placeholder="Ej: Reactivas"
-						/>
-					</div>
-				)}
-
-				{selectedSpecialty === 'obstetrics' && (
-					<div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 bg-pink-50 rounded-lg border border-pink-200">
-						<TextInput
-							id="fundalHeight"
-							label="Altura Uterina (cm)"
-							type="number"
-							value={specialtyFields.fundal_height_cm || ''}
-							onChange={(val: string) => setSpecialtyFields({ ...specialtyFields, fundal_height_cm: val })}
-							placeholder="Ej: 32"
-						/>
-						<TextInput
-							id="fetalHr"
-							label="FCF (lpm)"
-							type="number"
-							value={specialtyFields.fetal_heart_rate || ''}
-							onChange={(val: string) => setSpecialtyFields({ ...specialtyFields, fetal_heart_rate: val })}
-							placeholder="Ej: 140"
-						/>
-					</div>
-				)}
-
-				{selectedSpecialty === 'gynecology' && (
-					<div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 bg-rose-50 rounded-lg border border-rose-200">
-						<TextInput
-							id="lmp"
-							label="Última Menstruación (FUM)"
-							type="date"
-							value={specialtyFields.last_menstrual_period || ''}
-							onChange={(val: string) => setSpecialtyFields({ ...specialtyFields, last_menstrual_period: val })}
-						/>
-						<TextInput
-							id="contraceptive"
-							label="Anticonceptivo"
-							value={specialtyFields.contraceptive || ''}
-							onChange={(val: string) => setSpecialtyFields({ ...specialtyFields, contraceptive: val })}
-							placeholder="Ej: Ninguno, Píldora, DIU"
-						/>
-					</div>
-				)}
-
-				{selectedSpecialty === 'endocrinology' && (
-					<div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 bg-yellow-50 rounded-lg border border-yellow-200">
-						<TextInput
-							id="tsh"
-							label="TSH (mUI/L)"
-							type="number"
-							step="0.01"
-							value={specialtyFields.tsh || ''}
-							onChange={(val: string) => setSpecialtyFields({ ...specialtyFields, tsh: val })}
-							placeholder="Ej: 2.5"
-						/>
-						<TextInput
-							id="hba1c"
-							label="HbA1c (%)"
-							type="number"
-							step="0.1"
-							value={specialtyFields.hba1c || ''}
-							onChange={(val: string) => setSpecialtyFields({ ...specialtyFields, hba1c: val })}
-							placeholder="Ej: 5.8"
-						/>
-					</div>
-				)}
-
-				{selectedSpecialty === 'ophthalmology' && (
-					<div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 bg-cyan-50 rounded-lg border border-cyan-200">
-						<TextInput
-							id="visualAcuity"
-							label="Agudeza Visual"
-							value={specialtyFields.visual_acuity || ''}
-							onChange={(val: string) => setSpecialtyFields({ ...specialtyFields, visual_acuity: val })}
-							placeholder="Ej: 20/20"
-						/>
-						<TextInput
-							id="iop"
-							label="PIO (mmHg)"
-							type="number"
-							value={specialtyFields.iop || ''}
-							onChange={(val: string) => setSpecialtyFields({ ...specialtyFields, iop: val })}
-							placeholder="Ej: 15"
-						/>
-					</div>
-				)}
-
-				{/* Otras especialidades pueden agregarse aquí siguiendo el mismo patrón */}
-			</Card>
 
 			{/* SERVICIOS DEL CONSULTORIO */}
 			<Card>
@@ -1074,20 +906,23 @@ export default function ConsultationForm() {
 						</div>
 					) : (
 						<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-							{services.map((service) => {
-								const isSelected = selectedServices.includes(service.id);
+							{services.map((item) => {
+								const isSelected = selectedServices.includes(item.id);
+								const price = item.type === 'service' ? Number(item.price) : Number(item.price);
 								return (
 									<button
-										key={service.id}
+										key={item.id}
 										type="button"
 										onClick={() => {
 											setSelectedServices((prev) =>
-												isSelected ? prev.filter((id) => id !== service.id) : [...prev, service.id]
+												isSelected ? prev.filter((id) => id !== item.id) : [...prev, item.id]
 											);
 										}}
 										className={`w-full p-4 rounded-lg border-2 text-left transition-all ${
 											isSelected
-												? 'border-teal-500 bg-teal-50 shadow-sm'
+												? item.type === 'combo' 
+													? 'border-purple-500 bg-purple-50 shadow-sm'
+													: 'border-teal-500 bg-teal-50 shadow-sm'
 												: 'border-slate-200 bg-white hover:border-slate-300 hover:shadow-sm'
 										}`}>
 										<div className="flex items-start justify-between gap-2">
@@ -1095,16 +930,26 @@ export default function ConsultationForm() {
 												<div className="flex items-center gap-2 mb-2">
 													{isSelected && <CheckCircle className="w-5 h-5 text-teal-600 shrink-0" />}
 													<h4 className={`text-sm font-semibold ${isSelected ? 'text-teal-900' : 'text-slate-900'}`}>
-														{service.name}
+														{item.name}
 													</h4>
+													{item.type === 'combo' && (
+														<span className="text-xs px-2 py-0.5 rounded-full bg-purple-100 text-purple-700 font-medium">
+															Combo
+														</span>
+													)}
 												</div>
-												{service.description && (
-													<p className="text-xs text-slate-600 mb-3 line-clamp-2">{service.description}</p>
+												{item.description && (
+													<p className="text-xs text-slate-600 mb-3 line-clamp-2">{item.description}</p>
+												)}
+												{item.type === 'combo' && 'serviceIds' in item && item.serviceIds && item.serviceIds.length > 0 && (
+													<p className="text-xs text-slate-500 mb-2">
+														Incluye {item.serviceIds.length} servicio{item.serviceIds.length !== 1 ? 's' : ''}
+													</p>
 												)}
 												<div className="mt-2">
 													<CurrencyDisplay
-														amount={Number(service.price)}
-														currency={service.currency as 'USD' | 'EUR'}
+														amount={price}
+														currency={item.currency as 'USD' | 'EUR' | 'VES'}
 														showBoth={true}
 														size="sm"
 													/>
@@ -1128,7 +973,10 @@ export default function ConsultationForm() {
 								</div>
 								{(() => {
 									const selectedServicesData = services.filter((s) => selectedServices.includes(s.id));
-									const subtotal = selectedServicesData.reduce((sum, s) => sum + Number(s.price), 0);
+									const subtotal = selectedServicesData.reduce((sum, s) => {
+										const price = s.type === 'service' ? Number(s.price) : Number(s.price);
+										return sum + price;
+									}, 0);
 									const total = subtotal; // Sin impuestos en área de salud
 									const currency = selectedServicesData[0]?.currency || 'USD';
 

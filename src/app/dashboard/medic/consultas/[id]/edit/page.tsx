@@ -60,14 +60,46 @@ export default async function EditConsultationPage({ params }: Props) {
 		.eq('id', id)
 		.single();
 
-	// Obtener la especialidad del doctor desde medic_profile
+	// Obtener las especialidades guardadas del doctor desde medic_profile
 	// Para consultorios privados, usar private_specialty; si no existe, usar specialty
-	let doctorSpecialty: string | null = null;
+	// Parsear correctamente si viene como string JSON o array
+	let doctorSpecialties: string[] = [];
 	if (consultationRaw?.doctor_id) {
 		const { data: medicProfile } = await supabase.from('medic_profile').select('specialty, private_specialty').eq('doctor_id', consultationRaw.doctor_id).maybeSingle();
 
+		// Helper para parsear especialidades
+		const parseSpecialties = (specialtyData: any): string[] => {
+			if (!specialtyData) return [];
+			
+			// Si es un array, filtrar y retornar
+			if (Array.isArray(specialtyData)) {
+				return specialtyData.filter((s: any) => s && typeof s === 'string' && s.trim().length > 0);
+			}
+			
+			// Si es un string, intentar parsearlo como JSON primero
+			if (typeof specialtyData === 'string' && specialtyData.trim().length > 0) {
+				const trimmed = specialtyData.trim();
+				// Intentar parsear como JSON si parece ser un array JSON
+				if (trimmed.startsWith('[') && trimmed.endsWith(']')) {
+					try {
+						const parsed = JSON.parse(trimmed);
+						if (Array.isArray(parsed)) {
+							return parsed.filter((s: any) => s && typeof s === 'string' && s.trim().length > 0);
+						}
+					} catch {
+						// Si falla el parseo, tratarlo como string simple
+					}
+				}
+				// Si no es JSON, tratarlo como string simple
+				return [trimmed];
+			}
+			
+			return [];
+		};
+
 		// Priorizar private_specialty si existe, sino usar specialty
-		doctorSpecialty = medicProfile?.private_specialty || medicProfile?.specialty || null;
+		const specialtiesRaw = medicProfile?.private_specialty || medicProfile?.specialty || null;
+		doctorSpecialties = parseSpecialties(specialtiesRaw);
 	}
 
 	if (error || !consultationRaw) {
@@ -258,7 +290,7 @@ export default async function EditConsultationPage({ params }: Props) {
 				</header>
 
 				{/* Form Section - No wrapper needed, form handles its own styling */}
-				<EditConsultationForm initial={consultation} patient={patient} doctor={doctor} doctorSpecialty={doctorSpecialty} />
+				<EditConsultationForm initial={consultation} patient={patient} doctor={doctor} doctorSpecialties={doctorSpecialties} />
 			</div>
 		</main>
 	);

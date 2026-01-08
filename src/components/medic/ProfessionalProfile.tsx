@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Upload, Camera, FileText, Award, Building2, Stethoscope, X, Check, User, CreditCard, Smartphone } from 'lucide-react';
 import type { MedicConfig, MedicCredentials, MedicService, MedicServiceCombo, CreditHistory, PaymentMethod } from '@/types/medic-config';
 import { PRIVATE_SPECIALTIES } from '@/lib/constants/specialties';
@@ -36,12 +36,97 @@ export default function ProfessionalProfile({ config, onUpdate }: { config: Medi
 		whatsappMessageTemplate: config.config.whatsappMessageTemplate || 'Hola {NOMBRE_PACIENTE}, le recordamos su cita el {FECHA} a las {HORA} con el Dr/a {NOMBRE_DOCTORA} en {CLÍNICA}. Por los servicios de:\n\n{SERVICIOS}\n\npor favor confirmar con un "Asistiré" o "No Asistiré"',
 	});
 
-	// Formulario para consultorio privado
+	// Helper para obtener especialidades guardadas del config
+	const getSavedSpecialties = (currentConfig: MedicConfig): string[] => {
+		// Primero intentar usar privateSpecialties (array)
+		if (Array.isArray(currentConfig.config.privateSpecialties) && currentConfig.config.privateSpecialties.length > 0) {
+			// Filtrar y parsear strings JSON si es necesario
+			const result: string[] = [];
+			for (const item of currentConfig.config.privateSpecialties) {
+				if (!item) continue;
+				
+				// Si es un string que parece JSON, intentar parsearlo
+				if (typeof item === 'string') {
+					const trimmed = item.trim();
+					if (trimmed.startsWith('[') && trimmed.endsWith(']')) {
+						try {
+							const parsed = JSON.parse(trimmed);
+							if (Array.isArray(parsed)) {
+								result.push(...parsed.filter((s: any) => s && typeof s === 'string' && s.trim().length > 0));
+								continue;
+							}
+						} catch {
+							// Si falla el parseo, tratar como string simple
+						}
+					}
+					if (trimmed.length > 0) {
+						result.push(trimmed);
+					}
+				} else if (typeof item === 'string') {
+					const trimmed = String(item).trim();
+					if (trimmed.length > 0) {
+						result.push(trimmed);
+					}
+				}
+			}
+			return result.filter((s: string) => s && s.trim().length > 0);
+		}
+		
+		// Si no, intentar usar privateSpecialty (puede ser string o array)
+		if (currentConfig.config.privateSpecialty) {
+			// Si es un string que parece JSON, intentar parsearlo
+			if (typeof currentConfig.config.privateSpecialty === 'string') {
+				const trimmed = currentConfig.config.privateSpecialty.trim();
+				if (trimmed.startsWith('[') && trimmed.endsWith(']')) {
+					try {
+						const parsed = JSON.parse(trimmed);
+						if (Array.isArray(parsed)) {
+							return parsed.filter((s: any) => s && typeof s === 'string' && s.trim().length > 0);
+						}
+					} catch {
+						// Si falla el parseo, tratar como string simple
+					}
+				}
+				if (trimmed.length > 0) {
+					return [trimmed];
+				}
+			}
+			if (Array.isArray(currentConfig.config.privateSpecialty) && currentConfig.config.privateSpecialty.length > 0) {
+				// Procesar cada elemento del array (puede contener strings JSON)
+				const result: string[] = [];
+				for (const item of currentConfig.config.privateSpecialty) {
+					if (!item) continue;
+					if (typeof item === 'string') {
+						const trimmed = item.trim();
+						if (trimmed.startsWith('[') && trimmed.endsWith(']')) {
+							try {
+								const parsed = JSON.parse(trimmed);
+								if (Array.isArray(parsed)) {
+									result.push(...parsed.filter((s: any) => s && typeof s === 'string' && s.trim().length > 0));
+									continue;
+								}
+							} catch {
+								// Si falla el parseo, tratar como string simple
+							}
+						}
+						if (trimmed.length > 0) {
+							result.push(trimmed);
+						}
+					}
+				}
+				return result.filter((s: string) => s && s.trim().length > 0);
+			}
+		}
+		return [];
+	};
+	
+	const initialSpecialties = getSavedSpecialties(config);
+	
 	const [privateForm, setPrivateForm] = useState({
 		name: config.user.name || '',
 		photo: config.config.photo || '',
 		signature: config.config.signature || '',
-		privateSpecialty: config.config.privateSpecialty || '',
+		privateSpecialty: initialSpecialties,
 		services: config.config.services || [],
 		credentials: config.config.credentials || {
 			license: '',
@@ -65,6 +150,17 @@ export default function ProfessionalProfile({ config, onUpdate }: { config: Medi
 	const photoInputRef = useRef<HTMLInputElement>(null);
 	const signatureInputRef = useRef<HTMLInputElement>(null);
 	const credentialInputRef = useRef<HTMLInputElement>(null);
+
+	// Actualizar especialidades cuando cambie el config (después de guardar o recargar)
+	useEffect(() => {
+		if (!config.isAffiliated) {
+			const savedSpecialties = getSavedSpecialties(config);
+			setPrivateForm((prev) => ({
+				...prev,
+				privateSpecialty: savedSpecialties,
+			}));
+		}
+	}, [config.config.privateSpecialties, config.config.privateSpecialty, config.isAffiliated, config]);
 
 	const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
 		const file = e.target.files?.[0];
@@ -157,7 +253,9 @@ export default function ProfessionalProfile({ config, onUpdate }: { config: Medi
 						name: privateForm.name,
 						signature: privateForm.signature,
 						photo: privateForm.photo,
-						privateSpecialty: privateForm.privateSpecialty,
+						privateSpecialty: Array.isArray(privateForm.privateSpecialty) 
+							? privateForm.privateSpecialty.filter((s: string) => s && typeof s === 'string' && s.trim().length > 0)
+							: [],
 						services: privateForm.services,
 						credentials: privateForm.credentials,
 						creditHistory: privateForm.creditHistory,
@@ -819,25 +917,69 @@ por favor confirmar con un "Asistiré" o "No Asistiré"`}
 				</>
 			) : (
 				<>
-					{/* Especialidad del consultorio privado */}
+					{/* Especialidades del consultorio privado */}
 					<div className="bg-gray-50 rounded-xl p-6">
 						<h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
 							<Stethoscope className="w-5 h-5 text-indigo-600" />
-							Especialidad Médica
+							Especialidades Médicas
 						</h3>
 						<div>
 							<label className="block text-sm font-medium text-gray-700 mb-2">
-								Seleccionar Especialidad <span className="text-red-500">*</span>
+								Seleccionar Especialidades
 							</label>
-							<select value={privateForm.privateSpecialty} onChange={(e) => setPrivateForm((prev) => ({ ...prev, privateSpecialty: e.target.value }))} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent bg-white" required>
-								<option value="">Seleccione una especialidad</option>
-								{PRIVATE_SPECIALTIES.map((specialty) => (
-									<option key={specialty} value={specialty}>
-										{specialty}
-									</option>
-								))}
-							</select>
-							<p className="mt-2 text-sm text-gray-500">Seleccione la especialidad médica que ejerce en su consultorio privado. Esta información será visible para los pacientes en las búsquedas.</p>
+							<div className="mt-3 space-y-2">
+								{PRIVATE_SPECIALTIES.map((specialty) => {
+									// Normalizar para comparar (trim y case-insensitive)
+									const normalizedSpecialty = specialty.trim();
+									const currentSpecialties = Array.isArray(privateForm.privateSpecialty) 
+										? privateForm.privateSpecialty 
+										: [];
+									const isChecked = currentSpecialties.some((s: string) => {
+										if (!s || typeof s !== 'string') return false;
+										const normalized = s.trim().toLowerCase();
+										return normalized === normalizedSpecialty.toLowerCase();
+									});
+									
+									return (
+										<label
+											key={specialty}
+											className="flex items-center gap-3 p-3 rounded-lg border border-gray-200 bg-white hover:bg-gray-50 cursor-pointer transition-colors"
+										>
+											<input
+												type="checkbox"
+												checked={isChecked}
+												onChange={(e) => {
+													const current = Array.isArray(privateForm.privateSpecialty) 
+														? [...privateForm.privateSpecialty] 
+														: (privateForm.privateSpecialty ? [privateForm.privateSpecialty] : []);
+													
+													if (e.target.checked) {
+														// Agregar la especialidad si no está ya en el array
+														if (!current.includes(specialty)) {
+															current.push(specialty);
+														}
+													} else {
+														// Remover la especialidad del array
+														const index = current.indexOf(specialty);
+														if (index > -1) {
+															current.splice(index, 1);
+														}
+													}
+													
+													setPrivateForm((prev) => ({ ...prev, privateSpecialty: current }));
+												}}
+												className="w-5 h-5 text-indigo-600 border-gray-300 rounded focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 cursor-pointer"
+											/>
+											<span className="text-sm font-medium text-gray-700 flex-1">
+												{specialty}
+											</span>
+										</label>
+									);
+								})}
+							</div>
+							<p className="mt-4 text-sm text-gray-500">
+								Seleccione todas las especialidades médicas que ejerce en su consultorio privado marcando las casillas correspondientes. Esta información será visible para los pacientes en las búsquedas.
+							</p>
 						</div>
 					</div>
 
