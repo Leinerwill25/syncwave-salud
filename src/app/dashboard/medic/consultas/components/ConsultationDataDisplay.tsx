@@ -65,9 +65,85 @@ export default function ConsultationDataDisplay({ vitals, initialPatientData, sp
 						<Stethoscope size={18} />
 						Datos Especializados
 					</h3>
-					<div className="space-y-3">
+					<div className="space-y-4">
 						{Object.entries(specialtyData).map(([key, value]) => {
 							if (!value || (typeof value === 'object' && Object.keys(value).length === 0)) return null;
+							
+							// Manejo especial para obstetrics con first_trimester y second_third_trimester
+							if (key === 'obstetrics' && typeof value === 'object' && value !== null) {
+								const obstetricsData = value as any;
+								return (
+									<div key={key} className="border border-blue-200 rounded-lg p-4 bg-blue-50/50">
+										<h4 className="text-sm font-semibold text-slate-900 mb-3 capitalize">
+											{key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
+										</h4>
+										{obstetricsData.report_type && (
+											<div className="mb-3">
+												<span className="text-xs text-slate-600">Report Type</span>
+												<p className="text-sm font-medium text-slate-900">{obstetricsData.report_type}</p>
+											</div>
+										)}
+										{obstetricsData.first_trimester && (
+											<div className="mb-4 border-l-4 border-teal-500 pl-3">
+												<h5 className="text-xs font-semibold text-teal-700 mb-2">First Trimester</h5>
+												<div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+													{Object.entries(obstetricsData.first_trimester).map(([fieldKey, fieldValue]) => {
+														if (fieldValue === null || fieldValue === undefined || fieldValue === '') return null;
+														return (
+															<div key={fieldKey} className="min-w-0">
+																<span className="text-xs text-slate-600 capitalize block">
+																	{fieldKey.replace(/_/g, ' ')}
+																</span>
+																<p className="text-sm font-medium text-slate-900 break-words">
+																	{String(fieldValue)}
+																</p>
+															</div>
+														);
+													})}
+												</div>
+											</div>
+										)}
+										{obstetricsData.second_third_trimester && (
+											<div className="mb-4 border-l-4 border-cyan-500 pl-3">
+												<h5 className="text-xs font-semibold text-cyan-700 mb-2">Second Third Trimester</h5>
+												<div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+													{Object.entries(obstetricsData.second_third_trimester).map(([fieldKey, fieldValue]) => {
+														if (fieldValue === null || fieldValue === undefined || fieldValue === '') return null;
+														return (
+															<div key={fieldKey} className="min-w-0">
+																<span className="text-xs text-slate-600 capitalize block">
+																	{fieldKey.replace(/_/g, ' ')}
+																</span>
+																<p className="text-sm font-medium text-slate-900 break-words">
+																	{String(fieldValue)}
+																</p>
+															</div>
+														);
+													})}
+												</div>
+											</div>
+										)}
+										{/* Otros campos de obstetrics que no sean first_trimester o second_third_trimester */}
+										{Object.entries(obstetricsData)
+											.filter(([k]) => k !== 'first_trimester' && k !== 'second_third_trimester' && k !== 'report_type')
+											.map(([fieldKey, fieldValue]) => {
+												if (fieldValue === null || fieldValue === undefined || fieldValue === '') return null;
+												return (
+													<div key={fieldKey} className="mb-2">
+														<span className="text-xs text-slate-600 capitalize block">
+															{fieldKey.replace(/_/g, ' ')}
+														</span>
+														<p className="text-sm font-medium text-slate-900 break-words">
+															{String(fieldValue)}
+														</p>
+													</div>
+												);
+											})}
+									</div>
+								);
+							}
+							
+							// Renderizado normal para otros tipos de datos
 							const valueStr = typeof value === 'object' ? JSON.stringify(value, null, 2) : String(value);
 							const isLongText = valueStr.length > 100;
 							

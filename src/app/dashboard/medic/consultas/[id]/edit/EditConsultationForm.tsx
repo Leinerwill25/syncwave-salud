@@ -731,20 +731,22 @@ export default function EditConsultationForm({ initial, patient, doctor, doctorS
 			if (Object.keys(neuro).length) out.neurology = neuro;
 		}
 
-		// Obstetrics - solo si la especialidad está permitida
-		if (allowedSpecialtyCodes.includes('obstetrics')) {
+		// Obstetrics - solo si la especialidad está permitida Y se está usando
+		// Solo guardar si el report_type es de obstetricia (first_trimester o second_third_trimester)
+		if (allowedSpecialtyCodes.includes('obstetrics') && 
+			(obstetricReportType === 'first_trimester' || obstetricReportType === 'second_third_trimester')) {
 			const obst: Record<string, any> = {
 				report_type: obstetricReportType,
 			};
 
-			// Campos antiguos (para compatibilidad)
+			// Campos antiguos (para compatibilidad) - solo si hay datos
 			if (fundalHeight) obst.fundal_height_cm = fundalHeight;
 			if (fetalHr) obst.fetal_heart_rate = fetalHr;
 			if (gravida) obst.gravida = gravida;
 			if (para) obst.para = para;
 
-			// Primer Trimestre - guardar siempre si el doctor tiene Obstetricia, o si está seleccionado
-			if (hasObstetrics || obstetricReportType === 'first_trimester') {
+			// Primer Trimestre - guardar SOLO si está seleccionado
+			if (obstetricReportType === 'first_trimester') {
 				const firstTrim: Record<string, any> = {};
 				if (edadGestacional) firstTrim.edad_gestacional = edadGestacional;
 				if (fur) firstTrim.fur = fur;
@@ -779,8 +781,8 @@ export default function EditConsultationForm({ initial, patient, doctor, doctorS
 				if (Object.keys(firstTrim).length > 0) obst.first_trimester = firstTrim;
 			}
 
-			// Segundo y Tercer Trimestre - guardar siempre si el doctor tiene Obstetricia, o si está seleccionado
-			if (hasObstetrics || obstetricReportType === 'second_third_trimester') {
+			// Segundo y Tercer Trimestre - guardar SOLO si está seleccionado
+			if (obstetricReportType === 'second_third_trimester') {
 				const secondTrim: Record<string, any> = {};
 				// Primera sección: Datos de la Paciente
 				if (edadGestacional_t2) secondTrim.edad_gestacional = edadGestacional_t2;
@@ -839,8 +841,8 @@ export default function EditConsultationForm({ initial, patient, doctor, doctorS
 				}
 			}
 
-			// Si tiene Obstetricia guardada, siempre incluir el objeto obstetrics
-			if (hasObstetrics || Object.keys(obst).length > 1 || obstetricReportType) {
+			// Solo incluir obstetrics si hay datos guardados (más allá del report_type)
+			if (Object.keys(obst).length > 1) {
 				out.obstetrics = obst;
 			}
 		}
@@ -886,8 +888,14 @@ export default function EditConsultationForm({ initial, patient, doctor, doctorS
 			if (Object.keys(ent).length) out.ent = ent;
 		}
 
-		// Gynecology - solo si la especialidad está permitida
-		if (allowedSpecialtyCodes.includes('gynecology')) {
+		// Gynecology - solo si la especialidad está permitida Y se está usando
+		// Solo guardar si NO es un informe de obstetricia (first_trimester o second_third_trimester)
+		// O si el report_type es explícitamente 'gynecology'
+		const isUsingGynecology = !allowedSpecialtyCodes.includes('obstetrics') || 
+			obstetricReportType === 'gynecology' || 
+			(obstetricReportType !== 'first_trimester' && obstetricReportType !== 'second_third_trimester');
+		
+		if (allowedSpecialtyCodes.includes('gynecology') && isUsingGynecology) {
 			const gyn: Record<string, any> = {};
 			// LMP es obligatorio si hay datos de ginecología, así que siempre lo incluimos
 			if (lmp) gyn.last_menstrual_period = lmp;
