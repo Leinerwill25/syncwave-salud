@@ -734,11 +734,95 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 				templateFontFamily = medicProfile?.report_font_family || 'Arial';
 			}
 		} else {
-			// No es obstetricia, usar plantilla general
-			templateUrl = medicProfile?.report_template_url || null;
-			templateName = medicProfile?.report_template_name || null;
-			templateText = medicProfile?.report_template_text || null;
-			templateFontFamily = medicProfile?.report_font_family || 'Arial';
+			// No es obstetricia (es ginecología u otra especialidad)
+			// Primero intentar buscar en report_templates_by_specialty
+			let templatesBySpecialty: any = null;
+			if (medicProfile?.report_templates_by_specialty) {
+				if (typeof medicProfile.report_templates_by_specialty === 'string') {
+					try {
+						templatesBySpecialty = JSON.parse(medicProfile.report_templates_by_specialty);
+					} catch {
+						templatesBySpecialty = null;
+					}
+				} else {
+					templatesBySpecialty = medicProfile.report_templates_by_specialty;
+				}
+			}
+
+			// Obtener especialidades del doctor para buscar la plantilla correcta
+			const { data: medicProfileForSpecialties } = await supabase
+				.from('medic_profile')
+				.select('specialty, private_specialty')
+				.eq('doctor_id', doctorId)
+				.maybeSingle();
+
+			// Función helper para parsear especialidades
+			const parseSpecialtyField = (value: any): string[] => {
+				if (!value) return [];
+				if (Array.isArray(value)) {
+					return value.map(String).filter(s => s.trim().length > 0);
+				}
+				if (typeof value === 'string') {
+					const trimmed = value.trim();
+					if (!trimmed) return [];
+					try {
+						const parsed = JSON.parse(trimmed);
+						if (Array.isArray(parsed)) {
+							return parsed.map(String).filter(s => s.trim().length > 0);
+						}
+						return [String(parsed)];
+					} catch {
+						return [trimmed];
+					}
+				}
+				return [];
+			};
+
+			const privateSpecialties = parseSpecialtyField(medicProfileForSpecialties?.private_specialty);
+			const clinicSpecialties = parseSpecialtyField(medicProfileForSpecialties?.specialty);
+			const allDoctorSpecialties = Array.from(new Set([...privateSpecialties, ...clinicSpecialties]));
+			const consultationSpecialty = allDoctorSpecialties[0] || null;
+
+			// Normalizar nombre de especialidad para búsqueda
+			const normalizeSpecialtyName = (name: string): string => {
+				return name
+					.toLowerCase()
+					.trim()
+					.normalize('NFD')
+					.replace(/[\u0300-\u036f]/g, '');
+			};
+
+			// Buscar plantilla en report_templates_by_specialty
+			if (templatesBySpecialty && consultationSpecialty) {
+				// Buscar por nombre exacto primero
+				if (templatesBySpecialty[consultationSpecialty]?.template_url) {
+					templateUrl = templatesBySpecialty[consultationSpecialty].template_url;
+					templateName = templatesBySpecialty[consultationSpecialty].template_name || null;
+					templateText = templatesBySpecialty[consultationSpecialty].template_text || null;
+					templateFontFamily = templatesBySpecialty[consultationSpecialty].font_family || 'Arial';
+				} else {
+					// Buscar por nombre normalizado (sin acentos, minúsculas)
+					const normalizedConsultationSpecialty = normalizeSpecialtyName(consultationSpecialty);
+					const matchingKey = Object.keys(templatesBySpecialty).find(key => 
+						normalizeSpecialtyName(key) === normalizedConsultationSpecialty
+					);
+					
+					if (matchingKey && templatesBySpecialty[matchingKey]?.template_url) {
+						templateUrl = templatesBySpecialty[matchingKey].template_url;
+						templateName = templatesBySpecialty[matchingKey].template_name || null;
+						templateText = templatesBySpecialty[matchingKey].template_text || null;
+						templateFontFamily = templatesBySpecialty[matchingKey].font_family || 'Arial';
+					}
+				}
+			}
+
+			// Si no se encontró en report_templates_by_specialty, usar plantilla general (compatibilidad hacia atrás)
+			if (!templateUrl) {
+				templateUrl = medicProfile?.report_template_url || null;
+				templateName = medicProfile?.report_template_name || null;
+				templateText = medicProfile?.report_template_text || null;
+				templateFontFamily = medicProfile?.report_font_family || 'Arial';
+			}
 		}
 
 		if (!templateUrl) {
