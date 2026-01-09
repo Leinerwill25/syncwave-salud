@@ -21,7 +21,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 		const supabase = await createSupabaseServerClient();
 
 		const body = await request.json();
-		const { prescriptionUrl } = body;
+		const { prescriptionUrl, items } = body;
 
 		if (!prescriptionUrl || typeof prescriptionUrl !== 'string') {
 			return NextResponse.json({ error: 'prescriptionUrl es requerido' }, { status: 400 });
@@ -81,7 +81,8 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 				return NextResponse.json({ error: 'Error al crear prescripción' }, { status: 500 });
 			}
 
-			console.log('[Save Prescription API] Prescripción creada exitosamente:', newPrescription.id);
+			prescription = newPrescription;
+			console.log('[Save Prescription API] Prescripción creada exitosamente:', prescription.id);
 		} else {
 			// Verificar que el médico sea el dueño de la prescripción
 			if (prescription.doctor_id !== doctorId) {
@@ -102,9 +103,50 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 			console.log('[Save Prescription API] Prescripción actualizada exitosamente:', prescription.id);
 		}
 
+		// Guardar los items (medicamentos) si se proporcionaron
+		if (items && Array.isArray(items) && items.length > 0) {
+			// Primero, eliminar items existentes de esta prescripción para evitar duplicados
+			const { error: deleteError } = await supabase
+				.from('prescription_item')
+				.delete()
+				.eq('prescription_id', prescription.id);
+
+			if (deleteError) {
+				console.warn('[Save Prescription API] Error eliminando items anteriores:', deleteError);
+				// Continuar de todas formas, puede que no haya items anteriores
+			}
+
+			// Preparar items para insertar
+			const itemsToInsert = items.map((item: any) => ({
+				prescription_id: prescription.id,
+				medication_id: item.medication_id || null,
+				name: item.name || null,
+				dosage: item.dosage || null,
+				form: item.form || null,
+				frequency: item.frequency || null,
+				duration: item.duration || null,
+				quantity: item.quantity || null,
+				instructions: item.instructions || null,
+			}));
+
+			// Insertar los nuevos items
+			const { error: itemsError } = await supabase
+				.from('prescription_item')
+				.insert(itemsToInsert);
+
+			if (itemsError) {
+				console.error('[Save Prescription API] Error guardando items:', itemsError);
+				// No fallar completamente, solo advertir
+				console.warn('[Save Prescription API] Los items no se pudieron guardar, pero la prescripción se guardó correctamente');
+			} else {
+				console.log('[Save Prescription API] Items guardados exitosamente:', itemsToInsert.length);
+			}
+		}
+
 		return NextResponse.json({
 			success: true,
 			message: 'Receta guardada exitosamente en la base de datos',
+			prescription_id: prescription.id,
 		});
 	} catch (err) {
 		console.error('[Save Prescription API] Error:', err);

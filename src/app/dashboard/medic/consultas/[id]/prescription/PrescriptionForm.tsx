@@ -263,6 +263,43 @@ export default function PrescriptionForm({ consultationId, patientId, unregister
 		{ value: 'Microsoft JhengHei', label: 'Microsoft JhengHei' },
 	];
 
+	// Función para cargar items de prescripción desde la base de datos
+	const loadPrescriptionItems = async () => {
+		try {
+			const res = await fetch(`/api/consultations/${consultationId}/prescription-items`, {
+				method: 'GET',
+				credentials: 'include',
+			});
+
+			if (res.ok) {
+				const data = await res.json();
+				if (data.items && Array.isArray(data.items)) {
+					const loadedItems: Item[] = data.items.map((item: any) => {
+						// Parsear frecuencia antigua si existe
+						const parsed = parseOldFrequency(item.frequency);
+						return {
+							id: item.id,
+							name: item.name || '',
+							dosage: item.dosage || '',
+							form: item.form || '',
+							frequency: item.frequency || '',
+							frequencyHours: parsed.hours,
+							frequencyDays: parsed.days,
+							duration: item.duration || '',
+							quantity: item.quantity || 1,
+							instructions: item.instructions || '',
+						};
+					});
+					setItems(loadedItems);
+					setIsEditMode(true);
+				}
+			}
+		} catch (err) {
+			console.error('[PrescriptionForm] Error cargando items:', err);
+			// No mostrar error al usuario, solo loguear
+		}
+	};
+
 	// Cargar datos existentes si hay prescripción
 	useEffect(() => {
 		if (existingPrescription) {
@@ -423,6 +460,55 @@ export default function PrescriptionForm({ consultationId, patientId, unregister
 			{/* Items editor */}
 			<PrescriptionItemsEditor items={items} setItems={setItems} />
 
+			{/* Sección de medicamentos guardados - solo mostrar si hay items y estamos en modo edición */}
+			{isEditMode && items.length > 0 && (
+				<div className="rounded-2xl bg-gradient-to-br from-green-50 to-emerald-50 border border-green-200 p-6 shadow-lg">
+					<div className="flex items-center gap-3 mb-4">
+						<FileCheck className="w-6 h-6 text-green-600" />
+						<h3 className="text-lg font-semibold text-slate-900">Medicamentos Guardados en la Receta</h3>
+					</div>
+					<p className="text-sm text-slate-700 mb-4">Los siguientes medicamentos ya están guardados en la receta de esta consulta:</p>
+					<div className="space-y-3">
+						{items.map((item) => (
+							<div key={item.id} className="bg-white rounded-lg border border-green-200 p-4 shadow-sm hover:shadow-md transition-shadow">
+								<div className="flex items-start justify-between gap-4">
+									<div className="flex-1">
+										<div className="flex items-center gap-2 mb-2">
+											<h4 className="font-semibold text-slate-900">{item.name || 'Medicamento'}</h4>
+											{item.dosage && <span className="text-sm text-slate-600 bg-slate-100 px-2 py-1 rounded">{item.dosage}</span>}
+											{item.form && <span className="text-sm text-slate-600 bg-slate-100 px-2 py-1 rounded">{item.form}</span>}
+										</div>
+										<div className="text-sm text-slate-700 space-y-1">
+											{item.frequency && (
+												<div>
+													<span className="font-medium">Frecuencia:</span> {item.frequency}
+												</div>
+											)}
+											{item.duration && (
+												<div>
+													<span className="font-medium">Duración:</span> {item.duration}
+												</div>
+											)}
+											{item.quantity && (
+												<div>
+													<span className="font-medium">Cantidad:</span> {item.quantity}
+												</div>
+											)}
+											{item.instructions && (
+												<div>
+													<span className="font-medium">Instrucciones:</span> {item.instructions}
+												</div>
+											)}
+										</div>
+									</div>
+								</div>
+							</div>
+						))}
+					</div>
+					<p className="text-xs text-slate-600 mt-4 italic">💡 Puedes agregar más medicamentos usando el formulario arriba y guardarlos nuevamente.</p>
+				</div>
+			)}
+
 			{/* Prescription Generation Section - Always visible when there are items */}
 			{items.length > 0 && (
 				<div className="rounded-2xl bg-gradient-to-br from-indigo-50 to-purple-50 border border-indigo-200 p-6 shadow-lg">
@@ -537,6 +623,20 @@ export default function PrescriptionForm({ consultationId, patientId, unregister
 								setSuccess(null);
 
 								try {
+									// Preparar items para enviar (incluyendo frequency generada si aplica)
+									const itemsToSave = items.map((item) => {
+										const frequencyText = item.frequency || generateFrequencyText(item.frequencyHours, item.frequencyDays);
+										return {
+											name: item.name,
+											dosage: item.dosage,
+											form: item.form || '',
+											frequency: frequencyText,
+											duration: item.duration,
+											quantity: item.quantity,
+											instructions: item.instructions,
+										};
+									});
+
 									const res = await fetch(`/api/consultations/${consultationId}/save-prescription`, {
 										method: 'POST',
 										credentials: 'include',
@@ -545,6 +645,7 @@ export default function PrescriptionForm({ consultationId, patientId, unregister
 										},
 										body: JSON.stringify({
 											prescriptionUrl: prescriptionUrl,
+											items: itemsToSave,
 										}),
 									});
 
@@ -553,6 +654,9 @@ export default function PrescriptionForm({ consultationId, patientId, unregister
 									if (!res.ok) {
 										throw new Error(data.error || 'Error al guardar receta en la base de datos');
 									}
+
+									// Recargar los items desde la base de datos para mostrarlos
+									await loadPrescriptionItems();
 
 									setSuccess('Receta guardada exitosamente en la base de datos. El paciente podrá visualizarla desde su panel.');
 								} catch (err: any) {
