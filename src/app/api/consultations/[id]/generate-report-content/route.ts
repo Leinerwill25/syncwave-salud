@@ -4,6 +4,54 @@ import { cookies } from 'next/headers';
 import { createSupabaseServerClient } from '@/app/adapters/server';
 import { apiRequireRole } from '@/lib/auth-guards';
 
+// Helper para parsear el campo de especialidad (puede venir como array, string JSON, o string simple)
+function parseSpecialtyField(value: any): string[] {
+	if (!value) return [];
+	if (Array.isArray(value)) {
+		return value.map(String).filter(s => s.trim().length > 0);
+	}
+	if (typeof value === 'string') {
+		const trimmed = value.trim();
+		if (!trimmed) return [];
+		// Intentar parsear como JSON
+		try {
+			const parsed = JSON.parse(trimmed);
+			if (Array.isArray(parsed)) {
+				return parsed.map(String).filter(s => s.trim().length > 0);
+			}
+			return [String(parsed)];
+		} catch {
+			// Si no es JSON válido, tratarlo como string simple
+			return [trimmed];
+		}
+	}
+	return [String(value)];
+}
+
+// Obtener especialidades del doctor
+async function getDoctorSpecialties(doctorId: string, supabase: any): Promise<{ specialty1: string | null; specialty2: string | null }> {
+	const { data: medicProfile } = await supabase
+		.from('medic_profile')
+		.select('specialty, private_specialty')
+		.eq('doctor_id', doctorId)
+		.maybeSingle();
+
+	// Parsear especialidades (pueden venir como arrays)
+	const privateSpecialties = parseSpecialtyField(medicProfile?.private_specialty);
+	const clinicSpecialties = parseSpecialtyField(medicProfile?.specialty);
+
+	// Combinar todas las especialidades únicas
+	const allSpecialties = Array.from(new Set([...privateSpecialties, ...clinicSpecialties]));
+
+	// specialty1 es la primera especialidad
+	const specialty1 = allSpecialties[0] || null;
+	
+	// specialty2 es la segunda especialidad si existe
+	const specialty2 = allSpecialties.length > 1 ? allSpecialties[1] : null;
+
+	return { specialty1, specialty2 };
+}
+
 // Función para generar el contenido del informe desde la plantilla de texto
 async function generateReportContentFromTemplate(
 	consultation: any,
@@ -669,14 +717,73 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 				templateText = medicProfile?.report_template_text || null;
 			}
 		} else {
-			// No es obstetricia (es ginecología), usar plantilla general
-			templateText = medicProfile?.report_template_text || null;
+			// No es obstetricia (es ginecología u otra especialidad)
+			// Primero intentar buscar en report_templates_by_specialty
+			let templatesBySpecialty: any = null;
+			if (medicProfile?.report_templates_by_specialty) {
+				if (typeof medicProfile.report_templates_by_specialty === 'string') {
+					try {
+						templatesBySpecialty = JSON.parse(medicProfile.report_templates_by_specialty);
+					} catch {
+						templatesBySpecialty = null;
+					}
+				} else {
+					templatesBySpecialty = medicProfile.report_templates_by_specialty;
+				}
+			}
+
+			// Determinar la especialidad de la consulta para buscar la plantilla correcta
+			// Normalizar el nombre de la especialidad para buscar en templatesBySpecialty
+			const normalizeSpecialtyName = (name: string): string => {
+				return name
+					.toLowerCase()
+					.trim()
+					.normalize('NFD')
+					.replace(/[\u0300-\u036f]/g, '');
+			};
+
+			// Obtener la especialidad del doctor (puede ser specialty1 o specialty2)
+			const { specialty1, specialty2 } = await getDoctorSpecialties(doctorId, supabase);
+			const consultationSpecialty = specialty1 || specialty2; // Usar la primera especialidad disponible
+
+			// Buscar plantilla en report_templates_by_specialty
+			if (templatesBySpecialty && consultationSpecialty) {
+				// Buscar por nombre exacto primero
+				if (templatesBySpecialty[consultationSpecialty]?.template_text) {
+					templateText = templatesBySpecialty[consultationSpecialty].template_text;
+					templateFontFamily = templatesBySpecialty[consultationSpecialty].font_family || templateFontFamily;
+				} else {
+					// Buscar por nombre normalizado (sin acentos, minúsculas)
+					const normalizedConsultationSpecialty = normalizeSpecialtyName(consultationSpecialty);
+					const matchingKey = Object.keys(templatesBySpecialty).find(key => 
+						normalizeSpecialtyName(key) === normalizedConsultationSpecialty
+					);
+					
+					if (matchingKey && templatesBySpecialty[matchingKey]?.template_text) {
+						templateText = templatesBySpecialty[matchingKey].template_text;
+						templateFontFamily = templatesBySpecialty[matchingKey].font_family || templateFontFamily;
+					}
+				}
+			}
+
+			// Si no se encontró en report_templates_by_specialty, usar plantilla general (compatibilidad hacia atrás)
+			if (!templateText) {
+				templateText = medicProfile?.report_template_text || null;
+			}
 		}
 
 		if (!templateText) {
 			const errorMessage = isObstetrics
 				? `No se encontró plantilla de texto para el informe de ${reportType === 'first_trimester' ? 'Primer Trimestre' : 'Segundo y Tercer Trimestre'}. Por favor, carga una plantilla en "dashboard/medic/plantilla-informe" primero.`
 				: 'No se encontró plantilla de texto. Por favor, configura una plantilla de texto primero.';
+			
+			console.error('[Generate Report Content API] No se encontró plantilla de texto:', {
+				isObstetrics,
+				reportType,
+				hasReportTemplatesBySpecialty: !!medicProfile?.report_templates_by_specialty,
+				hasReportTemplateText: !!medicProfile?.report_template_text,
+				doctorId
+			});
 			
 			return NextResponse.json(
 				{
