@@ -59,8 +59,8 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 			// Paciente registrado - usar directamente su ID
 			patientIdForRecord = consultation.patient_id;
 		} else if (consultation.unregistered_patient_id) {
-			// Paciente no registrado - buscar o crear un registro en Patient vinculado
-			// Primero, intentar encontrar un Patient existente vinculado a este unregistered_patient_id
+			// Paciente no registrado - buscar un Patient existente vinculado a este unregistered_patient_id
+			// NO crear un registro temporal, solo usar uno existente si existe
 			const { data: patientFromUnregistered } = await supabase
 				.from('patient')
 				.select('id')
@@ -70,42 +70,37 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 			if (patientFromUnregistered) {
 				// Ya existe un Patient vinculado, usarlo
 				patientIdForRecord = patientFromUnregistered.id;
+				console.log('[Save Report API] Usando Patient existente vinculado a unregistered_patient_id:', patientIdForRecord);
 			} else {
-				// No existe un Patient vinculado, crear uno temporal con los datos del paciente no registrado
-				// Obtener datos del paciente no registrado
+				// No existe un Patient vinculado - verificar que el unregistered_patient_id existe
 				const { data: unregisteredPatient, error: unregisteredError } = await supabase
 					.from('unregisteredpatients')
-					.select('first_name, last_name, identification, birth_date, sex, phone')
+					.select('id')
 					.eq('id', consultation.unregistered_patient_id)
-					.single();
+					.maybeSingle();
 
 				if (unregisteredError || !unregisteredPatient) {
-					console.error('[Save Report API] Error obteniendo paciente no registrado:', unregisteredError);
-					return NextResponse.json({ error: 'No se pudo obtener la información del paciente no registrado' }, { status: 500 });
+					console.error('[Save Report API] Error: unregistered_patient_id no existe:', unregisteredError);
+					return NextResponse.json({ 
+						error: 'No se puede guardar el informe: el paciente no registrado no existe en la base de datos' 
+					}, { status: 404 });
 				}
 
-				// Crear un registro temporal en Patient vinculado al unregistered_patient_id
-				const { data: newPatient, error: createPatientError } = await supabase
-					.from('patient')
-					.insert({
-						firstName: unregisteredPatient.first_name || 'Paciente',
-						lastName: unregisteredPatient.last_name || 'No Registrado',
-						identifier: unregisteredPatient.identification || null,
-						dob: unregisteredPatient.birth_date || null,
-						gender: unregisteredPatient.sex || null,
-						phone: unregisteredPatient.phone || null,
-						unregistered_patient_id: consultation.unregistered_patient_id, // Vincular con el paciente no registrado
-					})
-					.select('id')
-					.single();
-
-				if (createPatientError || !newPatient) {
-					console.error('[Save Report API] Error creando Patient temporal:', createPatientError);
-					return NextResponse.json({ error: 'Error al crear registro temporal del paciente' }, { status: 500 });
-				}
-
-				patientIdForRecord = newPatient.id;
-				console.log('[Save Report API] Patient temporal creado para paciente no registrado:', patientIdForRecord);
+				// El paciente no registrado existe en la tabla unregisteredpatients
+				// NO crear un registro temporal en Patient
+				// El informe ya está guardado en consultation.report_url
+				// No podemos crear MedicalRecord porque requiere un patientId de Patient
+				// Pero el informe ya está disponible en la consulta, así que retornamos éxito
+				console.log('[Save Report API] Paciente no registrado existe en unregisteredpatients:', consultation.unregistered_patient_id);
+				console.log('[Save Report API] El informe ya está guardado en consultation.report_url');
+				
+				// Retornar éxito porque el informe ya está guardado en la consulta
+				// No se crea MedicalRecord porque no hay Patient vinculado y no creamos uno temporal
+				return NextResponse.json({
+					success: true,
+					message: 'Informe guardado exitosamente. El informe está disponible en la consulta.',
+					note: 'El informe está asociado al paciente no registrado y está disponible en la consulta.'
+				});
 			}
 		}
 
