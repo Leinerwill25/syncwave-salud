@@ -46,7 +46,7 @@ function isNumericOrEmpty(s: string | number | null | undefined) {
 	return !Number.isNaN(Number(String(s).toString().replace(',', '.')));
 }
 
-export default function EditConsultationForm({ initial, patient, doctor, doctorSpecialties }: { initial: ConsultationShape; patient?: any; doctor?: any; doctorSpecialties?: string[] }) {
+export default function EditConsultationForm({ initial, patient, doctor, doctorSpecialties, isSimpleConsulta = false, hasEcografiaTransvaginal = false, isOnlyVideoColposcopia = false }: { initial: ConsultationShape; patient?: any; doctor?: any; doctorSpecialties?: string[]; isSimpleConsulta?: boolean; hasEcografiaTransvaginal?: boolean; isOnlyVideoColposcopia?: boolean }) {
 	const router = useRouter();
 	const { saveOptimistically } = useOptimisticSave();
 	const { isLiteMode } = useLiteMode();
@@ -1490,7 +1490,48 @@ export default function EditConsultationForm({ initial, patient, doctor, doctorS
 				throw new Error(data.error || 'Error al guardar informe');
 			}
 
-			setReportSuccess('Informe guardado exitosamente en el historial del paciente');
+			// Descargar el informe automáticamente después de guardarlo
+			if (reportUrl) {
+				try {
+					// Intentar descargar el archivo desde la URL
+					// Primero intentamos con fetch para obtener el blob y forzar la descarga
+					const response = await fetch(reportUrl);
+					if (response.ok) {
+						const blob = await response.blob();
+						const url = window.URL.createObjectURL(blob);
+						
+						// Crear un elemento <a> temporal para descargar el archivo
+						const link = document.createElement('a');
+						link.href = url;
+						link.download = `informe-consulta-${initial.id}-${new Date().toISOString().split('T')[0]}.docx`;
+						link.style.display = 'none';
+						
+						// Agregar al DOM, hacer click y remover
+						document.body.appendChild(link);
+						link.click();
+						document.body.removeChild(link);
+						
+						// Limpiar la URL del objeto después de un tiempo
+						setTimeout(() => {
+							window.URL.revokeObjectURL(url);
+						}, 100);
+					} else {
+						// Si fetch falla, intentar con método alternativo (abrir en nueva pestaña)
+						window.open(reportUrl, '_blank');
+					}
+				} catch (downloadError) {
+					console.warn('Error al descargar el informe automáticamente:', downloadError);
+					// Si falla, intentar abrir en nueva pestaña como fallback
+					try {
+						window.open(reportUrl, '_blank');
+					} catch (openError) {
+						console.warn('Error al abrir el informe:', openError);
+					}
+					// No fallar si la descarga falla, el informe ya está guardado
+				}
+			}
+
+			setReportSuccess('Informe guardado exitosamente en el historial del paciente y descargado');
 		} catch (err: any) {
 			setReportError(err?.message ?? String(err));
 		} finally {
@@ -3358,244 +3399,18 @@ export default function EditConsultationForm({ initial, patient, doctor, doctorS
 								{/* Gynecology */}
 								{shouldShowSpecialty('gynecology') && (
 									<div className="border border-slate-200 dark:border-slate-700 rounded-lg mb-4">
-										<button type="button" onClick={() => toggleSpecialty('gynecology')} className="w-full flex items-center justify-between p-4 text-left hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors rounded-lg">
-											<span className="font-semibold text-slate-900 dark:text-slate-100">Ginecología</span>
-											{expandedSpecialties.has('gynecology') ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
-										</button>
-										{expandedSpecialties.has('gynecology') && (
-											<div className="p-4 pt-0 space-y-6">
-												{/* Historia de la enfermedad actual */}
-												<div>
-													<label className={labelClass}>Historia de la enfermedad actual</label>
-													<textarea value={currentIllnessHistory} onChange={(e) => setCurrentIllnessHistory(e.target.value)} className={`${inputBase} ${inputDark}`} rows={3} placeholder="Describir la historia de la enfermedad actual" />
-												</div>
-
-												{/* Antecedentes Médicos */}
-												<div className="border-t border-slate-200 dark:border-slate-700 pt-4">
-													<h4 className="text-sm font-semibold text-slate-900 dark:text-slate-100 mb-3">Antecedentes Médicos</h4>
-													<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-														<div>
-															<label className={labelClass}>Alérgicos</label>
-															<input value={allergies} onChange={(e) => setAllergies(e.target.value)} className={`${inputBase} ${inputDark}`} placeholder="NIEGA o especificar" />
-														</div>
-														<div>
-															<label className={labelClass}>Quirúrgicos</label>
-															<input value={surgicalHistory} onChange={(e) => setSurgicalHistory(e.target.value)} className={`${inputBase} ${inputDark}`} placeholder="NIEGA o especificar" />
-														</div>
-													</div>
-												</div>
-
-												{/* Antecedentes Familiares */}
-												<div className="border-t border-slate-200 dark:border-slate-700 pt-4">
-													<h4 className="text-sm font-semibold text-slate-900 dark:text-slate-100 mb-3">Antecedentes Familiares</h4>
-													<div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-														<div>
-															<label className={labelClass}>Madre</label>
-															<input value={familyHistoryMother} onChange={(e) => setFamilyHistoryMother(e.target.value)} className={`${inputBase} ${inputDark}`} placeholder="VIVA SANA o especificar" />
-														</div>
-														<div>
-															<label className={labelClass}>Padre</label>
-															<input value={familyHistoryFather} onChange={(e) => setFamilyHistoryFather(e.target.value)} className={`${inputBase} ${inputDark}`} placeholder="VIVO SANO o especificar" />
-														</div>
-														<div>
-															<label className={labelClass}>Antecedentes de Cáncer de Mama</label>
-															<input value={familyHistoryBreastCancer} onChange={(e) => setFamilyHistoryBreastCancer(e.target.value)} className={`${inputBase} ${inputDark}`} placeholder="NIEGA o especificar" />
-														</div>
-													</div>
-												</div>
-
-												{/* Antecedentes Ginecológicos */}
-												<div className="border-t border-slate-200 dark:border-slate-700 pt-4">
-													<h4 className="text-sm font-semibold text-slate-900 dark:text-slate-100 mb-3">Antecedentes Ginecológicos</h4>
-													<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-														<div>
-															<label className={labelClass}>ITS</label>
-															<input value={its} onChange={(e) => setIts(e.target.value)} className={`${inputBase} ${inputDark}`} placeholder="NIEGA o especificar" />
-														</div>
-														<div>
-															<label className={labelClass}>Menstruaciones</label>
-															<input value={menstruationType} onChange={(e) => setMenstruationType(e.target.value)} className={`${inputBase} ${inputDark}`} placeholder="REGULARES o IRREGULARES" />
-														</div>
-														<div>
-															<label className={labelClass}>Tipo de Menstruación (ej: 5/28)</label>
-															<input value={menstruationPattern} onChange={(e) => setMenstruationPattern(e.target.value)} className={`${inputBase} ${inputDark}`} placeholder="5/28" />
-														</div>
-														<div>
-															<label className={labelClass}>Dismenorreica</label>
-															<select value={dysmenorrhea} onChange={(e) => setDysmenorrhea(e.target.value)} className={`${inputBase} ${inputDark}`}>
-																<option value="NO">NO</option>
-																<option value="SÍ">SÍ</option>
-															</select>
-														</div>
-														<div>
-															<label className={labelClass}>PRS (Primera Relación Sexual)</label>
-															<input value={firstSexualRelation} onChange={(e) => setFirstSexualRelation(e.target.value)} className={`${inputBase} ${inputDark}`} placeholder="Edad o fecha" />
-														</div>
-														<div>
-															<label className={labelClass}>PS (Parejas Sexuales)</label>
-															<input value={sexualPartners} onChange={(e) => setSexualPartners(e.target.value)} className={`${inputBase} ${inputDark}`} placeholder="Número" />
-														</div>
-														<div>
-															<label className={labelClass}>Fecha Última Regla (LMP)</label>
-															<input value={lmp} onChange={(e) => setLmp(e.target.value)} className={`${inputBase} ${inputDark}`} type="text" placeholder="Ej: 2024-01-15 o Fecha Incierta" />
-														</div>
-														<div>
-															<label className={labelClass}>Método Anticonceptivo</label>
-															<input value={contraceptiveUse} onChange={(e) => setContraceptiveUse(e.target.value)} className={`${inputBase} ${inputDark}`} />
-														</div>
-														<div>
-															<label className={labelClass}>Historia obstétrica (HO)</label>
-															<input value={ho} onChange={(e) => setHo(e.target.value)} className={`${inputBase} ${inputDark}`} placeholder="NIEGA o especificar" />
-														</div>
-													</div>
-												</div>
-
-												{/* Examen Físico */}
-												<div className="border-t border-slate-200 dark:border-slate-700 pt-4">
-													<h4 className="text-sm font-semibold text-slate-900 dark:text-slate-100 mb-3">Examen Físico</h4>
-													<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-														<div>
-															<label className={labelClass}>Condiciones Generales</label>
-															<input value={generalConditions} onChange={(e) => setGeneralConditions(e.target.value)} className={`${inputBase} ${inputDark}`} placeholder="ESTABLES" />
-														</div>
-														<div>
-															<label className={labelClass}>Mamas - Tamaño</label>
-															<input value={breastSize} onChange={(e) => setBreastSize(e.target.value)} className={`${inputBase} ${inputDark}`} placeholder="MEDIANO TAMAÑO" />
-														</div>
-														<div>
-															<label className={labelClass}>Mamas - Simetría</label>
-															<input value={breastSymmetry} onChange={(e) => setBreastSymmetry(e.target.value)} className={`${inputBase} ${inputDark}`} placeholder="ASIMÉTRICAS" />
-														</div>
-														<div>
-															<label className={labelClass}>Mamas - CAP</label>
-															<input value={breastCap} onChange={(e) => setBreastCap(e.target.value)} className={`${inputBase} ${inputDark}`} placeholder="SIN ALTERACIONES" />
-														</div>
-														<div>
-															<label className={labelClass}>Mamas - Secreción</label>
-															<input value={breastSecretion} onChange={(e) => setBreastSecretion(e.target.value)} className={`${inputBase} ${inputDark}`} placeholder="NO SE EVIDENCIA SALIDA DE SECRECIÓN" />
-														</div>
-														<div>
-															<label className={labelClass}>Fosas Axilares y Supraclaviculares</label>
-															<input value={axillaryFossae} onChange={(e) => setAxillaryFossae(e.target.value)} className={`${inputBase} ${inputDark}`} placeholder="LIBRES" />
-														</div>
-														<div>
-															<label className={labelClass}>Abdomen</label>
-															<input value={abdomen} onChange={(e) => setAbdomen(e.target.value)} className={`${inputBase} ${inputDark}`} placeholder="BLANDO, DEPRIMIBLE NO DOLOROSO A LA PALPACIÓN" />
-														</div>
-														<div>
-															<label className={labelClass}>Genitales Externos</label>
-															<input value={externalGenitals} onChange={(e) => setExternalGenitals(e.target.value)} className={`${inputBase} ${inputDark}`} placeholder="NORMOCONFIGURADOS" />
-														</div>
-														<div>
-															<label className={labelClass}>Flujo Vaginal</label>
-															<input value={vaginalDischarge} onChange={(e) => setVaginalDischarge(e.target.value)} className={`${inputBase} ${inputDark}`} placeholder="sin secreciones" />
-														</div>
-														<div>
-															<label className={labelClass}>Especuloscopio - Cuello</label>
-															<input value={speculumCervix} onChange={(e) => setSpeculumCervix(e.target.value)} className={`${inputBase} ${inputDark}`} placeholder="CUELLO MACROSCÓPICAMENTE SANO" />
-														</div>
-														<div>
-															<label className={labelClass}>Tacto - Cuello</label>
-															<input value={tactCervix} onChange={(e) => setTactCervix(e.target.value)} className={`${inputBase} ${inputDark}`} placeholder="CUELLO RENITENTE NO DOLOROSO A LA MOVILIZACIÓN" />
-														</div>
-														<div>
-															<label className={labelClass}>Fondo de Sacos</label>
-															<input value={fundusSacs} onChange={(e) => setFundusSacs(e.target.value)} className={`${inputBase} ${inputDark}`} placeholder="LIBRES" />
-														</div>
-														<div>
-															<label className={labelClass}>Anexos</label>
-															<input value={adnexa} onChange={(e) => setAdnexa(e.target.value)} className={`${inputBase} ${inputDark}`} placeholder="NO PALPABLES" />
-														</div>
-													</div>
-												</div>
-
-												{/* Ecografía Transvaginal */}
-												<div className="border-t border-slate-200 dark:border-slate-700 pt-4">
-													<h4 className="text-sm font-semibold text-slate-900 dark:text-slate-100 mb-3">Ecografía Transvaginal</h4>
-													<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-														<div>
-															<label className={labelClass}>Útero - Dimensiones (ej: 74X34X50 MM)</label>
-															<input value={uterusDimensions} onChange={(e) => setUterusDimensions(e.target.value)} className={`${inputBase} ${inputDark}`} placeholder="74X34X50 MM" />
-														</div>
-														<div>
-															<label className={labelClass}>Interfase Endometrial (mm)</label>
-															<input value={endometrialInterface} onChange={(e) => setEndometrialInterface(e.target.value)} className={`${inputBase} ${inputDark}`} placeholder="7 MM" type="number" step="0.1" />
-														</div>
-
-														<div>
-															<label className={labelClass}>Ecografía Transvaginal Interfase Endometrial</label>
-															<select value={endometrialInterfacePhase} onChange={(e) => setEndometrialInterfacePhase(e.target.value)} className={`${inputBase} ${inputDark}`}>
-																<option value="">Seleccionar...</option>
-																<option value="Menstrual: Día 1 - 4">Lineal</option>
-																<option value="Proliferativa Temprana: Día 5 - 13">Proliferativa Temprana</option>
-																<option value="Proliferativa Tardía: Día 14 - 16">Proliferativa Tardía</option>
-																<option value="Secretora: Día 16 - 28">Secretora</option>
-															</select>
-														</div>
-														<div>
-															<label className={labelClass}>Ovario Izquierdo - Dimensiones (ej: 23X17X29 MM)</label>
-															<input value={leftOvaryDimensions} onChange={(e) => setLeftOvaryDimensions(e.target.value)} className={`${inputBase} ${inputDark}`} placeholder="23X17X29 MM" />
-														</div>
-														<div>
-															<label className={labelClass}>Ovario Derecho - Dimensiones (ej: 26X19X20 MM)</label>
-															<input value={rightOvaryDimensions} onChange={(e) => setRightOvaryDimensions(e.target.value)} className={`${inputBase} ${inputDark}`} placeholder="26X19X20 MM" />
-														</div>
-														<div>
-															<label className={labelClass}>Líquido en Fondo de Saco</label>
-															<input value={fundusFluid} onChange={(e) => setFundusFluid(e.target.value)} className={`${inputBase} ${inputDark}`} placeholder="NO SE EVIDENCIA LÍQUIDO EN FONDO DE SACO" />
-														</div>
-													</div>
-												</div>
-
-												{/* Diagnóstico con CIE-11 */}
-												<div className="border-t border-slate-200 dark:border-slate-700 pt-4">
-													<label className={labelClass}>Diagnóstico (CIE-11)</label>
-													<ICD11Search
-														onSelect={(code) => {
-															setIcd11Code(code.code);
-															setIcd11Title(code.title);
-															// Guardar el código y título del CIE-11 como diagnóstico
-															setDiagnosis(`${code.code} - ${code.title}`);
-														}}
-														selectedCode={icd11Code && icd11Title ? { code: icd11Code, title: icd11Title } : null}
-														placeholder="Buscar código CIE-11 (ej: diabetes, hipertensión...)"
-														className="mb-3"
-													/>
-													{icd11Code && icd11Title && (
-														<p className="mt-2 text-xs text-slate-600 dark:text-slate-400">
-															<strong>Código CIE-11 seleccionado:</strong> {icd11Code} - {icd11Title}
-														</p>
-													)}
-												</div>
-
-												{/* Observaciones Adicionales */}
-												<div className="border-t border-slate-200 dark:border-slate-700 pt-4">
-													<label className={labelClass}>Observaciones Adicionales</label>
-													<textarea value={cervicalExamNotes} onChange={(e) => setCervicalExamNotes(e.target.value)} className={`${inputBase} ${inputDark}`} rows={3} placeholder="Observaciones adicionales del examen cervical" />
-												</div>
-
-												{/* Botón para mostrar formulario de Colposcopia */}
-												<div className="border-t border-slate-200 dark:border-slate-700 pt-4 flex justify-end">
-													<button type="button" onClick={() => setShowColposcopySection(!showColposcopySection)} className="px-6 py-2.5 bg-gradient-to-r from-teal-600 to-cyan-600 hover:from-teal-700 hover:to-cyan-700 text-white font-semibold rounded-lg shadow-md hover:shadow-lg transition-all duration-200 flex items-center gap-2">
-														{showColposcopySection ? 'Ocultar' : 'Siguiente'} - Colposcopia
-														{showColposcopySection ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-													</button>
-												</div>
-
-												{/* Sección de Colposcopia */}
-												{showColposcopySection && (
-													<div className="border-t-2 border-teal-500 dark:border-teal-400 pt-6 mt-6">
-														{/* Header de la Sección */}
-														<div className="mb-6">
-															<h3 className="text-xl font-bold text-slate-900 dark:text-slate-100 mb-2 flex items-center gap-2">
-																<div className="w-1 h-6 bg-gradient-to-b from-teal-500 to-cyan-500 rounded-full"></div>
-																Informe Colposcópico
-															</h3>
-															<p className="text-sm text-slate-600 dark:text-slate-400 ml-3">Complete todos los campos del examen colposcópico según los hallazgos observados</p>
-														</div>
-
-														<div className="space-y-8">
-															{/* Sección 1: Información General y Preparación */}
+										{/* Si es solo Vídeo colposcopía, mostrar directamente la sección de colposcopia sin el resto del formulario */}
+										{isOnlyVideoColposcopia ? (
+											<div className="p-4">
+												<h3 className="text-xl font-bold text-slate-900 dark:text-slate-100 mb-2 flex items-center gap-2">
+													<div className="w-1 h-6 bg-gradient-to-b from-teal-500 to-cyan-500 rounded-full"></div>
+													Vídeo Colposcopía
+												</h3>
+												<p className="text-sm text-slate-600 dark:text-slate-400 mb-6">Complete todos los campos del examen colposcópico según los hallazgos observados</p>
+												
+												{/* Sección de Colposcopia directamente visible - Solo mostrar la sección de colposcopia completa */}
+												<div className="space-y-8">
+													{/* Sección 1: Información General y Preparación */}
 															<div className="bg-gradient-to-br from-slate-50 to-slate-100/50 dark:from-slate-800/50 dark:to-slate-700/30 rounded-xl p-6 border border-slate-200 dark:border-slate-700 shadow-sm">
 																<h4 className="text-base font-semibold text-slate-900 dark:text-slate-100 mb-4 flex items-center gap-2">
 																	<div className="w-2 h-2 bg-teal-500 rounded-full"></div>
@@ -3932,9 +3747,570 @@ export default function EditConsultationForm({ initial, patient, doctor, doctorS
 															</div>
 														</div>
 													</div>
+												) : (
+													<>
+														<button type="button" onClick={() => toggleSpecialty('gynecology')} className="w-full flex items-center justify-between p-4 text-left hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors rounded-lg">
+															<span className="font-semibold text-slate-900 dark:text-slate-100">Ginecología</span>
+															{expandedSpecialties.has('gynecology') ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
+														</button>
+														{expandedSpecialties.has('gynecology') && (
+															<div className="p-4 pt-0 space-y-6">
+																{/* Historia de la enfermedad actual */}
+																<div>
+																	<label className={labelClass}>Historia de la enfermedad actual</label>
+																	<textarea value={currentIllnessHistory} onChange={(e) => setCurrentIllnessHistory(e.target.value)} className={`${inputBase} ${inputDark}`} rows={3} placeholder="Describir la historia de la enfermedad actual" />
+																</div>
+
+																{/* Antecedentes Médicos */}
+																<div className="border-t border-slate-200 dark:border-slate-700 pt-4">
+																	<h4 className="text-sm font-semibold text-slate-900 dark:text-slate-100 mb-3">Antecedentes Médicos</h4>
+																	<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+																		<div>
+																			<label className={labelClass}>Alérgicos</label>
+																			<input value={allergies} onChange={(e) => setAllergies(e.target.value)} className={`${inputBase} ${inputDark}`} placeholder="NIEGA o especificar" />
+																		</div>
+																		<div>
+																			<label className={labelClass}>Quirúrgicos</label>
+																			<input value={surgicalHistory} onChange={(e) => setSurgicalHistory(e.target.value)} className={`${inputBase} ${inputDark}`} placeholder="NIEGA o especificar" />
+																		</div>
+																	</div>
+																</div>
+
+																{/* Antecedentes Familiares */}
+																<div className="border-t border-slate-200 dark:border-slate-700 pt-4">
+																	<h4 className="text-sm font-semibold text-slate-900 dark:text-slate-100 mb-3">Antecedentes Familiares</h4>
+																	<div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+																		<div>
+																			<label className={labelClass}>Madre</label>
+																			<input value={familyHistoryMother} onChange={(e) => setFamilyHistoryMother(e.target.value)} className={`${inputBase} ${inputDark}`} placeholder="VIVA SANA o especificar" />
+																		</div>
+																		<div>
+																			<label className={labelClass}>Padre</label>
+																			<input value={familyHistoryFather} onChange={(e) => setFamilyHistoryFather(e.target.value)} className={`${inputBase} ${inputDark}`} placeholder="VIVO SANO o especificar" />
+																		</div>
+																		<div>
+																			<label className={labelClass}>Antecedentes de Cáncer de Mama</label>
+																			<input value={familyHistoryBreastCancer} onChange={(e) => setFamilyHistoryBreastCancer(e.target.value)} className={`${inputBase} ${inputDark}`} placeholder="NIEGA o especificar" />
+																		</div>
+																	</div>
+																</div>
+
+																{/* Antecedentes Ginecológicos */}
+																<div className="border-t border-slate-200 dark:border-slate-700 pt-4">
+																	<h4 className="text-sm font-semibold text-slate-900 dark:text-slate-100 mb-3">Antecedentes Ginecológicos</h4>
+																	<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+																		<div>
+																			<label className={labelClass}>ITS</label>
+																			<input value={its} onChange={(e) => setIts(e.target.value)} className={`${inputBase} ${inputDark}`} placeholder="NIEGA o especificar" />
+																		</div>
+																		<div>
+																			<label className={labelClass}>Menstruaciones</label>
+																			<input value={menstruationType} onChange={(e) => setMenstruationType(e.target.value)} className={`${inputBase} ${inputDark}`} placeholder="REGULARES o IRREGULARES" />
+																		</div>
+																		<div>
+																			<label className={labelClass}>Tipo de Menstruación (ej: 5/28)</label>
+																			<input value={menstruationPattern} onChange={(e) => setMenstruationPattern(e.target.value)} className={`${inputBase} ${inputDark}`} placeholder="5/28" />
+																		</div>
+																		<div>
+																			<label className={labelClass}>Dismenorreica</label>
+																			<select value={dysmenorrhea} onChange={(e) => setDysmenorrhea(e.target.value)} className={`${inputBase} ${inputDark}`}>
+																				<option value="NO">NO</option>
+																				<option value="SÍ">SÍ</option>
+																			</select>
+																		</div>
+																		<div>
+																			<label className={labelClass}>PRS (Primera Relación Sexual)</label>
+																			<input value={firstSexualRelation} onChange={(e) => setFirstSexualRelation(e.target.value)} className={`${inputBase} ${inputDark}`} placeholder="Edad o fecha" />
+																		</div>
+																		<div>
+																			<label className={labelClass}>PS (Parejas Sexuales)</label>
+																			<input value={sexualPartners} onChange={(e) => setSexualPartners(e.target.value)} className={`${inputBase} ${inputDark}`} placeholder="Número" />
+																		</div>
+																		<div>
+																			<label className={labelClass}>Fecha Última Regla (LMP)</label>
+																			<input value={lmp} onChange={(e) => setLmp(e.target.value)} className={`${inputBase} ${inputDark}`} type="text" placeholder="Ej: 2024-01-15 o Fecha Incierta" />
+																		</div>
+																		<div>
+																			<label className={labelClass}>Método Anticonceptivo</label>
+																			<input value={contraceptiveUse} onChange={(e) => setContraceptiveUse(e.target.value)} className={`${inputBase} ${inputDark}`} />
+																		</div>
+																		<div>
+																			<label className={labelClass}>Historia obstétrica (HO)</label>
+																			<input value={ho} onChange={(e) => setHo(e.target.value)} className={`${inputBase} ${inputDark}`} placeholder="NIEGA o especificar" />
+																		</div>
+																	</div>
+																</div>
+
+																{/* Examen Físico */}
+																<div className="border-t border-slate-200 dark:border-slate-700 pt-4">
+																	<h4 className="text-sm font-semibold text-slate-900 dark:text-slate-100 mb-3">Examen Físico</h4>
+																	<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+																		<div>
+																			<label className={labelClass}>Condiciones Generales</label>
+																			<input value={generalConditions} onChange={(e) => setGeneralConditions(e.target.value)} className={`${inputBase} ${inputDark}`} placeholder="ESTABLES" />
+																		</div>
+																		<div>
+																			<label className={labelClass}>Mamas - Tamaño</label>
+																			<input value={breastSize} onChange={(e) => setBreastSize(e.target.value)} className={`${inputBase} ${inputDark}`} placeholder="MEDIANO TAMAÑO" />
+																		</div>
+																		<div>
+																			<label className={labelClass}>Mamas - Simetría</label>
+																			<input value={breastSymmetry} onChange={(e) => setBreastSymmetry(e.target.value)} className={`${inputBase} ${inputDark}`} placeholder="ASIMÉTRICAS" />
+																		</div>
+																		<div>
+																			<label className={labelClass}>Mamas - CAP</label>
+																			<input value={breastCap} onChange={(e) => setBreastCap(e.target.value)} className={`${inputBase} ${inputDark}`} placeholder="SIN ALTERACIONES" />
+																		</div>
+																		<div>
+																			<label className={labelClass}>Mamas - Secreción</label>
+																			<input value={breastSecretion} onChange={(e) => setBreastSecretion(e.target.value)} className={`${inputBase} ${inputDark}`} placeholder="NO SE EVIDENCIA SALIDA DE SECRECIÓN" />
+																		</div>
+																		<div>
+																			<label className={labelClass}>Fosas Axilares y Supraclaviculares</label>
+																			<input value={axillaryFossae} onChange={(e) => setAxillaryFossae(e.target.value)} className={`${inputBase} ${inputDark}`} placeholder="LIBRES" />
+																		</div>
+																		<div>
+																			<label className={labelClass}>Abdomen</label>
+																			<input value={abdomen} onChange={(e) => setAbdomen(e.target.value)} className={`${inputBase} ${inputDark}`} placeholder="BLANDO, DEPRIMIBLE NO DOLOROSO A LA PALPACIÓN" />
+																		</div>
+																		<div>
+																			<label className={labelClass}>Genitales Externos</label>
+																			<input value={externalGenitals} onChange={(e) => setExternalGenitals(e.target.value)} className={`${inputBase} ${inputDark}`} placeholder="NORMOCONFIGURADOS" />
+																		</div>
+																		<div>
+																			<label className={labelClass}>Flujo Vaginal</label>
+																			<input value={vaginalDischarge} onChange={(e) => setVaginalDischarge(e.target.value)} className={`${inputBase} ${inputDark}`} placeholder="sin secreciones" />
+																		</div>
+																		<div>
+																			<label className={labelClass}>Especuloscopio - Cuello</label>
+																			<input value={speculumCervix} onChange={(e) => setSpeculumCervix(e.target.value)} className={`${inputBase} ${inputDark}`} placeholder="CUELLO MACROSCÓPICAMENTE SANO" />
+																		</div>
+																		<div>
+																			<label className={labelClass}>Tacto - Cuello</label>
+																			<input value={tactCervix} onChange={(e) => setTactCervix(e.target.value)} className={`${inputBase} ${inputDark}`} placeholder="CUELLO RENITENTE NO DOLOROSO A LA MOVILIZACIÓN" />
+																		</div>
+																		<div>
+																			<label className={labelClass}>Fondo de Sacos</label>
+																			<input value={fundusSacs} onChange={(e) => setFundusSacs(e.target.value)} className={`${inputBase} ${inputDark}`} placeholder="LIBRES" />
+																		</div>
+																		<div>
+																			<label className={labelClass}>Anexos</label>
+																			<input value={adnexa} onChange={(e) => setAdnexa(e.target.value)} className={`${inputBase} ${inputDark}`} placeholder="NO PALPABLES" />
+																		</div>
+																	</div>
+																</div>
+
+																{/* Ecografía Transvaginal - Mostrar si tiene Ecografía Transvaginal o si NO es una Consulta simple */}
+																{(hasEcografiaTransvaginal || !isSimpleConsulta) && (
+																	<div className="border-t border-slate-200 dark:border-slate-700 pt-4">
+																		<h4 className="text-sm font-semibold text-slate-900 dark:text-slate-100 mb-3">Ecografía Transvaginal</h4>
+																		<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+																			<div>
+																				<label className={labelClass}>Útero - Dimensiones (ej: 74X34X50 MM)</label>
+																				<input value={uterusDimensions} onChange={(e) => setUterusDimensions(e.target.value)} className={`${inputBase} ${inputDark}`} placeholder="74X34X50 MM" />
+																			</div>
+																			<div>
+																				<label className={labelClass}>Interfase Endometrial (mm)</label>
+																				<input value={endometrialInterface} onChange={(e) => setEndometrialInterface(e.target.value)} className={`${inputBase} ${inputDark}`} placeholder="7 MM" type="number" step="0.1" />
+																			</div>
+																			<div>
+																				<label className={labelClass}>Ecografía Transvaginal Interfase Endometrial</label>
+																				<select value={endometrialInterfacePhase} onChange={(e) => setEndometrialInterfacePhase(e.target.value)} className={`${inputBase} ${inputDark}`}>
+																					<option value="">Seleccionar...</option>
+																					<option value="Menstrual: Día 1 - 4">Lineal</option>
+																					<option value="Proliferativa Temprana: Día 5 - 13">Proliferativa Temprana</option>
+																					<option value="Proliferativa Tardía: Día 14 - 16">Proliferativa Tardía</option>
+																					<option value="Secretora: Día 16 - 28">Secretora</option>
+																				</select>
+																			</div>
+																			<div>
+																				<label className={labelClass}>Ovario Izquierdo - Dimensiones (ej: 23X17X29 MM)</label>
+																				<input value={leftOvaryDimensions} onChange={(e) => setLeftOvaryDimensions(e.target.value)} className={`${inputBase} ${inputDark}`} placeholder="23X17X29 MM" />
+																			</div>
+																			<div>
+																				<label className={labelClass}>Ovario Derecho - Dimensiones (ej: 26X19X20 MM)</label>
+																				<input value={rightOvaryDimensions} onChange={(e) => setRightOvaryDimensions(e.target.value)} className={`${inputBase} ${inputDark}`} placeholder="26X19X20 MM" />
+																			</div>
+																			<div>
+																				<label className={labelClass}>Líquido en Fondo de Saco</label>
+																				<input value={fundusFluid} onChange={(e) => setFundusFluid(e.target.value)} className={`${inputBase} ${inputDark}`} placeholder="NO SE EVIDENCIA LÍQUIDO EN FONDO DE SACO" />
+																			</div>
+																		</div>
+																	</div>
+																)}
+
+																{/* Diagnóstico con CIE-11 */}
+																<div className="border-t border-slate-200 dark:border-slate-700 pt-4">
+																	<label className={labelClass}>Diagnóstico (CIE-11)</label>
+																	<ICD11Search
+																		onSelect={(code) => {
+																			setIcd11Code(code.code);
+																			setIcd11Title(code.title);
+																			setDiagnosis(`${code.code} - ${code.title}`);
+																		}}
+																		selectedCode={icd11Code && icd11Title ? { code: icd11Code, title: icd11Title } : null}
+																		placeholder="Buscar código CIE-11 (ej: diabetes, hipertensión...)"
+																		className="mb-3"
+																	/>
+																	{icd11Code && icd11Title && (
+																		<p className="mt-2 text-xs text-slate-600 dark:text-slate-400">
+																			<strong>Código CIE-11 seleccionado:</strong> {icd11Code} - {icd11Title}
+																		</p>
+																	)}
+																</div>
+
+																{/* Observaciones Adicionales */}
+																<div className="border-t border-slate-200 dark:border-slate-700 pt-4">
+																	<label className={labelClass}>Observaciones Adicionales</label>
+																	<textarea value={cervicalExamNotes} onChange={(e) => setCervicalExamNotes(e.target.value)} className={`${inputBase} ${inputDark}`} rows={3} placeholder="Observaciones adicionales del examen cervical" />
+																</div>
+
+																{/* Botón para mostrar formulario de Colposcopia - Solo si NO es una Consulta simple Y NO es solo Consulta+Ecografía Y NO es solo Vídeo colposcopía */}
+																{!isSimpleConsulta && !hasEcografiaTransvaginal && !isOnlyVideoColposcopia && (
+																	<div className="border-t border-slate-200 dark:border-slate-700 pt-4 flex justify-end">
+																		<button type="button" onClick={() => setShowColposcopySection(!showColposcopySection)} className="px-6 py-2.5 bg-gradient-to-r from-teal-600 to-cyan-600 hover:from-teal-700 hover:to-cyan-700 text-white font-semibold rounded-lg shadow-md hover:shadow-lg transition-all duration-200 flex items-center gap-2">
+																			{showColposcopySection ? 'Ocultar' : 'Siguiente'} - Colposcopia
+																			{showColposcopySection ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+																		</button>
+																	</div>
+																)}
+
+																{/* Sección de Colposcopia - Mostrar si NO es una Consulta simple Y NO es solo Consulta+Ecografía */}
+																{!isSimpleConsulta && !hasEcografiaTransvaginal && showColposcopySection && (
+																	<div className="border-t-2 border-teal-500 dark:border-teal-400 pt-6 mt-6">
+																		<div className="mb-6">
+																			<h3 className="text-xl font-bold text-slate-900 dark:text-slate-100 mb-2 flex items-center gap-2">
+																				<div className="w-1 h-6 bg-gradient-to-b from-teal-500 to-cyan-500 rounded-full"></div>
+																				Informe Colposcópico
+																			</h3>
+																			<p className="text-sm text-slate-600 dark:text-slate-400 ml-3">Complete todos los campos del examen colposcópico según los hallazgos observados</p>
+																		</div>
+																		<div className="space-y-8">
+																			{/* Sección 1: Información General y Preparación */}
+																			<div className="bg-gradient-to-br from-slate-50 to-slate-100/50 dark:from-slate-800/50 dark:to-slate-700/30 rounded-xl p-6 border border-slate-200 dark:border-slate-700 shadow-sm">
+																				<h4 className="text-base font-semibold text-slate-900 dark:text-slate-100 mb-4 flex items-center gap-2">
+																					<div className="w-2 h-2 bg-teal-500 rounded-full"></div>
+																					Información General
+																				</h4>
+																				<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+																					<div>
+																						<label className={labelClass}>Colposcopia Acetico 5%</label>
+																						<select value={colposcopyAcetic5} onChange={(e) => setColposcopyAcetic5(e.target.value)} className={`${inputBase} ${inputDark}`}>
+																							<option value="SATISFACTORIO">SATISFACTORIO</option>
+																							<option value="NO SATISFACTORIO">NO SATISFACTORIO</option>
+																							<option value="NORMAL">NORMAL</option>
+																						</select>
+																					</div>
+																					<div>
+																						<label className={labelClass}>I. localizada en ectocérvix, totalmente visible</label>
+																						<select value={colposcopyEctocervix} onChange={(e) => setColposcopyEctocervix(e.target.value)} className={`${inputBase} ${inputDark}`}>
+																							<option value="">Seleccionar...</option>
+																							<option value="I. localizada en ectocérvix, totalmente visible.">I. localizada en ectocérvix, totalmente visible.</option>
+																							<option value="II. Con un componente endocervical totalmente visible.">II. Con un componente endocervical totalmente visible.</option>
+																							<option value="III. Sin evidencia de lesiones">III. Sin evidencia de lesiones</option>
+																						</select>
+																					</div>
+																				</div>
+																			</div>
+																			{/* Sección 2: Resultado de la Colposcopia */}
+																			<div className="bg-gradient-to-br from-blue-50 to-cyan-50/50 dark:from-blue-900/20 dark:to-cyan-900/10 rounded-xl p-6 border border-blue-200 dark:border-blue-800 shadow-sm">
+																				<h4 className="text-base font-semibold text-slate-900 dark:text-slate-100 mb-4 flex items-center gap-2">
+																					<div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+																					Resultado de la Colposcopia
+																				</h4>
+																				<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+																					<div>
+																						<label className={labelClass}>COLPOSCOPIA</label>
+																						<select
+																							value={colposcopyType}
+																							onChange={(e) => {
+																								setColposcopyType(e.target.value);
+																								if (e.target.value === 'NORMAL') {
+																									setColposcopyExtension('');
+																								}
+																							}}
+																							className={`${inputBase} ${inputDark}`}>
+																							<option value="ALTERADA">ALTERADA</option>
+																							<option value="NORMAL">NORMAL</option>
+																						</select>
+																					</div>
+																					{colposcopyType === 'ALTERADA' && (
+																						<div>
+																							<label className={labelClass}>EXTENSIÓN</label>
+																							<select value={colposcopyExtension} onChange={(e) => setColposcopyExtension(e.target.value)} className={`${inputBase} ${inputDark}`}>
+																								<option value="">Seleccionar extensión</option>
+																								<option value="Extensión < 25%">Extensión &lt; 25%</option>
+																								<option value="Extensión 25-50%">Extensión 25-50%</option>
+																								<option value="Extensión 50-75%">Extensión 50-75%</option>
+																								<option value="Extensión > 75%">Extensión &gt; 75%</option>
+																							</select>
+																						</div>
+																					)}
+																				</div>
+																				<div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+																					<div>
+																						<label className={labelClass}>Descripción</label>
+																						<select value={colposcopyDescription} onChange={(e) => setColposcopyDescription(e.target.value)} className={`${inputBase} ${inputDark}`}>
+																							<option value="">Seleccionar descripción</option>
+																							<option value="NORMAL">NORMAL</option>
+																							<option value="CAMBIOS MENORES">CAMBIOS MENORES</option>
+																							<option value="CAMBIOS MAYORES">CAMBIOS MAYORES</option>
+																						</select>
+																					</div>
+																					<div>
+																						<label className={labelClass}>Localización</label>
+																						<input value={colposcopyLocation} onChange={(e) => setColposcopyLocation(e.target.value)} className={`${inputBase} ${inputDark}`} placeholder="Especificar localización..." />
+																					</div>
+																				</div>
+																			</div>
+																			{/* Sección 3: Hallazgos del Epitelio Acetoblanco */}
+																			<div className="bg-gradient-to-br from-purple-50 to-pink-50/50 dark:from-purple-900/20 dark:to-pink-900/10 rounded-xl p-6 border border-purple-200 dark:border-purple-800 shadow-sm">
+																				<h4 className="text-base font-semibold text-slate-900 dark:text-slate-100 mb-4 flex items-center gap-2">
+																					<div className="w-2 h-2 bg-purple-500 rounded-full"></div>
+																					Epitelio Acetoblanco
+																				</h4>
+																				<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+																					<div>
+																						<label className={labelClass}>Epitelio acetoblanco</label>
+																						<select value={colposcopyAcetowhite} onChange={(e) => setColposcopyAcetowhite(e.target.value)} className={`${inputBase} ${inputDark}`}>
+																							<option value="Negativo">Negativo</option>
+																							<option value="Tenue">Tenue</option>
+																							<option value="Denso">Denso</option>
+																						</select>
+																					</div>
+																					<div>
+																						<label className={labelClass}>Detalles del Epitelio Acetoblanco</label>
+																						<select value={colposcopyAcetowhiteDetails} onChange={(e) => setColposcopyAcetowhiteDetails(e.target.value)} className={`${inputBase} ${inputDark}`}>
+																							<option value="">Seleccionar opción</option>
+																							<option value="Que aparece rápido y desaparece lento, blanco ostraceo">Que aparece rápido y desaparece lento, blanco ostraceo</option>
+																							<option value="Cambió acetoblanco débil que aparece TARDE y desaparece pronto">Cambió acetoblanco débil que aparece TARDE y desaparece pronto</option>
+																							<option value="Glandular acetoblanco denso sobre epitelio columnar">Glandular acetoblanco denso sobre epitelio columnar</option>
+																							<option value="Imagen de blanco sobre blanco, borde interno">Imagen de blanco sobre blanco, borde interno</option>
+																							<option value="SIN CAMBIOS ACENTOBLANCO">SIN CAMBIOS ACENTOBLANCO</option>
+																						</select>
+																					</div>
+																				</div>
+																			</div>
+																			{/* Sección 4: Patrones de Vascularización */}
+																			<div className="bg-gradient-to-br from-amber-50 to-orange-50/50 dark:from-amber-900/20 dark:to-orange-900/10 rounded-xl p-6 border border-amber-200 dark:border-amber-800 shadow-sm">
+																				<h4 className="text-base font-semibold text-slate-900 dark:text-slate-100 mb-4 flex items-center gap-2">
+																					<div className="w-2 h-2 bg-amber-500 rounded-full"></div>
+																					Patrones
+																				</h4>
+																				<div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+																					<div>
+																						<label className={labelClass}>MOSAICO</label>
+																						<select value={colposcopyMosaic} onChange={(e) => setColposcopyMosaic(e.target.value)} className={`${inputBase} ${inputDark}`}>
+																							<option value="No">No</option>
+																							<option value="Fino">Fino</option>
+																							<option value="Grueso">Grueso</option>
+																							<option value="Mosaico ancho con losetas de distintos tamaños">Mosaico ancho con losetas de distintos tamaños</option>
+																						</select>
+																					</div>
+																					<div>
+																						<label className={labelClass}>PUNTEADO</label>
+																						<select value={colposcopyPunctation} onChange={(e) => setColposcopyPunctation(e.target.value)} className={`${inputBase} ${inputDark}`}>
+																							<option value="No">No</option>
+																							<option value="Fino">Fino</option>
+																							<option value="Grueso">Grueso</option>
+																						</select>
+																					</div>
+																					<div>
+																						<label className={labelClass}>VASOS ATÍPICOS</label>
+																						<select value={colposcopyAtypicalVessels} onChange={(e) => setColposcopyAtypicalVessels(e.target.value)} className={`${inputBase} ${inputDark}`}>
+																							<option value="No">No</option>
+																							<option value="Stops">Stops</option>
+																							<option value="Horquilla">Horquilla</option>
+																							<option value="Brusco cambio">Brusco cambio</option>
+																							<option value="Vasos de distintos calibres">Vasos de distintos calibres</option>
+																							<option value="Dilataciones">Dilataciones</option>
+																						</select>
+																					</div>
+																				</div>
+																			</div>
+																			{/* Sección 5: Características de la Lesión */}
+																			<div className="bg-gradient-to-br from-emerald-50 to-teal-50/50 dark:from-emerald-900/20 dark:to-teal-900/10 rounded-xl p-6 border border-emerald-200 dark:border-emerald-800 shadow-sm">
+																				<h4 className="text-base font-semibold text-slate-900 dark:text-slate-100 mb-4 flex items-center gap-2">
+																					<div className="w-2 h-2 bg-emerald-500 rounded-full"></div>
+																					Características de la Lesión
+																				</h4>
+																				<div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+																					<div>
+																						<label className={labelClass}>Sugestiva de carcinoma invasivo</label>
+																						<select value={colposcopyInvasiveCarcinoma} onChange={(e) => setColposcopyInvasiveCarcinoma(e.target.value)} className={`${inputBase} ${inputDark}`}>
+																							<option value="No">No</option>
+																							<option value="Ulceración">Ulceración</option>
+																							<option value="Otros">Otros</option>
+																						</select>
+																					</div>
+																					<div>
+																						<label className={labelClass}>BORDES</label>
+																						<select value={colposcopyBorders} onChange={(e) => setColposcopyBorders(e.target.value)} className={`${inputBase} ${inputDark}`}>
+																							<option value="No">No</option>
+																							<option value="Irregular">Irregular</option>
+																							<option value="Regular">Regular</option>
+																						</select>
+																					</div>
+																					<div>
+																						<label className={labelClass}>SITUACIÓN</label>
+																						<select value={colposcopySituation} onChange={(e) => setColposcopySituation(e.target.value)} className={`${inputBase} ${inputDark}`}>
+																							<option value="No">No</option>
+																							<option value="Central">Central</option>
+																							<option value="Periférica">Periférica</option>
+																						</select>
+																					</div>
+																					<div>
+																						<label className={labelClass}>ELEVACIÓN</label>
+																						<select value={colposcopyElevation} onChange={(e) => setColposcopyElevation(e.target.value)} className={`${inputBase} ${inputDark}`}>
+																							<option value="No">No</option>
+																							<option value="Plano">Plano</option>
+																							<option value="Sobrelevado">Sobrelevado</option>
+																						</select>
+																					</div>
+																				</div>
+																			</div>
+																			{/* Sección 6: Pruebas Complementarias y Biopsia */}
+																			<div className="bg-gradient-to-br from-indigo-50 to-violet-50/50 dark:from-indigo-900/20 dark:to-violet-900/10 rounded-xl p-6 border border-indigo-200 dark:border-indigo-800 shadow-sm">
+																				<h4 className="text-base font-semibold text-slate-900 dark:text-slate-100 mb-4 flex items-center gap-2">
+																					<div className="w-2 h-2 bg-indigo-500 rounded-full"></div>
+																					Pruebas Complementarias y Biopsia
+																				</h4>
+																				<div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+																					<div className="space-y-4">
+																						<div>
+																							<label className={labelClass}>Test de Hinselmann</label>
+																							<select value={hinselmannTest} onChange={(e) => setHinselmannTest(e.target.value)} className={`${inputBase} ${inputDark}`}>
+																								<option value="NEGATIVO">NEGATIVO</option>
+																								<option value="POSITIVO">POSITIVO</option>
+																							</select>
+																						</div>
+																						<div>
+																							<label className={labelClass}>LUGOL (Test Schiller)</label>
+																							<select value={colposcopyLugol} onChange={(e) => setColposcopyLugol(e.target.value)} className={`${inputBase} ${inputDark}`}>
+																								<option value="">Seleccionar opción</option>
+																								<option value="IODOPOSITIVO">IODOPOSITIVO</option>
+																								<option value="IODO PARCIALMENTE NEGATIVO (positividad débil, parcialmente moteado)">IODO PARCIALMENTE NEGATIVO (positividad débil, parcialmente moteado)</option>
+																								<option value="IODONEGATIVO (amarillo mostaza sobre epitelio acetoblanco)">IODONEGATIVO (amarillo mostaza sobre epitelio acetoblanco)</option>
+																								<option value="NO">NO</option>
+																							</select>
+																						</div>
+																					</div>
+																					<div className="space-y-4">
+																						<div>
+																							<label className={labelClass}>TOMA DE BIOPSIA</label>
+																							<select value={colposcopyBiopsy} onChange={(e) => setColposcopyBiopsy(e.target.value)} className={`${inputBase} ${inputDark}`}>
+																								<option value="No">No</option>
+																								<option value="Si">Si</option>
+																							</select>
+																						</div>
+																						<div>
+																							<label className={labelClass}>LOCALIZACIÓN (Biopsia)</label>
+																							<input value={colposcopyBiopsyLocation} onChange={(e) => setColposcopyBiopsyLocation(e.target.value)} className={`${inputBase} ${inputDark}`} placeholder="Especificar localización de la biopsia..." disabled={colposcopyBiopsy === 'No'} />
+																						</div>
+																					</div>
+																				</div>
+																			</div>
+																			{/* Sección 7: Imagen Colposcópica y Detalles Adicionales */}
+																			<div className="bg-gradient-to-br from-rose-50 to-pink-50/50 dark:from-rose-900/20 dark:to-pink-900/10 rounded-xl p-6 border border-rose-200 dark:border-rose-800 shadow-sm">
+																				<h4 className="text-base font-semibold text-slate-900 dark:text-slate-100 mb-4 flex items-center gap-2">
+																					<div className="w-2 h-2 bg-rose-500 rounded-full"></div>
+																					Documentación Adicional
+																				</h4>
+																				<div className="space-y-6">
+																					<div>
+																						<label className={labelClass}>Imagen Colposcópica</label>
+																						<div className="space-y-3">
+																							{colposcopyImage ? (
+																								<div className="relative border-2 border-slate-200 dark:border-slate-700 rounded-lg p-4 bg-slate-50 dark:bg-slate-800/50">
+																									<div className="flex items-center justify-between">
+																										<div className="flex items-center gap-3 flex-1 min-w-0">
+																											<div className="flex-shrink-0 w-12 h-12 rounded-lg bg-gradient-to-br from-teal-500 to-cyan-500 flex items-center justify-center">
+																												<Image className="w-6 h-6 text-white" />
+																											</div>
+																											<div className="flex-1 min-w-0">
+																												<p className="text-sm font-medium text-slate-900 dark:text-slate-100 truncate">Imagen colposcópica cargada</p>
+																												<a href={colposcopyImage} target="_blank" rel="noopener noreferrer" className="text-xs text-teal-600 dark:text-teal-400 hover:underline truncate block">
+																													Ver imagen
+																												</a>
+																											</div>
+																										</div>
+																										<button type="button" onClick={() => setColposcopyImage('')} className="flex-shrink-0 ml-3 p-2 rounded-lg bg-rose-100 dark:bg-rose-900/50 text-rose-600 dark:text-rose-400 hover:bg-rose-200 dark:hover:bg-rose-900 transition-colors">
+																											<X size={18} />
+																										</button>
+																									</div>
+																								</div>
+																							) : (
+																								<label className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-slate-300 dark:border-slate-600 rounded-lg cursor-pointer bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors">
+																									<div className="flex flex-col items-center justify-center pt-5 pb-6">
+																										{uploadingColposcopyImage ? (
+																											<>
+																												<Loader2 className="w-8 h-8 mb-2 text-teal-600 dark:text-teal-400 animate-spin" />
+																												<p className="text-sm text-slate-600 dark:text-slate-400">Subiendo imagen...</p>
+																											</>
+																										) : (
+																											<>
+																												<Upload className="w-8 h-8 mb-2 text-slate-400 dark:text-slate-500" />
+																												<p className="mb-2 text-sm text-slate-600 dark:text-slate-400">
+																													<span className="font-semibold">Haz clic para subir</span> o arrastra y suelta
+																												</p>
+																												<p className="text-xs text-slate-500 dark:text-slate-500">PNG, JPG, WEBP (MAX. 10MB)</p>
+																											</>
+																										)}
+																									</div>
+																									<input
+																										type="file"
+																										className="hidden"
+																										accept="image/png,image/jpeg,image/jpg,image/webp"
+																										onChange={async (e) => {
+																											const file = e.target.files?.[0];
+																											if (!file) return;
+																											if (file.size > 10 * 1024 * 1024) {
+																												alert('El archivo es demasiado grande. Máximo 10MB.');
+																												return;
+																											}
+																											setUploadingColposcopyImage(true);
+																											try {
+																												const formData = new FormData();
+																												formData.append('file', file);
+																												formData.append('consultation_id', initial.id);
+																												formData.append('file_name', 'colposcopy-image');
+																												const res = await fetch('/api/consultations/upload-image', {
+																													method: 'POST',
+																													body: formData,
+																												});
+																												const data = await res.json();
+																												if (!res.ok) {
+																													throw new Error(data.error || 'Error al subir imagen');
+																												}
+																												setColposcopyImage(data.url);
+																												setSuccess('Imagen colposcópica subida exitosamente');
+																											} catch (err: any) {
+																												setError(err?.message || 'Error al subir imagen');
+																											} finally {
+																												setUploadingColposcopyImage(false);
+																											}
+																										}}
+																										disabled={uploadingColposcopyImage}
+																									/>
+																								</label>
+																							)}
+																						</div>
+																						<p className="mt-2 text-xs text-slate-500 dark:text-slate-400">Sube una imagen del examen colposcópico para documentar los hallazgos visuales</p>
+																					</div>
+																					<div>
+																						<label className={labelClass}>Detalles Adicionales</label>
+																						<textarea value={colposcopyAdditionalDetails} onChange={(e) => setColposcopyAdditionalDetails(e.target.value)} rows={4} className={`${inputBase} ${inputDark} resize-none`} placeholder="Agrega comentarios adicionales sobre la colposcopía, observaciones importantes, recomendaciones de seguimiento, etc." />
+																						<p className="mt-2 text-xs text-slate-500 dark:text-slate-400">Comentarios adicionales sobre el examen colposcópico</p>
+																					</div>
+																				</div>
+																			</div>
+																		</div>
+																	</div>
+																)}
+															</div>
+														)}
+													</>
 												)}
-											</div>
-										)}
 									</div>
 								)}
 

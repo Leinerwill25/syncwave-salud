@@ -55,10 +55,76 @@ export default async function EditConsultationPage({ params }: Props) {
 		.select(
 			`id, appointment_id, patient_id, unregistered_patient_id, doctor_id, chief_complaint, diagnosis, icd11_code, icd11_title, notes, vitals, started_at, ended_at, created_at,
        patient:patient_id(id,firstName,lastName,dob,identifier),
-       doctor:doctor_id(id,name,email)`
+       doctor:doctor_id(id,name,email),
+       appointment:appointment_id(id,reason)`
 		)
 		.eq('id', id)
 		.single();
+
+	// Obtener información del appointment para determinar el tipo de servicio
+	let appointmentReason: string | null = null;
+	let isSimpleConsulta = false;
+	let hasEcografiaTransvaginal = false;
+	let isOnlyVideoColposcopia = false;
+	if (consultationRaw?.appointment_id) {
+		const { data: appointment } = await supabase
+			.from('appointment')
+			.select('id, reason, selected_service')
+			.eq('id', consultationRaw.appointment_id)
+			.maybeSingle();
+		
+		if (appointment) {
+			appointmentReason = appointment.reason || null;
+			const selectedService = (appointment as any).selected_service;
+			
+			// Verificar si hay múltiples servicios (puede ser un array o string)
+			let services: string[] = [];
+			if (Array.isArray(selectedService)) {
+				// Si es un array de objetos con 'name' o strings
+				services = selectedService.map((s: any) => 
+					typeof s === 'string' ? s : (s?.name || String(s))
+				).map((s: string) => s.toLowerCase());
+			} else if (selectedService) {
+				// Si es un objeto con 'name' o un string
+				const serviceName = selectedService?.name || selectedService || '';
+				services = [String(serviceName).toLowerCase()];
+			}
+			
+			// También verificar en el reason si hay múltiples servicios separados por comas, guiones, etc.
+			if (appointmentReason) {
+				const reasonLower = appointmentReason.toLowerCase();
+				// Buscar patrones como "Consulta y Ecografía", "Consulta + Ecografía", etc.
+				if (reasonLower.includes('ecografía') || reasonLower.includes('ecografia') || reasonLower.includes('transvaginal')) {
+					services.push('ecografía transvaginal');
+				}
+				if (reasonLower.includes('consulta') && !reasonLower.includes('colposcop')) {
+					services.push('consulta');
+				}
+				// Buscar "Vídeo colposcopía" o variaciones
+				if (reasonLower.includes('vídeo colposcopía') || reasonLower.includes('video colposcopia') || 
+				    reasonLower.includes('vídeo colposcopia') || reasonLower.includes('video colposcopía')) {
+					services.push('vídeo colposcopía');
+				}
+			}
+			
+			// Determinar si es SOLO "Vídeo colposcopía" (sin otros servicios)
+			const hasVideoColposcopia = services.some(s => 
+				s.includes('vídeo colposcopía') || s.includes('video colposcopia') ||
+				s.includes('vídeo colposcopia') || s.includes('video colposcopía')
+			);
+			const hasConsulta = services.some(s => s.includes('consulta') && !s.includes('colposcop'));
+			hasEcografiaTransvaginal = services.some(s => 
+				s.includes('ecografía') || s.includes('ecografia') || s.includes('transvaginal')
+			);
+			
+			// Es SOLO vídeo colposcopía si tiene colposcopia pero NO tiene consulta ni ecografía
+			isOnlyVideoColposcopia = hasVideoColposcopia && !hasConsulta && !hasEcografiaTransvaginal;
+			
+			// Es una consulta simple si tiene "Consulta" pero NO tiene "Ecografía Transvaginal" ni "Colposcopia"
+			isSimpleConsulta = hasConsulta && !hasEcografiaTransvaginal && 
+				!services.some(s => s.includes('colposcop')) && !isOnlyVideoColposcopia;
+		}
+	}
 
 	// Obtener las especialidades guardadas del doctor desde medic_profile
 	// Para consultorios privados, usar private_specialty; si no existe, usar specialty
@@ -290,7 +356,7 @@ export default async function EditConsultationPage({ params }: Props) {
 				</header>
 
 				{/* Form Section - No wrapper needed, form handles its own styling */}
-				<EditConsultationForm initial={consultation} patient={patient} doctor={doctor} doctorSpecialties={doctorSpecialties} />
+				<EditConsultationForm initial={consultation} patient={patient} doctor={doctor} doctorSpecialties={doctorSpecialties} isSimpleConsulta={isSimpleConsulta} hasEcografiaTransvaginal={hasEcografiaTransvaginal} isOnlyVideoColposcopia={isOnlyVideoColposcopia} />
 			</div>
 		</main>
 	);

@@ -56,25 +56,61 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 		let patientIdForRecord: string | null = null;
 
 		if (consultation.patient_id) {
+			// Paciente registrado - usar directamente su ID
 			patientIdForRecord = consultation.patient_id;
-		} else {
-			// Si es paciente no registrado, intentar obtener el patient_id relacionado
-			// a través de unregisteredPatientId en la tabla Patient
-			if (consultation.unregistered_patient_id) {
-				const { data: patientFromUnregistered } = await supabase
-					.from('patient')
-					.select('id')
-					.eq('unregistered_patient_id', consultation.unregistered_patient_id)
-					.maybeSingle();
+		} else if (consultation.unregistered_patient_id) {
+			// Paciente no registrado - buscar o crear un registro en Patient vinculado
+			// Primero, intentar encontrar un Patient existente vinculado a este unregistered_patient_id
+			const { data: patientFromUnregistered } = await supabase
+				.from('patient')
+				.select('id')
+				.eq('unregistered_patient_id', consultation.unregistered_patient_id)
+				.maybeSingle();
 
-				if (patientFromUnregistered) {
-					patientIdForRecord = patientFromUnregistered.id;
+			if (patientFromUnregistered) {
+				// Ya existe un Patient vinculado, usarlo
+				patientIdForRecord = patientFromUnregistered.id;
+			} else {
+				// No existe un Patient vinculado, crear uno temporal con los datos del paciente no registrado
+				// Obtener datos del paciente no registrado
+				const { data: unregisteredPatient, error: unregisteredError } = await supabase
+					.from('unregisteredpatients')
+					.select('first_name, last_name, identification, birth_date, sex, phone')
+					.eq('id', consultation.unregistered_patient_id)
+					.single();
+
+				if (unregisteredError || !unregisteredPatient) {
+					console.error('[Save Report API] Error obteniendo paciente no registrado:', unregisteredError);
+					return NextResponse.json({ error: 'No se pudo obtener la información del paciente no registrado' }, { status: 500 });
 				}
+
+				// Crear un registro temporal en Patient vinculado al unregistered_patient_id
+				const { data: newPatient, error: createPatientError } = await supabase
+					.from('patient')
+					.insert({
+						firstName: unregisteredPatient.first_name || 'Paciente',
+						lastName: unregisteredPatient.last_name || 'No Registrado',
+						identifier: unregisteredPatient.identification || null,
+						dob: unregisteredPatient.birth_date || null,
+						gender: unregisteredPatient.sex || null,
+						phone: unregisteredPatient.phone || null,
+						unregistered_patient_id: consultation.unregistered_patient_id, // Vincular con el paciente no registrado
+					})
+					.select('id')
+					.single();
+
+				if (createPatientError || !newPatient) {
+					console.error('[Save Report API] Error creando Patient temporal:', createPatientError);
+					return NextResponse.json({ error: 'Error al crear registro temporal del paciente' }, { status: 500 });
+				}
+
+				patientIdForRecord = newPatient.id;
+				console.log('[Save Report API] Patient temporal creado para paciente no registrado:', patientIdForRecord);
 			}
 		}
 
 		if (!patientIdForRecord) {
-			return NextResponse.json({ error: 'No se puede guardar el informe: el paciente no está registrado en el sistema' }, { status: 400 });
+			return NextResponse.json({ error: 'No se puede guardar el informe: no se pudo determinar el paciente' }, { status: 400 });
 		}
 
 		// Verificar si ya existe un MedicalRecord para esta consulta

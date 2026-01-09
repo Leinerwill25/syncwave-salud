@@ -8,6 +8,7 @@ type Item = {
 	id: string;
 	name: string;
 	dosage?: string;
+	form?: string; // Forma/presentación del medicamento
 	frequency?: string; // Se genera automáticamente desde frequencyHours y frequencyDays
 	frequencyHours?: number | null; // Cada cuántas horas
 	frequencyDays?: number | null; // Por cuántos días
@@ -88,9 +89,68 @@ function parseOldFrequency(frequency: string | null | undefined): { hours: numbe
 	return { hours: null, days: null };
 }
 
+// Opciones de formas/presentaciones de medicamentos organizadas por categorías
+const medicationForms = [
+	{
+		title: 'Tableta, Comprimido o Cápsula y Suspensión, Inyectable, Polvo, Ampolla',
+		options: [
+			{ value: 'Tableta', label: 'Tableta' },
+			{ value: 'Comprimido', label: 'Comprimido' },
+			{ value: 'Cápsula', label: 'Cápsula' },
+			{ value: 'Suspensión', label: 'Suspensión' },
+			{ value: 'Inyectable', label: 'Inyectable' },
+			{ value: 'Polvo', label: 'Polvo' },
+			{ value: 'Ampolla', label: 'Ampolla' },
+		],
+	},
+	{
+		title: 'Granulados',
+		options: [
+			{ value: 'Granulados', label: 'Granulados' },
+		],
+	},
+	{
+		title: 'Supositorios y Óvulos',
+		options: [
+			{ value: 'Supositorio', label: 'Supositorio' },
+			{ value: 'Óvulo', label: 'Óvulo' },
+		],
+	},
+	{
+		title: 'Crema, Pomada o Geles Semi Sólidos',
+		options: [
+			{ value: 'Crema', label: 'Crema' },
+			{ value: 'Pomada', label: 'Pomada' },
+			{ value: 'Gel', label: 'Gel' },
+		],
+	},
+	{
+		title: 'Líquidos: Solución, Jarabes, Suspensión, Gotas, Lociones',
+		options: [
+			{ value: 'Solución', label: 'Solución' },
+			{ value: 'Jarabe', label: 'Jarabe' },
+			{ value: 'Suspensión Líquida', label: 'Suspensión Líquida' },
+			{ value: 'Gotas', label: 'Gotas' },
+			{ value: 'Loción', label: 'Loción' },
+		],
+	},
+	{
+		title: 'Aerosoles o Aerosoles',
+		options: [
+			{ value: 'Aerosol', label: 'Aerosol' },
+		],
+	},
+	{
+		title: 'Parches Transdérmicos',
+		options: [
+			{ value: 'Parche Transdérmico', label: 'Parche Transdérmico' },
+		],
+	},
+];
+
 function PrescriptionItemsEditor({ items, setItems }: { items: Item[]; setItems: (i: Item[]) => void }) {
 	function add() {
-		setItems([...items, { id: uid('it_'), name: '', dosage: '', frequency: '', frequencyHours: null, frequencyDays: null, duration: '', quantity: 1, instructions: '' }]);
+		setItems([...items, { id: uid('it_'), name: '', dosage: '', form: '', frequency: '', frequencyHours: null, frequencyDays: null, duration: '', quantity: 1, instructions: '' }]);
 	}
 	function remove(id: string) {
 		setItems(items.filter((it) => it.id !== id));
@@ -123,9 +183,25 @@ function PrescriptionItemsEditor({ items, setItems }: { items: Item[]; setItems:
 
 				{items.map((it) => (
 					<div key={it.id} className="border border-blue-100 rounded-lg p-3 bg-blue-50/50 grid grid-cols-1 md:grid-cols-6 gap-3 items-start">
-						<div className="md:col-span-3">
+						<div className="md:col-span-2">
 							<label className="text-xs text-slate-800 font-medium">Medicamento</label>
 							<input className="w-full mt-1 px-3 py-2 rounded-md border border-blue-200 bg-white text-slate-900" placeholder="Nombre (ej. Amoxicilina)" value={it.name} onChange={(e) => update(it.id, { name: e.target.value })} required />
+						</div>
+
+						<div className="md:col-span-1">
+							<label className="text-xs text-slate-800 font-medium">Presentación</label>
+							<select className="w-full mt-1 px-3 py-2 rounded-md border border-blue-200 bg-white text-slate-900" value={it.form || ''} onChange={(e) => update(it.id, { form: e.target.value })}>
+								<option value="">Seleccionar...</option>
+								{medicationForms.map((group) => (
+									<optgroup key={group.title} label={group.title}>
+										{group.options.map((option) => (
+											<option key={option.value} value={option.value}>
+												{option.label}
+											</option>
+										))}
+									</optgroup>
+								))}
+							</select>
 						</div>
 
 						<div className="md:col-span-1">
@@ -211,6 +287,7 @@ export default function PrescriptionForm({ consultationId, patientId, unregister
 						id: item.id,
 						name: item.name || '',
 						dosage: item.dosage || '',
+						form: item.form || '', // Incluir forma/presentación
 						frequency: item.frequency || '',
 						frequencyHours: parsed.hours,
 						frequencyDays: parsed.days,

@@ -8,7 +8,15 @@ import Docxtemplater from 'docxtemplater';
 import PizZip from 'pizzip';
 
 // Función para generar el contenido del informe desde la plantilla de texto
-async function generateReportContentFromTemplate(consultation: any, templateText: string, supabase: any, reportType: string = 'gynecology'): Promise<string> {
+async function generateReportContentFromTemplate(
+	consultation: any,
+	templateText: string,
+	supabase: any,
+	reportType: string = 'gynecology',
+	isSimpleConsulta: boolean = false,
+	hasEcografiaTransvaginal: boolean = false,
+	isOnlyVideoColposcopia: boolean = false
+): Promise<string> {
 	let content = templateText;
 
 	// Función auxiliar para calcular edad desde fecha de nacimiento
@@ -239,63 +247,228 @@ async function generateReportContentFromTemplate(consultation: any, templateText
 			conclusiones: secondTrim.conclusiones || '',
 		};
 	} else {
-		// Variables de Ginecología (comportamiento original)
-		replacements = {
-			...baseReplacements,
-			// Antecedentes médicos
-			alergicos: gyn.allergies || 'NIEGA',
-			quirurgicos: gyn.surgical_history || 'NIEGA',
+		// Variables de Ginecología - Filtrar según el tipo de servicio
+		// Si es solo Vídeo colposcopía, solo incluir datos de colposcopia
+		if (isOnlyVideoColposcopia) {
+			// Solo datos de colposcopia
+			replacements = {
+				...baseReplacements,
+				// Colposcopia - Información General
+				colposcopia_acetico_5: colposcopy.acetic_5 || '',
+				colposcopia_ectocervix: colposcopy.ectocervix || '',
+				colposcopia_tipo: colposcopy.type || '',
+				colposcopia_extension: colposcopy.extension || '',
+				colposcopia_descripcion: colposcopy.description || '',
+				colposcopia_localizacion: colposcopy.location || '',
 
-			// Antecedentes familiares
-			antecedentes_madre: gyn.family_history_mother || 'VIVA SANA',
-			antecedentes_padre: gyn.family_history_father || 'VIVO SANO',
-			antecedentes_cancer_mama: gyn.family_history_breast_cancer || 'NIEGA',
+				// Colposcopia - Epitelio Acetoblanco
+				colposcopia_acetowhite: colposcopy.acetowhite || '',
+				colposcopia_acetowhite_detalles: colposcopy.acetowhite_details || '',
 
-			// Antecedentes ginecológicos
-			motivo_consulta: gyn.evaluation_reason || consultation.chief_complaint || 'No especificado',
-			motivo_evaluacion: gyn.evaluation_reason || consultation.chief_complaint || 'No especificado',
-			its: gyn.its || 'NIEGA',
-			tipo_menstruacion: gyn.menstruation_type || 'REGULARES',
-			patron_menstruacion: gyn.menstruation_pattern || '',
-			dismenorrea: gyn.dysmenorrhea || 'NO',
-			primera_relacion_sexual: gyn.first_sexual_relation || '',
-			parejas_sexuales: gyn.sexual_partners || '',
-			ultima_regla: gyn.last_menstrual_period || '',
-			metodo_anticonceptivo: gyn.contraceptive || '',
-			método_anticonceptivo: gyn.contraceptive || '', // Con tilde para compatibilidad
+				// Colposcopia - Patrones de Vascularización
+				colposcopia_mosaico: colposcopy.mosaic || '',
+				colposcopia_punteado: colposcopy.punctation || '',
+				colposcopia_vasos_atipicos: colposcopy.atypical_vessels || '',
 
-			// Colposcopia - Tests básicos
-			test_hinselmann: gyn.hinselmann_test || 'NEGATIVO',
-			test_schiller: gyn.schiller_test || 'NEGATIVO',
+				// Colposcopia - Características de la Lesión
+				colposcopia_carcinoma_invasivo: colposcopy.invasive_carcinoma || '',
+				colposcopia_bordes: colposcopy.borders || '',
+				colposcopia_situacion: colposcopy.situation || '',
+				colposcopia_elevacion: colposcopy.elevation || '',
 
-			// Colposcopia - Información General
-			colposcopia_acetico_5: colposcopy.acetic_5 || '',
-			colposcopia_ectocervix: colposcopy.ectocervix || '',
-			colposcopia_tipo: colposcopy.type || '',
-			colposcopia_extension: colposcopy.extension || '',
-			colposcopia_descripcion: colposcopy.description || '',
-			colposcopia_localizacion: colposcopy.location || '',
+				// Colposcopia - Pruebas Complementarias
+				colposcopia_biopsia: colposcopy.biopsy || '',
+				colposcopia_biopsia_localizacion: colposcopy.biopsy_location || '',
+				colposcopia_lugol: colposcopy.lugol || '',
+				test_hinselmann: gyn.hinselmann_test || 'NEGATIVO',
+			};
+		} else if (isSimpleConsulta) {
+			// Si es solo Consulta, incluir solo datos de consulta (sin colposcopia ni ecografía)
+			replacements = {
+				...baseReplacements,
+				// Antecedentes médicos
+				alergicos: gyn.allergies || 'NIEGA',
+				quirurgicos: gyn.surgical_history || 'NIEGA',
 
-			// Colposcopia - Epitelio Acetoblanco
-			colposcopia_acetowhite: colposcopy.acetowhite || '',
-			colposcopia_acetowhite_detalles: colposcopy.acetowhite_details || '',
+				// Antecedentes familiares
+				antecedentes_madre: gyn.family_history_mother || 'VIVA SANA',
+				antecedentes_padre: gyn.family_history_father || 'VIVO SANO',
+				antecedentes_cancer_mama: gyn.family_history_breast_cancer || 'NIEGA',
 
-			// Colposcopia - Patrones de Vascularización
-			colposcopia_mosaico: colposcopy.mosaic || '',
-			colposcopia_punteado: colposcopy.punctation || '',
-			colposcopia_vasos_atipicos: colposcopy.atypical_vessels || '',
+				// Antecedentes ginecológicos
+				motivo_consulta: gyn.evaluation_reason || consultation.chief_complaint || 'No especificado',
+				motivo_evaluacion: gyn.evaluation_reason || consultation.chief_complaint || 'No especificado',
+				historia_enfermedad_actual: gyn.current_illness_history || '',
+				its: gyn.its || 'NIEGA',
+				tipo_menstruacion: gyn.menstruation_type || 'REGULARES',
+				patron_menstruacion: gyn.menstruation_pattern || '',
+				dismenorrea: gyn.dysmenorrhea || 'NO',
+				primera_relacion_sexual: gyn.first_sexual_relation || '',
+				parejas_sexuales: gyn.sexual_partners || '',
+				ultima_regla: gyn.last_menstrual_period || '',
+				metodo_anticonceptivo: gyn.contraceptive || '',
+				método_anticonceptivo: gyn.contraceptive || '', // Con tilde para compatibilidad
+				ho: gyn.ho || 'NIEGA',
 
-			// Colposcopia - Características de la Lesión
-			colposcopia_carcinoma_invasivo: colposcopy.invasive_carcinoma || '',
-			colposcopia_bordes: colposcopy.borders || '',
-			colposcopia_situacion: colposcopy.situation || '',
-			colposcopia_elevacion: colposcopy.elevation || '',
+				// Examen físico
+				condiciones_generales: gyn.general_conditions || 'ESTABLES',
+				tamano_mamas: gyn.breast_size || 'MEDIANO TAMAÑO',
+				simetria_mamas: gyn.breast_symmetry || 'ASIMÉTRICAS',
+				cap_mamas: gyn.breast_cap || 'SIN ALTERACIONES',
+				secrecion_mamas: gyn.breast_secretion || 'NO SE EVIDENCIA SALIDA DE SECRECIÓN',
+				fosas_axilares: gyn.axillary_fossae || 'LIBRES',
+				abdomen: gyn.abdomen || 'BLANDO, DEPRIMIBLE NO DOLOROSO A LA PALPACIÓN',
+				genitales_externos: gyn.external_genitals || 'NORMOCONFIGURADOS',
+				flujo_vaginal: gyn.vaginal_discharge || 'sin secreciones',
+				especuloscopia: gyn.speculum_cervix || 'CUELLO MACROSCÓPICAMENTE SANO',
+				tacto_cervix: gyn.tact_cervix || 'CUELLO RENITENTE NO DOLOROSO A LA MOVILIZACIÓN',
+				fondo_sacos: gyn.fundus_sacs || 'LIBRES',
+				anexos: gyn.adnexa || 'NO PALPABLES',
 
-			// Colposcopia - Pruebas Complementarias
-			colposcopia_biopsia: colposcopy.biopsy || '',
-			colposcopia_biopsia_localizacion: colposcopy.biopsy_location || '',
-			colposcopia_lugol: colposcopy.lugol || '',
-		};
+				// Examen cervical
+				examen_cervical: gyn.cervical_exam || '',
+			};
+		} else if (hasEcografiaTransvaginal) {
+			// Si es Consulta + Ecografía Transvaginal, incluir datos de consulta + ecografía (sin colposcopia)
+			replacements = {
+				...baseReplacements,
+				// Antecedentes médicos
+				alergicos: gyn.allergies || 'NIEGA',
+				quirurgicos: gyn.surgical_history || 'NIEGA',
+
+				// Antecedentes familiares
+				antecedentes_madre: gyn.family_history_mother || 'VIVA SANA',
+				antecedentes_padre: gyn.family_history_father || 'VIVO SANO',
+				antecedentes_cancer_mama: gyn.family_history_breast_cancer || 'NIEGA',
+
+				// Antecedentes ginecológicos
+				motivo_consulta: gyn.evaluation_reason || consultation.chief_complaint || 'No especificado',
+				motivo_evaluacion: gyn.evaluation_reason || consultation.chief_complaint || 'No especificado',
+				historia_enfermedad_actual: gyn.current_illness_history || '',
+				its: gyn.its || 'NIEGA',
+				tipo_menstruacion: gyn.menstruation_type || 'REGULARES',
+				patron_menstruacion: gyn.menstruation_pattern || '',
+				dismenorrea: gyn.dysmenorrhea || 'NO',
+				primera_relacion_sexual: gyn.first_sexual_relation || '',
+				parejas_sexuales: gyn.sexual_partners || '',
+				ultima_regla: gyn.last_menstrual_period || '',
+				metodo_anticonceptivo: gyn.contraceptive || '',
+				método_anticonceptivo: gyn.contraceptive || '', // Con tilde para compatibilidad
+				ho: gyn.ho || 'NIEGA',
+
+				// Examen físico
+				condiciones_generales: gyn.general_conditions || 'ESTABLES',
+				tamano_mamas: gyn.breast_size || 'MEDIANO TAMAÑO',
+				simetria_mamas: gyn.breast_symmetry || 'ASIMÉTRICAS',
+				cap_mamas: gyn.breast_cap || 'SIN ALTERACIONES',
+				secrecion_mamas: gyn.breast_secretion || 'NO SE EVIDENCIA SALIDA DE SECRECIÓN',
+				fosas_axilares: gyn.axillary_fossae || 'LIBRES',
+				abdomen: gyn.abdomen || 'BLANDO, DEPRIMIBLE NO DOLOROSO A LA PALPACIÓN',
+				genitales_externos: gyn.external_genitals || 'NORMOCONFIGURADOS',
+				flujo_vaginal: gyn.vaginal_discharge || 'sin secreciones',
+				especuloscopia: gyn.speculum_cervix || 'CUELLO MACROSCÓPICAMENTE SANO',
+				tacto_cervix: gyn.tact_cervix || 'CUELLO RENITENTE NO DOLOROSO A LA MOVILIZACIÓN',
+				fondo_sacos: gyn.fundus_sacs || 'LIBRES',
+				anexos: gyn.adnexa || 'NO PALPABLES',
+
+				// Ecografía transvaginal
+				dimensiones_utero: gyn.uterus_dimensions || '',
+				interfase_endometrial: gyn.endometrial_interface || '',
+				tipo_interfase_endometrial: gyn.endometrial_interface_type || '',
+				dimensiones_ovario_izquierdo: gyn.left_ovary_dimensions || '',
+				dimensiones_ovario_derecho: gyn.right_ovary_dimensions || '',
+				liquido_fondo_saco: gyn.fundus_fluid || 'NO SE EVIDENCIA LÍQUIDO EN FONDO DE SACO',
+
+				// Examen cervical
+				examen_cervical: gyn.cervical_exam || '',
+			};
+		} else {
+			// Comportamiento original: incluir todo (para casos que no sean los específicos)
+			replacements = {
+				...baseReplacements,
+				// Antecedentes médicos
+				alergicos: gyn.allergies || 'NIEGA',
+				quirurgicos: gyn.surgical_history || 'NIEGA',
+
+				// Antecedentes familiares
+				antecedentes_madre: gyn.family_history_mother || 'VIVA SANA',
+				antecedentes_padre: gyn.family_history_father || 'VIVO SANO',
+				antecedentes_cancer_mama: gyn.family_history_breast_cancer || 'NIEGA',
+
+				// Antecedentes ginecológicos
+				motivo_consulta: gyn.evaluation_reason || consultation.chief_complaint || 'No especificado',
+				motivo_evaluacion: gyn.evaluation_reason || consultation.chief_complaint || 'No especificado',
+				historia_enfermedad_actual: gyn.current_illness_history || '',
+				its: gyn.its || 'NIEGA',
+				tipo_menstruacion: gyn.menstruation_type || 'REGULARES',
+				patron_menstruacion: gyn.menstruation_pattern || '',
+				dismenorrea: gyn.dysmenorrhea || 'NO',
+				primera_relacion_sexual: gyn.first_sexual_relation || '',
+				parejas_sexuales: gyn.sexual_partners || '',
+				ultima_regla: gyn.last_menstrual_period || '',
+				metodo_anticonceptivo: gyn.contraceptive || '',
+				método_anticonceptivo: gyn.contraceptive || '', // Con tilde para compatibilidad
+				ho: gyn.ho || 'NIEGA',
+
+				// Examen físico
+				condiciones_generales: gyn.general_conditions || 'ESTABLES',
+				tamano_mamas: gyn.breast_size || 'MEDIANO TAMAÑO',
+				simetria_mamas: gyn.breast_symmetry || 'ASIMÉTRICAS',
+				cap_mamas: gyn.breast_cap || 'SIN ALTERACIONES',
+				secrecion_mamas: gyn.breast_secretion || 'NO SE EVIDENCIA SALIDA DE SECRECIÓN',
+				fosas_axilares: gyn.axillary_fossae || 'LIBRES',
+				abdomen: gyn.abdomen || 'BLANDO, DEPRIMIBLE NO DOLOROSO A LA PALPACIÓN',
+				genitales_externos: gyn.external_genitals || 'NORMOCONFIGURADOS',
+				flujo_vaginal: gyn.vaginal_discharge || 'sin secreciones',
+				especuloscopia: gyn.speculum_cervix || 'CUELLO MACROSCÓPICAMENTE SANO',
+				tacto_cervix: gyn.tact_cervix || 'CUELLO RENITENTE NO DOLOROSO A LA MOVILIZACIÓN',
+				fondo_sacos: gyn.fundus_sacs || 'LIBRES',
+				anexos: gyn.adnexa || 'NO PALPABLES',
+
+				// Colposcopia - Tests básicos
+				test_hinselmann: gyn.hinselmann_test || 'NEGATIVO',
+				test_schiller: gyn.schiller_test || 'NEGATIVO',
+
+				// Colposcopia - Información General
+				colposcopia_acetico_5: colposcopy.acetic_5 || '',
+				colposcopia_ectocervix: colposcopy.ectocervix || '',
+				colposcopia_tipo: colposcopy.type || '',
+				colposcopia_extension: colposcopy.extension || '',
+				colposcopia_descripcion: colposcopy.description || '',
+				colposcopia_localizacion: colposcopy.location || '',
+
+				// Colposcopia - Epitelio Acetoblanco
+				colposcopia_acetowhite: colposcopy.acetowhite || '',
+				colposcopia_acetowhite_detalles: colposcopy.acetowhite_details || '',
+
+				// Colposcopia - Patrones de Vascularización
+				colposcopia_mosaico: colposcopy.mosaic || '',
+				colposcopia_punteado: colposcopy.punctation || '',
+				colposcopia_vasos_atipicos: colposcopy.atypical_vessels || '',
+
+				// Colposcopia - Características de la Lesión
+				colposcopia_carcinoma_invasivo: colposcopy.invasive_carcinoma || '',
+				colposcopia_bordes: colposcopy.borders || '',
+				colposcopia_situacion: colposcopy.situation || '',
+				colposcopia_elevacion: colposcopy.elevation || '',
+
+				// Colposcopia - Pruebas Complementarias
+				colposcopia_biopsia: colposcopy.biopsy || '',
+				colposcopia_biopsia_localizacion: colposcopy.biopsy_location || '',
+				colposcopia_lugol: colposcopy.lugol || '',
+
+				// Ecografía transvaginal
+				dimensiones_utero: gyn.uterus_dimensions || '',
+				interfase_endometrial: gyn.endometrial_interface || '',
+				tipo_interfase_endometrial: gyn.endometrial_interface_type || '',
+				dimensiones_ovario_izquierdo: gyn.left_ovary_dimensions || '',
+				dimensiones_ovario_derecho: gyn.right_ovary_dimensions || '',
+				liquido_fondo_saco: gyn.fundus_fluid || 'NO SE EVIDENCIA LÍQUIDO EN FONDO DE SACO',
+
+				// Examen cervical
+				examen_cervical: gyn.cervical_exam || '',
+			};
+		}
 	}
 
 	// Reemplazar todos los marcadores {{variable}} en la plantilla
@@ -375,12 +548,13 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 		const cookieStore = await cookies();
 		const supabase = await createSupabaseServerClient();
 
-		// Obtener datos de la consulta (solo IDs, no los datos del paciente aún)
+		// Obtener datos de la consulta (incluyendo appointment_id para determinar el tipo de servicio)
 		const { data: consultation, error: consultationError } = await supabase
 			.from('consultation')
 			.select(
 				`
 				id,
+				appointment_id,
 				patient_id,
 				unregistered_patient_id,
 				doctor_id,
@@ -415,6 +589,63 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 		let reportContent = body.content || '';
 		const fontFamilyFromRequest: string | undefined = body.font_family;
 		const reportTypeFromRequest: string | undefined = body.report_type; // 'gynecology', 'first_trimester', 'second_third_trimester'
+
+		// Determinar el tipo de servicio desde el appointment
+		let isSimpleConsulta = false;
+		let hasEcografiaTransvaginal = false;
+		let isOnlyVideoColposcopia = false;
+
+		if (consultation.appointment_id) {
+			const { data: appointment } = await supabase
+				.from('appointment')
+				.select('id, reason, selected_service')
+				.eq('id', consultation.appointment_id)
+				.maybeSingle();
+
+			if (appointment) {
+				const appointmentReason = appointment.reason || null;
+				const selectedService = (appointment as any).selected_service;
+
+				// Verificar si hay múltiples servicios
+				let services: string[] = [];
+				if (Array.isArray(selectedService)) {
+					services = selectedService.map((s: any) =>
+						typeof s === 'string' ? s : (s?.name || String(s))
+					).map((s: string) => s.toLowerCase());
+				} else if (selectedService) {
+					const serviceName = selectedService?.name || selectedService || '';
+					services = [String(serviceName).toLowerCase()];
+				}
+
+				// También verificar en el reason
+				if (appointmentReason) {
+					const reasonLower = appointmentReason.toLowerCase();
+					if (reasonLower.includes('ecografía') || reasonLower.includes('ecografia') || reasonLower.includes('transvaginal')) {
+						services.push('ecografía transvaginal');
+					}
+					if (reasonLower.includes('consulta') && !reasonLower.includes('colposcop')) {
+						services.push('consulta');
+					}
+					if (reasonLower.includes('vídeo colposcopía') || reasonLower.includes('video colposcopia') ||
+						reasonLower.includes('vídeo colposcopia') || reasonLower.includes('video colposcopía')) {
+						services.push('vídeo colposcopía');
+					}
+				}
+
+				const hasConsulta = services.some(s => s.includes('consulta') && !s.includes('colposcop'));
+				hasEcografiaTransvaginal = services.some(s =>
+					s.includes('ecografía') || s.includes('ecografia') || s.includes('transvaginal')
+				);
+				const hasVideoColposcopia = services.some(s =>
+					s.includes('vídeo colposcopía') || s.includes('video colposcopia') ||
+					s.includes('vídeo colposcopia') || s.includes('video colposcopía')
+				);
+
+				isOnlyVideoColposcopia = hasVideoColposcopia && !hasConsulta && !hasEcografiaTransvaginal;
+				isSimpleConsulta = hasConsulta && !hasEcografiaTransvaginal &&
+					!services.some(s => s.includes('colposcop')) && !isOnlyVideoColposcopia;
+			}
+		}
 
 		// Verificar si la consulta tiene datos de obstetricia
 		const vitals = consultation.vitals || {};
@@ -524,7 +755,15 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 			console.log('[Generate Report API] Template text length:', templateText?.length || 0);
 			console.log('[Generate Report API] Report type:', reportType);
 			try {
-				const generatedContent = await generateReportContentFromTemplate(consultation, templateText, supabase, reportType);
+				const generatedContent = await generateReportContentFromTemplate(
+					consultation,
+					templateText,
+					supabase,
+					reportType,
+					isSimpleConsulta,
+					hasEcografiaTransvaginal,
+					isOnlyVideoColposcopia
+				);
 				if (generatedContent && generatedContent.trim()) {
 					reportContent = generatedContent;
 					console.log('[Generate Report API] Contenido generado automáticamente, longitud:', reportContent.length);
@@ -983,7 +1222,7 @@ ${isObstetrics ? `Tipo de informe: ${reportType === 'first_trimester' ? 'Primer 
 			);
 		}
 
-		// Modificar formato del documento: tamaño de fuente 9, alineación izquierda y fuente personalizada
+		// Modificar formato del documento: tamaño de fuente 9, títulos centrados, contenido justificado y fuente personalizada
 		try {
 			const zip = doc.getZip();
 			const documentXml = zip.files['word/document.xml'];
@@ -1009,18 +1248,55 @@ ${isObstetrics ? `Tipo de informe: ${reportType === 'first_trimester' ? 'Primer 
 				// Si hay <w:rPr> sin <w:rFonts>, agregarlo con la fuente seleccionada
 				xmlContent = xmlContent.replace(/(<w:rPr[^>]*>)(?![^<]*<w:rFonts)/g, `$1<w:rFonts w:ascii="${selectedFont}" w:hAnsi="${selectedFont}" w:cs="${selectedFont}"/>`);
 
-				// Cambiar alineación de justify (both) a left
-				xmlContent = xmlContent.replace(/<w:jc\s+w:val="both"/g, '<w:jc w:val="left"');
+				// NUEVA LÓGICA: Centrar títulos y justificar contenido
+				// 1. Identificar y centrar títulos (párrafos con estilos de título)
+				// Los títulos en Word suelen tener estilos como "Heading 1", "Heading 2", "Título", etc.
+				// Buscar párrafos con estilos de título y centrarlos
+				xmlContent = xmlContent.replace(
+					/(<w:p[^>]*>[\s\S]*?<w:pPr[^>]*>[\s\S]*?<w:pStyle[^>]*w:val="(?:Heading|Título|Title|Encabezado)[^"]*"[\s\S]*?)(<\/w:pPr>)/g,
+					(match, before, pPrEnd) => {
+						// Si ya tiene w:jc, cambiarlo a center
+						if (/<w:jc[^>]*>/.test(match)) {
+							return match.replace(/<w:jc[^>]*w:val="[^"]*"/g, '<w:jc w:val="center"');
+						}
+						// Si no tiene w:jc, agregarlo con center
+						return before + '<w:jc w:val="center"/>' + pPrEnd;
+					}
+				);
 
-				// También cambiar otros valores de justificación a left
-				xmlContent = xmlContent.replace(/<w:jc\s+w:val="(center|right|distribute|distributeAll)"/g, '<w:jc w:val="left"');
-
-				// Si hay <w:pPr> sin <w:jc>, agregarlo con valor left
-				xmlContent = xmlContent.replace(/(<w:pPr[^>]*>)(?![^<]*<w:jc)/g, '$1<w:jc w:val="left"/>');
+				// 2. Aplicar justificación (both) a todos los párrafos que NO sean títulos
+				// Primero, identificar todos los párrafos que NO son títulos y aplicar justificación
+				// Usar un enfoque más simple: buscar párrafos sin estilo de título y aplicar justificación
+				xmlContent = xmlContent.replace(
+					/(<w:p[^>]*>)([\s\S]*?)(<\/w:p>)/g,
+					(match, pStart, pContent, pEnd) => {
+						// Verificar si es un título
+						const isTitle = /<w:pStyle[^>]*w:val="(?:Heading|Título|Title|Encabezado)[^"]*"/.test(pContent);
+						
+						if (!isTitle) {
+							// No es un título, aplicar justificación
+							// Si tiene w:pPr
+							if (/<w:pPr[^>]*>/.test(pContent)) {
+								// Si ya tiene w:jc, cambiarlo a both (justificado)
+								if (/<w:jc[^>]*>/.test(pContent)) {
+									pContent = pContent.replace(/<w:jc[^>]*w:val="[^"]*"/g, '<w:jc w:val="both"');
+								} else {
+									// No tiene w:jc, agregarlo con both antes del cierre de w:pPr
+									pContent = pContent.replace(/(<\/w:pPr>)/, '<w:jc w:val="both"/>$1');
+								}
+							} else {
+								// No tiene w:pPr, agregarlo con w:jc
+								pContent = '<w:pPr><w:jc w:val="both"/></w:pPr>' + pContent;
+							}
+						}
+						
+						return pStart + pContent + pEnd;
+					}
+				);
 
 				// Actualizar el XML en el ZIP
 				zip.file('word/document.xml', xmlContent);
-				console.log(`[Generate Report API] Formato aplicado: fuente ${selectedFont}, tamaño 9pt, alineación izquierda`);
+				console.log(`[Generate Report API] Formato aplicado: fuente ${selectedFont}, tamaño 9pt, títulos centrados, contenido justificado`);
 			}
 		} catch (formatError: any) {
 			console.warn('[Generate Report API] Error aplicando formato (continuando sin formato):', formatError);

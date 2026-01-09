@@ -187,32 +187,59 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 		// prescriptionItems, prescriptionNotes ya están obtenidos arriba
 
 		// Formatear todos los medicamentos para el récipe (en una sola sección)
-		// NOTA: Las instrucciones específicas NO van en el récipe, van en la variable {{instrucciones}}
-		const medicamentosFormateados = prescriptionItems.map((item: any, index: number) => {
-			const parts: string[] = [];
-			parts.push(`${item.name || 'Medicamento'}`);
-			if (item.dosage) parts.push(`Dosis: ${item.dosage}`);
-			if (item.form) parts.push(`Forma: ${item.form}`);
-			if (item.frequency) parts.push(`Frecuencia: ${item.frequency}`);
-			if (item.duration) parts.push(`Duración: ${item.duration}`);
-			if (item.quantity) parts.push(`Cantidad: ${item.quantity}`);
-			// Las instrucciones NO se incluyen aquí, van en la variable {{instrucciones}}
-			return parts.join('\n');
+		// SOLO el nombre del medicamento, uno por línea, sin información adicional
+		const medicamentosFormateados = prescriptionItems.map((item: any) => {
+			// Solo el nombre del medicamento en mayúsculas
+			return `${item.name || 'Medicamento'}`.toUpperCase();
 		});
 
-		// Variable {{recipe}} o {{receta}}: todos los medicamentos juntos (SIN instrucciones)
-		const recipeText = medicamentosFormateados.join('\n\n');
+		// Variable {{recipe}} o {{receta}}: todos los medicamentos juntos, uno por línea
+		const recipeText = medicamentosFormateados.join('\n');
 
-		// Variable {{instrucciones}}: solo las instrucciones específicas de cada medicamento (separadas)
+		// Variable {{instrucciones}}: nombre del medicamento seguido de dos puntos y las instrucciones
+		// Formato: "NOMBRE_MEDICAMENTO: INSTRUCCIONES"
+		// Ejemplo: "CIPROFLOXACINA: 1 TABLETAS CADA 12 HORAS POR 7 DÍAS"
 		const instruccionesText = prescriptionItems
-			.map((item: any, index: number) => {
+			.map((item: any) => {
+				const nombreMedicamento = (item.name || 'Medicamento').toUpperCase();
+				// Construir las instrucciones desde los campos disponibles
+				const instruccionesParts: string[] = [];
+				
+				// Si hay instrucciones específicas, usarlas directamente
 				if (item.instructions && item.instructions.trim() !== '') {
-					return `${item.name || `Medicamento ${index + 1}`}:\n${item.instructions}`;
+					instruccionesParts.push(item.instructions.trim());
+				} else {
+					// Si no hay instrucciones específicas, construir desde los campos del formulario
+					// Formato: "1 TABLETAS CADA 12 HORAS POR 7 DÍAS"
+					if (item.quantity) {
+						instruccionesParts.push(`${item.quantity}`);
+					}
+					if (item.form) {
+						// Convertir a mayúsculas y pluralizar si es necesario
+						const forma = item.form.toUpperCase();
+						instruccionesParts.push(forma);
+					}
+					if (item.frequency) {
+						// La frecuencia ya viene formateada (ej: "CADA 12 HORAS")
+						instruccionesParts.push(item.frequency.toUpperCase());
+					}
+					if (item.duration) {
+						instruccionesParts.push(`POR ${item.duration.toUpperCase()}`);
+					}
 				}
-				return null;
+				
+				const instruccionesCompletas = instruccionesParts.length > 0 
+					? instruccionesParts.join(' ') 
+					: '';
+				
+				if (instruccionesCompletas) {
+					return `${nombreMedicamento}: ${instruccionesCompletas}`;
+				}
+				// Si no hay instrucciones, solo mostrar el nombre del medicamento
+				return `${nombreMedicamento}:`;
 			})
 			.filter((inst: string | null) => inst !== null)
-			.join('\n\n');
+			.join('\n');
 
 		// Formatear indicaciones generales (notas de la prescripción)
 		const indicacionesText = prescriptionNotes || '';
@@ -345,13 +372,14 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 				throw error;
 			}
 
-			// Aplicar formato
+			// Aplicar formato: tamaño de fuente 11pt (22 half-points)
 			const zipAfterRender = doc.getZip();
 			const documentXml = zipAfterRender.files['word/document.xml'];
 			if (documentXml) {
 				let xmlContent = documentXml.asText();
-				xmlContent = xmlContent.replace(/<w:sz\s+w:val="\d+"/g, '<w:sz w:val="18"');
-				xmlContent = xmlContent.replace(/(<w:rPr[^>]*>)(?![^<]*<w:sz)/g, '$1<w:sz w:val="18"/>');
+				// Cambiar tamaño de fuente a 11pt (22 half-points)
+				xmlContent = xmlContent.replace(/<w:sz\s+w:val="\d+"/g, '<w:sz w:val="22"');
+				xmlContent = xmlContent.replace(/(<w:rPr[^>]*>)(?![^<]*<w:sz)/g, '$1<w:sz w:val="22"/>');
 				xmlContent = xmlContent.replace(/<w:rFonts[^>]*>/g, `<w:rFonts w:ascii="${selectedFont}" w:hAnsi="${selectedFont}" w:cs="${selectedFont}"/>`);
 				xmlContent = xmlContent.replace(/(<w:rPr[^>]*>)(?![^<]*<w:rFonts)/g, `$1<w:rFonts w:ascii="${selectedFont}" w:hAnsi="${selectedFont}" w:cs="${selectedFont}"/>`);
 				xmlContent = xmlContent.replace(/<w:jc\s+w:val="both"/g, '<w:jc w:val="left"');
@@ -389,15 +417,18 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 		// La plantilla debe tener ambas hojas, y se rellenan ambas secciones
 		const prescriptionData = {
 			...baseData,
-			// Variable {{recipe}} o {{receta}}: todos los medicamentos juntos
+			// Variable {{recipe}}, {{receta}}, {{RECIPES}} o {{RECIPE}}: todos los medicamentos juntos
 			recipe: recipeText,
 			receta: recipeText,
+			RECIPES: recipeText,
+			RECIPE: recipeText,
 			medicamento: recipeText,
-			// Variable {{instrucciones}}: solo las instrucciones específicas de cada medicamento
+			// Variable {{instrucciones}} o {{instructions}}: solo las instrucciones específicas de cada medicamento
 			instrucciones: instruccionesText,
 			instructions: instruccionesText,
-			// Variable {{indicaciones}}: indicaciones generales de la prescripción
+			// Variable {{indicaciones}} o {{INDICACIONES}}: indicaciones generales de la prescripción
 			indicaciones: indicacionesText,
+			INDICACIONES: indicacionesText,
 			indications: indicacionesText,
 		};
 
