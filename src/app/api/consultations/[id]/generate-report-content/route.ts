@@ -52,6 +52,100 @@ async function getDoctorSpecialties(doctorId: string, supabase: any): Promise<{ 
 	return { specialty1, specialty2 };
 }
 
+// Función para generar contenido por defecto para obstetricia cuando no hay plantilla
+function generateDefaultObstetricsContent(consultation: any, reportType: string): string {
+	const vitals = consultation.vitals || {};
+	const obst = vitals.obstetrics || {};
+	const firstTrim = obst.first_trimester || {};
+	const secondTrim = obst.second_third_trimester || {};
+	
+	const data = reportType === 'first_trimester' ? firstTrim : secondTrim;
+	
+	// Generar contenido estructurado básico desde los datos
+	let content = '';
+	
+	if (reportType === 'first_trimester') {
+		content = `INFORME DE ECOGRAFÍA OBSTÉTRICA - PRIMER TRIMESTRE
+
+DATOS DE LA PACIENTE:
+Edad gestacional: ${data.edad_gestacional || 'No especificada'}
+FUR: ${data.fur || 'No especificada'}
+FPP: ${data.fpp || 'No especificada'}
+Gestas: ${data.gestas || 'No especificada'}
+Paras: ${data.paras || 'No especificada'}
+Cesáreas: ${data.cesareas || 'No especificada'}
+Abortos: ${data.abortos || data.abortors || 'No especificada'}
+
+HALLAZGOS ECOGRÁFICOS:
+Posición: ${data.posicion || 'No especificada'}
+Superficie: ${data.superficie || 'Regular'}
+Miometrio: ${data.miometrio || 'HOMOGENEO'}
+Endometrio: ${data.endometrio || 'Ocupado Por Saco Gestacional.'}
+Ovario derecho: ${data.ovario_derecho || 'Normal'}
+Ovario izquierdo: ${data.ovario_izquierdo || 'Normal'}
+Anexos: ${data.anexos_ecopatron || 'Normal'}
+Fondo de saco: ${data.fondo_de_saco || 'Libre'}
+${data.cuerpo_luteo ? `Cuerpo lúteo: ${data.cuerpo_luteo}` : ''}
+
+SACO GESTACIONAL:
+Gestación: ${data.gestacion || 'No especificada'}
+Localización: ${data.localizacion || 'No especificada'}
+Vesícula: ${data.vesicula || 'No especificada'}
+Cavidad exocelómica: ${data.cavidad_exocelomica || 'No especificada'}
+
+EMBRIÓN:
+Embrión visto: ${data.embrion_visto || 'No especificada'}
+Ecoanatomía: ${data.ecoanatomia || 'No especificada'}
+LCR: ${data.lcr || 'No especificada'}
+Acorde a: ${data.acorde_a || 'No especificada'}
+Actividad cardíaca: ${data.actividad_cardiaca || 'No especificada'}
+Movimientos embrionarios: ${data.movimientos_embrionarios || 'No especificada'}
+
+CONCLUSIONES:
+${data.conclusiones || 'No especificadas'}`;
+	} else {
+		content = `INFORME DE ECOGRAFÍA OBSTÉTRICA - SEGUNDO Y TERCER TRIMESTRE
+
+DATOS DE LA PACIENTE:
+Edad gestacional: ${data.edad_gestacional || 'No especificada'}
+FUR: ${data.fur || 'No especificada'}
+FPP: ${data.fpp || 'No especificada'}
+Gestas: ${data.gestas || 'No especificada'}
+Paras: ${data.paras || 'No especificada'}
+Cesáreas: ${data.cesareas || 'No especificada'}
+Abortos: ${data.abortos || 'No especificada'}
+
+HALLAZGOS ECOGRÁFICOS:
+Posición fetal: ${data.posicion_fetal || 'No especificada'}
+Presentación: ${data.presentacion || 'No especificada'}
+Actitud fetal: ${data.actitud_fetal || 'No especificada'}
+Líquido amniótico: ${data.liquido_amniotico || 'Normal'}
+Placenta: ${data.placenta || 'No especificada'}
+Localización placentaria: ${data.localizacion_placentaria || 'No especificada'}
+Grado placentario: ${data.grado_placentario || 'No especificado'}
+
+BIOMETRÍA FETAL:
+BPD: ${data.bpd || 'No especificada'}
+HC: ${data.hc || 'No especificada'}
+AC: ${data.ac || 'No especificada'}
+FL: ${data.fl || 'No especificada'}
+Peso estimado: ${data.peso_estimado || 'No especificado'}
+
+ANATOMÍA FETAL:
+Cabeza: ${data.cabeza || 'Normal'}
+Tórax: ${data.torax || 'Normal'}
+Corazón: ${data.corazon || 'Normal'}
+Abdomen: ${data.abdomen || 'Normal'}
+Extremidades: ${data.extremidades || 'Normal'}
+Columna: ${data.columna || 'Normal'}
+
+CONCLUSIONES:
+${data.conclusiones || 'No especificadas'}`;
+	}
+	
+	return content;
+}
+
 // Función para generar el contenido del informe desde la plantilla de texto
 async function generateReportContentFromTemplate(
 	consultation: any,
@@ -62,7 +156,22 @@ async function generateReportContentFromTemplate(
 	hasEcografiaTransvaginal: boolean = false,
 	isOnlyVideoColposcopia: boolean = false
 ): Promise<string> {
+	// Si la plantilla está vacía y es obstetricia, generar contenido por defecto
+	const isObstetrics = reportType === 'first_trimester' || reportType === 'second_third_trimester';
 	let content = templateText;
+	
+	// Si no hay plantilla y es obstetricia, generar contenido estructurado desde los datos
+	if (!templateText || templateText.trim() === '') {
+		if (isObstetrics) {
+			// Generar contenido por defecto para obstetricia basado en los datos
+			content = generateDefaultObstetricsContent(consultation, reportType);
+			// No hacer reemplazos de variables ya que el contenido ya está generado
+			return content;
+		} else {
+			// Para otras especialidades, mantener plantilla vacía (se validará antes de llamar a esta función)
+			content = templateText || '';
+		}
+	}
 
 	// Función auxiliar para calcular edad desde fecha de nacimiento
 	function calculateAge(dob: string | Date | null | undefined): string {
@@ -772,25 +881,33 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 			}
 		}
 
+		// Para obstetricia, las plantillas de texto no son obligatorias
+		// Si no hay plantilla, se generará un contenido por defecto basado en los datos
 		if (!templateText) {
-			const errorMessage = isObstetrics
-				? `No se encontró plantilla de texto para el informe de ${reportType === 'first_trimester' ? 'Primer Trimestre' : 'Segundo y Tercer Trimestre'}. Por favor, carga una plantilla en "dashboard/medic/plantilla-informe" primero.`
-				: 'No se encontró plantilla de texto. Por favor, configura una plantilla de texto primero.';
-			
-			console.error('[Generate Report Content API] No se encontró plantilla de texto:', {
-				isObstetrics,
-				reportType,
-				hasReportTemplatesBySpecialty: !!medicProfile?.report_templates_by_specialty,
-				hasReportTemplateText: !!medicProfile?.report_template_text,
-				doctorId
-			});
-			
-			return NextResponse.json(
-				{
-					error: errorMessage,
-				},
-				{ status: 400 }
-			);
+			if (isObstetrics) {
+				// Para obstetricia, no es necesario tener plantilla de texto
+				// Se generará contenido automáticamente desde los datos de la consulta
+				console.log('[Generate Report Content API] No hay plantilla de texto para obstetricia, generando contenido desde datos de la consulta');
+				templateText = ''; // Plantilla vacía, se generará contenido desde los datos
+			} else {
+				// Para otras especialidades (ginecología), sí se requiere plantilla
+				const errorMessage = 'No se encontró plantilla de texto. Por favor, configura una plantilla de texto primero.';
+				
+				console.error('[Generate Report Content API] No se encontró plantilla de texto:', {
+					isObstetrics,
+					reportType,
+					hasReportTemplatesBySpecialty: !!medicProfile?.report_templates_by_specialty,
+					hasReportTemplateText: !!medicProfile?.report_template_text,
+					doctorId
+				});
+				
+				return NextResponse.json(
+					{
+						error: errorMessage,
+					},
+					{ status: 400 }
+				);
+			}
 		}
 
 		// Generar contenido automáticamente
