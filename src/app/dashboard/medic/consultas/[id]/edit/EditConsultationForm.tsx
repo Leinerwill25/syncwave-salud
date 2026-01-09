@@ -1,13 +1,14 @@
 'use client';
 
 import React, { useEffect, useMemo, useState } from 'react';
-import { Loader2, Save, Trash2, FileText, Download, ChevronDown, ChevronUp, Activity, ClipboardList, Stethoscope, FileCheck, Image, X, Upload } from 'lucide-react';
+import { Loader2, Save, Trash2, FileText, Download, ChevronDown, ChevronUp, Activity, ClipboardList, Stethoscope, FileCheck, Image, X, Upload, Lock } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import ICD11Search from '@/components/ICD11Search';
 import { useOptimisticSave } from '@/lib/optimistic-save';
 import { useDebouncedSave } from '@/lib/debounced-save';
 import { useLiteMode } from '@/contexts/LiteModeContext';
+import DoctorPrivateNotesModal from '@/components/medic/DoctorPrivateNotesModal';
 
 type ConsultationShape = {
 	id: string;
@@ -50,6 +51,7 @@ export default function EditConsultationForm({ initial, patient, doctor, doctorS
 	const router = useRouter();
 	const { saveOptimistically } = useOptimisticSave();
 	const { isLiteMode } = useLiteMode();
+	const [showPrivateNotesModal, setShowPrivateNotesModal] = useState(false);
 
 	// Función auxiliar para normalizar texto (eliminar acentos, espacios extra, convertir a minúsculas)
 	const normalizeText = (text: string): string => {
@@ -4364,11 +4366,18 @@ export default function EditConsultationForm({ initial, patient, doctor, doctorS
 					{/* Report Generation Tab */}
 					{activeTab === 'report' && (
 						<div className={sectionCard} data-tab="report">
-							<div className="mb-6">
-								<h2 className="text-xl font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2 mb-4">
+							<div className="mb-6 flex items-center justify-between">
+								<h2 className="text-xl font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
 									<FileCheck size={20} />
 									Generar Informe Médico
 								</h2>
+								<button
+									type="button"
+									onClick={() => setShowPrivateNotesModal(true)}
+									className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-gradient-to-r from-amber-600 to-orange-600 text-white font-semibold shadow-lg hover:shadow-xl hover:scale-[1.02] transition-all">
+									<Lock size={16} />
+									Observaciones Privadas
+								</button>
 							</div>
 
 							{hasObstetrics ? (
@@ -4641,6 +4650,16 @@ export default function EditConsultationForm({ initial, patient, doctor, doctorS
 					</div>
 				</div>
 			</form>
+
+			{/* Modal de Observaciones Privadas */}
+			<DoctorPrivateNotesModal
+				isOpen={showPrivateNotesModal}
+				onClose={() => setShowPrivateNotesModal(false)}
+				consultationId={initial.id}
+				patientId={initial.patient_id || null}
+				unregisteredPatientId={(initial as any).unregistered_patient_id || null}
+				doctorId={initial.doctor_id}
+			/>
 		</div>
 	);
 }

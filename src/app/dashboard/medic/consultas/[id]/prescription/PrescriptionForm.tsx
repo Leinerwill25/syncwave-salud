@@ -105,9 +105,7 @@ const medicationForms = [
 	},
 	{
 		title: 'Granulados',
-		options: [
-			{ value: 'Granulados', label: 'Granulados' },
-		],
+		options: [{ value: 'Granulados', label: 'Granulados' }],
 	},
 	{
 		title: 'Supositorios y Óvulos',
@@ -136,15 +134,11 @@ const medicationForms = [
 	},
 	{
 		title: 'Aerosoles o Aerosoles',
-		options: [
-			{ value: 'Aerosol', label: 'Aerosol' },
-		],
+		options: [{ value: 'Aerosol', label: 'Aerosol' }],
 	},
 	{
 		title: 'Parches Transdérmicos',
-		options: [
-			{ value: 'Parche Transdérmico', label: 'Parche Transdérmico' },
-		],
+		options: [{ value: 'Parche Transdérmico', label: 'Parche Transdérmico' }],
 	},
 ];
 
@@ -249,8 +243,6 @@ function PrescriptionItemsEditor({ items, setItems }: { items: Item[]; setItems:
    ------------------------- */
 export default function PrescriptionForm({ consultationId, patientId, unregisteredPatientId, doctorId, existingPrescription }: Props) {
 	const [items, setItems] = useState<Item[]>([]);
-	const [notes, setNotes] = useState('');
-	const [validUntil, setValidUntil] = useState<string>('');
 	const [loading, setLoading] = useState(false);
 	const router = useRouter();
 	const [error, setError] = useState<string | null>(null);
@@ -275,8 +267,6 @@ export default function PrescriptionForm({ consultationId, patientId, unregister
 	useEffect(() => {
 		if (existingPrescription) {
 			setIsEditMode(true);
-			setNotes(existingPrescription.notes || '');
-			setValidUntil(existingPrescription.valid_until ? new Date(existingPrescription.valid_until).toISOString().split('T')[0] : '');
 
 			// Cargar items existentes
 			if (existingPrescription.prescription_item && Array.isArray(existingPrescription.prescription_item)) {
@@ -331,8 +321,6 @@ export default function PrescriptionForm({ consultationId, patientId, unregister
 					form.append('unregistered_patient_id', String(unregisteredPatientId));
 				}
 				form.append('doctor_id', String(doctorId));
-				form.append('notes', notes ?? '');
-				if (validUntil) form.append('valid_until', validUntil);
 				// Preparar items para guardar: asegurar que frequency esté generado desde frequencyHours y frequencyDays
 				const itemsToSave = items.map((item) => {
 					const frequencyText = item.frequency || generateFrequencyText(item.frequencyHours, item.frequencyDays);
@@ -369,8 +357,6 @@ export default function PrescriptionForm({ consultationId, patientId, unregister
 					form.append('unregistered_patient_id', String(unregisteredPatientId));
 				}
 				form.append('doctor_id', String(doctorId));
-				form.append('notes', notes ?? '');
-				if (validUntil) form.append('valid_until', validUntil);
 				// Preparar items para guardar: asegurar que frequency esté generado desde frequencyHours y frequencyDays
 				const itemsToSave = items.map((item) => {
 					const frequencyText = item.frequency || generateFrequencyText(item.frequencyHours, item.frequencyDays);
@@ -430,19 +416,6 @@ export default function PrescriptionForm({ consultationId, patientId, unregister
 					<div className="text-right">
 						<div className="text-xs text-slate-700">Consulta</div>
 						<div className="font-mono font-medium text-slate-900">{consultationId}</div>
-					</div>
-				</div>
-
-				<div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-3">
-					<div>
-						<label className="text-xs text-slate-800 font-medium">Validez (opcional)</label>
-						<input type="date" value={validUntil} onChange={(e) => setValidUntil(e.target.value)} className="mt-1 w-full px-3 py-2 rounded-md border border-blue-200 bg-white text-slate-900" />
-						<p className="text-xs text-slate-700 mt-1">Fecha límite de validez de la prescripción.</p>
-					</div>
-
-					<div>
-						<label className="text-xs text-slate-800 font-medium">Notas / Indicaciones generales</label>
-						<input value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Observaciones para el paciente o instrucciones generales..." className="mt-1 w-full px-3 py-2 rounded-md border border-blue-200 bg-white text-slate-900" />
 					</div>
 				</div>
 			</div>
@@ -506,8 +479,6 @@ export default function PrescriptionForm({ consultationId, patientId, unregister
 										},
 										body: JSON.stringify({
 											items: itemsToSend,
-											notes: notes,
-											valid_until: validUntil || null,
 											issued_at: existingPrescription?.issued_at || null,
 											prescription_id: existingPrescription?.id || null,
 											font_family: fontFamily,
