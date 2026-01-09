@@ -584,10 +584,21 @@ export async function POST(request: NextRequest) {
 			sanitizedFileName = sanitizedFileName.replace(/\.[^.]+$/, '') + fileExtension;
 		}
 		
+		// Sanitizar el nombre de la especialidad para la ruta (eliminar caracteres especiales)
+		const sanitizeSpecialtyForPath = (specialty: string): string => {
+			return specialty
+				.normalize('NFD') // Normalizar caracteres Unicode
+				.replace(/[\u0300-\u036f]/g, '') // Eliminar diacríticos (í, é, á, etc.)
+				.replace(/[^a-zA-Z0-9]/g, '_') // Reemplazar caracteres no alfanuméricos con _
+				.replace(/_+/g, '_') // Reemplazar múltiples _ con uno solo
+				.replace(/^_+|_+$/g, ''); // Eliminar _ al inicio y final
+		};
+		
 		// Si es obstetricia y tiene variant, incluir en la ruta
+		const sanitizedSpecialty = sanitizeSpecialtyForPath(targetSpecialty);
 		const specialtyPath = isObstetricia && variant 
-			? `${targetSpecialty}/${variant}` 
-			: targetSpecialty;
+			? `${sanitizedSpecialty}/${variant}` 
+			: sanitizedSpecialty;
 		const fileNameUnique = `${doctorId}/${specialtyPath}/${Date.now()}-${sanitizedFileName}`;
 		
 		console.log('[Report Template API] Nombre original:', templateFile.name);
@@ -753,6 +764,25 @@ export async function POST(request: NextRequest) {
 				return NextResponse.json({ 
 					error: 'No tienes permisos para subir archivos. Por favor, contacta al administrador.' 
 				}, { status: 403 });
+			}
+			
+			// Detectar error de "Invalid key" (caracteres especiales en la ruta)
+			if (errorMessage.includes('Invalid key') || errorMessage.includes('invalid key')) {
+				console.error(`[Report Template API] Error: La ruta del archivo contiene caracteres inválidos. Ruta intentada: ${fileNameUnique}`);
+				return NextResponse.json({ 
+					error: `El nombre de la especialidad contiene caracteres especiales que no son permitidos en las rutas de archivos. El sistema está corrigiendo esto automáticamente. Por favor, intenta subir el archivo nuevamente.`,
+					errorCode: 'INVALID_KEY',
+					filePath: fileNameUnique,
+					instructions: {
+						title: 'Solución:',
+						steps: [
+							'El nombre de la especialidad contiene caracteres especiales (como "í", "é", "á", etc.)',
+							'El sistema ahora sanitiza automáticamente estos caracteres',
+							'Por favor, intenta subir el archivo nuevamente',
+							'Si el problema persiste, verifica que el nombre de la especialidad en tu perfil no tenga caracteres especiales'
+						]
+					}
+				}, { status: 400 });
 			}
 			
 			if (errorMessage.includes('413') || errorMessage.includes('too large') || errorMessage.includes('size') || errorMessage.includes('exceeds') || errorMessage.includes('File size')) {
