@@ -62,6 +62,12 @@ export async function GET(req: Request) {
 			doctorIdToFilter = user.userId;
 			organizationIdToFilter = user.organizationId;
 
+			console.log('[Appointments API] Filtrando citas por doctor:', {
+				doctorId: doctorIdToFilter,
+				organizationId: organizationIdToFilter,
+				date: date,
+			});
+
 			// Validar que el médico realmente pertenezca a esa organización
 			const { data: doctorCheck } = await supabase.from('user').select('id, organizationId').eq('id', user.userId).eq('organizationId', user.organizationId).maybeSingle();
 
@@ -154,9 +160,11 @@ export async function GET(req: Request) {
 		if (doctorIdToFilter && organizationIdToFilter) {
 			// Filtrar por doctor Y organización para máxima seguridad
 			query = query.eq('doctor_id', doctorIdToFilter).eq('organization_id', organizationIdToFilter);
+			console.log('[Appointments API] Aplicando filtros: doctor_id =', doctorIdToFilter, ', organization_id =', organizationIdToFilter);
 		} else if (organizationIdToFilter) {
 			// Si solo hay organizationId, filtrar solo por eso
 			query = query.eq('organization_id', organizationIdToFilter);
+			console.log('[Appointments API] Aplicando filtro: organization_id =', organizationIdToFilter);
 		} else {
 			// Si no hay filtros de seguridad válidos, no devolver nada (seguridad por defecto)
 			console.warn('[Appointments API] No hay filtros de seguridad válidos - denegando acceso');
@@ -165,11 +173,32 @@ export async function GET(req: Request) {
 
 		query = query.order('scheduled_at', { ascending: true });
 
-		const { data, error } = await query;
+		let { data, error } = await query;
 
 		if (error) {
 			console.error('❌ Error al obtener citas:', error.message);
 			return NextResponse.json({ error: 'Error consultando citas en la base de datos.' }, { status: 500 });
+		}
+
+		// Validación adicional: asegurar que todas las citas devueltas pertenezcan al doctor correcto
+		// Esto es una capa extra de seguridad en caso de que el filtro de Supabase no funcione correctamente
+		if (doctorIdToFilter && data && Array.isArray(data)) {
+			const originalLength = data.length;
+			data = data.filter((cita: any) => {
+				const matchesDoctor = cita.doctor_id === doctorIdToFilter;
+				if (!matchesDoctor) {
+					console.warn('[Appointments API] Cita con doctor_id incorrecto filtrada:', {
+						citaId: cita.id,
+						expectedDoctorId: doctorIdToFilter,
+						actualDoctorId: cita.doctor_id,
+					});
+				}
+				return matchesDoctor;
+			});
+			
+			if (data.length !== originalLength) {
+				console.warn('[Appointments API] Se filtraron', originalLength - data.length, 'citas que no pertenecían al doctor');
+			}
 		}
 
 		if (!data || data.length === 0) {

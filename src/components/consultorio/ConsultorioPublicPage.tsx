@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Stethoscope, MapPin, Phone, Mail, Globe, Clock, Calendar, Instagram, Facebook, Linkedin, CheckCircle2, Shield, Award, Star, ExternalLink, MessageCircle, Heart, Users, FileText, Building2, Sparkles, Image as ImageIcon } from 'lucide-react';
+import { Stethoscope, MapPin, Phone, Mail, Globe, Clock, Calendar, Instagram, Facebook, Linkedin, CheckCircle2, Shield, Award, Star, ExternalLink, MessageCircle, Heart, Users, FileText, Building2, Sparkles, Image as ImageIcon, Package, Percent, Zap } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
 
@@ -37,6 +37,7 @@ type ConsultorioData = {
 			private_specialty: string | null;
 			photo_url: string | null;
 			services: any[];
+			serviceCombos?: any[];
 			credentials: any;
 			availability: any;
 			has_cashea: boolean | null;
@@ -356,75 +357,268 @@ export default function ConsultorioPublicPage({ consultorio }: { consultorio: Co
 
 				{/* Services Section */}
 				{consultorio.doctors.some((d) => d.medic_profile?.services && d.medic_profile.services.length > 0) && (
-					<motion.section initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.6 }} className="bg-gradient-to-br from-white to-slate-50 rounded-3xl shadow-xl border border-slate-200 p-8 lg:p-12">
-						<div className="flex items-center gap-4 mb-8">
-							<div className="p-4 bg-gradient-to-br from-teal-600 to-cyan-600 rounded-2xl shadow-lg">
-								<Heart className="w-8 h-8 text-white" />
+					<motion.section initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.6 }} className="bg-gradient-to-br from-white via-slate-50 to-white rounded-3xl shadow-2xl border border-slate-200/50 p-8 lg:p-12 relative overflow-hidden">
+						{/* Decorative background elements */}
+						<div className="absolute top-0 right-0 w-96 h-96 bg-gradient-to-br from-teal-100/30 to-cyan-100/30 rounded-full blur-3xl -mr-48 -mt-48" />
+						<div className="absolute bottom-0 left-0 w-96 h-96 bg-gradient-to-tr from-blue-100/30 to-teal-100/30 rounded-full blur-3xl -ml-48 -mb-48" />
+						
+						<div className="relative z-10">
+							<div className="flex items-center gap-4 mb-10">
+								<div className="p-4 bg-gradient-to-br from-teal-600 via-cyan-600 to-blue-600 rounded-2xl shadow-xl transform hover:scale-105 transition-transform">
+									<Heart className="w-8 h-8 text-white" />
+								</div>
+								<div>
+									<h2 className="text-3xl lg:text-4xl font-bold text-slate-900 bg-gradient-to-r from-slate-900 to-slate-700 bg-clip-text text-transparent">Servicios Individuales</h2>
+									<p className="text-slate-600 mt-1">Consulta nuestros servicios médicos disponibles</p>
+								</div>
 							</div>
-							<h2 className="text-3xl lg:text-4xl font-bold text-slate-900">Servicios y Precios</h2>
-						</div>
-						<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-							{consultorio.doctors
-								.flatMap((d) => d.medic_profile?.services || [])
-								.filter((service, idx, arr) => {
-									// Eliminar duplicados por nombre
-									const serviceName = typeof service === 'string' ? service : service?.name || '';
-									return arr.findIndex((s) => (typeof s === 'string' ? s : s?.name || '') === serviceName) === idx;
-								})
-								.map((service, idx) => {
-									// Normalizar el servicio
-									let serviceName = 'Servicio';
-									let serviceDescription = '';
-									let servicePrice = '';
-									let serviceCurrency: 'USD' | 'VES' | 'EUR' = 'USD';
+							<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+								{consultorio.doctors
+									.flatMap((d) => d.medic_profile?.services || [])
+									.filter((service, idx, arr) => {
+										// Eliminar duplicados por nombre
+										const serviceName = typeof service === 'string' ? service : service?.name || '';
+										return arr.findIndex((s) => (typeof s === 'string' ? s : s?.name || '') === serviceName) === idx;
+									})
+									.map((service, idx) => {
+										// Normalizar el servicio
+										let serviceName = 'Servicio';
+										let serviceDescription = '';
+										let servicePrice = '';
+										let serviceCurrency: 'USD' | 'VES' | 'EUR' = 'USD';
 
-									if (typeof service === 'string') {
-										serviceName = service;
-									} else if (service && typeof service === 'object') {
-										serviceName = service.name || 'Servicio';
-										serviceDescription = service.description || '';
-										servicePrice = service.price || '';
-										serviceCurrency = service.currency || 'USD';
-									}
+										if (typeof service === 'string') {
+											serviceName = service;
+										} else if (service && typeof service === 'object') {
+											serviceName = service.name || 'Servicio';
+											serviceDescription = service.description || '';
+											servicePrice = service.price || '';
+											serviceCurrency = service.currency || 'USD';
+										}
 
-									const formatPrice = (price: string, currency: string) => {
-										if (!price) return 'Consultar precio';
-										const numPrice = parseFloat(price);
-										if (isNaN(numPrice)) return 'Consultar precio';
+										const formatPrice = (price: string, currency: string) => {
+											if (!price) return 'Consultar precio';
+											const numPrice = parseFloat(price);
+											if (isNaN(numPrice)) return 'Consultar precio';
 
-										const currencySymbols: Record<string, string> = {
-											USD: '$',
-											VES: 'Bs.',
-											EUR: '€',
+											const currencySymbols: Record<string, string> = {
+												USD: '$',
+												VES: 'Bs.',
+												EUR: '€',
+											};
+
+											const symbol = currencySymbols[currency] || currency;
+											return `${symbol} ${numPrice.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 										};
 
-										const symbol = currencySymbols[currency] || currency;
-										return `${symbol} ${numPrice.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-									};
-
-									return (
-										<div key={idx} className="bg-white rounded-xl p-6 border-2 border-slate-200 hover:border-teal-300 hover:shadow-lg transition-all">
-											<div className="flex items-start gap-3 mb-3">
-												<CheckCircle2 className="w-6 h-6 text-teal-600 flex-shrink-0 mt-0.5" />
-												<div className="flex-1 min-w-0">
-													<h3 className="text-lg font-bold text-slate-900 mb-1">{serviceName}</h3>
-													{serviceDescription && <p className="text-sm text-slate-600 mb-3 line-clamp-2">{serviceDescription}</p>}
-												</div>
-											</div>
-											{servicePrice && (
-												<div className="mt-4 pt-4 border-t border-slate-200">
-													<div className="flex items-baseline gap-2">
-														<span className="text-2xl font-bold text-teal-600">{formatPrice(servicePrice, serviceCurrency)}</span>
-														<span className="text-sm text-slate-500">{serviceCurrency}</span>
+										return (
+											<motion.div 
+												key={idx} 
+												initial={{ opacity: 0, y: 10 }} 
+												whileInView={{ opacity: 1, y: 0 }} 
+												viewport={{ once: true }}
+												transition={{ duration: 0.4, delay: idx * 0.1 }}
+												className="bg-white/90 backdrop-blur-sm rounded-2xl p-6 border-2 border-slate-200 hover:border-teal-400 hover:shadow-xl transition-all group relative overflow-hidden"
+											>
+												{/* Hover effect background */}
+												<div className="absolute inset-0 bg-gradient-to-br from-teal-50/0 to-cyan-50/0 group-hover:from-teal-50/50 group-hover:to-cyan-50/50 transition-all duration-300" />
+												
+												<div className="relative z-10">
+													<div className="flex items-start gap-3 mb-4">
+														<div className="p-2.5 bg-gradient-to-br from-teal-100 to-cyan-100 rounded-xl group-hover:from-teal-200 group-hover:to-cyan-200 transition-colors">
+															<CheckCircle2 className="w-5 h-5 text-teal-600" />
+														</div>
+														<div className="flex-1 min-w-0">
+															<h3 className="text-lg font-bold text-slate-900 mb-1 group-hover:text-teal-700 transition-colors">{serviceName}</h3>
+															{serviceDescription && <p className="text-sm text-slate-600 mb-3 line-clamp-2 leading-relaxed">{serviceDescription}</p>}
+														</div>
 													</div>
+													{servicePrice && (
+														<div className="mt-4 pt-4 border-t border-slate-200">
+															<div className="flex items-baseline gap-2">
+																<span className="text-2xl font-bold bg-gradient-to-r from-teal-600 to-cyan-600 bg-clip-text text-transparent">{formatPrice(servicePrice, serviceCurrency)}</span>
+																<span className="text-sm text-slate-500 font-medium">{serviceCurrency}</span>
+															</div>
+														</div>
+													)}
 												</div>
-											)}
-										</div>
-									);
-								})}
+											</motion.div>
+										);
+									})}
+							</div>
 						</div>
 					</motion.section>
 				)}
+
+				{/* Service Combos Section */}
+				{consultorio.doctors.some((d) => d.medic_profile?.serviceCombos && d.medic_profile.serviceCombos.length > 0) && (() => {
+					// Recopilar todos los combos únicos de todos los doctores
+					const allCombos = consultorio.doctors
+						.flatMap((d) => d.medic_profile?.serviceCombos || [])
+						.filter((combo, idx, arr) => {
+							// Eliminar duplicados por nombre
+							const comboName = combo?.name || '';
+							return arr.findIndex((c) => (c?.name || '') === comboName) === idx;
+						});
+
+					// Obtener todos los servicios para calcular ahorros
+					const allServices = consultorio.doctors
+						.flatMap((d) => d.medic_profile?.services || [])
+						.reduce((acc: Map<string, any>, service) => {
+							const serviceId = typeof service === 'object' && service?.id ? service.id : '';
+							const serviceName = typeof service === 'string' ? service : service?.name || '';
+							if (serviceId || serviceName) {
+								acc.set(serviceId || serviceName, service);
+							}
+							return acc;
+						}, new Map());
+
+					return (
+						<motion.section 
+							initial={{ opacity: 0, y: 20 }} 
+							whileInView={{ opacity: 1, y: 0 }} 
+							viewport={{ once: true }} 
+							transition={{ duration: 0.6 }} 
+							className="bg-gradient-to-br from-gradient-to-br from-amber-50 via-orange-50 to-rose-50 rounded-3xl shadow-2xl border-2 border-orange-200/50 p-8 lg:p-12 relative overflow-hidden"
+						>
+							{/* Decorative background elements */}
+							<div className="absolute top-0 right-0 w-96 h-96 bg-gradient-to-br from-amber-200/20 to-orange-200/20 rounded-full blur-3xl -mr-48 -mt-48" />
+							<div className="absolute bottom-0 left-0 w-96 h-96 bg-gradient-to-tr from-rose-200/20 to-pink-200/20 rounded-full blur-3xl -ml-48 -mb-48" />
+							
+							<div className="relative z-10">
+								<div className="flex items-center gap-4 mb-10">
+									<div className="p-4 bg-gradient-to-br from-amber-500 via-orange-500 to-rose-500 rounded-2xl shadow-xl transform hover:scale-105 transition-transform">
+										<Package className="w-8 h-8 text-white" />
+									</div>
+									<div>
+										<h2 className="text-3xl lg:text-4xl font-bold text-slate-900 bg-gradient-to-r from-amber-700 to-orange-700 bg-clip-text text-transparent">Combos Promocionales</h2>
+										<p className="text-slate-600 mt-1">Paquetes especiales con descuentos exclusivos</p>
+									</div>
+								</div>
+								<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+									{allCombos.map((combo: any, idx: number) => {
+										if (!combo) return null;
+
+										const comboName = combo.name || 'Combo';
+										const comboDescription = combo.description || '';
+										const comboPrice = combo.price || '';
+										const comboCurrency = combo.currency || 'USD';
+										const serviceIds = combo.serviceIds || [];
+
+										// Calcular precio total de servicios individuales
+										let totalIndividualPrice = 0;
+										serviceIds.forEach((serviceId: string) => {
+											const service = allServices.get(serviceId);
+											if (service) {
+												const price = typeof service === 'object' && service.price ? parseFloat(service.price) : 0;
+												if (!isNaN(price)) {
+													totalIndividualPrice += price;
+												}
+											}
+										});
+
+										// Calcular ahorro
+										const comboPriceNum = comboPrice ? parseFloat(comboPrice) : 0;
+										const savings = totalIndividualPrice > 0 && comboPriceNum > 0 ? totalIndividualPrice - comboPriceNum : 0;
+										const savingsPercent = totalIndividualPrice > 0 ? Math.round((savings / totalIndividualPrice) * 100) : 0;
+
+										const formatPrice = (price: string | number, currency: string) => {
+											const numPrice = typeof price === 'string' ? parseFloat(price) : price;
+											if (isNaN(numPrice)) return 'Consultar precio';
+
+											const currencySymbols: Record<string, string> = {
+												USD: '$',
+												VES: 'Bs.',
+												EUR: '€',
+											};
+
+											const symbol = currencySymbols[currency] || currency;
+											return `${symbol} ${numPrice.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+										};
+
+										return (
+											<motion.div 
+												key={idx} 
+												initial={{ opacity: 0, y: 10 }} 
+												whileInView={{ opacity: 1, y: 0 }} 
+												viewport={{ once: true }}
+												transition={{ duration: 0.4, delay: idx * 0.1 }}
+												className="bg-white/95 backdrop-blur-sm rounded-2xl p-6 border-2 border-orange-200 hover:border-orange-400 hover:shadow-2xl transition-all group relative overflow-hidden"
+											>
+												{/* Badge de ahorro */}
+												{savings > 0 && (
+													<div className="absolute top-4 right-4 z-20">
+														<div className="px-3 py-1.5 bg-gradient-to-r from-amber-500 to-orange-500 text-white text-xs font-bold rounded-full shadow-lg flex items-center gap-1">
+															<Percent className="w-3 h-3" />
+															{savingsPercent}% OFF
+														</div>
+													</div>
+												)}
+
+												{/* Hover effect background */}
+												<div className="absolute inset-0 bg-gradient-to-br from-amber-50/0 to-orange-50/0 group-hover:from-amber-50/50 group-hover:to-orange-50/50 transition-all duration-300" />
+												
+												<div className="relative z-10">
+													<div className="flex items-start gap-3 mb-4">
+														<div className="p-2.5 bg-gradient-to-br from-amber-100 to-orange-100 rounded-xl group-hover:from-amber-200 group-hover:to-orange-200 transition-colors">
+															<Package className="w-5 h-5 text-orange-600" />
+														</div>
+														<div className="flex-1 min-w-0 pr-8">
+															<h3 className="text-lg font-bold text-slate-900 mb-1 group-hover:text-orange-700 transition-colors">{comboName}</h3>
+															{comboDescription && <p className="text-sm text-slate-600 mb-3 line-clamp-2 leading-relaxed">{comboDescription}</p>}
+														</div>
+													</div>
+
+													{/* Servicios incluidos */}
+													{serviceIds.length > 0 && (
+														<div className="mb-4 pt-4 border-t border-slate-200">
+															<p className="text-xs font-semibold text-slate-500 mb-2 uppercase tracking-wide">Servicios Incluidos:</p>
+															<div className="flex flex-wrap gap-2">
+																{serviceIds.slice(0, 3).map((serviceId: string, sidx: number) => {
+																	const service = allServices.get(serviceId);
+																	const serviceName = typeof service === 'object' && service?.name ? service.name : (typeof service === 'string' ? service : serviceId);
+																	return (
+																		<span key={sidx} className="px-2.5 py-1 bg-slate-100 text-slate-700 text-xs font-medium rounded-lg">
+																			{serviceName}
+																		</span>
+																	);
+																})}
+																{serviceIds.length > 3 && (
+																	<span className="px-2.5 py-1 bg-slate-100 text-slate-700 text-xs font-medium rounded-lg">
+																		+{serviceIds.length - 3} más
+																	</span>
+																)}
+															</div>
+														</div>
+													)}
+
+													{/* Precio */}
+													<div className="mt-4 pt-4 border-t border-slate-200">
+														{totalIndividualPrice > 0 && (
+															<div className="mb-2">
+																<p className="text-xs text-slate-500 line-through">Precio individual: {formatPrice(totalIndividualPrice, comboCurrency)}</p>
+															</div>
+														)}
+														<div className="flex items-baseline gap-2">
+															<span className="text-2xl font-bold bg-gradient-to-r from-amber-600 to-orange-600 bg-clip-text text-transparent">{formatPrice(comboPrice, comboCurrency)}</span>
+															<span className="text-sm text-slate-500 font-medium">{comboCurrency}</span>
+														</div>
+														{savings > 0 && (
+															<div className="mt-2 flex items-center gap-1 text-sm font-semibold text-green-600">
+																<Zap className="w-4 h-4" />
+																<span>Ahorras {formatPrice(savings, comboCurrency)}</span>
+															</div>
+														)}
+													</div>
+												</div>
+											</motion.div>
+										);
+									})}
+								</div>
+							</div>
+						</motion.section>
+					);
+				})()}
 
 				{/* Gallery Section - Only show if there are more photos than the collage */}
 				{consultorio.photos && consultorio.photos.length > 8 && (

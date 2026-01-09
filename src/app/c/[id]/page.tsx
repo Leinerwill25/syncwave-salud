@@ -135,6 +135,7 @@ export default async function ConsultorioPublicRoute({ params }: { params: Promi
 					photo_url,
 					credentials,
 					services,
+					service_combos,
 					availability,
 					has_cashea
 				)
@@ -186,6 +187,7 @@ export default async function ConsultorioPublicRoute({ params }: { params: Promi
 			if (!profile) return doctor;
 
 			let services: any[] = [];
+			let serviceCombos: any[] = [];
 			let credentials: any = {};
 			let availability: any = {};
 
@@ -199,6 +201,18 @@ export default async function ConsultorioPublicRoute({ params }: { params: Promi
 					: [];
 			} catch {
 				services = [];
+			}
+
+			try {
+				serviceCombos = profile.service_combos
+					? (Array.isArray(profile.service_combos)
+						? profile.service_combos
+						: typeof profile.service_combos === 'string'
+							? JSON.parse(profile.service_combos)
+							: [])
+					: [];
+			} catch {
+				serviceCombos = [];
 			}
 
 			try {
@@ -222,6 +236,7 @@ export default async function ConsultorioPublicRoute({ params }: { params: Promi
 				medic_profile: {
 					...profile,
 					services,
+					serviceCombos,
 					credentials,
 					availability,
 				},
