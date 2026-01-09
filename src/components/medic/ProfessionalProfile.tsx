@@ -658,66 +658,202 @@ por favor confirmar con un "Asistiré" o "No Asistiré"`}
 					</div>
 
 					{/* Combos de servicios (afiliado) */}
-					<div className="bg-gray-50 rounded-xl p-6 mt-6">
-						<h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-							<Stethoscope className="w-5 h-5 text-indigo-600" />
-							Combos de Servicios (paquetes promocionales)
-						</h3>
-						<p className="text-xs text-gray-500 mb-3">Crea paquetes que agrupen varios servicios individuales con un precio especial. Estos combos se mostrarán también en el módulo de servicios del asistente/recepción.</p>
-						<div className="space-y-4">
-							{(affiliatedForm as any).serviceCombos?.map((combo: MedicServiceCombo, idx: number) => (
-								<div key={combo.id || idx} className="relative p-4 bg-white rounded-lg border border-gray-200 hover:border-gray-300 transition-colors">
-									<div className="flex flex-col md:flex-row gap-4 items-start md:items-center">
-										<div className="flex-1 min-w-0 w-full md:w-auto space-y-2">
-											<input type="text" placeholder="Nombre del combo (ej: Control Prenatal Básico)" value={combo.name || ''} onChange={(e) => updateServiceCombo(true, idx, 'name', e.target.value)} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent" />
-											<textarea placeholder="Descripción breve del combo" value={combo.description || ''} onChange={(e) => updateServiceCombo(true, idx, 'description', e.target.value)} rows={2} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent resize-none text-sm" />
-										</div>
-										<div className="flex flex-col gap-2 flex-shrink-0 w-full md:w-56">
-											<label className="text-xs font-medium text-gray-600">Precio promo</label>
-											<div className="flex items-center gap-2">
-												<input type="text" placeholder="Precio" value={combo.price || ''} onChange={(e) => updateServiceCombo(true, idx, 'price', e.target.value)} className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent" />
-												<select value={combo.currency || 'USD'} onChange={(e) => updateServiceCombo(true, idx, 'currency', e.target.value)} className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent bg-white flex-shrink-0">
-													<option value="USD">USD</option>
-													<option value="VES">VES</option>
-													<option value="EUR">EUR</option>
-												</select>
+					<div className="bg-gradient-to-br from-indigo-50 to-purple-50 rounded-xl p-6 mt-6 border border-indigo-100">
+						<div className="mb-6">
+							<h3 className="text-xl font-bold text-gray-900 mb-2 flex items-center gap-3">
+								<div className="p-2 bg-indigo-600 rounded-lg">
+									<Stethoscope className="w-5 h-5 text-white" />
+								</div>
+								Combos de Servicios (Paquetes Promocionales)
+							</h3>
+							<p className="text-sm text-gray-600 ml-14">Crea paquetes que agrupen varios servicios individuales con un precio especial. Estos combos se mostrarán también en el módulo de servicios del asistente/recepción.</p>
+						</div>
+						
+						<div className="space-y-6">
+							{(affiliatedForm as any).serviceCombos?.map((combo: MedicServiceCombo, idx: number) => {
+								const selectedServices = combo.serviceIds?.map((id) => {
+									const svc = affiliatedForm.services.find((s, i) => ((s as any).id || String(i)) === id);
+									return svc;
+								}).filter(Boolean) || [];
+								
+								const totalIndividualPrice = selectedServices.reduce((sum, svc) => {
+									if (!svc) return sum;
+									const price = parseFloat(svc.price || '0') || 0;
+									return sum + price;
+								}, 0);
+								
+								const comboPrice = parseFloat(combo.price || '0') || 0;
+								const savings = totalIndividualPrice > 0 && comboPrice > 0 ? totalIndividualPrice - comboPrice : 0;
+								const savingsPercent = totalIndividualPrice > 0 ? Math.round((savings / totalIndividualPrice) * 100) : 0;
+								
+								return (
+									<div key={combo.id || idx} className="bg-white rounded-xl border-2 border-gray-200 hover:border-indigo-300 transition-all duration-200 shadow-sm hover:shadow-md overflow-hidden">
+										{/* Header del combo */}
+										<div className="bg-gradient-to-r from-indigo-50 to-purple-50 px-6 py-4 border-b border-gray-200">
+											<div className="flex items-start justify-between gap-4">
+												<div className="flex-1 min-w-0">
+													<input 
+														type="text" 
+														placeholder="Nombre del combo (ej: Control Prenatal Básico)" 
+														value={combo.name || ''} 
+														onChange={(e) => updateServiceCombo(true, idx, 'name', e.target.value)} 
+														className="w-full px-4 py-2.5 bg-white border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 font-semibold text-gray-900 placeholder:text-gray-400" 
+													/>
+												</div>
+												<button 
+													type="button" 
+													onClick={() => removeServiceCombo(true, idx)} 
+													className="flex-shrink-0 p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors" 
+													aria-label="Eliminar combo"
+												>
+													<X className="w-5 h-5" />
+												</button>
 											</div>
-											<label className="text-xs font-medium text-gray-600 mt-2">Servicios incluidos</label>
-											<div className="border border-dashed border-gray-300 rounded-lg p-2 max-h-40 overflow-y-auto text-xs space-y-1">
-												{affiliatedForm.services.length === 0 ? (
-													<p className="text-gray-400">Primero debes registrar servicios individuales.</p>
-												) : (
-													affiliatedForm.services.map((svc, sIdx) => {
-														const svcId = (svc as any).id || String(sIdx);
-														const checked = combo.serviceIds?.includes(svcId);
-														return (
-															<label key={svcId} className="flex items-center gap-2 py-0.5 cursor-pointer">
-																<input
-																	type="checkbox"
-																	checked={checked}
-																	onChange={(e) => {
-																		const current = combo.serviceIds || [];
-																		const next = e.target.checked ? [...current, svcId] : current.filter((id) => id !== svcId);
-																		updateServiceCombo(true, idx, 'serviceIds', next);
-																	}}
-																/>
-																<span>{svc.name || `Servicio ${sIdx + 1}`}</span>
-															</label>
-														);
-													})
-												)}
-											</div>
 										</div>
-										<div className="flex-shrink-0 self-stretch flex items-start">
-											<button type="button" onClick={() => removeServiceCombo(true, idx)} className="p-2 text-red-600 hover:bg-red-50 rounded-lg" aria-label="Eliminar combo">
-												<X className="w-5 h-5" />
-											</button>
+										
+										{/* Contenido del combo */}
+										<div className="p-6 space-y-6">
+											{/* Descripción */}
+											<div>
+												<label className="block text-sm font-semibold text-gray-700 mb-2">Descripción del Combo</label>
+												<textarea 
+													placeholder="Describe brevemente qué incluye este paquete promocional..." 
+													value={combo.description || ''} 
+													onChange={(e) => updateServiceCombo(true, idx, 'description', e.target.value)} 
+													rows={3} 
+													className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 resize-none text-sm text-gray-700 placeholder:text-gray-400" 
+												/>
+											</div>
+											
+											{/* Precio y moneda */}
+											<div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+												<div>
+													<label className="block text-sm font-semibold text-gray-700 mb-2">Precio Promocional</label>
+													<div className="flex items-center gap-3">
+														<input 
+															type="text" 
+															placeholder="0.00" 
+															value={combo.price || ''} 
+															onChange={(e) => updateServiceCombo(true, idx, 'price', e.target.value)} 
+															className="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-lg font-semibold" 
+														/>
+														<select 
+															value={combo.currency || 'USD'} 
+															onChange={(e) => updateServiceCombo(true, idx, 'currency', e.target.value)} 
+															className="px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white font-medium"
+														>
+															<option value="USD">USD</option>
+															<option value="VES">VES</option>
+															<option value="EUR">EUR</option>
+														</select>
+													</div>
+													{savings > 0 && (
+														<div className="mt-2 flex items-center gap-2 text-sm">
+															<span className="text-green-600 font-semibold">💰 Ahorro: {savings.toFixed(2)} {combo.currency || 'USD'}</span>
+															<span className="px-2 py-0.5 bg-green-100 text-green-700 rounded-full text-xs font-semibold">
+																-{savingsPercent}%
+															</span>
+														</div>
+													)}
+												</div>
+												
+												{/* Servicios incluidos */}
+												<div>
+													<label className="block text-sm font-semibold text-gray-700 mb-2">
+														Servicios Incluidos
+														{selectedServices.length > 0 && (
+															<span className="ml-2 px-2 py-0.5 bg-indigo-100 text-indigo-700 rounded-full text-xs font-semibold">
+																{selectedServices.length} {selectedServices.length === 1 ? 'servicio' : 'servicios'}
+															</span>
+														)}
+													</label>
+													<div className="border-2 border-dashed border-gray-300 rounded-lg p-4 bg-gray-50 max-h-64 overflow-y-auto">
+														{affiliatedForm.services.length === 0 ? (
+															<div className="text-center py-4">
+																<p className="text-sm text-gray-400">Primero debes registrar servicios individuales.</p>
+															</div>
+														) : (
+															<div className="space-y-2">
+																{affiliatedForm.services.map((svc, sIdx) => {
+																	const svcId = (svc as any).id || String(sIdx);
+																	const checked = combo.serviceIds?.includes(svcId);
+																	return (
+																		<label 
+																			key={svcId} 
+																			className={`flex items-center gap-3 p-3 rounded-lg border-2 cursor-pointer transition-all ${
+																				checked 
+																					? 'bg-indigo-50 border-indigo-300 shadow-sm' 
+																					: 'bg-white border-gray-200 hover:border-gray-300'
+																			}`}
+																		>
+																			<input
+																				type="checkbox"
+																				checked={checked}
+																				onChange={(e) => {
+																					const current = combo.serviceIds || [];
+																					const next = e.target.checked ? [...current, svcId] : current.filter((id) => id !== svcId);
+																					updateServiceCombo(true, idx, 'serviceIds', next);
+																				}}
+																				className="w-5 h-5 text-indigo-600 border-gray-300 rounded focus:ring-2 focus:ring-indigo-500 cursor-pointer"
+																			/>
+																			<div className="flex-1 min-w-0">
+																				<span className={`text-sm font-medium ${checked ? 'text-indigo-900' : 'text-gray-700'}`}>
+																					{svc.name || `Servicio ${sIdx + 1}`}
+																				</span>
+																				{svc.description && (
+																					<p className="text-xs text-gray-500 mt-0.5 truncate">{svc.description}</p>
+																				)}
+																			</div>
+																			{svc.price && (
+																				<span className="text-xs font-semibold text-gray-600 whitespace-nowrap">
+																					{svc.price} {svc.currency || 'USD'}
+																				</span>
+																			)}
+																		</label>
+																	);
+																})}
+															</div>
+														)}
+													</div>
+												</div>
+											</div>
+											
+											{/* Resumen de servicios seleccionados */}
+											{selectedServices.length > 0 && (
+												<div className="bg-indigo-50 rounded-lg p-4 border border-indigo-200">
+													<div className="flex items-center justify-between">
+														<div>
+															<p className="text-sm font-semibold text-indigo-900 mb-1">Resumen del Combo</p>
+															<p className="text-xs text-indigo-700">
+																Precio individual total: <span className="font-semibold">{totalIndividualPrice.toFixed(2)} {combo.currency || 'USD'}</span>
+															</p>
+														</div>
+														{savings > 0 && (
+															<div className="text-right">
+																<p className="text-sm font-bold text-green-600">
+																	Precio del combo: {comboPrice.toFixed(2)} {combo.currency || 'USD'}
+																</p>
+																<p className="text-xs text-green-700 mt-0.5">
+																	Ahorras {savings.toFixed(2)} {combo.currency || 'USD'} ({savingsPercent}%)
+																</p>
+															</div>
+														)}
+													</div>
+												</div>
+											)}
 										</div>
 									</div>
-								</div>
-							))}
-							<button type="button" onClick={() => addServiceCombo(true)} className="w-full px-4 py-2.5 border-2 border-dashed border-gray-300 rounded-lg text-gray-600 hover:border-indigo-400 hover:text-indigo-600 hover:bg-indigo-50 transition-all duration-200 font-medium">
-								+ Agregar Combo
+								);
+							})}
+							
+							{/* Botón para agregar nuevo combo */}
+							<button 
+								type="button" 
+								onClick={() => addServiceCombo(true)} 
+								className="w-full px-6 py-4 border-2 border-dashed border-indigo-300 rounded-xl text-indigo-600 hover:border-indigo-400 hover:bg-indigo-50 transition-all duration-200 font-semibold flex items-center justify-center gap-2 group"
+							>
+								<span className="text-xl group-hover:scale-110 transition-transform">+</span>
+								<span>Agregar Nuevo Combo de Servicios</span>
 							</button>
 						</div>
 					</div>
@@ -1022,66 +1158,202 @@ por favor confirmar con un "Asistiré" o "No Asistiré"`}
 					</div>
 
 					{/* Combos de servicios (consultorio privado) */}
-					<div className="bg-gray-50 rounded-xl p-6 mt-6">
-						<h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-							<Stethoscope className="w-5 h-5 text-indigo-600" />
-							Combos de Servicios (paquetes promocionales)
-						</h3>
-						<p className="text-xs text-gray-500 mb-3">Crea combos que agrupen varios de tus servicios privados con precios especiales.</p>
-						<div className="space-y-4">
-							{(privateForm as any).serviceCombos?.map((combo: MedicServiceCombo, idx: number) => (
-								<div key={combo.id || idx} className="relative p-4 bg-white rounded-lg border border-gray-200 hover:border-gray-300 transition-colors">
-									<div className="flex flex-col md:flex-row gap-4 items-start md:items-center">
-										<div className="flex-1 min-w-0 w-full md:w-auto space-y-2">
-											<input type="text" placeholder="Nombre del combo" value={combo.name || ''} onChange={(e) => updateServiceCombo(false, idx, 'name', e.target.value)} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent" />
-											<textarea placeholder="Descripción breve del combo" value={combo.description || ''} onChange={(e) => updateServiceCombo(false, idx, 'description', e.target.value)} rows={2} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent resize-none text-sm" />
-										</div>
-										<div className="flex flex-col gap-2 flex-shrink-0 w-full md:w-56">
-											<label className="text-xs font-medium text-gray-600">Precio promo</label>
-											<div className="flex items-center gap-2">
-												<input type="text" placeholder="Precio" value={combo.price || ''} onChange={(e) => updateServiceCombo(false, idx, 'price', e.target.value)} className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent" />
-												<select value={combo.currency || 'USD'} onChange={(e) => updateServiceCombo(false, idx, 'currency', e.target.value)} className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent bg-white flex-shrink-0">
-													<option value="USD">USD</option>
-													<option value="VES">VES</option>
-													<option value="EUR">EUR</option>
-												</select>
+					<div className="bg-gradient-to-br from-indigo-50 to-purple-50 rounded-xl p-6 mt-6 border border-indigo-100">
+						<div className="mb-6">
+							<h3 className="text-xl font-bold text-gray-900 mb-2 flex items-center gap-3">
+								<div className="p-2 bg-indigo-600 rounded-lg">
+									<Stethoscope className="w-5 h-5 text-white" />
+								</div>
+								Combos de Servicios (Paquetes Promocionales)
+							</h3>
+							<p className="text-sm text-gray-600 ml-14">Crea combos que agrupen varios de tus servicios privados con precios especiales.</p>
+						</div>
+						
+						<div className="space-y-6">
+							{(privateForm as any).serviceCombos?.map((combo: MedicServiceCombo, idx: number) => {
+								const selectedServices = combo.serviceIds?.map((id) => {
+									const svc = privateForm.services.find((s, i) => ((s as any).id || String(i)) === id);
+									return svc;
+								}).filter(Boolean) || [];
+								
+								const totalIndividualPrice = selectedServices.reduce((sum, svc) => {
+									if (!svc) return sum;
+									const price = parseFloat(svc.price || '0') || 0;
+									return sum + price;
+								}, 0);
+								
+								const comboPrice = parseFloat(combo.price || '0') || 0;
+								const savings = totalIndividualPrice > 0 && comboPrice > 0 ? totalIndividualPrice - comboPrice : 0;
+								const savingsPercent = totalIndividualPrice > 0 ? Math.round((savings / totalIndividualPrice) * 100) : 0;
+								
+								return (
+									<div key={combo.id || idx} className="bg-white rounded-xl border-2 border-gray-200 hover:border-indigo-300 transition-all duration-200 shadow-sm hover:shadow-md overflow-hidden">
+										{/* Header del combo */}
+										<div className="bg-gradient-to-r from-indigo-50 to-purple-50 px-6 py-4 border-b border-gray-200">
+											<div className="flex items-start justify-between gap-4">
+												<div className="flex-1 min-w-0">
+													<input 
+														type="text" 
+														placeholder="Nombre del combo (ej: Control Prenatal Básico)" 
+														value={combo.name || ''} 
+														onChange={(e) => updateServiceCombo(false, idx, 'name', e.target.value)} 
+														className="w-full px-4 py-2.5 bg-white border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 font-semibold text-gray-900 placeholder:text-gray-400" 
+													/>
+												</div>
+												<button 
+													type="button" 
+													onClick={() => removeServiceCombo(false, idx)} 
+													className="flex-shrink-0 p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors" 
+													aria-label="Eliminar combo"
+												>
+													<X className="w-5 h-5" />
+												</button>
 											</div>
-											<label className="text-xs font-medium text-gray-600 mt-2">Servicios incluidos</label>
-											<div className="border border-dashed border-gray-300 rounded-lg p-2 max-h-40 overflow-y-auto text-xs space-y-1">
-												{privateForm.services.length === 0 ? (
-													<p className="text-gray-400">Primero debes registrar servicios individuales.</p>
-												) : (
-													privateForm.services.map((svc, sIdx) => {
-														const svcId = (svc as any).id || String(sIdx);
-														const checked = combo.serviceIds?.includes(svcId);
-														return (
-															<label key={svcId} className="flex items-center gap-2 py-0.5 cursor-pointer">
-																<input
-																	type="checkbox"
-																	checked={checked}
-																	onChange={(e) => {
-																		const current = combo.serviceIds || [];
-																		const next = e.target.checked ? [...current, svcId] : current.filter((id) => id !== svcId);
-																		updateServiceCombo(false, idx, 'serviceIds', next);
-																	}}
-																/>
-																<span>{svc.name || `Servicio ${sIdx + 1}`}</span>
-															</label>
-														);
-													})
-												)}
-											</div>
 										</div>
-										<div className="flex-shrink-0 self-stretch flex items-start">
-											<button type="button" onClick={() => removeServiceCombo(false, idx)} className="p-2 text-red-600 hover:bg-red-50 rounded-lg" aria-label="Eliminar combo">
-												<X className="w-5 h-5" />
-											</button>
+										
+										{/* Contenido del combo */}
+										<div className="p-6 space-y-6">
+											{/* Descripción */}
+											<div>
+												<label className="block text-sm font-semibold text-gray-700 mb-2">Descripción del Combo</label>
+												<textarea 
+													placeholder="Describe brevemente qué incluye este paquete promocional..." 
+													value={combo.description || ''} 
+													onChange={(e) => updateServiceCombo(false, idx, 'description', e.target.value)} 
+													rows={3} 
+													className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 resize-none text-sm text-gray-700 placeholder:text-gray-400" 
+												/>
+											</div>
+											
+											{/* Precio y moneda */}
+											<div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+												<div>
+													<label className="block text-sm font-semibold text-gray-700 mb-2">Precio Promocional</label>
+													<div className="flex items-center gap-3">
+														<input 
+															type="text" 
+															placeholder="0.00" 
+															value={combo.price || ''} 
+															onChange={(e) => updateServiceCombo(false, idx, 'price', e.target.value)} 
+															className="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-lg font-semibold" 
+														/>
+														<select 
+															value={combo.currency || 'USD'} 
+															onChange={(e) => updateServiceCombo(false, idx, 'currency', e.target.value)} 
+															className="px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white font-medium"
+														>
+															<option value="USD">USD</option>
+															<option value="VES">VES</option>
+															<option value="EUR">EUR</option>
+														</select>
+													</div>
+													{savings > 0 && (
+														<div className="mt-2 flex items-center gap-2 text-sm">
+															<span className="text-green-600 font-semibold">💰 Ahorro: {savings.toFixed(2)} {combo.currency || 'USD'}</span>
+															<span className="px-2 py-0.5 bg-green-100 text-green-700 rounded-full text-xs font-semibold">
+																-{savingsPercent}%
+															</span>
+														</div>
+													)}
+												</div>
+												
+												{/* Servicios incluidos */}
+												<div>
+													<label className="block text-sm font-semibold text-gray-700 mb-2">
+														Servicios Incluidos
+														{selectedServices.length > 0 && (
+															<span className="ml-2 px-2 py-0.5 bg-indigo-100 text-indigo-700 rounded-full text-xs font-semibold">
+																{selectedServices.length} {selectedServices.length === 1 ? 'servicio' : 'servicios'}
+															</span>
+														)}
+													</label>
+													<div className="border-2 border-dashed border-gray-300 rounded-lg p-4 bg-gray-50 max-h-64 overflow-y-auto">
+														{privateForm.services.length === 0 ? (
+															<div className="text-center py-4">
+																<p className="text-sm text-gray-400">Primero debes registrar servicios individuales.</p>
+															</div>
+														) : (
+															<div className="space-y-2">
+																{privateForm.services.map((svc, sIdx) => {
+																	const svcId = (svc as any).id || String(sIdx);
+																	const checked = combo.serviceIds?.includes(svcId);
+																	return (
+																		<label 
+																			key={svcId} 
+																			className={`flex items-center gap-3 p-3 rounded-lg border-2 cursor-pointer transition-all ${
+																				checked 
+																					? 'bg-indigo-50 border-indigo-300 shadow-sm' 
+																					: 'bg-white border-gray-200 hover:border-gray-300'
+																			}`}
+																		>
+																			<input
+																				type="checkbox"
+																				checked={checked}
+																				onChange={(e) => {
+																					const current = combo.serviceIds || [];
+																					const next = e.target.checked ? [...current, svcId] : current.filter((id) => id !== svcId);
+																					updateServiceCombo(false, idx, 'serviceIds', next);
+																				}}
+																				className="w-5 h-5 text-indigo-600 border-gray-300 rounded focus:ring-2 focus:ring-indigo-500 cursor-pointer"
+																			/>
+																			<div className="flex-1 min-w-0">
+																				<span className={`text-sm font-medium ${checked ? 'text-indigo-900' : 'text-gray-700'}`}>
+																					{svc.name || `Servicio ${sIdx + 1}`}
+																				</span>
+																				{svc.description && (
+																					<p className="text-xs text-gray-500 mt-0.5 truncate">{svc.description}</p>
+																				)}
+																			</div>
+																			{svc.price && (
+																				<span className="text-xs font-semibold text-gray-600 whitespace-nowrap">
+																					{svc.price} {svc.currency || 'USD'}
+																				</span>
+																			)}
+																		</label>
+																	);
+																})}
+															</div>
+														)}
+													</div>
+												</div>
+											</div>
+											
+											{/* Resumen de servicios seleccionados */}
+											{selectedServices.length > 0 && (
+												<div className="bg-indigo-50 rounded-lg p-4 border border-indigo-200">
+													<div className="flex items-center justify-between">
+														<div>
+															<p className="text-sm font-semibold text-indigo-900 mb-1">Resumen del Combo</p>
+															<p className="text-xs text-indigo-700">
+																Precio individual total: <span className="font-semibold">{totalIndividualPrice.toFixed(2)} {combo.currency || 'USD'}</span>
+															</p>
+														</div>
+														{savings > 0 && (
+															<div className="text-right">
+																<p className="text-sm font-bold text-green-600">
+																	Precio del combo: {comboPrice.toFixed(2)} {combo.currency || 'USD'}
+																</p>
+																<p className="text-xs text-green-700 mt-0.5">
+																	Ahorras {savings.toFixed(2)} {combo.currency || 'USD'} ({savingsPercent}%)
+																</p>
+															</div>
+														)}
+													</div>
+												</div>
+											)}
 										</div>
 									</div>
-								</div>
-							))}
-							<button type="button" onClick={() => addServiceCombo(false)} className="w-full px-4 py-2.5 border-2 border-dashed border-gray-300 rounded-lg text-gray-600 hover:border-indigo-400 hover:text-indigo-600 hover:bg-indigo-50 transition-all duration-200 font-medium">
-								+ Agregar Combo
+								);
+							})}
+							
+							{/* Botón para agregar nuevo combo */}
+							<button 
+								type="button" 
+								onClick={() => addServiceCombo(false)} 
+								className="w-full px-6 py-4 border-2 border-dashed border-indigo-300 rounded-xl text-indigo-600 hover:border-indigo-400 hover:bg-indigo-50 transition-all duration-200 font-semibold flex items-center justify-center gap-2 group"
+							>
+								<span className="text-xl group-hover:scale-110 transition-transform">+</span>
+								<span>Agregar Nuevo Combo de Servicios</span>
 							</button>
 						</div>
 					</div>
