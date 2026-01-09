@@ -362,7 +362,11 @@ export async function POST(request: NextRequest) {
 
 		// Validar tamaño (máximo 50MB)
 		const maxSizeBytes = 50 * 1024 * 1024; // 50MB
+		const fileSizeMB = templateFile.size / (1024 * 1024);
+		console.log(`[Report Template API] Tamaño del archivo: ${fileSizeMB.toFixed(2)}MB (${templateFile.size} bytes)`);
+		
 		if (templateFile.size > maxSizeBytes) {
+			console.error(`[Report Template API] Archivo excede el límite: ${fileSizeMB.toFixed(2)}MB > ${maxSizeBytes / (1024 * 1024)}MB`);
 			return NextResponse.json({ 
 				error: `El archivo es demasiado grande. Máximo ${maxSizeBytes / (1024 * 1024)}MB` 
 			}, { status: 400 });
@@ -453,6 +457,7 @@ export async function POST(request: NextRequest) {
 		const fileExt = fileExtension;
 		
 		// Verificar que el bucket existe, si no, crearlo
+		// También actualizar el fileSizeLimit si el bucket existe pero tiene un límite menor
 		try {
 			const { data: buckets, error: listError } = await supabaseAdmin.storage.listBuckets();
 			if (listError) {
@@ -471,7 +476,31 @@ export async function POST(request: NextRequest) {
 							error: `Error al crear el bucket de almacenamiento. Por favor, contacta al administrador.` 
 						}, { status: 500 });
 					} else {
-						console.log(`[Report Template API] Bucket "${bucket}" creado exitosamente`);
+						console.log(`[Report Template API] Bucket "${bucket}" creado exitosamente con límite de 50MB`);
+					}
+				} else {
+					// El bucket existe, intentar actualizar el fileSizeLimit si es necesario
+					const existingBucket = buckets?.find((b) => b.name === bucket);
+					const currentLimit = (existingBucket as any)?.file_size_limit || (existingBucket as any)?.fileSizeLimit;
+					const desiredLimit = 52428800; // 50MB
+					
+					if (!currentLimit || currentLimit < desiredLimit) {
+						console.log(`[Report Template API] Actualizando límite del bucket "${bucket}" a 50MB...`);
+						try {
+							const { error: updateError } = await supabaseAdmin.storage.updateBucket(bucket, {
+								public: existingBucket?.public ?? false,
+								fileSizeLimit: desiredLimit,
+							});
+							if (updateError) {
+								console.warn(`[Report Template API] No se pudo actualizar el límite del bucket (puede ser una limitación de Supabase):`, updateError);
+								// No fallamos aquí, continuamos con el upload
+							} else {
+								console.log(`[Report Template API] Límite del bucket "${bucket}" actualizado a 50MB`);
+							}
+						} catch (updateErr) {
+							console.warn(`[Report Template API] Error al actualizar bucket (continuando):`, updateErr);
+							// No fallamos aquí, continuamos con el upload
+						}
 					}
 				}
 			}
@@ -577,6 +606,16 @@ export async function POST(request: NextRequest) {
 
 		if (uploadError || !uploadData) {
 			console.error('[Report Template API] Error subiendo archivo después de reintentos:', uploadError);
+			console.error('[Report Template API] Detalles del error:', {
+				message: uploadError?.message,
+				statusCode: (uploadError as any)?.statusCode || (uploadError as any)?.status,
+				error: uploadError,
+				fileSizeBytes: fileBuffer?.length,
+				fileSizeMB: fileBuffer ? (fileBuffer.length / (1024 * 1024)).toFixed(2) : 'N/A',
+				originalFileSizeBytes: templateFile.size,
+				originalFileSizeMB: fileSizeMB.toFixed(2),
+			});
+			
 			const errorMessage = uploadError?.message || String(uploadError);
 			const statusCode = (uploadError as any)?.statusCode || (uploadError as any)?.status;
 			
@@ -599,10 +638,23 @@ export async function POST(request: NextRequest) {
 				}, { status: 403 });
 			}
 			
-			if (errorMessage.includes('413') || errorMessage.includes('too large') || errorMessage.includes('size')) {
-				return NextResponse.json({ 
-					error: 'El archivo es demasiado grande. El tamaño máximo permitido es 50MB.' 
-				}, { status: 413 });
+			if (errorMessage.includes('413') || errorMessage.includes('too large') || errorMessage.includes('size') || errorMessage.includes('exceeds') || errorMessage.includes('File size')) {
+				const actualSizeBytes = fileBuffer ? fileBuffer.length : templateFile.size;
+				const actualSizeMB = (actualSizeBytes / (1024 * 1024)).toFixed(2);
+				const actualSizeKB = (actualSizeBytes / 1024).toFixed(2);
+				console.error(`[Report Template API] Error de tamaño detectado. Archivo: ${actualSizeMB}MB (${actualSizeKB}KB), Límite esperado: 50MB`);
+				console.error(`[Report Template API] Detalles: originalSize=${templateFile.size} bytes, bufferSize=${fileBuffer?.length || 'N/A'} bytes`);
+				
+				// Si el archivo es menor a 50MB, el problema es el límite del bucket
+				if (actualSizeBytes < maxSizeBytes) {
+					return NextResponse.json({ 
+						error: `El archivo (${actualSizeKB}KB) es menor a 50MB, pero el bucket de almacenamiento tiene un límite más bajo configurado. El sistema intentará actualizar el límite automáticamente. Por favor, intenta subir el archivo nuevamente. Si el problema persiste, contacta al administrador.` 
+					}, { status: 413 });
+				} else {
+					return NextResponse.json({ 
+						error: `El archivo es demasiado grande. El tamaño máximo permitido es 50MB. Tu archivo tiene ${actualSizeMB}MB.` 
+					}, { status: 413 });
+				}
 			}
 			
 			// Error genérico con más detalles en el log
