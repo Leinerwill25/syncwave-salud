@@ -261,7 +261,21 @@ export default function ReportTemplatePage() {
 			const data = await res.json();
 
 			if (!res.ok) {
-				throw new Error(data.error || 'Error al cargar la plantilla');
+				// Si es un error de límite del bucket, mostrar instrucciones detalladas
+				if (data.errorCode === 'BUCKET_SIZE_LIMIT' && data.instructions) {
+					const instructionsText = [
+						data.error,
+						'',
+						data.instructions.title,
+						...data.instructions.steps,
+						'',
+						data.instructions.note
+					].join('\n');
+					setError(instructionsText);
+				} else {
+					throw new Error(data.error || 'Error al cargar la plantilla');
+				}
+				return;
 			}
 
 			setSuccess(`Plantilla para ${targetSpecialty}${variant ? ` (${variant === 'trimestre1' ? 'Primer Trimestre' : 'Segundo y Tercer Trimestre'})` : ''} cargada exitosamente`);
@@ -947,9 +961,28 @@ export default function ReportTemplatePage() {
 
 				{/* Error/Success Messages */}
 				{error && (
-					<div className="flex items-center gap-2 p-3 rounded-lg bg-rose-50 border border-rose-200 text-rose-700">
-						<AlertCircle className="w-5 h-5" />
-						<span className="text-sm">{error}</span>
+					<div className="p-4 rounded-lg bg-rose-50 border border-rose-200 text-rose-700">
+						<div className="flex items-start gap-2 mb-2">
+							<AlertCircle className="w-5 h-5 flex-shrink-0 mt-0.5" />
+							<div className="flex-1">
+								{error.includes('Cómo solucionar') || error.includes('dashboard de Supabase') ? (
+									<div className="space-y-2 text-sm">
+										{error.split('\n').map((line, idx) => {
+											if (line.trim() === '') return <br key={idx} />;
+											if (line.includes('Cómo solucionar') || line.includes('title:')) {
+												return <p key={idx} className="font-semibold text-base">{line.replace('title:', '').trim()}</p>;
+											}
+											if (line.match(/^\d+\./)) {
+												return <p key={idx} className="ml-4">{line}</p>;
+											}
+											return <p key={idx}>{line}</p>;
+										})}
+									</div>
+								) : (
+									<span className="text-sm">{error}</span>
+								)}
+							</div>
+						</div>
 					</div>
 				)}
 

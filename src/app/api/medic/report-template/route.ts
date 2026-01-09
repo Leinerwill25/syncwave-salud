@@ -484,23 +484,53 @@ export async function POST(request: NextRequest) {
 					const currentLimit = (existingBucket as any)?.file_size_limit || (existingBucket as any)?.fileSizeLimit;
 					const desiredLimit = 52428800; // 50MB
 					
+					console.log(`[Report Template API] Bucket "${bucket}" existe. Límite actual: ${currentLimit ? `${(currentLimit / (1024 * 1024)).toFixed(2)}MB` : 'no configurado'}, Deseado: 50MB`);
+					
 					if (!currentLimit || currentLimit < desiredLimit) {
-						console.log(`[Report Template API] Actualizando límite del bucket "${bucket}" a 50MB...`);
+						console.log(`[Report Template API] Intentando actualizar el límite del bucket "${bucket}" a 50MB...`);
+						
+						// Intentar múltiples métodos de actualización
+						let updateSuccess = false;
+						
+						// Método 1: Actualizar con fileSizeLimit
 						try {
 							const { error: updateError } = await supabaseAdmin.storage.updateBucket(bucket, {
 								public: existingBucket?.public ?? false,
 								fileSizeLimit: desiredLimit,
 							});
-							if (updateError) {
-								console.warn(`[Report Template API] No se pudo actualizar el límite del bucket (puede ser una limitación de Supabase):`, updateError);
-								// No fallamos aquí, continuamos con el upload
+							if (!updateError) {
+								console.log(`[Report Template API] ✅ Límite del bucket "${bucket}" actualizado a 50MB (método 1)`);
+								updateSuccess = true;
 							} else {
-								console.log(`[Report Template API] Límite del bucket "${bucket}" actualizado a 50MB`);
+								console.warn(`[Report Template API] Método 1 falló:`, updateError);
 							}
-						} catch (updateErr) {
-							console.warn(`[Report Template API] Error al actualizar bucket (continuando):`, updateErr);
-							// No fallamos aquí, continuamos con el upload
+						} catch (updateErr: any) {
+							console.warn(`[Report Template API] Método 1 error:`, updateErr?.message || updateErr);
 						}
+						
+						// Método 2: Intentar actualizar solo con fileSizeLimit (sin otros parámetros)
+						if (!updateSuccess) {
+							try {
+								const { error: updateError2 } = await supabaseAdmin.storage.updateBucket(bucket, {
+									fileSizeLimit: desiredLimit,
+								});
+								if (!updateError2) {
+									console.log(`[Report Template API] ✅ Límite del bucket "${bucket}" actualizado a 50MB (método 2)`);
+									updateSuccess = true;
+								} else {
+									console.warn(`[Report Template API] Método 2 falló:`, updateError2);
+								}
+							} catch (updateErr2: any) {
+								console.warn(`[Report Template API] Método 2 error:`, updateErr2?.message || updateErr2);
+							}
+						}
+						
+						if (!updateSuccess) {
+							console.error(`[Report Template API] ⚠️ No se pudo actualizar el límite del bucket "${bucket}" programáticamente. Esto puede requerir actualización manual en el dashboard de Supabase.`);
+							console.error(`[Report Template API] Instrucciones: Ve a Supabase Dashboard > Storage > Buckets > "${bucket}" > Settings > File size limit y configúralo a 50MB (52428800 bytes)`);
+						}
+					} else {
+						console.log(`[Report Template API] ✅ El bucket "${bucket}" ya tiene un límite adecuado (${(currentLimit / (1024 * 1024)).toFixed(2)}MB)`);
 					}
 				}
 			}
@@ -648,7 +678,28 @@ export async function POST(request: NextRequest) {
 				// Si el archivo es menor a 50MB, el problema es el límite del bucket
 				if (actualSizeBytes < maxSizeBytes) {
 					return NextResponse.json({ 
-						error: `El archivo (${actualSizeKB}KB) es menor a 50MB, pero el bucket de almacenamiento tiene un límite más bajo configurado. El sistema intentará actualizar el límite automáticamente. Por favor, intenta subir el archivo nuevamente. Si el problema persiste, contacta al administrador.` 
+						error: `El archivo (${actualSizeKB}KB) es menor a 50MB, pero el bucket de almacenamiento "report-templates" tiene un límite más bajo configurado.`,
+						errorCode: 'BUCKET_SIZE_LIMIT',
+						fileSize: {
+							bytes: actualSizeBytes,
+							kb: parseFloat(actualSizeKB),
+							mb: parseFloat(actualSizeMB)
+						},
+						instructions: {
+							title: 'Cómo solucionar este problema:',
+							steps: [
+								'1. Ve al dashboard de Supabase (https://supabase.com/dashboard)',
+								'2. Selecciona tu proyecto',
+								'3. Navega a: Storage > Buckets',
+								'4. Haz clic en el bucket "report-templates"',
+								'5. Ve a la pestaña "Settings" o "Configuración"',
+								'6. Busca "File size limit" o "Límite de tamaño de archivo"',
+								'7. Cambia el valor a 52428800 (50MB en bytes)',
+								'8. Guarda los cambios',
+								'9. Intenta subir el archivo nuevamente'
+							],
+							note: 'Si no tienes acceso al dashboard de Supabase, contacta al administrador del sistema para que actualice el límite del bucket.'
+						}
 					}, { status: 413 });
 				} else {
 					return NextResponse.json({ 
