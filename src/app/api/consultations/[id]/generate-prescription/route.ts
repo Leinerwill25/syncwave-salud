@@ -418,11 +418,19 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 				
 				// Buscar párrafos con los atributos únicos que agregamos
 				// Aplicar 11pt SOLO a esos párrafos
+				// Usar expresiones regulares construidas con new RegExp() para evitar problemas de escape
+				const recipeParaIdPattern = new RegExp('w14:paraId="__RECIPE_PARA_[^"]+"', 'g');
+				const instruccionesParaIdPattern = new RegExp('w14:paraId="__INSTRUCCIONES_PARA_[^"]+"', 'g');
+				
+				// Buscar párrafos con el atributo de recipe
+				// Escapar correctamente las comillas dobles en la cadena de regex
+				const recipeParaRegexPattern = '(<w:p[^>]*w14:paraId="__RECIPE_PARA_[^"]+"[^>]*>)([\\s\\S]*?)(</w:p>)';
+				const recipeParaRegex = new RegExp(recipeParaRegexPattern, 'gi');
 				xmlContent = xmlContent.replace(
-					/(<w:p[^>]*w14:paraId="__RECIPE_PARA_[^"]+"[^>]*>)([\\s\\S]*?)(</w:p>)/gi,
+					recipeParaRegex,
 					(match, pStart, pContent, pEnd) => {
 						// Remover el atributo único
-						let cleanStart = pStart.replace(/\s+w14:paraId="__RECIPE_PARA_[^"]+"/, '');
+						let cleanStart = pStart.replace(recipeParaIdPattern, '');
 						
 						// Aplicar 11pt SOLO a los runs de texto dentro de este párrafo
 						let modifiedContent = pContent;
@@ -443,11 +451,15 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 					}
 				);
 				
+				// Buscar párrafos con el atributo de instrucciones
+				// Escapar correctamente las comillas dobles en la cadena de regex
+				const instruccionesParaRegexPattern = '(<w:p[^>]*w14:paraId="__INSTRUCCIONES_PARA_[^"]+"[^>]*>)([\\s\\S]*?)(</w:p>)';
+				const instruccionesParaRegex = new RegExp(instruccionesParaRegexPattern, 'gi');
 				xmlContent = xmlContent.replace(
-					/(<w:p[^>]*w14:paraId="__INSTRUCCIONES_PARA_[^"]+"[^>]*>)([\\s\\S]*?)(</w:p>)/gi,
+					instruccionesParaRegex,
 					(match, pStart, pContent, pEnd) => {
 						// Remover el atributo único
-						let cleanStart = pStart.replace(/\s+w14:paraId="__INSTRUCCIONES_PARA_[^"]+"/, '');
+						let cleanStart = pStart.replace(instruccionesParaIdPattern, '');
 						
 						// Aplicar 11pt SOLO a los runs de texto dentro de este párrafo
 						let modifiedContent = pContent;
