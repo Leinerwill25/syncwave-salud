@@ -359,8 +359,42 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 
 		// Helper function para renderizar una plantilla con datos y devolver un Buffer completo del documento Word
 		const renderTemplateToBuffer = (buffer: Buffer, data: Record<string, string>): Buffer => {
-			const zip = new PizZip(buffer);
-			const doc = new Docxtemplater(zip, {
+			// PASO 1: Modificar el XML ANTES del renderizado para marcar los párrafos que contienen {{recipe}} y {{instrucciones}}
+			const zipBefore = new PizZip(buffer);
+			const documentXmlBefore = zipBefore.files['word/document.xml'];
+			
+			if (documentXmlBefore) {
+				let xmlBefore = documentXmlBefore.asText();
+				
+				// Agregar un atributo único a los párrafos que contienen {{recipe}} o {{instrucciones}}
+				// Esto nos permitirá identificarlos exactamente después del renderizado
+				const recipePattern = /\{\{(?:recipe|receta|RECIPES|RECIPE|medicamento)\}\}/gi;
+				const instruccionesPattern = /\{\{(?:instrucciones|instructions)\}\}/gi;
+				
+				// Encontrar párrafos que contienen estas variables y agregarles un atributo único
+				xmlBefore = xmlBefore.replace(
+					/(<w:p[^>]*>)([\s\S]*?)\{\{(?:recipe|receta|RECIPES|RECIPE|medicamento)\}\}([\s\S]*?)(<\/w:p>)/gi,
+					(match, pStart, before, after, pEnd) => {
+						// Agregar un atributo único al párrafo
+						const uniqueId = `__RECIPE_PARA_${Date.now()}_${Math.random().toString(36).substring(7)}`;
+						return pStart.replace(/(<w:p[^>]*)/, `$1 w14:paraId="${uniqueId}"`) + before + '{{recipe}}' + after + pEnd;
+					}
+				);
+				
+				xmlBefore = xmlBefore.replace(
+					/(<w:p[^>]*>)([\s\S]*?)\{\{(?:instrucciones|instructions)\}\}([\s\S]*?)(<\/w:p>)/gi,
+					(match, pStart, before, after, pEnd) => {
+						// Agregar un atributo único al párrafo
+						const uniqueId = `__INSTRUCCIONES_PARA_${Date.now()}_${Math.random().toString(36).substring(7)}`;
+						return pStart.replace(/(<w:p[^>]*)/, `$1 w14:paraId="${uniqueId}"`) + before + '{{instrucciones}}' + after + pEnd;
+					}
+				);
+				
+				zipBefore.file('word/document.xml', xmlBefore);
+			}
+			
+			// PASO 2: Renderizar con el XML modificado
+			const doc = new Docxtemplater(zipBefore, {
 				paragraphLoop: true,
 				linebreaks: true,
 				delimiters: {
@@ -376,62 +410,63 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 				throw error;
 			}
 
-			// Aplicar formato: tamaño de fuente 11pt (22 half-points) SOLO a las variables {{recipe}} y {{instrucciones}}
-			// El resto del contenido de la plantilla se mantiene sin cambios
+			// DESPUÉS del renderizado: buscar párrafos con los atributos únicos y aplicar 11pt SOLO a esos
 			const zipAfterRender = doc.getZip();
 			const documentXml = zipAfterRender.files['word/document.xml'];
 			if (documentXml) {
 				let xmlContent = documentXml.asText();
 				
-				// Función para aplicar 11pt a párrafos que contienen un texto específico
-				const applyFontSizeToTextContent = (searchText: string, xml: string): string => {
-					if (!searchText || !searchText.trim()) return xml;
-					
-					// Dividir el texto en líneas para buscar cada una
-					const lines = searchText.split('\n').filter(line => line.trim());
-					
-					for (const line of lines) {
-						// Escapar caracteres especiales para regex
-						const escapedLine = line.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+				// Buscar párrafos con los atributos únicos que agregamos
+				// Aplicar 11pt SOLO a esos párrafos
+				xmlContent = xmlContent.replace(
+					/(<w:p[^>]*w14:paraId="__RECIPE_PARA_[^"]+"[^>]*>)([\\s\\S]*?)(</w:p>)/gi,
+					(match, pStart, pContent, pEnd) => {
+						// Remover el atributo único
+						let cleanStart = pStart.replace(/\s+w14:paraId="__RECIPE_PARA_[^"]+"/, '');
 						
-						// Buscar párrafos que contengan esta línea
-						// Patrón: buscar <w:p>...<w:t>texto</w:t>...</w:p>
-						const paragraphRegex = new RegExp(
-							`(<w:p[^>]*>)([\\s\\S]*?<w:t[^>]*>[^<]*${escapedLine}[^<]*</w:t>[\\s\\S]*?)(</w:p>)`,
-							'gi'
+						// Aplicar 11pt SOLO a los runs de texto dentro de este párrafo
+						let modifiedContent = pContent;
+						
+						// Agregar w:sz="22" a todos los w:rPr existentes
+						modifiedContent = modifiedContent.replace(
+							/(<w:rPr[^>]*>)(?![^<]*<w:sz\s+w:val="22")/g,
+							'$1<w:sz w:val="22"/>'
 						);
 						
-						xml = xml.replace(paragraphRegex, (match, pStart, pContent, pEnd) => {
-							// Aplicar 11pt a todos los runs de texto dentro de este párrafo
-							let modifiedContent = pContent;
-							
-							// Agregar w:sz="22" a todos los w:rPr existentes
-							modifiedContent = modifiedContent.replace(
-								/(<w:rPr[^>]*>)(?![^<]*<w:sz\s+w:val="22")/g,
-								'$1<w:sz w:val="22"/>'
-							);
-							
-							// Agregar w:rPr con w:sz a los runs que no tienen w:rPr
-							modifiedContent = modifiedContent.replace(
-								/(<w:r[^>]*>)(?![^<]*<w:rPr)(?=[^<]*<w:t)/g,
-								'$1<w:rPr><w:sz w:val="22"/></w:rPr>'
-							);
-							
-							return pStart + modifiedContent + pEnd;
-						});
+						// Agregar w:rPr con w:sz a los runs que no tienen w:rPr
+						modifiedContent = modifiedContent.replace(
+							/(<w:r[^>]*>)(?![^<]*<w:rPr)(?=[^<]*<w:t)/g,
+							'$1<w:rPr><w:sz w:val="22"/></w:rPr>'
+						);
+						
+						return cleanStart + modifiedContent + pEnd;
 					}
-					
-					return xml;
-				};
+				);
 				
-				// Aplicar formato solo a los párrafos que contienen recipe e instrucciones
-				if (recipeText) {
-					xmlContent = applyFontSizeToTextContent(recipeText, xmlContent);
-				}
-				
-				if (instruccionesText) {
-					xmlContent = applyFontSizeToTextContent(instruccionesText, xmlContent);
-				}
+				xmlContent = xmlContent.replace(
+					/(<w:p[^>]*w14:paraId="__INSTRUCCIONES_PARA_[^"]+"[^>]*>)([\\s\\S]*?)(</w:p>)/gi,
+					(match, pStart, pContent, pEnd) => {
+						// Remover el atributo único
+						let cleanStart = pStart.replace(/\s+w14:paraId="__INSTRUCCIONES_PARA_[^"]+"/, '');
+						
+						// Aplicar 11pt SOLO a los runs de texto dentro de este párrafo
+						let modifiedContent = pContent;
+						
+						// Agregar w:sz="22" a todos los w:rPr existentes
+						modifiedContent = modifiedContent.replace(
+							/(<w:rPr[^>]*>)(?![^<]*<w:sz\s+w:val="22")/g,
+							'$1<w:sz w:val="22"/>'
+						);
+						
+						// Agregar w:rPr con w:sz a los runs que no tienen w:rPr
+						modifiedContent = modifiedContent.replace(
+							/(<w:r[^>]*>)(?![^<]*<w:rPr)(?=[^<]*<w:t)/g,
+							'$1<w:rPr><w:sz w:val="22"/></w:rPr>'
+						);
+						
+						return cleanStart + modifiedContent + pEnd;
+					}
+				);
 				
 				zipAfterRender.file('word/document.xml', xmlContent);
 			}
