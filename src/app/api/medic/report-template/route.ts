@@ -508,10 +508,11 @@ export async function POST(request: NextRequest) {
 							console.warn(`[Report Template API] Método 1 error:`, updateErr?.message || updateErr);
 						}
 						
-						// Método 2: Intentar actualizar solo con fileSizeLimit (sin otros parámetros)
+						// Método 2: Intentar actualizar solo con fileSizeLimit (incluyendo public que es requerido)
 						if (!updateSuccess) {
 							try {
 								const { error: updateError2 } = await supabaseAdmin.storage.updateBucket(bucket, {
+									public: existingBucket?.public ?? false,
 									fileSizeLimit: desiredLimit,
 								});
 								if (!updateError2) {
