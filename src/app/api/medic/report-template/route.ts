@@ -452,6 +452,36 @@ export async function POST(request: NextRequest) {
 		const bucket = 'report-templates';
 		const fileExt = fileExtension;
 		
+		// Verificar que el bucket existe, si no, crearlo
+		try {
+			const { data: buckets, error: listError } = await supabaseAdmin.storage.listBuckets();
+			if (listError) {
+				console.warn('[Report Template API] Error listando buckets:', listError);
+			} else {
+				const bucketExists = buckets?.some((b) => b.name === bucket);
+				if (!bucketExists) {
+					console.log(`[Report Template API] Bucket "${bucket}" no existe, creándolo...`);
+					const { error: createError } = await supabaseAdmin.storage.createBucket(bucket, {
+						public: false,
+						fileSizeLimit: 52428800, // 50MB
+					});
+					if (createError) {
+						console.error(`[Report Template API] Error creando bucket "${bucket}":`, createError);
+						return NextResponse.json({ 
+							error: `Error al crear el bucket de almacenamiento. Por favor, contacta al administrador.` 
+						}, { status: 500 });
+					} else {
+						console.log(`[Report Template API] Bucket "${bucket}" creado exitosamente`);
+					}
+				}
+			}
+		} catch (bucketErr) {
+			console.error('[Report Template API] Error verificando/creando bucket:', bucketErr);
+			return NextResponse.json({ 
+				error: 'Error al verificar el almacenamiento. Por favor, intenta nuevamente.' 
+			}, { status: 500 });
+		}
+		
 		// Sanitizar el nombre del archivo
 		let sanitizedFileName = templateFile.name
 			.normalize('NFD')
@@ -550,16 +580,40 @@ export async function POST(request: NextRequest) {
 			const errorMessage = uploadError?.message || String(uploadError);
 			const statusCode = (uploadError as any)?.statusCode || (uploadError as any)?.status;
 			
+			// Mensajes de error más específicos
 			if (statusCode === '404' || errorMessage.includes('not found') || errorMessage.includes('bucket')) {
 				return NextResponse.json({ 
 					error: 'El bucket de almacenamiento "report-templates" no existe. Por favor, contacta al administrador para crear el bucket en Supabase Storage.' 
 				}, { status: 500 });
 			}
 			
+			if (errorMessage.includes('timeout') || errorMessage.includes('closed') || errorMessage.includes('ECONNRESET')) {
+				return NextResponse.json({ 
+					error: 'La conexión se interrumpió durante la subida. Por favor, verifica tu conexión a internet e intenta nuevamente con un archivo más pequeño si el problema persiste.' 
+				}, { status: 500 });
+			}
+			
+			if (errorMessage.includes('permission') || errorMessage.includes('unauthorized') || errorMessage.includes('403')) {
+				return NextResponse.json({ 
+					error: 'No tienes permisos para subir archivos. Por favor, contacta al administrador.' 
+				}, { status: 403 });
+			}
+			
+			if (errorMessage.includes('413') || errorMessage.includes('too large') || errorMessage.includes('size')) {
+				return NextResponse.json({ 
+					error: 'El archivo es demasiado grande. El tamaño máximo permitido es 50MB.' 
+				}, { status: 413 });
+			}
+			
+			// Error genérico con más detalles en el log
+			console.error('[Report Template API] Detalles del error de subida:', {
+				message: errorMessage,
+				statusCode,
+				error: uploadError,
+			});
+			
 			return NextResponse.json({ 
-				error: errorMessage.includes('timeout') || errorMessage.includes('closed')
-					? 'La conexión se interrumpió durante la subida. Por favor, verifica tu conexión a internet e intenta nuevamente con un archivo más pequeño si el problema persiste.' 
-					: 'Error al subir archivo. Por favor, verifica tu conexión e intenta nuevamente.' 
+				error: `Error al subir archivo: ${errorMessage}. Por favor, verifica tu conexión e intenta nuevamente. Si el problema persiste, contacta al administrador.` 
 			}, { status: 500 });
 		}
 
@@ -605,27 +659,34 @@ export async function POST(request: NextRequest) {
 				trimestre2_3: existingData.trimestre2_3 || null,
 			};
 
-			// Actualizar la variante específica
+			// Obtener datos existentes de la variante para preservar template_text
+			const existingVariantData = existingVariants[variant] || {};
+
+			// Actualizar la variante específica, preservando template_text
 			existingVariants[variant] = {
 				template_url: templateUrl,
 				template_name: templateFile.name,
-				font_family: existingVariants[variant]?.font_family || 'Arial',
-				// Preservar template_text si existe
-				template_text: existingVariants[variant]?.template_text || null,
+				font_family: existingVariantData.font_family || existingData.font_family || 'Arial',
+				// IMPORTANTE: Preservar template_text si existe
+				template_text: existingVariantData.template_text || null,
 			};
 
-			// Guardar estructura de múltiples variantes
+			// Guardar estructura de múltiples variantes, preservando otros datos de la especialidad
 			templatesBySpecialty[targetSpecialty] = {
+				...existingData, // Preservar otros campos si existen
 				variants: existingVariants,
 			};
 		} else {
 			// Plantilla simple (compatibilidad hacia atrás o especialidad no obstetricia)
+			const existingTemplateData = templatesBySpecialty[targetSpecialty] || {};
+			
+			// Preservar template_text y font_family si existen
 			templatesBySpecialty[targetSpecialty] = {
 				template_url: templateUrl,
 				template_name: templateFile.name,
-				font_family: templatesBySpecialty[targetSpecialty]?.font_family || 'Arial',
-				// Preservar template_text si existe
-				template_text: templatesBySpecialty[targetSpecialty]?.template_text || null,
+				font_family: existingTemplateData.font_family || 'Arial',
+				// IMPORTANTE: Preservar template_text si existe
+				template_text: existingTemplateData.template_text || null,
 			};
 		}
 
@@ -966,9 +1027,14 @@ export async function DELETE(request: NextRequest) {
 					delete templatesBySpecialty[targetSpecialty];
 				}
 			} else if (targetSpecialty && templatesBySpecialty[targetSpecialty]) {
-				// Eliminar toda la plantilla de la especialidad (comportamiento original)
+				// Eliminar solo el archivo Word de la plantilla, preservando template_text y otros datos
 				const templateData = templatesBySpecialty[targetSpecialty];
-				if (templateData.template_url) {
+				
+				// Verificar si es una estructura de variantes (obstetricia)
+				const isObstetricia = normalizeObstetricia(targetSpecialty);
+				const hasVariants = templateData.variants || templateData.trimestre1 || templateData.trimestre2_3;
+				
+				if (templateData.template_url || (hasVariants && !isObstetricia)) {
 					try {
 						const SUPABASE_URL = process.env.SUPABASE_URL ?? process.env.NEXT_PUBLIC_SUPABASE_URL ?? '';
 						const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY ?? '';
@@ -981,19 +1047,23 @@ export async function DELETE(request: NextRequest) {
 							const bucket = 'report-templates';
 							let filePath = '';
 
-							if (templateData.template_url.includes(bucket)) {
-								const parts = templateData.template_url.split(`${bucket}/`);
-								if (parts.length > 1) {
-									filePath = parts[1].split('?')[0];
+							// Obtener la URL del archivo a eliminar
+							const urlToDelete = templateData.template_url;
+							if (urlToDelete) {
+								if (urlToDelete.includes(bucket)) {
+									const parts = urlToDelete.split(`${bucket}/`);
+									if (parts.length > 1) {
+										filePath = parts[1].split('?')[0];
+									}
+								} else {
+									filePath = urlToDelete.replace(/^\/+/, '');
 								}
-							} else {
-								filePath = templateData.template_url.replace(/^\/+/, '');
-							}
 
-							if (filePath) {
-								const { error: deleteError } = await supabaseAdmin.storage.from(bucket).remove([filePath]);
-								if (deleteError) {
-									console.warn('[Report Template API] Error eliminando archivo de Storage:', deleteError);
+								if (filePath) {
+									const { error: deleteError } = await supabaseAdmin.storage.from(bucket).remove([filePath]);
+									if (deleteError) {
+										console.warn('[Report Template API] Error eliminando archivo de Storage:', deleteError);
+									}
 								}
 							}
 						}
@@ -1002,12 +1072,27 @@ export async function DELETE(request: NextRequest) {
 					}
 				}
 
-				// Eliminar plantilla de la especialidad específica
-				delete templatesBySpecialty[targetSpecialty];
-
-				// Si no quedan plantillas, poner null
-				if (Object.keys(templatesBySpecialty).length === 0) {
-					templatesBySpecialty = null;
+				// IMPORTANTE: Preservar template_text y otros datos, solo eliminar template_url y template_name
+				// Si tiene variantes (obstetricia), no eliminar la estructura completa
+				if (hasVariants && isObstetricia) {
+					// Para obstetricia con variantes, mantener la estructura pero limpiar solo la URL si existe
+					// (esto no debería pasar aquí, pero por seguridad)
+					if (templateData.template_url) {
+						templatesBySpecialty[targetSpecialty] = {
+							...templateData,
+							template_url: null,
+							template_name: null,
+							// Preservar template_text, font_family, y variants
+						};
+					}
+				} else {
+					// Para plantillas simples, preservar template_text y font_family, solo eliminar URL y nombre
+					templatesBySpecialty[targetSpecialty] = {
+						template_url: null,
+						template_name: null,
+						template_text: templateData.template_text || null, // PRESERVAR template_text
+						font_family: templateData.font_family || 'Arial', // PRESERVAR font_family
+					};
 				}
 
 				// Actualizar BD
