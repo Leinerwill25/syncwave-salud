@@ -110,19 +110,35 @@ export default async function ConsultorioPublicRoute({ params }: { params: Promi
 			.eq('type', 'CONSULTORIO')
 			.maybeSingle();
 
-		if (orgError || !organization) {
+		if (orgError) {
+			console.error('[Consultorio Page] Error obteniendo organización:', orgError);
+			return (
+				<div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-teal-50">
+					<div className="text-center">
+						<h1 className="text-3xl font-bold text-slate-900 mb-2">Error al cargar consultorio</h1>
+						<p className="text-slate-600">Ocurrió un error al obtener la información del consultorio.</p>
+						<p className="text-sm text-slate-500 mt-2">ID: {id}</p>
+					</div>
+				</div>
+			);
+		}
+
+		if (!organization) {
+			console.warn('[Consultorio Page] Organización no encontrada para ID:', id);
 			return (
 				<div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-teal-50">
 					<div className="text-center">
 						<h1 className="text-3xl font-bold text-slate-900 mb-2">Consultorio no encontrado</h1>
 						<p className="text-slate-600">El consultorio que buscas no existe o no está disponible.</p>
+						<p className="text-sm text-slate-500 mt-2">ID: {id}</p>
 					</div>
 				</div>
 			);
 		}
 
 		// Obtener médicos del consultorio
-		const { data: doctors } = await supabase
+		// Intentar primero con service_combos, si falla intentar sin él
+		let doctorsQuery = supabase
 			.from('user')
 			.select(`
 				id,
@@ -142,6 +158,42 @@ export default async function ConsultorioPublicRoute({ params }: { params: Promi
 			`)
 			.eq('organizationId', organization.id)
 			.eq('role', 'MEDICO');
+
+		let { data: doctors, error: doctorsError } = await doctorsQuery;
+
+		// Si la consulta falla, intentar sin service_combos
+		if (doctorsError && doctorsError.message?.includes('service_combos')) {
+			console.warn('[Consultorio Page] Campo service_combos no encontrado, intentando sin él:', doctorsError.message);
+			const fallbackQuery = supabase
+				.from('user')
+				.select(`
+					id,
+					name,
+					email,
+					medic_profile:medic_profile!fk_medic_profile_doctor (
+						id,
+						specialty,
+						private_specialty,
+						photo_url,
+						credentials,
+						services,
+						availability,
+						has_cashea
+					)
+				`)
+				.eq('organizationId', organization.id)
+				.eq('role', 'MEDICO');
+			
+			const fallbackResult = await fallbackQuery;
+			doctors = fallbackResult.data;
+			doctorsError = fallbackResult.error;
+		}
+
+		// Si aún hay error, loguear pero continuar con array vacío
+		if (doctorsError) {
+			console.error('[Consultorio Page] Error obteniendo médicos:', doctorsError);
+			// Continuar con array vacío en lugar de fallar completamente
+		}
 
 		// Normalizar clinic_profile
 		const clinicProfile = Array.isArray(organization.clinic_profile)
@@ -204,13 +256,16 @@ export default async function ConsultorioPublicRoute({ params }: { params: Promi
 			}
 
 			try {
-				serviceCombos = profile.service_combos
-					? (Array.isArray(profile.service_combos)
+				// Intentar obtener service_combos si existe
+				if (profile.service_combos !== undefined && profile.service_combos !== null) {
+					serviceCombos = Array.isArray(profile.service_combos)
 						? profile.service_combos
 						: typeof profile.service_combos === 'string'
 							? JSON.parse(profile.service_combos)
-							: [])
-					: [];
+							: [];
+				} else {
+					serviceCombos = [];
+				}
 			} catch {
 				serviceCombos = [];
 			}
