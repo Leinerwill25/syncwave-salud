@@ -138,33 +138,11 @@ export default async function ConsultorioPublicRoute({ params }: { params: Promi
 
 		// Obtener médicos del consultorio
 		// Intentar primero con service_combos, si falla intentar sin él
-		let doctorsQuery = supabase
-			.from('user')
-			.select(`
-				id,
-				name,
-				email,
-				medic_profile:medic_profile!fk_medic_profile_doctor (
-					id,
-					specialty,
-					private_specialty,
-					photo_url,
-					credentials,
-					services,
-					service_combos,
-					availability,
-					has_cashea
-				)
-			`)
-			.eq('organizationId', organization.id)
-			.eq('role', 'MEDICO');
+		let doctors: any[] | null = null;
+		let doctorsError: any = null;
 
-		let { data: doctors, error: doctorsError } = await doctorsQuery;
-
-		// Si la consulta falla, intentar sin service_combos
-		if (doctorsError && doctorsError.message?.includes('service_combos')) {
-			console.warn('[Consultorio Page] Campo service_combos no encontrado, intentando sin él:', doctorsError.message);
-			const fallbackQuery = supabase
+		try {
+			const doctorsQuery = supabase
 				.from('user')
 				.select(`
 					id,
@@ -177,22 +155,55 @@ export default async function ConsultorioPublicRoute({ params }: { params: Promi
 						photo_url,
 						credentials,
 						services,
+						service_combos,
 						availability,
 						has_cashea
 					)
 				`)
 				.eq('organizationId', organization.id)
 				.eq('role', 'MEDICO');
-			
-			const fallbackResult = await fallbackQuery;
-			doctors = fallbackResult.data;
-			doctorsError = fallbackResult.error;
+
+			const result = await doctorsQuery;
+			doctors = result.data;
+			doctorsError = result.error;
+
+			// Si la consulta falla por service_combos, intentar sin él
+			if (doctorsError && (doctorsError.message?.includes('service_combos') || doctorsError.code === 'PGRST116')) {
+				console.warn('[Consultorio Page] Campo service_combos no encontrado, intentando sin él:', doctorsError.message);
+				const fallbackQuery = supabase
+					.from('user')
+					.select(`
+						id,
+						name,
+						email,
+						medic_profile:medic_profile!fk_medic_profile_doctor (
+							id,
+							specialty,
+							private_specialty,
+							photo_url,
+							credentials,
+							services,
+							availability,
+							has_cashea
+						)
+					`)
+					.eq('organizationId', organization.id)
+					.eq('role', 'MEDICO');
+				
+				const fallbackResult = await fallbackQuery;
+				doctors = fallbackResult.data;
+				doctorsError = fallbackResult.error;
+			}
+		} catch (err) {
+			console.error('[Consultorio Page] Error en consulta de médicos:', err);
+			doctorsError = err;
 		}
 
 		// Si aún hay error, loguear pero continuar con array vacío
 		if (doctorsError) {
 			console.error('[Consultorio Page] Error obteniendo médicos:', doctorsError);
 			// Continuar con array vacío en lugar de fallar completamente
+			doctors = [];
 		}
 
 		// Normalizar clinic_profile
@@ -236,7 +247,23 @@ export default async function ConsultorioPublicRoute({ params }: { params: Promi
 		// Parsear información de médicos
 		const doctorsWithParsedData = (doctors || []).map((doctor: any) => {
 			const profile = doctor.medic_profile;
-			if (!profile) return doctor;
+			if (!profile) {
+				// Si no hay perfil, retornar doctor con estructura mínima
+				return {
+					...doctor,
+					medic_profile: {
+						id: null,
+						specialty: null,
+						private_specialty: null,
+						photo_url: null,
+						services: [],
+						serviceCombos: [],
+						credentials: {},
+						availability: {},
+						has_cashea: null,
+					},
+				};
+			}
 
 			let services: any[] = [];
 			let serviceCombos: any[] = [];
@@ -256,7 +283,7 @@ export default async function ConsultorioPublicRoute({ params }: { params: Promi
 			}
 
 			try {
-				// Intentar obtener service_combos si existe
+				// Intentar obtener service_combos si existe (puede no estar en el fallback)
 				if (profile.service_combos !== undefined && profile.service_combos !== null) {
 					serviceCombos = Array.isArray(profile.service_combos)
 						? profile.service_combos
@@ -264,6 +291,7 @@ export default async function ConsultorioPublicRoute({ params }: { params: Promi
 							? JSON.parse(profile.service_combos)
 							: [];
 				} else {
+					// Si no existe, usar array vacío
 					serviceCombos = [];
 				}
 			} catch {
@@ -291,7 +319,7 @@ export default async function ConsultorioPublicRoute({ params }: { params: Promi
 				medic_profile: {
 					...profile,
 					services,
-					serviceCombos,
+					serviceCombos, // Siempre incluimos serviceCombos, incluso si está vacío
 					credentials,
 					availability,
 				},
