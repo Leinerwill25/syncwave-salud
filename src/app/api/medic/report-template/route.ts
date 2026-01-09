@@ -618,11 +618,13 @@ export async function POST(request: NextRequest) {
 
 		// Verificar el límite del bucket una vez más antes de subir
 		// Esto ayuda a detectar si el límite se actualizó correctamente
+		const fileSizeBytes = fileBuffer.length;
+		let finalLimit: number | null = null;
+		
 		try {
 			const { data: finalBuckets } = await supabaseAdmin.storage.listBuckets();
 			const finalBucket = finalBuckets?.find((b) => b.name === bucket);
-			const finalLimit = (finalBucket as any)?.file_size_limit || (finalBucket as any)?.fileSizeLimit;
-			const fileSizeBytes = fileBuffer.length;
+			finalLimit = (finalBucket as any)?.file_size_limit || (finalBucket as any)?.fileSizeLimit || null;
 			
 			console.log(`[Report Template API] Verificación final antes de subir:`, {
 				bucket: bucket,
@@ -631,9 +633,13 @@ export async function POST(request: NextRequest) {
 				fileSizeMB: (fileSizeBytes / (1024 * 1024)).toFixed(2),
 				bucketLimit: finalLimit,
 				bucketLimitMB: finalLimit ? `${(finalLimit / (1024 * 1024)).toFixed(2)}MB` : 'no configurado',
-				withinLimit: finalLimit ? fileSizeBytes <= finalLimit : 'desconocido'
+				withinLimit: finalLimit ? fileSizeBytes <= finalLimit : 'desconocido',
+				fileIsSmall: fileSizeBytes < 52428800 // 50MB
 			});
 			
+			// Solo rechazar si el archivo claramente excede el límite detectado
+			// Si el límite es NULL o el archivo es pequeño (< 50MB), intentar subir de todas formas
+			// porque puede ser un problema de caché o configuración
 			if (finalLimit && fileSizeBytes > finalLimit) {
 				console.error(`[Report Template API] ❌ El archivo (${(fileSizeBytes / (1024 * 1024)).toFixed(2)}MB) excede el límite del bucket (${(finalLimit / (1024 * 1024)).toFixed(2)}MB)`);
 				return NextResponse.json({ 
@@ -648,6 +654,10 @@ export async function POST(request: NextRequest) {
 						mb: parseFloat((finalLimit / (1024 * 1024)).toFixed(2))
 					}
 				}, { status: 413 });
+			} else if (fileSizeBytes < 52428800) {
+				// El archivo es menor a 50MB, debería funcionar
+				// Continuar con el upload incluso si el límite no se detecta correctamente
+				console.log(`[Report Template API] ✅ Archivo pequeño (${(fileSizeBytes / (1024 * 1024)).toFixed(2)}MB), continuando con el upload...`);
 			}
 		} catch (verifyErr) {
 			console.warn(`[Report Template API] No se pudo verificar el límite final del bucket, continuando con el upload:`, verifyErr);
