@@ -175,63 +175,74 @@ function PrescriptionItemsEditor({ items, setItems }: { items: Item[]; setItems:
 			<div className="space-y-3">
 				{items.length === 0 && <div className="text-sm text-slate-700">No hay ítems — añade medicamentos o instrucciones.</div>}
 
-				{items.map((it) => (
-					<div key={it.id} className="border border-blue-100 rounded-lg p-3 bg-blue-50/50 grid grid-cols-1 md:grid-cols-6 gap-3 items-start">
-						<div className="md:col-span-2">
-							<label className="text-xs text-slate-800 font-medium">Medicamento</label>
-							<input className="w-full mt-1 px-3 py-2 rounded-md border border-blue-200 bg-white text-slate-900" placeholder="Nombre (ej. Amoxicilina)" value={it.name} onChange={(e) => update(it.id, { name: e.target.value })} required />
-						</div>
-
-						<div className="md:col-span-1">
-							<label className="text-xs text-slate-800 font-medium">Presentación</label>
-							<select className="w-full mt-1 px-3 py-2 rounded-md border border-blue-200 bg-white text-slate-900" value={it.form || ''} onChange={(e) => update(it.id, { form: e.target.value })}>
-								<option value="">Seleccionar...</option>
-								{medicationForms.map((group) => (
-									<optgroup key={group.title} label={group.title}>
-										{group.options.map((option) => (
-											<option key={option.value} value={option.value}>
-												{option.label}
-											</option>
-										))}
-									</optgroup>
-								))}
-							</select>
-						</div>
-
-						<div className="md:col-span-1">
-							<label className="text-xs text-slate-800 font-medium">Dosis</label>
-							<input className="w-full mt-1 px-3 py-2 rounded-md border border-blue-200 bg-white text-slate-900" placeholder="500 mg" value={it.dosage} onChange={(e) => update(it.id, { dosage: e.target.value })} />
-						</div>
-
-						<div className="md:col-span-2 grid grid-cols-2 gap-2">
-							<div>
-								<label className="text-xs text-slate-800 font-medium">Cada cuántas horas</label>
-								<input type="number" min="1" max="24" className="w-full mt-1 px-3 py-2 rounded-md border border-blue-200 bg-white text-slate-900" placeholder="Ej: 8" value={it.frequencyHours ?? ''} onChange={(e) => update(it.id, { frequencyHours: e.target.value ? parseInt(e.target.value, 10) : null })} />
-							</div>
-							<div>
-								<label className="text-xs text-slate-800 font-medium">Por cuántos días</label>
-								<input type="number" min="1" className="w-full mt-1 px-3 py-2 rounded-md border border-blue-200 bg-white text-slate-900" placeholder="Ej: 7" value={it.frequencyDays ?? ''} onChange={(e) => update(it.id, { frequencyDays: e.target.value ? parseInt(e.target.value, 10) : null })} />
-							</div>
-							{it.frequency && <div className="col-span-2 text-xs text-slate-600 mt-1 italic">{it.frequency}</div>}
-						</div>
-
-						<div className="md:col-span-1 flex flex-col items-end gap-2">
-							<label className="text-xs text-slate-800 font-medium">Cant.</label>
-							<div className="w-full">
-								<input type="number" min={1} className="w-full mt-1 px-3 py-2 rounded-md border border-blue-200 bg-white text-slate-900 text-right" value={it.quantity ?? 1} onChange={(e) => update(it.id, { quantity: Number(e.target.value) })} />
+				{items.map((it) => {
+					// Detectar si el item está guardado en BD (tiene ID de UUID, no temporal)
+					const isSaved = it.id && it.id.length > 10 && !it.id.startsWith('it_');
+					return (
+						<div key={it.id} className={`border rounded-lg p-3 grid grid-cols-1 md:grid-cols-6 gap-3 items-start ${isSaved ? 'border-green-300 bg-green-50/50' : 'border-blue-100 bg-blue-50/50'}`}>
+							{isSaved && (
+								<div className="md:col-span-6 mb-2">
+									<span className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-green-100 text-green-800 text-xs font-medium">
+										<FileCheck size={12} /> Guardado en base de datos
+									</span>
+								</div>
+							)}
+							<div className="md:col-span-2">
+								<label className="text-xs text-slate-800 font-medium">Medicamento</label>
+								<input className="w-full mt-1 px-3 py-2 rounded-md border border-blue-200 bg-white text-slate-900" placeholder="Nombre (ej. Amoxicilina)" value={it.name} onChange={(e) => update(it.id, { name: e.target.value })} required />
 							</div>
 
-							<button type="button" onClick={() => remove(it.id)} className="mt-2 inline-flex items-center gap-2 px-3 py-1 rounded-md bg-rose-600 text-white hover:bg-rose-700" aria-label={`Eliminar item ${it.name}`}>
-								<Trash size={14} /> Eliminar
-							</button>
-						</div>
+							<div className="md:col-span-1">
+								<label className="text-xs text-slate-800 font-medium">Presentación</label>
+								<select className="w-full mt-1 px-3 py-2 rounded-md border border-blue-200 bg-white text-slate-900" value={it.form || ''} onChange={(e) => update(it.id, { form: e.target.value })}>
+									<option value="">Seleccionar...</option>
+									{medicationForms.map((group) => (
+										<optgroup key={group.title} label={group.title}>
+											{group.options.map((option) => (
+												<option key={option.value} value={option.value}>
+													{option.label}
+												</option>
+											))}
+										</optgroup>
+									))}
+								</select>
+							</div>
 
-						<div className="md:col-span-6">
-							<label className="text-xs text-slate-800 font-medium">Instrucciones</label>
-							<input className="w-full mt-1 px-3 py-2 rounded-md border border-blue-200 bg-white text-slate-900" placeholder="Tomar con alimentos, evitar alcohol, etc." value={it.instructions} onChange={(e) => update(it.id, { instructions: e.target.value })} />
+							<div className="md:col-span-1">
+								<label className="text-xs text-slate-800 font-medium">Dosis</label>
+								<input className="w-full mt-1 px-3 py-2 rounded-md border border-blue-200 bg-white text-slate-900" placeholder="500 mg" value={it.dosage} onChange={(e) => update(it.id, { dosage: e.target.value })} />
+							</div>
+
+							<div className="md:col-span-2 grid grid-cols-2 gap-2">
+								<div>
+									<label className="text-xs text-slate-800 font-medium">Cada cuántas horas</label>
+									<input type="number" min="1" max="24" className="w-full mt-1 px-3 py-2 rounded-md border border-blue-200 bg-white text-slate-900" placeholder="Ej: 8" value={it.frequencyHours ?? ''} onChange={(e) => update(it.id, { frequencyHours: e.target.value ? parseInt(e.target.value, 10) : null })} />
+								</div>
+								<div>
+									<label className="text-xs text-slate-800 font-medium">Por cuántos días</label>
+									<input type="number" min="1" className="w-full mt-1 px-3 py-2 rounded-md border border-blue-200 bg-white text-slate-900" placeholder="Ej: 7" value={it.frequencyDays ?? ''} onChange={(e) => update(it.id, { frequencyDays: e.target.value ? parseInt(e.target.value, 10) : null })} />
+								</div>
+								{it.frequency && <div className="col-span-2 text-xs text-slate-600 mt-1 italic">{it.frequency}</div>}
+							</div>
+
+							<div className="md:col-span-1 flex flex-col items-end gap-2">
+								<label className="text-xs text-slate-800 font-medium">Cant.</label>
+								<div className="w-full">
+									<input type="number" min={1} className="w-full mt-1 px-3 py-2 rounded-md border border-blue-200 bg-white text-slate-900 text-right" value={it.quantity ?? 1} onChange={(e) => update(it.id, { quantity: Number(e.target.value) })} />
+								</div>
+
+								<button type="button" onClick={() => remove(it.id)} className="mt-2 inline-flex items-center gap-2 px-3 py-1 rounded-md bg-rose-600 text-white hover:bg-rose-700" aria-label={`Eliminar item ${it.name}`}>
+									<Trash size={14} /> Eliminar
+								</button>
+							</div>
+
+							<div className="md:col-span-6">
+								<label className="text-xs text-slate-800 font-medium">Instrucciones</label>
+								<input className="w-full mt-1 px-3 py-2 rounded-md border border-blue-200 bg-white text-slate-900" placeholder="Tomar con alimentos, evitar alcohol, etc." value={it.instructions} onChange={(e) => update(it.id, { instructions: e.target.value })} />
+							</div>
 						</div>
-					</div>
-				))}
+					);
+				})}
 			</div>
 		</div>
 	);
@@ -264,7 +275,7 @@ export default function PrescriptionForm({ consultationId, patientId, unregister
 	];
 
 	// Función para cargar items de prescripción desde la base de datos
-	const loadPrescriptionItems = async () => {
+	const loadPrescriptionItems = async (preserveNewItems = false) => {
 		try {
 			const res = await fetch(`/api/consultations/${consultationId}/prescription-items`, {
 				method: 'GET',
@@ -273,7 +284,7 @@ export default function PrescriptionForm({ consultationId, patientId, unregister
 
 			if (res.ok) {
 				const data = await res.json();
-				if (data.items && Array.isArray(data.items)) {
+				if (data.items && Array.isArray(data.items) && data.items.length > 0) {
 					const loadedItems: Item[] = data.items.map((item: any) => {
 						// Parsear frecuencia antigua si existe
 						const parsed = parseOldFrequency(item.frequency);
@@ -290,7 +301,16 @@ export default function PrescriptionForm({ consultationId, patientId, unregister
 							instructions: item.instructions || '',
 						};
 					});
-					setItems(loadedItems);
+
+					if (preserveNewItems) {
+						// Si se debe preservar items nuevos, combinar (evitar duplicados por ID)
+						const existingIds = new Set(loadedItems.map((i) => i.id));
+						const newItems = items.filter((i) => !i.id || i.id.startsWith('it_') || !existingIds.has(i.id));
+						setItems([...loadedItems, ...newItems]);
+					} else {
+						// Reemplazar completamente (carga inicial)
+						setItems(loadedItems);
+					}
 					setIsEditMode(true);
 				}
 			}
@@ -300,7 +320,16 @@ export default function PrescriptionForm({ consultationId, patientId, unregister
 		}
 	};
 
-	// Cargar datos existentes si hay prescripción
+	// Cargar datos existentes si hay prescripción o al montar el componente
+	useEffect(() => {
+		// Cargar items guardados automáticamente al montar el componente
+		if (consultationId) {
+			loadPrescriptionItems();
+		}
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [consultationId]);
+
+	// También cargar si hay prescripción existente pasada como prop
 	useEffect(() => {
 		if (existingPrescription) {
 			setIsEditMode(true);
@@ -457,57 +486,8 @@ export default function PrescriptionForm({ consultationId, patientId, unregister
 				</div>
 			</div>
 
-			{/* Items editor */}
+			{/* Items editor - muestra todos los items (guardados + nuevos) como cards editables */}
 			<PrescriptionItemsEditor items={items} setItems={setItems} />
-
-			{/* Sección de medicamentos guardados - solo mostrar si hay items y estamos en modo edición */}
-			{isEditMode && items.length > 0 && (
-				<div className="rounded-2xl bg-gradient-to-br from-green-50 to-emerald-50 border border-green-200 p-6 shadow-lg">
-					<div className="flex items-center gap-3 mb-4">
-						<FileCheck className="w-6 h-6 text-green-600" />
-						<h3 className="text-lg font-semibold text-slate-900">Medicamentos Guardados en la Receta</h3>
-					</div>
-					<p className="text-sm text-slate-700 mb-4">Los siguientes medicamentos ya están guardados en la receta de esta consulta:</p>
-					<div className="space-y-3">
-						{items.map((item) => (
-							<div key={item.id} className="bg-white rounded-lg border border-green-200 p-4 shadow-sm hover:shadow-md transition-shadow">
-								<div className="flex items-start justify-between gap-4">
-									<div className="flex-1">
-										<div className="flex items-center gap-2 mb-2">
-											<h4 className="font-semibold text-slate-900">{item.name || 'Medicamento'}</h4>
-											{item.dosage && <span className="text-sm text-slate-600 bg-slate-100 px-2 py-1 rounded">{item.dosage}</span>}
-											{item.form && <span className="text-sm text-slate-600 bg-slate-100 px-2 py-1 rounded">{item.form}</span>}
-										</div>
-										<div className="text-sm text-slate-700 space-y-1">
-											{item.frequency && (
-												<div>
-													<span className="font-medium">Frecuencia:</span> {item.frequency}
-												</div>
-											)}
-											{item.duration && (
-												<div>
-													<span className="font-medium">Duración:</span> {item.duration}
-												</div>
-											)}
-											{item.quantity && (
-												<div>
-													<span className="font-medium">Cantidad:</span> {item.quantity}
-												</div>
-											)}
-											{item.instructions && (
-												<div>
-													<span className="font-medium">Instrucciones:</span> {item.instructions}
-												</div>
-											)}
-										</div>
-									</div>
-								</div>
-							</div>
-						))}
-					</div>
-					<p className="text-xs text-slate-600 mt-4 italic">💡 Puedes agregar más medicamentos usando el formulario arriba y guardarlos nuevamente.</p>
-				</div>
-			)}
 
 			{/* Prescription Generation Section - Always visible when there are items */}
 			{items.length > 0 && (
@@ -656,7 +636,8 @@ export default function PrescriptionForm({ consultationId, patientId, unregister
 									}
 
 									// Recargar los items desde la base de datos para mostrarlos
-									await loadPrescriptionItems();
+									// Preservar cualquier item nuevo que el usuario haya agregado
+									await loadPrescriptionItems(true);
 
 									setSuccess('Receta guardada exitosamente en la base de datos. El paciente podrá visualizarla desde su panel.');
 								} catch (err: any) {
