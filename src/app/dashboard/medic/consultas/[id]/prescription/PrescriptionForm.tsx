@@ -463,7 +463,7 @@ export default function PrescriptionForm({ consultationId, patientId, unregister
 										return {
 											name: item.name,
 											dosage: item.dosage,
-											form: '', // Campo no usado actualmente en el formulario
+											form: item.form || '', // Incluir forma/presentación del medicamento
 											frequency: frequencyText,
 											duration: item.duration,
 											quantity: item.quantity,

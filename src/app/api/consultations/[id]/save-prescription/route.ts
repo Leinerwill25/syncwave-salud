@@ -27,29 +27,79 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 			return NextResponse.json({ error: 'prescriptionUrl es requerido' }, { status: 400 });
 		}
 
+		// Obtener la consulta para obtener datos del paciente
+		const { data: consultation, error: consultationError } = await supabase
+			.from('consultation')
+			.select('id, patient_id, unregistered_patient_id, doctor_id')
+			.eq('id', id)
+			.single();
+
+		if (consultationError || !consultation) {
+			console.error('[Save Prescription API] Error obteniendo consulta:', consultationError);
+			return NextResponse.json({ error: 'Error al obtener consulta' }, { status: 500 });
+		}
+
+		// Verificar que el médico sea el dueño de la consulta
+		if (consultation.doctor_id !== doctorId) {
+			return NextResponse.json({ error: 'No autorizado' }, { status: 403 });
+		}
+
 		// Obtener la prescripción asociada a esta consulta
-		const { data: prescription, error: prescriptionError } = await supabase.from('prescription').select('id, doctor_id, consultation_id').eq('consultation_id', id).order('created_at', { ascending: false }).limit(1).maybeSingle();
+		let { data: prescription, error: prescriptionError } = await supabase
+			.from('prescription')
+			.select('id, doctor_id, consultation_id')
+			.eq('consultation_id', id)
+			.order('created_at', { ascending: false })
+			.limit(1)
+			.maybeSingle();
 
 		if (prescriptionError) {
 			console.error('[Save Prescription API] Error obteniendo prescripción:', prescriptionError);
 			return NextResponse.json({ error: 'Error al obtener prescripción' }, { status: 500 });
 		}
 
+		// Si no existe prescripción, crearla
 		if (!prescription) {
-			return NextResponse.json({ error: 'No se encontró una prescripción asociada a esta consulta' }, { status: 404 });
-		}
+			console.log('[Save Prescription API] No se encontró prescripción, creando una nueva...');
+			const prescriptionPayload: any = {
+				doctor_id: doctorId,
+				consultation_id: id,
+				patient_id: consultation.patient_id || null,
+				unregistered_patient_id: consultation.unregistered_patient_id || null,
+				prescription_url: prescriptionUrl,
+				status: 'ACTIVE',
+			};
 
-		// Verificar que el médico sea el dueño de la prescripción
-		if (prescription.doctor_id !== doctorId) {
-			return NextResponse.json({ error: 'No autorizado' }, { status: 403 });
-		}
+			const { data: newPrescription, error: createError } = await supabase
+				.from('prescription')
+				.insert([prescriptionPayload])
+				.select('id')
+				.single();
 
-		// Actualizar prescripción con la URL del archivo generado
-		const { error: updateError } = await supabase.from('prescription').update({ prescription_url: prescriptionUrl }).eq('id', prescription.id);
+			if (createError || !newPrescription) {
+				console.error('[Save Prescription API] Error creando prescripción:', createError);
+				return NextResponse.json({ error: 'Error al crear prescripción' }, { status: 500 });
+			}
 
-		if (updateError) {
-			console.error('[Save Prescription API] Error actualizando prescripción:', updateError);
-			return NextResponse.json({ error: 'Error al guardar URL de receta' }, { status: 500 });
+			console.log('[Save Prescription API] Prescripción creada exitosamente:', newPrescription.id);
+		} else {
+			// Verificar que el médico sea el dueño de la prescripción
+			if (prescription.doctor_id !== doctorId) {
+				return NextResponse.json({ error: 'No autorizado' }, { status: 403 });
+			}
+
+			// Actualizar prescripción existente con la URL del archivo generado
+			const { error: updateError } = await supabase
+				.from('prescription')
+				.update({ prescription_url: prescriptionUrl })
+				.eq('id', prescription.id);
+
+			if (updateError) {
+				console.error('[Save Prescription API] Error actualizando prescripción:', updateError);
+				return NextResponse.json({ error: 'Error al guardar URL de receta' }, { status: 500 });
+			}
+
+			console.log('[Save Prescription API] Prescripción actualizada exitosamente:', prescription.id);
 		}
 
 		return NextResponse.json({

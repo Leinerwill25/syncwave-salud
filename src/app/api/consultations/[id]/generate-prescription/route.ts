@@ -187,10 +187,14 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 		// prescriptionItems, prescriptionNotes ya están obtenidos arriba
 
 		// Formatear todos los medicamentos para el récipe (en una sola sección)
-		// SOLO el nombre del medicamento, uno por línea, sin información adicional
+		// Incluir: nombre del medicamento + presentación (form) + gramaje (dosage)
 		const medicamentosFormateados = prescriptionItems.map((item: any) => {
-			// Solo el nombre del medicamento en mayúsculas
-			return `${item.name || 'Medicamento'}`.toUpperCase();
+			const nombre = (item.name || 'Medicamento').toUpperCase();
+			const presentacion = item.form ? ` ${item.form.toUpperCase()}` : '';
+			const gramaje = item.dosage ? ` ${item.dosage.toUpperCase()}` : '';
+			// Formato: "NOMBRE PRESENTACION GRAMAJE"
+			// Ejemplo: "CIPROFLOXACINA TABLETAS 500MG"
+			return `${nombre}${presentacion}${gramaje}`.trim();
 		});
 
 		// Variable {{recipe}} o {{receta}}: todos los medicamentos juntos, uno por línea
@@ -372,19 +376,63 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 				throw error;
 			}
 
-			// Aplicar formato: tamaño de fuente 11pt (22 half-points)
+			// Aplicar formato: tamaño de fuente 11pt (22 half-points) SOLO a las variables {{recipe}} y {{instrucciones}}
+			// El resto del contenido de la plantilla se mantiene sin cambios
 			const zipAfterRender = doc.getZip();
 			const documentXml = zipAfterRender.files['word/document.xml'];
 			if (documentXml) {
 				let xmlContent = documentXml.asText();
-				// Cambiar tamaño de fuente a 11pt (22 half-points)
-				xmlContent = xmlContent.replace(/<w:sz\s+w:val="\d+"/g, '<w:sz w:val="22"');
-				xmlContent = xmlContent.replace(/(<w:rPr[^>]*>)(?![^<]*<w:sz)/g, '$1<w:sz w:val="22"/>');
-				xmlContent = xmlContent.replace(/<w:rFonts[^>]*>/g, `<w:rFonts w:ascii="${selectedFont}" w:hAnsi="${selectedFont}" w:cs="${selectedFont}"/>`);
-				xmlContent = xmlContent.replace(/(<w:rPr[^>]*>)(?![^<]*<w:rFonts)/g, `$1<w:rFonts w:ascii="${selectedFont}" w:hAnsi="${selectedFont}" w:cs="${selectedFont}"/>`);
-				xmlContent = xmlContent.replace(/<w:jc\s+w:val="both"/g, '<w:jc w:val="left"');
-				xmlContent = xmlContent.replace(/<w:jc\s+w:val="(center|right|distribute|distributeAll)"/g, '<w:jc w:val="left"');
-				xmlContent = xmlContent.replace(/(<w:pPr[^>]*>)(?![^<]*<w:jc)/g, '$1<w:jc w:val="left"/>');
+				
+				// Función para aplicar 11pt a párrafos que contienen un texto específico
+				const applyFontSizeToTextContent = (searchText: string, xml: string): string => {
+					if (!searchText || !searchText.trim()) return xml;
+					
+					// Dividir el texto en líneas para buscar cada una
+					const lines = searchText.split('\n').filter(line => line.trim());
+					
+					for (const line of lines) {
+						// Escapar caracteres especiales para regex
+						const escapedLine = line.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+						
+						// Buscar párrafos que contengan esta línea
+						// Patrón: buscar <w:p>...<w:t>texto</w:t>...</w:p>
+						const paragraphRegex = new RegExp(
+							`(<w:p[^>]*>)([\\s\\S]*?<w:t[^>]*>[^<]*${escapedLine}[^<]*</w:t>[\\s\\S]*?)(</w:p>)`,
+							'gi'
+						);
+						
+						xml = xml.replace(paragraphRegex, (match, pStart, pContent, pEnd) => {
+							// Aplicar 11pt a todos los runs de texto dentro de este párrafo
+							let modifiedContent = pContent;
+							
+							// Agregar w:sz="22" a todos los w:rPr existentes
+							modifiedContent = modifiedContent.replace(
+								/(<w:rPr[^>]*>)(?![^<]*<w:sz\s+w:val="22")/g,
+								'$1<w:sz w:val="22"/>'
+							);
+							
+							// Agregar w:rPr con w:sz a los runs que no tienen w:rPr
+							modifiedContent = modifiedContent.replace(
+								/(<w:r[^>]*>)(?![^<]*<w:rPr)(?=[^<]*<w:t)/g,
+								'$1<w:rPr><w:sz w:val="22"/></w:rPr>'
+							);
+							
+							return pStart + modifiedContent + pEnd;
+						});
+					}
+					
+					return xml;
+				};
+				
+				// Aplicar formato solo a los párrafos que contienen recipe e instrucciones
+				if (recipeText) {
+					xmlContent = applyFontSizeToTextContent(recipeText, xmlContent);
+				}
+				
+				if (instruccionesText) {
+					xmlContent = applyFontSizeToTextContent(instruccionesText, xmlContent);
+				}
+				
 				zipAfterRender.file('word/document.xml', xmlContent);
 			}
 
