@@ -73,7 +73,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 			const { data: newPrescription, error: createError } = await supabase
 				.from('prescription')
 				.insert([prescriptionPayload])
-				.select('id')
+				.select('id, doctor_id, consultation_id')
 				.single();
 
 			if (createError || !newPrescription) {
@@ -81,7 +81,11 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 				return NextResponse.json({ error: 'Error al crear prescripción' }, { status: 500 });
 			}
 
-			prescription = newPrescription;
+			prescription = {
+				id: newPrescription.id,
+				doctor_id: newPrescription.doctor_id,
+				consultation_id: newPrescription.consultation_id,
+			};
 			console.log('[Save Prescription API] Prescripción creada exitosamente:', prescription.id);
 		} else {
 			// Verificar que el médico sea el dueño de la prescripción
