@@ -1460,10 +1460,21 @@ export default function EditConsultationForm({ initial, patient, doctor, doctorS
 				throw new Error(data.error || 'Error al generar informe');
 			}
 
+			// Verificar que report_url existe en la respuesta
+			if (!data.report_url) {
+				console.error('[Generate Report] No se recibió report_url en la respuesta:', data);
+				throw new Error('No se recibió la URL del informe generado');
+			}
+
+			console.log('[Generate Report] Informe generado exitosamente, URL:', data.report_url);
+			// Actualizar estados en el orden correcto
+			setReportError(null); // Limpiar cualquier error previo primero
+			setReportUrl(data.report_url); // Actualizar URL del informe
 			setReportSuccess('Informe generado exitosamente. Puedes descargarlo o guardarlo en el historial del paciente.');
-			setReportUrl(data.report_url);
 		} catch (err: any) {
+			console.error('[Generate Report] Error:', err);
 			setReportError(err?.message ?? String(err));
+			setReportUrl(null); // Asegurar que reportUrl se limpia en caso de error
 		} finally {
 			setGeneratingReport(false);
 		}
@@ -4563,16 +4574,16 @@ export default function EditConsultationForm({ initial, patient, doctor, doctorS
 											)}
 										</button>
 
-										{reportUrl && (
+										{reportUrl ? (
 											<a href={reportUrl} target="_blank" rel="noopener noreferrer" className="flex-1 inline-flex items-center justify-center gap-2 px-6 py-3 rounded-lg bg-gradient-to-r from-emerald-600 to-teal-600 text-white font-semibold shadow-lg hover:shadow-xl hover:scale-[1.02] transition-all">
 												<Download size={18} />
 												Descargar Informe
 											</a>
-										)}
+										) : null}
 									</div>
 
 									{/* Fila 2: Guardar Informe (debajo de Descargar) */}
-									{reportUrl && (
+									{reportUrl ? (
 										<button type="button" onClick={handleSaveReport} disabled={savingReport} className="w-full inline-flex items-center justify-center gap-2 px-6 py-3 rounded-lg bg-gradient-to-r from-teal-600 to-cyan-600 text-white font-semibold shadow-lg hover:shadow-xl hover:scale-[1.02] transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100">
 											{savingReport ? (
 												<>
@@ -4586,7 +4597,7 @@ export default function EditConsultationForm({ initial, patient, doctor, doctorS
 												</>
 											)}
 										</button>
-									)}
+									) : null}
 								</div>
 							</div>
 						</div>
