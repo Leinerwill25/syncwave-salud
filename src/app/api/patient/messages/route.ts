@@ -25,6 +25,8 @@ export async function GET(request: Request) {
 				.from('message')
 				.select(`
 					conversation_id,
+					body,
+					created_at,
 					conversation:conversation_id (
 						id,
 						title,

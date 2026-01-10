@@ -49,7 +49,7 @@ type PrescriptionData = {
 type PrescriptionFile = {
 	prescription_id: string;
 	url: string;
-	file_name: string;
+	file_name?: string;
 };
 
 type MedicalRecordData = {
@@ -69,7 +69,7 @@ type ConsultationWithRecord = {
 type AuthorData = {
 	id: string;
 	name: string | null;
-	email: string | null;
+	email?: string | null;
 };
 
 type ParsedConsultation = ConsultationData & {
