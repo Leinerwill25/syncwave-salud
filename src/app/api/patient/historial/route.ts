@@ -17,11 +17,10 @@ type ConsultationData = {
 	notes: string | null;
 	vitals: unknown;
 	created_at: string;
-	updated_at: string;
+	updated_at?: string;
 	doctor: {
 		id: string;
 		name: string | null;
-		email: string | null;
 	} | null;
 	appointment: {
 		id: string;
@@ -129,7 +128,7 @@ export async function GET(request: Request) {
 		// Obtener prescripciones relacionadas con las consultas (optimizado)
 		interface ConsultationWithRelations {
 			id: string;
-			doctor?: { id: string; name: string | null; email: string | null } | { id: string; name: string | null; email: string | null }[];
+			doctor?: { id: string; name: string | null } | { id: string; name: string | null }[];
 			appointment?: unknown | unknown[];
 			[key: string]: unknown;
 		}
@@ -307,8 +306,8 @@ export async function GET(request: Request) {
 				notes: (c.notes as string) || null,
 				vitals: safeParseJson(c.vitals),
 				created_at: c.created_at as string,
-				updated_at: c.updated_at as string,
-				doctor: doctor as { id: string; name: string | null; email: string | null } | null,
+				updated_at: (c.updated_at as string) || c.created_at as string,
+				doctor: doctor ? { id: doctor.id, name: doctor.name } : null,
 				appointment: appointment as { id: string; reason: string | null; scheduled_at: string | null } | null,
 				prescriptions: prescriptionsMap[c.id as string] || [],
 				attachments: consultationAttachmentsMap[c.id as string] || [],
