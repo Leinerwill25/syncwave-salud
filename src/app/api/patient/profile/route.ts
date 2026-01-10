@@ -13,6 +13,7 @@ export async function GET() {
 
 		return NextResponse.json({
 			id: patient.patient.id,
+			name: `${patient.patient.firstName || ''} ${patient.patient.lastName || ''}`.trim() || 'Paciente',
 			firstName: patient.patient.firstName,
 			lastName: patient.patient.lastName,
 			identifier: patient.patient.identifier,

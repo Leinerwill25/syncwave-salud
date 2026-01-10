@@ -32,7 +32,7 @@ export async function GET(
 			groupId = patientGroup.id;
 		} else {
 			const { data: membership } = await supabase
-				.from('FamilyGroupMember')
+				.from('familygroupmember')
 				.select('familyGroupId')
 				.eq('patientId', patient.patientId)
 				.maybeSingle();
@@ -48,7 +48,7 @@ export async function GET(
 		// Verificar que el miembro pertenece al mismo grupo
 		if (memberPatientId !== patient.patientId) {
 			const { data: memberGroup } = await supabase
-				.from('FamilyGroupMember')
+				.from('familygroupmember')
 				.select('familyGroupId')
 				.eq('patientId', memberPatientId)
 				.maybeSingle();
@@ -81,7 +81,7 @@ export async function GET(
 					diagnosis,
 					notes,
 					vitals,
-					doctor:User!fk_consultation_doctor (
+					doctor:doctor_id (
 						id,
 						name
 					)
@@ -95,7 +95,7 @@ export async function GET(
 					issued_at,
 					status,
 					notes,
-					prescription_item:prescription_item!fk_prescriptionitem_prescription (
+					prescription_item (
 						id,
 						name,
 						dosage,

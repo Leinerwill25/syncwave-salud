@@ -39,12 +39,12 @@ export async function POST(
 				scheduled_at,
 				status,
 				reason,
-				doctor:User!fk_appointment_doctor (
+				doctor:doctor_id (
 					id,
 					name,
 					email
 				),
-				Patient:patient_id (
+				patient:patient_id (
 					firstName,
 					lastName
 				)
@@ -124,9 +124,9 @@ export async function POST(
 					: appointment.doctor as DoctorInfo | undefined;
 				const doctorName = doctor?.name || 'Médico';
 				
-				const patientInfo: PatientInfo | undefined = Array.isArray(appointment.Patient)
-					? appointment.Patient[0] as PatientInfo
-					: appointment.Patient as PatientInfo | undefined;
+				const patientInfo: PatientInfo | undefined = Array.isArray(appointment.patient)
+					? appointment.patient[0] as PatientInfo
+					: appointment.patient as PatientInfo | undefined;
 				const patientName = patientInfo 
 					? `${patientInfo.firstName || ''} ${patientInfo.lastName || ''}`.trim() || 'Paciente'
 					: 'Paciente';

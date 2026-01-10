@@ -27,7 +27,7 @@ export async function GET(
 			.from('clinic_profile')
 			.select(`
 				*,
-				organization:Organization!clinic_profile_org_fk (
+				organization:organization_id (
 					id,
 					name,
 					type
@@ -42,7 +42,7 @@ export async function GET(
 				.from('clinic_profile')
 				.select(`
 					*,
-					organization:Organization!clinic_profile_org_fk (
+					organization:organization_id (
 						id,
 						name,
 						type
@@ -66,7 +66,7 @@ export async function GET(
 					contactEmail,
 					phone,
 					address,
-					clinic_profile:clinic_profile!clinic_profile_org_fk (
+					clinic_profile:organization_id (
 						id,
 						organization_id,
 						legal_name,
@@ -159,7 +159,7 @@ export async function GET(
 				id,
 				name,
 				email,
-				medic_profile:medic_profile!fk_medic_profile_doctor (
+				medic_profile (
 					specialty,
 					private_specialty,
 					photo_url,

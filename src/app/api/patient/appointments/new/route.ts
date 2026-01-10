@@ -76,7 +76,7 @@ export async function POST(request: Request) {
 
 			// Verificar que el paciente pertenece al grupo familiar
 			const { data: membership } = await supabase
-				.from('FamilyGroupMember')
+				.from('familygroupmember')
 				.select('id')
 				.eq('familyGroupId', familyGroup.id)
 				.eq('patientId', patient_id)

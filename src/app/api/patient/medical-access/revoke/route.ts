@@ -25,7 +25,7 @@ export async function POST(request: Request) {
 
 		// Revocar el grant (marcar como inactivo)
 		const { data: revokedGrant, error: revokeError } = await supabase
-			.from('MedicalAccessGrant')
+			.from('medicalaccessgrant')
 			.update({
 				is_active: false,
 				revoked_at: new Date().toISOString(),

@@ -34,7 +34,7 @@ export async function POST(request: Request) {
 
 		// Verificar que el miembro pertenece al grupo
 		const { data: member } = await supabase
-			.from('FamilyGroupMember')
+			.from('familygroupmember')
 			.select('id, patientId')
 			.eq('id', memberId)
 			.eq('familyGroupId', familyGroup.id)
@@ -51,7 +51,7 @@ export async function POST(request: Request) {
 
 		// Eliminar miembro
 		const { error: deleteError } = await supabase
-			.from('FamilyGroupMember')
+			.from('familygroupmember')
 			.delete()
 			.eq('id', memberId);
 

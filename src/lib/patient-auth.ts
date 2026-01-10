@@ -128,38 +128,41 @@ export async function getAuthenticatedPatient(): Promise<{
 		const cookieStore = await cookies();
 		const supabase = await createSupabaseServerClient();
 
-		let accessTokenFromCookie: string | null = null;
-		try {
-			const sbAccessToken = cookieStore.get('sb-access-token');
-			if (sbAccessToken?.value) {
-				accessTokenFromCookie = sbAccessToken.value;
-			}
-		} catch (err) {
-			console.debug('[Patient Auth] Error leyendo sb-access-token:', err);
+		// Primero intentar restaurar sesión desde cookies si no está activa
+		const restored = await tryRestoreSessionFromCookies(supabase, cookieStore);
+		if (restored) {
+			console.log('[Patient Auth] Sesión restaurada desde cookies');
 		}
 
+		// Intentar obtener el usuario desde la sesión
 		let {
 			data: { user },
 			error: authError,
-		} = accessTokenFromCookie 
-			? await supabase.auth.getUser(accessTokenFromCookie)
-			: await supabase.auth.getUser();
+		} = await supabase.auth.getUser();
 
 		if (authError) {
-			console.error('[Patient Auth] Auth error:', authError);
+			console.error('[Patient Auth] Auth error al obtener usuario:', authError);
 		}
 
 		if (!user) {
-			const restored = await tryRestoreSessionFromCookies(supabase, cookieStore);
-			if (restored) {
+			// Si no hay usuario, intentar restaurar desde cookies nuevamente
+			console.log('[Patient Auth] No se encontró usuario, intentando restaurar sesión...');
+			const restoredAgain = await tryRestoreSessionFromCookies(supabase, cookieStore);
+			if (restoredAgain) {
 				const after = await supabase.auth.getUser();
 				user = after.data?.user ?? null;
+				if (user) {
+					console.log('[Patient Auth] Usuario obtenido después de restaurar sesión');
+				}
 			}
 		}
 
 		if (!user) {
+			console.error('[Patient Auth] No se pudo obtener usuario de Supabase Auth');
 			return null;
 		}
+
+		console.log('[Patient Auth] Usuario autenticado:', user.id);
 
 		// Obtener usuario de la app
 		const { data: appUser, error: userError } = await supabase
@@ -168,15 +171,25 @@ export async function getAuthenticatedPatient(): Promise<{
 			.eq('authId', user.id)
 			.maybeSingle();
 
-		if (userError || !appUser) {
+		if (userError) {
 			console.error('[Patient Auth] Error obteniendo usuario:', userError);
+			console.error('[Patient Auth] Error details:', JSON.stringify(userError, null, 2));
+			console.error('[Patient Auth] User ID from auth:', user.id);
+			return null;
+		}
+
+		if (!appUser) {
+			console.error('[Patient Auth] No se encontró usuario en la tabla user para authId:', user.id);
 			return null;
 		}
 
 		// Verificar que sea paciente
 		if (appUser.role !== 'PACIENTE') {
+			console.error('[Patient Auth] Usuario no es paciente, role:', appUser.role);
 			return null;
 		}
+
+		console.log('[Patient Auth] Usuario es paciente, ID:', appUser.id);
 
 		// Obtener datos del paciente
 		if (!appUser.patientProfileId) {
@@ -189,10 +202,19 @@ export async function getAuthenticatedPatient(): Promise<{
 			.eq('id', appUser.patientProfileId)
 			.maybeSingle();
 
-		if (patientError || !patient) {
+		if (patientError) {
 			console.error('[Patient Auth] Error obteniendo paciente:', patientError);
+			console.error('[Patient Auth] Error details:', JSON.stringify(patientError, null, 2));
+			console.error('[Patient Auth] patientProfileId:', appUser.patientProfileId);
 			return null;
 		}
+
+		if (!patient) {
+			console.error('[Patient Auth] No se encontró paciente con ID:', appUser.patientProfileId);
+			return null;
+		}
+
+		console.log('[Patient Auth] Paciente obtenido correctamente:', patient.id);
 
 		return {
 			patientId: patient.id,

@@ -16,8 +16,11 @@ export async function GET(request: Request) {
 
 		const url = new URL(request.url);
 		const status = url.searchParams.get('status'); // active, expired, all
+		const limit = Math.min(parseInt(url.searchParams.get('limit') || '30', 10), 100); // Límite por defecto 30, máximo 100
 
-		// Obtener todas las recetas primero para poder filtrar por fecha de vencimiento
+		const now = new Date().toISOString();
+		
+		// Optimizar: filtrar en la base de datos cuando sea posible
 		let query = supabase
 			.from('prescription')
 			.select(`
@@ -29,16 +32,12 @@ export async function GET(request: Request) {
 				valid_until,
 				notes,
 				status,
-				created_at,
-				doctor:User!fk_prescription_doctor (
+				doctor:doctor_id (
 					id,
-					name,
-					email
+					name
 				),
-				prescription_item:prescription_item!fk_prescriptionitem_prescription (
+				prescription_item (
 					id,
-					prescription_id,
-					medication_id,
 					name,
 					dosage,
 					form,
@@ -49,55 +48,54 @@ export async function GET(request: Request) {
 				)
 			`)
 			.eq('patient_id', patient.patientId)
-			.order('created_at', { ascending: false });
+			.order('created_at', { ascending: false })
+			.limit(limit);
 
-		const { data: allPrescriptions, error } = await query;
+		// Si el status es específico, aplicar filtros básicos en la DB
+		if (status === 'active') {
+			query = query.eq('status', 'ACTIVE');
+		} else if (status === 'expired') {
+			query = query.or('status.eq.EXPIRED,valid_until.lt.' + now);
+		}
+
+		const { data: prescriptions, error } = await query;
 
 		if (error) {
 			console.error('[Patient Recetas API] Error:', error);
-			return NextResponse.json({ error: 'Error al obtener recetas' }, { status: 500 });
+			return NextResponse.json({ 
+				error: 'Error al obtener recetas', 
+				detail: error.message
+			}, { status: 500 });
 		}
 
-		// Filtrar por estado considerando la fecha de vencimiento
-		const now = new Date();
-		let filteredPrescriptions = allPrescriptions || [];
-
-		if (status === 'active') {
-			// Activas: status = ACTIVE Y (sin valid_until O valid_until >= ahora)
-			filteredPrescriptions = filteredPrescriptions.filter((prescription: any) => {
-				const isActiveStatus = prescription.status === 'ACTIVE';
-				const hasValidUntil = prescription.valid_until !== null;
-				const isNotExpired = !hasValidUntil || new Date(prescription.valid_until) >= now;
-				return isActiveStatus && isNotExpired;
-			});
-		} else if (status === 'expired') {
-			// Vencidas: status = EXPIRED O (valid_until existe Y valid_until < ahora)
-			filteredPrescriptions = filteredPrescriptions.filter((prescription: any) => {
-				const isExpiredStatus = prescription.status === 'EXPIRED';
-				const hasValidUntil = prescription.valid_until !== null;
-				const isPastDue = hasValidUntil && new Date(prescription.valid_until) < now;
-				return isExpiredStatus || isPastDue;
-			});
-		}
-		// Si status === 'all', no filtrar
-
-		// Agregar campo calculado para el estado real
-		const prescriptionsWithRealStatus = filteredPrescriptions.map((prescription: any) => {
+		// Filtrar por estado real (incluyendo validación de fecha) solo si es necesario
+		const filteredPrescriptions = (prescriptions || []).map((prescription: any) => {
 			const hasValidUntil = prescription.valid_until !== null;
-			const isPastDue = hasValidUntil && new Date(prescription.valid_until) < now;
+			const isPastDue = hasValidUntil && new Date(prescription.valid_until) < new Date(now);
 			const realStatus = isPastDue ? 'EXPIRED' : prescription.status;
+			
+			// Si el filtro de status es 'active', excluir expiradas por fecha
+			if (status === 'active' && isPastDue) {
+				return null;
+			}
+			// Si el filtro de status es 'expired', excluir activas que no estén expiradas por fecha
+			if (status === 'expired' && !isPastDue && prescription.status !== 'EXPIRED') {
+				return null;
+			}
 			
 			return {
 				...prescription,
-				realStatus, // Estado real basado en fecha
-				isExpired: isPastDue, // Flag booleano para facilitar el uso
+				realStatus,
+				isExpired: isPastDue,
 			};
-		});
-
-		const prescriptions = prescriptionsWithRealStatus;
+		}).filter((p: any) => p !== null);
 
 		return NextResponse.json({
-			data: prescriptions,
+			data: filteredPrescriptions,
+		}, {
+			headers: {
+				'Cache-Control': 'private, max-age=60', // Cache por 60 segundos
+			},
 		});
 	} catch (err: any) {
 		console.error('[Patient Recetas API] Error:', err);

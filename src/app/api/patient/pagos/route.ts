@@ -40,18 +40,18 @@ export async function GET(request: Request) {
 				notas,
 				created_at,
 				updated_at,
-				appointment:appointment!fk_facturacion_appointment (
+				appointment:appointment_id (
 					id,
 					scheduled_at,
 					status,
 					reason,
-					doctor:User!fk_appointment_doctor (
+					doctor:doctor_id (
 						id,
 						name
 					)
 				),
 				doctor_id,
-				organization:Organization!fk_facturacion_org (
+				organization:organization_id (
 					id,
 					name
 				)

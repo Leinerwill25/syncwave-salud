@@ -94,7 +94,10 @@ export async function GET(request: Request) {
 		const cookieStore = await cookies();
 		const supabase = await createSupabaseServerClient();
 
-		// Obtener consultas con prescripciones y archivos adjuntos
+		const url = new URL(request.url);
+		const limit = Math.min(parseInt(url.searchParams.get('limit') || '20', 10), 50); // Límite por defecto 20, máximo 50
+
+		// Obtener consultas con datos básicos y límite
 		const { data: consultations, error: consultationsError } = await supabase
 			.from('consultation')
 			.select(`
@@ -109,22 +112,21 @@ export async function GET(request: Request) {
 				notes,
 				vitals,
 				created_at,
-				updated_at,
-				doctor:User!fk_consultation_doctor (
+				doctor:doctor_id (
 					id,
-					name,
-					email
+					name
 				),
-				appointment:appointment!fk_consultation_appointment (
+				appointment:appointment_id (
 					id,
 					reason,
 					scheduled_at
 				)
 			`)
 			.eq('patient_id', patient.patientId)
-			.order('created_at', { ascending: false });
+			.order('created_at', { ascending: false })
+			.limit(limit);
 
-		// Obtener prescripciones relacionadas con las consultas
+		// Obtener prescripciones relacionadas con las consultas (optimizado)
 		interface ConsultationWithRelations {
 			id: string;
 			doctor?: { id: string; name: string | null; email: string | null } | { id: string; name: string | null; email: string | null }[];
@@ -133,40 +135,49 @@ export async function GET(request: Request) {
 		}
 		const consultationIds = (consultations || []).map((c: ConsultationWithRelations) => c.id);
 		const prescriptionsMap: Record<string, (PrescriptionData & { attachments: string[] })[]> = {};
+		
 		if (consultationIds.length > 0) {
-			const { data: prescriptions, error: prescError } = await supabase
-				.from('prescription')
-				.select(`
-					id,
-					consultation_id,
-					issued_at,
-					valid_until,
-					status,
-					notes,
-					prescription_item:prescription_item!fk_prescriptionitem_prescription (
+			// Obtener prescripciones y archivos en paralelo
+			const [prescriptionsResult, prescriptionFilesResult] = await Promise.all([
+				supabase
+					.from('prescription')
+					.select(`
 						id,
-						name,
-						dosage,
-						frequency,
-						duration,
-						instructions
-					)
-				`)
-				.in('consultation_id', consultationIds)
-				.order('issued_at', { ascending: false });
+						consultation_id,
+						issued_at,
+						valid_until,
+						status,
+						notes,
+						prescription_item (
+							id,
+							name,
+							dosage,
+							frequency,
+							duration,
+							instructions
+						)
+					`)
+					.in('consultation_id', consultationIds)
+					.order('issued_at', { ascending: false })
+					.limit(limit * 2), // Límite razonable por consulta
+				
+				// Obtener archivos solo para prescripciones encontradas (después de la primera query)
+				Promise.resolve({ data: null, error: null })
+			]);
 
-			// Obtener archivos adjuntos de las prescripciones desde prescription_files
-			const prescriptionIds = (prescriptions || []).map((p: PrescriptionData) => p.id);
-			const prescriptionFilesMap: Record<string, string[]> = {};
-			if (prescriptionIds.length > 0) {
-				const { data: prescriptionFiles, error: filesError } = await supabase
+			const { data: prescriptions, error: prescError } = prescriptionsResult;
+
+			// Obtener archivos adjuntos si hay prescripciones
+			let prescriptionFilesMap: Record<string, string[]> = {};
+			if (prescriptions && prescriptions.length > 0) {
+				const prescriptionIds = prescriptions.map((p: PrescriptionData) => p.id);
+				const { data: prescriptionFiles } = await supabase
 					.from('prescription_files')
-					.select('prescription_id, url, file_name')
-					.in('prescription_id', prescriptionIds);
+					.select('prescription_id, url')
+					.in('prescription_id', prescriptionIds)
+					.limit(100); // Límite razonable
 
-				if (filesError) {
-					console.error('[Patient Historial API] Error obteniendo archivos de prescripciones:', filesError);
-				} else if (prescriptionFiles) {
+				if (prescriptionFiles) {
 					prescriptionFiles.forEach((file: PrescriptionFile) => {
 						if (file.prescription_id && file.url) {
 							if (!prescriptionFilesMap[file.prescription_id]) {
@@ -179,46 +190,47 @@ export async function GET(request: Request) {
 			}
 
 			// Agregar archivos a las prescripciones
-			if (prescError) {
-				console.error('[Patient Historial API] Error obteniendo prescripciones:', prescError);
-			} else if (prescriptions) {
+			if (!prescError && prescriptions) {
 				prescriptions.forEach((presc: PrescriptionData) => {
 					if (presc.consultation_id) {
 						if (!prescriptionsMap[presc.consultation_id]) {
 							prescriptionsMap[presc.consultation_id] = [];
 						}
-						// Agregar archivos adjuntos de prescription_files
-						const prescriptionWithAttachments: PrescriptionData & { attachments: string[] } = {
+						prescriptionsMap[presc.consultation_id].push({
 							...presc,
 							attachments: prescriptionFilesMap[presc.id] || [],
-						};
-						prescriptionsMap[presc.consultation_id].push(prescriptionWithAttachments);
+						});
 					}
 				});
 			}
 		}
 
-		// Obtener registros médicos relacionados con consultas
-		// Nota: MedicalRecord puede estar relacionado con consultas a través de consultation.medical_record_id
-		const { data: medicalRecords, error: recordsError } = await supabase
-			.from('medicalrecord')
-			.select(`
-				id,
-				patientId,
-				authorId,
-				content,
-				attachments,
-				createdAt
-			`)
-			.eq('patientId', patient.patientId)
-			.order('createdAt', { ascending: false });
+		// Obtener registros médicos y mapeo de consultas en paralelo
+		const [medicalRecordsResult, consultationsWithRecordsResult] = await Promise.all([
+			supabase
+				.from('medicalrecord')
+				.select(`
+					id,
+					patientId,
+					authorId,
+					content,
+					attachments,
+					createdAt
+				`)
+				.eq('patientId', patient.patientId)
+				.order('createdAt', { ascending: false })
+				.limit(limit), // Límite de registros médicos
+			
+			supabase
+				.from('consultation')
+				.select('id, medical_record_id')
+				.eq('patient_id', patient.patientId)
+				.not('medical_record_id', 'is', null)
+				.limit(limit)
+		]);
 
-		// Obtener consultas que tienen medical_record_id para mapear archivos
-		const { data: consultationsWithRecords } = await supabase
-			.from('consultation')
-			.select('id, medical_record_id')
-			.eq('patient_id', patient.patientId)
-			.not('medical_record_id', 'is', null);
+		const { data: medicalRecords, error: recordsError } = medicalRecordsResult;
+		const { data: consultationsWithRecords } = consultationsWithRecordsResult;
 
 		// Crear mapa de medical_record_id a consultation_id
 		const recordToConsultationMap: Record<string, string> = {};
@@ -228,13 +240,13 @@ export async function GET(request: Request) {
 			}
 		});
 
-		// Obtener información de los autores si existen
+		// Obtener información de los autores (solo si hay registros)
 		const authorIds = [...new Set((medicalRecords || []).map((r: MedicalRecordData) => r.authorId).filter((id): id is string => Boolean(id)))];
 		const authorsMap: Record<string, AuthorData> = {};
 		if (authorIds.length > 0) {
 			const { data: authors } = await supabase
 				.from('user')
-				.select('id, name, email')
+				.select('id, name')
 				.in('id', authorIds);
 			
 			if (authors) {
@@ -312,6 +324,10 @@ export async function GET(request: Request) {
 		return NextResponse.json({
 			consultations: parsedConsultations,
 			medicalRecords: parsedRecords,
+		}, {
+			headers: {
+				'Cache-Control': 'private, max-age=60', // Cache por 60 segundos
+			},
 		});
 	} catch (err) {
 		const errorMessage = err instanceof Error ? err.message : 'Error desconocido';

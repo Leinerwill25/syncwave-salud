@@ -23,7 +23,10 @@ export async function GET(req: Request) {
 		const now = new Date();
 		const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
 
-		// Obtener prescripciones activas del paciente
+		const url = new URL(req.url);
+		const limit = Math.min(parseInt(url.searchParams.get('limit') || '20', 10), 50); // Límite por defecto 20, máximo 50
+
+		// Obtener prescripciones activas del paciente con límite
 		const { data: prescriptions, error: presError } = await supabase
 			.from('prescription')
 			.select(`
@@ -31,14 +34,12 @@ export async function GET(req: Request) {
 				issued_at,
 				valid_until,
 				status,
-				notes,
 				doctor_id,
-				doctor:User!fk_prescription_doctor (
+				doctor:doctor_id (
 					id,
-					name,
-					email
+					name
 				),
-				prescription_item:prescription_item!fk_prescriptionitem_prescription (
+				prescription_item (
 					id,
 					name,
 					dosage,
@@ -52,19 +53,25 @@ export async function GET(req: Request) {
 			.eq('patient_id', patientAuth.patientId)
 			.eq('status', 'ACTIVE')
 			.or(`valid_until.is.null,valid_until.gte.${today.toISOString()}`)
-			.order('issued_at', { ascending: false });
+			.order('issued_at', { ascending: false })
+			.limit(limit);
 
 		if (presError) {
 			console.error('Error obteniendo prescripciones:', presError);
 			return NextResponse.json({ error: 'Error al cargar prescripciones' }, { status: 500 });
 		}
 
-		// Obtener registros de tomas de medicamentos
+		// Obtener registros de tomas de medicamentos (solo los últimos 7 días)
+		const sevenDaysAgo = new Date(today);
+		sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+		
 		const { data: doses, error: dosesError } = await supabase
 			.from('medication_dose')
 			.select('prescription_item_id, taken_at')
 			.eq('patient_id', patientAuth.patientId)
-			.gte('taken_at', today.toISOString());
+			.gte('taken_at', sevenDaysAgo.toISOString())
+			.order('taken_at', { ascending: false })
+			.limit(200); // Límite razonable para 7 días
 
 		if (dosesError) {
 			console.error('Error obteniendo tomas:', dosesError);
@@ -151,6 +158,10 @@ export async function GET(req: Request) {
 			reminders,
 			total: reminders.length,
 			pending_today: reminders.filter((r) => r.has_pending_today).length,
+		}, {
+			headers: {
+				'Cache-Control': 'private, max-age=30', // Cache por 30 segundos
+			},
 		});
 	} catch (error: any) {
 		console.error('Error en GET /api/patient/medication-reminders:', error);

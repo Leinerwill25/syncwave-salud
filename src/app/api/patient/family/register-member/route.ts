@@ -51,7 +51,7 @@ export async function POST(request: Request) {
 
 		// Verificar límite de miembros
 		const { data: currentMembers } = await supabase
-			.from('FamilyGroupMember')
+			.from('familygroupmember')
 			.select('id')
 			.eq('familyGroupId', familyGroup.id);
 
@@ -92,7 +92,7 @@ export async function POST(request: Request) {
 		// Si hay relationship, usarlo como roleInGroup para menores de edad
 		const finalRoleInGroup = relationship || roleInGroup || 'MIEMBRO';
 		const { data: newMember, error: addError } = await supabase
-			.from('FamilyGroupMember')
+			.from('familygroupmember')
 			.insert({
 				familyGroupId: familyGroup.id,
 				patientId: newPatient.id,
@@ -103,7 +103,7 @@ export async function POST(request: Request) {
 				patientId,
 				roleInGroup,
 				addedAt,
-				patient:Patient!fk_fgm_patient (
+					patient:patientId (
 					id,
 					firstName,
 					lastName,

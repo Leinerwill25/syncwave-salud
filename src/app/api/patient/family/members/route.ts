@@ -26,7 +26,7 @@ export async function GET() {
 			groupId = ownerGroup.id;
 		} else {
 			const { data: membership } = await supabase
-				.from('FamilyGroupMember')
+				.from('familygroupmember')
 				.select('familyGroupId')
 				.eq('patientId', patient.patientId)
 				.maybeSingle();
@@ -41,13 +41,13 @@ export async function GET() {
 
 		// Obtener todos los miembros del grupo
 		const { data: members, error } = await supabase
-			.from('FamilyGroupMember')
+			.from('familygroupmember')
 			.select(`
 				id,
 				patientId,
 				roleInGroup,
 				addedAt,
-				patient:Patient!fk_fgm_patient (
+					patient:patientId (
 					id,
 					firstName,
 					lastName,

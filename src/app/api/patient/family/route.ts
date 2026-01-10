@@ -28,7 +28,7 @@ export async function GET() {
 		// Si no es owner, verificar si es miembro
 		if (!familyGroup) {
 			const { data: membership, error: memberError } = await supabase
-				.from('FamilyGroupMember')
+				.from('familygroupmember')
 				.select('familyGroupId, roleInGroup')
 				.eq('patientId', patient.patientId)
 				.maybeSingle();
@@ -52,13 +52,13 @@ export async function GET() {
 
 			// Obtener miembros del grupo con conteo de consultas
 			const { data: members } = await supabase
-				.from('FamilyGroupMember')
+				.from('familygroupmember')
 				.select(`
 					id,
 					patientId,
 					roleInGroup,
 					addedAt,
-					patient:Patient!fk_fgm_patient (
+					patient:patientId (
 						id,
 						firstName,
 						lastName,
@@ -102,13 +102,13 @@ export async function GET() {
 
 		// Obtener miembros del grupo con conteo de consultas
 		const { data: members, error: membersError } = await supabase
-			.from('FamilyGroupMember')
+			.from('familygroupmember')
 			.select(`
 				id,
 				patientId,
 				roleInGroup,
 				addedAt,
-				patient:Patient!fk_fgm_patient (
+				patient:patientId (
 					id,
 					firstName,
 					lastName,

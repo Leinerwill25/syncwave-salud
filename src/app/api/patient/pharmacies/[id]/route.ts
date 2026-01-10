@@ -26,7 +26,7 @@ export async function GET(
 				id,
 				name,
 				type,
-				clinic_profile:clinic_profile!clinic_profile_org_fk (
+				clinic_profile:organization_id (
 					*
 				)
 			`)

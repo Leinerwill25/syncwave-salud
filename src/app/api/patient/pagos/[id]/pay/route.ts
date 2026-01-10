@@ -142,7 +142,7 @@ export async function POST(
 				appointment:appointment_id (
 					id,
 					status,
-					doctor:User!fk_appointment_doctor (
+					doctor:doctor_id (
 						id,
 						name,
 						email

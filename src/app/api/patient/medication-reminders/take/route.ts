@@ -31,7 +31,7 @@ export async function POST(req: Request) {
 		// Verificar que la prescripción pertenece al paciente
 		const { data: prescription, error: presError } = await supabase
 			.from('prescription')
-			.select('id, patient_id, doctor_id, prescription_item:prescription_item!fk_prescriptionitem_prescription!inner(id, name)')
+			.select('id, patient_id, doctor_id, prescription_item!inner(id, name)')
 			.eq('id', prescription_id)
 			.eq('patient_id', patientAuth.patientId)
 			.single();

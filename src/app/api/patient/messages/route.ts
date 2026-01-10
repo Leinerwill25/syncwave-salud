@@ -14,155 +14,141 @@ export async function GET(request: Request) {
 		const cookieStore = await cookies();
 		const supabase = await createSupabaseServerClient();
 
-		// Obtener conversaciones donde el paciente participa
-		// Primero obtener IDs de conversaciones donde hay mensajes del paciente
-		const { data: patientMessages } = await supabase
-			.from('message')
-			.select('conversation_id')
-			.eq('patient_id', patient.patientId)
-			.not('conversation_id', 'is', null);
+		const url = new URL(request.url);
+		const limit = Math.min(parseInt(url.searchParams.get('limit') || '20', 10), 50); // Límite por defecto 20, máximo 50
+		const limitMessages = Math.min(parseInt(url.searchParams.get('limitMessages') || '5', 10), 10); // Límite de mensajes por conversación
 
-		const conversationIds = [...new Set((patientMessages || []).map((m: any) => m.conversation_id).filter(Boolean))];
-
-		let conversations: any[] = [];
-		if (conversationIds.length > 0) {
-			const { data: convs, error: convError } = await supabase
-				.from('conversation')
+		// Optimizar: hacer queries en paralelo
+		const [conversationsResult, directMessagesResult] = await Promise.all([
+			// Obtener conversaciones con el último mensaje
+			supabase
+				.from('message')
 				.select(`
-					id,
-					title,
-					organization_id,
-					created_at,
-					messages:message!fk_message_conv (
+					conversation_id,
+					conversation:conversation_id (
 						id,
-						sender_id,
-						recipient_user_id,
-						patient_id,
-						body,
-						attachments,
-						read,
-						created_at,
-						sender:User!fk_message_sender (
-							id,
-							name,
-							email,
-							role
-						),
-						recipient:User!fk_message_recipient (
-							id,
-							name,
-							email,
-							role
-						)
+						title,
+						organization_id,
+						created_at
 					)
 				`)
-				.in('id', conversationIds)
-				.order('created_at', { ascending: false });
+				.eq('patient_id', patient.patientId)
+				.not('conversation_id', 'is', null)
+				.order('created_at', { ascending: false })
+				.limit(limit * 2), // Obtener más para deduplicar
+			
+			// Obtener mensajes directos al paciente
+			supabase
+				.from('message')
+				.select(`
+					id,
+					conversation_id,
+					sender_id,
+					recipient_user_id,
+					patient_id,
+					body,
+					attachments,
+					read,
+					created_at,
+					sender:sender_id (
+						id,
+						name
+					),
+					recipient:recipient_user_id (
+						id,
+						name
+					),
+					conversation:conversation_id (
+						id,
+						title
+					)
+				`)
+				.eq('patient_id', patient.patientId)
+				.is('conversation_id', null)
+				.order('created_at', { ascending: false })
+				.limit(limit)
+		]);
 
-			if (convError) {
-				console.error('[Patient Messages API] Error obteniendo conversaciones:', convError);
-			} else {
-				conversations = convs || [];
-				
-				// Enriquecer conversaciones con información del médico
-				for (const conv of conversations) {
-					const messages = conv.messages || [];
-					const patientUserId = patient.userId;
-					
-					// Identificar el ID del doctor en la conversación
-					let doctorUserId: string | null = null;
-					for (const msg of messages) {
-						// Si el sender no es el paciente, el sender es el doctor
-						if (msg.sender_id && msg.sender_id !== patientUserId) {
-							doctorUserId = msg.sender_id;
-							break;
-						}
-						// Si el sender es el paciente, el recipient es el doctor
-						if (msg.sender_id === patientUserId && msg.recipient_user_id) {
-							doctorUserId = msg.recipient_user_id;
-							break;
-						}
-					}
-					
-					// Obtener información del médico si existe
-					if (doctorUserId) {
-						const { data: doctorUser } = await supabase
-							.from('user')
-							.select(`
-								id,
-								name,
-								email,
-								medic_profile:medic_profile!fk_medic_profile_doctor (
-									specialty,
-									private_specialty,
-									photo_url
-								)
-							`)
-							.eq('id', doctorUserId)
-							.eq('role', 'MEDICO')
-							.maybeSingle();
-						
-						if (doctorUser) {
-							// Agregar información del doctor a la conversación
-							interface MedicProfile {
-								specialty?: string | null;
-								private_specialty?: string | null;
-								photo_url?: string | null;
-							}
-							const medicProfile: MedicProfile | undefined = Array.isArray(doctorUser.medic_profile)
-								? (doctorUser.medic_profile[0] as MedicProfile)
-								: (doctorUser.medic_profile as MedicProfile | undefined);
-							conv.doctorInfo = {
-								id: doctorUser.id,
-								name: doctorUser.name,
-								email: doctorUser.email,
-								specialty: medicProfile?.specialty || medicProfile?.private_specialty || null,
-								photo: medicProfile?.photo_url || null,
-							};
-						}
-					}
+		// Procesar conversaciones
+		const conversationMap = new Map<string, any>();
+		if (conversationsResult.data) {
+			for (const msg of conversationsResult.data) {
+				if (msg.conversation_id && msg.conversation && !conversationMap.has(msg.conversation_id)) {
+					const conv = Array.isArray(msg.conversation) ? msg.conversation[0] : msg.conversation;
+					conversationMap.set(msg.conversation_id, {
+						...conv,
+						lastMessage: {
+							body: msg.body,
+							created_at: msg.created_at,
+						},
+					});
+					if (conversationMap.size >= limit) break;
 				}
 			}
 		}
 
-		// También obtener mensajes directos al paciente
-		const { data: directMessages, error: msgError } = await supabase
-			.from('message')
-			.select(`
-				id,
-				conversation_id,
-				sender_id,
-				recipient_user_id,
-				patient_id,
-				body,
-				attachments,
-				read,
-				created_at,
-				sender:User!fk_message_sender (
+		// Obtener últimos mensajes para cada conversación (query optimizada)
+		const conversationIds = Array.from(conversationMap.keys());
+		const conversations: any[] = [];
+		
+		if (conversationIds.length > 0) {
+			// Obtener últimos mensajes de cada conversación en una sola query
+			const { data: recentMessages } = await supabase
+				.from('message')
+				.select(`
 					id,
-					name,
-					email
-				),
-				recipient:User!fk_message_recipient (
-					id,
-					name,
-					email
-				),
-				conversation:conversation!fk_message_conv (
-					id,
-					title
-				)
-			`)
-			.eq('patient_id', patient.patientId)
-			.order('created_at', { ascending: false });
+					conversation_id,
+					sender_id,
+					recipient_user_id,
+					body,
+					read,
+					created_at,
+					sender:sender_id (
+						id,
+						name
+					),
+					recipient:recipient_user_id (
+						id,
+						name
+					)
+				`)
+				.in('conversation_id', conversationIds)
+				.order('created_at', { ascending: false })
+				.limit(conversationIds.length * limitMessages);
 
-		if (msgError) {
-			console.error('[Patient Messages API] Error obteniendo mensajes:', msgError);
+			// Agrupar mensajes por conversación
+			const messagesByConv = new Map<string, any[]>();
+			(recentMessages || []).forEach((msg: any) => {
+				if (!messagesByConv.has(msg.conversation_id)) {
+					messagesByConv.set(msg.conversation_id, []);
+				}
+				const convMessages = messagesByConv.get(msg.conversation_id)!;
+				if (convMessages.length < limitMessages) {
+					convMessages.push(msg);
+				}
+			});
+
+			// Construir respuesta final
+			conversationIds.forEach((convId) => {
+				const conv = conversationMap.get(convId);
+				if (conv) {
+					conversations.push({
+						...conv,
+						messages: messagesByConv.get(convId) || [],
+					});
+				}
+			});
 		}
 
+		const directMessages = directMessagesResult.data || [];
+
 		return NextResponse.json({
-			conversations: conversations || [],
-			messages: directMessages || [],
+			conversations,
+			messages: directMessages,
+		}, {
+			headers: {
+				'Cache-Control': 'private, max-age=10', // Cache muy corto (mensajes cambian frecuentemente)
+			},
 		});
 	} catch (err: any) {
 		console.error('[Patient Messages API] Error:', err);

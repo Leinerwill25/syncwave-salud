@@ -38,7 +38,7 @@ export async function GET(request: Request) {
 				website,
 				social_facebook,
 				social_instagram,
-				organization:Organization!clinic_profile_org_fk (
+				organization:organization_id (
 					id,
 					name,
 					type

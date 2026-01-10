@@ -18,7 +18,7 @@ export async function GET(request: Request) {
 
 		// Obtener todos los grants activos
 		const { data: grants, error: grantsError } = await supabase
-			.from('MedicalAccessGrant')
+			.from('medicalaccessgrant')
 			.select(`
 				id,
 				doctor_id,
@@ -26,15 +26,10 @@ export async function GET(request: Request) {
 				expires_at,
 				revoked_at,
 				is_active,
-				doctor:User!fk_medical_access_grant_doctor (
+				doctor:doctor_id (
 					id,
 					name,
-					email,
-					medic_profile:medic_profile!fk_medic_profile_doctor (
-						specialty,
-						private_specialty,
-						photo_url
-					)
+					email
 				)
 			`)
 			.eq('patient_id', patient.patientId)
@@ -52,6 +47,33 @@ export async function GET(request: Request) {
 			if (!grant.expires_at) return true;
 			return new Date(grant.expires_at).getTime() > now;
 		});
+
+		// Obtener información de medic_profile por separado
+		const doctorIds = [...new Set(activeGrants.map((g: any) => g.doctor_id).filter(Boolean))];
+		const profilesMap = new Map<string, any>();
+		
+		if (doctorIds.length > 0) {
+			const { data: medicProfiles } = await supabase
+				.from('medic_profile')
+				.select('doctor_id, specialty, private_specialty, photo_url')
+				.in('doctor_id', doctorIds);
+
+			(medicProfiles || []).forEach((profile: any) => {
+				profilesMap.set(profile.doctor_id, profile);
+			});
+
+			// Agregar información de medic_profile a los grants
+			activeGrants.forEach((grant: any) => {
+				const profile = profilesMap.get(grant.doctor_id);
+				if (profile && grant.doctor) {
+					grant.doctor.medic_profile = {
+						specialty: profile.specialty,
+						private_specialty: profile.private_specialty,
+						photo_url: profile.photo_url,
+					};
+				}
+			});
+		}
 
 		return NextResponse.json({
 			grants: activeGrants,

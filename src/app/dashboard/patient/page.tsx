@@ -68,8 +68,12 @@ export default function PatientDashboardPage() {
 				}
 			}
 
-			// Obtener estadísticas
-			const [prescriptionsRes, resultsRes, messagesRes] = await Promise.all([fetch('/api/patient/recetas?status=active', { credentials: 'include' }), fetch('/api/patient/resultados', { credentials: 'include' }), fetch('/api/patient/messages', { credentials: 'include' })]);
+			// Obtener estadísticas con límites optimizados
+			const [prescriptionsRes, resultsRes, messagesRes] = await Promise.all([
+				fetch('/api/patient/recetas?status=active&limit=10', { credentials: 'include' }), 
+				fetch('/api/patient/resultados?limit=10', { credentials: 'include' }), 
+				fetch('/api/patient/messages?limit=10&limitMessages=3', { credentials: 'include' })
+			]);
 
 			if (prescriptionsRes.ok) {
 				const prescData = await prescriptionsRes.json();

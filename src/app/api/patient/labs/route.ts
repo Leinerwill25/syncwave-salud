@@ -29,7 +29,7 @@ export async function GET(request: Request) {
 				id,
 				name,
 				type,
-				clinic_profile:clinic_profile!clinic_profile_org_fk (
+				clinic_profile:organization_id (
 					id,
 					legal_name,
 					trade_name,

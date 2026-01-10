@@ -41,7 +41,7 @@ export async function GET(request: Request) {
 					address_operational,
 					phone_mobile,
 					specialties,
-					organization:Organization!clinic_profile_org_fk (
+					organization:organization_id (
 						id,
 						name,
 						type
@@ -92,7 +92,7 @@ export async function GET(request: Request) {
 					id,
 					name,
 					type,
-					clinic_profile:clinic_profile!clinic_profile_org_fk (
+					clinic_profile:organization_id (
 						id,
 						trade_name,
 						address_operational,
@@ -133,7 +133,7 @@ export async function GET(request: Request) {
 					id,
 					name,
 					type,
-					clinic_profile:clinic_profile!clinic_profile_org_fk (
+					clinic_profile:organization_id (
 						id,
 						trade_name,
 						address_operational,
@@ -225,7 +225,7 @@ export async function GET(request: Request) {
 						name,
 						email,
 						organizationId,
-						medic_profile:medic_profile!fk_medic_profile_doctor (
+						medic_profile (
 							private_specialty,
 							specialty,
 							services,

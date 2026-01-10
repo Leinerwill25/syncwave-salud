@@ -21,15 +21,10 @@ export async function GET(request: Request) {
 			.from('appointment')
 			.select(`
 				doctor_id,
-				doctor:User!fk_appointment_doctor (
+				doctor:doctor_id (
 					id,
 					name,
-					email,
-					medic_profile:medic_profile!fk_medic_profile_doctor (
-						specialty,
-						private_specialty,
-						photo_url
-					)
+					email
 				)
 			`)
 			.eq('patient_id', patient.patientId)
@@ -41,8 +36,10 @@ export async function GET(request: Request) {
 			return NextResponse.json({ error: 'Error al obtener doctores' }, { status: 500 });
 		}
 
-		// Deduplicar doctores
+		// Deduplicar doctores y obtener información de medic_profile por separado
 		const doctorMap = new Map<string, any>();
+		const doctorIds = new Set<string>();
+		
 		(appointments || []).forEach((apt: any) => {
 			if (apt.doctor_id && apt.doctor && !doctorMap.has(apt.doctor_id)) {
 				const doctor = Array.isArray(apt.doctor) ? apt.doctor[0] : apt.doctor;
@@ -50,11 +47,32 @@ export async function GET(request: Request) {
 					id: doctor.id,
 					name: doctor.name,
 					email: doctor.email,
-					specialty: doctor.medic_profile?.specialty || doctor.medic_profile?.private_specialty,
-					photo: doctor.medic_profile?.photo_url,
 				});
+				doctorIds.add(apt.doctor_id);
 			}
 		});
+
+		// Obtener información de medic_profile por separado
+		if (doctorIds.size > 0) {
+			const { data: medicProfiles } = await supabase
+				.from('medic_profile')
+				.select('doctor_id, specialty, private_specialty, photo_url')
+				.in('doctor_id', Array.from(doctorIds));
+
+			const profilesMap = new Map<string, any>();
+			(medicProfiles || []).forEach((profile: any) => {
+				profilesMap.set(profile.doctor_id, profile);
+			});
+
+			// Agregar información de medic_profile a los doctores
+			doctorMap.forEach((doctor, doctorId) => {
+				const profile = profilesMap.get(doctorId);
+				if (profile) {
+					doctor.specialty = profile.specialty || profile.private_specialty;
+					doctor.photo = profile.photo_url;
+				}
+			});
+		}
 
 		const doctors = Array.from(doctorMap.values());
 
