@@ -1,13 +1,44 @@
 import { Metadata } from 'next';
-import { createSupabaseServerClient } from '@/app/adapters/server';
-import { cookies } from 'next/headers';
+import { createClient } from '@supabase/supabase-js';
 import ConsultorioPublicPage from '@/components/consultorio/ConsultorioPublicPage';
 import { parseSpecialties, parseOpeningHours } from '@/lib/safe-json-parse';
 
+// Cliente de Supabase con service_role para páginas públicas (bypass RLS)
+const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL ?? process.env.SUPABASE_URL ?? '';
+const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY ?? '';
+const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? '';
+
+// Crear cliente con service_role para leer datos públicos sin restricciones de RLS
+const createPublicSupabaseClient = () => {
+	// Priorizar service_role_key para bypass RLS completo
+	if (SUPABASE_SERVICE_ROLE_KEY && SUPABASE_URL) {
+		console.log('[Public Clinic Page] Usando cliente con SERVICE_ROLE_KEY (bypass RLS)');
+		return createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, { 
+			auth: { persistSession: false },
+			db: { schema: 'public' }
+		});
+	}
+	
+	// Fallback a cliente anónimo si no hay service_role_key (sujeto a RLS)
+	if (SUPABASE_ANON_KEY && SUPABASE_URL) {
+		console.warn('[Public Clinic Page] SERVICE_ROLE_KEY no configurado, usando ANON_KEY (sujeto a RLS). Esto puede causar problemas si RLS está activo.');
+		return createClient(SUPABASE_URL, SUPABASE_ANON_KEY, { 
+			auth: { persistSession: false },
+			db: { schema: 'public' }
+		});
+	}
+	
+	console.error('[Public Clinic Page] Missing Supabase configuration:', {
+		hasUrl: !!SUPABASE_URL,
+		hasServiceRole: !!SUPABASE_SERVICE_ROLE_KEY,
+		hasAnonKey: !!SUPABASE_ANON_KEY
+	});
+	throw new Error('Missing Supabase configuration. Configure SUPABASE_SERVICE_ROLE_KEY o NEXT_PUBLIC_SUPABASE_ANON_KEY');
+};
+
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
 	const { id } = await params;
-	const cookieStore = await cookies();
-	const supabase = await createSupabaseServerClient();
+	const supabase = createPublicSupabaseClient();
 
 	try {
 		// Obtener datos del consultorio
@@ -69,8 +100,7 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
 
 export default async function ConsultorioPublicRoute({ params }: { params: Promise<{ id: string }> }) {
 	const { id } = await params;
-	const cookieStore = await cookies();
-	const supabase = await createSupabaseServerClient();
+	const supabase = createPublicSupabaseClient();
 
 	try {
 		// Obtener datos del consultorio - primero sin filtrar por tipo para evitar problemas de RLS o formato
@@ -87,14 +117,81 @@ export default async function ConsultorioPublicRoute({ params }: { params: Promi
 		});
 
 		if (orgBasicError) {
-			console.error('[Consultorio Page] Error obteniendo organización básica:', orgBasicError);
+			console.error('[Consultorio Page] Error obteniendo organización básica:', {
+				message: orgBasicError.message,
+				code: orgBasicError.code,
+				details: orgBasicError.details,
+				hint: orgBasicError.hint,
+				usingServiceRole: !!SUPABASE_SERVICE_ROLE_KEY
+			});
+			
+			// Detectar errores específicos de RLS
+			const isRLSError = orgBasicError.code === '42501' || orgBasicError.message?.toLowerCase().includes('permission') || orgBasicError.message?.toLowerCase().includes('policy');
+			const isRecursionError = orgBasicError.code === '42P17' || orgBasicError.message?.toLowerCase().includes('recursion') || orgBasicError.message?.toLowerCase().includes('infinite');
+			
 			return (
 				<div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-teal-50">
-					<div className="text-center">
+					<div className="text-center max-w-2xl px-4">
 						<h1 className="text-3xl font-bold text-slate-900 mb-2">Error al cargar consultorio</h1>
-						<p className="text-slate-600">Ocurrió un error al obtener la información del consultorio.</p>
-						<p className="text-sm text-slate-500 mt-2">ID: {id}</p>
-						<p className="text-xs text-red-500 mt-2">Error: {orgBasicError.message} (Code: {orgBasicError.code})</p>
+						<p className="text-slate-600 mb-4">Ocurrió un error al obtener la información del consultorio.</p>
+						<div className="bg-red-50 border border-red-200 rounded-lg p-4 text-left mt-4">
+							<p className="text-sm text-red-800 font-semibold mb-2">Detalles técnicos:</p>
+							<p className="text-xs text-red-700 mb-1">ID: {id}</p>
+							<p className="text-xs text-red-700 mb-1">Error: {orgBasicError.message}</p>
+							<p className="text-xs text-red-700 mb-1">Code: {orgBasicError.code}</p>
+							{orgBasicError.hint && (
+								<p className="text-xs text-red-600 mt-2">Hint: {orgBasicError.hint}</p>
+							)}
+							
+							{isRecursionError && (
+								<div className="mt-3 pt-3 border-t border-red-300">
+									<p className="text-xs text-red-800 font-semibold">🔄 Error de Recursión Infinita (RLS):</p>
+									<p className="text-xs text-red-700 mt-1">
+										Las políticas RLS están causando una referencia circular. Soluciones:
+									</p>
+									<ol className="text-xs text-red-700 mt-1 ml-4 list-decimal space-y-1">
+										<li>
+											<strong>Configurar SUPABASE_SERVICE_ROLE_KEY</strong> (recomendado):
+											<br />
+											<span className="text-red-600">Agrega SUPABASE_SERVICE_ROLE_KEY a tus variables de entorno. Esto bypassa RLS completamente.</span>
+										</li>
+										<li>
+											<strong>Ejecutar script de corrección:</strong>
+											<br />
+											<span className="text-red-600">
+												Ejecuta: <code className="bg-red-100 px-1 rounded">migrations/fix_clinic_rls_recursion_ultra_simple.sql</code>
+											</span>
+										</li>
+										<li>
+											<strong>Temporalmente desactivar RLS:</strong>
+											<br />
+											<span className="text-red-600">ALTER TABLE public.organization DISABLE ROW LEVEL SECURITY;</span>
+										</li>
+									</ol>
+									{!SUPABASE_SERVICE_ROLE_KEY && (
+										<p className="text-xs text-red-800 font-semibold mt-3">
+											⚠️ SUPABASE_SERVICE_ROLE_KEY no está configurado. Configúralo para evitar problemas de RLS.
+										</p>
+									)}
+								</div>
+							)}
+							
+							{isRLSError && !isRecursionError && !SUPABASE_SERVICE_ROLE_KEY && (
+								<div className="mt-3 pt-3 border-t border-red-300">
+									<p className="text-xs text-red-800 font-semibold">⚠️ Posible problema de RLS:</p>
+									<p className="text-xs text-red-700 mt-1">
+										Este error puede ser causado por políticas RLS. Verifica que:
+									</p>
+									<ul className="text-xs text-red-700 mt-1 ml-4 list-disc">
+										<li>SUPABASE_SERVICE_ROLE_KEY esté configurado en las variables de entorno, o</li>
+										<li>Las políticas RLS permitan acceso público a organizaciones tipo CONSULTORIO</li>
+									</ul>
+									<p className="text-xs text-red-600 mt-2">
+										Ejecuta el script: <code className="bg-red-100 px-1 rounded">migrations/fix_clinic_rls_recursion_ultra_simple.sql</code>
+									</p>
+								</div>
+							)}
+						</div>
 					</div>
 				</div>
 			);
