@@ -47,7 +47,7 @@ function isNumericOrEmpty(s: string | number | null | undefined) {
 	return !Number.isNaN(Number(String(s).toString().replace(',', '.')));
 }
 
-export default function EditConsultationForm({ initial, patient, doctor, doctorSpecialties, isSimpleConsulta = false, hasEcografiaTransvaginal = false, isOnlyVideoColposcopia = false }: { initial: ConsultationShape; patient?: any; doctor?: any; doctorSpecialties?: string[]; isSimpleConsulta?: boolean; hasEcografiaTransvaginal?: boolean; isOnlyVideoColposcopia?: boolean }) {
+export default function EditConsultationForm({ initial, patient, doctor, doctorSpecialties, isSimpleConsulta = false, hasEcografiaTransvaginal = false, isOnlyVideoColposcopia = false, hasColposcopia = false, hasConsultaInService = false }: { initial: ConsultationShape; patient?: any; doctor?: any; doctorSpecialties?: string[]; isSimpleConsulta?: boolean; hasEcografiaTransvaginal?: boolean; isOnlyVideoColposcopia?: boolean; hasColposcopia?: boolean; hasConsultaInService?: boolean }) {
 	const router = useRouter();
 	const { saveOptimistically } = useOptimisticSave();
 	const { isLiteMode } = useLiteMode();
@@ -233,19 +233,71 @@ export default function EditConsultationForm({ initial, patient, doctor, doctorS
 
 	// UI State
 	const [activeTab, setActiveTab] = useState<'main' | 'vitals' | 'specialty' | 'report'>('main');
-	const [showColposcopySection, setShowColposcopySection] = useState(false);
+	
+	// Determinar si es ginecología
+	const isGynecology = useMemo(() => {
+		if (!doctorSpecialties || doctorSpecialties.length === 0) return false;
+		const normalizedSpecialties = doctorSpecialties.map(s => normalizeText(s));
+		const result = normalizedSpecialties.some(s => 
+			s.includes('ginecolog') || s === 'gynecology'
+		);
+		console.log('[EditConsultationForm] isGynecology:', result, 'specialties:', doctorSpecialties);
+		return result;
+	}, [doctorSpecialties]);
+	
+	// Determinar si debe mostrar automáticamente la sección de colposcopia
+	// Reglas:
+	// 1. Si el servicio incluye "colposcopia" → SIEMPRE mostrar (incluso si es combo con consulta)
+	// 2. Si es ginecología Y NO tiene "consulta" en el servicio → mostrar colposcopia
+	// 3. Si es un servicio individual y es "consulta" → NO mostrar colposcopia
+	const shouldAutoShowColposcopy = useMemo(() => {
+		// Prioridad 1: Si tiene colposcopia, siempre mostrar (incluso en combos con consulta)
+		if (hasColposcopia) {
+			console.log('[EditConsultationForm] shouldAutoShowColposcopy: true (tiene colposcopia)');
+			return true;
+		}
+		// Prioridad 2: Si es ginecología y no tiene consulta, mostrar
+		if (isGynecology && !hasConsultaInService) {
+			console.log('[EditConsultationForm] shouldAutoShowColposcopy: true (ginecología sin consulta)');
+			return true;
+		}
+		// No mostrar en otros casos
+		console.log('[EditConsultationForm] shouldAutoShowColposcopy: false', {
+			isGynecology,
+			hasConsultaInService,
+			hasColposcopia
+		});
+		return false;
+	}, [isGynecology, hasConsultaInService, hasColposcopia]);
+	
+	// Determinar si solo debe mostrar colposcopia (ocultar otros formularios de ginecología)
+	const shouldOnlyShowColposcopy = useMemo(() => {
+		return hasColposcopia && !hasConsultaInService && !hasEcografiaTransvaginal;
+	}, [hasColposcopia, hasConsultaInService, hasEcografiaTransvaginal]);
+	
+	const [showColposcopySection, setShowColposcopySection] = useState(shouldAutoShowColposcopy);
+	
+	// Actualizar showColposcopySection cuando cambien las condiciones
+	useEffect(() => {
+		if (shouldAutoShowColposcopy && !showColposcopySection) {
+			setShowColposcopySection(true);
+		}
+	}, [shouldAutoShowColposcopy]);
 
 	// init grouped vitals from initial.vitals
 	const initVitals = (initial.vitals ?? {}) as Record<string, any>;
 
 	// Inicializar expandedSpecialties - SOLO 'general' por defecto (todas las especialidades minimizadas)
-	// El usuario debe expandir manualmente las especialidades que desea usar
+	// EXCEPTO si es ginecología y debe mostrar colposcopia automáticamente
 	const initialExpandedSpecialties = useMemo(() => {
 		const specialties = new Set<string>(['general']);
-		// NO agregar automáticamente las especialidades del doctor
-		// Todas las especialidades estarán minimizadas por defecto
+		// Si debe mostrar colposcopia automáticamente, expandir ginecología
+		if (shouldAutoShowColposcopy && isGynecology) {
+			specialties.add('gynecology');
+			console.log('[EditConsultationForm] Expandiendo ginecología automáticamente');
+		}
 		return specialties;
-	}, []);
+	}, [shouldAutoShowColposcopy, isGynecology]);
 
 	const [expandedSpecialties, setExpandedSpecialties] = useState<Set<string>>(initialExpandedSpecialties);
 
@@ -3412,8 +3464,8 @@ export default function EditConsultationForm({ initial, patient, doctor, doctorS
 								{/* Gynecology */}
 								{shouldShowSpecialty('gynecology') && (
 									<div className="border border-slate-200 dark:border-slate-700 rounded-lg mb-4">
-										{/* Si es solo Vídeo colposcopía, mostrar directamente la sección de colposcopia sin el resto del formulario */}
-										{isOnlyVideoColposcopia ? (
+										{/* Si es solo Vídeo colposcopía O solo colposcopia, mostrar directamente la sección de colposcopia sin el resto del formulario */}
+										{(isOnlyVideoColposcopia || shouldOnlyShowColposcopy) ? (
 											<div className="p-4">
 												<h3 className="text-xl font-bold text-slate-900 dark:text-slate-100 mb-2 flex items-center gap-2">
 													<div className="w-1 h-6 bg-gradient-to-b from-teal-500 to-cyan-500 rounded-full"></div>
@@ -3768,11 +3820,14 @@ export default function EditConsultationForm({ initial, patient, doctor, doctorS
 														</button>
 														{expandedSpecialties.has('gynecology') && (
 															<div className="p-4 pt-0 space-y-6">
-																{/* Historia de la enfermedad actual */}
-																<div>
-																	<label className={labelClass}>Historia de la enfermedad actual</label>
-																	<textarea value={currentIllnessHistory} onChange={(e) => setCurrentIllnessHistory(e.target.value)} className={`${inputBase} ${inputDark}`} rows={3} placeholder="Describir la historia de la enfermedad actual" />
-																</div>
+																{/* Si solo debe mostrar colposcopia, ocultar el resto del formulario */}
+																{!shouldOnlyShowColposcopy && (
+																	<>
+																		{/* Historia de la enfermedad actual */}
+																		<div>
+																			<label className={labelClass}>Historia de la enfermedad actual</label>
+																			<textarea value={currentIllnessHistory} onChange={(e) => setCurrentIllnessHistory(e.target.value)} className={`${inputBase} ${inputDark}`} rows={3} placeholder="Describir la historia de la enfermedad actual" />
+																		</div>
 
 																{/* Antecedentes Médicos */}
 																<div className="border-t border-slate-200 dark:border-slate-700 pt-4">
@@ -3913,8 +3968,8 @@ export default function EditConsultationForm({ initial, patient, doctor, doctorS
 																	</div>
 																</div>
 
-																{/* Ecografía Transvaginal - Mostrar si tiene Ecografía Transvaginal o si NO es una Consulta simple */}
-																{(hasEcografiaTransvaginal || !isSimpleConsulta) && (
+																{/* Ecografía Transvaginal - Mostrar si tiene Ecografía Transvaginal o si NO es una Consulta simple Y NO es solo colposcopia */}
+																{(hasEcografiaTransvaginal || (!isSimpleConsulta && !shouldOnlyShowColposcopy)) && (
 																	<div className="border-t border-slate-200 dark:border-slate-700 pt-4">
 																		<h4 className="text-sm font-semibold text-slate-900 dark:text-slate-100 mb-3">Ecografía Transvaginal</h4>
 																		<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -3952,34 +4007,40 @@ export default function EditConsultationForm({ initial, patient, doctor, doctorS
 																	</div>
 																)}
 
-																{/* Diagnóstico con CIE-11 */}
-																<div className="border-t border-slate-200 dark:border-slate-700 pt-4">
-																	<label className={labelClass}>Diagnóstico (CIE-11)</label>
-																	<ICD11Search
-																		onSelect={(code) => {
-																			setIcd11Code(code.code);
-																			setIcd11Title(code.title);
-																			setDiagnosis(`${code.code} - ${code.title}`);
-																		}}
-																		selectedCode={icd11Code && icd11Title ? { code: icd11Code, title: icd11Title } : null}
-																		placeholder="Buscar código CIE-11 (ej: diabetes, hipertensión...)"
-																		className="mb-3"
-																	/>
-																	{icd11Code && icd11Title && (
-																		<p className="mt-2 text-xs text-slate-600 dark:text-slate-400">
-																			<strong>Código CIE-11 seleccionado:</strong> {icd11Code} - {icd11Title}
-																		</p>
-																	)}
-																</div>
+																{/* Diagnóstico con CIE-11 - Solo si NO es solo colposcopia */}
+																{!shouldOnlyShowColposcopy && (
+																	<div className="border-t border-slate-200 dark:border-slate-700 pt-4">
+																		<label className={labelClass}>Diagnóstico (CIE-11)</label>
+																		<ICD11Search
+																			onSelect={(code) => {
+																				setIcd11Code(code.code);
+																				setIcd11Title(code.title);
+																				setDiagnosis(`${code.code} - ${code.title}`);
+																			}}
+																			selectedCode={icd11Code && icd11Title ? { code: icd11Code, title: icd11Title } : null}
+																			placeholder="Buscar código CIE-11 (ej: diabetes, hipertensión...)"
+																			className="mb-3"
+																		/>
+																		{icd11Code && icd11Title && (
+																			<p className="mt-2 text-xs text-slate-600 dark:text-slate-400">
+																				<strong>Código CIE-11 seleccionado:</strong> {icd11Code} - {icd11Title}
+																			</p>
+																		)}
+																	</div>
+																)}
 
-																{/* Observaciones Adicionales */}
-																<div className="border-t border-slate-200 dark:border-slate-700 pt-4">
-																	<label className={labelClass}>Observaciones Adicionales</label>
-																	<textarea value={cervicalExamNotes} onChange={(e) => setCervicalExamNotes(e.target.value)} className={`${inputBase} ${inputDark}`} rows={3} placeholder="Observaciones adicionales del examen cervical" />
-																</div>
+																{/* Observaciones Adicionales - Solo si NO es solo colposcopia */}
+																{!shouldOnlyShowColposcopy && (
+																	<div className="border-t border-slate-200 dark:border-slate-700 pt-4">
+																		<label className={labelClass}>Observaciones Adicionales</label>
+																		<textarea value={cervicalExamNotes} onChange={(e) => setCervicalExamNotes(e.target.value)} className={`${inputBase} ${inputDark}`} rows={3} placeholder="Observaciones adicionales del examen cervical" />
+																	</div>
+																)}
+																	</>
+																)}
 
-																{/* Botón para mostrar formulario de Colposcopia - Solo si NO es una Consulta simple Y NO es solo Consulta+Ecografía Y NO es solo Vídeo colposcopía */}
-																{!isSimpleConsulta && !hasEcografiaTransvaginal && !isOnlyVideoColposcopia && (
+																{/* Botón para mostrar formulario de Colposcopia - Solo si NO es una Consulta simple Y NO es solo Consulta+Ecografía Y NO es solo Vídeo colposcopía Y NO se muestra automáticamente Y NO es solo colposcopia */}
+																{!isSimpleConsulta && !hasEcografiaTransvaginal && !isOnlyVideoColposcopia && !shouldAutoShowColposcopy && !shouldOnlyShowColposcopy && (
 																	<div className="border-t border-slate-200 dark:border-slate-700 pt-4 flex justify-end">
 																		<button type="button" onClick={() => setShowColposcopySection(!showColposcopySection)} className="px-6 py-2.5 bg-gradient-to-r from-teal-600 to-cyan-600 hover:from-teal-700 hover:to-cyan-700 text-white font-semibold rounded-lg shadow-md hover:shadow-lg transition-all duration-200 flex items-center gap-2">
 																			{showColposcopySection ? 'Ocultar' : 'Siguiente'} - Colposcopia
@@ -3988,8 +4049,10 @@ export default function EditConsultationForm({ initial, patient, doctor, doctorS
 																	</div>
 																)}
 
-																{/* Sección de Colposcopia - Mostrar si NO es una Consulta simple Y NO es solo Consulta+Ecografía */}
-																{!isSimpleConsulta && !hasEcografiaTransvaginal && showColposcopySection && (
+																{/* Sección de Colposcopia - Mostrar si:
+																	- NO es una Consulta simple Y NO es solo Consulta+Ecografía Y showColposcopySection está activo
+																	- O si debe mostrarse automáticamente (ginecología sin consulta o servicio con colposcopia) */}
+																{((!isSimpleConsulta && !hasEcografiaTransvaginal && showColposcopySection) || shouldAutoShowColposcopy) && (
 																	<div className="border-t-2 border-teal-500 dark:border-teal-400 pt-6 mt-6">
 																		<div className="mb-6">
 																			<h3 className="text-xl font-bold text-slate-900 dark:text-slate-100 mb-2 flex items-center gap-2">

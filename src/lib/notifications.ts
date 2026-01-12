@@ -52,14 +52,32 @@ export async function createNotification(options: CreateNotificationOptions): Pr
 		let emailSent = false;
 		if (options.sendEmail !== false && options.userId) {
 			try {
-				// Obtener email del usuario
-				const { data: user, error: userError } = await supabase
-					.from('user')
-					.select('email, role')
-					.eq('id', options.userId)
-					.maybeSingle();
+				// Obtener email del usuario - intentar diferentes variantes del nombre de tabla
+				let user: { email: string; role?: string } | null = null;
+				const userTableVariants = ['user', '"user"'];
+				for (const tableName of userTableVariants) {
+					try {
+						const { data, error: userError } = await supabase
+							.from(tableName)
+							.select('email, role')
+							.eq('id', options.userId)
+							.maybeSingle();
+						
+						if (!userError && data) {
+							user = data;
+							break;
+						}
+						if (userError && !userError.message?.includes('does not exist') && !String(userError.code).includes('PGRST205')) {
+							// Si es otro tipo de error, detener el loop
+							break;
+						}
+					} catch (err) {
+						// Continuar con siguiente variante
+						continue;
+					}
+				}
 
-				if (!userError && user?.email) {
+				if (user?.email) {
 					// Verificar preferencias de notificaciones del usuario
 					// Por ahora, enviamos el email si existe
 					const emailResult = await sendNotificationEmail(

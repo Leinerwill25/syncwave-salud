@@ -136,12 +136,42 @@ export default function DashboardNavBar(): React.ReactElement {
 	async function handleLogout() {
 		setSignOutLoading(true);
 		try {
+			// 1. Cerrar sesión en Supabase
 			const { error } = await supabaseClient.auth.signOut();
 			if (error) console.error('Error al cerrar sesión:', error);
+
+			// 2. Limpiar todas las cookies de sesión del servidor
+			try {
+				await fetch('/api/auth/clear-session', {
+					method: 'POST',
+					credentials: 'include',
+				});
+			} catch (err) {
+				console.warn('Error limpiando cookies del servidor:', err);
+			}
+
+			// 3. Limpiar localStorage y sessionStorage
+			if (typeof window !== 'undefined') {
+				try {
+					localStorage.removeItem('rememberMe');
+					localStorage.removeItem('userEmail');
+					localStorage.removeItem('user_session_cache');
+					// Limpiar cualquier otra clave relacionada con sesión
+					Object.keys(localStorage).forEach((key) => {
+						if (key.startsWith('sb-') || key.startsWith('supabase-')) {
+							localStorage.removeItem(key);
+						}
+					});
+					sessionStorage.clear();
+				} catch (err) {
+					console.warn('Error limpiando almacenamiento local:', err);
+				}
+			}
 		} catch (err) {
-			console.error(err);
+			console.error('Error en logout:', err);
 		} finally {
 			setSignOutLoading(false);
+			// Redirigir al login después de limpiar todo
 			router.push('/login');
 		}
 	}

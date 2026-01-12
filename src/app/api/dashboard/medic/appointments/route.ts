@@ -389,6 +389,14 @@ export async function GET(req: Request) {
 				}
 			}
 
+			// Normalizar el estado: convertir "EN_ESPERA" a "EN ESPERA" para consistencia con el frontend
+			const normalizeStatus = (status: string | null | undefined): string => {
+				if (!status) return 'SCHEDULED';
+				if (status === 'EN_ESPERA') return 'EN ESPERA';
+				if (status === 'NO_ASISTIO') return 'NO ASISTIÓ';
+				return status;
+			};
+
 			return {
 				id: cita.id,
 				patient: patientName,
@@ -399,7 +407,7 @@ export async function GET(req: Request) {
 				isUnregistered,
 				time: endTime ? `${startTime} - ${endTime}` : startTime,
 				scheduled_at: cita.scheduled_at,
-				status: cita.status ?? 'SCHEDULED',
+				status: normalizeStatus(cita.status),
 				reason: cita.reason ?? '',
 				location: isLiteMode ? '' : (cita.location ?? ''),
 				selected_service: selectedService,

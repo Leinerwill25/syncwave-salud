@@ -2,8 +2,14 @@ import { NextResponse } from 'next/server';
 import createSupabaseServerClient from '@/app/adapters/server';
 import { createClient } from '@supabase/supabase-js';
 import { createNotifications } from '@/lib/notifications';
+import { Pool } from 'pg';
 
 const supabaseAdmin = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!, { auth: { persistSession: false } });
+
+// Pool de conexión PostgreSQL para queries directas que eviten validación de Supabase
+const pool = new Pool({
+	connectionString: process.env.DATABASE_URL,
+});
 
 export async function PATCH(req: Request, context: { params: Promise<{ id: string }> }) {
 	try {
@@ -27,13 +33,66 @@ export async function PATCH(req: Request, context: { params: Promise<{ id: strin
 		if (body.location) updateFields.location = body.location;
 		updateFields.updated_at = new Date().toISOString();
 
-		// 2️⃣ Actualizar cita
-		const { data, error } = await supabaseAdmin.from('appointment').update(updateFields).eq('id', id).select('id, patient_id, doctor_id, organization_id, status, reason, scheduled_at').single();
+		// 2️⃣ Actualizar cita usando SQL directo para evitar problemas con validación de foreign keys de Supabase
+		const client = await pool.connect();
+		try {
+			// Construir la query SQL dinámicamente
+			const setClauses: string[] = [];
+			const values: any[] = [];
+			let paramIndex = 1;
 
-		if (error) {
-			console.error('❌ Error al actualizar cita:', error.message);
-			return NextResponse.json({ error: 'No se pudo actualizar la cita.' }, { status: 500 });
+			if (updateFields.status !== undefined) {
+				setClauses.push(`status = $${paramIndex++}`);
+				values.push(updateFields.status);
+			}
+			if (updateFields.scheduled_at !== undefined) {
+				setClauses.push(`scheduled_at = $${paramIndex++}`);
+				values.push(updateFields.scheduled_at);
+			}
+			if (updateFields.reason !== undefined) {
+				setClauses.push(`reason = $${paramIndex++}`);
+				values.push(updateFields.reason);
+			}
+			if (updateFields.location !== undefined) {
+				setClauses.push(`location = $${paramIndex++}`);
+				values.push(updateFields.location);
+			}
+			if (updateFields.updated_at !== undefined) {
+				setClauses.push(`updated_at = $${paramIndex++}`);
+				values.push(updateFields.updated_at);
+			}
+
+			if (setClauses.length === 0) {
+				return NextResponse.json({ error: 'No hay campos para actualizar.' }, { status: 400 });
+			}
+
+			// Agregar el id como último parámetro
+			values.push(id);
+
+			const updateQuery = `
+				UPDATE public.appointment 
+				SET ${setClauses.join(', ')}
+				WHERE id = $${paramIndex}
+			`;
+
+			await client.query(updateQuery, values);
+		} catch (sqlError: any) {
+			console.error('❌ Error al actualizar cita (SQL directo):', sqlError.message, sqlError);
+			return NextResponse.json({ error: 'No se pudo actualizar la cita.', detail: sqlError.message }, { status: 500 });
+		} finally {
+			client.release();
 		}
+
+		// Usar los datos de current con los campos actualizados (evitamos hacer select para evitar problemas con foreign keys)
+		const data = {
+			id: current.id,
+			patient_id: current.patient_id,
+			doctor_id: current.doctor_id,
+			organization_id: current.organization_id,
+			status: updateFields.status || current.status,
+			reason: updateFields.reason || current.reason,
+			scheduled_at: updateFields.scheduled_at || current.scheduled_at,
+		};
 
 		// 3️⃣ Si el status cambió a "CONFIRMADA" o "CONFIRMED" → habilitar pago en facturación existente
 		const isConfirmed = body.status === 'CONFIRMADA' || body.status === 'CONFIRMED';
@@ -68,8 +127,29 @@ export async function PATCH(req: Request, context: { params: Promise<{ id: strin
 							// Obtener información del paciente y su user_id
 							const { data: patientData } = await supabaseAdmin.from('patient').select('firstName, lastName').eq('id', patient_id).maybeSingle();
 
-							// Obtener el user_id del paciente
-							const { data: userData } = await supabaseAdmin.from('user').select('id').eq('patientProfileId', patient_id).maybeSingle();
+							// Obtener el user_id del paciente - intentar diferentes variantes del nombre de tabla
+							let userData: { id: string } | null = null;
+							try {
+								// Intentar primero con 'user' en minúscula (nombre correcto de la tabla)
+								const { data, error } = await supabaseAdmin.from('user').select('id').eq('patientProfileId', patient_id).maybeSingle();
+								if (!error && data) {
+									userData = data;
+								} else if (error) {
+									console.warn('[Appointment Update] Error consultando tabla user:', error.message);
+									// Si falla, intentar con comillas dobles
+									try {
+										const { data: data2, error: error2 } = await supabaseAdmin.from('"user"').select('id').eq('patientProfileId', patient_id).maybeSingle();
+										if (!error2 && data2) {
+											userData = data2;
+										}
+									} catch (err2) {
+										console.warn('[Appointment Update] Error con variante "user":', err2);
+									}
+								}
+							} catch (err) {
+								console.warn('[Appointment Update] Error obteniendo user_id del paciente:', err);
+								// Continuar sin userData - no se creará la notificación pero no fallará la operación
+							}
 
 							const patientName = patientData ? `${patientData.firstName} ${patientData.lastName}` : 'Paciente';
 							const patientUserId = userData?.id || null;
@@ -132,16 +212,52 @@ export async function PATCH(req: Request, context: { params: Promise<{ id: strin
 			// Obtener información del paciente y doctor para los emails
 			let patientName: string | undefined;
 			let doctorName: string | undefined;
+			let patientUserId: string | null = null;
 			try {
-				const [patientRes, doctorRes] = await Promise.all([supabaseAdmin.from('patient').select('firstName, lastName').eq('id', patient_id).maybeSingle(), doctor_id ? supabaseAdmin.from('user').select('name').eq('id', doctor_id).maybeSingle() : Promise.resolve({ data: null })]);
+				// Helper para consultar la tabla user con diferentes variantes
+				const queryUserTable = async (queryFn: (tableName: string) => Promise<any>) => {
+					try {
+						// Intentar primero con 'user' en minúscula (nombre correcto de la tabla)
+						const result = await queryFn('user');
+						if (result?.data && !result.error) {
+							return result;
+						}
+						if (result?.error) {
+							// Si falla, intentar con comillas dobles
+							try {
+								const result2 = await queryFn('"user"');
+								if (result2?.data && !result2.error) {
+									return result2;
+								}
+							} catch (err2) {
+								console.warn('[Appointment Update] Error con variante "user":', err2);
+							}
+						}
+					} catch (err) {
+						console.warn('[Appointment Update] Error en queryUserTable:', err);
+					}
+					return { data: null, error: null };
+				};
+
+				const [patientRes, doctorRes, patientUserRes] = await Promise.all([
+					supabaseAdmin.from('patient').select('firstName, lastName').eq('id', patient_id).maybeSingle(),
+					doctor_id
+						? queryUserTable((tableName) => supabaseAdmin.from(tableName).select('name').eq('id', doctor_id).maybeSingle())
+						: Promise.resolve({ data: null }),
+					// Obtener el user_id del paciente
+					queryUserTable((tableName) => supabaseAdmin.from(tableName).select('id').eq('patientProfileId', patient_id).maybeSingle()),
+				]);
 				if (patientRes.data) {
 					patientName = `${patientRes.data.firstName} ${patientRes.data.lastName}`;
 				}
 				if (doctorRes.data) {
 					doctorName = doctorRes.data.name || undefined;
 				}
-			} catch {
-				// Ignorar errores
+				if (patientUserRes.data) {
+					patientUserId = patientUserRes.data.id;
+				}
+			} catch (err) {
+				console.warn('[Appointment Update] Error obteniendo datos para notificaciones:', err);
 			}
 
 			const appointmentDate = scheduled_at
@@ -157,9 +273,12 @@ export async function PATCH(req: Request, context: { params: Promise<{ id: strin
 
 			const appointmentUrl = `${process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_VERCEL_URL ? `https://${process.env.NEXT_PUBLIC_VERCEL_URL}` : 'http://localhost:3000'}/dashboard/medic/consultas/${id}`;
 
-			await createNotifications([
-				{
-					userId: patient_id,
+			// Crear notificaciones solo si tenemos los user_ids
+			const notifications = [];
+			
+			if (patientUserId) {
+				notifications.push({
+					userId: patientUserId,
 					organizationId: organization_id || null,
 					type: 'APPOINTMENT_STATUS',
 					title: `Tu cita ha sido ${statusText}`,
@@ -178,9 +297,12 @@ export async function PATCH(req: Request, context: { params: Promise<{ id: strin
 						isForDoctor: false,
 					},
 					sendEmail: true,
-				},
-				{
-					userId: doctor_id || null,
+				});
+			}
+
+			if (doctor_id) {
+				notifications.push({
+					userId: doctor_id,
 					organizationId: organization_id || null,
 					type: 'APPOINTMENT_STATUS',
 					title: `Cita ${statusText}`,
@@ -199,11 +321,60 @@ export async function PATCH(req: Request, context: { params: Promise<{ id: strin
 						isForDoctor: true,
 					},
 					sendEmail: true,
-				},
-			]);
+				});
+			}
+
+			if (notifications.length > 0) {
+				try {
+					await createNotifications(notifications);
+				} catch (notifError) {
+					console.error('[Appointment Update] Error creando notificaciones:', notifError);
+					// No fallar la operación si fallan las notificaciones
+				}
+			}
 		}
 
-		return NextResponse.json({ success: true, appointment: data });
+		// 6️⃣ Obtener la cita actualizada completa para retornarla
+		const { data: updatedAppointment, error: fetchUpdatedError } = await supabaseAdmin
+			.from('appointment')
+			.select('*, selected_service, patient:patient_id(firstName, lastName, identifier, phone), doctor:doctor_id(name)')
+			.eq('id', id)
+			.single();
+
+		if (fetchUpdatedError) {
+			console.warn('[Appointment Update] Error obteniendo cita actualizada, retornando datos construidos:', fetchUpdatedError);
+			// Retornar datos construidos si falla el fetch
+			return NextResponse.json({ success: true, appointment: data });
+		}
+
+		// Normalizar el estado: convertir "EN_ESPERA" a "EN ESPERA" para consistencia con el frontend
+		const normalizeStatus = (status: string): string => {
+			if (status === 'EN_ESPERA') return 'EN ESPERA';
+			if (status === 'NO_ASISTIO') return 'NO ASISTIÓ';
+			return status;
+		};
+
+		// Formatear la respuesta para que coincida con el formato esperado por el frontend
+		const formattedAppointment = {
+			id: updatedAppointment.id,
+			patient: updatedAppointment.patient 
+				? `${updatedAppointment.patient.firstName} ${updatedAppointment.patient.lastName}`
+				: 'Paciente no registrado',
+			patientFirstName: updatedAppointment.patient?.firstName || null,
+			patientLastName: updatedAppointment.patient?.lastName || null,
+			patientIdentifier: updatedAppointment.patient?.identifier || null,
+			patientPhone: updatedAppointment.patient?.phone || null,
+			reason: updatedAppointment.reason || '',
+			time: updatedAppointment.scheduled_at 
+				? new Date(updatedAppointment.scheduled_at).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })
+				: '',
+			scheduled_at: updatedAppointment.scheduled_at,
+			status: normalizeStatus(updatedAppointment.status),
+			location: updatedAppointment.location || null,
+			selected_service: updatedAppointment.selected_service,
+		};
+
+		return NextResponse.json({ success: true, appointment: formattedAppointment });
 	} catch (error) {
 		console.error('❌ Error general al actualizar cita:', error);
 		const errorMessage = error instanceof Error ? error.message : 'Error interno';

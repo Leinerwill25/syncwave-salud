@@ -66,6 +66,8 @@ export default async function EditConsultationPage({ params }: Props) {
 	let isSimpleConsulta = false;
 	let hasEcografiaTransvaginal = false;
 	let isOnlyVideoColposcopia = false;
+	let hasColposcopia = false;
+	let hasConsultaInService = false;
 	if (consultationRaw?.appointment_id) {
 		const { data: appointment } = await supabase
 			.from('appointment')
@@ -79,15 +81,64 @@ export default async function EditConsultationPage({ params }: Props) {
 			
 			// Verificar si hay múltiples servicios (puede ser un array o string)
 			let services: string[] = [];
+			
+			// Función helper para extraer nombres de servicios
+			const extractServiceNames = (service: any): string[] => {
+				if (!service) return [];
+				
+				// Si es un combo, obtener los servicios individuales desde la base de datos
+				if (service.type === 'combo' && service.serviceIds && Array.isArray(service.serviceIds)) {
+					// Los serviceIds están disponibles, pero necesitamos obtener los nombres
+					// Por ahora, retornar el nombre del combo y marcar que necesitamos obtener los servicios
+					return [service.name || String(service).toLowerCase()];
+				}
+				
+				// Si es un objeto con 'name'
+				if (typeof service === 'object' && service.name) {
+					return [service.name.toLowerCase()];
+				}
+				
+				// Si es un string
+				if (typeof service === 'string') {
+					return [service.toLowerCase()];
+				}
+				
+				return [];
+			};
+			
 			if (Array.isArray(selectedService)) {
 				// Si es un array de objetos con 'name' o strings
-				services = selectedService.map((s: any) => 
-					typeof s === 'string' ? s : (s?.name || String(s))
-				).map((s: string) => s.toLowerCase());
+				selectedService.forEach((s: any) => {
+					services.push(...extractServiceNames(s));
+				});
 			} else if (selectedService) {
 				// Si es un objeto con 'name' o un string
-				const serviceName = selectedService?.name || selectedService || '';
-				services = [String(serviceName).toLowerCase()];
+				services.push(...extractServiceNames(selectedService));
+			}
+			
+			// Si es un combo, obtener los servicios individuales desde la base de datos
+			if (selectedService && (selectedService as any).type === 'combo' && (selectedService as any).serviceIds) {
+				const serviceIds = (selectedService as any).serviceIds;
+				if (Array.isArray(serviceIds) && serviceIds.length > 0) {
+					try {
+						// Obtener los servicios individuales desde la base de datos
+						const { data: comboServices } = await supabase
+							.from('service')
+							.select('name')
+							.in('id', serviceIds);
+						
+						if (comboServices && Array.isArray(comboServices)) {
+							// Agregar los nombres de los servicios del combo a la lista
+							comboServices.forEach((svc: any) => {
+								if (svc.name) {
+									services.push(svc.name.toLowerCase());
+								}
+							});
+						}
+					} catch (err) {
+						console.warn('[Edit Consultation] Error obteniendo servicios del combo:', err);
+					}
+				}
 			}
 			
 			// También verificar en el reason si hay múltiples servicios separados por comas, guiones, etc.
@@ -105,24 +156,80 @@ export default async function EditConsultationPage({ params }: Props) {
 				    reasonLower.includes('vídeo colposcopia') || reasonLower.includes('video colposcopía')) {
 					services.push('vídeo colposcopía');
 				}
+				// Buscar "colposcopia" en general (sin "vídeo")
+				if (reasonLower.includes('colposcopia') || reasonLower.includes('colposcop')) {
+					services.push('colposcopia');
+				}
 			}
+			
+			// Eliminar duplicados
+			services = [...new Set(services)];
+			
+			// Determinar si es un servicio individual o un combo
+			const isCombo = selectedService && (selectedService as any).type === 'combo';
+			const isIndividualService = !isCombo && selectedService;
+			
+			// Log para debugging
+			console.log('[Edit Consultation] Servicios detectados:', services);
+			console.log('[Edit Consultation] selected_service original:', JSON.stringify(selectedService, null, 2));
+			console.log('[Edit Consultation] Es combo:', isCombo, 'Es servicio individual:', isIndividualService);
 			
 			// Determinar si es SOLO "Vídeo colposcopía" (sin otros servicios)
 			const hasVideoColposcopia = services.some(s => 
 				s.includes('vídeo colposcopía') || s.includes('video colposcopia') ||
 				s.includes('vídeo colposcopia') || s.includes('video colposcopía')
 			);
-			const hasConsulta = services.some(s => s.includes('consulta') && !s.includes('colposcop'));
-			hasEcografiaTransvaginal = services.some(s => 
-				s.includes('ecografía') || s.includes('ecografia') || s.includes('transvaginal')
-			);
+			// Detectar si tiene colposcopia (cualquier variación - más flexible)
+			hasColposcopia = services.some(s => {
+				const lower = s.toLowerCase();
+				return lower.includes('colposcop') || lower.includes('colposcopia') || 
+				       lower.includes('colposcopia') || lower.includes('colposcopía');
+			});
+			const hasConsulta = services.some(s => {
+				const lower = s.toLowerCase();
+				return (lower.includes('consulta') || lower.includes('consulta')) && 
+				       !lower.includes('colposcop');
+			});
+			
+			// Lógica especial:
+			// - Si es un servicio individual y es "consulta" → NO mostrar colposcopia
+			// - Si es un combo y tiene tanto "consulta" como "colposcopia" → SÍ mostrar colposcopia
+			if (isIndividualService && hasConsulta && !hasColposcopia) {
+				// Servicio individual que es solo "consulta" → no mostrar colposcopia
+				hasConsultaInService = true;
+			} else if (isCombo && hasColposcopia) {
+				// Combo que incluye colposcopia → mostrar colposcopia (aunque también tenga consulta)
+				hasConsultaInService = hasConsulta; // Guardar si tiene consulta, pero no impedir mostrar colposcopia
+			} else {
+				// Otros casos: usar la lógica normal
+				hasConsultaInService = hasConsulta;
+			}
+			
+			hasEcografiaTransvaginal = services.some(s => {
+				const lower = s.toLowerCase();
+				return lower.includes('ecografía') || lower.includes('ecografia') || 
+				       lower.includes('transvaginal');
+			});
+			
+			// Log para debugging
+			console.log('[Edit Consultation] Detecciones:', {
+				hasColposcopia,
+				hasConsulta: hasConsulta,
+				hasConsultaInService,
+				hasEcografiaTransvaginal,
+				hasVideoColposcopia,
+				isCombo,
+				isIndividualService
+			});
 			
 			// Es SOLO vídeo colposcopía si tiene colposcopia pero NO tiene consulta ni ecografía
 			isOnlyVideoColposcopia = hasVideoColposcopia && !hasConsulta && !hasEcografiaTransvaginal;
 			
-			// Es una consulta simple si tiene "Consulta" pero NO tiene "Ecografía Transvaginal" ni "Colposcopia"
-			isSimpleConsulta = hasConsulta && !hasEcografiaTransvaginal && 
-				!services.some(s => s.includes('colposcop')) && !isOnlyVideoColposcopia;
+			// Es una consulta simple si:
+			// - Es un servicio individual con "Consulta" 
+			// - Y NO tiene "Ecografía Transvaginal" ni "Colposcopia"
+			isSimpleConsulta = isIndividualService && hasConsulta && !hasEcografiaTransvaginal && 
+				!hasColposcopia && !isOnlyVideoColposcopia;
 		}
 	}
 
@@ -356,7 +463,17 @@ export default async function EditConsultationPage({ params }: Props) {
 				</header>
 
 				{/* Form Section - No wrapper needed, form handles its own styling */}
-				<EditConsultationForm initial={consultation} patient={patient} doctor={doctor} doctorSpecialties={doctorSpecialties} isSimpleConsulta={isSimpleConsulta} hasEcografiaTransvaginal={hasEcografiaTransvaginal} isOnlyVideoColposcopia={isOnlyVideoColposcopia} />
+				<EditConsultationForm 
+					initial={consultation} 
+					patient={patient} 
+					doctor={doctor} 
+					doctorSpecialties={doctorSpecialties} 
+					isSimpleConsulta={isSimpleConsulta} 
+					hasEcografiaTransvaginal={hasEcografiaTransvaginal} 
+					isOnlyVideoColposcopia={isOnlyVideoColposcopia}
+					hasColposcopia={hasColposcopia}
+					hasConsultaInService={hasConsultaInService}
+				/>
 			</div>
 		</main>
 	);

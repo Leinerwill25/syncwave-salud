@@ -94,6 +94,35 @@ export default function LoginFormAdvanced(): React.ReactElement {
 		setLoading(true);
 
 		try {
+			// Limpiar sesiones anteriores antes de iniciar una nueva
+			try {
+				// Cerrar cualquier sesión existente en Supabase
+				await supabase.auth.signOut();
+				
+				// Limpiar cookies del servidor
+				await fetch('/api/auth/clear-session', {
+					method: 'POST',
+					credentials: 'include',
+				}).catch(() => {
+					// Ignorar errores si el endpoint no está disponible
+				});
+
+				// Limpiar localStorage de sesiones anteriores (excepto rememberMe y userEmail)
+				if (typeof window !== 'undefined') {
+					const rememberMeValue = localStorage.getItem('rememberMe');
+					const userEmailValue = localStorage.getItem('userEmail');
+					localStorage.clear();
+					if (rememberMeValue) localStorage.setItem('rememberMe', rememberMeValue);
+					if (userEmailValue) localStorage.setItem('userEmail', userEmailValue);
+				}
+			} catch (cleanupErr) {
+				console.warn('Error limpiando sesiones anteriores:', cleanupErr);
+				// Continuar con el login aunque falle la limpieza
+			}
+
+			// Pequeña pausa para asegurar que las cookies se hayan limpiado
+			await new Promise((resolve) => setTimeout(resolve, 100));
+
 			const { data, error } = await supabase.auth.signInWithPassword({ email, password });
 			if (error) {
 				setErrorMsg(error.message || 'Error al iniciar sesión');
@@ -200,9 +229,13 @@ export default function LoginFormAdvanced(): React.ReactElement {
 			const pendingPaymentAmount = localStorage.getItem('pendingPayment_amount');
 			const pendingPaymentRole = localStorage.getItem('pendingPayment_role');
 
+			// Esperar un momento para asegurar que las cookies se hayan establecido correctamente
+			await new Promise((resolve) => setTimeout(resolve, 200));
+
 			// Si es un usuario de rol, redirigir al dashboard de usuarios de rol
 			if (isRoleUser) {
-				router.push('/dashboard/role-user');
+				// Usar window.location para forzar una recarga completa y evitar problemas de caché
+				window.location.href = '/dashboard/role-user';
 				return;
 			}
 
@@ -211,12 +244,13 @@ export default function LoginFormAdvanced(): React.ReactElement {
 				(pendingPaymentRole === 'MEDICO' || pendingPaymentRole === 'ADMIN') &&
 				(roleToUse === 'MEDICO' || roleToUse === 'ADMIN')) {
 				// NO limpiar localStorage aquí - la página de pago lo limpiará después de cargar correctamente
-				router.push(`/register/payment?organizationId=${pendingPaymentOrgId}&userId=${pendingPaymentUserId}&amount=${pendingPaymentAmount}`);
+				window.location.href = `/register/payment?organizationId=${pendingPaymentOrgId}&userId=${pendingPaymentUserId}&amount=${pendingPaymentAmount}`;
 				return;
 			}
 
-			// Redirigir inmediatamente sin delays innecesarios
-			router.push(targetRoute);
+			// Redirigir usando window.location para forzar recarga completa y evitar conflictos de sesión
+			// Esto asegura que se cargue con la nueva sesión correcta
+			window.location.href = targetRoute;
 		} catch (err: any) {
 			console.error('Login error', err);
 			setErrorMsg(err?.message || 'Error inesperado');

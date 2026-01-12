@@ -75,10 +75,26 @@ export function useAppointments(selectedDate?: Date) {
 			headers: { 'Content-Type': 'application/json' },
 			body: JSON.stringify(updates),
 		});
-		const data = await res.json();
-		if (!res.ok) throw new Error(data.error || 'Error al actualizar cita');
-		mutate(); // Refresca la lista
-		return data;
+		const responseData = await res.json();
+		if (!res.ok) throw new Error(responseData.error || 'Error al actualizar cita');
+		
+		// Actualizar optimísticamente el cache con los datos retornados
+		if (responseData.appointment) {
+			mutate(
+				(currentData: Appointment[] | undefined) => {
+					if (!currentData) return currentData;
+					return currentData.map((apt) => 
+						apt.id === id ? { ...apt, ...responseData.appointment } : apt
+					);
+				},
+				{ revalidate: true } // Revalidar en background para asegurar datos actualizados
+			);
+		} else {
+			// Si no hay datos retornados, solo revalidar
+			mutate();
+		}
+		
+		return responseData;
 	};
 
 	return {
