@@ -215,17 +215,19 @@ export async function PATCH(req: Request, context: { params: Promise<{ id: strin
 			let patientUserId: string | null = null;
 			try {
 				// Helper para consultar la tabla user con diferentes variantes
-				const queryUserTable = async (queryFn: (tableName: string) => Promise<any>) => {
+				const queryUserTable = async (queryFn: (tableName: string) => any) => {
 					try {
 						// Intentar primero con 'user' en minúscula (nombre correcto de la tabla)
-						const result = await queryFn('user');
+						const queryBuilder1 = queryFn('user');
+						const result = await queryBuilder1;
 						if (result?.data && !result.error) {
 							return result;
 						}
 						if (result?.error) {
 							// Si falla, intentar con comillas dobles
 							try {
-								const result2 = await queryFn('"user"');
+								const queryBuilder2 = queryFn('"user"');
+								const result2 = await queryBuilder2;
 								if (result2?.data && !result2.error) {
 									return result2;
 								}
