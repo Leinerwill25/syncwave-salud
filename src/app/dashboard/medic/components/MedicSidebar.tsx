@@ -41,7 +41,7 @@ const LINKS: LinkItem[] = [
 		submenu: [
 			{ href: '/dashboard/medic/consultas', label: 'Todas las consultas' },
 			{ href: '/dashboard/medic/consultas/new', label: 'Nueva consulta' },
-			{ href: '/dashboard/medic/consulta-sucesiva', label: 'Consulta Sucesiva' },
+			{ href: '/dashboard/medic/consulta-sucesiva', label: 'Consulta Sucesiva' }, // Botón de consultas sucesivas
 		],
 	},
 	{
@@ -302,7 +302,7 @@ export default function MedicSidebar() {
 							}
 
 							return (
-								<li key={sub.label}>
+								<li key={sub.label || sub.href}>
 									<Link
 										href={sub.href!}
 										prefetch={true}
