@@ -119,6 +119,36 @@ CREATE TABLE public.consultation_files (
   CONSTRAINT consultation_files_pkey PRIMARY KEY (id),
   CONSTRAINT consultation_files_fk_consultation FOREIGN KEY (consultation_id) REFERENCES public.consultation(id)
 );
+CREATE TABLE public.successive_consultations (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  original_consultation_id uuid NOT NULL,
+  patient_id uuid,
+  unregistered_patient_id uuid,
+  doctor_id uuid NOT NULL,
+  organization_id uuid,
+  appointment_id uuid,
+  consultation_date timestamp with time zone NOT NULL DEFAULT now(),
+  lab_results jsonb DEFAULT '{}'::jsonb,
+  results_description text,
+  observations text,
+  additional_fields jsonb DEFAULT '{}'::jsonb,
+  images text[] DEFAULT ARRAY[]::text[],
+  xrays text[] DEFAULT ARRAY[]::text[],
+  documents text[] DEFAULT ARRAY[]::text[],
+  diagnosis text,
+  icd11_code text,
+  icd11_title text,
+  notes text,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT successive_consultations_pkey PRIMARY KEY (id),
+  CONSTRAINT fk_successive_consultation_original FOREIGN KEY (original_consultation_id) REFERENCES public.consultation(id) ON DELETE CASCADE,
+  CONSTRAINT fk_successive_consultation_patient FOREIGN KEY (patient_id) REFERENCES public.patient(id) ON DELETE CASCADE,
+  CONSTRAINT fk_successive_consultation_unregistered_patient FOREIGN KEY (unregistered_patient_id) REFERENCES public.unregisteredpatients(id) ON DELETE CASCADE,
+  CONSTRAINT fk_successive_consultation_doctor FOREIGN KEY (doctor_id) REFERENCES public."user"(id) ON DELETE SET NULL,
+  CONSTRAINT fk_successive_consultation_organization FOREIGN KEY (organization_id) REFERENCES public.organization(id) ON DELETE SET NULL,
+  CONSTRAINT fk_successive_consultation_appointment FOREIGN KEY (appointment_id) REFERENCES public.appointment(id) ON DELETE SET NULL
+);
 CREATE TABLE public.consultation_share_link (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
   consultation_id uuid NOT NULL,

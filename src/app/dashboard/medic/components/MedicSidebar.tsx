@@ -41,6 +41,7 @@ const LINKS: LinkItem[] = [
 		submenu: [
 			{ href: '/dashboard/medic/consultas', label: 'Todas las consultas' },
 			{ href: '/dashboard/medic/consultas/new', label: 'Nueva consulta' },
+			{ href: '/dashboard/medic/consulta-sucesiva', label: 'Consulta Sucesiva' },
 		],
 	},
 	{
