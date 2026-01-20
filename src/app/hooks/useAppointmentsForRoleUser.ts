@@ -8,6 +8,7 @@ type Appointment = {
 	patientIdentifier?: string | null;
 	patientPhone?: string | null;
 	patientEmail?: string | null;
+	patientAge?: number | null;
 	reason: string;
 	time: string;
 	scheduled_at?: string;

@@ -307,7 +307,7 @@ export default function AppointmentListForRoleUser({ selectedDate, roleName, can
 										</div>
 									</div>
 
-									{/* Datos del paciente - Nombre, Apellido, Cédula, Teléfono */}
+									{/* Datos del paciente - Nombre, Apellido, Cédula, Teléfono, Edad, Correo */}
 									<div className="bg-gray-50 border border-gray-200 rounded-lg p-2 sm:p-3 ml-6 space-y-1.5">
 										<div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs text-gray-700">
 											{appt.patientFirstName && (
@@ -334,6 +334,19 @@ export default function AppointmentListForRoleUser({ selectedDate, roleName, can
 													<Phone className="w-3.5 h-3.5 text-gray-400 shrink-0" />
 													<span className="font-medium text-gray-500 min-w-[60px]">Teléfono:</span>
 													<span className="text-gray-800">{appt.patientPhone}</span>
+												</div>
+											)}
+											{appt.patientAge !== null && appt.patientAge !== undefined && (
+												<div className="flex items-center gap-1.5">
+													<span className="font-medium text-gray-500 min-w-[60px]">Edad:</span>
+													<span className="text-gray-800">{appt.patientAge} años</span>
+												</div>
+											)}
+											{appt.patientEmail && (
+												<div className="flex items-center gap-1.5">
+													<Mail className="w-3.5 h-3.5 text-gray-400 shrink-0" />
+													<span className="font-medium text-gray-500 min-w-[60px]">Correo:</span>
+													<span className="text-gray-800 break-words">{appt.patientEmail}</span>
 												</div>
 											)}
 										</div>

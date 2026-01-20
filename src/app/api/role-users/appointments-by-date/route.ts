@@ -53,7 +53,7 @@ export async function GET(req: NextRequest) {
 			location,
 			referral_source,
 			selected_service,
-			patient:patient_id(firstName, lastName, identifier, phone),
+			patient:patient_id(firstName, lastName, identifier, phone, dob),
 			unregistered_patient:unregistered_patient_id(first_name, last_name, identification, phone, email),
 			doctor:doctor_id(id, name),
 			created_by_role_user_id`;
@@ -77,7 +77,7 @@ export async function GET(req: NextRequest) {
 				location,
 				referral_source,
 				selected_service,
-				patient:patient_id(firstName, lastName, identifier, phone),
+				patient:patient_id(firstName, lastName, identifier, phone, dob),
 				unregistered_patient:unregistered_patient_id(first_name, last_name, identification, phone, email),
 				doctor:doctor_id(id, name)`;
 
@@ -119,6 +119,24 @@ export async function GET(req: NextRequest) {
 			orgDoctorName = String((orgDoctor as any).name);
 		}
 
+		// Función auxiliar para calcular la edad desde la fecha de nacimiento
+		const calculateAge = (dob: string | Date | null | undefined): number | null => {
+			if (!dob) return null;
+			try {
+				const birthDate = new Date(dob);
+				if (isNaN(birthDate.getTime())) return null;
+				const today = new Date();
+				let age = today.getFullYear() - birthDate.getFullYear();
+				const monthDiff = today.getMonth() - birthDate.getMonth();
+				if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+					age--;
+				}
+				return age >= 0 ? age : null;
+			} catch {
+				return null;
+			}
+		};
+
 		// Normalizar las citas para el formato esperado por el frontend
 		const normalizedAppointments = (Array.isArray(appointments) ? appointments : []).map((apt: any) => {
 			const patient = apt.patient || apt.unregistered_patient;
@@ -129,6 +147,8 @@ export async function GET(req: NextRequest) {
 			const identifier = patient?.identifier || patient?.identification || null;
 			const phone = patient?.phone || null;
 			const email = patient?.email || null; // Solo unregistered_patient tiene email
+			const dob = patient?.dob || null; // Fecha de nacimiento (solo Patient tiene dob, unregistered_patient no)
+			const patientAge = calculateAge(dob);
 			const patientName = patient && (firstName || lastName) ? `${firstName} ${lastName}`.trim() : 'N/A';
 			const isUnregistered = !!apt.unregistered_patient;
 
@@ -182,6 +202,7 @@ export async function GET(req: NextRequest) {
 				patientIdentifier: identifier || null,
 				patientPhone: phone || null,
 				patientEmail: email || null,
+				patientAge: patientAge,
 				reason: apt.reason || '',
 				time: new Date(apt.scheduled_at).toLocaleTimeString('es-ES', {
 					hour: '2-digit',
