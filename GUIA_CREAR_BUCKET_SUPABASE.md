@@ -211,3 +211,4 @@ Antes de considerar el bucket configurado:
 **¡Listo!** El bucket `temp-audio` está configurado y listo para recibir archivos de audio desde tu aplicación. 🎉
 
 
+

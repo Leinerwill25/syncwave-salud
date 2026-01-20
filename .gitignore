@@ -41,3 +41,11 @@ yarn-error.log*
 next-env.d.ts
 
 /src/generated/prisma
+
+# n8n data files (contain secrets)
+data/n8n/
+**/.n8n/
+*.sqlite
+*.sqlite-wal
+*.sqlite-shm
+n8n.sqlite*

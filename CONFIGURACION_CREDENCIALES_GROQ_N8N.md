@@ -204,3 +204,4 @@ Content-Type: application/json
 **¡Listo!** Ya no deberías ver el error de credenciales. Los headers se configuran directamente en cada nodo sin necesidad del sistema de credenciales de n8n. 🎉
 
 
+

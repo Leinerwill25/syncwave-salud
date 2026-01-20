@@ -78,3 +78,4 @@ Después de configurar ngrok:
 - **Alternativa estable**: Considera usar `ngrok` con cuenta gratuita y dominio fijo, o desplegar tu app en Vercel para pruebas.
 
 
+

@@ -252,3 +252,4 @@ NEXT_PUBLIC_APP_URL=http://localhost:3000  # Puede quedarse así
 Ahora puedes usar n8n cloud con tu aplicación Next.js local **sin necesidad de ngrok ni exponer tu aplicación a internet**. El resultado se retorna directamente en la respuesta del webhook. 🚀
 
 
+

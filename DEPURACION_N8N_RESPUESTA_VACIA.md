@@ -79,3 +79,4 @@ Revisa los logs de ejecución en n8n Cloud:
 4. Identifica el nodo que está fallando (marcado en rojo)
 5. Lee el mensaje de error específico
 
+

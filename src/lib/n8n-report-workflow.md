@@ -203,3 +203,4 @@ npm install docxtemplater pizzip
 4. **Seguridad**: El API key de Groq se envía desde Next.js a n8n. Considera usar variables de entorno en n8n en lugar de pasarla en el payload.
 
 
+
