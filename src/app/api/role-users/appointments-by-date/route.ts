@@ -43,7 +43,7 @@ export async function GET(req: NextRequest) {
 		const endIso = endOfDay.toISOString().replace('Z', '+00:00');
 
 		// Construir query base - filtrar por organización del role-user
-		// Intentar primero con created_by_role_user_id, si falla, usar query sin ese campo
+		// Tanto "Asistente De Citas" como "Recepción" ven todas las citas del consultorio
 		// Nota: unregisteredpatients usa snake_case (first_name, last_name, identification, email)
 		// Nota: Patient usa camelCase (firstName, lastName, identifier, phone) y NO tiene email
 		let selectFields = `id,
@@ -60,19 +60,15 @@ export async function GET(req: NextRequest) {
 
 		let query = supabase.from('appointment').select(selectFields).eq('organization_id', session.organizationId).gte('scheduled_at', startIso).lte('scheduled_at', endIso).order('scheduled_at', { ascending: true });
 
-		// Si es "Asistente De Citas", intentar filtrar por created_by_role_user_id
-		// Si el campo no existe o no está disponible, mostrar todas las citas de la organización
-		if (roleNameEquals(session.roleName, 'Asistente De Citas')) {
-			// Intentar filtrar por created_by_role_user_id
-			query = query.eq('created_by_role_user_id', session.roleUserId);
-		}
-		// Si es "Recepción", mostrar todas las citas del consultorio (ya filtrado por organization_id)
+		// Tanto "Asistente De Citas" como "Recepción" deben ver TODAS las citas del consultorio
+		// El filtro por organization_id ya está aplicado, lo cual es suficiente para mostrar
+		// todas las citas relacionadas al consultorio al cual pertenece el role-user
 
 		let { data: appointments, error } = await query;
 
-		// Si hay error y parece ser por campo inexistente, reintentar sin created_by_role_user_id
-		if (error && (error.message?.includes('created_by_role_user_id') || error.message?.includes('column') || error.code === 'PGRST116')) {
-			console.warn('[Role User Appointments API] Campo created_by_role_user_id no existe o error en query, reintentando sin ese campo');
+		// Si hay error en la query, intentar con campos más básicos
+		if (error && (error.message?.includes('column') || error.code === 'PGRST116')) {
+			console.warn('[Role User Appointments API] Error en query, reintentando con campos básicos');
 
 			selectFields = `id,
 				scheduled_at,
@@ -86,10 +82,6 @@ export async function GET(req: NextRequest) {
 				doctor:doctor_id(id, name)`;
 
 			query = supabase.from('appointment').select(selectFields).eq('organization_id', session.organizationId).gte('scheduled_at', startIso).lte('scheduled_at', endIso).order('scheduled_at', { ascending: true });
-
-			// Para Asistente De Citas, sin el campo created_by_role_user_id, mostramos todas las citas del consultorio
-			// (no podemos filtrar por quien las creó sin ese campo)
-			// Esto permite que el Asistente de Citas vea todas las citas programadas de la organización
 
 			const retryResult = await query;
 			appointments = retryResult.data;
