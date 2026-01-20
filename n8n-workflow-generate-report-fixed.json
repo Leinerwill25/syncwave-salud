@@ -1,0 +1,471 @@
+{
+	"name": "Generar Informe Médico desde Audio",
+	"nodes": [
+		{
+			"parameters": {
+				"httpMethod": "POST",
+				"path": "generate-report-from-audio",
+				"responseMode": "responseNode",
+				"options": {}
+			},
+			"id": "webhook-trigger",
+			"name": "Webhook",
+			"type": "n8n-nodes-base.webhook",
+			"typeVersion": 2,
+			"position": [250, 300],
+			"webhookId": "generate-report-from-audio"
+		},
+		{
+			"parameters": {
+				"jsCode": "// Normalizar datos del webhook\n// En n8n, los datos del body pueden estar en $json o $json.body\nconst webhookData = $json.body || $json;\n\n// Validar que audioUrl existe\nif (!webhookData.audioUrl) {\n  throw new Error('audioUrl no encontrado en los datos del webhook. Datos recibidos: ' + JSON.stringify(Object.keys(webhookData)));\n}\n\n// Retornar todos los datos normalizados\nreturn webhookData;"
+			},
+			"id": "normalize-data",
+			"name": "Normalizar Datos",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
+			"position": [450, 300]
+		},
+		{
+			"parameters": {
+				"method": "GET",
+				"url": "={{ $json.audioUrl }}",
+				"options": {
+					"response": {
+						"response": {
+							"responseFormat": "file"
+						}
+					}
+				}
+			},
+			"id": "download-audio",
+			"name": "Descargar Audio",
+			"type": "n8n-nodes-base.httpRequest",
+			"typeVersion": 4.2,
+			"position": [650, 300]
+		},
+		{
+			"parameters": {
+				"method": "POST",
+				"url": "={{ $('Normalizar Datos').item.json.nextAppUrl }}/api/groq/transcribe",
+				"sendHeaders": true,
+				"headerParameters": {
+					"parameters": [
+						{
+							"name": "Content-Type",
+							"value": "application/json"
+						}
+					]
+				},
+				"sendBody": true,
+				"specifyBody": "json",
+				"jsonBody": "={\n  \"audioUrl\": \"{{ $('Normalizar Datos').item.json.audioUrl }}\",\n  \"groqApiKey\": \"{{ $('Normalizar Datos').item.json.groqApiKey }}\"\n}",
+				"options": {
+					"response": {
+						"response": {
+							"responseFormat": "json"
+						}
+					}
+				}
+			},
+			"id": "transcribe-groq",
+			"name": "Transcribir con Groq",
+			"type": "n8n-nodes-base.httpRequest",
+			"typeVersion": 4.2,
+			"position": [850, 300]
+		},
+		{
+			"parameters": {
+				"jsCode": "// Limpiar transcripción de muletillas\n// El endpoint de Next.js retorna { success: true, text: '...', transcription: {...} }\nconst transcription = $json.text || $json.transcription?.text || '';\n\n// Lista de muletillas comunes\nconst muletillas = [\n  /\\b(eh|em|ah|mm|umm|este|esto|bueno|entonces|así que|o sea|es decir)\\b/gi,\n  /\\b(como|tipo|tal vez|quizás|a ver|mira|fíjate|osea)\\b/gi,\n  /\\b(entonces|así|bueno|déjame ver|déjame pensar)\\b/gi,\n];\n\nlet cleaned = transcription;\nmuletillas.forEach(pattern => {\n  cleaned = cleaned.replace(pattern, ' ');\n});\n\n// Normalizar espacios múltiples\ncleaned = cleaned.replace(/\\s+/g, ' ').trim();\n\n// Limpiar puntuación excesiva\ncleaned = cleaned.replace(/\\.{3,}/g, '.');\ncleaned = cleaned.replace(/,{2,}/g, ',');\n\nconst originalData = $('Normalizar Datos').item.json;\n\nreturn {\n  original: transcription,\n  cleaned: cleaned,\n  consultationId: originalData.consultationId,\n  doctorId: originalData.doctorId,\n  reportType: originalData.reportType,\n  specialty: originalData.specialty,\n  patientData: originalData.patientData,\n  consultationData: originalData.consultationData,\n  medicProfile: originalData.medicProfile,\n  groqApiKey: originalData.groqApiKey,\n  nextAppUrl: originalData.nextAppUrl,\n  n8nApiKey: originalData.n8nApiKey,\n};"
+			},
+			"id": "clean-transcription",
+			"name": "Limpiar Transcripción",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
+			"position": [1050, 300]
+		},
+		{
+			"parameters": {
+				"jsCode": "// Preparar payload JSON para analizar con IA\n// IMPORTANTE: La IA debe interpretar y comprender el contexto para extraer información inteligentemente\nconst cleaned = $json.cleaned || '';\nconst specialty = $json.specialty || '';\nconst reportType = $json.reportType || '';\n\n// Para ginecología, definir campos específicos que deben extraerse\nlet fieldInstructions = '';\nif (specialty.toLowerCase().includes('ginecolog') || reportType === 'gynecology') {\n  fieldInstructions = `\\n\\n**CAMPOS ESPECÍFICOS A EXTRAER PARA GINECOLOGÍA:**\\n\\nDebes analizar e interpretar el contexto para extraer estos campos. Los doctores pueden expresar la misma información de diferentes formas:\\n\\n- historia_enfermedad_actual o motivo: Motivo de consulta o síntoma principal (ej: \"dolor de vientre\", \"dolor abdominal\", \"molestia en el bajo vientre\" - todos se refieren al mismo concepto)\\n- tamano_mamas o tamaño_mamas: Tamaño de mamas (ej: \"grandes\", \"voluminosas\", \"de buen tamaño\" - todos indican tamaño grande)\\n- simetria_mamas o simetria: Simetría de mamas (ej: \"simétricas\", \"iguales\", \"bien proporcionadas\" vs \"asimétricas\", \"desiguales\", \"una más grande\")\\n- abdomen: Descripción del abdomen (ej: \"blando\", \"blanco\", \"depresible\", \"sin alteraciones\" - interpreta el contexto)\\n- ultima_regla o fur: Fecha de última regla/menstruación (busca fechas, días, meses mencionados)\\n- ho: Historia obstétrica (busca gestas, paras, cesáreas, abortos mencionados)\\n- metodo_anticonceptivo: Método anticonceptivo (busca cualquier método mencionado: pastillas, DIU, preservativo, ninguno, etc.)\\n- alergicos: Alergias mencionadas (puede decir \"niega alergias\", \"sin alergias\", \"no tiene alergias\")\\n- quirurgicos: Antecedentes quirúrgicos (puede decir \"sin cirugías\", \"niega cirugías\", \"no tiene cirugías\")\\n- antecedentes_madre: Antecedentes de la madre (puede mencionar enfermedades, estado de salud, fallecimiento)\\n- antecedentes_padre: Antecedentes del padre (puede mencionar enfermedades, estado de salud)\\n- antecedentes_cancer_mama: Antecedentes de cáncer de mama (puede decir \"niega\", \"sin antecedentes\", \"no tiene\")\\n- its: Infecciones de transmisión sexual (puede decir \"niega ITS\", \"sin ITS\", \"no tiene ITS\")\\n- tipo_menstruacion: Tipo de menstruación (puede decir \"regulares\", \"irregulares\", \"normales\")\\n- patron_menstruacion: Patrón menstrual (puede mencionar duración, frecuencia)\\n- dismenorrea: Dismenorrea (puede decir \"sí\", \"no\", \"dismenorreica\", \"con dolor\")\\n- primera_relacion_sexual o prs: Primera relación sexual (busca edad o momento mencionado)\\n- parejas_sexuales o ps: Número de parejas sexuales (busca número mencionado)\\n- condiciones_generales: Condiciones generales del paciente (puede decir \"estable\", \"buenas\", \"regulares\")\\n- cap_mamas o cap: CAP de mamas (busca cualquier descripción del CAP)\\n- secrecion_mamas o secrecion: Secreción de mamas (puede decir \"sin secreción\", \"no hay secreción\", \"secreción presente\")\\n- fosas_axilares o fosas: Fosas axilares (puede decir \"libres\", \"sin alteraciones\", \"sin adenopatías\")\\n- genitales_externos o genitales: Genitales externos (busca cualquier descripción)\\n- especuloscopia o especuloscopio: Especuloscopia (busca cualquier hallazgo mencionado)\\n- tacto_cervix o tacto: Tacto del cervix (busca cualquier descripción del tacto)\\n- fondo_sacos o fondo: Fondo de sacos (puede decir \"libres\", \"sin alteraciones\", \"sin líquido\")\\n- anexos: Anexos (busca cualquier descripción de anexos)\\n- dimensiones_utero: Dimensiones del útero (busca medidas mencionadas)\\n- interfase_endometrial: Interfase endometrial (busca descripción)\\n- tipo_interfase_endometrial: Tipo de interfase endometrial (busca tipo mencionado)\\n- dimensiones_ovario_izquierdo: Dimensiones ovario izquierdo (busca medidas)\\n- dimensiones_ovario_derecho: Dimensiones ovario derecho (busca medidas)\\n- liquido_fondo_saco o liquido: Líquido en fondo de saco (puede decir \"sin líquido\", \"líquido presente\", \"libre\")\\n\\nIMPORTANTE: Debes interpretar el contexto y entender que diferentes formas de expresar lo mismo deben mapearse al mismo campo. Por ejemplo, \"dolor de vientre\", \"dolor abdominal\", \"molestia en el abdomen\" todos se refieren al motivo de consulta.\\n`;\n}\n\n// Construir el mensaje del usuario\nconst userContent = `Analiza esta transcripción médica de una consulta y extrae inteligentemente todos los campos relevantes. Debes interpretar el contexto y comprender que los doctores pueden expresar la misma información de diferentes formas.\\n\\n**TRANSCRIPCIÓN COMPLETA:**\\n${cleaned}\\n\\n**ESPECIALIDAD:** ${specialty}\\n**TIPO DE INFORME:** ${reportType}${fieldInstructions}\\n\\n**INSTRUCCIONES:**\\n1. Analiza el contexto completo de la transcripción\\n2. Interpreta diferentes formas de expresar lo mismo (ej: \"dolor de vientre\" = \"dolor abdominal\" = \"molestia en el bajo vientre\")\\n3. Extrae información estructurada mapeando conceptos similares al mismo campo\\n4. Si no se menciona algo, déjalo vacío o null - NO uses valores predeterminados\\n5. Si el doctor dice que no va a llenar algo o que lo deje libre, respeta esa instrucción\\n6. Responde con un JSON que contenga todos los campos extraídos\\n\\nResponde SOLO con un JSON válido, sin texto adicional.`;\n\n// Construir el payload JSON completo\nconst payload = {\n  model: 'llama-3.3-70b-versatile',\n  messages: [\n    {\n      role: 'system',\n      content: 'Eres un asistente médico especializado en analizar transcripciones de consultas médicas. Tu tarea es interpretar el contexto, comprender diferentes formas de expresar la misma información, y extraer datos estructurados de manera inteligente. Debes entender que diferentes doctores pueden expresar lo mismo de diferentes formas (ej: \"dolor de vientre\" vs \"dolor abdominal\" vs \"molestia en el bajo vientre\" - todos se refieren al motivo de consulta). Analiza el contexto completo y extrae la información de manera inteligente, mapeando conceptos similares al mismo campo. Responde SOLO con un JSON válido que contenga los campos extraídos.'\n    },\n    {\n      role: 'user',\n      content: userContent\n    }\n  ],\n  temperature: 0.3,  // Temperatura moderada para permitir interpretación inteligente\n  response_format: { type: 'json_object' }\n};\n\nreturn {\n  ...$json,\n  groqPayload: payload\n};"
+			},
+			"id": "prepare-analyze-payload",
+			"name": "Preparar Payload Análisis",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
+			"position": [1250, 300]
+		},
+		{
+			"parameters": {
+				"method": "POST",
+				"url": "https://api.groq.com/openai/v1/chat/completions",
+				"sendHeaders": true,
+				"headerParameters": {
+					"parameters": [
+						{
+							"name": "Authorization",
+							"value": "=Bearer {{ $json.groqApiKey }}"
+						},
+						{
+							"name": "Content-Type",
+							"value": "application/json"
+						}
+					]
+				},
+				"sendBody": true,
+				"specifyBody": "json",
+				"jsonBody": "={{ $json.groqPayload }}",
+				"options": {}
+			},
+			"id": "analyze-ai",
+			"name": "Analizar con IA",
+			"type": "n8n-nodes-base.httpRequest",
+			"typeVersion": 4.2,
+			"position": [1450, 300]
+		},
+		{
+			"parameters": {
+				"jsCode": "// Procesar respuesta de IA y preparar datos para plantilla\n// IMPORTANTE: Solo usar datos extraídos del audio, NO mezclar con datos del formulario\nconst aiResponse = $json.choices?.[0]?.message?.content;\nlet extractedFields = {};\n\ntry {\n  extractedFields = JSON.parse(aiResponse);\n} catch (e) {\n  console.error('Error parseando respuesta de IA:', e);\n  extractedFields = {};\n}\n\nconst cleanedData = $('Limpiar Transcripción').item.json;\n\n// NO usar datos del formulario (consultationData.vitals) - solo usar extractedFields del audio\nconst reportType = cleanedData.reportType || 'gynecology';\n\n// Construir updatedVitals SOLO con datos del audio (extractedFields)\n// NO mergear con vitals existentes del formulario para evitar mezclar datos predeterminados\nlet updatedVitals = {};\n\nif (reportType === 'gynecology') {\n  updatedVitals.gynecology = extractedFields.gynecology || extractedFields;\n} else if (reportType === 'first_trimester') {\n  updatedVitals.obstetrics = {\n    first_trimester: extractedFields.first_trimester || extractedFields\n  };\n} else if (reportType === 'second_third_trimester') {\n  updatedVitals.obstetrics = {\n    second_third_trimester: extractedFields.second_third_trimester || extractedFields\n  };\n} else if (reportType === 'cardiology') {\n  updatedVitals.cardiology = extractedFields.cardiology || extractedFields;\n} else if (reportType === 'pulmonology') {\n  updatedVitals.pulmonology = extractedFields.pulmonology || extractedFields;\n} else if (reportType === 'neurology') {\n  updatedVitals.neurology = extractedFields.neurology || extractedFields;\n} else if (reportType === 'nutrition') {\n  updatedVitals.nutrition = extractedFields.nutrition || extractedFields;\n} else if (reportType === 'dermatology') {\n  updatedVitals.dermatology = extractedFields.dermatology || extractedFields;\n} else if (reportType === 'psychiatry') {\n  updatedVitals.psychiatry = extractedFields.psychiatry || extractedFields;\n} else if (reportType === 'orthopedics') {\n  updatedVitals.orthopedics = extractedFields.orthopedics || extractedFields;\n} else if (reportType === 'ent') {\n  updatedVitals.ent = extractedFields.ent || extractedFields;\n} else if (reportType === 'endocrinology') {\n  updatedVitals.endocrinology = extractedFields.endocrinology || extractedFields;\n} else if (reportType === 'ophthalmology') {\n  updatedVitals.ophthalmology = extractedFields.ophthalmology || extractedFields;\n}\n\nreturn {\n  transcription: cleanedData.cleaned,\n  originalTranscription: cleanedData.original,\n  extractedFields: extractedFields,  // Campos extraídos SOLO del audio\n  updatedVitals: updatedVitals,  // Vitals construidos SOLO con datos del audio\n  consultationId: cleanedData.consultationId,\n  doctorId: cleanedData.doctorId,\n  reportType: reportType,\n  specialty: cleanedData.specialty,\n  patientData: cleanedData.patientData,\n  medicProfile: cleanedData.medicProfile,\n  nextAppUrl: cleanedData.nextAppUrl,\n  n8nApiKey: cleanedData.n8nApiKey,\n};"
+			},
+			"id": "process-fields",
+			"name": "Procesar Campos",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
+			"position": [1650, 300]
+		},
+		{
+			"parameters": {
+				"jsCode": "// Preparar datos para analizar la plantilla Word completa\n// IMPORTANTE: Analizar la plantilla real para extraer todas las variables\nconst processedData = $('Procesar Campos').item.json;\nconst medicProfile = processedData.medicProfile || {};\nconst doctorId = processedData.doctorId || '';\nconst reportType = processedData.reportType || 'gynecology';\nconst nextAppUrl = processedData.nextAppUrl || '';\nconst n8nApiKey = processedData.n8nApiKey || '';\n\n// Validar que tenemos los datos necesarios\nif (!nextAppUrl) {\n  throw new Error('nextAppUrl no está disponible. Datos recibidos: ' + JSON.stringify(Object.keys(processedData)));\n}\n\nif (!n8nApiKey) {\n  throw new Error('n8nApiKey no está disponible');\n}\n\nif (!doctorId) {\n  throw new Error('doctorId no está disponible');\n}\n\n// Construir URL completa\nconst analyzeTemplateUrl = nextAppUrl.endsWith('/') \n  ? nextAppUrl + 'api/n8n/analyze-template'\n  : nextAppUrl + '/api/n8n/analyze-template';\n\nreturn {\n  ...processedData,\n  templateUrl: medicProfile.report_template_url || '',\n  templateName: medicProfile.report_template_name || '',\n  analyzeTemplateUrl: analyzeTemplateUrl,\n  analyzeTemplatePayload: {\n    doctorId: doctorId,\n    reportType: reportType,\n    apiKey: n8nApiKey\n  }\n};"
+			},
+			"id": "prepare-template",
+			"name": "Preparar Plantilla",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
+			"position": [1850, 300]
+		},
+		{
+			"parameters": {
+				"method": "POST",
+				"url": "={{ $json.analyzeTemplateUrl }}",
+				"sendHeaders": true,
+				"headerParameters": {
+					"parameters": [
+						{
+							"name": "Content-Type",
+							"value": "application/json"
+						}
+					]
+				},
+				"sendBody": true,
+				"specifyBody": "json",
+				"jsonBody": "={{ $json.analyzeTemplatePayload }}",
+				"options": {
+					"response": {
+						"response": {
+							"responseFormat": "json"
+						}
+					}
+				}
+			},
+			"id": "analyze-template",
+			"name": "Analizar Plantilla",
+			"type": "n8n-nodes-base.httpRequest",
+			"typeVersion": 4.2,
+			"position": [2050, 300]
+		},
+		{
+			"parameters": {
+				"jsCode": "// Preparar payload JSON para generar informe con IA\n// IMPORTANTE: Usar la plantilla real analizada para generar el contenido correcto\nconst templateAnalysis = $json;\nconst templateName = templateAnalysis.templateName || 'Plantilla del Doctor';\nconst templateText = templateAnalysis.templateText || '';\nconst templateVariables = templateAnalysis.variables || [];\nconst transcription = $('Procesar Campos').item.json.transcription || '';\nconst extractedFields = $('Procesar Campos').item.json.extractedFields || {};\nconst patientData = $('Procesar Campos').item.json.patientData || {};\nconst specialty = $('Procesar Campos').item.json.specialty || '';\nconst reportType = $('Procesar Campos').item.json.reportType || '';\n\n// Construir lista de variables encontradas en la plantilla\nconst variablesList = templateVariables.map(v => `{{${v}}}`).join(', ');\n\n// Construir el mensaje del usuario con la plantilla real completa\n// Usar más texto de la plantilla para que la IA entienda mejor la estructura\nconst fullTemplateText = templateText.length > 0 ? templateText : 'Plantilla no disponible en texto, usar estructura estándar';\nconst templatePreview = fullTemplateText.length > 5000 ? fullTemplateText.substring(0, 5000) + '...' : fullTemplateText;\n\nconst userContent = `Eres un asistente médico especializado en generar informes médicos profesionales. Tu tarea es analizar una transcripción médica y generar el contenido del informe que se insertará en la variable {{contenido}} de una plantilla Word específica.\\n\\n**NOMBRE DE LA PLANTILLA:** ${templateName}\\n\\n**CONTENIDO DE LA PLANTILLA (para entender la estructura):**\\n${templatePreview}\\n\\n**TODAS LAS VARIABLES ENCONTRADAS EN LA PLANTILLA:**\\n${variablesList}\\n\\n**TRANSCRIPCIÓN COMPLETA DE LA CONSULTA (lo que el doctor dijo en el audio):**\\n${transcription}\\n\\n**CAMPOS EXTRAÍDOS DE LA TRANSCRIPCIÓN (interpretación inteligente):**\\n${JSON.stringify(extractedFields, null, 2)}\\n\\n**DATOS DEL PACIENTE:**\\n${JSON.stringify(patientData, null, 2)}\\n\\n**INSTRUCCIONES CRÍTICAS Y EJEMPLOS DE INTERPRETACIÓN:**\\n\\n1. **ANÁLISIS DE LA PLANTILLA:**\\n   - Analiza la plantilla completa para entender la estructura y el formato exacto\\n   - Identifica qué secciones y variables existen en la plantilla\\n   - El contenido que generes se insertará en la variable {{contenido}}\\n\\n2. **INTERPRETACIÓN INTELIGENTE DE LA TRANSCRIPCIÓN:**\\n   - Diferentes doctores pueden expresar lo mismo de diferentes formas\\n   - Debes interpretar el contexto y mapear conceptos similares correctamente\\n\\n3. **EJEMPLOS DE INTERPRETACIÓN CORRECTA:**\\n   - Si el doctor dice \"dolor de vientre\", \"dolor abdominal\", \"molestia en el bajo vientre\", \"dolor en el abdomen\" → todos se refieren al MOTIVO DE CONSULTA\\n   - Si el doctor dice \"mamas grandes\", \"mamas voluminosas\", \"mamas de buen tamaño\", \"mamas aumentadas\" → todos indican tamaño GRANDE\\n   - Si el doctor dice \"simétricas\", \"iguales\", \"bien proporcionadas\", \"similares\" → todos indican SIMÉTRICAS\\n   - Si el doctor dice \"asimétricas\", \"desiguales\", \"una más grande\", \"diferentes\" → todos indican ASIMÉTRICAS\\n   - Si el doctor dice \"abdomen blanco\", \"abdomen blando\", \"abdomen depresible\", \"abdomen sin alteraciones\" → interpreta el contexto y usa la descripción apropiada (si dice \"blanco\" usa \"BLANCO\", si dice \"blando\" usa \"BLANDO\")\\n\\n4. **RESPETO A LAS INSTRUCCIONES DEL DOCTOR:**\\n   - Si el doctor indica que NO va a llenar algo (\"no voy a llenar X\", \"dejar X libre\", \"sin datos en X\", \"X lo vamos a dejar libre\", \"X sin datos\"), respeta esa instrucción y NO incluyas esa información\\n   - Si una variable no tiene información en el audio, NO la rellenes - déjala vacía\\n\\n5. **FORMATO Y ESTRUCTURA:**\\n   - TODO el texto generado DEBE estar en MAYÚSCULAS\\n   - Genera SOLO el contenido que se insertará en la variable {{contenido}} de la plantilla\\n   - NO incluyas las variables FUR, HO, o MÉTODO ANTICONCEPTIVO en el contenido - estas se rellenan automáticamente en la plantilla\\n   - El contenido debe seguir el formato y estructura que se observa en la plantilla\\n   - No agregues texto adicional fuera del formato de la plantilla\\n\\n6. **PRECISIÓN Y EXACTITUD:**\\n   - El contenido debe reflejar EXACTAMENTE lo que el doctor mencionó en el audio\\n   - Interpreta inteligentemente diferentes formas de expresar lo mismo\\n   - NO inventes información que no esté en el audio\\n   - NO uses valores predeterminados\\n\\n**FORMATO DE RESPUESTA:**\\nGenera el contenido del informe en MAYÚSCULAS que se insertará en la variable {{contenido}} de la plantilla. El contenido debe reflejar EXACTAMENTE lo que el doctor mencionó en el audio, interpretando inteligentemente diferentes formas de expresar lo mismo, y siguiendo la estructura de la plantilla.\\n\\nResponde SOLO con el texto del contenido en MAYÚSCULAS, sin explicaciones adicionales ni comentarios.`;\n\n// Construir el payload JSON completo\n// Usar llama-3.3-70b-versatile que es el modelo más reciente y potente de Groq\nconst payload = {\n  model: 'llama-3.3-70b-versatile',\n  messages: [\n    {\n      role: 'system',\n      content: 'Eres un asistente médico especializado en generar informes médicos profesionales. Tu tarea es analizar transcripciones médicas de consultas, interpretar el contexto de manera inteligente, comprender que diferentes doctores pueden expresar la misma información de diferentes formas, y generar contenido médico profesional que se insertará en una plantilla Word específica. Debes interpretar inteligentemente la información del doctor y estructurarla de manera profesional. TODO el texto debe estar en MAYÚSCULAS. Si el doctor indica que no se debe llenar cierto campo, respeta esa instrucción y no lo rellenes. Solo genera contenido basado en lo que el doctor mencionó en el audio, sin inventar ni usar valores predeterminados.'\n    },\n    {\n      role: 'user',\n      content: userContent\n    }\n  ],\n  temperature: 0.2  // Temperatura baja para mayor precisión y menos alucinaciones\n};\n\nreturn {\n  ...$('Procesar Campos').item.json,\n  templateAnalysis: templateAnalysis,\n  groqReportPayload: payload\n};"
+			},
+			"id": "prepare-report-payload",
+			"name": "Preparar Payload Informe",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
+			"position": [2250, 300]
+		},
+		{
+			"parameters": {
+				"method": "POST",
+				"url": "https://api.groq.com/openai/v1/chat/completions",
+				"sendHeaders": true,
+				"headerParameters": {
+					"parameters": [
+						{
+							"name": "Authorization",
+							"value": "=Bearer {{ $('Normalizar Datos').item.json.groqApiKey }}"
+						},
+						{
+							"name": "Content-Type",
+							"value": "application/json"
+						}
+					]
+				},
+				"sendBody": true,
+				"specifyBody": "json",
+				"jsonBody": "={{ $json.groqReportPayload }}",
+				"options": {}
+			},
+			"id": "generate-report-ai",
+			"name": "Generar Informe con IA",
+			"type": "n8n-nodes-base.httpRequest",
+			"typeVersion": 4.2,
+			"position": [2050, 300]
+		},
+		{
+			"parameters": {
+				"jsCode": "// Preparar datos finales para generar el informe\n// Usar el contenido generado por la IA que interpretó la transcripción\nconst templateData = $('Preparar Plantilla').item.json;\nconst processedData = $('Procesar Campos').item.json;\nconst aiReportContent = $json.choices?.[0]?.message?.content || '';\n\nreturn {\n  consultationId: processedData.consultationId,\n  doctorId: processedData.doctorId,\n  reportType: processedData.reportType,\n  transcription: processedData.transcription,\n  aiGeneratedReport: aiReportContent,  // Contenido generado por IA que interpretó la transcripción\n  extractedFields: processedData.extractedFields,\n  updatedVitals: processedData.updatedVitals,\n  nextAppUrl: processedData.nextAppUrl,\n  n8nApiKey: processedData.n8nApiKey,\n  patientData: processedData.patientData,\n  specialty: processedData.specialty,\n  medicProfile: processedData.medicProfile\n};"
+			},
+			"id": "prepare-final-data",
+			"name": "Preparar Datos Finales",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
+			"position": [2250, 300]
+		},
+		{
+			"parameters": {
+				"jsCode": "// Preparar payload JSON para generar informe Word\nconst consultationId = $json.consultationId || '';\nconst doctorId = $json.doctorId || '';\nconst reportType = $json.reportType || '';\nconst transcription = $json.aiGeneratedReport || '';\nconst extractedFields = $json.extractedFields || {};\nconst updatedVitals = $json.updatedVitals || {};\nconst apiKey = $json.n8nApiKey || '';\nconst nextAppUrl = $json.nextAppUrl || '';\n\n// Construir el payload JSON completo\nconst payload = {\n  consultationId: consultationId,\n  doctorId: doctorId,\n  reportType: reportType,\n  transcription: transcription,\n  extractedFields: extractedFields,\n  updatedVitals: updatedVitals,\n  apiKey: apiKey\n};\n\nreturn {\n  ...$json,\n  reportPayload: payload,\n  reportUrl: nextAppUrl + '/api/n8n/generate-report-internal'\n};"
+			},
+			"id": "prepare-report-word-payload",
+			"name": "Preparar Payload Informe Word",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
+			"position": [2250, 300]
+		},
+		{
+			"parameters": {
+				"method": "POST",
+				"url": "={{ $json.reportUrl }}",
+				"sendHeaders": true,
+				"headerParameters": {
+					"parameters": [
+						{
+							"name": "Content-Type",
+							"value": "application/json"
+						}
+					]
+				},
+				"sendBody": true,
+				"specifyBody": "json",
+				"jsonBody": "={{ $json.reportPayload }}",
+				"options": {
+					"response": {
+						"response": {
+							"responseFormat": "json"
+						}
+					}
+				}
+			},
+			"id": "generate-report",
+			"name": "Generar Informe Word",
+			"type": "n8n-nodes-base.httpRequest",
+			"typeVersion": 4.2,
+			"position": [2450, 300]
+		},
+		{
+			"parameters": {
+				"jsCode": "// Preparar respuesta final del webhook\n// El nodo 'Generar Informe Word' retorna la respuesta del endpoint interno\nconst generateReportResponse = $('Generar Informe Word').item?.json || {};\nconst reportUrl = generateReportResponse.report_url || generateReportResponse.reportUrl || '';\n\n// Obtener transcripción\nconst cleanedData = $('Limpiar Transcripción').item?.json || {};\nconst transcription = cleanedData.cleaned || cleanedData.transcription || '';\n\n// Retornar respuesta estructurada\nreturn {\n  success: true,\n  reportUrl: reportUrl,\n  transcription: transcription,\n  message: 'Informe generado exitosamente'\n};"
+			},
+			"id": "prepare-webhook-response",
+			"name": "Preparar Respuesta Webhook",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
+			"position": [2650, 300]
+		},
+		{
+			"parameters": {
+				"respondWith": "json",
+				"responseBody": "={{ $json }}",
+				"options": {}
+			},
+			"id": "respond-webhook",
+			"name": "Respond to Webhook",
+			"type": "n8n-nodes-base.respondToWebhook",
+			"typeVersion": 1.1,
+			"position": [2850, 300]
+		}
+	],
+	"connections": {
+		"Webhook": {
+			"main": [
+				[
+					{
+						"node": "Normalizar Datos",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Normalizar Datos": {
+			"main": [
+				[
+					{
+						"node": "Descargar Audio",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Normalizar Datos": {
+			"main": [
+				[
+					{
+						"node": "Transcribir con Groq",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Transcribir con Groq": {
+			"main": [
+				[
+					{
+						"node": "Limpiar Transcripción",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Limpiar Transcripción": {
+			"main": [
+				[
+					{
+						"node": "Preparar Payload Análisis",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Preparar Payload Análisis": {
+			"main": [
+				[
+					{
+						"node": "Analizar con IA",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Analizar con IA": {
+			"main": [
+				[
+					{
+						"node": "Procesar Campos",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Procesar Campos": {
+			"main": [
+				[
+					{
+						"node": "Preparar Plantilla",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Preparar Plantilla": {
+			"main": [
+				[
+					{
+						"node": "Analizar Plantilla",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Analizar Plantilla": {
+			"main": [
+				[
+					{
+						"node": "Preparar Payload Informe",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Preparar Payload Informe": {
+			"main": [
+				[
+					{
+						"node": "Generar Informe con IA",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Generar Informe con IA": {
+			"main": [
+				[
+					{
+						"node": "Preparar Datos Finales",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Preparar Datos Finales": {
+			"main": [
+				[
+					{
+						"node": "Preparar Payload Informe Word",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Preparar Payload Informe Word": {
+			"main": [
+				[
+					{
+						"node": "Generar Informe Word",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Generar Informe Word": {
+			"main": [
+				[
+					{
+						"node": "Preparar Respuesta Webhook",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Preparar Respuesta Webhook": {
+			"main": [
+				[
+					{
+						"node": "Respond to Webhook",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"pinData": {},
+	"settings": {
+		"executionOrder": "v1"
+	},
+	"staticData": null,
+	"tags": [],
+	"triggerCount": 1,
+	"updatedAt": "2025-01-27T00:00:00.000Z"
+}

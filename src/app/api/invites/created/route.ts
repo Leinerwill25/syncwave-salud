@@ -1,9 +1,8 @@
 // src/app/api/invites/created/route.ts
-export const runtime = 'nodejs'; // obliga Node runtime (prisma, crypto, dependencias CJS)
+export const runtime = 'nodejs'; // obliga Node runtime (crypto, dependencias CJS)
 
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import prisma from '@/lib/prisma';
 import crypto from 'crypto';
 
 type Body = {
@@ -103,6 +102,10 @@ export async function POST(req: Request) {
 			supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, { auth: { persistSession: false } });
 		}
 
+		if (!supabaseAdmin) {
+			return NextResponse.json({ ok: false, message: 'Supabase no configurado' }, { status: 500 });
+		}
+
 		// 3) intentar resolver usuario auth via supabaseAdmin (si está disponible)
 		let authUserId: string | null = null;
 		if (supabaseAdmin) {
@@ -120,14 +123,22 @@ export async function POST(req: Request) {
 			if (!authUserId) return NextResponse.json({ ok: false, message: 'Not authenticated (could not resolve user)' }, { status: 401 });
 		}
 
-		// 5) buscar dbUser por authId
-		const dbUser = await prisma.user.findFirst({ where: { authId: authUserId } });
-		if (!dbUser) return NextResponse.json({ ok: false, message: 'User not found in DB' }, { status: 401 });
+		// 5) buscar dbUser por authId usando Supabase
+		const { data: dbUser, error: userError } = await supabaseAdmin
+			.from('user')
+			.select('id, email, role, organizationId, authId')
+			.eq('authId', authUserId)
+			.maybeSingle();
+
+		if (userError || !dbUser) {
+			return NextResponse.json({ ok: false, message: 'User not found in DB' }, { status: 401 });
+		}
 
 		// 6) determinamos organizationId (body override allowed but must match user's org)
-		const organizationId = body?.organizationId ?? dbUser.organizationId;
+		const userOrgId = (dbUser as any).organizationId;
+		const organizationId = body?.organizationId ?? userOrgId;
 		if (!organizationId) return NextResponse.json({ ok: false, message: 'OrganizationId missing' }, { status: 400 });
-		if (dbUser.organizationId !== organizationId) {
+		if (userOrgId !== organizationId) {
 			return NextResponse.json({ ok: false, message: 'Not authorized for this organization' }, { status: 403 });
 		}
 
@@ -147,16 +158,25 @@ export async function POST(req: Request) {
 		const role = roleCandidate as UserRole;
 
 		// 8) comprobar invitación existente dentro de la misma organización
-		const existing = await prisma.invite.findFirst({
-			where: { email, organizationId },
-			select: { id: true, email: true, organizationId: true },
-		});
+		const { data: existing, error: existingError } = await supabaseAdmin
+			.from('invite')
+			.select('id, email, organizationId')
+			.eq('email', email)
+			.eq('organizationId', organizationId)
+			.maybeSingle();
+
+		if (existingError && existingError.code !== 'PGRST116') {
+			console.error('[invites/created] Error buscando invite existente:', existingError);
+			return NextResponse.json({ ok: false, message: 'Error al verificar invitación existente' }, { status: 500 });
+		}
+
 		if (existing) {
+			const existingInvite = existing as any;
 			return NextResponse.json(
 				{
 					ok: false,
 					message: 'Email already assigned to an invitation in this organization.',
-					conflict: { email: existing.email, inviteId: existing.id, organizationId: existing.organizationId },
+					conflict: { email: existingInvite.email, inviteId: existingInvite.id, organizationId: existingInvite.organizationId },
 				},
 				{ status: 409 }
 			);
@@ -174,22 +194,28 @@ export async function POST(req: Request) {
 			expiresAt = new Date(Date.now() + DEFAULT_EXPIRES_DAYS * 24 * 60 * 60 * 1000);
 		}
 
-		// 10) generar token e insertar
+		// 10) generar token e insertar usando Supabase
 		const tokenGenerated = generateToken();
-		const invitedById = dbUser.id ?? null;
+		const invitedById = (dbUser as any).id ?? null;
 
-		const created = await prisma.invite.create({
-			data: {
+		const { data: created, error: createError } = await supabaseAdmin
+			.from('invite')
+			.insert({
 				organizationId,
 				email,
 				token: tokenGenerated,
 				role,
 				invitedById,
 				used: false,
-				expiresAt,
-			},
-			// puedes usar select aquí si quieres limitar fields retornados
-		});
+				expiresAt: expiresAt.toISOString(),
+			} as any)
+			.select()
+			.single();
+
+		if (createError) {
+			console.error('[invites/created] Error creando invite:', createError);
+			return NextResponse.json({ ok: false, message: 'Error al crear invitación' }, { status: 500 });
+		}
 
 		return NextResponse.json({ ok: true, invite: created }, { status: 201 });
 	} catch (err: any) {

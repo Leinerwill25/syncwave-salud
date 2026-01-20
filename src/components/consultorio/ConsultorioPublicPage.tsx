@@ -5,6 +5,7 @@ import { motion } from 'framer-motion';
 import { Stethoscope, MapPin, Phone, Mail, Globe, Clock, Calendar, Instagram, Facebook, Linkedin, CheckCircle2, Shield, Award, Star, ExternalLink, MessageCircle, Heart, Users, FileText, Building2, Sparkles, Image as ImageIcon, Package, Percent, Zap } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
+import AppointmentBookingModal from './AppointmentBookingModal';
 
 type ConsultorioData = {
 	id: string;
@@ -69,6 +70,7 @@ type ConsultorioData = {
 
 export default function ConsultorioPublicPage({ consultorio }: { consultorio: ConsultorioData }) {
 	const [selectedImage, setSelectedImage] = useState<string | null>(null);
+	const [isAppointmentModalOpen, setIsAppointmentModalOpen] = useState(false);
 
 	const displayName = consultorio.trade_name || consultorio.legal_name || consultorio.name;
 
@@ -443,10 +445,13 @@ export default function ConsultorioPublicPage({ consultorio }: { consultorio: Co
 
 							{/* Hero CTA Buttons */}
 							<div className="flex flex-wrap gap-4 pt-6">
-								<Link href="/register?role=PACIENTE" className="inline-flex items-center gap-3 px-8 py-4 bg-white text-teal-600 rounded-xl font-bold text-lg shadow-2xl hover:scale-105 transition hover:shadow-3xl group">
+								<button
+									onClick={() => setIsAppointmentModalOpen(true)}
+									className="inline-flex items-center gap-3 px-8 py-4 bg-white text-teal-600 rounded-xl font-bold text-lg shadow-2xl hover:scale-105 transition hover:shadow-3xl group"
+								>
 									<Calendar className="w-6 h-6 group-hover:scale-110 transition-transform" />
 									Agendar Cita Ahora
-								</Link>
+								</button>
 								{consultorio.phone_mobile && (
 									<a href={`tel:${consultorio.phone_mobile}`} className="inline-flex items-center gap-3 px-8 py-4 bg-white/20 backdrop-blur-md border-2 border-white/40 text-white rounded-xl font-bold text-lg hover:bg-white/30 transition hover:scale-105 group">
 										<Phone className="w-6 h-6 group-hover:scale-110 transition-transform" />
@@ -784,10 +789,13 @@ export default function ConsultorioPublicPage({ consultorio }: { consultorio: Co
 													)}
 													{/* CTA Button for each service */}
 													<div className="mt-4 pt-4 border-t border-slate-200">
-														<Link href="/register?role=PACIENTE" className="inline-flex items-center justify-center gap-2 w-full px-4 py-2.5 bg-gradient-to-r from-teal-600 to-cyan-600 text-white rounded-lg font-semibold hover:from-teal-700 hover:to-cyan-700 transition shadow-md hover:shadow-lg group">
+														<button
+															onClick={() => setIsAppointmentModalOpen(true)}
+															className="inline-flex items-center justify-center gap-2 w-full px-4 py-2.5 bg-gradient-to-r from-teal-600 to-cyan-600 text-white rounded-lg font-semibold hover:from-teal-700 hover:to-cyan-700 transition shadow-md hover:shadow-lg group"
+														>
 															<Calendar className="w-4 h-4 group-hover:scale-110 transition-transform" />
 															Agendar Este Servicio
-														</Link>
+														</button>
 													</div>
 												</div>
 											</motion.div>
@@ -960,10 +968,13 @@ export default function ConsultorioPublicPage({ consultorio }: { consultorio: Co
 													</div>
 													{/* CTA Button for combo */}
 													<div className="mt-4 pt-4 border-t border-slate-200">
-														<Link href="/register?role=PACIENTE" className="inline-flex items-center justify-center gap-2 w-full px-4 py-3 bg-gradient-to-r from-amber-500 to-orange-500 text-white rounded-lg font-bold hover:from-amber-600 hover:to-orange-600 transition shadow-lg hover:shadow-xl group">
+														<button
+															onClick={() => setIsAppointmentModalOpen(true)}
+															className="inline-flex items-center justify-center gap-2 w-full px-4 py-3 bg-gradient-to-r from-amber-500 to-orange-500 text-white rounded-lg font-bold hover:from-amber-600 hover:to-orange-600 transition shadow-lg hover:shadow-xl group"
+														>
 															<Calendar className="w-5 h-5 group-hover:scale-110 transition-transform" />
 															Agendar Combo Ahora
-														</Link>
+														</button>
 													</div>
 												</div>
 											</motion.div>
@@ -1292,6 +1303,14 @@ export default function ConsultorioPublicPage({ consultorio }: { consultorio: Co
 					</div>
 				</div>
 			)}
+
+			{/* Appointment Booking Modal */}
+			<AppointmentBookingModal
+				isOpen={isAppointmentModalOpen}
+				onClose={() => setIsAppointmentModalOpen(false)}
+				doctors={consultorio.doctors || []}
+				organizationId={consultorio.id}
+			/>
 		</div>
 	);
 }

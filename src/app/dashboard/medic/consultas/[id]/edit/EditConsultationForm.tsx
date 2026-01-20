@@ -9,6 +9,7 @@ import { useOptimisticSave } from '@/lib/optimistic-save';
 import { useDebouncedSave } from '@/lib/debounced-save';
 import { useLiteMode } from '@/contexts/LiteModeContext';
 import DoctorPrivateNotesModal from '@/components/medic/DoctorPrivateNotesModal';
+import AudioRecorderButton from '@/components/medic/AudioRecorderButton';
 
 type ConsultationShape = {
 	id: string;
@@ -1865,11 +1866,27 @@ export default function EditConsultationForm({ initial, patient, doctor, doctorS
 											{expandedSpecialties.has('cardiology') ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
 										</button>
 										{expandedSpecialties.has('cardiology') && (
-											<div className="p-4 pt-0 grid grid-cols-1 md:grid-cols-2 gap-4">
-												<div>
-													<label className={labelClass}>Ritmo ECG</label>
-													<input value={ekgRhythm} onChange={(e) => setEkgRhythm(e.target.value)} className={`${inputBase} ${inputDark}`} placeholder="Ritmo sinusal..." />
+											<div className="p-4 pt-0 space-y-4">
+												{/* Botón de Grabar Audio para generar informe */}
+												<div className="mb-4 pb-4 border-b border-slate-200 dark:border-slate-700">
+													<AudioRecorderButton
+														consultationId={initial.id}
+														reportType="cardiology"
+														specialty="Cardiología"
+														onSuccess={(reportUrl) => {
+															setSuccess('Informe generado exitosamente desde el audio');
+															setReportUrl(reportUrl);
+														}}
+														onError={(errorMsg) => {
+															setError(`Error al generar informe: ${errorMsg}`);
+														}}
+													/>
 												</div>
+												<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+													<div>
+														<label className={labelClass}>Ritmo ECG</label>
+														<input value={ekgRhythm} onChange={(e) => setEkgRhythm(e.target.value)} className={`${inputBase} ${inputDark}`} placeholder="Ritmo sinusal..." />
+													</div>
 												<div>
 													<label className={labelClass}>BNP (pg/mL)</label>
 													<input value={bnp} onChange={(e) => setBnp(e.target.value)} className={`${inputBase} ${inputDark}`} type="number" inputMode="decimal" />
@@ -1887,6 +1904,7 @@ export default function EditConsultationForm({ initial, patient, doctor, doctorS
 													<input value={chestPainScale} onChange={(e) => setChestPainScale(e.target.value)} className={`${inputBase} ${inputDark}`} type="number" inputMode="numeric" min="0" max="10" />
 												</div>
 											</div>
+											</div>
 										)}
 									</div>
 								)}
@@ -1899,11 +1917,27 @@ export default function EditConsultationForm({ initial, patient, doctor, doctorS
 											{expandedSpecialties.has('pulmonology') ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
 										</button>
 										{expandedSpecialties.has('pulmonology') && (
-											<div className="p-4 pt-0 grid grid-cols-1 md:grid-cols-3 gap-4">
-												<div>
-													<label className={labelClass}>FEV1 (L)</label>
-													<input value={fev1} onChange={(e) => setFev1(e.target.value)} className={`${inputBase} ${inputDark}`} type="number" inputMode="decimal" />
+											<div className="p-4 pt-0 space-y-4">
+												{/* Botón de Grabar Audio para generar informe */}
+												<div className="mb-4 pb-4 border-b border-slate-200 dark:border-slate-700">
+													<AudioRecorderButton
+														consultationId={initial.id}
+														reportType="pulmonology"
+														specialty="Neumología"
+														onSuccess={(reportUrl) => {
+															setSuccess('Informe generado exitosamente desde el audio');
+															setReportUrl(reportUrl);
+														}}
+														onError={(errorMsg) => {
+															setError(`Error al generar informe: ${errorMsg}`);
+														}}
+													/>
 												</div>
+												<div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+													<div>
+														<label className={labelClass}>FEV1 (L)</label>
+														<input value={fev1} onChange={(e) => setFev1(e.target.value)} className={`${inputBase} ${inputDark}`} type="number" inputMode="decimal" />
+													</div>
 												<div>
 													<label className={labelClass}>FVC (L)</label>
 													<input value={fvc} onChange={(e) => setFvc(e.target.value)} className={`${inputBase} ${inputDark}`} type="number" inputMode="decimal" />
@@ -1917,6 +1951,7 @@ export default function EditConsultationForm({ initial, patient, doctor, doctorS
 													<input value={wheezeNote} onChange={(e) => setWheezeNote(e.target.value)} className={`${inputBase} ${inputDark}`} />
 												</div>
 											</div>
+											</div>
 										)}
 									</div>
 								)}
@@ -1929,11 +1964,27 @@ export default function EditConsultationForm({ initial, patient, doctor, doctorS
 											{expandedSpecialties.has('neurology') ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
 										</button>
 										{expandedSpecialties.has('neurology') && (
-											<div className="p-4 pt-0 grid grid-cols-1 md:grid-cols-3 gap-4">
-												<div>
-													<label className={labelClass}>GCS Total</label>
-													<input value={gcsTotal} onChange={(e) => setGcsTotal(e.target.value)} className={`${inputBase} ${inputDark}`} type="number" inputMode="numeric" min="3" max="15" />
+											<div className="p-4 pt-0 space-y-4">
+												{/* Botón de Grabar Audio para generar informe */}
+												<div className="mb-4 pb-4 border-b border-slate-200 dark:border-slate-700">
+													<AudioRecorderButton
+														consultationId={initial.id}
+														reportType="neurology"
+														specialty="Neurología"
+														onSuccess={(reportUrl) => {
+															setSuccess('Informe generado exitosamente desde el audio');
+															setReportUrl(reportUrl);
+														}}
+														onError={(errorMsg) => {
+															setError(`Error al generar informe: ${errorMsg}`);
+														}}
+													/>
 												</div>
+												<div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+													<div>
+														<label className={labelClass}>GCS Total</label>
+														<input value={gcsTotal} onChange={(e) => setGcsTotal(e.target.value)} className={`${inputBase} ${inputDark}`} type="number" inputMode="numeric" min="3" max="15" />
+													</div>
 												<div>
 													<label className={labelClass}>Reactividad Pupilar</label>
 													<input value={pupillaryReactivity} onChange={(e) => setPupillaryReactivity(e.target.value)} className={`${inputBase} ${inputDark}`} />
@@ -1942,6 +1993,7 @@ export default function EditConsultationForm({ initial, patient, doctor, doctorS
 													<label className={labelClass}>Notas Neurológicas</label>
 													<input value={neuroNotes} onChange={(e) => setNeuroNotes(e.target.value)} className={`${inputBase} ${inputDark}`} />
 												</div>
+											</div>
 											</div>
 										)}
 									</div>
@@ -1966,6 +2018,21 @@ export default function EditConsultationForm({ initial, patient, doctor, doctorS
 																<FileText className="w-5 h-5 text-white" />
 															</div>
 															<h3 className="text-xl font-bold text-slate-900 dark:text-slate-100">Formulario del Primer Trimestre</h3>
+														</div>
+														{/* Botón de Grabar Audio para Primer Trimestre */}
+														<div className="mb-4 pb-4 border-b border-pink-200 dark:border-pink-800">
+															<AudioRecorderButton
+																consultationId={initial.id}
+																reportType="first_trimester"
+																specialty="Obstetricia - Primer Trimestre"
+																onSuccess={(reportUrl) => {
+																	setSuccess('Informe del Primer Trimestre generado exitosamente desde el audio');
+																	setReportUrl(reportUrl);
+																}}
+																onError={(errorMsg) => {
+																	setError(`Error al generar informe: ${errorMsg}`);
+																}}
+															/>
 														</div>
 														<div className="space-y-6">
 														{/* Sección: Datos de la Paciente */}
@@ -2218,6 +2285,21 @@ export default function EditConsultationForm({ initial, patient, doctor, doctorS
 																<FileText className="w-5 h-5 text-white" />
 															</div>
 															<h3 className="text-xl font-bold text-slate-900 dark:text-slate-100">Formulario del Segundo y Tercer Trimestre</h3>
+														</div>
+														{/* Botón de Grabar Audio para Segundo y Tercer Trimestre */}
+														<div className="mb-4 pb-4 border-b border-indigo-200 dark:border-indigo-800">
+															<AudioRecorderButton
+																consultationId={initial.id}
+																reportType="second_third_trimester"
+																specialty="Obstetricia - Segundo y Tercer Trimestre"
+																onSuccess={(reportUrl) => {
+																	setSuccess('Informe del Segundo y Tercer Trimestre generado exitosamente desde el audio');
+																	setReportUrl(reportUrl);
+																}}
+																onError={(errorMsg) => {
+																	setError(`Error al generar informe: ${errorMsg}`);
+																}}
+															/>
 														</div>
 														<div className="space-y-6">
 															{/* Primera sección: Datos de la Paciente */}
@@ -2656,6 +2738,21 @@ export default function EditConsultationForm({ initial, patient, doctor, doctorS
 																	</div>
 																	<h3 className="text-xl font-bold text-slate-900 dark:text-slate-100">Formulario del Primer Trimestre</h3>
 																</div>
+																{/* Botón de Grabar Audio para Primer Trimestre */}
+																<div className="mb-4 pb-4 border-b border-pink-200 dark:border-pink-800">
+																	<AudioRecorderButton
+																		consultationId={initial.id}
+																		reportType="first_trimester"
+																		specialty="Obstetricia - Primer Trimestre"
+																		onSuccess={(reportUrl) => {
+																			setSuccess('Informe del Primer Trimestre generado exitosamente desde el audio');
+																			setReportUrl(reportUrl);
+																		}}
+																		onError={(errorMsg) => {
+																			setError(`Error al generar informe: ${errorMsg}`);
+																		}}
+																	/>
+																</div>
 																<div className="space-y-6">
 																{/* Sección: Datos de la Paciente */}
 																<div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 shadow-sm p-5">
@@ -2908,6 +3005,21 @@ export default function EditConsultationForm({ initial, patient, doctor, doctorS
 																		<FileText className="w-5 h-5 text-white" />
 																	</div>
 																	<h3 className="text-xl font-bold text-slate-900 dark:text-slate-100">Formulario del Segundo y Tercer Trimestre</h3>
+																</div>
+																{/* Botón de Grabar Audio para Segundo y Tercer Trimestre */}
+																<div className="mb-4 pb-4 border-b border-indigo-200 dark:border-indigo-800">
+																	<AudioRecorderButton
+																		consultationId={initial.id}
+																		reportType="second_third_trimester"
+																		specialty="Obstetricia - Segundo y Tercer Trimestre"
+																		onSuccess={(reportUrl) => {
+																			setSuccess('Informe del Segundo y Tercer Trimestre generado exitosamente desde el audio');
+																			setReportUrl(reportUrl);
+																		}}
+																		onError={(errorMsg) => {
+																			setError(`Error al generar informe: ${errorMsg}`);
+																		}}
+																	/>
 																</div>
 																<div className="space-y-6">
 																	{/* Primera sección: Datos de la Paciente */}
@@ -3355,15 +3467,32 @@ export default function EditConsultationForm({ initial, patient, doctor, doctorS
 											{expandedSpecialties.has('nutrition') ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
 										</button>
 										{expandedSpecialties.has('nutrition') && (
-											<div className="p-4 pt-0 grid grid-cols-1 md:grid-cols-3 gap-4">
-												<div>
-													<label className={labelClass}>Circunferencia Cintura (cm)</label>
-													<input value={waistCircumference} onChange={(e) => setWaistCircumference(e.target.value)} className={`${inputBase} ${inputDark}`} type="number" inputMode="decimal" />
+											<div className="p-4 pt-0 space-y-4">
+												{/* Botón de Grabar Audio para generar informe */}
+												<div className="mb-4 pb-4 border-b border-slate-200 dark:border-slate-700">
+													<AudioRecorderButton
+														consultationId={initial.id}
+														reportType="nutrition"
+														specialty="Nutrición"
+														onSuccess={(reportUrl) => {
+															setSuccess('Informe generado exitosamente desde el audio');
+															setReportUrl(reportUrl);
+														}}
+														onError={(errorMsg) => {
+															setError(`Error al generar informe: ${errorMsg}`);
+														}}
+													/>
 												</div>
+												<div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+													<div>
+														<label className={labelClass}>Circunferencia Cintura (cm)</label>
+														<input value={waistCircumference} onChange={(e) => setWaistCircumference(e.target.value)} className={`${inputBase} ${inputDark}`} type="number" inputMode="decimal" />
+													</div>
 												<div>
 													<label className={labelClass}>IMC (Override)</label>
 													<input value={bmiOverride} onChange={(e) => setBmiOverride(e.target.value)} placeholder={computedBMI || ''} className={`${inputBase} ${inputDark}`} />
 												</div>
+											</div>
 											</div>
 										)}
 									</div>
@@ -3377,15 +3506,32 @@ export default function EditConsultationForm({ initial, patient, doctor, doctorS
 											{expandedSpecialties.has('dermatology') ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
 										</button>
 										{expandedSpecialties.has('dermatology') && (
-											<div className="p-4 pt-0 grid grid-cols-1 md:grid-cols-3 gap-4">
-												<div className="md:col-span-2">
-													<label className={labelClass}>Descripción Lesión</label>
-													<input value={lesionDesc} onChange={(e) => setLesionDesc(e.target.value)} className={`${inputBase} ${inputDark}`} />
+											<div className="p-4 pt-0 space-y-4">
+												{/* Botón de Grabar Audio para generar informe */}
+												<div className="mb-4 pb-4 border-b border-slate-200 dark:border-slate-700">
+													<AudioRecorderButton
+														consultationId={initial.id}
+														reportType="dermatology"
+														specialty="Dermatología"
+														onSuccess={(reportUrl) => {
+															setSuccess('Informe generado exitosamente desde el audio');
+															setReportUrl(reportUrl);
+														}}
+														onError={(errorMsg) => {
+															setError(`Error al generar informe: ${errorMsg}`);
+														}}
+													/>
 												</div>
+												<div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+													<div className="md:col-span-2">
+														<label className={labelClass}>Descripción Lesión</label>
+														<input value={lesionDesc} onChange={(e) => setLesionDesc(e.target.value)} className={`${inputBase} ${inputDark}`} />
+													</div>
 												<div>
 													<label className={labelClass}>Tamaño Lesión (cm)</label>
 													<input value={lesionSize} onChange={(e) => setLesionSize(e.target.value)} className={`${inputBase} ${inputDark}`} type="number" inputMode="decimal" />
 												</div>
+											</div>
 											</div>
 										)}
 									</div>
@@ -3399,15 +3545,32 @@ export default function EditConsultationForm({ initial, patient, doctor, doctorS
 											{expandedSpecialties.has('psychiatry') ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
 										</button>
 										{expandedSpecialties.has('psychiatry') && (
-											<div className="p-4 pt-0 grid grid-cols-1 md:grid-cols-3 gap-4">
-												<div>
-													<label className={labelClass}>Escala de Ánimo</label>
-													<input value={moodScale} onChange={(e) => setMoodScale(e.target.value)} className={`${inputBase} ${inputDark}`} />
+											<div className="p-4 pt-0 space-y-4">
+												{/* Botón de Grabar Audio para generar informe */}
+												<div className="mb-4 pb-4 border-b border-slate-200 dark:border-slate-700">
+													<AudioRecorderButton
+														consultationId={initial.id}
+														reportType="psychiatry"
+														specialty="Psiquiatría"
+														onSuccess={(reportUrl) => {
+															setSuccess('Informe generado exitosamente desde el audio');
+															setReportUrl(reportUrl);
+														}}
+														onError={(errorMsg) => {
+															setError(`Error al generar informe: ${errorMsg}`);
+														}}
+													/>
 												</div>
+												<div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+													<div>
+														<label className={labelClass}>Escala de Ánimo</label>
+														<input value={moodScale} onChange={(e) => setMoodScale(e.target.value)} className={`${inputBase} ${inputDark}`} />
+													</div>
 												<div>
 													<label className={labelClass}>PHQ-9</label>
 													<input value={phq9} onChange={(e) => setPhq9(e.target.value)} className={`${inputBase} ${inputDark}`} type="number" inputMode="numeric" />
 												</div>
+											</div>
 											</div>
 										)}
 									</div>
@@ -3421,15 +3584,32 @@ export default function EditConsultationForm({ initial, patient, doctor, doctorS
 											{expandedSpecialties.has('orthopedics') ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
 										</button>
 										{expandedSpecialties.has('orthopedics') && (
-											<div className="p-4 pt-0 grid grid-cols-1 md:grid-cols-3 gap-4">
-												<div className="md:col-span-2">
-													<label className={labelClass}>Rango de Movimiento (Notas)</label>
-													<input value={romNotes} onChange={(e) => setRomNotes(e.target.value)} className={`${inputBase} ${inputDark}`} />
+											<div className="p-4 pt-0 space-y-4">
+												{/* Botón de Grabar Audio para generar informe */}
+												<div className="mb-4 pb-4 border-b border-slate-200 dark:border-slate-700">
+													<AudioRecorderButton
+														consultationId={initial.id}
+														reportType="orthopedics"
+														specialty="Ortopedia"
+														onSuccess={(reportUrl) => {
+															setSuccess('Informe generado exitosamente desde el audio');
+															setReportUrl(reportUrl);
+														}}
+														onError={(errorMsg) => {
+															setError(`Error al generar informe: ${errorMsg}`);
+														}}
+													/>
 												</div>
+												<div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+													<div className="md:col-span-2">
+														<label className={labelClass}>Rango de Movimiento (Notas)</label>
+														<input value={romNotes} onChange={(e) => setRomNotes(e.target.value)} className={`${inputBase} ${inputDark}`} />
+													</div>
 												<div>
 													<label className={labelClass}>Fuerza (0-5)</label>
 													<input value={limbStrength} onChange={(e) => setLimbStrength(e.target.value)} className={`${inputBase} ${inputDark}`} type="number" inputMode="numeric" min="0" max="5" />
 												</div>
+											</div>
 											</div>
 										)}
 									</div>
@@ -3443,11 +3623,27 @@ export default function EditConsultationForm({ initial, patient, doctor, doctorS
 											{expandedSpecialties.has('ent') ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
 										</button>
 										{expandedSpecialties.has('ent') && (
-											<div className="p-4 pt-0 grid grid-cols-1 md:grid-cols-3 gap-4">
-												<div>
-													<label className={labelClass}>Audición Izquierda (dB)</label>
-													<input value={hearingLeft} onChange={(e) => setHearingLeft(e.target.value)} className={`${inputBase} ${inputDark}`} type="number" inputMode="numeric" />
+											<div className="p-4 pt-0 space-y-4">
+												{/* Botón de Grabar Audio para generar informe */}
+												<div className="mb-4 pb-4 border-b border-slate-200 dark:border-slate-700">
+													<AudioRecorderButton
+														consultationId={initial.id}
+														reportType="ent"
+														specialty="ORL/Otorrino"
+														onSuccess={(reportUrl) => {
+															setSuccess('Informe generado exitosamente desde el audio');
+															setReportUrl(reportUrl);
+														}}
+														onError={(errorMsg) => {
+															setError(`Error al generar informe: ${errorMsg}`);
+														}}
+													/>
 												</div>
+												<div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+													<div>
+														<label className={labelClass}>Audición Izquierda (dB)</label>
+														<input value={hearingLeft} onChange={(e) => setHearingLeft(e.target.value)} className={`${inputBase} ${inputDark}`} type="number" inputMode="numeric" />
+													</div>
 												<div>
 													<label className={labelClass}>Audición Derecha (dB)</label>
 													<input value={hearingRight} onChange={(e) => setHearingRight(e.target.value)} className={`${inputBase} ${inputDark}`} type="number" inputMode="numeric" />
@@ -3456,6 +3652,7 @@ export default function EditConsultationForm({ initial, patient, doctor, doctorS
 													<label className={labelClass}>Otoscopía / Observaciones</label>
 													<input value={otoscopyNotes} onChange={(e) => setOtoscopyNotes(e.target.value)} className={`${inputBase} ${inputDark}`} />
 												</div>
+											</div>
 											</div>
 										)}
 									</div>
@@ -3820,6 +4017,21 @@ export default function EditConsultationForm({ initial, patient, doctor, doctorS
 														</button>
 														{expandedSpecialties.has('gynecology') && (
 															<div className="p-4 pt-0 space-y-6">
+																{/* Botón de Grabar Audio para generar informe */}
+																<div className="mb-4 pb-4 border-b border-slate-200 dark:border-slate-700">
+																	<AudioRecorderButton
+																		consultationId={initial.id}
+																		reportType="gynecology"
+																		specialty="Ginecología"
+																		onSuccess={(reportUrl) => {
+																			setSuccess('Informe generado exitosamente desde el audio');
+																			setReportUrl(reportUrl);
+																		}}
+																		onError={(errorMsg) => {
+																			setError(`Error al generar informe: ${errorMsg}`);
+																		}}
+																	/>
+																</div>
 																{/* Si solo debe mostrar colposcopia, ocultar el resto del formulario */}
 																{!shouldOnlyShowColposcopy && (
 																	<>
@@ -4398,15 +4610,32 @@ export default function EditConsultationForm({ initial, patient, doctor, doctorS
 											{expandedSpecialties.has('endocrinology') ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
 										</button>
 										{expandedSpecialties.has('endocrinology') && (
-											<div className="p-4 pt-0 grid grid-cols-1 md:grid-cols-3 gap-4">
-												<div>
-													<label className={labelClass}>TSH (mIU/L)</label>
+											<div className="p-4 pt-0 space-y-4">
+												{/* Botón de Grabar Audio para generar informe */}
+												<div className="mb-4 pb-4 border-b border-slate-200 dark:border-slate-700">
+													<AudioRecorderButton
+														consultationId={initial.id}
+														reportType="endocrinology"
+														specialty="Endocrinología"
+														onSuccess={(reportUrl) => {
+															setSuccess('Informe generado exitosamente desde el audio');
+															setReportUrl(reportUrl);
+														}}
+														onError={(errorMsg) => {
+															setError(`Error al generar informe: ${errorMsg}`);
+														}}
+													/>
+												</div>
+												<div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+													<div>
+														<label className={labelClass}>TSH (mIU/L)</label>
 													<input value={tsh} onChange={(e) => setTsh(e.target.value)} className={`${inputBase} ${inputDark}`} type="number" inputMode="decimal" />
 												</div>
 												<div>
 													<label className={labelClass}>HbA1c (%)</label>
 													<input value={hba1c} onChange={(e) => setHba1c(e.target.value)} className={`${inputBase} ${inputDark}`} type="number" inputMode="decimal" step="0.1" />
 												</div>
+											</div>
 											</div>
 										)}
 									</div>
@@ -4420,14 +4649,31 @@ export default function EditConsultationForm({ initial, patient, doctor, doctorS
 											{expandedSpecialties.has('ophthalmology') ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
 										</button>
 										{expandedSpecialties.has('ophthalmology') && (
-											<div className="p-4 pt-0 grid grid-cols-1 md:grid-cols-3 gap-4">
-												<div>
-													<label className={labelClass}>Agudeza Visual (p.ej. 20/20)</label>
-													<input value={visualAcuity} onChange={(e) => setVisualAcuity(e.target.value)} className={`${inputBase} ${inputDark}`} />
+											<div className="p-4 pt-0 space-y-4">
+												{/* Botón de Grabar Audio para generar informe */}
+												<div className="mb-4 pb-4 border-b border-slate-200 dark:border-slate-700">
+													<AudioRecorderButton
+														consultationId={initial.id}
+														reportType="ophthalmology"
+														specialty="Oftalmología"
+														onSuccess={(reportUrl) => {
+															setSuccess('Informe generado exitosamente desde el audio');
+															setReportUrl(reportUrl);
+														}}
+														onError={(errorMsg) => {
+															setError(`Error al generar informe: ${errorMsg}`);
+														}}
+													/>
 												</div>
-												<div>
-													<label className={labelClass}>Presión Intraocular (mmHg)</label>
-													<input value={iop} onChange={(e) => setIop(e.target.value)} className={`${inputBase} ${inputDark}`} type="number" inputMode="decimal" />
+												<div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+													<div>
+														<label className={labelClass}>Agudeza Visual (p.ej. 20/20)</label>
+														<input value={visualAcuity} onChange={(e) => setVisualAcuity(e.target.value)} className={`${inputBase} ${inputDark}`} />
+													</div>
+													<div>
+														<label className={labelClass}>Presión Intraocular (mmHg)</label>
+														<input value={iop} onChange={(e) => setIop(e.target.value)} className={`${inputBase} ${inputDark}`} type="number" inputMode="decimal" />
+													</div>
 												</div>
 											</div>
 										)}

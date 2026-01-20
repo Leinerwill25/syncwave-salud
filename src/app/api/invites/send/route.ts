@@ -3,7 +3,6 @@ export const runtime = 'nodejs';
 
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import prisma from '@/lib/prisma';
 
 const SUPABASE_URL = process.env.SUPABASE_URL ?? '';
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY ?? '';
@@ -20,7 +19,7 @@ function extractAccessTokenFromRequest(req: Request): string | null {
 		const xAuth = req.headers.get('x-access-token') || req.headers.get('x-auth-token');
 		if (xAuth) return xAuth;
 
-		const cookieHeader = req.headers.get('cookie') || '';
+		const cookieHeader = req.headers.get('cookie') ?? '';
 		if (!cookieHeader) return null;
 
 		const keys = ['sb-access-token', 'sb:token', 'supabase-auth-token', 'sb-session', 'supabase-session', 'sb'];
@@ -72,7 +71,7 @@ function decodeJwtPayload(token: string | null): any | null {
 	}
 }
 
-/** Resuelve el dbUser dado un token.
+/** Resuelve el dbUser dado un token usando Supabase.
  *  Intenta Supabase Admin (si hay credenciales), sino fallback con payload JWT.
  */
 async function resolveDbUserFromToken(token: string | null) {
@@ -85,11 +84,19 @@ async function resolveDbUserFromToken(token: string | null) {
 			const userResp = await supabaseAdmin.auth.getUser(token);
 			const supUser = (userResp as any)?.data?.user ?? null;
 			if (supUser?.id) {
-				let dbUser = await prisma.user.findFirst({ where: { authId: supUser.id } });
+				let { data: dbUser } = await supabaseAdmin
+					.from('user')
+					.select('id, email, role, organizationId, authId')
+					.eq('authId', supUser.id)
+					.maybeSingle();
 				if (dbUser) return dbUser;
 				if (supUser?.email) {
-					dbUser = await prisma.user.findFirst({ where: { email: supUser.email } });
-					if (dbUser) return dbUser;
+					const { data: dbByEmail } = await supabaseAdmin
+						.from('user')
+						.select('id, email, role, organizationId, authId')
+						.eq('email', supUser.email)
+						.maybeSingle();
+					if (dbByEmail) return dbByEmail;
 				}
 			}
 		} catch (err) {
@@ -102,45 +109,59 @@ async function resolveDbUserFromToken(token: string | null) {
 	if (!payload) return null;
 	const authId = payload.sub ?? payload.user_id ?? null;
 	const email = payload.email ?? null;
-	if (authId) {
-		const dbUser = await prisma.user.findFirst({ where: { authId } });
-		if (dbUser) return dbUser;
-	}
-	if (email) {
-		const dbUser = await prisma.user.findFirst({ where: { email } });
-		if (dbUser) return dbUser;
+	
+	if (SUPABASE_URL && SUPABASE_SERVICE_ROLE_KEY) {
+		const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, { auth: { persistSession: false } });
+		if (authId) {
+			const { data: dbUser } = await supabaseAdmin
+				.from('user')
+				.select('id, email, role, organizationId, authId')
+				.eq('authId', authId)
+				.maybeSingle();
+			if (dbUser) return dbUser;
+		}
+		if (email) {
+			const { data: dbUser } = await supabaseAdmin
+				.from('user')
+				.select('id, email, role, organizationId, authId')
+				.eq('email', email)
+				.maybeSingle();
+			if (dbUser) return dbUser;
+		}
 	}
 	return null;
 }
 
 /** Envía correo usando Resend */
-async function sendInviteEmail(opts: { to: string; token: string; organizationId: string; inviteBaseUrl?: string | undefined }) {
+async function sendInviteEmail(opts: { to: string; token: string; organizationId: string; inviteBaseUrl?: string | undefined }, supabaseAdmin: any) {
 	try {
 		const { sendNotificationEmail } = await import('@/lib/email');
 		const base = opts.inviteBaseUrl ?? NEXT_PUBLIC_INVITE_BASE_URL ?? '';
 		const origin = base ? base.replace(/\/$/, '') : NEXT_PUBLIC_VERCEL_URL ? `https://${NEXT_PUBLIC_VERCEL_URL}` : '';
 		const url = `${origin}/invite/${opts.token}`;
 
-		// Obtener nombre de la organización
+		// Obtener nombre de la organización usando Supabase
 		let organizationName: string | undefined;
 		try {
-			const org = await prisma.organization.findUnique({ 
-				where: { id: opts.organizationId },
-				select: { name: true }
-			});
-			organizationName = org?.name || undefined;
+			const { data: org } = await supabaseAdmin
+				.from('organization')
+				.select('name')
+				.eq('id', opts.organizationId)
+				.maybeSingle();
+			organizationName = (org as any)?.name || undefined;
 		} catch {
 			// Ignorar error
 		}
 
-		// Obtener rol de la invitación
+		// Obtener rol de la invitación usando Supabase
 		let role: string | undefined;
 		try {
-			const invite = await prisma.invite.findUnique({
-				where: { token: opts.token },
-				select: { role: true }
-			});
-			role = invite?.role?.toString() || undefined;
+			const { data: invite } = await supabaseAdmin
+				.from('invite')
+				.select('role')
+				.eq('token', opts.token)
+				.maybeSingle();
+			role = (invite as any)?.role?.toString() || undefined;
 		} catch {
 			// Ignorar error
 		}
@@ -167,6 +188,12 @@ async function sendInviteEmail(opts: { to: string; token: string; organizationId
 
 export async function POST(req: Request) {
 	try {
+		if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
+			return NextResponse.json({ ok: false, message: 'Supabase no configurado' }, { status: 500 });
+		}
+
+		const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, { auth: { persistSession: false } });
+
 		const token = extractAccessTokenFromRequest(req);
 		if (!token) return NextResponse.json({ ok: false, message: 'No autenticado (token ausente)' }, { status: 401 });
 
@@ -180,34 +207,67 @@ export async function POST(req: Request) {
 
 		const normalizedEmail = email.trim().toLowerCase();
 
-		// traer invitación
-		const invite = await prisma.invite.findUnique({ where: { id } });
-		if (!invite) return NextResponse.json({ ok: false, message: 'Invitación no encontrada' }, { status: 404 });
+		// traer invitación usando Supabase
+		const { data: invite, error: inviteError } = await supabaseAdmin
+			.from('invite')
+			.select('*')
+			.eq('id', id)
+			.maybeSingle();
+
+		if (inviteError || !invite) {
+			return NextResponse.json({ ok: false, message: 'Invitación no encontrada' }, { status: 404 });
+		}
+
+		const inviteData = invite as any;
 
 		// verificar pertenencia org del usuario
-		const orgIdUser = dbUser.organizationId;
-		if (!orgIdUser || invite.organizationId !== orgIdUser) {
+		const orgIdUser = (dbUser as any).organizationId;
+		if (!orgIdUser || inviteData.organizationId !== orgIdUser) {
 			return NextResponse.json({ ok: false, message: 'No autorizado para enviar esta invitación' }, { status: 403 });
 		}
 
 		// comprobar que no exista otra invitación con ese email en la misma org (excluyendo la actual)
-		const existing = await prisma.invite.findFirst({
-			where: { email: normalizedEmail, organizationId: invite.organizationId },
-			select: { id: true, email: true },
-		});
-		if (existing && existing.id !== id) {
-			return NextResponse.json({ ok: false, message: 'El correo ya está asignado a otra invitación en la organización.', conflict: { email: existing.email, inviteId: existing.id } }, { status: 409 });
+		const { data: existing, error: existingError } = await supabaseAdmin
+			.from('invite')
+			.select('id, email')
+			.eq('email', normalizedEmail)
+			.eq('organizationId', inviteData.organizationId)
+			.maybeSingle();
+
+		if (existingError && existingError.code !== 'PGRST116') {
+			console.error('[invites/send] Error buscando invite existente:', existingError);
+			return NextResponse.json({ ok: false, message: 'Error al verificar invitación existente' }, { status: 500 });
+		}
+
+		if (existing && (existing as any).id !== id) {
+			return NextResponse.json({ ok: false, message: 'El correo ya está asignado a otra invitación en la organización.', conflict: { email: (existing as any).email, inviteId: (existing as any).id } }, { status: 409 });
 		}
 
 		// obtener inviteBaseUrl desde organización si existe
-		const org = await prisma.organization.findUnique({ where: { id: invite.organizationId } });
-		const inviteBaseUrl = org?.inviteBaseUrl ?? NEXT_PUBLIC_INVITE_BASE_URL ?? undefined;
+		const { data: org } = await supabaseAdmin
+			.from('organization')
+			.select('inviteBaseUrl')
+			.eq('id', inviteData.organizationId)
+			.maybeSingle();
+		const inviteBaseUrl = (org as any)?.inviteBaseUrl ?? NEXT_PUBLIC_INVITE_BASE_URL ?? undefined;
 
-		// actualizar email en la invitación (si cambió)
-		const updatedInvite = await prisma.invite.update({ where: { id }, data: { email: normalizedEmail } });
+		// actualizar email en la invitación (si cambió) usando Supabase
+		const { data: updatedInvite, error: updateError } = await supabaseAdmin
+			.from('invite')
+			.update({ email: normalizedEmail } as any)
+			.eq('id', id)
+			.select()
+			.single();
+
+		if (updateError) {
+			console.error('[invites/send] Error actualizando invite:', updateError);
+			return NextResponse.json({ ok: false, message: 'Error al actualizar invitación' }, { status: 500 });
+		}
+
+		const updatedInviteData = updatedInvite as any;
 
 		// enviar correo usando token actual
-		const sent = await sendInviteEmail({ to: normalizedEmail, token: updatedInvite.token, organizationId: updatedInvite.organizationId, inviteBaseUrl });
+		const sent = await sendInviteEmail({ to: normalizedEmail, token: updatedInviteData.token, organizationId: updatedInviteData.organizationId, inviteBaseUrl }, supabaseAdmin);
 		if (!sent) throw new Error('No se pudo enviar el correo');
 
 		return NextResponse.json({ ok: true });

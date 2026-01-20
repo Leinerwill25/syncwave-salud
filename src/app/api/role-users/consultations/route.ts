@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { createSupabaseServerClient } from '@/app/adapters/server';
 import { getRoleUserSessionFromServer } from '@/lib/role-user-auth';
+import { createClient } from '@supabase/supabase-js';
 
 // GET: Obtener consultas basadas en citas confirmadas
 export async function GET(request: NextRequest) {
@@ -12,7 +13,19 @@ export async function GET(request: NextRequest) {
 			return NextResponse.json({ error: 'No autenticado. Debe iniciar sesión como usuario de rol.' }, { status: 401 });
 		}
 
-		const supabase = await createSupabaseServerClient();
+		// Usar service role para evitar problemas de RLS al acceder a datos de pacientes
+		const SUPABASE_URL = process.env.SUPABASE_URL ?? process.env.NEXT_PUBLIC_SUPABASE_URL ?? '';
+		const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY ?? '';
+
+		if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
+			console.error('[Role User Consultations API] Variables de entorno de Supabase no configuradas');
+			return NextResponse.json({ error: 'Error de configuración del servidor' }, { status: 500 });
+		}
+
+		// Crear cliente con service role para evitar RLS
+		const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
+			auth: { persistSession: false },
+		});
 		const url = new URL(request.url);
 		const page = Math.max(1, Number(url.searchParams.get('page') || '1'));
 		const pageSize = Math.max(1, Number(url.searchParams.get('pageSize') || '10'));

@@ -142,6 +142,9 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 	let userRecord: any = null;
 	let subscriptionRecord: any = null;
 	const createdIds: { type: string; id: string }[] = [];
+	// Variables para rollback de Supabase Auth
+	let supabaseCreated = false;
+	let supabaseUserId: string | null = null;
 
 	try {
 		const parsed = await req.json().catch(() => null);
@@ -249,9 +252,8 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 		const referredOrgIdFromForm = (patient && isObject(patient) && patient.organizationId ? String(patient.organizationId) : body.selectedOrganizationId ?? null) ?? null;
 
 		// Supabase create user (opcional) - Solo después de validar cédula
-		let supabaseUserId: string | null = null;
+		// Nota: supabaseUserId y supabaseCreated ya están declarados fuera del try para rollback
 		let supabaseUserEmail: string | null = null;
-		let supabaseCreated = false;
 
 		if (supabaseAdmin) {
 			try {
@@ -334,26 +336,47 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 				const orgTypeCast: OrgTypeLocal = organization.orgType && ORG_TYPES.includes(organization.orgType as OrgTypeLocal) ? (organization.orgType as OrgTypeLocal) : 'CLINICA';
 				
 				// Según Database.sql: Organization tiene campos: name, type, address, contactEmail, phone, specialistCount
+				// Nota: Supabase puede requerir que los nombres de columnas camelCase se usen tal cual están en la BD
+				const orgInsertData: any = {
+					name: organization.orgName,
+					type: orgTypeCast, // USER-DEFINED type según Database.sql
+					address: organization.orgAddress ?? null,
+					contactEmail: account.email,
+					phone: organization.orgPhone ?? null,
+					specialistCount: safeNumber(organization.specialistCount) ?? 0,
+				};
+
+				console.log('[Register API] Intentando crear Organization con datos:', {
+					name: orgInsertData.name,
+					type: orgInsertData.type,
+					contactEmail: orgInsertData.contactEmail,
+				});
+
 				const { data: orgData, error: orgError } = await supabaseAdmin
 					.from('organization')
-					.insert({
-						name: organization.orgName,
-						type: orgTypeCast, // USER-DEFINED type según Database.sql
-						address: organization.orgAddress ?? null,
-						contactEmail: account.email,
-						phone: organization.orgPhone ?? null,
-						specialistCount: safeNumber(organization.specialistCount) ?? 0,
-					})
+					.insert(orgInsertData)
 					.select('id, name')
 					.single();
 
 				if (orgError) {
-					console.error('[Register API] Error creando Organization:', orgError);
-					throw new Error(`Error al crear organización: ${orgError.message}`);
+					console.error('[Register API] Error creando Organization:', {
+						message: orgError.message,
+						code: orgError.code,
+						details: orgError.details,
+						hint: orgError.hint,
+						data: orgInsertData,
+					});
+					throw new Error(`Error al crear organización: ${orgError.message} (Código: ${orgError.code})`);
+				}
+
+				if (!orgData || !orgData.id) {
+					console.error('[Register API] Organization creada pero sin ID:', orgData);
+					throw new Error('Error al crear organización: No se recibió ID de la organización creada');
 				}
 
 				orgRecord = orgData;
-				createdIds.push({ type: 'Organization', id: orgRecord.id });
+				createdIds.push({ type: 'organization', id: orgRecord.id }); // Usar nombre de tabla en minúsculas para rollback
+				console.log('[Register API] Organization creada exitosamente:', orgRecord.id);
 			}
 
 			// 2. Crear Patient si existe
@@ -395,16 +418,22 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 					.single();
 
 				if (patientError) {
-					console.error('[Register API] Error creando Patient:', patientError);
+					console.error('[Register API] Error creando Patient:', {
+						message: patientError.message,
+						code: patientError.code,
+						details: patientError.details,
+						hint: patientError.hint,
+					});
 					// Rollback: eliminar Organization si se creó
 					if (orgRecord) {
 						await supabaseAdmin.from('organization').delete().eq('id', orgRecord.id);
 					}
-					throw new Error(`Error al crear paciente: ${patientError.message}`);
+					throw new Error(`Error al crear paciente: ${patientError.message} (Código: ${patientError.code})`);
 				}
 
 				patientRecord = patientData;
-				createdIds.push({ type: 'Patient', id: patientRecord.id });
+				createdIds.push({ type: 'patient', id: patientRecord.id }); // Usar nombre de tabla en minúsculas para rollback
+				console.log('[Register API] Patient creado exitosamente:', patientRecord.id);
 
 				// Log para confirmar la vinculación
 				if (linkedUnregisteredPatientId) {
@@ -461,8 +490,11 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 				}
 			}
 
-			if (!userCreateData.organizationId && orgRecord) {
+			if (!userCreateData.organizationId && orgRecord && orgRecord.id) {
 				userCreateData.organizationId = orgRecord.id;
+				console.log('[Register API] Asignando organizationId al User:', orgRecord.id);
+			} else if (!userCreateData.organizationId && orgRecord && !orgRecord.id) {
+				console.error('[Register API] ADVERTENCIA: orgRecord existe pero no tiene ID:', orgRecord);
 			}
 			if (patientRecord) {
 				userCreateData.patientProfileId = patientRecord.id;
@@ -477,23 +509,61 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
 			// 4. Crear User
 			// Según Database.sql: User tiene: email, name, passwordHash, role, organizationId, patientProfileId, authId, used
-			const { data: userData, error: userError } = await supabaseAdmin
-				.from('user')
-				.insert({
-					email: userCreateData.email,
-					name: userCreateData.name,
-					role: userCreateData.role, // USER-DEFINED type según Database.sql
-					organizationId: userCreateData.organizationId ?? null,
-					patientProfileId: userCreateData.patientProfileId ?? null,
-					authId: userCreateData.authId ?? null,
-					passwordHash: userCreateData.passwordHash ?? null,
-					used: true, // DEFAULT true según Database.sql
-				})
+			const userInsertData: any = {
+				email: userCreateData.email,
+				name: userCreateData.name,
+				role: userCreateData.role, // USER-DEFINED type según Database.sql
+				organizationId: userCreateData.organizationId ?? null,
+				patientProfileId: userCreateData.patientProfileId ?? null,
+				authId: userCreateData.authId ?? null,
+				passwordHash: userCreateData.passwordHash ?? null,
+				used: true, // DEFAULT true según Database.sql
+			};
+
+			console.log('[Register API] Intentando crear User con datos:', {
+				email: userInsertData.email,
+				role: userInsertData.role,
+				organizationId: userInsertData.organizationId,
+				hasAuthId: !!userInsertData.authId,
+				hasPasswordHash: !!userInsertData.passwordHash,
+				fullInsertData: userInsertData,
+			});
+
+			// Nota: 'user' es una palabra reservada en PostgreSQL, usar comillas dobles para evitar problemas
+			// Intentar primero con comillas dobles, si falla intentar sin comillas
+			let userData: any = null;
+			let userError: any = null;
+
+			// Intentar con comillas dobles primero (más seguro para palabras reservadas)
+			const { data: userDataQuoted, error: userErrorQuoted } = await supabaseAdmin
+				.from('"user"')
+				.insert(userInsertData)
 				.select('id, email, role, authId, organizationId')
 				.single();
 
+			if (userErrorQuoted && userErrorQuoted.code === '42P01') {
+				// Tabla no encontrada con comillas, intentar sin comillas
+				console.log('[Register API] Tabla "user" no encontrada con comillas, intentando sin comillas...');
+				const { data: userDataUnquoted, error: userErrorUnquoted } = await supabaseAdmin
+					.from('user')
+					.insert(userInsertData)
+					.select('id, email, role, authId, organizationId')
+					.single();
+				userData = userDataUnquoted;
+				userError = userErrorUnquoted;
+			} else {
+				userData = userDataQuoted;
+				userError = userErrorQuoted;
+			}
+
 			if (userError) {
-				console.error('[Register API] Error creando User:', userError);
+				console.error('[Register API] Error creando User:', {
+					message: userError.message,
+					code: userError.code,
+					details: userError.details,
+					hint: userError.hint,
+					data: userInsertData,
+				});
 				// Rollback: eliminar lo creado
 				if (patientRecord) {
 					await supabaseAdmin.from('patient').delete().eq('id', patientRecord.id);
@@ -501,11 +571,24 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 				if (orgRecord) {
 					await supabaseAdmin.from('organization').delete().eq('id', orgRecord.id);
 				}
-				throw new Error(`Error al crear usuario: ${userError.message}`);
+				throw new Error(`Error al crear usuario: ${userError.message} (Código: ${userError.code})`);
+			}
+
+			if (!userData || !userData.id) {
+				console.error('[Register API] User creado pero sin ID:', userData);
+				// Rollback
+				if (patientRecord) {
+					await supabaseAdmin.from('patient').delete().eq('id', patientRecord.id);
+				}
+				if (orgRecord) {
+					await supabaseAdmin.from('organization').delete().eq('id', orgRecord.id);
+				}
+				throw new Error('Error al crear usuario: No se recibió ID del usuario creado');
 			}
 
 			userRecord = userData;
-			createdIds.push({ type: 'User', id: userRecord.id });
+			createdIds.push({ type: 'user', id: userRecord.id }); // Usar nombre de tabla en minúsculas para rollback
+			console.log('[Register API] User creado exitosamente:', userRecord.id);
 
 			// 5. Crear Subscription si existe plan
 			if (plan) {
@@ -546,9 +629,16 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 				console.error('[Register API] Error durante creación de registros, haciendo rollback de:', createdIds);
 				for (const { type, id } of createdIds.reverse()) {
 					try {
-						await supabaseAdmin.from(type).delete().eq('id', id);
-					} catch (rollbackErr) {
-						console.error(`[Register API] Error en rollback de ${type} (${id}):`, rollbackErr);
+						// Usar nombre de tabla en minúsculas (Supabase requiere nombres de tabla en minúsculas)
+						const tableName = type.toLowerCase();
+						await supabaseAdmin.from(tableName).delete().eq('id', id);
+						console.log(`[Register API] Rollback exitoso de ${tableName} (${id})`);
+					} catch (rollbackErr: any) {
+						console.error(`[Register API] Error en rollback de ${type} (${id}):`, {
+							message: rollbackErr?.message,
+							code: rollbackErr?.code,
+							details: rollbackErr?.details,
+						});
 					}
 				}
 			}
@@ -720,6 +810,43 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 			emailVerificationMessage = emailVerificationMessage ? `${emailVerificationMessage}\n\n${historyMessage}` : historyMessage;
 		}
 
+		// Validación final: asegurarse de que userRecord existe y tiene ID
+		if (!userRecord || !userRecord.id) {
+			console.error('[Register API] ERROR CRÍTICO: userRecord no existe o no tiene ID después de la creación:', {
+				userRecord,
+				createdIds,
+			});
+			// Rollback de todo lo creado
+			if (createdIds.length > 0 && supabaseAdmin) {
+				console.error('[Register API] Haciendo rollback completo debido a userRecord inválido');
+				for (const { type, id } of createdIds.reverse()) {
+					try {
+						const tableName = type.toLowerCase();
+						await supabaseAdmin.from(tableName).delete().eq('id', id);
+						console.log(`[Register API] Rollback exitoso de ${tableName} (${id})`);
+					} catch (rollbackErr: any) {
+						console.error(`[Register API] Error en rollback de ${type} (${id}):`, rollbackErr);
+					}
+				}
+			}
+			// También eliminar el usuario de Supabase Auth si se creó
+			if (supabaseCreated && supabaseUserId && supabaseAdmin) {
+				try {
+					await supabaseAdmin.auth.admin.deleteUser(supabaseUserId);
+					console.log('[Register API] Usuario de Supabase Auth eliminado durante rollback');
+				} catch (authDeleteErr: any) {
+					console.error('[Register API] Error eliminando usuario de Supabase Auth:', authDeleteErr);
+				}
+			}
+			return NextResponse.json(
+				{
+					ok: false,
+					message: 'Error crítico: No se pudo crear el usuario en la base de datos. Por favor, intente nuevamente o contacte al administrador.',
+				},
+				{ status: 500 }
+			);
+		}
+
 		return NextResponse.json({
 			ok: true,
 			data: responsePayload,
@@ -737,13 +864,40 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 			console.error('[Register API] Error durante registro, haciendo rollback de:', createdIds);
 			for (const { type, id } of createdIds.reverse()) {
 				try {
-					await supabaseAdmin.from(type).delete().eq('id', id);
-				} catch (rollbackErr) {
-					console.error(`[Register API] Error en rollback de ${type} (${id}):`, rollbackErr);
+					// Usar nombre de tabla en minúsculas (Supabase requiere nombres de tabla en minúsculas)
+					const tableName = type.toLowerCase();
+					await supabaseAdmin.from(tableName).delete().eq('id', id);
+					console.log(`[Register API] Rollback exitoso de ${tableName} (${id})`);
+				} catch (rollbackErr: any) {
+					console.error(`[Register API] Error en rollback de ${type} (${id}):`, {
+						message: rollbackErr?.message,
+						code: rollbackErr?.code,
+						details: rollbackErr?.details,
+					});
 				}
 			}
 		}
-		console.error('Register error:', err);
-		return NextResponse.json({ ok: false, message: err instanceof Error ? err.message : 'Error interno' }, { status: 500 });
+		// También eliminar el usuario de Supabase Auth si se creó
+		// Nota: Necesitamos acceder a las variables del scope externo
+		// Estas variables están declaradas al inicio de la función
+		if (supabaseCreated && supabaseUserId && supabaseAdmin) {
+			try {
+				await supabaseAdmin.auth.admin.deleteUser(supabaseUserId);
+				console.log('[Register API] Usuario de Supabase Auth eliminado durante rollback');
+			} catch (authDeleteErr: any) {
+				console.error('[Register API] Error eliminando usuario de Supabase Auth:', authDeleteErr);
+			}
+		}
+		console.error('[Register API] Error completo:', err);
+		const errorMessage = err instanceof Error ? err.message : 'Error interno';
+		const errorDetails = err instanceof Error ? { stack: err.stack, name: err.name } : {};
+		return NextResponse.json(
+			{
+				ok: false,
+				message: errorMessage,
+				...(process.env.NODE_ENV === 'development' && errorDetails),
+			},
+			{ status: 500 }
+		);
 	}
 }

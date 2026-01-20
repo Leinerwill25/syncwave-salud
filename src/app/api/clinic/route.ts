@@ -1,26 +1,19 @@
 import { NextResponse } from 'next/server';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
-import type { PrismaClient } from '@prisma/client';
 
 console.log('Loaded route: /api/clinic');
 
-// --- Try to load Prisma client if available ---
-let prisma: PrismaClient | null = null;
-try {
-	const mod = require('@/lib/prisma') as any;
-	prisma = mod?.default ?? mod?.prisma ?? (mod instanceof Object && 'PrismaClient' in mod ? new mod.PrismaClient() : null);
-} catch {
-	prisma = null;
+// --- Supabase server client ---
+const SUPABASE_URL = process.env.SUPABASE_URL ?? process.env.NEXT_PUBLIC_SUPABASE_URL ?? '';
+const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY ?? process.env.SUPABASE_KEY ?? '';
+
+if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
+	console.warn('[Clinic API] Supabase credentials not configured');
 }
 
-// --- Supabase server client ---
-const SUPABASE_URL = process.env.SUPABASE_URL ?? process.env.NEXT_PUBLIC_SUPABASE_URL;
-const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY ?? process.env.SUPABASE_KEY;
-const useSupabase = Boolean(SUPABASE_URL && SUPABASE_SERVICE_ROLE_KEY);
-const supabase: SupabaseClient | null = useSupabase ? createClient(SUPABASE_URL!, SUPABASE_SERVICE_ROLE_KEY!) : null;
-
-// --- Fallback memory store ---
-const MEMORY_DB: Record<string, unknown>[] = [];
+const supabaseAdmin: SupabaseClient | null = SUPABASE_URL && SUPABASE_SERVICE_ROLE_KEY
+	? createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, { auth: { persistSession: false } })
+	: null;
 
 // --- Helper functions ---
 function sanitizeForClient(value: unknown): unknown {
@@ -77,93 +70,148 @@ function getTokenFromRequest(headers: Headers) {
 async function resolveOrganizationId(body: any, headers: Headers) {
 	if (body.organizationId) return { organizationId: body.organizationId };
 	const token = getTokenFromRequest(headers);
-	if (!token || !supabase) return { error: 'Token inválido o faltante. No se puede obtener organizationId.' };
+	if (!token || !supabaseAdmin) return { error: 'Token inválido o faltante. No se puede obtener organizationId.' };
 
-	const { data, error } = await supabase.auth.getUser(token);
+	const { data, error } = await supabaseAdmin.auth.getUser(token);
 	if (error || !data?.user) return { error: 'Token inválido o expirado.' };
 
-	if (!prisma) return { error: 'No se pudo acceder a la base de datos.' };
-	const user = await prisma.user.findUnique({ where: { authId: data.user.id } });
-	if (!user?.organizationId) return { error: 'El usuario no tiene organizationId asociado.' };
+	// Obtener usuario de la tabla user usando Supabase
+	const { data: user, error: userError } = await supabaseAdmin
+		.from('user')
+		.select('id, organizationId')
+		.eq('authId', data.user.id)
+		.maybeSingle();
+
+	if (userError || !user?.organizationId) {
+		return { error: 'El usuario no tiene organizationId asociado.' };
+	}
 	return { organizationId: user.organizationId };
 }
 
-function mapBodyToPrismaClinic(body: any, organizationId: string) {
+function mapBodyToSupabaseClinic(body: any, organizationId: string) {
 	const specialties = Array.isArray(body.specialties) ? body.specialties : [];
 	const paymentMethods = Array.isArray(body.paymentMethods) ? body.paymentMethods : [];
 
 	return {
-		legalRif: body.rif ?? null,
-		legalName: body.legalName ?? null,
-		tradeName: body.tradeName ?? null,
-		entityType: body.entityType ?? null,
-		addressFiscal: body.addressFiscal ?? null,
-		addressOperational: body.addressOperational ?? null,
-		stateProvince: body.state ?? null,
-		cityMunicipality: body.city ?? null,
-		postalCode: body.postalCode ?? null,
-		phoneFixed: body.phone ?? null,
-		phoneMobile: body.whatsapp ?? null,
-		contactEmail: body.email ?? null,
+		organization_id: organizationId,
+		legal_rif: body.rif ?? null,
+		legal_name: body.legalName ?? null,
+		trade_name: body.tradeName ?? null,
+		entity_type: body.entityType ?? null,
+		address_fiscal: body.addressFiscal ?? null,
+		address_operational: body.addressOperational ?? null,
+		state_province: body.state ?? null,
+		city_municipality: body.city ?? null,
+		postal_code: body.postalCode ?? null,
+		phone_fixed: body.phone ?? null,
+		phone_mobile: body.whatsapp ?? null,
+		contact_email: body.email ?? null,
 		website: body.website ?? null,
-		socialFacebook: body.social_facebook ?? null,
-		socialInstagram: body.social_instagram ?? null,
-		socialLinkedin: body.social_linkedin ?? null,
-		officesCount: Number(body.officesCount) || 0,
-		specialties,
-		openingHours: body.openingHours ?? null,
-		capacityPerDay: Number(body.capacityPerDay) || null,
-		employeesCount: Number(body.employeesCount) || null,
-		directorName: body.directorName ?? null,
-		adminName: body.adminName ?? null,
-		directorIdNumber: body.directorId ?? null,
-		sanitaryLicense: body.sanitaryLicense ?? null,
-		liabilityInsuranceNumber: body.liabilityInsuranceNumber ?? null,
-		bankName: body.bankName ?? null,
-		bankAccountType: body.accountType ?? null,
-		bankAccountNumber: body.accountNumber ?? null,
-		bankAccountOwner: body.accountOwner ?? null,
+		social_facebook: body.social_facebook ?? null,
+		social_instagram: body.social_instagram ?? null,
+		social_linkedin: body.social_linkedin ?? null,
+		offices_count: Number(body.officesCount) || 0,
+		specialties: specialties,
+		opening_hours: body.openingHours ?? null,
+		capacity_per_day: Number(body.capacityPerDay) || null,
+		employees_count: Number(body.employeesCount) || null,
+		director_name: body.directorName ?? null,
+		admin_name: body.adminName ?? null,
+		director_id_number: body.directorId ?? null,
+		sanitary_license: body.sanitaryLicense ?? null,
+		liability_insurance_number: body.liabilityInsuranceNumber ?? null,
+		bank_name: body.bankName ?? null,
+		bank_account_type: body.accountType ?? null,
+		bank_account_number: body.accountNumber ?? null,
+		bank_account_owner: body.accountOwner ?? null,
 		currency: body.currency ?? null,
-		paymentMethods,
-		billingSeries: body.billingSeries ?? null,
-		taxRegime: body.taxRegime ?? null,
-		billingAddress: body.billingAddress ?? null,
-		updatedAt: new Date(),
-		...(organizationId ? { organization: { connect: { id: organizationId } } } : {}),
+		payment_methods: paymentMethods,
+		billing_series: body.billingSeries ?? null,
+		tax_regime: body.taxRegime ?? null,
+		billing_address: body.billingAddress ?? null,
+		updated_at: new Date().toISOString(),
+	};
+}
+
+// Mapear de snake_case a camelCase para la respuesta
+function mapSupabaseToClient(data: any) {
+	if (!data) return null;
+	return {
+		organizationId: data.organization_id,
+		legalRif: data.legal_rif,
+		legalName: data.legal_name,
+		tradeName: data.trade_name,
+		entityType: data.entity_type,
+		addressFiscal: data.address_fiscal,
+		addressOperational: data.address_operational,
+		stateProvince: data.state_province,
+		cityMunicipality: data.city_municipality,
+		postalCode: data.postal_code,
+		contactEmail: data.contact_email,
+		specialties: data.specialties || [],
+		paymentMethods: data.payment_methods || [],
+		...data,
 	};
 }
 
 // --- POST handler ---
 export async function POST(request: Request) {
 	try {
+		if (!supabaseAdmin) {
+			return NextResponse.json({ ok: false, error: 'Supabase no configurado.' }, { status: 500 });
+		}
+
 		const body = await request.json().catch(() => null);
 		if (!body) return NextResponse.json({ ok: false, error: 'El cuerpo de la solicitud debe ser JSON.' }, { status: 400 });
 
 		const { organizationId, error } = await resolveOrganizationId(body, request.headers);
 		if (error) return NextResponse.json({ ok: false, error }, { status: 401 });
 
-		if (!prisma) return NextResponse.json({ ok: false, error: 'Prisma no inicializado.' }, { status: 500 });
+		const clinicData = mapBodyToSupabaseClinic(body, organizationId);
 
-		const modelClient = (prisma as any).clinicProfile;
-		if (!modelClient) return NextResponse.json({ ok: false, error: 'No se encontró el modelo clinicProfile en Prisma.' }, { status: 500 });
+		// Verificar si ya existe un perfil de clínica para esta organización
+		const { data: existing, error: fetchError } = await supabaseAdmin
+			.from('clinic_profile')
+			.select('*')
+			.eq('organization_id', organizationId)
+			.maybeSingle();
 
-		const existing = await modelClient.findUnique({
-			where: { organizationId },
-		});
-
-		const prismaData = mapBodyToPrismaClinic(body, organizationId);
-
-		if (existing) {
-			delete prismaData.organization; // 🔧 evitar error de Prisma
-			const updated = await modelClient.update({
-				where: { organizationId },
-				data: prismaData,
-			});
-			return NextResponse.json({ ok: true, data: ensureTemplateMerged(updated) });
+		if (fetchError && fetchError.code !== 'PGRST116') {
+			console.error('[Clinic API] Error buscando perfil existente:', fetchError);
+			return NextResponse.json({ ok: false, error: 'Error al buscar perfil de clínica.' }, { status: 500 });
 		}
 
-		const created = await modelClient.create({ data: prismaData });
-		return NextResponse.json({ ok: true, data: ensureTemplateMerged(created) });
+		let result;
+		if (existing) {
+			// Actualizar perfil existente
+			const { data: updated, error: updateError } = await supabaseAdmin
+				.from('clinic_profile')
+				.update(clinicData)
+				.eq('organization_id', organizationId)
+				.select()
+				.single();
+
+			if (updateError) {
+				console.error('[Clinic API] Error actualizando perfil:', updateError);
+				return NextResponse.json({ ok: false, error: 'Error al actualizar perfil de clínica.' }, { status: 500 });
+			}
+			result = updated;
+		} else {
+			// Crear nuevo perfil
+			const { data: created, error: createError } = await supabaseAdmin
+				.from('clinic_profile')
+				.insert(clinicData)
+				.select()
+				.single();
+
+			if (createError) {
+				console.error('[Clinic API] Error creando perfil:', createError);
+				return NextResponse.json({ ok: false, error: 'Error al crear perfil de clínica.' }, { status: 500 });
+			}
+			result = created;
+		}
+
+		return NextResponse.json({ ok: true, data: ensureTemplateMerged(mapSupabaseToClient(result)) });
 	} catch (err: any) {
 		console.error('Error en /api/clinic POST', err);
 		return NextResponse.json({ ok: false, error: err.message ?? String(err) }, { status: 500 });
@@ -173,11 +221,24 @@ export async function POST(request: Request) {
 // --- GET handler ---
 export async function GET() {
 	try {
-		if (!prisma) return NextResponse.json({ ok: false, error: 'Prisma no inicializado.' }, { status: 500 });
+		if (!supabaseAdmin) {
+			return NextResponse.json({ ok: false, error: 'Supabase no configurado.' }, { status: 500 });
+		}
 
-		const modelClient = (prisma as any).clinicProfile;
-		const items = await modelClient.findMany({ orderBy: { createdAt: 'desc' } });
-		return NextResponse.json({ ok: true, data: items.map(ensureTemplateMerged) });
+		const { data: items, error } = await supabaseAdmin
+			.from('clinic_profile')
+			.select('*')
+			.order('created_at', { ascending: false });
+
+		if (error) {
+			console.error('[Clinic API] Error obteniendo perfiles:', error);
+			return NextResponse.json({ ok: false, error: 'Error al obtener perfiles de clínica.' }, { status: 500 });
+		}
+
+		return NextResponse.json({
+			ok: true,
+			data: (items || []).map((item) => ensureTemplateMerged(mapSupabaseToClient(item))),
+		});
 	} catch (err: any) {
 		console.error('Error en /api/clinic GET', err);
 		return NextResponse.json({ ok: false, error: err.message ?? String(err) }, { status: 500 });

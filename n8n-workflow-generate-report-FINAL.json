@@ -1,0 +1,312 @@
+{
+  "name": "Generar Informe Médico desde Audio",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "generate-report-from-audio",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-trigger",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [250, 300],
+      "webhookId": "generate-report-from-audio"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "audioUrl-assignment",
+              "name": "audioUrl",
+              "value": "={{ $json.audioUrl }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "set-audio-url",
+      "name": "Set Audio URL",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [450, 300]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $json.audioUrl }}",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "file"
+            }
+          }
+        }
+      },
+      "id": "download-audio",
+      "name": "Descargar Audio",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [650, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Preparar audio para Groq\nconst audioData = $input.item.json.binary.data;\nconst webhookData = $('Webhook').item.json;\n\nreturn {\n  audioBuffer: audioData.data,\n  audioFileName: audioData.fileName,\n  audioFormat: audioData.fileName.split('.').pop(),\n  originalData: webhookData\n};"
+      },
+      "id": "prepare-audio",
+      "name": "Preparar Audio",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [850, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.groq.com/openai/v1/audio/transcriptions",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $('Webhook').item.json.groqApiKey }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "multipart-form-data",
+        "specifyBody": "multipart-form-data",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "file",
+              "value": "={{ $binary.data }}"
+            },
+            {
+              "name": "model",
+              "value": "whisper-large-v3"
+            },
+            {
+              "name": "language",
+              "value": "es"
+            },
+            {
+              "name": "response_format",
+              "value": "json"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "transcribe-groq",
+      "name": "Transcribir con Groq",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1050, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Limpiar transcripción de muletillas\nconst transcription = $json.text || '';\n\n// Lista de muletillas comunes\nconst muletillas = [\n  /\\b(eh|em|ah|mm|umm|este|esto|bueno|entonces|así que|o sea|es decir)\\b/gi,\n  /\\b(como|tipo|tal vez|quizás|a ver|mira|fíjate|osea)\\b/gi,\n  /\\b(entonces|así|bueno|déjame ver|déjame pensar)\\b/gi,\n];\n\nlet cleaned = transcription;\nmuletillas.forEach(pattern => {\n  cleaned = cleaned.replace(pattern, ' ');\n});\n\n// Normalizar espacios múltiples\ncleaned = cleaned.replace(/\\s+/g, ' ').trim();\n\n// Limpiar puntuación excesiva\ncleaned = cleaned.replace(/\\.{3,}/g, '.');\ncleaned = cleaned.replace(/,{2,}/g, ',');\n\nconst originalData = $('Webhook').item.json;\n\nreturn {\n  original: transcription,\n  cleaned: cleaned,\n  consultationId: originalData.consultationId,\n  doctorId: originalData.doctorId,\n  reportType: originalData.reportType,\n  specialty: originalData.specialty,\n  patientData: originalData.patientData,\n  consultationData: originalData.consultationData,\n  medicProfile: originalData.medicProfile,\n  groqApiKey: originalData.groqApiKey,\n  nextAppUrl: originalData.nextAppUrl,\n  n8nApiKey: originalData.n8nApiKey,\n};"
+      },
+      "id": "clean-transcription",
+      "name": "Limpiar Transcripción",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1250, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.groq.com/openai/v1/chat/completions",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $json.groqApiKey }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"model\": \"llama-3.1-70b-versatile\",\n  \"messages\": [\n    {\n      \"role\": \"system\",\n      \"content\": \"Eres un asistente médico especializado en analizar transcripciones de consultas médicas. Tu tarea es extraer información estructurada de la transcripción y mapearla a los campos del formulario médico correspondiente a la especialidad. Responde SOLO con un JSON válido que contenga los campos extraídos.\"\n    },\n    {\n      \"role\": \"user\",\n      \"content\": `Analiza esta transcripción médica y extrae los campos relevantes para el formulario:\\n\\nTranscripción:\\n{{ $json.cleaned }}\\n\\nEspecialidad: {{ $json.specialty }}\\nTipo de informe: {{ $json.reportType }}\\n\\nDatos de la consulta actual:\\n${JSON.stringify($json.consultationData, null, 2)}\\n\\nResponde con un JSON que contenga los campos extraídos del audio, mapeados a la estructura del formulario de la especialidad. Incluye valores numéricos, fechas, diagnósticos, síntomas, y cualquier información médica relevante.`\n    }\n  ],\n  \"temperature\": 0.3,\n  \"response_format\": {\"type\": \"json_object\"}\n}",
+        "options": {}
+      },
+      "id": "analyze-ai",
+      "name": "Analizar con IA",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1450, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Procesar respuesta de IA y preparar datos para plantilla\nconst aiResponse = $json.choices?.[0]?.message?.content;\nlet extractedFields = {};\n\ntry {\n  extractedFields = JSON.parse(aiResponse);\n} catch (e) {\n  console.error('Error parseando respuesta de IA:', e);\n  extractedFields = {};\n}\n\nconst cleanedData = $('Limpiar Transcripción').item.json;\n\n// Combinar datos extraídos con datos existentes de la consulta\nconst consultationData = cleanedData.consultationData || {};\nconst vitals = consultationData.vitals || {};\n\n// Actualizar vitals con datos extraídos según la especialidad\nconst reportType = cleanedData.reportType || 'gynecology';\n\n// Función helper para mergear datos\nfunction mergeFields(target, source) {\n  Object.keys(source).forEach(key => {\n    if (source[key] && source[key] !== '' && source[key] !== null) {\n      if (typeof source[key] === 'object' && !Array.isArray(source[key])) {\n        target[key] = mergeFields(target[key] || {}, source[key]);\n      } else {\n        target[key] = source[key];\n      }\n    }\n  });\n  return target;\n}\n\n// Mapear campos extraídos según el tipo de informe\nlet updatedVitals = { ...vitals };\n\nif (reportType === 'gynecology') {\n  updatedVitals.gynecology = mergeFields(\n    updatedVitals.gynecology || {},\n    extractedFields.gynecology || extractedFields\n  );\n} else if (reportType === 'first_trimester') {\n  updatedVitals.obstetrics = updatedVitals.obstetrics || {};\n  updatedVitals.obstetrics.first_trimester = mergeFields(\n    updatedVitals.obstetrics.first_trimester || {},\n    extractedFields.first_trimester || extractedFields\n  );\n} else if (reportType === 'second_third_trimester') {\n  updatedVitals.obstetrics = updatedVitals.obstetrics || {};\n  updatedVitals.obstetrics.second_third_trimester = mergeFields(\n    updatedVitals.obstetrics.second_third_trimester || {},\n    extractedFields.second_third_trimester || extractedFields\n  );\n} else if (reportType === 'cardiology') {\n  updatedVitals.cardiology = mergeFields(\n    updatedVitals.cardiology || {},\n    extractedFields.cardiology || extractedFields\n  );\n} else if (reportType === 'pulmonology') {\n  updatedVitals.pulmonology = mergeFields(\n    updatedVitals.pulmonology || {},\n    extractedFields.pulmonology || extractedFields\n  );\n} else if (reportType === 'neurology') {\n  updatedVitals.neurology = mergeFields(\n    updatedVitals.neurology || {},\n    extractedFields.neurology || extractedFields\n  );\n} else if (reportType === 'nutrition') {\n  updatedVitals.nutrition = mergeFields(\n    updatedVitals.nutrition || {},\n    extractedFields.nutrition || extractedFields\n  );\n} else if (reportType === 'dermatology') {\n  updatedVitals.dermatology = mergeFields(\n    updatedVitals.dermatology || {},\n    extractedFields.dermatology || extractedFields\n  );\n} else if (reportType === 'psychiatry') {\n  updatedVitals.psychiatry = mergeFields(\n    updatedVitals.psychiatry || {},\n    extractedFields.psychiatry || extractedFields\n  );\n} else if (reportType === 'orthopedics') {\n  updatedVitals.orthopedics = mergeFields(\n    updatedVitals.orthopedics || {},\n    extractedFields.orthopedics || extractedFields\n  );\n} else if (reportType === 'ent') {\n  updatedVitals.ent = mergeFields(\n    updatedVitals.ent || {},\n    extractedFields.ent || extractedFields\n  );\n} else if (reportType === 'endocrinology') {\n  updatedVitals.endocrinology = mergeFields(\n    updatedVitals.endocrinology || {},\n    extractedFields.endocrinology || extractedFields\n  );\n} else if (reportType === 'ophthalmology') {\n  updatedVitals.ophthalmology = mergeFields(\n    updatedVitals.ophthalmology || {},\n    extractedFields.ophthalmology || extractedFields\n  );\n}\n\nreturn {\n  transcription: cleanedData.cleaned,\n  originalTranscription: cleanedData.original,\n  extractedFields: extractedFields,\n  updatedVitals: updatedVitals,\n  consultationId: cleanedData.consultationId,\n  doctorId: cleanedData.doctorId,\n  reportType: reportType,\n  specialty: cleanedData.specialty,\n  patientData: cleanedData.patientData,\n  medicProfile: cleanedData.medicProfile,\n  nextAppUrl: cleanedData.nextAppUrl,\n  n8nApiKey: cleanedData.n8nApiKey,\n  consultationData: {\n    ...consultationData,\n    vitals: updatedVitals,\n  },\n};"
+      },
+      "id": "process-fields",
+      "name": "Procesar Campos",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1650, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $json.nextAppUrl }}/api/n8n/generate-report-internal",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"consultationId\": \"{{ $json.consultationId }}\",\n  \"doctorId\": \"{{ $json.doctorId }}\",\n  \"reportType\": \"{{ $json.reportType }}\",\n  \"transcription\": \"{{ $json.transcription }}\",\n  \"extractedFields\": {{ JSON.stringify($json.extractedFields) }},\n  \"updatedVitals\": {{ JSON.stringify($json.updatedVitals) }},\n  \"apiKey\": \"{{ $json.n8nApiKey }}\"\n}",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "id": "generate-report",
+      "name": "Generar Informe",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1850, 300]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={\n  \"success\": true,\n  \"reportUrl\": \"{{ $('Generar Informe').item.json.report_url }}\",\n  \"transcription\": \"{{ $('Procesar Campos').item.json.transcription }}\",\n  \"message\": \"Informe generado exitosamente\"\n}",
+        "options": {}
+      },
+      "id": "respond-webhook",
+      "name": "Respond to Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [2050, 300]
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Set Audio URL",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set Audio URL": {
+      "main": [
+        [
+          {
+            "node": "Descargar Audio",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Descargar Audio": {
+      "main": [
+        [
+          {
+            "node": "Preparar Audio",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Preparar Audio": {
+      "main": [
+        [
+          {
+            "node": "Transcribir con Groq",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Transcribir con Groq": {
+      "main": [
+        [
+          {
+            "node": "Limpiar Transcripción",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Limpiar Transcripción": {
+      "main": [
+        [
+          {
+            "node": "Analizar con IA",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Analizar con IA": {
+      "main": [
+        [
+          {
+            "node": "Procesar Campos",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Procesar Campos": {
+      "main": [
+        [
+          {
+            "node": "Generar Informe",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generar Informe": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [],
+  "triggerCount": 1,
+  "updatedAt": "2025-01-27T00:00:00.000Z"
+}
+
+

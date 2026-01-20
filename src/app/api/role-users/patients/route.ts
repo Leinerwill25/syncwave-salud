@@ -55,9 +55,10 @@ export async function GET(request: NextRequest) {
 		}
 
 		// Obtener información básica de los pacientes
+		// Nota: Patient NO tiene campo email, solo phone
 		const { data: patients, error: patientsError } = await supabase
 			.from('patient')
-			.select('id, firstName, lastName, identifier, phone, email')
+			.select('id, firstName, lastName, identifier, phone')
 			.in('id', Array.from(patientIds));
 
 		if (patientsError) {
@@ -100,7 +101,7 @@ export async function GET(request: NextRequest) {
 					lastName: patient.lastName,
 					identifier: patient.identifier,
 					phone: patient.phone,
-					email: patient.email,
+					email: null, // Patient no tiene email en la tabla
 				},
 				scheduledAppointments,
 				attendedCount,

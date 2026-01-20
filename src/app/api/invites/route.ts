@@ -213,15 +213,16 @@ export async function POST(req: Request) {
 			return NextResponse.json({ error: 'Error al crear invitación' }, { status: 500 });
 		}
 
+		const inviteData = invite as any;
 		return NextResponse.json(
 			{
-				id: invite.id,
-				email: invite.email,
-				token: invite.token,
-				role: invite.role,
-				used: invite.used,
-				expiresAt: invite.expiresAt ? invite.expiresAt.toISOString() : null,
-				createdAt: invite.createdAt.toISOString(),
+				id: inviteData.id,
+				email: inviteData.email,
+				token: inviteData.token,
+				role: inviteData.role,
+				used: inviteData.used,
+				expiresAt: inviteData.expiresAt ? (typeof inviteData.expiresAt === 'string' ? inviteData.expiresAt : new Date(inviteData.expiresAt).toISOString()) : null,
+				createdAt: inviteData.createdAt ? (typeof inviteData.createdAt === 'string' ? inviteData.createdAt : new Date(inviteData.createdAt).toISOString()) : new Date().toISOString(),
 			},
 			{ status: 201 }
 		);
@@ -259,7 +260,8 @@ export async function DELETE(req: Request) {
 		if (findError || !existing) {
 			return NextResponse.json({ error: 'Invite not found' }, { status: 404 });
 		}
-		if (existing.organizationId !== dbUser.organizationId) {
+		const existingOrgId = (existing as any).organizationId;
+		if (existingOrgId !== dbUser.organizationId) {
 			return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
 		}
 

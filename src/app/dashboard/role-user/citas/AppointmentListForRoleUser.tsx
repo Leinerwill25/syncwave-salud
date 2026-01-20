@@ -347,12 +347,32 @@ export default function AppointmentListForRoleUser({ selectedDate, roleName, can
 											<CreditCard className="w-4 h-4 text-teal-600 shrink-0" />
 											<span className="text-xs font-semibold text-teal-900">Servicio:</span>
 										</div>
-										<div className="text-sm font-medium text-teal-800">{appt.selected_service.name}</div>
-										{appt.selected_service.description && <p className="text-xs text-teal-700 mt-1">{appt.selected_service.description}</p>}
-										{appt.selected_service.price && (
-											<div className="text-xs text-teal-600 mt-1 font-semibold">
-												{appt.selected_service.currency} {appt.selected_service.price}
-											</div>
+										{/* Manejar diferentes formatos de selected_service */}
+										{typeof appt.selected_service === 'string' ? (
+											<div className="text-sm font-medium text-teal-800">{appt.selected_service}</div>
+										) : appt.selected_service.name ? (
+											<>
+												<div className="text-sm font-medium text-teal-800">{appt.selected_service.name}</div>
+												{appt.selected_service.description && <p className="text-xs text-teal-700 mt-1">{appt.selected_service.description}</p>}
+												{appt.selected_service.price && (
+													<div className="text-xs text-teal-600 mt-1 font-semibold">
+														{appt.selected_service.currency || 'USD'} {appt.selected_service.price}
+													</div>
+												)}
+												{/* Si hay múltiples servicios incluidos */}
+												{('services_included' in appt.selected_service && appt.selected_service.services_included && Array.isArray((appt.selected_service as any).services_included) && (appt.selected_service as any).services_included.length > 0) && (
+													<div className="mt-2 space-y-1">
+														<p className="text-xs font-semibold text-teal-900">Servicios incluidos:</p>
+														{(appt.selected_service as any).services_included.map((service: any, idx: number) => (
+															<div key={idx} className="text-xs text-teal-700 pl-2">
+																• {service?.name || service}
+															</div>
+														))}
+													</div>
+												)}
+											</>
+										) : (
+											<div className="text-sm font-medium text-teal-800">Servicio no especificado</div>
 										)}
 									</div>
 								)}

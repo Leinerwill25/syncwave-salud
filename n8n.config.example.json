@@ -1,0 +1,47 @@
+{
+  "database": {
+    "type": "sqlite",
+    "location": "./data/n8n.sqlite"
+  },
+  "userManagement": {
+    "enabled": true
+  },
+  "nodes": {
+    "exclude": [],
+    "error": {
+      "save": true,
+      "saveExecutions": true,
+      "workflow": true
+    }
+  },
+  "executions": {
+    "data": {
+      "saveOnError": true,
+      "saveOnSuccess": true,
+      "saveOnProgress": false,
+      "prune": true,
+      "maxAge": 336
+    },
+    "workflow": {
+      "saveOnError": true,
+      "saveOnSuccess": true,
+      "saveOnProgress": false,
+      "prune": true,
+      "maxAge": 168
+    }
+  },
+  "endpoints": {
+    "webhook": "webhook",
+    "webhookTest": "webhook-test"
+  },
+  "host": "localhost",
+  "port": 5678,
+  "protocol": "http",
+  "security": {
+    "audit": {
+      "daysAbandonedWorkflow": 90
+    }
+  }
+}
+
+

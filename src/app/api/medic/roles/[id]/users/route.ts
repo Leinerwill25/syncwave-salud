@@ -4,12 +4,11 @@ import { createSupabaseServerClient } from '@/app/adapters/server';
 import { apiRequireRole } from '@/lib/auth-guards';
 import bcrypt from 'bcryptjs';
 import { createClient } from '@supabase/supabase-js';
-import prisma from '@/lib/prisma';
 
 const SUPABASE_URL = process.env.SUPABASE_URL ?? process.env.NEXT_PUBLIC_SUPABASE_URL ?? '';
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY ?? '';
 
-const supabaseAdmin = SUPABASE_URL && SUPABASE_SERVICE_ROLE_KEY ? createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY) : null;
+const supabaseAdmin = SUPABASE_URL && SUPABASE_SERVICE_ROLE_KEY ? createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, { auth: { persistSession: false } }) : null;
 
 function parseSupabaseCreateResp(resp: unknown): { id?: string; email?: string } | null {
 	if (!resp || typeof resp !== 'object') return null;
@@ -50,6 +49,10 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 			return NextResponse.json({ error: 'Usuario no asociado a una organización' }, { status: 400 });
 		}
 
+		if (!supabaseAdmin) {
+			return NextResponse.json({ error: 'Configuración de Supabase no disponible' }, { status: 500 });
+		}
+
 		// Verificar que el rol pertenece a la organización
 		const { data: role } = await supabase
 			.from('consultorio_roles')
@@ -84,26 +87,35 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 			return NextResponse.json({ error: 'La contraseña es obligatoria y debe tener al menos 8 caracteres' }, { status: 400 });
 		}
 
-		// Verificar que no exista un usuario con ese email en la tabla User
-		const existingUserByEmail = await prisma.user.findUnique({
-			where: { email: email.trim() },
-		});
+		// Verificar que no exista un usuario con ese email en la tabla User usando Supabase
+		const { data: existingUserByEmail } = await supabaseAdmin
+			.from('user')
+			.select('id')
+			.eq('email', email.trim())
+			.maybeSingle();
 
 		if (existingUserByEmail) {
 			return NextResponse.json({ error: 'Ya existe un usuario registrado con ese correo electrónico' }, { status: 409 });
 		}
 
-		// Verificar que no exista un usuario con esa cédula en la tabla User
-		const existingUserByIdentifier = await prisma.user.findFirst({
-			where: {
-				patientProfile: {
-					identifier: identifier.trim(),
-				},
-			},
-		});
+		// Verificar que no exista un usuario con esa cédula en la tabla User (buscando en patient)
+		const { data: existingPatientByIdentifier } = await supabaseAdmin
+			.from('patient')
+			.select('id, patientProfileId')
+			.eq('identifier', identifier.trim())
+			.maybeSingle();
 
-		if (existingUserByIdentifier) {
-			return NextResponse.json({ error: 'Ya existe un usuario registrado con esa cédula de identidad' }, { status: 409 });
+		if (existingPatientByIdentifier) {
+			// Verificar si hay un user asociado a este patient
+			const { data: existingUserByPatientId } = await supabaseAdmin
+				.from('user')
+				.select('id')
+				.eq('patientProfileId', existingPatientByIdentifier.id)
+				.maybeSingle();
+
+			if (existingUserByPatientId) {
+				return NextResponse.json({ error: 'Ya existe un usuario registrado con esa cédula de identidad' }, { status: 409 });
+			}
 		}
 
 		// Verificar que no exista ya un usuario con esa cédula en este rol específico
@@ -134,55 +146,58 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 
 		// Crear usuario en Supabase Auth
 		let supabaseUserId: string | null = null;
-		if (supabaseAdmin) {
-			try {
-				const fullName = `${firstName.trim()} ${lastName.trim()}`;
-				const createResp = await supabaseAdmin.auth.admin.createUser({
-					email: email.trim(),
-					password: password.trim(),
-					email_confirm: true,
-					user_metadata: {
-						fullName: fullName,
-						role: 'RECEPCION', // Rol para usuarios de roles internos (personal administrativo)
-						identifier: identifier.trim(),
-						organizationId: user.organizationId,
-						isRoleUser: true, // Flag para identificar que es un usuario de rol interno
-					},
-				});
+		try {
+			const fullName = `${firstName.trim()} ${lastName.trim()}`;
+			const createResp = await supabaseAdmin.auth.admin.createUser({
+				email: email.trim(),
+				password: password.trim(),
+				email_confirm: true,
+				user_metadata: {
+					fullName: fullName,
+					role: 'RECEPCION', // Rol para usuarios de roles internos (personal administrativo)
+					identifier: identifier.trim(),
+					organizationId: user.organizationId,
+					isRoleUser: true, // Flag para identificar que es un usuario de rol interno
+				},
+			});
 
-				const parsedResp = parseSupabaseCreateResp(createResp);
-				if (parsedResp && parsedResp.id) {
-					supabaseUserId = parsedResp.id;
-				} else {
-					console.error('[Roles API] No se pudo obtener el ID del usuario de Supabase');
-					return NextResponse.json({ error: 'Error al crear el usuario en el sistema de autenticación' }, { status: 500 });
-				}
-			} catch (supabaseErr: unknown) {
-				console.error('[Roles API] Error creando usuario en Supabase Auth:', supabaseErr);
-				const errorMessage = supabaseErr instanceof Error ? supabaseErr.message : 'Error desconocido';
-				return NextResponse.json({ error: `Error al crear el usuario: ${errorMessage}` }, { status: 500 });
+			const parsedResp = parseSupabaseCreateResp(createResp);
+			if (parsedResp && parsedResp.id) {
+				supabaseUserId = parsedResp.id;
+			} else {
+				console.error('[Roles API] No se pudo obtener el ID del usuario de Supabase');
+				return NextResponse.json({ error: 'Error al crear el usuario en el sistema de autenticación' }, { status: 500 });
 			}
-		} else {
-			return NextResponse.json({ error: 'Configuración de Supabase no disponible' }, { status: 500 });
+		} catch (supabaseErr: unknown) {
+			console.error('[Roles API] Error creando usuario en Supabase Auth:', supabaseErr);
+			const errorMessage = supabaseErr instanceof Error ? supabaseErr.message : 'Error desconocido';
+			return NextResponse.json({ error: `Error al crear el usuario: ${errorMessage}` }, { status: 500 });
 		}
 
-		// Crear usuario en la tabla User
+		// Crear usuario en la tabla User usando Supabase
 		let appUserId: string;
 		try {
 			const fullName = `${firstName.trim()} ${lastName.trim()}`;
-			const newAppUser = await prisma.user.create({
-				data: {
+			const { data: newAppUser, error: userCreateError } = await supabaseAdmin
+				.from('user')
+				.insert({
 					email: email.trim(),
 					name: fullName,
-					role: 'RECEPCION', // Rol para usuarios de roles internos (personal administrativo)
+					role: 'RECEPCION',
 					organizationId: user.organizationId,
 					authId: supabaseUserId,
 					passwordHash: passwordHash,
-				},
-			});
-			appUserId = newAppUser.id;
-		} catch (prismaErr: unknown) {
-			console.error('[Roles API] Error creando usuario en User table:', prismaErr);
+				} as any)
+				.select('id')
+				.single();
+
+			if (userCreateError || !newAppUser) {
+				throw new Error(userCreateError?.message || 'Error al crear usuario en tabla user');
+			}
+
+			appUserId = (newAppUser as any).id;
+		} catch (userErr: unknown) {
+			console.error('[Roles API] Error creando usuario en User table:', userErr);
 			// Si falla la creación en User, intentar eliminar el usuario de Supabase Auth
 			if (supabaseAdmin && supabaseUserId) {
 				try {
@@ -191,7 +206,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 					console.error('[Roles API] Error eliminando usuario de Supabase después de fallo:', deleteErr);
 				}
 			}
-			const errorMessage = prismaErr instanceof Error ? prismaErr.message : 'Error desconocido';
+			const errorMessage = userErr instanceof Error ? userErr.message : 'Error desconocido';
 			return NextResponse.json({ error: `Error al crear el usuario en la base de datos: ${errorMessage}` }, { status: 500 });
 		}
 
@@ -216,7 +231,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 			console.error('[Roles API] Error creando usuario en consultorio_role_users:', createError);
 			// Rollback: eliminar usuario de User y Supabase Auth
 			try {
-				await prisma.user.delete({ where: { id: appUserId } });
+				await supabaseAdmin.from('user').delete().eq('id', appUserId);
 			} catch (deleteErr) {
 				console.error('[Roles API] Error eliminando usuario de User después de fallo:', deleteErr);
 			}
@@ -237,7 +252,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 			.eq('id', user.userId)
 			.maybeSingle();
 
-		const userName = userData?.name || 'Usuario';
+		const userName = (userData as any)?.name || 'Usuario';
 		const nameParts = userName.split(' ');
 		const auditFirstName = nameParts[0] || 'Usuario';
 		const auditLastName = nameParts.slice(1).join(' ') || '';
@@ -246,16 +261,16 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 		await supabase.from('consultorio_role_audit_log').insert({
 			organization_id: user.organizationId,
 			role_id: roleId,
-			role_user_id: newRoleUser.id,
+			role_user_id: (newRoleUser as any).id,
 			user_first_name: auditFirstName,
 			user_last_name: auditLastName,
 			user_identifier: '',
 			action_type: 'create',
 			module: 'roles',
 			entity_type: 'consultorio_role_user',
-			entity_id: newRoleUser.id,
+			entity_id: (newRoleUser as any).id,
 			action_details: {
-				description: `Usuario ${firstName} ${lastName} (${identifier}) agregado al rol "${role.role_name}". Usuario creado en sistema de autenticación y tabla User.`,
+				description: `Usuario ${firstName} ${lastName} (${identifier}) agregado al rol "${(role as any).role_name}". Usuario creado en sistema de autenticación y tabla User.`,
 				user_first_name: auditFirstName,
 				user_last_name: auditLastName,
 				user_identifier: identifier,
@@ -263,12 +278,12 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 				app_user_id: appUserId,
 				supabase_auth_id: supabaseUserId,
 			},
-		});
+		} as any);
 
 		return NextResponse.json({
 			success: true,
 			user: {
-				...newRoleUser,
+				...(newRoleUser as any),
 				appUserId: appUserId,
 				supabaseAuthId: supabaseUserId,
 			},
@@ -279,4 +294,3 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 		return NextResponse.json({ error: 'Error interno', detail: errorMessage }, { status: 500 });
 	}
 }
-

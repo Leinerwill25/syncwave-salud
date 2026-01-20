@@ -3,8 +3,6 @@ export const runtime = 'nodejs';
 
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import prisma from '@/lib/prisma';
-import type { Prisma } from '@prisma/client';
 
 export async function POST(request: Request) {
 	try {
@@ -28,8 +26,18 @@ export async function POST(request: Request) {
 			return NextResponse.json({ ok: false, message: 'Faltan campos requeridos: token, email, password, firstName, lastName' }, { status: 400 });
 		}
 
-		// 1) buscar invitación por token
-		const invite = await prisma.invite.findUnique({ where: { token } });
+		// 1) buscar invitación por token usando Supabase
+		const { data: invite, error: inviteError } = await supabaseAdmin
+			.from('invite')
+			.select('*')
+			.eq('token', token)
+			.maybeSingle();
+
+		if (inviteError) {
+			console.error('register-from-invite: error buscando invite', inviteError);
+			return NextResponse.json({ ok: false, message: 'Error al buscar invitación' }, { status: 500 });
+		}
+
 		if (!invite) {
 			return NextResponse.json({ ok: false, message: 'Invitación inválida' }, { status: 404 });
 		}
@@ -39,8 +47,11 @@ export async function POST(request: Request) {
 		}
 
 		// verificar expiresAt si existe (puede ser null)
-		if (invite.expiresAt && invite.expiresAt instanceof Date && invite.expiresAt.getTime() < Date.now()) {
-			return NextResponse.json({ ok: false, message: 'Invitación expirada' }, { status: 400 });
+		if (invite.expiresAt) {
+			const expiresAt = new Date(invite.expiresAt);
+			if (expiresAt.getTime() < Date.now()) {
+				return NextResponse.json({ ok: false, message: 'Invitación expirada' }, { status: 400 });
+			}
 		}
 
 		if (!invite.email) {
@@ -73,23 +84,37 @@ export async function POST(request: Request) {
 			return NextResponse.json({ ok: false, message: 'Error interno creando usuario' }, { status: 500 });
 		}
 
-		// 3) Crear user en Prisma y marcar invite usado dentro de transacción
-		await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
-			await tx.user.create({
-				data: {
-					email,
-					name: `${firstName} ${lastName}`,
-					role: invite.role as any, // casteo a any para evitar dependencia con enums generados en build
-					organizationId: invite.organizationId,
-					authId,
-				},
-			});
-
-			await tx.invite.update({
-				where: { id: invite.id },
-				data: { used: true },
-			});
+		// 3) Crear user en Supabase y marcar invite usado
+		// Usar transacción simulada con múltiples operaciones
+		const { error: userError } = await supabaseAdmin.from('user').insert({
+			email,
+			name: `${firstName} ${lastName}`,
+			role: invite.role,
+			organizationId: invite.organizationId,
+			authId,
 		});
+
+		if (userError) {
+			console.error('register-from-invite: error creando user', userError);
+			// Intentar eliminar el usuario de Supabase Auth si falla la creación del user
+			try {
+				await supabaseAdmin.auth.admin.deleteUser(authId);
+			} catch (deleteErr) {
+				console.error('register-from-invite: error eliminando usuario de auth', deleteErr);
+			}
+			return NextResponse.json({ ok: false, message: 'Error al crear usuario en la base de datos' }, { status: 500 });
+		}
+
+		// Marcar invite como usado
+		const { error: updateInviteError } = await supabaseAdmin
+			.from('invite')
+			.update({ used: true })
+			.eq('id', invite.id);
+
+		if (updateInviteError) {
+			console.error('register-from-invite: error actualizando invite', updateInviteError);
+			// No fallar el registro si solo falla el update del invite, pero loguear
+		}
 
 		return NextResponse.json({ ok: true }, { status: 201 });
 	} catch (err: any) {

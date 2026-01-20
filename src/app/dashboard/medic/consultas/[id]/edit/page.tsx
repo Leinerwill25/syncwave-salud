@@ -53,7 +53,7 @@ export default async function EditConsultationPage({ params }: Props) {
 	const { data: consultationRaw, error } = await supabase
 		.from('consultation')
 		.select(
-			`id, appointment_id, patient_id, unregistered_patient_id, doctor_id, chief_complaint, diagnosis, icd11_code, icd11_title, notes, vitals, started_at, ended_at, created_at,
+			`id, appointment_id, patient_id, unregistered_patient_id, doctor_id, chief_complaint, diagnosis, icd11_code, icd11_title, notes, vitals, started_at, ended_at, created_at, report_url,
        patient:patient_id(id,firstName,lastName,dob,identifier),
        doctor:doctor_id(id,name,email),
        appointment:appointment_id(id,reason)`

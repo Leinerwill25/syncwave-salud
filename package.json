@@ -9,7 +9,9 @@
 		"lint": "next lint",
 		"prisma:migrate": "prisma migrate dev",
 		"prisma:generate": "prisma generate",
-		"format": "prettier --write ."
+		"format": "prettier --write .",
+		"n8n": "n8n start",
+		"n8n:dev": "n8n start --tunnel"
 	},
 	"dependencies": {
 		"@appletosolutions/reactbits": "^1.0.3",
@@ -78,6 +80,7 @@
 		"lucide-react": "^0.544.0",
 		"mammoth": "^1.11.0",
 		"matter-js": "^0.20.0",
+		"n8n": "^1.90.0",
 		"next": "16.0.7",
 		"next-themes": "^0.4.6",
 		"nodemailer": "^7.0.6",
@@ -102,7 +105,8 @@
 		"tailwind-variants": "^3.1.1",
 		"three": "^0.180.0",
 		"vaul": "^1.1.2",
-		"xlsx": "^0.18.5"
+		"xlsx": "^0.18.5",
+		"zod": "3.25.0"
 	},
 	"devDependencies": {
 		"@eslint/eslintrc": "^3.3.1",
@@ -121,5 +125,10 @@
 		"prisma": "^6.16.2",
 		"tailwindcss": "^4.1.16",
 		"typescript": "^5.9.3"
+	},
+	"pnpm": {
+		"overrides": {
+			"zod": "3.25.0"
+		}
 	}
 }
