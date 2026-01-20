@@ -55,7 +55,7 @@ export default function OrigenCitasPage() {
 	const currentYear = String(currentDate.getFullYear());
 	const [startDate, setStartDate] = useState<string>(`${currentYear}-${currentMonth}-01`);
 	const [endDate, setEndDate] = useState<string>(
-		`${currentYear}-${currentMonth}-${String(new Date(currentYear, parseInt(currentMonth), 0).getDate()).padStart(2, '0')}`
+		`${currentYear}-${currentMonth}-${String(new Date(parseInt(currentYear), parseInt(currentMonth), 0).getDate()).padStart(2, '0')}`
 	);
 
 	useEffect(() => {
