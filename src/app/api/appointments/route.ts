@@ -143,12 +143,11 @@ export async function POST(req: NextRequest) {
 
 			// 🔹 Insertar cita con unregistered_patient_id (si aplica)
 			// NOTA: La migración debe ejecutarse primero para agregar el campo unregistered_patient_id
-			const appointmentResult = await client.query(
-				// Intentar insertar con created_by_doctor_id si existe el campo
-				// Si el campo no existe en la BD, la query fallará y usaremos una versión sin ese campo
-				let appointmentResult;
-				try {
-					appointmentResult = await client.query(
+			// Intentar insertar con created_by_doctor_id si existe el campo
+			// Si el campo no existe en la BD, la query fallará y usaremos una versión sin ese campo
+			let appointmentResult;
+			try {
+				appointmentResult = await client.query(
 						`
           INSERT INTO public.appointment
             (patient_id, unregistered_patient_id, doctor_id, organization_id, scheduled_at, duration_minutes, reason, location, referral_source, created_by_role_user_id, created_by_doctor_id, selected_service)
