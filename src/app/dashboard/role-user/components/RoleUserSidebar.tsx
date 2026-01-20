@@ -74,6 +74,14 @@ const ALL_MODULES: LinkItem[] = [
 		showOnlyForRole: 'Asistente De Citas',
 	},
 	{
+		href: '/dashboard/role-user/origen-citas',
+		label: 'Origen de las Citas',
+		icon: BarChart3,
+		module: 'citas',
+		requiredPermission: 'view',
+		showOnlyForRole: 'Asistente De Citas',
+	},
+	{
 		href: '/dashboard/role-user/estadisticas-servicios',
 		label: 'Panel Inteligente de Servicios',
 		icon: BarChart3,
