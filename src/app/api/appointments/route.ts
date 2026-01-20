@@ -19,7 +19,24 @@ export async function POST(req: NextRequest) {
 		// 🔹 Leer cuerpo JSON
 		const body = await req.json();
 
-		let { patientId, unregisteredPatientId, doctorId, organizationId, scheduledAt, durationMinutes, reason, location, referralSource, createdByRoleUserId, selectedService, billing } = body;
+		let { patientId, unregisteredPatientId, doctorId, organizationId, scheduledAt, durationMinutes, reason, location, referralSource, createdByRoleUserId, createdByDoctorId, selectedService, billing } = body;
+
+		// Si no se proporciona createdByDoctorId pero la cita no tiene createdByRoleUserId ni bookedByPatientId,
+		// y viene de un usuario autenticado con rol MEDICO, asumir que fue creada por el doctor
+		if (!createdByDoctorId && !createdByRoleUserId) {
+			try {
+				const { createSupabaseServerClient } = await import('@/app/adapters/server');
+				const { getAuthenticatedUser } = await import('@/lib/auth-guards');
+				const user = await getAuthenticatedUser();
+				if (user && user.role === 'MEDICO' && user.userId === doctorId) {
+					createdByDoctorId = user.userId;
+					console.log(`[Appointments API] Cita creada por doctor ${createdByDoctorId} desde dashboard`);
+				}
+			} catch (err) {
+				// Si falla la autenticación, continuar sin createdByDoctorId
+				console.warn('[Appointments API] No se pudo verificar autenticación del doctor:', err);
+			}
+		}
 
 		// 🔹 Si la cita fue creada por un role-user, obtener organizationId y doctorId correctos
 		// Esto debe hacerse ANTES de iniciar la transacción
@@ -127,26 +144,61 @@ export async function POST(req: NextRequest) {
 			// 🔹 Insertar cita con unregistered_patient_id (si aplica)
 			// NOTA: La migración debe ejecutarse primero para agregar el campo unregistered_patient_id
 			const appointmentResult = await client.query(
-				`
-        INSERT INTO public.appointment
-          (patient_id, unregistered_patient_id, doctor_id, organization_id, scheduled_at, duration_minutes, reason, location, referral_source, created_by_role_user_id, selected_service)
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
-        RETURNING id
-      `,
-				[
-					finalPatientId, // Puede ser NULL si es paciente no registrado
-					finalUnregisteredPatientId, // Puede ser NULL si es paciente registrado
-					doctorId,
-					organizationId,
-					scheduledAt,
-					durationMinutes ?? 30,
-					reason || null,
-					location || null,
-					referralSource || null,
-					createdByRoleUserId || null,
-					selectedService || null,
-				]
-			);
+				// Intentar insertar con created_by_doctor_id si existe el campo
+				// Si el campo no existe en la BD, la query fallará y usaremos una versión sin ese campo
+				let appointmentResult;
+				try {
+					appointmentResult = await client.query(
+						`
+          INSERT INTO public.appointment
+            (patient_id, unregistered_patient_id, doctor_id, organization_id, scheduled_at, duration_minutes, reason, location, referral_source, created_by_role_user_id, created_by_doctor_id, selected_service)
+          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+          RETURNING id
+        `,
+						[
+							finalPatientId, // Puede ser NULL si es paciente no registrado
+							finalUnregisteredPatientId, // Puede ser NULL si es paciente registrado
+							doctorId,
+							organizationId,
+							scheduledAt,
+							durationMinutes ?? 30,
+							reason || null,
+							location || null,
+							referralSource || null,
+							createdByRoleUserId || null,
+							createdByDoctorId || null,
+							selectedService || null,
+						]
+					);
+				} catch (insertError: any) {
+					// Si el campo created_by_doctor_id no existe, intentar sin ese campo
+					if (insertError.message?.includes('created_by_doctor_id') || insertError.code === '42703') {
+						console.warn('[Appointments API] Campo created_by_doctor_id no existe, insertando sin ese campo');
+						appointmentResult = await client.query(
+							`
+          INSERT INTO public.appointment
+            (patient_id, unregistered_patient_id, doctor_id, organization_id, scheduled_at, duration_minutes, reason, location, referral_source, created_by_role_user_id, selected_service)
+          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+          RETURNING id
+        `,
+							[
+								finalPatientId,
+								finalUnregisteredPatientId,
+								doctorId,
+								organizationId,
+								scheduledAt,
+								durationMinutes ?? 30,
+								reason || null,
+								location || null,
+								referralSource || null,
+								createdByRoleUserId || null,
+								selectedService || null,
+							]
+						);
+					} else {
+						throw insertError;
+					}
+				}
 
 			const appointmentId = appointmentResult.rows[0]?.id;
 

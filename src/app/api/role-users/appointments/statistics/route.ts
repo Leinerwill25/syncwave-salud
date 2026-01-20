@@ -41,6 +41,8 @@ export async function GET(req: NextRequest) {
 				booked_by_patient_id, 
 				patient_id, 
 				unregistered_patient_id,
+				created_by_doctor_id,
+				doctor_id,
 				scheduled_at,
 				status,
 				selected_service,
@@ -61,6 +63,7 @@ export async function GET(req: NextRequest) {
 				publicPage: 0,
 				manualAssistant: 0,
 				patientDashboard: 0,
+				doctorDashboard: 0,
 				total: 0,
 			});
 		}
@@ -68,15 +71,18 @@ export async function GET(req: NextRequest) {
 		// Categorizar las citas
 		// Prioridad de categorización:
 		// 1. Asistente manual: tiene created_by_role_user_id (prioridad más alta)
-		// 2. Dashboard paciente: tiene booked_by_patient_id y patient_id
-		// 3. Página pública: tiene unregistered_patient_id y NO tiene created_by_role_user_id ni booked_by_patient_id
-		// 4. Otras: si tiene patient_id pero no booked_by_patient_id ni created_by_role_user_id, podría ser página pública convertida
+		// 2. Dashboard doctor: tiene created_by_doctor_id (indica que fue creada directamente por el doctor)
+		// 3. Dashboard paciente: tiene booked_by_patient_id y patient_id
+		// 4. Página pública: tiene unregistered_patient_id y NO tiene created_by_role_user_id, created_by_doctor_id ni booked_by_patient_id
+		// 5. Otras: si tiene patient_id pero no tiene ningún indicador de origen, podría ser página pública convertida o creada por doctor sin campo
 		let publicPage = 0;
 		let manualAssistant = 0;
 		let patientDashboard = 0;
+		let doctorDashboard = 0;
 
 		appointments.forEach((apt: any) => {
 			const hasCreatedByRoleUser = !!apt.created_by_role_user_id;
+			const hasCreatedByDoctor = !!apt.created_by_doctor_id;
 			const hasBookedByPatient = !!apt.booked_by_patient_id;
 			const hasUnregisteredPatient = !!apt.unregistered_patient_id;
 			const hasPatient = !!apt.patient_id;
@@ -84,17 +90,22 @@ export async function GET(req: NextRequest) {
 			if (hasCreatedByRoleUser) {
 				// Prioridad 1: Cita creada manualmente por asistente
 				manualAssistant++;
+			} else if (hasCreatedByDoctor) {
+				// Prioridad 2: Cita creada desde dashboard del doctor
+				doctorDashboard++;
 			} else if (hasBookedByPatient && hasPatient) {
-				// Prioridad 2: Cita creada desde dashboard del paciente (paciente registrado)
+				// Prioridad 3: Cita creada desde dashboard del paciente (paciente registrado)
 				patientDashboard++;
-			} else if (hasUnregisteredPatient && !hasCreatedByRoleUser && !hasBookedByPatient) {
-				// Prioridad 3: Cita desde página pública (tiene unregistered_patient_id y no fue creada por asistente ni paciente)
+			} else if (hasUnregisteredPatient && !hasCreatedByRoleUser && !hasCreatedByDoctor && !hasBookedByPatient) {
+				// Prioridad 4: Cita desde página pública (tiene unregistered_patient_id y no fue creada por asistente, doctor ni paciente)
 				publicPage++;
-			} else if (!hasCreatedByRoleUser && !hasBookedByPatient && !hasUnregisteredPatient && hasPatient) {
+			} else if (!hasCreatedByRoleUser && !hasCreatedByDoctor && !hasBookedByPatient && !hasUnregisteredPatient && hasPatient) {
 				// Caso especial: cita con patient_id pero sin indicadores de origen
-				// Podría ser de página pública que luego se registró, pero sin unregistered_patient_id
-				// Por ahora, no la contamos en ninguna categoría específica
-				// (se cuenta en total pero no en ninguna categoría)
+				// Si tiene doctor_id, asumimos que fue creada por el doctor (para citas antiguas sin el campo)
+				// Si no tiene doctor_id, no la contamos en ninguna categoría específica
+				if (apt.doctor_id) {
+					doctorDashboard++; // Asumir que fue creada por el doctor si tiene doctor_id pero no otros indicadores
+				}
 			}
 		});
 
@@ -197,6 +208,7 @@ export async function GET(req: NextRequest) {
 			publicPage,
 			manualAssistant,
 			patientDashboard,
+			doctorDashboard,
 			total,
 			startDate: defaultStartDate,
 			endDate: defaultEndDate,

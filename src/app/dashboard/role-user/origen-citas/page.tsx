@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { BarChart3, Globe, UserPlus, UserCheck, Loader2, Calendar, TrendingUp, Users, Clock, FileText, CalendarDays } from 'lucide-react';
+import { BarChart3, Globe, UserPlus, UserCheck, Loader2, Calendar, TrendingUp, Users, Clock, FileText, CalendarDays, Stethoscope } from 'lucide-react';
 import { getRoleUserSession } from '@/lib/role-user-auth-client';
 
 interface PatientAttended {
@@ -21,6 +21,7 @@ interface OriginStats {
 	publicPage: number;
 	manualAssistant: number;
 	patientDashboard: number;
+	doctorDashboard: number;
 	total: number;
 	startDate: string;
 	endDate: string;
@@ -36,6 +37,7 @@ export default function OrigenCitasPage() {
 		publicPage: 0,
 		manualAssistant: 0,
 		patientDashboard: 0,
+		doctorDashboard: 0,
 		total: 0,
 		startDate: '',
 		endDate: '',
@@ -127,6 +129,7 @@ export default function OrigenCitasPage() {
 	const publicPagePercentage = stats.total > 0 ? ((stats.publicPage / stats.total) * 100).toFixed(1) : '0';
 	const manualAssistantPercentage = stats.total > 0 ? ((stats.manualAssistant / stats.total) * 100).toFixed(1) : '0';
 	const patientDashboardPercentage = stats.total > 0 ? ((stats.patientDashboard / stats.total) * 100).toFixed(1) : '0';
+	const doctorDashboardPercentage = stats.total > 0 ? ((stats.doctorDashboard / stats.total) * 100).toFixed(1) : '0';
 
 	return (
 		<div className="w-full space-y-6">
@@ -179,7 +182,7 @@ export default function OrigenCitasPage() {
 			)}
 
 			{/* Tarjetas de estadísticas */}
-			<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+			<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
 				{/* Página Pública */}
 				<motion.div
 					initial={{ opacity: 0, y: 20 }}
@@ -228,6 +231,23 @@ export default function OrigenCitasPage() {
 					<p className="text-3xl font-bold mb-1">{stats.patientDashboard}</p>
 					<p className="text-emerald-100 text-xs">{patientDashboardPercentage}% del total</p>
 					<p className="text-emerald-100 text-xs mt-2">Pacientes registrados</p>
+				</motion.div>
+
+				{/* Dashboard Doctor */}
+				<motion.div
+					initial={{ opacity: 0, y: 20 }}
+					animate={{ opacity: 1, y: 0 }}
+					transition={{ delay: 0.25 }}
+					className="bg-gradient-to-br from-amber-500 to-orange-600 rounded-xl shadow-lg p-6 text-white"
+				>
+					<div className="flex items-center justify-between mb-4">
+						<Stethoscope className="w-8 h-8" />
+						<TrendingUp className="w-5 h-5 opacity-80" />
+					</div>
+					<p className="text-amber-100 text-sm font-medium mb-1">Dashboard Doctor</p>
+					<p className="text-3xl font-bold mb-1">{stats.doctorDashboard}</p>
+					<p className="text-amber-100 text-xs">{doctorDashboardPercentage}% del total</p>
+					<p className="text-amber-100 text-xs mt-2">Registradas por doctor</p>
 				</motion.div>
 
 				{/* Total */}
@@ -319,6 +339,27 @@ export default function OrigenCitasPage() {
 									animate={{ width: `${patientDashboardPercentage}%` }}
 									transition={{ duration: 0.8, delay: 0.7 }}
 									className="bg-gradient-to-r from-emerald-500 to-green-600 h-4 rounded-full"
+								/>
+							</div>
+						</div>
+
+						{/* Barra Dashboard Doctor */}
+						<div>
+							<div className="flex items-center justify-between mb-2">
+								<span className="text-sm font-medium text-slate-700 flex items-center gap-2">
+									<Stethoscope className="w-4 h-4 text-amber-600" />
+									Dashboard Doctor
+								</span>
+								<span className="text-sm font-semibold text-slate-900">
+									{stats.doctorDashboard} ({doctorDashboardPercentage}%)
+								</span>
+							</div>
+							<div className="w-full bg-slate-200 rounded-full h-4 overflow-hidden">
+								<motion.div
+									initial={{ width: 0 }}
+									animate={{ width: `${doctorDashboardPercentage}%` }}
+									transition={{ duration: 0.8, delay: 0.75 }}
+									className="bg-gradient-to-r from-amber-500 to-orange-600 h-4 rounded-full"
 								/>
 							</div>
 						</div>
