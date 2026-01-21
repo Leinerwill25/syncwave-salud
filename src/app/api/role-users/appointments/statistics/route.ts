@@ -79,13 +79,18 @@ export async function GET(req: NextRequest) {
 		// - El asistente puede crear citas para pacientes REGISTRADOS o NO REGISTRADOS → siempre tiene created_by_role_user_id
 		// - El tipo de paciente (registrado vs no registrado) NO determina el origen, sino quién creó la cita
 		//
-		// Prioridad de categorización:
+		// Prioridad de categorización (ESTRICTA):
 		// 1. Asistente manual: tiene created_by_role_user_id (prioridad más alta)
 		//    - Puede ser para patient_id (registrado) O unregistered_patient_id (no registrado)
 		// 2. Dashboard doctor: tiene created_by_doctor_id
 		//    - Puede ser para patient_id (registrado) O unregistered_patient_id (no registrado)
 		// 3. Dashboard paciente: tiene booked_by_patient_id y patient_id (solo pacientes registrados pueden usar dashboard)
-		// 4. Página pública: tiene unregistered_patient_id y NO tiene created_by_role_user_id, created_by_doctor_id ni booked_by_patient_id
+		// 4. Página pública: tiene unregistered_patient_id Y NO tiene created_by_role_user_id, created_by_doctor_id, ni booked_by_patient_id
+		//    - CRÍTICO: Solo se cuenta como "Página Pública" si:
+		//      a) Tiene unregistered_patient_id (paciente NO registrado)
+		//      b) NO tiene created_by_role_user_id (no fue creada por asistente)
+		//      c) NO tiene created_by_doctor_id (no fue creada por doctor)
+		//      d) NO tiene booked_by_patient_id (no fue reservada por paciente registrado)
 		// 5. Otras: si tiene patient_id pero no tiene ningún indicador de origen, podría ser página pública convertida o creada por doctor sin campo
 		let publicPage = 0;
 		let manualAssistant = 0;
@@ -116,32 +121,75 @@ export async function GET(req: NextRequest) {
 				});
 			}
 
+			// PRIORIDAD 1: Asistente manual (tiene created_by_role_user_id)
 			if (hasCreatedByRoleUser) {
-				// Prioridad 1: Cita creada manualmente por asistente
-				// NOTA: Puede ser para paciente registrado (patient_id) o no registrado (unregistered_patient_id)
+				// Cita creada manualmente por asistente
+				// Puede ser para paciente registrado (patient_id) o no registrado (unregistered_patient_id)
 				manualAssistant++;
-			} else if (hasCreatedByDoctor) {
-				// Prioridad 2: Cita creada desde dashboard del doctor
-				// NOTA: Puede ser para paciente registrado (patient_id) o no registrado (unregistered_patient_id)
+			}
+			// PRIORIDAD 2: Dashboard doctor (tiene created_by_doctor_id)
+			else if (hasCreatedByDoctor) {
+				// Cita creada desde dashboard del doctor
+				// Puede ser para paciente registrado (patient_id) o no registrado (unregistered_patient_id)
 				doctorDashboard++;
-			} else if (hasBookedByPatient && hasPatient) {
-				// Prioridad 3: Cita creada desde dashboard del paciente (paciente registrado)
-				// NOTA: Solo pacientes registrados pueden usar el dashboard de pacientes
+			}
+			// PRIORIDAD 3: Dashboard paciente (tiene booked_by_patient_id y patient_id)
+			else if (hasBookedByPatient && hasPatient) {
+				// Cita creada desde dashboard del paciente (paciente registrado)
+				// Solo pacientes registrados pueden usar el dashboard de pacientes
 				patientDashboard++;
-			} else if (hasUnregisteredPatient && !hasCreatedByRoleUser && !hasCreatedByDoctor && !hasBookedByPatient) {
-				// Prioridad 4: Cita desde página pública
-				// Tiene unregistered_patient_id y NO fue creada por asistente, doctor ni paciente
+			}
+			// PRIORIDAD 4: Página pública (ESTRICTA: solo si cumple TODAS las condiciones)
+			// CRÍTICO: Una cita es "Página Pública" SOLO si:
+			// - Tiene unregistered_patient_id (paciente NO registrado)
+			// - NO tiene patient_id (no es paciente registrado)
+			// - NO tiene created_by_role_user_id (no fue creada por asistente)
+			// - NO tiene created_by_doctor_id (no fue creada por doctor)
+			// - NO tiene booked_by_patient_id (no fue reservada por paciente registrado)
+			else if (
+				hasUnregisteredPatient && // Tiene paciente NO registrado
+				!hasPatient && // NO tiene patient_id (solo unregistered_patient_id)
+				!hasCreatedByRoleUser && // NO fue creada por asistente
+				!hasCreatedByDoctor && // NO fue creada por doctor
+				!hasBookedByPatient // NO fue reservada por paciente registrado
+			) {
+				// Cita desde página pública (c/[id])
+				// Solo se cuenta si es paciente no registrado Y no tiene ningún indicador de creación manual
 				publicPage++;
-			} else if (!hasCreatedByRoleUser && !hasCreatedByDoctor && !hasBookedByPatient && !hasUnregisteredPatient && hasPatient) {
-				// Caso especial: cita con patient_id pero sin indicadores de origen
+				// Log para identificar citas que podrían necesitar revisión manual
+				if (appointments.indexOf(apt) < 5) {
+					console.log(`[Role User Appointments Statistics] Cita identificada como "Página Pública": ${apt.id}`, {
+						unregistered_patient_id: apt.unregistered_patient_id,
+						patient_id: apt.patient_id,
+						doctor_id: apt.doctor_id,
+						created_at: apt.created_at || 'N/A',
+					});
+				}
+			}
+			// CASO ESPECIAL: Citas antiguas sin indicadores de origen pero con patient_id
+			else if (!hasCreatedByRoleUser && !hasCreatedByDoctor && !hasBookedByPatient && !hasUnregisteredPatient && hasPatient) {
+				// Cita con patient_id pero sin indicadores de origen
 				// Si tiene doctor_id, asumimos que fue creada por el doctor (para citas antiguas sin el campo)
-				// Si no tiene doctor_id, no la contamos en ninguna categoría específica
 				if (apt.doctor_id) {
 					doctorDashboard++; // Asumir que fue creada por el doctor si tiene doctor_id pero no otros indicadores
 				} else {
 					// Si no tiene doctor_id ni otros indicadores, pero tiene patient_id y scheduled_at,
 					// podría ser una cita antigua sin origen. Por ahora, no la categorizamos.
 					console.warn(`[Role User Appointments Statistics] Cita sin origen claro: ${apt.id}, patient_id: ${apt.patient_id}, doctor_id: ${apt.doctor_id}`);
+				}
+			}
+			// CASO ESPECIAL: Citas con unregistered_patient_id pero sin indicadores claros (posiblemente antiguas)
+			// Si tiene unregistered_patient_id pero también tiene patient_id, o no tiene indicadores de origen,
+			// no la contamos como "Página Pública" por seguridad (probablemente fue creada antes del sistema de rastreo)
+			else if (hasUnregisteredPatient && !hasCreatedByRoleUser && !hasCreatedByDoctor && !hasBookedByPatient) {
+				// Tiene unregistered_patient_id pero no tiene indicadores de origen
+				// Si tiene doctor_id, asumimos que fue creada por el doctor (citas antiguas)
+				if (apt.doctor_id) {
+					doctorDashboard++;
+				} else {
+					// Sin indicadores claros, no la categorizamos como página pública por seguridad
+					// Esto evita contar citas antiguas como "Página Pública"
+					console.warn(`[Role User Appointments Statistics] Cita con unregistered_patient_id sin origen claro (posiblemente antigua): ${apt.id}, doctor_id: ${apt.doctor_id}`);
 				}
 			}
 		});

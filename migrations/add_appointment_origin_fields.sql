@@ -53,8 +53,8 @@ END $$;
 BEGIN;
 
 -- Actualizar citas que probablemente fueron creadas por el doctor
--- Criterio: Tiene patient_id y doctor_id, pero NO tiene created_by_role_user_id, 
---           booked_by_patient_id, ni created_by_doctor_id
+-- Criterio 1: Tiene patient_id y doctor_id, pero NO tiene created_by_role_user_id, 
+--             booked_by_patient_id, ni created_by_doctor_id
 UPDATE public.appointment
 SET 
     created_by_doctor_id = doctor_id,
@@ -79,8 +79,23 @@ DECLARE
     updated_count INTEGER;
 BEGIN
     GET DIAGNOSTICS updated_count = ROW_COUNT;
-    RAISE NOTICE 'Citas actualizadas como "Dashboard Doctor": %', updated_count;
+    RAISE NOTICE 'Citas actualizadas como "Dashboard Doctor" (con patient_id): %', updated_count;
 END $$;
+
+-- Criterio 2: Citas con unregistered_patient_id que probablemente fueron creadas por el doctor
+-- NOTA: Esto es una heurística. Si una cita tiene unregistered_patient_id pero también tiene
+-- doctor_id y fue creada ANTES de implementar el sistema de origen, probablemente fue creada
+-- por el doctor o asistente, NO desde la página pública.
+-- 
+-- IMPORTANTE: Si tienes citas que SÍ fueron creadas desde la página pública, estas NO deben
+-- tener created_by_doctor_id. El script asumirá que si tiene doctor_id y unregistered_patient_id
+-- pero NO tiene created_by_role_user_id ni booked_by_patient_id, fue creada por el doctor.
+--
+-- Si esto es incorrecto para alguna cita específica, deberás actualizarla manualmente.
+--
+-- Por ahora, NO actualizamos automáticamente las citas con unregistered_patient_id porque
+-- no podemos distinguir con certeza si fueron creadas por el doctor o desde la página pública.
+-- El usuario deberá revisar manualmente estas citas y actualizarlas si es necesario.
 
 COMMIT;
 
@@ -96,6 +111,7 @@ SELECT
     COUNT(*) FILTER (WHERE booked_by_patient_id IS NOT NULL AND booked_by_patient_id != '') as "Dashboard Paciente",
     COUNT(*) FILTER (
         WHERE unregistered_patient_id IS NOT NULL 
+        AND patient_id IS NULL
         AND created_by_role_user_id IS NULL 
         AND created_by_doctor_id IS NULL 
         AND (booked_by_patient_id IS NULL OR booked_by_patient_id = '')
@@ -111,8 +127,32 @@ SELECT
     COUNT(*) as "Total"
 FROM public.appointment;
 
+-- Mostrar citas con unregistered_patient_id que NO tienen origen asignado
+-- Estas podrían ser de "Página Pública" o creadas por doctor/asistente antes de implementar el sistema
+SELECT 
+    'Citas con unregistered_patient_id sin origen asignado (revisar manualmente)' as tipo,
+    id,
+    patient_id,
+    doctor_id,
+    unregistered_patient_id,
+    created_by_role_user_id,
+    created_by_doctor_id,
+    booked_by_patient_id,
+    scheduled_at,
+    created_at
+FROM public.appointment
+WHERE 
+    unregistered_patient_id IS NOT NULL
+    AND patient_id IS NULL
+    AND created_by_role_user_id IS NULL 
+    AND created_by_doctor_id IS NULL 
+    AND (booked_by_patient_id IS NULL OR booked_by_patient_id = '')
+ORDER BY created_at DESC
+LIMIT 20;
+
 -- Mostrar algunas citas sin origen asignado para revisión manual (si las hay)
 SELECT 
+    'Citas con patient_id sin origen asignado' as tipo,
     id,
     patient_id,
     doctor_id,
