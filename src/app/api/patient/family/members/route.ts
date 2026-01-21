@@ -39,7 +39,19 @@ export async function GET() {
 			return NextResponse.json({ error: 'No perteneces a un grupo familiar' }, { status: 404 });
 		}
 
-		// Obtener todos los miembros del grupo
+		// Obtener información del grupo para incluir al dueño
+		const { data: familyGroup, error: groupError } = await supabase
+			.from('familygroup')
+			.select('id, ownerId, name')
+			.eq('id', groupId)
+			.single();
+
+		if (groupError) {
+			console.error('[Patient Family Members API] Error obteniendo grupo:', groupError);
+			return NextResponse.json({ error: 'Error al obtener información del grupo' }, { status: 500 });
+		}
+
+		// Obtener todos los miembros del grupo (excluye al dueño)
 		const { data: members, error } = await supabase
 			.from('familygroupmember')
 			.select(`
@@ -47,7 +59,7 @@ export async function GET() {
 				patientId,
 				roleInGroup,
 				addedAt,
-					patient:patientId (
+				patient:patientId (
 					id,
 					firstName,
 					lastName,
@@ -64,7 +76,39 @@ export async function GET() {
 			return NextResponse.json({ error: 'Error al obtener miembros' }, { status: 500 });
 		}
 
-		return NextResponse.json({ data: members || [] });
+		// Obtener información del dueño del grupo
+		const { data: ownerData, error: ownerError } = await supabase
+			.from('patient')
+			.select('id, firstName, lastName, identifier, dob, gender, phone')
+			.eq('id', familyGroup.ownerId)
+			.single();
+
+		// Construir lista completa incluyendo al dueño
+		const allMembers: any[] = [];
+		
+		// Agregar al dueño primero si existe
+		if (ownerData && !ownerError) {
+			allMembers.push({
+				id: `owner-${ownerData.id}`, // ID único para identificar al dueño
+				patientId: ownerData.id,
+				roleInGroup: 'Dueño',
+				addedAt: null,
+				patient: ownerData,
+				isOwner: true,
+			});
+		}
+
+		// Agregar los miembros del grupo
+		if (members && Array.isArray(members)) {
+			members.forEach((member) => {
+				allMembers.push({
+					...member,
+					isOwner: false,
+				});
+			});
+		}
+
+		return NextResponse.json({ data: allMembers });
 	} catch (err: any) {
 		console.error('[Patient Family Members API] Error:', err);
 		return NextResponse.json({ error: 'Error interno', detail: err.message }, { status: 500 });

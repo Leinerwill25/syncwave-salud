@@ -53,6 +53,11 @@ export async function GET(req: NextRequest) {
 			.gte('scheduled_at', `${defaultStartDate}T00:00:00`)
 			.lte('scheduled_at', `${defaultEndDate}T23:59:59`);
 
+		// Log de depuración para verificar los datos
+		console.log(`[Role User Appointments Statistics] Total citas encontradas: ${appointments?.length || 0}`);
+		console.log(`[Role User Appointments Statistics] Rango de fechas: ${defaultStartDate} a ${defaultEndDate}`);
+		console.log(`[Role User Appointments Statistics] Organization ID: ${session.organizationId}`);
+
 		if (error) {
 			console.error('[Role User Appointments Statistics API] Error:', error);
 			return NextResponse.json({ error: 'Error al obtener estadísticas' }, { status: 500 });
@@ -69,10 +74,17 @@ export async function GET(req: NextRequest) {
 		}
 
 		// Categorizar las citas
+		// NOTA IMPORTANTE: 
+		// - El doctor puede crear citas para pacientes REGISTRADOS o NO REGISTRADOS → siempre tiene created_by_doctor_id
+		// - El asistente puede crear citas para pacientes REGISTRADOS o NO REGISTRADOS → siempre tiene created_by_role_user_id
+		// - El tipo de paciente (registrado vs no registrado) NO determina el origen, sino quién creó la cita
+		//
 		// Prioridad de categorización:
 		// 1. Asistente manual: tiene created_by_role_user_id (prioridad más alta)
-		// 2. Dashboard doctor: tiene created_by_doctor_id (indica que fue creada directamente por el doctor)
-		// 3. Dashboard paciente: tiene booked_by_patient_id y patient_id
+		//    - Puede ser para patient_id (registrado) O unregistered_patient_id (no registrado)
+		// 2. Dashboard doctor: tiene created_by_doctor_id
+		//    - Puede ser para patient_id (registrado) O unregistered_patient_id (no registrado)
+		// 3. Dashboard paciente: tiene booked_by_patient_id y patient_id (solo pacientes registrados pueden usar dashboard)
 		// 4. Página pública: tiene unregistered_patient_id y NO tiene created_by_role_user_id, created_by_doctor_id ni booked_by_patient_id
 		// 5. Otras: si tiene patient_id pero no tiene ningún indicador de origen, podría ser página pública convertida o creada por doctor sin campo
 		let publicPage = 0;
@@ -83,21 +95,42 @@ export async function GET(req: NextRequest) {
 		appointments.forEach((apt: any) => {
 			const hasCreatedByRoleUser = !!apt.created_by_role_user_id;
 			const hasCreatedByDoctor = !!apt.created_by_doctor_id;
-			const hasBookedByPatient = !!apt.booked_by_patient_id;
+			// Verificar booked_by_patient_id: debe existir, no ser null, y no ser string vacío
+			const hasBookedByPatient = apt.booked_by_patient_id != null && apt.booked_by_patient_id !== '';
 			const hasUnregisteredPatient = !!apt.unregistered_patient_id;
 			const hasPatient = !!apt.patient_id;
 
+			// Log de depuración para las primeras citas
+			if (appointments.indexOf(apt) < 3) {
+				console.log(`[Role User Appointments Statistics] Cita ${apt.id}:`, {
+					created_by_role_user_id: apt.created_by_role_user_id,
+					created_by_doctor_id: apt.created_by_doctor_id,
+					booked_by_patient_id: apt.booked_by_patient_id,
+					patient_id: apt.patient_id,
+					unregistered_patient_id: apt.unregistered_patient_id,
+					hasCreatedByRoleUser,
+					hasCreatedByDoctor,
+					hasBookedByPatient,
+					hasPatient,
+					hasUnregisteredPatient,
+				});
+			}
+
 			if (hasCreatedByRoleUser) {
 				// Prioridad 1: Cita creada manualmente por asistente
+				// NOTA: Puede ser para paciente registrado (patient_id) o no registrado (unregistered_patient_id)
 				manualAssistant++;
 			} else if (hasCreatedByDoctor) {
 				// Prioridad 2: Cita creada desde dashboard del doctor
+				// NOTA: Puede ser para paciente registrado (patient_id) o no registrado (unregistered_patient_id)
 				doctorDashboard++;
 			} else if (hasBookedByPatient && hasPatient) {
 				// Prioridad 3: Cita creada desde dashboard del paciente (paciente registrado)
+				// NOTA: Solo pacientes registrados pueden usar el dashboard de pacientes
 				patientDashboard++;
 			} else if (hasUnregisteredPatient && !hasCreatedByRoleUser && !hasCreatedByDoctor && !hasBookedByPatient) {
-				// Prioridad 4: Cita desde página pública (tiene unregistered_patient_id y no fue creada por asistente, doctor ni paciente)
+				// Prioridad 4: Cita desde página pública
+				// Tiene unregistered_patient_id y NO fue creada por asistente, doctor ni paciente
 				publicPage++;
 			} else if (!hasCreatedByRoleUser && !hasCreatedByDoctor && !hasBookedByPatient && !hasUnregisteredPatient && hasPatient) {
 				// Caso especial: cita con patient_id pero sin indicadores de origen
@@ -105,11 +138,24 @@ export async function GET(req: NextRequest) {
 				// Si no tiene doctor_id, no la contamos en ninguna categoría específica
 				if (apt.doctor_id) {
 					doctorDashboard++; // Asumir que fue creada por el doctor si tiene doctor_id pero no otros indicadores
+				} else {
+					// Si no tiene doctor_id ni otros indicadores, pero tiene patient_id y scheduled_at,
+					// podría ser una cita antigua sin origen. Por ahora, no la categorizamos.
+					console.warn(`[Role User Appointments Statistics] Cita sin origen claro: ${apt.id}, patient_id: ${apt.patient_id}, doctor_id: ${apt.doctor_id}`);
 				}
 			}
 		});
 
 		const total = appointments.length;
+
+		// Log de resumen de categorización
+		console.log(`[Role User Appointments Statistics] Resumen de categorización:`, {
+			publicPage,
+			manualAssistant,
+			patientDashboard,
+			doctorDashboard,
+			total,
+		});
 
 		// Obtener citas que han asistido (tienen consulta asociada o estado COMPLETADA)
 		const { data: consultations, error: consultationsError } = await supabase

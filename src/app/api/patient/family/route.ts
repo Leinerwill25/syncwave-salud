@@ -50,7 +50,14 @@ export async function GET() {
 				.eq('id', membership.familyGroupId)
 				.maybeSingle();
 
-			// Obtener miembros del grupo con conteo de consultas
+			// Obtener información del dueño del grupo
+			const { data: ownerData, error: ownerError } = await supabase
+				.from('patient')
+				.select('id, firstName, lastName, identifier, dob, gender')
+				.eq('id', memberGroup?.ownerId || '')
+				.maybeSingle();
+
+			// Obtener miembros del grupo con conteo de consultas (excluye al dueño)
 			const { data: members } = await supabase
 				.from('familygroupmember')
 				.select(`
@@ -69,38 +76,64 @@ export async function GET() {
 				`)
 				.eq('familyGroupId', membership.familyGroupId);
 
-			// Obtener conteo de consultas para cada miembro
-			const membersWithConsultationCount = await Promise.all(
-				(members || []).map(async (member) => {
-					const { count } = await supabase
-						.from('consultation')
-						.select('*', { count: 'exact', head: true })
-						.eq('patient_id', member.patientId);
-					return {
-						...member,
-						consultationCount: count || 0,
-					};
-				})
-			);
+			// Construir lista completa incluyendo al dueño primero
+			const allMembers: any[] = [];
+			
+			// Agregar al dueño primero si existe
+			if (ownerData && !ownerError && memberGroup?.ownerId) {
+				const { count: ownerConsultationCount } = await supabase
+					.from('consultation')
+					.select('*', { count: 'exact', head: true })
+					.eq('patient_id', memberGroup.ownerId);
+				
+				allMembers.push({
+					id: `owner-${ownerData.id}`,
+					patientId: ownerData.id,
+					roleInGroup: 'Dueño',
+					addedAt: null,
+					patient: ownerData,
+					isOwner: true,
+					consultationCount: ownerConsultationCount || 0,
+				});
+			}
 
-			// Obtener conteo de consultas del owner
-			const { count: ownerConsultationCount } = await supabase
-				.from('consultation')
-				.select('*', { count: 'exact', head: true })
-				.eq('patient_id', memberGroup?.ownerId || '');
+			// Obtener conteo de consultas para cada miembro y agregarlos
+			if (members && Array.isArray(members)) {
+				const membersWithConsultationCount = await Promise.all(
+					members.map(async (member) => {
+						const { count } = await supabase
+							.from('consultation')
+							.select('*', { count: 'exact', head: true })
+							.eq('patient_id', member.patientId);
+						return {
+							...member,
+							isOwner: false,
+							consultationCount: count || 0,
+						};
+					})
+				);
+				allMembers.push(...membersWithConsultationCount);
+			}
 
 			return NextResponse.json({
 				hasFamilyPlan: true,
 				hasGroup: true,
 				isOwner: false,
 				group: memberGroup,
-				members: membersWithConsultationCount || [],
-				ownerConsultationCount: ownerConsultationCount || 0,
+				members: allMembers, // Incluye al dueño y todos los miembros
+				ownerConsultationCount: allMembers.find((m) => m.isOwner)?.consultationCount || 0,
 				ownerId: memberGroup?.ownerId || null,
 			});
 		}
 
-		// Obtener miembros del grupo con conteo de consultas
+		// Obtener información del dueño del grupo
+		const { data: ownerData, error: ownerError } = await supabase
+			.from('patient')
+			.select('id, firstName, lastName, identifier, dob, gender')
+			.eq('id', patient.patientId)
+			.single();
+
+		// Obtener miembros del grupo con conteo de consultas (excluye al dueño)
 		const { data: members, error: membersError } = await supabase
 			.from('familygroupmember')
 			.select(`
@@ -119,37 +152,56 @@ export async function GET() {
 			`)
 			.eq('familyGroupId', familyGroup.id);
 
-		// Obtener conteo de consultas para cada miembro
-		const membersWithConsultationCount = await Promise.all(
-			(members || []).map(async (member) => {
-				const { count } = await supabase
-					.from('consultation')
-					.select('*', { count: 'exact', head: true })
-					.eq('patient_id', member.patientId);
-				return {
-					...member,
-					consultationCount: count || 0,
-				};
-			})
-		);
-
 		if (membersError) {
 			console.error('[Patient Family API] Error obteniendo miembros:', membersError);
 		}
 
-		// Obtener conteo de consultas del owner
-		const { count: ownerConsultationCount } = await supabase
-			.from('consultation')
-			.select('*', { count: 'exact', head: true })
-			.eq('patient_id', patient.patientId);
+		// Construir lista completa incluyendo al dueño primero
+		const allMembers: any[] = [];
+		
+		// Agregar al dueño primero si existe
+		if (ownerData && !ownerError) {
+			const { count: ownerConsultationCount } = await supabase
+				.from('consultation')
+				.select('*', { count: 'exact', head: true })
+				.eq('patient_id', patient.patientId);
+			
+			allMembers.push({
+				id: `owner-${ownerData.id}`,
+				patientId: ownerData.id,
+				roleInGroup: 'Dueño',
+				addedAt: null,
+				patient: ownerData,
+				isOwner: true,
+				consultationCount: ownerConsultationCount || 0,
+			});
+		}
+
+		// Obtener conteo de consultas para cada miembro y agregarlos
+		if (members && Array.isArray(members)) {
+			const membersWithConsultationCount = await Promise.all(
+				members.map(async (member) => {
+					const { count } = await supabase
+						.from('consultation')
+						.select('*', { count: 'exact', head: true })
+						.eq('patient_id', member.patientId);
+					return {
+						...member,
+						isOwner: false,
+						consultationCount: count || 0,
+					};
+				})
+			);
+			allMembers.push(...membersWithConsultationCount);
+		}
 
 		return NextResponse.json({
 			hasFamilyPlan: true,
 			hasGroup: true,
 			isOwner: true,
 			group: familyGroup,
-			members: membersWithConsultationCount || [],
-			ownerConsultationCount: ownerConsultationCount || 0,
+			members: allMembers, // Incluye al dueño y todos los miembros
+			ownerConsultationCount: allMembers.find((m) => m.isOwner)?.consultationCount || 0,
 			ownerId: patient.patientId,
 		});
 	} catch (err: any) {

@@ -17,30 +17,35 @@ export async function POST(req: Request) {
 		const supabase = await createSupabaseServerClient();
 		const body = await req.json();
 
-		const { patient_id, doctor_id, organization_id, scheduled_at, duration_minutes = 30, status = 'SCHEDULED', reason, location } = body;
+		const { patient_id, unregistered_patient_id, doctor_id, organization_id, scheduled_at, duration_minutes = 30, status = 'SCHEDULED', reason, location } = body;
 
-		if (!patient_id || !doctor_id || !scheduled_at) {
-			return NextResponse.json({ error: 'Campos requeridos: patient_id, doctor_id y scheduled_at.' }, { status: 400 });
+		// El doctor puede crear citas para pacientes registrados O no registrados
+		if ((!patient_id && !unregistered_patient_id) || !doctor_id || !scheduled_at) {
+			return NextResponse.json({ error: 'Campos requeridos: (patient_id o unregistered_patient_id), doctor_id y scheduled_at.' }, { status: 400 });
 		}
 
 		// Obtener el ID del usuario (doctor) que está creando la cita
 		const createdByDoctorId = user.userId;
 
+		// NOTA: El doctor puede crear citas para pacientes registrados O no registrados
+		// Siempre establecer created_by_doctor_id para identificar el origen
+		const appointmentData: any = {
+			patient_id: patient_id || null, // Puede ser null si es paciente no registrado
+			unregistered_patient_id: unregistered_patient_id || null, // Puede ser null si es paciente registrado
+			doctor_id,
+			organization_id,
+			scheduled_at,
+			duration_minutes,
+			status,
+			reason,
+			location,
+			created_by_doctor_id: createdByDoctorId, // Rastrear que fue creada por el doctor
+			// NO establecer created_by_role_user_id ni booked_by_patient_id
+		};
+
 		const { data, error } = await supabase
 			.from('appointment')
-			.insert([
-				{
-					patient_id,
-					doctor_id,
-					organization_id,
-					scheduled_at,
-					duration_minutes,
-					status,
-					reason,
-					location,
-					created_by_doctor_id: createdByDoctorId, // Rastrear que fue creada por el doctor
-				},
-			])
+			.insert([appointmentData])
 			.select('id, scheduled_at, status, reason, location')
 			.single();
 

@@ -84,6 +84,9 @@ export async function POST(request: Request) {
 		}
 
 		// Crear la cita
+		// NOTA: Esta cita viene de la página pública (c/[id])
+		// NO tiene created_by_role_user_id, NO tiene booked_by_patient_id, NO tiene created_by_doctor_id
+		// Solo tiene unregistered_patient_id, lo cual la identifica como "Página Pública"
 		const appointmentData: any = {
 			patient_id: null, // Paciente no registrado
 			unregistered_patient_id: unregisteredPatientId,
@@ -93,6 +96,8 @@ export async function POST(request: Request) {
 			duration_minutes: appointmentDuration,
 			status: 'SCHEDULED',
 			selected_service: selectedService,
+			// No establecer created_by_role_user_id, booked_by_patient_id, ni created_by_doctor_id
+			// Esto la identifica como cita de página pública
 		};
 
 		const { data: appointment, error: appointmentError } = await supabaseAdmin

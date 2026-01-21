@@ -63,31 +63,40 @@ export async function POST(request: Request) {
 		// Verificar que si se proporciona patient_id, el usuario tenga permiso (es dueño del grupo)
 		if (patient_id && patient_id !== patient.patientId) {
 			// Verificar que el paciente autenticado es dueño de un grupo familiar
-			// y que el patient_id proporcionado pertenece a su grupo
 			const { data: familyGroup } = await supabase
 				.from('familygroup')
-				.select('id')
+				.select('id, ownerId')
 				.eq('ownerId', patient.patientId)
 				.maybeSingle();
 
 			if (!familyGroup) {
-				return NextResponse.json({ error: 'No tienes permiso para agendar citas para otros pacientes' }, { status: 403 });
+				return NextResponse.json({ error: 'No tienes permiso para agendar citas para otros pacientes. Solo el dueño del grupo familiar puede hacerlo.' }, { status: 403 });
 			}
 
-			// Verificar que el paciente pertenece al grupo familiar
-			const { data: membership } = await supabase
-				.from('familygroupmember')
-				.select('id')
-				.eq('familyGroupId', familyGroup.id)
-				.eq('patientId', patient_id)
-				.maybeSingle();
+			// Verificar que el patient_id es el dueño mismo o pertenece al grupo familiar como miembro
+			if (patient_id === familyGroup.ownerId) {
+				// Es el dueño mismo, está permitido
+			} else {
+				// Verificar que el paciente pertenece al grupo familiar como miembro
+				const { data: membership } = await supabase
+					.from('familygroupmember')
+					.select('id')
+					.eq('familyGroupId', familyGroup.id)
+					.eq('patientId', patient_id)
+					.maybeSingle();
 
-			if (!membership) {
-				return NextResponse.json({ error: 'El paciente seleccionado no pertenece a tu grupo familiar' }, { status: 403 });
+				if (!membership) {
+					return NextResponse.json({ error: 'El paciente seleccionado no pertenece a tu grupo familiar' }, { status: 403 });
+				}
 			}
 		}
 
 		// Crear la cita
+		// NOTA: Esta cita viene del dashboard del paciente (paciente registrado)
+		// Siempre debe tener booked_by_patient_id para identificarla como "Dashboard Paciente"
+		// IMPORTANTE: booked_by_patient_id en Database.sql es character varying (string), no UUID
+		const bookedByPatientIdString = booked_by_patient_id ? String(booked_by_patient_id) : String(patient.patientId);
+		
 		const appointmentData: any = {
 			patient_id: finalPatientId,
 			doctor_id: doctor_id || null,
@@ -98,12 +107,9 @@ export async function POST(request: Request) {
 			reason: reason || null,
 			location: location || null,
 			selected_service: selected_service || null, // Guardar el servicio seleccionado
+			// Establecer booked_by_patient_id como string: si se proporciona (grupo familiar), usarlo; si no, usar el paciente autenticado
+			booked_by_patient_id: bookedByPatientIdString, // Siempre establecer para identificar origen (convertir a string)
 		};
-
-		// Agregar booked_by_patient_id si se proporciona (indica que fue reservada por el dueño del grupo)
-		if (booked_by_patient_id) {
-			appointmentData.booked_by_patient_id = booked_by_patient_id;
-		}
 
 		const { data: appointment, error: appointmentError } = await supabase
 			.from('appointment')

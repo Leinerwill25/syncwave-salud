@@ -93,6 +93,8 @@ export async function POST(req: NextRequest) {
 					if (!organizationIdToUse && consultation.organization_id) organizationIdToUse = consultation.organization_id;
 				} else {
 					// Si no hay appointment_id, crear uno nuevo
+					// NOTA: Esta cita se crea retroactivamente desde facturación
+					// Intentar identificar si fue creada por un doctor para rastrear el origen
 					const scheduledAt = consultation.started_at ? new Date(consultation.started_at) : consultation.created_at ? new Date(consultation.created_at) : new Date();
 
 					const appointmentPayload: any = {
@@ -105,6 +107,21 @@ export async function POST(req: NextRequest) {
 						status: 'COMPLETED',
 						reason: 'Consulta completada',
 					};
+
+					// Si el doctor_id coincide con el usuario autenticado y es un doctor, establecer created_by_doctor_id
+					// Esto indica que la consulta (y por tanto la cita retroactiva) fue creada por el doctor
+					if (doctorIdToUse && consultation.doctor_id === doctorIdToUse) {
+						try {
+							const { getAuthenticatedUser } = await import('@/lib/auth-guards');
+							const user = await getAuthenticatedUser();
+							if (user && user.role === 'MEDICO' && user.userId === doctorIdToUse) {
+								appointmentPayload.created_by_doctor_id = user.userId;
+							}
+						} catch (err) {
+							// Si no se puede verificar, continuar sin el campo
+							console.warn('[Facturacion API] No se pudo verificar autenticación para created_by_doctor_id:', err);
+						}
+					}
 
 					const { data: newAppointment, error: appointmentErr } = await supabase
 						.from('appointment')

@@ -21,26 +21,12 @@ export async function POST(req: NextRequest) {
 
 		let { patientId, unregisteredPatientId, doctorId, organizationId, scheduledAt, durationMinutes, reason, location, referralSource, createdByRoleUserId, createdByDoctorId, selectedService, billing } = body;
 
-		// Si no se proporciona createdByDoctorId pero la cita no tiene createdByRoleUserId ni bookedByPatientId,
-		// y viene de un usuario autenticado con rol MEDICO, asumir que fue creada por el doctor
-		if (!createdByDoctorId && !createdByRoleUserId) {
-			try {
-				const { createSupabaseServerClient } = await import('@/app/adapters/server');
-				const { getAuthenticatedUser } = await import('@/lib/auth-guards');
-				const user = await getAuthenticatedUser();
-				if (user && user.role === 'MEDICO' && user.userId === doctorId) {
-					createdByDoctorId = user.userId;
-					console.log(`[Appointments API] Cita creada por doctor ${createdByDoctorId} desde dashboard`);
-				}
-			} catch (err) {
-				// Si falla la autenticación, continuar sin createdByDoctorId
-				console.warn('[Appointments API] No se pudo verificar autenticación del doctor:', err);
-			}
-		}
-
-		// 🔹 Si la cita fue creada por un role-user, obtener organizationId y doctorId correctos
-		// Esto debe hacerse ANTES de iniciar la transacción
+		// 🔹 PRIORIDAD: Si la cita fue creada por un role-user (asistente de citas)
+		// NOTA: El asistente puede crear citas para pacientes registrados O no registrados
+		// NO establecer created_by_doctor_id cuando viene de un role-user
 		if (createdByRoleUserId) {
+			// Asegurar que NO se establezca createdByDoctorId cuando viene de role-user
+			createdByDoctorId = null;
 			try {
 				// Obtener el organizationId del role-user
 				const roleUserQuery = await client.query(`SELECT organization_id FROM public.consultorio_role_users WHERE id = $1`, [createdByRoleUserId]);
@@ -67,10 +53,28 @@ export async function POST(req: NextRequest) {
 				// Usar el doctorId encontrado
 				doctorId = doctorQuery.rows[0].id;
 
-				console.log(`[Appointments API] Cita creada por role-user ${createdByRoleUserId}, usando organizationId: ${organizationId}, doctorId: ${doctorId}`);
+				console.log(`[Appointments API] Cita creada por role-user ${createdByRoleUserId} (puede ser para paciente registrado o no registrado), usando organizationId: ${organizationId}, doctorId: ${doctorId}`);
 			} catch (roleUserError: any) {
 				console.error('[Appointments API] Error obteniendo datos del role-user:', roleUserError);
 				return NextResponse.json({ success: false, error: 'Error al obtener información del role-user.' }, { status: 500 });
+			}
+		} else {
+			// 🔹 Si NO viene de role-user, verificar si viene de un doctor autenticado
+			// NOTA: El doctor puede crear citas para pacientes registrados O no registrados
+			// Solo establecer createdByDoctorId si NO hay createdByRoleUserId
+			if (!createdByDoctorId) {
+				try {
+					const { createSupabaseServerClient } = await import('@/app/adapters/server');
+					const { getAuthenticatedUser } = await import('@/lib/auth-guards');
+					const user = await getAuthenticatedUser();
+					if (user && user.role === 'MEDICO' && user.userId === doctorId) {
+						createdByDoctorId = user.userId;
+						console.log(`[Appointments API] Cita creada por doctor ${createdByDoctorId} (puede ser para paciente registrado o no registrado) desde dashboard`);
+					}
+				} catch (err) {
+					// Si falla la autenticación, continuar sin createdByDoctorId
+					console.warn('[Appointments API] No se pudo verificar autenticación del doctor:', err);
+				}
 			}
 		}
 
