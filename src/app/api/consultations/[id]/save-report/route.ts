@@ -183,6 +183,84 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 			console.log('[Save Report API] MedicalRecord creado:', medicalRecordId);
 		}
 
+		// Agregar a la cola de emails para envío automático después de 10 minutos
+		// Solo si hay report_url y el paciente tiene email
+		if (consultation.report_url) {
+			try {
+				// Verificar si el paciente tiene email
+				let patientEmail: string | null = null;
+				if (consultation.patient_id) {
+					const { data: patientData } = await supabase
+						.from('patient')
+						.select('email')
+						.eq('id', consultation.patient_id)
+						.maybeSingle();
+					patientEmail = patientData?.email || null;
+				} else if (consultation.unregistered_patient_id) {
+					const { data: unregisteredPatientData } = await supabase
+						.from('unregisteredpatients')
+						.select('email')
+						.eq('id', consultation.unregistered_patient_id)
+						.maybeSingle();
+					patientEmail = unregisteredPatientData?.email || null;
+				}
+
+				if (patientEmail) {
+					// Calcular fecha programada (ahora + 10 minutos)
+					const scheduledAt = new Date();
+					scheduledAt.setMinutes(scheduledAt.getMinutes() + 10);
+
+					// Verificar si ya existe una entrada en la cola para esta consulta
+					const { data: existingQueueItem } = await supabase
+						.from('consultation_email_queue')
+						.select('id')
+						.eq('consultation_id', id)
+						.maybeSingle();
+
+					if (!existingQueueItem) {
+						// Crear nueva entrada en la cola
+						const { error: queueError } = await supabase
+							.from('consultation_email_queue')
+							.insert({
+								consultation_id: id,
+								status: 'pending',
+								scheduled_at: scheduledAt.toISOString(),
+							});
+
+						if (queueError) {
+							console.error('[Save Report API] Error agregando a cola de emails:', queueError);
+							// No fallar la operación si falla la cola
+						} else {
+							console.log(`[Save Report API] Consulta ${id} agregada a cola de emails para envío en 10 minutos`);
+						}
+					} else {
+						// Actualizar entrada existente
+						const { error: queueError } = await supabase
+							.from('consultation_email_queue')
+							.update({
+								status: 'pending',
+								scheduled_at: scheduledAt.toISOString(),
+								attempts: 0,
+								error_message: null,
+								updated_at: new Date().toISOString(),
+							})
+							.eq('id', existingQueueItem.id);
+
+						if (queueError) {
+							console.error('[Save Report API] Error actualizando cola de emails:', queueError);
+						} else {
+							console.log(`[Save Report API] Cola de emails actualizada para consulta ${id}`);
+						}
+					}
+				} else {
+					console.log(`[Save Report API] Consulta ${id} no tiene email del paciente, no se agregará a la cola`);
+				}
+			} catch (queueErr) {
+				console.error('[Save Report API] Error procesando cola de emails:', queueErr);
+				// No fallar la operación principal si falla la cola
+			}
+		}
+
 		return NextResponse.json({
 			success: true,
 			medical_record_id: medicalRecordId,

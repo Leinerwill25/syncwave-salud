@@ -27,12 +27,30 @@ CREATE TABLE public.appointment (
   booked_by_patient_id character varying,
   referral_source character varying DEFAULT NULL::character varying,
   created_by_role_user_id uuid,
+  created_by_doctor_id uuid,
   CONSTRAINT appointment_pkey PRIMARY KEY (id),
+  CONSTRAINT fk_appointment_doctor FOREIGN KEY (doctor_id) REFERENCES public.user(id),
   CONSTRAINT appointment_created_by_role_user_fkey FOREIGN KEY (created_by_role_user_id) REFERENCES public.consultorio_role_users(id),
+  CONSTRAINT appointment_created_by_doctor_id_fkey FOREIGN KEY (created_by_doctor_id) REFERENCES public.user(id),
   CONSTRAINT fk_appointment_patient FOREIGN KEY (patient_id) REFERENCES public.patient(id),
   CONSTRAINT fk_appointment_org FOREIGN KEY (organization_id) REFERENCES public.organization(id),
-  CONSTRAINT fk_appointment_unregistered_patient FOREIGN KEY (unregistered_patient_id) REFERENCES public.unregisteredpatients(id),
-  CONSTRAINT fk_appointment_doctor FOREIGN KEY (doctor_id) REFERENCES public."user"(id)
+  CONSTRAINT fk_appointment_unregistered_patient FOREIGN KEY (unregistered_patient_id) REFERENCES public.unregisteredpatients(id)
+);
+CREATE TABLE public.audit_log (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  user_id uuid,
+  user_name text,
+  user_role text,
+  organization_id uuid,
+  action_type text NOT NULL,
+  entity_type text NOT NULL,
+  entity_id uuid,
+  description text NOT NULL,
+  metadata jsonb DEFAULT '{}'::jsonb,
+  ip_address text,
+  user_agent text,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT audit_log_pkey PRIMARY KEY (id)
 );
 CREATE TABLE public.clinic_profile (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
@@ -102,10 +120,23 @@ CREATE TABLE public.consultation (
   icd11_title text,
   CONSTRAINT consultation_pkey PRIMARY KEY (id),
   CONSTRAINT fk_consultation_patient FOREIGN KEY (patient_id) REFERENCES public.patient(id),
-  CONSTRAINT fk_consultation_doctor FOREIGN KEY (doctor_id) REFERENCES public."user"(id),
+  CONSTRAINT fk_consultation_doctor FOREIGN KEY (doctor_id) REFERENCES public.user(id),
   CONSTRAINT fk_consultation_appointment FOREIGN KEY (appointment_id) REFERENCES public.appointment(id),
   CONSTRAINT fk_consultation_medrec FOREIGN KEY (medical_record_id) REFERENCES public.medicalrecord(id),
   CONSTRAINT consultation_unregistered_patient_id_fkey FOREIGN KEY (unregistered_patient_id) REFERENCES public.unregisteredpatients(id)
+);
+CREATE TABLE public.consultation_email_queue (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  consultation_id uuid NOT NULL UNIQUE,
+  status character varying NOT NULL DEFAULT 'pending'::character varying CHECK (status::text = ANY (ARRAY['pending'::character varying, 'sent'::character varying, 'failed'::character varying]::text[])),
+  attempts integer NOT NULL DEFAULT 0,
+  scheduled_at timestamp with time zone NOT NULL,
+  sent_at timestamp with time zone,
+  error_message text,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT consultation_email_queue_pkey PRIMARY KEY (id),
+  CONSTRAINT consultation_email_queue_consultation_id_fkey FOREIGN KEY (consultation_id) REFERENCES public.consultation(id)
 );
 CREATE TABLE public.consultation_files (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
@@ -119,35 +150,25 @@ CREATE TABLE public.consultation_files (
   CONSTRAINT consultation_files_pkey PRIMARY KEY (id),
   CONSTRAINT consultation_files_fk_consultation FOREIGN KEY (consultation_id) REFERENCES public.consultation(id)
 );
-CREATE TABLE public.successive_consultations (
+CREATE TABLE public.consultation_ratings (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
-  original_consultation_id uuid NOT NULL,
+  consultation_id uuid NOT NULL UNIQUE,
   patient_id uuid,
   unregistered_patient_id uuid,
   doctor_id uuid NOT NULL,
-  organization_id uuid,
-  appointment_id uuid,
-  consultation_date timestamp with time zone NOT NULL DEFAULT now(),
-  lab_results jsonb DEFAULT '{}'::jsonb,
-  results_description text,
-  observations text,
-  additional_fields jsonb DEFAULT '{}'::jsonb,
-  images text[] DEFAULT ARRAY[]::text[],
-  xrays text[] DEFAULT ARRAY[]::text[],
-  documents text[] DEFAULT ARRAY[]::text[],
-  diagnosis text,
-  icd11_code text,
-  icd11_title text,
-  notes text,
+  organization_id uuid NOT NULL,
+  communication_rating character varying NOT NULL CHECK (communication_rating::text = ANY (ARRAY['yes'::character varying, 'no'::character varying, 'maybe'::character varying]::text[])),
+  attention_rating character varying NOT NULL CHECK (attention_rating::text = ANY (ARRAY['yes'::character varying, 'no'::character varying, 'maybe'::character varying]::text[])),
+  satisfaction_rating character varying NOT NULL CHECK (satisfaction_rating::text = ANY (ARRAY['yes'::character varying, 'no'::character varying, 'maybe'::character varying]::text[])),
+  comments text,
   created_at timestamp with time zone NOT NULL DEFAULT now(),
   updated_at timestamp with time zone NOT NULL DEFAULT now(),
-  CONSTRAINT successive_consultations_pkey PRIMARY KEY (id),
-  CONSTRAINT fk_successive_consultation_original FOREIGN KEY (original_consultation_id) REFERENCES public.consultation(id) ON DELETE CASCADE,
-  CONSTRAINT fk_successive_consultation_patient FOREIGN KEY (patient_id) REFERENCES public.patient(id) ON DELETE CASCADE,
-  CONSTRAINT fk_successive_consultation_unregistered_patient FOREIGN KEY (unregistered_patient_id) REFERENCES public.unregisteredpatients(id) ON DELETE CASCADE,
-  CONSTRAINT fk_successive_consultation_doctor FOREIGN KEY (doctor_id) REFERENCES public."user"(id) ON DELETE SET NULL,
-  CONSTRAINT fk_successive_consultation_organization FOREIGN KEY (organization_id) REFERENCES public.organization(id) ON DELETE SET NULL,
-  CONSTRAINT fk_successive_consultation_appointment FOREIGN KEY (appointment_id) REFERENCES public.appointment(id) ON DELETE SET NULL
+  CONSTRAINT consultation_ratings_pkey PRIMARY KEY (id),
+  CONSTRAINT consultation_ratings_consultation_id_fkey FOREIGN KEY (consultation_id) REFERENCES public.consultation(id),
+  CONSTRAINT consultation_ratings_patient_id_fkey FOREIGN KEY (patient_id) REFERENCES public.patient(id),
+  CONSTRAINT consultation_ratings_unregistered_patient_id_fkey FOREIGN KEY (unregistered_patient_id) REFERENCES public.unregisteredpatients(id),
+  CONSTRAINT consultation_ratings_doctor_id_fkey FOREIGN KEY (doctor_id) REFERENCES public.user(id),
+  CONSTRAINT consultation_ratings_organization_id_fkey FOREIGN KEY (organization_id) REFERENCES public.organization(id)
 );
 CREATE TABLE public.consultation_share_link (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
@@ -225,7 +246,7 @@ CREATE TABLE public.consultorio_roles (
   updated_at timestamp with time zone DEFAULT now(),
   CONSTRAINT consultorio_roles_pkey PRIMARY KEY (id),
   CONSTRAINT consultorio_roles_organization_id_fkey FOREIGN KEY (organization_id) REFERENCES public.organization(id),
-  CONSTRAINT consultorio_roles_created_by_user_id_fkey FOREIGN KEY (created_by_user_id) REFERENCES public."user"(id)
+  CONSTRAINT consultorio_roles_created_by_user_id_fkey FOREIGN KEY (created_by_user_id) REFERENCES public.user(id)
 );
 CREATE TABLE public.conversation (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
@@ -245,7 +266,7 @@ CREATE TABLE public.doctor_private_notes (
   updated_at timestamp with time zone DEFAULT now(),
   CONSTRAINT doctor_private_notes_pkey PRIMARY KEY (id),
   CONSTRAINT doctor_private_notes_consultation_id_fkey FOREIGN KEY (consultation_id) REFERENCES public.consultation(id),
-  CONSTRAINT doctor_private_notes_doctor_id_fkey FOREIGN KEY (doctor_id) REFERENCES public."user"(id),
+  CONSTRAINT doctor_private_notes_doctor_id_fkey FOREIGN KEY (doctor_id) REFERENCES public.user(id),
   CONSTRAINT doctor_private_notes_patient_id_fkey FOREIGN KEY (patient_id) REFERENCES public.patient(id),
   CONSTRAINT doctor_private_notes_unregistered_patient_id_fkey FOREIGN KEY (unregistered_patient_id) REFERENCES public.unregisteredpatients(id)
 );
@@ -276,7 +297,7 @@ CREATE TABLE public.facturacion (
   razon_ajuste text,
   CONSTRAINT facturacion_pkey PRIMARY KEY (id),
   CONSTRAINT fk_facturacion_patient FOREIGN KEY (patient_id) REFERENCES public.patient(id),
-  CONSTRAINT fk_facturacion_doctor FOREIGN KEY (doctor_id) REFERENCES public."user"(id),
+  CONSTRAINT fk_facturacion_doctor FOREIGN KEY (doctor_id) REFERENCES public.user(id),
   CONSTRAINT fk_facturacion_org FOREIGN KEY (organization_id) REFERENCES public.organization(id),
   CONSTRAINT fk_facturacion_appointment FOREIGN KEY (appointment_id) REFERENCES public.appointment(id),
   CONSTRAINT fk_facturacion_unregistered_patient FOREIGN KEY (unregistered_patient_id) REFERENCES public.unregisteredpatients(id),
@@ -316,7 +337,7 @@ CREATE TABLE public.invite (
   cancelledbyid uuid,
   CONSTRAINT invite_pkey PRIMARY KEY (id),
   CONSTRAINT fk_invite_organization FOREIGN KEY (organizationId) REFERENCES public.organization(id),
-  CONSTRAINT fk_invite_invitedby FOREIGN KEY (invitedById) REFERENCES public."user"(id)
+  CONSTRAINT fk_invite_invitedby FOREIGN KEY (invitedById) REFERENCES public.user(id)
 );
 CREATE TABLE public.lab_result (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
@@ -370,7 +391,7 @@ por favor confirmar con un "Asistiré" o "No Asistiré"'::text,
   lite_mode boolean DEFAULT false,
   report_templates_by_specialty jsonb,
   CONSTRAINT medic_profile_pkey PRIMARY KEY (id),
-  CONSTRAINT fk_medic_profile_doctor FOREIGN KEY (doctor_id) REFERENCES public."user"(id)
+  CONSTRAINT fk_medic_profile_doctor FOREIGN KEY (doctor_id) REFERENCES public.user(id)
 );
 CREATE TABLE public.medicalaccessgrant (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
@@ -382,7 +403,7 @@ CREATE TABLE public.medicalaccessgrant (
   is_active boolean NOT NULL DEFAULT true,
   CONSTRAINT medicalaccessgrant_pkey PRIMARY KEY (id),
   CONSTRAINT fk_medical_access_grant_patient FOREIGN KEY (patient_id) REFERENCES public.patient(id),
-  CONSTRAINT fk_medical_access_grant_doctor FOREIGN KEY (doctor_id) REFERENCES public."user"(id)
+  CONSTRAINT fk_medical_access_grant_doctor FOREIGN KEY (doctor_id) REFERENCES public.user(id)
 );
 CREATE TABLE public.medicalrecord (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
@@ -417,7 +438,7 @@ CREATE TABLE public.medication_dose (
   CONSTRAINT medication_dose_pkey PRIMARY KEY (id),
   CONSTRAINT fk_medication_dose_prescription_item FOREIGN KEY (prescription_item_id) REFERENCES public.prescription_item(id),
   CONSTRAINT fk_medication_dose_patient FOREIGN KEY (patient_id) REFERENCES public.patient(id),
-  CONSTRAINT fk_medication_dose_doctor FOREIGN KEY (doctor_id) REFERENCES public."user"(id),
+  CONSTRAINT fk_medication_dose_doctor FOREIGN KEY (doctor_id) REFERENCES public.user(id),
   CONSTRAINT fk_medication_dose_prescription FOREIGN KEY (prescription_id) REFERENCES public.prescription(id)
 );
 CREATE TABLE public.message (
@@ -432,8 +453,8 @@ CREATE TABLE public.message (
   created_at timestamp with time zone NOT NULL DEFAULT now(),
   CONSTRAINT message_pkey PRIMARY KEY (id),
   CONSTRAINT fk_message_conv FOREIGN KEY (conversation_id) REFERENCES public.conversation(id),
-  CONSTRAINT fk_message_sender FOREIGN KEY (sender_id) REFERENCES public."user"(id),
-  CONSTRAINT fk_message_recipient FOREIGN KEY (recipient_user_id) REFERENCES public."user"(id),
+  CONSTRAINT fk_message_sender FOREIGN KEY (sender_id) REFERENCES public.user(id),
+  CONSTRAINT fk_message_recipient FOREIGN KEY (recipient_user_id) REFERENCES public.user(id),
   CONSTRAINT fk_message_patient FOREIGN KEY (patient_id) REFERENCES public.patient(id)
 );
 CREATE TABLE public.notification (
@@ -523,7 +544,7 @@ CREATE TABLE public.pharmacy_order (
   notes text,
   CONSTRAINT pharmacy_order_pkey PRIMARY KEY (id),
   CONSTRAINT fk_phorder_org FOREIGN KEY (organization_id) REFERENCES public.organization(id),
-  CONSTRAINT fk_phorder_creator FOREIGN KEY (created_by) REFERENCES public."user"(id)
+  CONSTRAINT fk_phorder_creator FOREIGN KEY (created_by) REFERENCES public.user(id)
 );
 CREATE TABLE public.pharmacy_order_item (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
@@ -564,7 +585,7 @@ CREATE TABLE public.prescription (
   prescription_url text,
   CONSTRAINT prescription_pkey PRIMARY KEY (id),
   CONSTRAINT fk_prescription_patient FOREIGN KEY (patient_id) REFERENCES public.patient(id),
-  CONSTRAINT fk_prescription_doctor FOREIGN KEY (doctor_id) REFERENCES public."user"(id),
+  CONSTRAINT fk_prescription_doctor FOREIGN KEY (doctor_id) REFERENCES public.user(id),
   CONSTRAINT fk_prescription_consultation FOREIGN KEY (consultation_id) REFERENCES public.consultation(id),
   CONSTRAINT fk_prescription_unregistered_patient FOREIGN KEY (unregistered_patient_id) REFERENCES public.unregisteredpatients(id)
 );
@@ -579,7 +600,7 @@ CREATE TABLE public.prescription_dispense (
   CONSTRAINT prescription_dispense_pkey PRIMARY KEY (id),
   CONSTRAINT fk_prescdisp_prescription FOREIGN KEY (prescription_id) REFERENCES public.prescription(id),
   CONSTRAINT fk_prescdisp_pharmacy FOREIGN KEY (pharmacy_id) REFERENCES public.organization(id),
-  CONSTRAINT fk_prescdisp_user FOREIGN KEY (dispensed_by) REFERENCES public."user"(id)
+  CONSTRAINT fk_prescdisp_user FOREIGN KEY (dispensed_by) REFERENCES public.user(id)
 );
 CREATE TABLE public.prescription_files (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
@@ -605,6 +626,7 @@ CREATE TABLE public.prescription_item (
   quantity integer,
   instructions text,
   created_at timestamp with time zone NOT NULL DEFAULT now(),
+  presentation text,
   CONSTRAINT prescription_item_pkey PRIMARY KEY (id),
   CONSTRAINT fk_prescriptionitem_prescription FOREIGN KEY (prescription_id) REFERENCES public.prescription(id),
   CONSTRAINT fk_prescriptionitem_med FOREIGN KEY (medication_id) REFERENCES public.medication(id)
@@ -678,8 +700,76 @@ CREATE TABLE public.subscription_payments (
   updated_at timestamp with time zone NOT NULL DEFAULT now(),
   CONSTRAINT subscription_payments_pkey PRIMARY KEY (id),
   CONSTRAINT fk_subscription_payment_organization FOREIGN KEY (organization_id) REFERENCES public.organization(id),
-  CONSTRAINT fk_subscription_payment_user FOREIGN KEY (user_id) REFERENCES public."user"(id),
-  CONSTRAINT fk_subscription_payment_verified_by FOREIGN KEY (verified_by) REFERENCES public."user"(id)
+  CONSTRAINT fk_subscription_payment_user FOREIGN KEY (user_id) REFERENCES public.user(id),
+  CONSTRAINT fk_subscription_payment_verified_by FOREIGN KEY (verified_by) REFERENCES public.user(id)
+);
+CREATE TABLE public.successive_consultation (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  original_consultation_id uuid NOT NULL,
+  patient_id uuid NOT NULL,
+  doctor_id uuid NOT NULL,
+  organization_id uuid,
+  consultation_date timestamp with time zone NOT NULL DEFAULT now(),
+  lab_results jsonb DEFAULT '{}'::jsonb,
+  results_description text,
+  doctor_observations text,
+  attachments ARRAY DEFAULT '{}'::text[],
+  additional_fields jsonb DEFAULT '{}'::jsonb,
+  diagnosis text,
+  icd11_code text,
+  icd11_title text,
+  notes text,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  created_by uuid,
+  CONSTRAINT successive_consultation_pkey PRIMARY KEY (id),
+  CONSTRAINT fk_successive_consultation_original FOREIGN KEY (original_consultation_id) REFERENCES public.consultation(id),
+  CONSTRAINT fk_successive_consultation_patient FOREIGN KEY (patient_id) REFERENCES public.patient(id),
+  CONSTRAINT fk_successive_consultation_doctor FOREIGN KEY (doctor_id) REFERENCES public.user(id),
+  CONSTRAINT fk_successive_consultation_org FOREIGN KEY (organization_id) REFERENCES public.organization(id),
+  CONSTRAINT fk_successive_consultation_created_by FOREIGN KEY (created_by) REFERENCES public.user(id)
+);
+CREATE TABLE public.successive_consultations (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  original_consultation_id uuid NOT NULL,
+  patient_id uuid,
+  doctor_id uuid NOT NULL,
+  organization_id uuid,
+  appointment_id uuid,
+  consultation_date timestamp with time zone NOT NULL DEFAULT now(),
+  lab_results jsonb DEFAULT '{}'::jsonb,
+  results_description text,
+  observations text,
+  additional_fields jsonb DEFAULT '{}'::jsonb,
+  images ARRAY DEFAULT ARRAY[]::text[],
+  xrays ARRAY DEFAULT ARRAY[]::text[],
+  documents ARRAY DEFAULT ARRAY[]::text[],
+  diagnosis text,
+  icd11_code text,
+  icd11_title text,
+  notes text,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  unregistered_patient_id uuid,
+  CONSTRAINT successive_consultations_pkey PRIMARY KEY (id),
+  CONSTRAINT fk_successive_consultation_original FOREIGN KEY (original_consultation_id) REFERENCES public.consultation(id),
+  CONSTRAINT fk_successive_consultation_patient FOREIGN KEY (patient_id) REFERENCES public.patient(id),
+  CONSTRAINT fk_successive_consultation_doctor FOREIGN KEY (doctor_id) REFERENCES public.user(id),
+  CONSTRAINT fk_successive_consultation_organization FOREIGN KEY (organization_id) REFERENCES public.organization(id),
+  CONSTRAINT fk_successive_consultation_appointment FOREIGN KEY (appointment_id) REFERENCES public.appointment(id),
+  CONSTRAINT fk_successive_consultation_unregistered_patient FOREIGN KEY (unregistered_patient_id) REFERENCES public.unregisteredpatients(id)
+);
+CREATE TABLE public.superadmin (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  username text NOT NULL UNIQUE,
+  password_hash text NOT NULL,
+  email text,
+  is_active boolean NOT NULL DEFAULT true,
+  last_login_at timestamp with time zone,
+  last_login_ip text,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT superadmin_pkey PRIMARY KEY (id)
 );
 CREATE TABLE public.task (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
@@ -695,9 +785,9 @@ CREATE TABLE public.task (
   updated_at timestamp with time zone NOT NULL DEFAULT now(),
   unregistered_patient_id uuid,
   CONSTRAINT task_pkey PRIMARY KEY (id),
-  CONSTRAINT fk_task_assigned FOREIGN KEY (assigned_to) REFERENCES public."user"(id),
+  CONSTRAINT fk_task_assigned FOREIGN KEY (assigned_to) REFERENCES public.user(id),
   CONSTRAINT fk_task_consultation FOREIGN KEY (related_consultation_id) REFERENCES public.consultation(id),
-  CONSTRAINT fk_task_creator FOREIGN KEY (created_by) REFERENCES public."user"(id),
+  CONSTRAINT fk_task_creator FOREIGN KEY (created_by) REFERENCES public.user(id),
   CONSTRAINT task_unregistered_patient_id_fkey FOREIGN KEY (unregistered_patient_id) REFERENCES public.unregisteredpatients(id)
 );
 CREATE TABLE public.unregisteredpatients (
@@ -751,4 +841,21 @@ CREATE TABLE public.user (
   CONSTRAINT user_pkey PRIMARY KEY (id),
   CONSTRAINT fk_user_organization FOREIGN KEY (organizationId) REFERENCES public.organization(id),
   CONSTRAINT fk_user_patientprofile FOREIGN KEY (patientProfileId) REFERENCES public.patient(id)
+);
+CREATE TABLE public.user_sessions (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  user_id uuid NOT NULL,
+  auth_id text,
+  session_token text NOT NULL UNIQUE,
+  ip_address text,
+  user_agent text,
+  location_data jsonb,
+  started_at timestamp with time zone NOT NULL DEFAULT now(),
+  last_activity_at timestamp with time zone NOT NULL DEFAULT now(),
+  expires_at timestamp with time zone,
+  is_active boolean NOT NULL DEFAULT true,
+  interaction_count integer DEFAULT 0,
+  pages_visited ARRAY,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT user_sessions_pkey PRIMARY KEY (id)
 );
