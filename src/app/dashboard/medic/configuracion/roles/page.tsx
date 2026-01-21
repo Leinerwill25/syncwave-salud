@@ -119,15 +119,15 @@ export default function RolesManagementPage() {
 		},
 		'Recepción': {
 			roleName: 'Recepción',
-			roleDescription: 'Rol para recepción: visualizar citas, editar estados (reagendada, cancelada, en proceso), gestionar servicios y montos cobrados con motivos',
+			roleDescription: 'Rol para recepción: crear y visualizar citas, editar estados (reagendada, cancelada, en proceso), gestionar servicios y montos cobrados con motivos',
 			permissions: {
 				citas: {
 					view: true,
-					create: false,
+					create: true, // Permitir crear citas
 					edit: true,
 					delete: false,
 					confirm: false,
-					schedule: false,
+					schedule: true, // Permitir agendar citas
 					cancel: true,
 				},
 				consultas: {
@@ -646,7 +646,8 @@ export default function RolesManagementPage() {
 												className="text-left p-4 bg-white border-2 border-teal-300 rounded-lg hover:border-teal-500 hover:shadow-md transition-all"
 											>
 												<div className="font-semibold text-slate-900 mb-1">Recepción</div>
-												<div className="text-xs text-slate-600 mb-2">Gestionar citas, servicios y pagos</div>
+												<div className="text-xs text-slate-600 mb-2">Crear y gestionar citas, servicios y pagos</div>
+												<div className="text-xs text-teal-600 font-medium">✓ Crear citas</div>
 												<div className="text-xs text-teal-600 font-medium">✓ Ver citas</div>
 												<div className="text-xs text-teal-600 font-medium">✓ Editar estados</div>
 												<div className="text-xs text-teal-600 font-medium">✓ Gestionar servicios</div>

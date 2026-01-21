@@ -48,6 +48,9 @@ export default function CitasPageForRoleUser() {
 	const canCreate = hasRoleUserPermission(session, 'citas', 'create');
 	const canEdit = hasRoleUserPermission(session, 'citas', 'edit');
 	const canView = hasRoleUserPermission(session, 'citas', 'view');
+	
+	// Permitir crear citas tanto a Asistente De Citas como a Recepción si tienen el permiso
+	const canCreateAppointments = canCreate && (isAssistant || isReception);
 
 	return (
 		<div className="w-full min-w-0 overflow-x-hidden">
@@ -71,8 +74,8 @@ export default function CitasPageForRoleUser() {
 							</span>
 						</h1>
 
-						{/* Mostrar botón solo si es Asistente De Citas y tiene permiso de crear */}
-						{isAssistant && canCreate && (
+						{/* Mostrar botón si tiene permiso de crear (Asistente De Citas o Recepción) */}
+						{canCreateAppointments && (
 							<button
 								onClick={() => setIsModalOpen(true)}
 								className="inline-flex items-center justify-center gap-2 px-3 sm:px-4 py-2 text-sm sm:text-base rounded-xl sm:rounded-2xl font-medium text-white bg-gradient-to-r from-teal-600 to-cyan-600 hover:from-teal-700 hover:to-cyan-700 hover:shadow-lg transition-all flex-shrink-0 whitespace-nowrap"
@@ -98,8 +101,8 @@ export default function CitasPageForRoleUser() {
 				</div>
 			</motion.div>
 
-			{/* Modal para crear cita (solo Asistente De Citas) */}
-			{isAssistant && canCreate && (
+			{/* Modal para crear cita (Asistente De Citas o Recepción con permiso) */}
+			{canCreateAppointments && (
 				<motion.div
 					initial={{ opacity: 0 }}
 					animate={{ opacity: isModalOpen ? 1 : 0 }}
