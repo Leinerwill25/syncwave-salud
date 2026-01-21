@@ -196,7 +196,6 @@ export default function OrigenCitasPage() {
 					<p className="text-blue-100 text-sm font-medium mb-1">Página Pública</p>
 					<p className="text-3xl font-bold mb-1">{stats.publicPage}</p>
 					<p className="text-blue-100 text-xs">{publicPagePercentage}% del total</p>
-					<p className="text-blue-100 text-xs mt-2">c/[id]</p>
 				</motion.div>
 
 				{/* Asistente Manual */}
