@@ -99,16 +99,18 @@ export async function POST(request: NextRequest) {
 			return NextResponse.json({ error: 'El nombre del rol es requerido' }, { status: 400 });
 		}
 
-		// Verificar que no exista un rol con el mismo nombre en la organización
+		// Verificar que no exista un rol activo con el mismo nombre en la organización
+		// IMPORTANTE: Filtrar por organization_id para que cada consultorio pueda tener sus propios roles
 		const { data: existingRole } = await supabase
 			.from('consultorio_roles')
 			.select('id')
-			.eq('organization_id', user.organizationId)
+			.eq('organization_id', user.organizationId) // CRÍTICO: Filtrar por organización
 			.eq('role_name', roleName.trim())
+			.eq('is_active', true) // Solo considerar roles activos
 			.maybeSingle();
 
 		if (existingRole) {
-			return NextResponse.json({ error: 'Ya existe un rol con ese nombre en tu consultorio' }, { status: 409 });
+			return NextResponse.json({ error: `El rol "${roleName.trim()}" ya existe en tu consultorio` }, { status: 409 });
 		}
 
 		// Crear el rol

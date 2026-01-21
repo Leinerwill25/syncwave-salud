@@ -537,11 +537,16 @@ export default function RolesManagementPage() {
 												onClick={async () => {
 													setError(null);
 													try {
-														// Verificar si el rol ya existe
-														const existingRoles = roles.filter((r) => r.role_name === PREDEFINED_ROLES['Asistente De Citas'].roleName);
+														// Verificar si el rol ya existe (solo roles activos de la organización actual)
+														// La comparación debe ser exacta y solo considerar roles activos
+														const roleNameToCheck = PREDEFINED_ROLES['Asistente De Citas'].roleName.trim();
+														const existingRoles = roles.filter((r) => 
+															r.is_active === true && 
+															r.role_name?.trim() === roleNameToCheck
+														);
 														
 														if (existingRoles.length > 0) {
-															setError(`El rol "${PREDEFINED_ROLES['Asistente De Citas'].roleName}" ya existe en tu consultorio`);
+															setError(`El rol "${roleNameToCheck}" ya existe en tu consultorio`);
 															return;
 														}
 
@@ -591,11 +596,16 @@ export default function RolesManagementPage() {
 												onClick={async () => {
 													setError(null);
 													try {
-														// Verificar si el rol ya existe
-														const existingRoles = roles.filter((r) => r.role_name === PREDEFINED_ROLES['Recepción'].roleName);
+														// Verificar si el rol ya existe (solo roles activos de la organización actual)
+														// La comparación debe ser exacta y solo considerar roles activos
+														const roleNameToCheck = PREDEFINED_ROLES['Recepción'].roleName.trim();
+														const existingRoles = roles.filter((r) => 
+															r.is_active === true && 
+															r.role_name?.trim() === roleNameToCheck
+														);
 														
 														if (existingRoles.length > 0) {
-															setError(`El rol "${PREDEFINED_ROLES['Recepción'].roleName}" ya existe en tu consultorio`);
+															setError(`El rol "${roleNameToCheck}" ya existe en tu consultorio`);
 															return;
 														}
 
