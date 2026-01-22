@@ -1,4 +1,2 @@
-{
-	"comment": "Cron jobs removidos para evitar costos en Vercel. Usar servicio externo gratuito como cron-job.org"
-}
+{}
 
