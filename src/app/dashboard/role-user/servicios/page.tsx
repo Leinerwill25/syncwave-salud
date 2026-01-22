@@ -201,6 +201,12 @@ export default function RoleUserServicesPage() {
 					throw new Error(data.error || 'Error al crear servicio');
 				}
 
+				// Si la respuesta incluye los servicios actualizados, usarlos directamente
+				if (data.services && Array.isArray(data.services)) {
+					setServices(data.services as Service[]);
+					console.log('[RoleUserServicesPage] Servicios actualizados desde respuesta POST:', data.services.length);
+				}
+
 				setSuccess('Servicio creado correctamente');
 				setIsAdding(false);
 			} else if (editingId) {
@@ -228,6 +234,9 @@ export default function RoleUserServicesPage() {
 			}
 
 			resetForm();
+			
+			// Pequeño delay para asegurar que la BD se actualizó antes de recargar
+			await new Promise(resolve => setTimeout(resolve, 500));
 			await loadServices();
 
 			setTimeout(() => setSuccess(null), 3000);
