@@ -1,6 +1,17 @@
 // app/api/cron/send-consultation-emails/route.ts
-// Endpoint de cron job para enviar emails de informes de consultas después de 10 minutos
-// Este endpoint debe ser llamado periódicamente (cada minuto) por Vercel Cron Jobs o similar
+// Endpoint para enviar emails de informes de consultas después de 10 minutos
+// 
+// NOTA: Este endpoint ya NO usa Vercel Cron Jobs (para evitar costos)
+// Puede ser llamado por:
+// 1. Servicio externo gratuito como cron-job.org (configurar cada minuto)
+// 2. GitHub Actions (gratis para repos públicos)
+// 3. Otro servicio de cron gratuito
+//
+// Configuración recomendada en cron-job.org:
+// - URL: https://tu-dominio.com/api/cron/send-consultation-emails
+// - Método: GET
+// - Headers: Authorization: Bearer {CRON_SECRET}
+// - Frecuencia: Cada minuto (* * * * *)
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
@@ -10,8 +21,8 @@ import { getAppUrl } from '@/lib/email/resend';
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 
-// Verificar que la solicitud viene de un cron job válido (Vercel Cron)
-// En producción, deberías validar el header 'Authorization' o similar
+// Verificar que la solicitud viene de un cron job válido
+// Configurar CRON_SECRET en las variables de entorno de Vercel
 const CRON_SECRET = process.env.CRON_SECRET || 'your-secret-key';
 
 export async function GET(req: NextRequest) {

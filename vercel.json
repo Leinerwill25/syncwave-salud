@@ -1,13 +1,4 @@
 {
-	"crons": [
-		{
-			"path": "/api/cron/update-currency-rate",
-			"schedule": "1 18 * * *"
-		},
-		{
-			"path": "/api/cron/send-consultation-emails",
-			"schedule": "* * * * *"
-		}
-	]
+	"comment": "Cron jobs removidos para evitar costos en Vercel. Usar servicio externo gratuito como cron-job.org"
 }
 

@@ -1,6 +1,17 @@
 /**
- * Endpoint para cron job que actualiza la tasa de cambio diariamente a las 6:01 PM
- * Este endpoint puede ser llamado por Vercel Cron, GitHub Actions, o cualquier servicio de cron
+ * Endpoint para actualizar la tasa de cambio diariamente a las 6:01 PM
+ * 
+ * NOTA: Este endpoint ya NO usa Vercel Cron Jobs (para evitar costos)
+ * Puede ser llamado por:
+ * 1. Servicio externo gratuito como cron-job.org (configurar diario a las 18:01)
+ * 2. GitHub Actions (gratis para repos públicos)
+ * 3. Otro servicio de cron gratuito
+ *
+ * Configuración recomendada en cron-job.org:
+ * - URL: https://tu-dominio.com/api/cron/update-currency-rate
+ * - Método: GET
+ * - Headers: Authorization: Bearer {CRON_SECRET}
+ * - Frecuencia: Diario a las 18:01 (1 18 * * *)
  */
 
 import { NextRequest, NextResponse } from 'next/server';
