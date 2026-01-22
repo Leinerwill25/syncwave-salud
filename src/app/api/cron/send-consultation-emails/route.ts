@@ -111,8 +111,18 @@ export async function GET(req: NextRequest) {
 					continue;
 				}
 
+				// Manejar caso donde patient puede ser array o objeto
+				const patient = Array.isArray(consultation.patient) 
+					? consultation.patient[0] 
+					: consultation.patient;
+				
+				// Manejar caso donde unregistered_patient puede ser array o objeto
+				const unregisteredPatient = Array.isArray(consultation.unregistered_patient)
+					? consultation.unregistered_patient[0]
+					: consultation.unregistered_patient;
+
 				// Obtener email del paciente
-				const patientEmail = consultation.patient?.email || consultation.unregistered_patient?.email;
+				const patientEmail = patient?.email || unregisteredPatient?.email;
 				if (!patientEmail) {
 					console.warn(`[Cron Send Emails] Consulta ${item.consultation_id} no tiene email del paciente`);
 					// Marcar como fallido
@@ -130,15 +140,27 @@ export async function GET(req: NextRequest) {
 				}
 
 				// Obtener nombre del paciente
-				const patientName = consultation.patient 
-					? `${consultation.patient.firstName} ${consultation.patient.lastName}`
-					: `${consultation.unregistered_patient?.first_name} ${consultation.unregistered_patient?.last_name}`;
+				const patientName = patient 
+					? `${patient.firstName} ${patient.lastName}`
+					: unregisteredPatient
+						? `${unregisteredPatient.first_name} ${unregisteredPatient.last_name}`
+						: 'Paciente';
+
+				// Manejar caso donde doctor puede ser array o objeto
+				const doctor = Array.isArray(consultation.doctor)
+					? consultation.doctor[0]
+					: consultation.doctor;
+
+				// Manejar caso donde organization puede ser array o objeto
+				const organization = Array.isArray(consultation.organization)
+					? consultation.organization[0]
+					: consultation.organization;
 
 				// Obtener nombre del doctor
-				const doctorName = consultation.doctor?.name || 'Dr.';
+				const doctorName = doctor?.name || 'Dr.';
 
 				// Obtener nombre de la organización
-				const organizationName = consultation.organization?.name || 'Consultorio';
+				const organizationName = organization?.name || 'Consultorio';
 
 				// Generar URL de calificación
 				const ratingUrl = `${getAppUrl()}/rate-consultation?consultation_id=${consultation.id}`;

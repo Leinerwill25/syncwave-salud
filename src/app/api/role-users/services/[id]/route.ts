@@ -9,6 +9,7 @@ type RawService = {
 	price: number;
 	currency: string;
 	is_active?: boolean;
+	createdBy?: string; // ID del role-user que creó el servicio
 };
 
 function parseServicesField(servicesField: unknown): RawService[] {
@@ -104,6 +105,7 @@ export async function PUT(
 
 		// Buscar el servicio por id (comparación flexible para manejar diferentes formatos)
 		let found = false;
+		let serviceBelongsToUser = false;
 		const serviceIdStr = String(serviceId).trim();
 		const updatedServices = services.map((s) => {
 			// Comparar id de manera flexible (string, con/sin espacios, etc.)
@@ -111,6 +113,11 @@ export async function PUT(
 			
 			if (serviceIdFromArray === serviceIdStr) {
 				found = true;
+				// Validar que el servicio pertenezca al usuario actual
+				if (s.createdBy !== session.roleUserId) {
+					return s; // No modificar servicios de otros usuarios
+				}
+				serviceBelongsToUser = true;
 				const updated: RawService = { ...s };
 
 				if (typeof name === 'string') {
@@ -154,6 +161,13 @@ export async function PUT(
 				servicesCount: services.length,
 			});
 			return NextResponse.json({ error: 'Servicio no encontrado' }, { status: 404 });
+		}
+
+		if (!serviceBelongsToUser) {
+			return NextResponse.json(
+				{ error: 'No tienes permiso para editar este servicio. Solo puedes editar los servicios que creaste.' },
+				{ status: 403 },
+			);
 		}
 
 		const { error: updateError } = await supabase
@@ -224,13 +238,19 @@ export async function DELETE(
 
 		// Buscar el servicio por id (comparación flexible para manejar diferentes formatos)
 		let found = false;
+		let serviceBelongsToUser = false;
+		const serviceIdStr = String(serviceId).trim();
 		const updatedServices = services.map((s) => {
 			// Comparar id de manera flexible (string, con/sin espacios, etc.)
-			const serviceIdStr = String(serviceId).trim();
 			const serviceIdFromArray = s.id ? String(s.id).trim() : null;
 			
 			if (serviceIdFromArray === serviceIdStr) {
 				found = true;
+				// Validar que el servicio pertenezca al usuario actual
+				if (s.createdBy !== session.roleUserId) {
+					return s; // No modificar servicios de otros usuarios
+				}
+				serviceBelongsToUser = true;
 				return { ...s, is_active: false };
 			}
 			return s;
@@ -245,6 +265,13 @@ export async function DELETE(
 				servicesCount: services.length,
 			});
 			return NextResponse.json({ error: 'Servicio no encontrado' }, { status: 404 });
+		}
+
+		if (!serviceBelongsToUser) {
+			return NextResponse.json(
+				{ error: 'No tienes permiso para eliminar este servicio. Solo puedes eliminar los servicios que creaste.' },
+				{ status: 403 },
+			);
 		}
 
 		const { error: updateError } = await supabase

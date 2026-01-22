@@ -80,6 +80,6 @@ export async function getPaymentMethodDistribution(
     return acc;
   }, {});
 
-  return Object.values(grouped).sort((a: any, b: any) => b.total_amount - a.total_amount);
+  return Object.values(grouped).sort((a: any, b: any) => b.total_amount - a.total_amount) as { method: string; count: number; total_amount: number }[];
 }
 

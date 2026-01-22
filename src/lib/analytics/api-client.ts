@@ -64,9 +64,10 @@ export async function getAppointmentStatsByOrganization(
 }
 
 export async function getRevenueByPeriod(
-  filters: AnalyticsFilters
+  filters: AnalyticsFilters,
+  groupBy: 'day' | 'month' = 'month'
 ): Promise<any[]> {
-  return await fetchAnalyticsData<any[]>('revenue', filters) || [];
+  return await fetchAnalyticsData<any[]>('revenue', filters, { groupBy }) || [];
 }
 
 export async function getPatientCount(

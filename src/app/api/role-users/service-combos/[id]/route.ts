@@ -10,6 +10,7 @@ type RawCombo = {
 	currency: string;
 	serviceIds: string[];
 	is_active?: boolean;
+	createdBy?: string; // ID del role-user que creó el combo
 };
 
 function parseJsonArray(field: unknown): any[] {
@@ -87,7 +88,7 @@ export async function PUT(
 
 		const { data: profile, error: profileError } = await supabase
 			.from('medic_profile')
-			.select('id, service_combos')
+			.select('id, services, service_combos')
 			.eq('doctor_id', doctorId)
 			.maybeSingle();
 
@@ -100,12 +101,18 @@ export async function PUT(
 
 		// Buscar el combo por id (comparación flexible)
 		let found = false;
+		let comboBelongsToUser = false;
 		const comboIdStr = String(comboId).trim();
 		const updatedCombos = combos.map((c: RawCombo) => {
 			const comboIdFromArray = c.id ? String(c.id).trim() : null;
 			
 			if (comboIdFromArray === comboIdStr) {
 				found = true;
+				// Validar que el combo pertenezca al usuario actual
+				if (c.createdBy !== session.roleUserId) {
+					return c; // No modificar combos de otros usuarios
+				}
+				comboBelongsToUser = true;
 				const updated: RawCombo = { ...c };
 
 				if (typeof name === 'string') {
@@ -132,6 +139,18 @@ export async function PUT(
 				}
 
 				if (Array.isArray(serviceIds)) {
+					// Validar que todos los serviceIds pertenezcan a servicios creados por este usuario
+					const allServices = parseJsonArray(profile.services || []);
+					const userServices = allServices.filter((s: any) => s.createdBy === session.roleUserId && s.is_active !== false);
+					const userServiceIds = userServices.map((s: any) => s.id).filter(Boolean);
+
+					// Verificar que todos los serviceIds del combo pertenezcan al usuario
+					const invalidServiceIds = serviceIds.filter((id) => !userServiceIds.includes(id));
+					if (invalidServiceIds.length > 0) {
+						// No actualizar si hay servicios inválidos
+						return c;
+					}
+
 					updated.serviceIds = serviceIds;
 				}
 
@@ -152,6 +171,13 @@ export async function PUT(
 				combosCount: combos.length,
 			});
 			return NextResponse.json({ error: 'Combo no encontrado' }, { status: 404 });
+		}
+
+		if (!comboBelongsToUser) {
+			return NextResponse.json(
+				{ error: 'No tienes permiso para editar este combo. Solo puedes editar los combos que creaste.' },
+				{ status: 403 },
+			);
 		}
 
 		const { error: updateError } = await supabase
@@ -225,12 +251,18 @@ export async function DELETE(
 
 		// Buscar el combo por id (comparación flexible)
 		let found = false;
+		let comboBelongsToUser = false;
 		const comboIdStr = String(comboId).trim();
 		const updatedCombos = combos.map((c: RawCombo) => {
 			const comboIdFromArray = c.id ? String(c.id).trim() : null;
 			
 			if (comboIdFromArray === comboIdStr) {
 				found = true;
+				// Validar que el combo pertenezca al usuario actual
+				if (c.createdBy !== session.roleUserId) {
+					return c; // No modificar combos de otros usuarios
+				}
+				comboBelongsToUser = true;
 				return { ...c, is_active: false };
 			}
 			return c;
@@ -244,6 +276,13 @@ export async function DELETE(
 				combosCount: combos.length,
 			});
 			return NextResponse.json({ error: 'Combo no encontrado' }, { status: 404 });
+		}
+
+		if (!comboBelongsToUser) {
+			return NextResponse.json(
+				{ error: 'No tienes permiso para eliminar este combo. Solo puedes eliminar los combos que creaste.' },
+				{ status: 403 },
+			);
 		}
 
 		const { error: updateError } = await supabase

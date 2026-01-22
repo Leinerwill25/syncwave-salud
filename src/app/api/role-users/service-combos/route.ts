@@ -11,6 +11,7 @@ type RawCombo = {
 	currency: string;
 	serviceIds: string[];
 	is_active?: boolean;
+	createdBy?: string; // ID del role-user que creó el combo
 };
 
 function parseJsonArray(field: unknown): any[] {
@@ -74,8 +75,11 @@ export async function GET(req: NextRequest) {
 
 		const combos = parseJsonArray(profile?.service_combos || []);
 
+		// Filtrar solo combos creados por este usuario (asistente de citas)
+		const userCombos = combos.filter((c: RawCombo) => c.createdBy === session.roleUserId);
+
 		// Filtrar solo combos activos
-		const activeCombos = combos.filter((c: RawCombo) => c.is_active !== false);
+		const activeCombos = userCombos.filter((c: RawCombo) => c.is_active !== false);
 
 		return NextResponse.json({ success: true, combos: activeCombos || [] }, { status: 200 });
 	} catch (err: any) {
@@ -138,15 +142,30 @@ export async function POST(req: NextRequest) {
 			);
 		}
 
+		// Obtener también los servicios para validar que los serviceIds pertenezcan al usuario actual
 		const { data: profile, error: profileError } = await supabase
 			.from('medic_profile')
-			.select('id, service_combos')
+			.select('id, services, service_combos')
 			.eq('doctor_id', doctorId)
 			.maybeSingle();
 
 		if (profileError) {
 			console.error('[Role User Service Combos API] Error obteniendo perfil para crear combo:', profileError);
 			return NextResponse.json({ error: 'Error al obtener perfil del médico' }, { status: 500 });
+		}
+
+		// Validar que todos los serviceIds pertenezcan a servicios creados por este usuario
+		const allServices = parseJsonArray(profile?.services || []);
+		const userServices = allServices.filter((s: any) => s.createdBy === session.roleUserId && s.is_active !== false);
+		const userServiceIds = userServices.map((s: any) => s.id).filter(Boolean);
+
+		// Verificar que todos los serviceIds del combo pertenezcan al usuario
+		const invalidServiceIds = serviceIds.filter((id) => !userServiceIds.includes(id));
+		if (invalidServiceIds.length > 0) {
+			return NextResponse.json(
+				{ error: `Los siguientes servicios no pertenecen a tus servicios creados: ${invalidServiceIds.join(', ')}` },
+				{ status: 400 },
+			);
 		}
 
 		const existingCombos = parseJsonArray(profile?.service_combos || []);
@@ -159,6 +178,7 @@ export async function POST(req: NextRequest) {
 			currency: finalCurrency,
 			serviceIds,
 			is_active: true,
+			createdBy: session.roleUserId, // Guardar el ID del usuario que crea el combo
 		};
 
 		const updatedCombos = [...existingCombos, newCombo];

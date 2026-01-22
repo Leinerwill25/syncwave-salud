@@ -10,6 +10,7 @@ type RawService = {
 	price: number;
 	currency: string;
 	is_active?: boolean;
+	createdBy?: string; // ID del role-user que creó el servicio
 };
 
 async function getDoctorIdForOrganization(organizationId: string) {
@@ -105,8 +106,12 @@ export async function GET(req: NextRequest) {
 			}
 		}
 
+		// Filtrar solo servicios creados por este usuario (asistente de citas)
+		// Si el servicio no tiene createdBy, se excluye (son servicios antiguos o de otros usuarios)
+		const userServices = servicesWithIds.filter((s: RawService) => s.createdBy === session.roleUserId);
+
 		// Filtrar solo servicios activos
-		const activeServices = servicesWithIds.filter((s: RawService) => s.is_active !== false);
+		const activeServices = userServices.filter((s: RawService) => s.is_active !== false);
 
 		return NextResponse.json({ success: true, services: activeServices }, { status: 200 });
 	} catch (err: any) {
@@ -193,6 +198,7 @@ export async function POST(req: NextRequest) {
 			price: Number(numericPrice),
 			currency: finalCurrency,
 			is_active: true,
+			createdBy: session.roleUserId, // Guardar el ID del usuario que crea el servicio
 		};
 
 		const updatedServices = [...currentServices, newService];

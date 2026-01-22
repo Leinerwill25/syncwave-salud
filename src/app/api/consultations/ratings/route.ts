@@ -88,9 +88,21 @@ export async function POST(req: NextRequest) {
 
 		// Crear notificación para el doctor
 		if (consultation.doctor_id) {
-			const patientName = consultation.patient
-				? `${consultation.patient.firstName} ${consultation.patient.lastName}`
-				: `${consultation.unregistered_patient?.first_name} ${consultation.unregistered_patient?.last_name}` || 'Paciente';
+			// Manejar caso donde patient puede ser array o objeto
+			const patient = Array.isArray(consultation.patient) 
+				? consultation.patient[0] 
+				: consultation.patient;
+			
+			// Manejar caso donde unregistered_patient puede ser array o objeto
+			const unregisteredPatient = Array.isArray(consultation.unregistered_patient)
+				? consultation.unregistered_patient[0]
+				: consultation.unregistered_patient;
+			
+			const patientName = patient
+				? `${patient.firstName} ${patient.lastName}`
+				: unregisteredPatient
+					? `${unregisteredPatient.first_name} ${unregisteredPatient.last_name}`
+					: 'Paciente';
 
 			// Contar respuestas positivas
 			const positiveCount = [communication_rating, attention_rating, satisfaction_rating].filter(r => r === 'yes').length;
