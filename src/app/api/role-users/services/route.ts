@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createSupabaseServerClient } from '@/app/adapters/server';
 import { getRoleUserSessionFromServer, roleNameEquals } from '@/lib/role-user-auth';
+import { createClient } from '@supabase/supabase-js';
 import { randomUUID } from 'crypto';
 
 type RawService = {
@@ -13,8 +14,27 @@ type RawService = {
 	createdBy?: string; // ID del role-user que creó el servicio
 };
 
+async function getSupabaseClientWithServiceRole() {
+	const SUPABASE_URL = process.env.SUPABASE_URL ?? process.env.NEXT_PUBLIC_SUPABASE_URL ?? '';
+	const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY ?? '';
+
+	if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
+		console.error('[Role User Services API] Variables de entorno de Supabase no configuradas');
+		return null;
+	}
+
+	// Crear cliente con service role para evitar RLS
+	return createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
+		auth: { persistSession: false },
+	});
+}
+
 async function getDoctorIdForOrganization(organizationId: string) {
-	const supabase = await createSupabaseServerClient();
+	const supabase = await getSupabaseClientWithServiceRole();
+	
+	if (!supabase) {
+		return { doctorId: null, supabase: null };
+	}
 
 	const { data: doctors, error: doctorsError } = await supabase
 		.from('user')
@@ -38,18 +58,43 @@ function parseServicesField(servicesField: unknown): RawService[] {
 	if (!servicesField) return [];
 
 	try {
+		let parsed: any;
+		
 		if (typeof servicesField === 'string') {
-			const parsed = JSON.parse(servicesField);
-			return Array.isArray(parsed) ? (parsed as RawService[]) : [];
+			parsed = JSON.parse(servicesField);
+		} else if (Array.isArray(servicesField)) {
+			parsed = servicesField;
+		} else {
+			// Si es un objeto, intentar parsearlo
+			parsed = servicesField;
 		}
 
-		if (Array.isArray(servicesField)) {
-			return servicesField as RawService[];
+		if (!Array.isArray(parsed)) {
+			console.warn('[Role User Services API] parseServicesField: El campo no es un array:', typeof parsed, parsed);
+			return [];
 		}
 
-		return [];
+		// Asegurar que todos los servicios tengan la estructura correcta
+		return parsed.map((s: any) => {
+			const service: any = {
+				id: s.id || undefined,
+				name: s.name || '',
+				description: s.description || null,
+				price: typeof s.price === 'string' ? Number(s.price) : s.price || 0,
+				currency: s.currency || 'USD',
+				is_active: s.is_active !== undefined ? s.is_active : true,
+			};
+			
+			// Solo incluir createdBy si tiene un valor válido (no undefined ni "undefined" string)
+			if (s.createdBy && s.createdBy !== 'undefined' && s.createdBy !== undefined) {
+				service.createdBy = s.createdBy;
+			}
+			
+			return service;
+		});
 	} catch (err) {
 		console.error('[Role User Services API] Error parseando servicios:', err);
+		console.error('[Role User Services API] servicesField que causó el error:', servicesField);
 		return [];
 	}
 }
@@ -63,7 +108,8 @@ export async function GET(req: NextRequest) {
 
 		const { doctorId, supabase } = await getDoctorIdForOrganization(session.organizationId);
 
-		if (!doctorId) {
+		if (!doctorId || !supabase) {
+			console.error('[Role User Services API] No se pudo obtener doctorId o cliente Supabase');
 			return NextResponse.json({ success: true, services: [] }, { status: 200 });
 		}
 
@@ -222,10 +268,11 @@ export async function POST(req: NextRequest) {
 
 		const { doctorId, supabase } = await getDoctorIdForOrganization(session.organizationId);
 
-		if (!doctorId) {
+		if (!doctorId || !supabase) {
+			console.error('[Role User Services API] No se pudo obtener doctorId o cliente Supabase para crear servicio');
 			return NextResponse.json(
-				{ error: 'No se encontró un médico asociado a esta organización' },
-				{ status: 400 },
+				{ error: 'No se encontró un médico asociado a esta organización o error de configuración' },
+				{ status: 500 },
 			);
 		}
 
@@ -254,47 +301,120 @@ export async function POST(req: NextRequest) {
 			price: Number(numericPrice),
 			currency: finalCurrency,
 			is_active: true,
-			createdBy: session.roleUserId, // Guardar el ID del usuario que crea el servicio
+			createdBy: String(session.roleUserId), // Asegurar que sea string
 		};
 
 		// Debug: Log del servicio que se va a crear
 		console.log('[Role User Services API] Creando servicio:', JSON.stringify(newService, null, 2));
 		console.log('[Role User Services API] session.roleUserId:', session.roleUserId);
+		console.log('[Role User Services API] session.roleUserId type:', typeof session.roleUserId);
+		console.log('[Role User Services API] newService.createdBy:', newService.createdBy);
+		console.log('[Role User Services API] newService.createdBy type:', typeof newService.createdBy);
 		console.log('[Role User Services API] Servicios actuales antes de agregar:', currentServices.length);
 
 		const updatedServices = [...currentServices, newService];
 
 		// Debug: Log de servicios actualizados
 		console.log('[Role User Services API] Servicios actualizados después de agregar:', updatedServices.length);
+		console.log('[Role User Services API] Último servicio en array:', JSON.stringify(updatedServices[updatedServices.length - 1], null, 2));
 
 		if (existingProfile) {
-			// Usar RPC o actualización directa para evitar problemas de caché
+			// Asegurar que todos los servicios tengan la estructura correcta antes de guardar
+			// Filtrar valores undefined y "undefined" (string) para createdBy
+			const servicesToSave = updatedServices.map((s: RawService) => {
+				const service: any = {
+					id: s.id || undefined,
+					name: s.name || '',
+					description: s.description || null,
+					price: typeof s.price === 'string' ? Number(s.price) : s.price || 0,
+					currency: s.currency || 'USD',
+					is_active: s.is_active !== undefined ? s.is_active : true,
+				};
+				
+				// Solo incluir createdBy si tiene un valor válido (no undefined ni "undefined")
+				if (s.createdBy && s.createdBy !== 'undefined' && s.createdBy !== undefined) {
+					service.createdBy = s.createdBy;
+				}
+				
+				return service;
+			});
+
+			const servicesJson = JSON.stringify(servicesToSave);
+			console.log('[Role User Services API] JSON a guardar (con createdBy):', servicesJson);
+			console.log('[Role User Services API] Verificando createdBy en cada servicio:');
+			servicesToSave.forEach((s: RawService, idx: number) => {
+				console.log(`[Role User Services API] Servicio ${idx}: name="${s.name}", createdBy="${s.createdBy}"`);
+			});
+			
+			// Actualizar el perfil - usar el array directamente, Supabase lo serializa a JSONB
+			// IMPORTANTE: Usar SERVICE_ROLE_KEY bypass RLS, así que el update debería funcionar
 			const { error: updateError, data: updateData } = await supabase
 				.from('medic_profile')
 				.update({ 
-					services: updatedServices,
-					updated_at: new Date().toISOString() // Forzar actualización de timestamp
+					services: servicesToSave, // Supabase serializa automáticamente arrays/objetos a JSONB
+					updated_at: new Date().toISOString()
 				})
 				.eq('doctor_id', doctorId)
-				.select('services');
+				.select('services'); // Intentar obtener los datos actualizados
 
 			if (updateError) {
 				console.error('[Role User Services API] Error actualizando servicios:', updateError);
+				console.error('[Role User Services API] Detalles del error:', JSON.stringify(updateError, null, 2));
 				return NextResponse.json({ error: 'Error al guardar el servicio' }, { status: 500 });
 			}
 
-			// Debug: Verificar que se guardó correctamente
-			const savedServices = updateData?.[0]?.services;
-			console.log('[Role User Services API] Servicios guardados en BD:', JSON.stringify(savedServices, null, 2));
+			console.log('[Role User Services API] Update exitoso');
+			console.log('[Role User Services API] updateData recibido:', updateData);
 			
-			// Verificar que el nuevo servicio está en los datos guardados
-			const savedServicesArray = parseServicesField(savedServices);
-			const newServiceInDb = savedServicesArray.find((s: RawService) => s.id === newService.id);
-			console.log('[Role User Services API] Nuevo servicio encontrado en BD después de guardar:', newServiceInDb ? 'SÍ' : 'NO');
-			if (newServiceInDb) {
-				console.log('[Role User Services API] createdBy del servicio guardado:', newServiceInDb.createdBy);
-				console.log('[Role User Services API] createdBy esperado:', session.roleUserId);
-				console.log('[Role User Services API] Coinciden:', String(newServiceInDb.createdBy) === String(session.roleUserId));
+			// Si updateData tiene información, usarla directamente
+			if (updateData && updateData.length > 0 && updateData[0]?.services) {
+				const savedServices = updateData[0].services;
+				console.log('[Role User Services API] Servicios desde updateData:', JSON.stringify(savedServices, null, 2));
+				
+				const savedServicesArray = parseServicesField(savedServices);
+				const newServiceInDb = savedServicesArray.find((s: RawService) => s.id === newService.id);
+				console.log('[Role User Services API] Nuevo servicio encontrado en updateData:', newServiceInDb ? 'SÍ' : 'NO');
+				
+				if (newServiceInDb) {
+					console.log('[Role User Services API] Servicio completo desde updateData:', JSON.stringify(newServiceInDb, null, 2));
+				}
+			}
+			
+			console.log('[Role User Services API] Verificando datos guardados con select separado...');
+
+			// Hacer un select separado para verificar que se guardó correctamente
+			// Esto evita problemas con el .select() después del update
+			const { data: verifyData, error: verifyError } = await supabase
+				.from('medic_profile')
+				.select('services')
+				.eq('doctor_id', doctorId)
+				.single();
+
+			if (verifyError) {
+				console.error('[Role User Services API] Error verificando servicios guardados:', verifyError);
+				// No fallar aquí, el update ya se hizo
+			} else {
+				const savedServices = verifyData?.services;
+				console.log('[Role User Services API] Servicios guardados en BD (raw):', savedServices);
+				console.log('[Role User Services API] Servicios guardados en BD (stringified):', JSON.stringify(savedServices, null, 2));
+				console.log('[Role User Services API] Tipo de savedServices:', typeof savedServices);
+				
+				// Verificar que el nuevo servicio está en los datos guardados
+				const savedServicesArray = parseServicesField(savedServices);
+				console.log('[Role User Services API] Servicios parseados:', savedServicesArray.length);
+				const newServiceInDb = savedServicesArray.find((s: RawService) => s.id === newService.id);
+				console.log('[Role User Services API] Nuevo servicio encontrado en BD después de guardar:', newServiceInDb ? 'SÍ' : 'NO');
+				if (newServiceInDb) {
+					console.log('[Role User Services API] Servicio completo encontrado:', JSON.stringify(newServiceInDb, null, 2));
+					console.log('[Role User Services API] createdBy del servicio guardado:', newServiceInDb.createdBy);
+					console.log('[Role User Services API] createdBy type:', typeof newServiceInDb.createdBy);
+					console.log('[Role User Services API] createdBy esperado:', session.roleUserId);
+					console.log('[Role User Services API] Coinciden:', String(newServiceInDb.createdBy) === String(session.roleUserId));
+				} else {
+					console.error('[Role User Services API] ERROR: El nuevo servicio NO se encontró en la BD después de guardar');
+					console.error('[Role User Services API] ID buscado:', newService.id);
+					console.error('[Role User Services API] IDs en BD:', savedServicesArray.map((s: RawService) => s.id));
+				}
 			}
 		} else {
 			const { error: insertError, data: insertData } = await supabase.from('medic_profile').insert({
@@ -317,23 +437,8 @@ export async function POST(req: NextRequest) {
 			console.log('[Role User Services API] Nuevo servicio encontrado en BD después de guardar:', newServiceInDb ? 'SÍ' : 'NO');
 		}
 
-		// Después de guardar, obtener los servicios actualizados para devolverlos
-		// Esto ayuda a evitar problemas de caché
-		const { data: updatedProfile, error: fetchError } = await supabase
-			.from('medic_profile')
-			.select('services')
-			.eq('doctor_id', doctorId)
-			.single();
-
-		if (fetchError) {
-			console.warn('[Role User Services API] Error obteniendo servicios actualizados después de guardar:', fetchError);
-			// Devolver el servicio creado de todas formas
-			return NextResponse.json({ success: true, service: newService }, { status: 201 });
-		}
-
-		// Parsear y filtrar servicios actualizados
-		const allUpdatedServices = parseServicesField(updatedProfile?.services);
-		const userUpdatedServices = allUpdatedServices.filter((s: RawService) => {
+		// Filtrar servicios para devolver solo los del usuario actual
+		const userUpdatedServices = updatedServices.filter((s: RawService) => {
 			if (!s.createdBy) return true; // Servicios antiguos
 			return String(s.createdBy).trim() === String(session.roleUserId).trim();
 		});

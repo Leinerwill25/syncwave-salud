@@ -72,7 +72,13 @@ export default function RoleUserServicesPage() {
 				throw new Error(data.error || 'Error al cargar servicios');
 			}
 
-			setServices((data.services || []) as Service[]);
+			// Asegurar que todos los servicios tengan un id único
+			const servicesWithIds = (data.services || []).map((service: Service, index: number) => ({
+				...service,
+				id: service.id || `temp-${index}-${Date.now()}-${Math.random()}`, // Fallback para servicios sin id
+			}));
+
+			setServices(servicesWithIds as Service[]);
 		} catch (err: any) {
 			console.error('[RoleUserServicesPage] Error cargando servicios:', err);
 			setError(err.message || 'Error al cargar servicios');
@@ -114,6 +120,17 @@ export default function RoleUserServicesPage() {
 		};
 		load();
 	}, []);
+
+	// Debug: rastrear cambios en isAddingCombo
+	useEffect(() => {
+		console.log('[RoleUserServicesPage] 🔄 isAddingCombo cambió a:', isAddingCombo);
+		console.log('[RoleUserServicesPage] 🔄 editingComboId:', editingComboId);
+		console.log('[RoleUserServicesPage] 🔄 Condición formulario:', 
+			((session && roleNameEquals(session.roleName, 'Asistente De Citas')) || canEdit) && 
+			services.length > 0 && 
+			(isAddingCombo || editingComboId)
+		);
+	}, [isAddingCombo, editingComboId, session, canEdit, services.length]);
 
 	const resetForm = () => {
 		setFormName('');
@@ -283,12 +300,52 @@ export default function RoleUserServicesPage() {
 	};
 
 	const handleAddCombo = () => {
-		if (!canEdit) return;
-		setIsAddingCombo(true);
+		console.log('[RoleUserServicesPage] ========== handleAddCombo INICIADO ==========');
+		console.log('[RoleUserServicesPage] canEdit:', canEdit);
+		console.log('[RoleUserServicesPage] session:', session);
+		console.log('[RoleUserServicesPage] session?.roleName:', session?.roleName);
+		console.log('[RoleUserServicesPage] services.length:', services.length);
+		console.log('[RoleUserServicesPage] isAddingCombo (antes):', isAddingCombo);
+		console.log('[RoleUserServicesPage] editingComboId:', editingComboId);
+		
+		// Verificar permisos directamente desde session en lugar de canEdit
+		const hasPermission = session && roleNameEquals(session.roleName, 'Asistente De Citas');
+		console.log('[RoleUserServicesPage] hasPermission calculado:', hasPermission);
+		
+		if (!hasPermission && !canEdit) {
+			console.warn('[RoleUserServicesPage] ❌ No se puede editar - sin permisos');
+			console.warn('[RoleUserServicesPage] session es null?', session === null);
+			if (session) {
+				console.warn('[RoleUserServicesPage] session.roleName:', session.roleName);
+				console.warn('[RoleUserServicesPage] roleNameEquals check:', roleNameEquals(session.roleName, 'Asistente De Citas'));
+			}
+			setError('No tienes permisos para crear combos. Solo el rol "Asistente De Citas" puede crear combos.');
+			return;
+		}
+		
+		if (services.length === 0) {
+			console.warn('[RoleUserServicesPage] ❌ No hay servicios disponibles');
+			setError('Debes crear al menos un servicio individual antes de crear un combo.');
+			return;
+		}
+		
+		console.log('[RoleUserServicesPage] ✅ Todas las validaciones pasaron, activando formulario...');
+		
+		// IMPORTANTE: NO llamar resetComboForm() aquí porque establece isAddingCombo a false
+		// Solo resetear los campos del formulario, pero mantener isAddingCombo = true
+		setComboName('');
+		setComboDescription('');
+		setComboPrice('');
+		setComboCurrency('USD');
+		setComboServiceIds([]);
 		setEditingComboId(null);
-		resetComboForm();
 		setError(null);
 		setSuccess(null);
+		// Esto debe ir al final para asegurar que se actualice
+		setIsAddingCombo(true);
+		
+		console.log('[RoleUserServicesPage] ✅ Estados actualizados - isAddingCombo = true');
+		console.log('[RoleUserServicesPage] ========== handleAddCombo FINALIZADO ==========');
 	};
 
 	const handleEditCombo = (combo: ServiceCombo) => {
@@ -368,28 +425,55 @@ export default function RoleUserServicesPage() {
 			return;
 		}
 
+		// Validar que todos los serviceIds sean válidos
+		const validServiceIds = comboServiceIds.filter(id => id && id.trim() !== '');
+		if (validServiceIds.length === 0) {
+			setError('Los servicios seleccionados no tienen IDs válidos. Por favor, recarga la página.');
+			return;
+		}
+
+		// Verificar que los IDs seleccionados existan en los servicios disponibles
+		const availableServiceIds = services.map(s => s.id).filter(Boolean);
+		const invalidIds = validServiceIds.filter(id => !availableServiceIds.includes(id));
+		if (invalidIds.length > 0) {
+			console.warn('[RoleUserServicesPage] ⚠️ IDs inválidos detectados:', invalidIds);
+			setError('Algunos servicios seleccionados no son válidos. Por favor, recarga la página.');
+			return;
+		}
+
 		try {
 			setError(null);
 			setSuccess(null);
 
 			if (isAddingCombo) {
 				// Crear nuevo combo
+				const payload = {
+					name: comboName.trim(),
+					description: comboDescription.trim() || null,
+					price: numericPrice,
+					currency: comboCurrency,
+					serviceIds: validServiceIds, // Usar solo los IDs válidos
+				};
+				
+				console.log('[RoleUserServicesPage] 📤 Enviando combo:', payload);
+				console.log('[RoleUserServicesPage] 📤 serviceIds (validados):', validServiceIds);
+				console.log('[RoleUserServicesPage] 📤 Servicios disponibles:', services.map(s => ({ id: s.id, name: s.name, createdBy: (s as any).createdBy })));
+				
 				const res = await fetch('/api/role-users/service-combos', {
 					method: 'POST',
 					headers: { 'Content-Type': 'application/json' },
 					credentials: 'include',
-					body: JSON.stringify({
-						name: comboName.trim(),
-						description: comboDescription.trim() || null,
-						price: numericPrice,
-						currency: comboCurrency,
-						serviceIds: comboServiceIds,
-					}),
+					body: JSON.stringify(payload),
 				});
 
 				const data = await res.json();
 
 				if (!res.ok) {
+					console.error('[RoleUserServicesPage] ❌ Error al crear combo:', {
+						status: res.status,
+						error: data.error,
+						response: data
+					});
 					throw new Error(data.error || 'Error al crear el combo de servicios');
 				}
 
@@ -448,7 +532,7 @@ export default function RoleUserServicesPage() {
 					</div>
 
 					{canEdit && !isAdding && !editingId && (
-						<button onClick={handleAdd} className="inline-flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-teal-600 to-cyan-600 text-white rounded-xl font-semibold shadow-md hover:from-teal-700 hover:to-cyan-700 hover:shadow-lg transition-all duration-200 focus:outline-none focus:ring-4 focus:ring-teal-500/30">
+						<button onClick={handleAdd} className="inline-flex items-center gap-2 px-3 sm:px-4 py-2 sm:py-2.5 text-sm sm:text-base bg-gradient-to-r from-teal-600 to-cyan-600 text-white rounded-lg sm:rounded-xl font-semibold shadow-md hover:from-teal-700 hover:to-cyan-700 hover:shadow-lg transition-all duration-200 focus:outline-none focus:ring-4 focus:ring-teal-500/30 w-full sm:w-auto justify-center">
 							<Plus className="w-5 h-5" />
 							<span>Agregar servicio</span>
 						</button>
@@ -549,7 +633,7 @@ export default function RoleUserServicesPage() {
 				) : (
 					<div className="divide-y divide-slate-200">
 						{services.map((service, index) => (
-							<motion.div key={service.id} initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: index * 0.05 }} className="p-4 sm:p-6 hover:bg-slate-50 transition-colors">
+							<motion.div key={service.id || `service-${index}`} initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: index * 0.05 }} className="p-4 sm:p-6 hover:bg-slate-50 transition-colors">
 								{editingId === service.id ? (
 									<div className="space-y-4">
 										<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -589,26 +673,26 @@ export default function RoleUserServicesPage() {
 										</div>
 									</div>
 								) : (
-									<div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
-										<div className="flex-1">
-											<div className="flex items-center gap-2 mb-1.5">
-												<h3 className="text-lg font-semibold text-slate-900">{service.name}</h3>
-												<span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-teal-50 text-teal-700 border border-teal-100">
+									<div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-3">
+										<div className="flex-1 min-w-0">
+											<div className="flex flex-col sm:flex-row sm:items-center gap-1.5 sm:gap-2 mb-1.5">
+												<h3 className="text-base sm:text-lg font-semibold text-slate-900 break-words">{service.name}</h3>
+												<span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] sm:text-xs font-medium bg-teal-50 text-teal-700 border border-teal-100 w-fit">
 													{(() => {
 														const numericPrice = Number(typeof service.price === 'string' ? service.price.replace(',', '.') : service.price);
 														return Number.isNaN(numericPrice) ? '-' : `${numericPrice.toFixed(2)} ${service.currency}`;
 													})()}
 												</span>
 											</div>
-											{service.description && <p className="text-sm text-slate-600 mt-1">{service.description}</p>}
+											{service.description && <p className="text-xs sm:text-sm text-slate-600 mt-1 break-words">{service.description}</p>}
 										</div>
 										{canEdit && (
-											<div className="flex items-center gap-2">
-												<button onClick={() => handleEdit(service)} className="p-2 text-teal-600 hover:bg-teal-50 rounded-lg transition-colors" title="Editar">
-													<Edit2 className="w-5 h-5" />
+											<div className="flex items-center gap-2 flex-shrink-0">
+												<button onClick={() => handleEdit(service)} className="p-1.5 sm:p-2 text-teal-600 hover:bg-teal-50 rounded-lg transition-colors" title="Editar">
+													<Edit2 className="w-4 h-4 sm:w-5 sm:h-5" />
 												</button>
-												<button onClick={() => handleDelete(service.id)} className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors" title="Eliminar">
-													<Trash2 className="w-5 h-5" />
+												<button onClick={() => handleDelete(service.id)} className="p-1.5 sm:p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors" title="Eliminar">
+													<Trash2 className="w-4 h-4 sm:w-5 sm:h-5" />
 												</button>
 											</div>
 										)}
@@ -633,20 +717,76 @@ export default function RoleUserServicesPage() {
 					{services.length > 0 && <p className="text-xs text-slate-500">{canEdit ? 'Como Asistente de Citas puedes crear combos usando los servicios individuales configurados.' : 'Los combos son configurados por el médico o el asistente de citas y se muestran aquí para consulta.'}</p>}
 				</div>
 
+				{/* Debug info (solo en desarrollo) */}
+				{process.env.NODE_ENV === 'development' && (
+					<div className="mb-4 p-2 bg-blue-50 border border-blue-200 rounded text-xs">
+						<strong>Debug Estado:</strong> canEdit={String(canEdit)}, 
+						hasPermission={String(session && roleNameEquals(session.roleName, 'Asistente De Citas'))},
+						services.length={services.length}, 
+						isAddingCombo={String(isAddingCombo)}, 
+						editingComboId={editingComboId || 'null'},
+						session.roleName={session?.roleName || 'null'},
+						shouldShowForm={String(((session && roleNameEquals(session.roleName, 'Asistente De Citas')) || canEdit) && services.length > 0 && (isAddingCombo || editingComboId))}
+					</div>
+				)}
+
 				{/* Botón para agregar combo */}
-				{canEdit && services.length > 0 && !isAddingCombo && !editingComboId && (
+				{((session && roleNameEquals(session.roleName, 'Asistente De Citas')) || canEdit) && services.length > 0 && !isAddingCombo && !editingComboId && (
 					<div className="mb-6 flex justify-end">
-						<button onClick={handleAddCombo} className="inline-flex items-center gap-2 px-4 py-2 bg-teal-600 text-white rounded-lg text-sm font-medium hover:bg-teal-700 transition-colors focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-offset-1">
+						<button 
+							onClick={(e) => {
+								e?.preventDefault?.();
+								e?.stopPropagation?.();
+								console.log('[RoleUserServicesPage] 🔘 Botón clickeado - evento recibido');
+								console.log('[RoleUserServicesPage] Estado actual:', {
+									canEdit,
+									hasPermission: session && roleNameEquals(session.roleName, 'Asistente De Citas'),
+									servicesLength: services.length,
+									isAddingCombo,
+									editingComboId
+								});
+								try {
+									handleAddCombo();
+								} catch (error) {
+									console.error('[RoleUserServicesPage] ❌ Error en handleAddCombo:', error);
+									setError('Error al abrir el formulario de combo. Por favor, recarga la página.');
+								}
+							}}
+							type="button"
+							className="inline-flex items-center gap-2 px-4 py-2 bg-teal-600 text-white rounded-lg text-sm font-medium hover:bg-teal-700 transition-colors focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-offset-1 disabled:opacity-50 disabled:cursor-not-allowed"
+							disabled={!((session && roleNameEquals(session.roleName, 'Asistente De Citas')) || canEdit) || services.length === 0}
+						>
 							<Plus className="w-4 h-4" />
 							Agregar combo
 						</button>
 					</div>
 				)}
+				
+				{/* Mensaje si no se puede agregar combo */}
+				{!canEdit && (
+					<div className="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded text-sm text-yellow-800">
+						No tienes permisos para crear combos. Solo el rol "Asistente De Citas" puede crear combos.
+						{session && <div className="text-xs mt-1">Tu rol actual: {session.roleName}</div>}
+					</div>
+				)}
+				
+				{canEdit && services.length === 0 && (
+					<div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded text-sm text-blue-800">
+						Debes crear al menos un servicio individual antes de poder crear combos.
+					</div>
+				)}
 
 				{/* Formulario para crear/editar combos - solo asistente de citas */}
-				{canEdit && services.length > 0 && (isAddingCombo || editingComboId) && (
-					<div className="mb-6 border border-slate-200 rounded-xl p-4 bg-slate-50/60">
-						<h3 className="text-sm font-semibold text-slate-900 mb-3">{isAddingCombo ? 'Crear nuevo combo' : 'Editar combo'}</h3>
+				{((session && roleNameEquals(session.roleName, 'Asistente De Citas')) || canEdit) && services.length > 0 && (isAddingCombo || editingComboId) && (
+					<div className="mb-6 border-2 border-teal-300 rounded-xl p-4 bg-slate-50/60 shadow-md">
+						<h3 className="text-sm font-semibold text-slate-900 mb-3">
+							{isAddingCombo ? 'Crear nuevo combo' : 'Editar combo'}
+							{process.env.NODE_ENV === 'development' && (
+								<span className="ml-2 text-xs text-slate-500 font-normal">
+									(Estado: isAddingCombo={String(isAddingCombo)}, editingComboId={editingComboId || 'null'})
+								</span>
+							)}
+						</h3>
 						<div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
 							<div>
 								<label className="block text-xs font-medium text-slate-700 mb-1">
@@ -679,9 +819,9 @@ export default function RoleUserServicesPage() {
 								Selecciona los servicios individuales que formarán parte del combo <span className="text-red-500">*</span>
 							</label>
 							<div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2 max-h-48 overflow-y-auto pr-1">
-								{services.map((service) => (
-									<label key={service.id} className="flex items-start gap-2 text-xs text-slate-700 bg-white border border-slate-200 rounded-lg px-3 py-2 cursor-pointer hover:bg-slate-50">
-										<input type="checkbox" className="mt-0.5" checked={comboServiceIds.includes(service.id)} onChange={() => toggleServiceInCombo(service.id)} />
+								{services.map((service, idx) => (
+									<label key={service.id || `service-checkbox-${idx}`} className="flex items-start gap-2 text-xs text-slate-700 bg-white border border-slate-200 rounded-lg px-3 py-2 cursor-pointer hover:bg-slate-50">
+										<input type="checkbox" className="mt-0.5" checked={comboServiceIds.includes(service.id || '')} onChange={() => toggleServiceInCombo(service.id || '')} />
 										<span>
 											<span className="font-semibold block">{service.name}</span>
 											{service.description && <span className="text-[11px] text-slate-500 block truncate">{service.description}</span>}
@@ -707,14 +847,14 @@ export default function RoleUserServicesPage() {
 					<div className="border border-dashed border-slate-200 rounded-xl p-6 text-center text-sm text-slate-500">No hay combos configurados todavía.</div>
 				) : (
 					<div className="space-y-4">
-						{combos.map((combo) => {
+						{combos.map((combo, comboIndex) => {
 							const numericPrice = Number(typeof combo.price === 'string' ? combo.price.replace(',', '.') : combo.price);
-							const includedServices = services.filter((s) => (combo.serviceIds || []).includes(s.id));
+							const includedServices = services.filter((s) => (combo.serviceIds || []).includes(s.id || ''));
 
 							const isEditing = editingComboId === combo.id;
 
 							return (
-								<div key={combo.id} className="border border-slate-200 rounded-xl p-4">
+								<div key={combo.id || `combo-${comboIndex}`} className="border border-slate-200 rounded-xl p-4">
 									{isEditing ? (
 										<div className="space-y-4">
 											<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -749,9 +889,9 @@ export default function RoleUserServicesPage() {
 													Selecciona los servicios individuales que formarán parte del combo <span className="text-red-500">*</span>
 												</label>
 												<div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2 max-h-48 overflow-y-auto pr-1">
-													{services.map((service) => (
-														<label key={service.id} className="flex items-start gap-2 text-xs text-slate-700 bg-white border border-slate-200 rounded-lg px-3 py-2 cursor-pointer hover:bg-slate-50">
-															<input type="checkbox" className="mt-0.5" checked={comboServiceIds.includes(service.id)} onChange={() => toggleServiceInCombo(service.id)} />
+													{services.map((service, idx) => (
+														<label key={service.id || `service-checkbox-edit-${idx}`} className="flex items-start gap-2 text-xs text-slate-700 bg-white border border-slate-200 rounded-lg px-3 py-2 cursor-pointer hover:bg-slate-50">
+															<input type="checkbox" className="mt-0.5" checked={comboServiceIds.includes(service.id || '')} onChange={() => toggleServiceInCombo(service.id || '')} />
 															<span>
 																<span className="font-semibold block">{service.name}</span>
 																{service.description && <span className="text-[11px] text-slate-500 block truncate">{service.description}</span>}

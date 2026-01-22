@@ -149,97 +149,95 @@ export default function RoleUserPatientsPage() {
 	}
 
 	return (
-		<div className="w-full">
+		<div className="w-full min-w-0 px-2 sm:px-0">
 			{/* Header */}
-			<motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="mb-6">
-				<h1 className="text-2xl sm:text-3xl font-bold text-slate-900">Listado de Pacientes</h1>
-				<p className="text-sm sm:text-base text-slate-600 mt-1">Visualiza información básica de pacientes y sus citas programadas</p>
+			<motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="mb-4 sm:mb-6">
+				<h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-slate-900 break-words">Listado de Pacientes</h1>
+				<p className="text-xs sm:text-sm md:text-base text-slate-600 mt-1 break-words">Visualiza información básica de pacientes y sus citas programadas</p>
 			</motion.div>
 
 			{/* Search Bar */}
-			<div className="mb-6">
+			<div className="mb-4 sm:mb-6">
 				<div className="relative">
-					<Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 w-5 h-5" />
+					<Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 w-4 h-4 sm:w-5 sm:h-5" />
 					<input
 						type="text"
 						placeholder="Buscar por nombre, cédula o teléfono..."
 						value={searchQuery}
 						onChange={(e) => setSearchQuery(e.target.value)}
-						className="w-full pl-10 pr-4 py-3 rounded-lg border border-slate-300 focus:ring-2 focus:ring-teal-500 focus:border-transparent transition"
+						className="w-full pl-9 sm:pl-10 pr-4 py-2.5 sm:py-3 text-sm sm:text-base rounded-lg border border-slate-300 focus:ring-2 focus:ring-teal-500 focus:border-transparent transition"
 					/>
 				</div>
 			</div>
 
 			{/* Patients List */}
 			{filteredPatients.length === 0 ? (
-				<div className="bg-white rounded-2xl shadow-lg border border-slate-200 p-8 text-center">
-					<User className="w-16 h-16 text-slate-400 mx-auto mb-4" />
-					<p className="text-slate-600">{searchQuery ? 'No se encontraron pacientes' : 'No hay pacientes registrados'}</p>
+				<div className="bg-white rounded-xl sm:rounded-2xl shadow-lg border border-slate-200 p-6 sm:p-8 text-center">
+					<User className="w-12 h-12 sm:w-16 sm:h-16 text-slate-400 mx-auto mb-3 sm:mb-4" />
+					<p className="text-sm sm:text-base text-slate-600">{searchQuery ? 'No se encontraron pacientes' : 'No hay pacientes registrados'}</p>
 				</div>
 			) : (
-				<div className="space-y-4">
+				<div className="space-y-3 sm:space-y-4">
 					{filteredPatients.map((item, index) => (
 						<motion.div
 							key={item.patient.id}
 							initial={{ opacity: 0, y: 20 }}
 							animate={{ opacity: 1, y: 0 }}
 							transition={{ delay: index * 0.05 }}
-							className="bg-white rounded-xl shadow-md border border-slate-200 p-6 hover:shadow-lg transition-shadow"
+							className="bg-white rounded-lg sm:rounded-xl shadow-md border border-slate-200 p-4 sm:p-6 hover:shadow-lg transition-shadow"
 						>
 							{/* Patient Info */}
-							<div className="flex items-start justify-between mb-4">
-								<div className="flex items-start gap-4">
-									<div className="w-12 h-12 bg-gradient-to-br from-teal-500 to-cyan-500 rounded-full flex items-center justify-center text-white font-semibold">
-										{item.patient.firstName?.[0]?.toUpperCase()}
-										{item.patient.lastName?.[0]?.toUpperCase()}
-									</div>
-									<div>
-										<h3 className="text-lg font-semibold text-slate-900">
-											{item.patient.firstName} {item.patient.lastName}
-										</h3>
-										<div className="flex flex-wrap gap-4 mt-1 text-sm text-slate-600">
-											{item.patient.identifier && <span>C.I.: {item.patient.identifier}</span>}
-											{item.patient.phone && <span>Tel: {item.patient.phone}</span>}
-										</div>
+							<div className="flex items-start gap-3 sm:gap-4 mb-3 sm:mb-4">
+								<div className="w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-br from-teal-500 to-cyan-500 rounded-full flex items-center justify-center text-white font-semibold text-sm sm:text-base flex-shrink-0">
+									{item.patient.firstName?.[0]?.toUpperCase()}
+									{item.patient.lastName?.[0]?.toUpperCase()}
+								</div>
+								<div className="flex-1 min-w-0">
+									<h3 className="text-base sm:text-lg font-semibold text-slate-900 break-words">
+										{item.patient.firstName} {item.patient.lastName}
+									</h3>
+									<div className="flex flex-col sm:flex-row sm:flex-wrap gap-1 sm:gap-4 mt-1 text-xs sm:text-sm text-slate-600">
+										{item.patient.identifier && <span className="break-words">C.I.: {item.patient.identifier}</span>}
+										{item.patient.phone && <span className="break-words">Tel: {item.patient.phone}</span>}
 									</div>
 								</div>
 							</div>
 
 							{/* Statistics */}
-							<div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4 p-4 bg-slate-50 rounded-lg">
+							<div className="grid grid-cols-3 gap-2 sm:gap-4 mb-3 sm:mb-4 p-3 sm:p-4 bg-slate-50 rounded-lg">
 								<div className="text-center">
-									<div className="text-2xl font-bold text-teal-600">{item.scheduledAppointments.length}</div>
-									<div className="text-xs text-slate-600 mt-1">Citas Programadas</div>
+									<div className="text-lg sm:text-2xl font-bold text-teal-600">{item.scheduledAppointments.length}</div>
+									<div className="text-[10px] sm:text-xs text-slate-600 mt-0.5 sm:mt-1 leading-tight">Citas Programadas</div>
 								</div>
 								<div className="text-center">
-									<div className="text-2xl font-bold text-green-600">{item.attendedCount}</div>
-									<div className="text-xs text-slate-600 mt-1">Citas Asistidas</div>
+									<div className="text-lg sm:text-2xl font-bold text-green-600">{item.attendedCount}</div>
+									<div className="text-[10px] sm:text-xs text-slate-600 mt-0.5 sm:mt-1 leading-tight">Citas Asistidas</div>
 								</div>
 								<div className="text-center">
-									<div className="text-2xl font-bold text-blue-600">{item.consultationDates.length}</div>
-									<div className="text-xs text-slate-600 mt-1">Consultas Realizadas</div>
+									<div className="text-lg sm:text-2xl font-bold text-blue-600">{item.consultationDates.length}</div>
+									<div className="text-[10px] sm:text-xs text-slate-600 mt-0.5 sm:mt-1 leading-tight">Consultas Realizadas</div>
 								</div>
 							</div>
 
 							{/* Scheduled Appointments */}
 							{item.scheduledAppointments.length > 0 && (
-								<div className="mt-4">
-									<h4 className="text-sm font-semibold text-slate-700 mb-3 flex items-center gap-2">
-										<Calendar className="w-4 h-4" />
-										Citas Programadas
+								<div className="mt-3 sm:mt-4">
+									<h4 className="text-xs sm:text-sm font-semibold text-slate-700 mb-2 sm:mb-3 flex items-center gap-1.5 sm:gap-2">
+										<Calendar className="w-3.5 h-3.5 sm:w-4 sm:h-4 flex-shrink-0" />
+										<span>Citas Programadas</span>
 									</h4>
 									<div className="space-y-2">
 										{item.scheduledAppointments.map((appointment) => (
 											<div
 												key={appointment.id}
-												className="flex items-center justify-between p-3 bg-blue-50 rounded-lg border border-blue-100"
+												className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-3 p-2.5 sm:p-3 bg-blue-50 rounded-lg border border-blue-100"
 											>
-												<div className="flex-1">
-													<div className="text-sm font-medium text-slate-900">{formatDate(appointment.scheduled_at)}</div>
-													{appointment.reason && <div className="text-xs text-slate-600 mt-1">Motivo: {appointment.reason}</div>}
-													{appointment.location && <div className="text-xs text-slate-600">Ubicación: {appointment.location}</div>}
+												<div className="flex-1 min-w-0">
+													<div className="text-xs sm:text-sm font-medium text-slate-900 break-words">{formatDate(appointment.scheduled_at)}</div>
+													{appointment.reason && <div className="text-[10px] sm:text-xs text-slate-600 mt-0.5 sm:mt-1 break-words">Motivo: {appointment.reason}</div>}
+													{appointment.location && <div className="text-[10px] sm:text-xs text-slate-600 break-words">Ubicación: {appointment.location}</div>}
 												</div>
-												{getStatusBadge(appointment.status)}
+												<div className="flex-shrink-0">{getStatusBadge(appointment.status)}</div>
 											</div>
 										))}
 									</div>
@@ -248,14 +246,14 @@ export default function RoleUserPatientsPage() {
 
 							{/* Consultation Dates */}
 							{item.consultationDates.length > 0 && (
-								<div className="mt-4">
-									<h4 className="text-sm font-semibold text-slate-700 mb-3 flex items-center gap-2">
-										<Clock className="w-4 h-4" />
-										Fechas de Consultas
+								<div className="mt-3 sm:mt-4">
+									<h4 className="text-xs sm:text-sm font-semibold text-slate-700 mb-2 sm:mb-3 flex items-center gap-1.5 sm:gap-2">
+										<Clock className="w-3.5 h-3.5 sm:w-4 sm:h-4 flex-shrink-0" />
+										<span>Fechas de Consultas</span>
 									</h4>
-									<div className="flex flex-wrap gap-2">
+									<div className="flex flex-wrap gap-1.5 sm:gap-2">
 										{item.consultationDates.map((date, idx) => (
-											<span key={idx} className="px-3 py-1 text-xs font-medium bg-teal-100 text-teal-800 rounded-full">
+											<span key={idx} className="px-2 sm:px-3 py-0.5 sm:py-1 text-[10px] sm:text-xs font-medium bg-teal-100 text-teal-800 rounded-full break-words">
 												{formatDate(date)}
 											</span>
 										))}

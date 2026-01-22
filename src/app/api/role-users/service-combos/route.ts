@@ -104,6 +104,8 @@ export async function POST(req: NextRequest) {
 		}
 
 		const body = await req.json();
+		console.log('[Role User Service Combos API] POST body recibido:', JSON.stringify(body, null, 2));
+		
 		const { name, description, price, currency, serviceIds } = body as {
 			name?: string;
 			description?: string | null;
@@ -112,16 +114,34 @@ export async function POST(req: NextRequest) {
 			serviceIds?: string[];
 		};
 
+		console.log('[Role User Service Combos API] Datos parseados:', {
+			name,
+			description,
+			price,
+			currency,
+			serviceIds,
+			serviceIdsType: Array.isArray(serviceIds),
+			serviceIdsLength: Array.isArray(serviceIds) ? serviceIds.length : 'N/A'
+		});
+
 		if (!name || typeof name !== 'string' || name.trim().length === 0) {
+			console.error('[Role User Service Combos API] ❌ Validación fallida: nombre inválido');
 			return NextResponse.json({ error: 'El nombre del combo es requerido' }, { status: 400 });
 		}
 
 		const numericPrice = typeof price === 'string' ? Number(price) : price;
+		console.log('[Role User Service Combos API] Precio procesado:', { price, numericPrice, isNaN: Number.isNaN(numericPrice) });
 		if (numericPrice === undefined || Number.isNaN(numericPrice) || numericPrice < 0) {
+			console.error('[Role User Service Combos API] ❌ Validación fallida: precio inválido');
 			return NextResponse.json({ error: 'El precio del combo es inválido' }, { status: 400 });
 		}
 
 		if (!Array.isArray(serviceIds) || serviceIds.length === 0) {
+			console.error('[Role User Service Combos API] ❌ Validación fallida: serviceIds inválido', {
+				isArray: Array.isArray(serviceIds),
+				length: Array.isArray(serviceIds) ? serviceIds.length : 'N/A',
+				value: serviceIds
+			});
 			return NextResponse.json({ error: 'Debe seleccionar al menos un servicio para el combo' }, { status: 400 });
 		}
 
@@ -154,16 +174,46 @@ export async function POST(req: NextRequest) {
 			return NextResponse.json({ error: 'Error al obtener perfil del médico' }, { status: 500 });
 		}
 
-		// Validar que todos los serviceIds pertenezcan a servicios creados por este usuario
+		// Validar que todos los serviceIds pertenezcan a servicios disponibles
+		// Permitir servicios creados por el usuario O servicios sin createdBy (servicios viejos/compartidos)
 		const allServices = parseJsonArray(profile?.services || []);
-		const userServices = allServices.filter((s: any) => s.createdBy === session.roleUserId && s.is_active !== false);
-		const userServiceIds = userServices.map((s: any) => s.id).filter(Boolean);
+		console.log('[Role User Service Combos API] Todos los servicios:', allServices.length);
+		console.log('[Role User Service Combos API] session.roleUserId:', session.roleUserId);
+		
+		// Servicios disponibles: creados por el usuario O sin createdBy (servicios viejos/compartidos)
+		const availableServices = allServices.filter((s: any) => {
+			const isUserService = s.createdBy === session.roleUserId;
+			const isSharedService = !s.createdBy || s.createdBy === undefined; // Servicios viejos sin createdBy
+			const isActive = s.is_active !== false;
+			const isAvailable = (isUserService || isSharedService) && isActive;
+			
+			console.log('[Role User Service Combos API] Servicio:', { 
+				id: s.id, 
+				createdBy: s.createdBy, 
+				isUserService, 
+				isSharedService, 
+				isActive,
+				isAvailable 
+			});
+			
+			return isAvailable;
+		});
+		
+		const availableServiceIds = availableServices.map((s: any) => s.id).filter(Boolean);
+		
+		console.log('[Role User Service Combos API] Servicios disponibles para combos:', availableServiceIds);
+		console.log('[Role User Service Combos API] ServiceIds del combo solicitado:', serviceIds);
 
-		// Verificar que todos los serviceIds del combo pertenezcan al usuario
-		const invalidServiceIds = serviceIds.filter((id) => !userServiceIds.includes(id));
+		// Verificar que todos los serviceIds del combo pertenezcan a servicios disponibles
+		const invalidServiceIds = serviceIds.filter((id) => !availableServiceIds.includes(id));
 		if (invalidServiceIds.length > 0) {
+			console.error('[Role User Service Combos API] ❌ Validación fallida: serviceIds inválidos', {
+				invalidServiceIds,
+				availableServiceIds,
+				requestedServiceIds: serviceIds
+			});
 			return NextResponse.json(
-				{ error: `Los siguientes servicios no pertenecen a tus servicios creados: ${invalidServiceIds.join(', ')}` },
+				{ error: `Los siguientes servicios no están disponibles para crear combos: ${invalidServiceIds.join(', ')}` },
 				{ status: 400 },
 			);
 		}

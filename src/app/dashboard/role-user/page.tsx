@@ -112,15 +112,15 @@ export default function RoleUserDashboard() {
 			getRoleUserDisplayName(session) === 'Asistente De Citas');
 
 	return (
-		<div className="w-full">
+		<div className="w-full min-w-0 px-2 sm:px-0">
 			{/* Header */}
 			<motion.div
 				initial={{ opacity: 0, y: -20 }}
 				animate={{ opacity: 1, y: 0 }}
-				className="mb-6"
+				className="mb-4 sm:mb-6"
 			>
-				<h1 className="text-2xl sm:text-3xl font-bold text-slate-900">Panel General</h1>
-				<p className="text-sm sm:text-base text-slate-600 mt-1">
+				<h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-slate-900 break-words">Panel General</h1>
+				<p className="text-xs sm:text-sm md:text-base text-slate-600 mt-1 break-words">
 					Bienvenido, {session.firstName} {session.lastName} — Rol:{' '}
 					<span className="font-semibold text-teal-600">{getRoleUserDisplayName(session)}</span>
 				</p>
@@ -128,14 +128,14 @@ export default function RoleUserDashboard() {
 
 			{/* Módulos Accesibles */}
 			<div>
-				<h2 className="text-xl font-bold text-slate-900 mb-4">Módulos Disponibles</h2>
+				<h2 className="text-lg sm:text-xl font-bold text-slate-900 mb-3 sm:mb-4">Módulos Disponibles</h2>
 					{accessibleModules.length === 0 ? (
-						<div className="bg-white rounded-2xl shadow-lg border border-slate-200 p-8 text-center">
-							<Shield className="w-16 h-16 text-slate-400 mx-auto mb-4" />
-							<p className="text-slate-600">No tienes acceso a ningún módulo. Contacta al administrador.</p>
+						<div className="bg-white rounded-xl sm:rounded-2xl shadow-lg border border-slate-200 p-6 sm:p-8 text-center">
+							<Shield className="w-12 h-12 sm:w-16 sm:h-16 text-slate-400 mx-auto mb-3 sm:mb-4" />
+							<p className="text-sm sm:text-base text-slate-600">No tienes acceso a ningún módulo. Contacta al administrador.</p>
 						</div>
 					) : (
-						<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+						<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
 							{MODULE_CONFIG.filter((module) =>
 								module.value === 'servicios'
 									? !!canSeeServicios
@@ -154,23 +154,23 @@ export default function RoleUserDashboard() {
 									>
 										<a
 											href={module.href}
-											className="block bg-white rounded-xl shadow-md border border-slate-200 p-6 hover:shadow-lg hover:border-teal-300 transition-all group"
+											className="block bg-white rounded-lg sm:rounded-xl shadow-md border border-slate-200 p-4 sm:p-6 hover:shadow-lg hover:border-teal-300 transition-all group active:scale-[0.98]"
 										>
-											<div className="flex items-start justify-between mb-4">
-												<div className="w-12 h-12 bg-gradient-to-br from-teal-500 to-cyan-500 rounded-lg flex items-center justify-center group-hover:scale-110 transition-transform">
-													<Icon className="w-6 h-6 text-white" />
+											<div className="flex items-start justify-between mb-3 sm:mb-4">
+												<div className="w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-br from-teal-500 to-cyan-500 rounded-lg flex items-center justify-center group-hover:scale-110 transition-transform flex-shrink-0">
+													<Icon className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
 												</div>
-												<div className="flex gap-1">
+												<div className="flex gap-1 flex-wrap justify-end">
 													{canView && (
-														<span className="px-2 py-1 text-xs bg-blue-100 text-blue-800 rounded">Ver</span>
+														<span className="px-1.5 sm:px-2 py-0.5 sm:py-1 text-[10px] sm:text-xs bg-blue-100 text-blue-800 rounded">Ver</span>
 													)}
 													{canCreate && (
-														<span className="px-2 py-1 text-xs bg-green-100 text-green-800 rounded">Crear</span>
+														<span className="px-1.5 sm:px-2 py-0.5 sm:py-1 text-[10px] sm:text-xs bg-green-100 text-green-800 rounded">Crear</span>
 													)}
 												</div>
 											</div>
-											<h3 className="text-lg font-semibold text-slate-900 mb-2">{module.label}</h3>
-											<p className="text-sm text-slate-600">
+											<h3 className="text-base sm:text-lg font-semibold text-slate-900 mb-1 sm:mb-2 break-words">{module.label}</h3>
+											<p className="text-xs sm:text-sm text-slate-600 leading-relaxed">
 												{canView && canCreate
 													? 'Puedes ver y crear registros'
 													: canView
