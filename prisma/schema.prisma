@@ -405,7 +405,7 @@ model Notification {
   read           Boolean       @default(false)
   createdAt      DateTime      @default(now()) @map("createdAt")
 
-  @@map("Notification")
+  @@map("notification")
 }
 
 model Facturacion {

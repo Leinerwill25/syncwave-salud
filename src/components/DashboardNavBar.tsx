@@ -62,10 +62,33 @@ export default function DashboardNavBar(): React.ReactElement {
 
 	useEffect(() => {
 		let mounted = true;
+		let isSuperAdmin = false;
 
 		async function initUser() {
 			setLoading(true);
 			try {
+				// Primero verificar si es un superadmin de analytics
+				try {
+					const analyticsResponse = await fetch('/api/analytics/user', {
+						credentials: 'include'
+					});
+					const analyticsData = await analyticsResponse.json();
+					
+					if (analyticsData.authenticated && analyticsData.user) {
+						// Es un superadmin de analytics
+						isSuperAdmin = true;
+						setUser(analyticsData.user);
+						setDisplayName(analyticsData.user.username || analyticsData.user.email || 'Admin');
+						setUserRole('SUPERADMIN');
+						if (mounted) setLoading(false);
+						return;
+					}
+				} catch (err) {
+					// Si falla, continuar con el flujo normal de Supabase Auth
+					console.debug('No es superadmin de analytics, continuando con Supabase Auth');
+				}
+
+				// Flujo normal para usuarios de Supabase Auth
 				const { data: sessionData } = await supabaseClient.auth.getSession();
 				let u = (sessionData as any)?.session?.user ?? null;
 
@@ -103,26 +126,29 @@ export default function DashboardNavBar(): React.ReactElement {
 
 		initUser();
 
-		// Escucha cambios de auth
+		// Escucha cambios de auth (solo si no es superadmin de analytics)
 		let authListener: any = null;
-		try {
-			const sub = supabaseClient?.auth.onAuthStateChange((event, session) => {
-				if (event === 'SIGNED_OUT') {
-					setUser(null);
-					setDisplayName('');
-				}
-				if (event === 'SIGNED_IN' && session?.user) {
-					const u = session.user;
-					setUser(u);
-					const fullName = (
-						u.user_metadata?.fullName ??
-						`${u.user_metadata?.firstName ?? ''} ${u.user_metadata?.lastName ?? ''}`
-					).trim();
-					setDisplayName(fullName || u.email || 'Panel');
-				}
-			});
-			authListener = (sub as any)?.data ?? sub;
-		} catch {}
+		if (!isSuperAdmin) {
+			try {
+				const sub = supabaseClient?.auth.onAuthStateChange((event, session) => {
+					if (event === 'SIGNED_OUT') {
+						setUser(null);
+						setDisplayName('');
+						setUserRole(null);
+					}
+					if (event === 'SIGNED_IN' && session?.user) {
+						const u = session.user;
+						setUser(u);
+						const fullName = (
+							u.user_metadata?.fullName ??
+							`${u.user_metadata?.firstName ?? ''} ${u.user_metadata?.lastName ?? ''}`
+						).trim();
+						setDisplayName(fullName || u.email || 'Panel');
+					}
+				});
+				authListener = (sub as any)?.data ?? sub;
+			} catch {}
+		}
 
 		return () => {
 			mounted = false;
@@ -136,6 +162,20 @@ export default function DashboardNavBar(): React.ReactElement {
 	async function handleLogout() {
 		setSignOutLoading(true);
 		try {
+			// Si es superadmin de analytics, cerrar esa sesión primero
+			if (userRole === 'SUPERADMIN') {
+				try {
+					await fetch('/api/analytics/login', {
+						method: 'DELETE',
+						credentials: 'include',
+					});
+					router.push('/login/analytics');
+					return;
+				} catch (err) {
+					console.warn('Error cerrando sesión de analytics:', err);
+				}
+			}
+
 			// 1. Cerrar sesión en Supabase
 			const { error } = await supabaseClient.auth.signOut();
 			if (error) console.error('Error al cerrar sesión:', error);

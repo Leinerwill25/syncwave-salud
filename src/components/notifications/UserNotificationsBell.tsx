@@ -136,7 +136,7 @@ export default function UserNotificationsBell({ user }: Props) {
 				{
 					event: '*',
 					schema: 'public',
-					table: 'Notification',
+					table: 'notification',
 					filter: `"organizationId"=eq.${orgId},"userId"=eq.${appUserId}`,
 				},
 				(payload: any) => {
@@ -164,7 +164,7 @@ export default function UserNotificationsBell({ user }: Props) {
 			{
 				event: '*',
 				schema: 'public',
-				table: 'Notification',
+				table: 'notification',
 				filter: `"organizationId"=eq.${orgId},"userId".is.null`,
 			},
 			(payload: any) => {

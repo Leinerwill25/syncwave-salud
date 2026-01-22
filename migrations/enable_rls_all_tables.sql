@@ -27,7 +27,7 @@ DECLARE
         'prescription_dispense',
         'consultorio_role_permissions',
         'consultorio_role_users',
-        'Notification',
+        'notification',
         'prescription',
         'task',
         'ai_conversation',
@@ -410,9 +410,9 @@ CREATE POLICY "Users can view their conversations"
 -- ============================================================================
 
 -- Notification: Permitir acceso a usuarios que son dueños de la notificación
-DROP POLICY IF EXISTS "Users can view their notifications" ON public."Notification";
+DROP POLICY IF EXISTS "Users can view their notifications" ON public.notification;
 CREATE POLICY "Users can view their notifications"
-    ON public."Notification"
+    ON public.notification
     FOR SELECT
     USING (
         "userId"::text = auth.uid()::text
@@ -960,9 +960,9 @@ CREATE POLICY "Medics can manage lab results in their organization"
     );
 
 -- Notification: Permitir INSERT a usuarios autenticados, UPDATE/DELETE a dueños
-DROP POLICY IF EXISTS "Users can manage their notifications" ON public."Notification";
+DROP POLICY IF EXISTS "Users can manage their notifications" ON public.notification;
 CREATE POLICY "Users can manage their notifications"
-    ON public."Notification"
+    ON public.notification
     FOR ALL
     USING (
         "userId"::text = auth.uid()::text

@@ -84,7 +84,7 @@ BEGIN
         SELECT schemaname, tablename, policyname
         FROM pg_policies
         WHERE schemaname = 'public'
-        AND tablename IN ('User', 'Patient', 'Organization', 'Plan', 'Invite', 'FamilyGroup', 'FamilyGroupMember', 'MedicalRecord', 'Notification', 'Subscription')
+        AND tablename IN ('User', 'Patient', 'Organization', 'Plan', 'Invite', 'FamilyGroup', 'FamilyGroupMember', 'MedicalRecord', 'notification', 'Subscription')
     LOOP
         BEGIN
             EXECUTE format('DROP POLICY IF EXISTS %I ON public.%I', 
