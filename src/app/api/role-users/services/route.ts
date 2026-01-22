@@ -86,6 +86,10 @@ export async function GET(req: NextRequest) {
 		// Los servicios están almacenados como JSON en el campo services
 		const services = parseServicesField(profile.services);
 
+		// Debug: Log para ver qué servicios hay en la BD
+		console.log('[Role User Services API] Servicios en BD:', JSON.stringify(services, null, 2));
+		console.log('[Role User Services API] session.roleUserId:', session.roleUserId);
+
 		// Asegurar que todos los servicios tengan un id (para servicios antiguos que no lo tienen)
 		const servicesWithIds = services.map((s: RawService) => {
 			if (!s.id) {
@@ -106,12 +110,37 @@ export async function GET(req: NextRequest) {
 			}
 		}
 
-		// Filtrar solo servicios creados por este usuario (asistente de citas)
-		// Si el servicio no tiene createdBy, se excluye (son servicios antiguos o de otros usuarios)
-		const userServices = servicesWithIds.filter((s: RawService) => s.createdBy === session.roleUserId);
+		// Filtrar servicios creados por este usuario (asistente de citas)
+		// Si el servicio no tiene createdBy, también incluirlo (pueden ser servicios antiguos o compartidos)
+		const userServices = servicesWithIds.filter((s: RawService) => {
+			// Si no tiene createdBy, incluirlo (servicios antiguos o compartidos de la organización)
+			if (!s.createdBy || s.createdBy === null || s.createdBy === undefined) {
+				console.log('[Role User Services API] Incluyendo servicio sin createdBy:', s.name);
+				return true;
+			}
+			// Si tiene createdBy, solo incluirlo si coincide con el usuario actual
+			const matches = String(s.createdBy) === String(session.roleUserId);
+			if (!matches) {
+				console.log('[Role User Services API] Excluyendo servicio - createdBy no coincide:', {
+					serviceName: s.name,
+					serviceCreatedBy: s.createdBy,
+					sessionRoleUserId: session.roleUserId,
+					comparison: `${s.createdBy} === ${session.roleUserId}`
+				});
+			}
+			return matches;
+		});
+
+		// Debug: Log para ver qué servicios se filtraron
+		console.log('[Role User Services API] Servicios filtrados:', JSON.stringify(userServices, null, 2));
+		console.log('[Role User Services API] Total servicios antes del filtro:', servicesWithIds.length);
+		console.log('[Role User Services API] Total servicios después del filtro:', userServices.length);
 
 		// Filtrar solo servicios activos
 		const activeServices = userServices.filter((s: RawService) => s.is_active !== false);
+
+		// Debug: Log final
+		console.log('[Role User Services API] Servicios activos finales:', activeServices.length);
 
 		return NextResponse.json({ success: true, services: activeServices }, { status: 200 });
 	} catch (err: any) {
@@ -201,28 +230,43 @@ export async function POST(req: NextRequest) {
 			createdBy: session.roleUserId, // Guardar el ID del usuario que crea el servicio
 		};
 
+		// Debug: Log del servicio que se va a crear
+		console.log('[Role User Services API] Creando servicio:', JSON.stringify(newService, null, 2));
+		console.log('[Role User Services API] session.roleUserId:', session.roleUserId);
+		console.log('[Role User Services API] Servicios actuales antes de agregar:', currentServices.length);
+
 		const updatedServices = [...currentServices, newService];
 
+		// Debug: Log de servicios actualizados
+		console.log('[Role User Services API] Servicios actualizados después de agregar:', updatedServices.length);
+
 		if (existingProfile) {
-			const { error: updateError } = await supabase
+			const { error: updateError, data: updateData } = await supabase
 				.from('medic_profile')
 				.update({ services: updatedServices })
-				.eq('doctor_id', doctorId);
+				.eq('doctor_id', doctorId)
+				.select('services');
 
 			if (updateError) {
 				console.error('[Role User Services API] Error actualizando servicios:', updateError);
 				return NextResponse.json({ error: 'Error al guardar el servicio' }, { status: 500 });
 			}
+
+			// Debug: Verificar que se guardó correctamente
+			console.log('[Role User Services API] Servicios guardados en BD:', JSON.stringify(updateData?.[0]?.services, null, 2));
 		} else {
-			const { error: insertError } = await supabase.from('medic_profile').insert({
+			const { error: insertError, data: insertData } = await supabase.from('medic_profile').insert({
 				doctor_id: doctorId,
 				services: updatedServices,
-			});
+			}).select('services');
 
 			if (insertError) {
 				console.error('[Role User Services API] Error creando perfil con servicios:', insertError);
 				return NextResponse.json({ error: 'Error al guardar el servicio' }, { status: 500 });
 			}
+
+			// Debug: Verificar que se guardó correctamente
+			console.log('[Role User Services API] Servicios guardados en BD (nuevo perfil):', JSON.stringify(insertData?.[0]?.services, null, 2));
 		}
 
 		return NextResponse.json({ success: true, service: newService }, { status: 201 });
