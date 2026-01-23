@@ -167,15 +167,20 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
 		// Prevent duplicates - Email usando Supabase (tabla User según Database.sql)
 		// PERMITIR mismo email si tiene rol diferente (ej: DOCTOR puede tener también PACIENTE)
+		// Si existe, reutilizar el authId existente en lugar de crear uno nuevo
 		const { data: existingUsers, error: userCheckError } = await supabaseAdmin
 			.from('user')
-			.select('id, email, role')
+			.select('id, email, role, authId')
 			.eq('email', account.email);
 
 		if (userCheckError && userCheckError.code !== 'PGRST116') { // PGRST116 = no rows returned
 			console.error('[Register API] Error verificando email:', userCheckError);
 			return NextResponse.json({ ok: false, message: 'Error al verificar el email' }, { status: 500 });
 		}
+
+		// Variable para almacenar el authId existente si hay un usuario compatible
+		let existingAuthId: string | null = null;
+		let shouldReuseAuth = false;
 
 		// Si hay usuarios existentes con el mismo email, verificar si tienen roles diferentes
 		if (existingUsers && existingUsers.length > 0) {
@@ -203,6 +208,15 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 					ok: false, 
 					message: `Ya existe un usuario con ese email con rol(es): ${existingRoles.join(', ')}. Solo se permite el mismo email si los roles son compatibles (ej: DOCTOR puede tener también PACIENTE).` 
 				}, { status: 409 });
+			}
+
+			// Si es compatible, reutilizar el authId del primer usuario existente
+			// Todos los usuarios con el mismo email deben tener el mismo authId
+			const firstExistingUser = existingUsers.find(u => u.authId);
+			if (firstExistingUser && firstExistingUser.authId) {
+				existingAuthId = firstExistingUser.authId;
+				shouldReuseAuth = true;
+				console.log(`[Register API] Reutilizando authId existente ${existingAuthId} para email ${account.email} con nuevo rol ${role}`);
 			}
 		}
 
@@ -313,25 +327,33 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
 		if (supabaseAdmin) {
 			try {
-				// Crear usuario sin confirmar email - se enviará verificación automáticamente
-				const payload = {
-					email: account.email,
-					password: account.password,
-					user_metadata: { fullName: account.fullName, role: role },
-					email_confirm: false, // Cambiar a false para requerir verificación de email
-				};
-				const createResp = await supabaseAdmin.auth.admin.createUser(payload as unknown as Record<string, unknown>);
-				const parsedResp = parseSupabaseCreateResp(createResp);
-				if (parsedResp && parsedResp.id) {
-					supabaseUserId = parsedResp.id;
-					supabaseUserEmail = parsedResp.email ?? account.email;
-					supabaseCreated = true;
+				// Si hay un authId existente compatible, reutilizarlo en lugar de crear uno nuevo
+				if (shouldReuseAuth && existingAuthId) {
+					supabaseUserId = existingAuthId;
+					supabaseUserEmail = account.email;
+					supabaseCreated = false; // No creamos uno nuevo, solo reutilizamos
+					console.log(`[Register API] Reutilizando usuario de Supabase Auth con ID: ${existingAuthId}`);
+				} else {
+					// Crear usuario sin confirmar email - se enviará verificación automáticamente
+					const payload = {
+						email: account.email,
+						password: account.password,
+						user_metadata: { fullName: account.fullName, role: role },
+						email_confirm: false, // Cambiar a false para requerir verificación de email
+					};
+					const createResp = await supabaseAdmin.auth.admin.createUser(payload as unknown as Record<string, unknown>);
+					const parsedResp = parseSupabaseCreateResp(createResp);
+					if (parsedResp && parsedResp.id) {
+						supabaseUserId = parsedResp.id;
+						supabaseUserEmail = parsedResp.email ?? account.email;
+						supabaseCreated = true;
 
-					// Generar link de verificación y enviarlo por email
-					// Cuando se usa admin.createUser, Supabase NO envía el email automáticamente
-					// Necesitamos generar el link y enviarlo manualmente
-					try {
-						const redirectUrl = `${APP_URL || process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/auth/confirm-email`;
+						// Generar link de verificación y enviarlo por email
+						// Cuando se usa admin.createUser, Supabase NO envía el email automáticamente
+						// Necesitamos generar el link y enviarlo manualmente
+						// Solo si creamos un nuevo usuario (no si reutilizamos uno existente)
+						try {
+							const redirectUrl = `${APP_URL || process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/auth/confirm-email`;
 						const { data: linkData, error: linkError } = await supabaseAdmin.auth.admin.generateLink({
 							type: 'signup',
 							email: account.email,
@@ -376,6 +398,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 						}
 					} catch (linkErr) {
 						console.error('Error en proceso de generación de link de verificación:', linkErr);
+					}
 					}
 				}
 			} catch (err: unknown) {

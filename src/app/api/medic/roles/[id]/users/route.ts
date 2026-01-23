@@ -89,10 +89,15 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 
 		// Verificar que no exista un usuario con ese email en la tabla User usando Supabase
 		// PERMITIR mismo email si tiene rol diferente (ej: DOCTOR puede tener también PACIENTE)
+		// Si existe, reutilizar el authId existente en lugar de crear uno nuevo
 		const { data: existingUsersByEmail } = await supabaseAdmin
 			.from('user')
-			.select('id, email, role')
+			.select('id, email, role, authId')
 			.eq('email', email.trim());
+
+		// Variable para almacenar el authId existente si hay un usuario compatible
+		let existingAuthId: string | null = null;
+		let shouldReuseAuth = false;
 
 		if (existingUsersByEmail && existingUsersByEmail.length > 0) {
 			// Roles permitidos para tener el mismo email: DOCTOR/MEDICO puede tener PACIENTE, RECEPCION/RECEPCIONISTA puede tener PACIENTE
@@ -119,6 +124,15 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 				return NextResponse.json({ 
 					error: `Ya existe un usuario registrado con ese correo electrónico con rol(es): ${existingRoles.join(', ')}. Solo se permite el mismo email si los roles son compatibles (ej: DOCTOR puede tener también PACIENTE).` 
 				}, { status: 409 });
+			}
+
+			// Si es compatible, reutilizar el authId del primer usuario existente
+			// Todos los usuarios con el mismo email deben tener el mismo authId
+			const firstExistingUser = existingUsersByEmail.find(u => u.authId);
+			if (firstExistingUser && firstExistingUser.authId) {
+				existingAuthId = firstExistingUser.authId;
+				shouldReuseAuth = true;
+				console.log(`[Roles API] Reutilizando authId existente ${existingAuthId} para email ${email.trim()} con nuevo rol RECEPCION`);
 			}
 		}
 
@@ -209,29 +223,40 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 		// Hash de contraseña
 		const passwordHash = await bcrypt.hash(password.trim(), 10);
 
-		// Crear usuario en Supabase Auth
+		// Crear usuario en Supabase Auth o reutilizar existente
 		let supabaseUserId: string | null = null;
-		try {
-			const fullName = `${firstName.trim()} ${lastName.trim()}`;
-			const createResp = await supabaseAdmin.auth.admin.createUser({
-				email: email.trim(),
-				password: password.trim(),
-				email_confirm: true,
-				user_metadata: {
-					fullName: fullName,
-					role: 'RECEPCION', // Rol para usuarios de roles internos (personal administrativo)
-					identifier: identifier.trim(),
-					organizationId: user.organizationId,
-					isRoleUser: true, // Flag para identificar que es un usuario de rol interno
-				},
-			});
+		let supabaseCreated = false;
 
-			const parsedResp = parseSupabaseCreateResp(createResp);
-			if (parsedResp && parsedResp.id) {
-				supabaseUserId = parsedResp.id;
+		try {
+			// Si hay un authId existente compatible, reutilizarlo en lugar de crear uno nuevo
+			if (shouldReuseAuth && existingAuthId) {
+				supabaseUserId = existingAuthId;
+				supabaseCreated = false; // No creamos uno nuevo, solo reutilizamos
+				console.log(`[Roles API] Reutilizando usuario de Supabase Auth con ID: ${existingAuthId}`);
 			} else {
-				console.error('[Roles API] No se pudo obtener el ID del usuario de Supabase');
-				return NextResponse.json({ error: 'Error al crear el usuario en el sistema de autenticación' }, { status: 500 });
+				// Crear nuevo usuario en Supabase Auth
+				const fullName = `${firstName.trim()} ${lastName.trim()}`;
+				const createResp = await supabaseAdmin.auth.admin.createUser({
+					email: email.trim(),
+					password: password.trim(),
+					email_confirm: true,
+					user_metadata: {
+						fullName: fullName,
+						role: 'RECEPCION', // Rol para usuarios de roles internos (personal administrativo)
+						identifier: identifier.trim(),
+						organizationId: user.organizationId,
+						isRoleUser: true, // Flag para identificar que es un usuario de rol interno
+					},
+				});
+
+				const parsedResp = parseSupabaseCreateResp(createResp);
+				if (parsedResp && parsedResp.id) {
+					supabaseUserId = parsedResp.id;
+					supabaseCreated = true;
+				} else {
+					console.error('[Roles API] No se pudo obtener el ID del usuario de Supabase');
+					return NextResponse.json({ error: 'Error al crear el usuario en el sistema de autenticación' }, { status: 500 });
+				}
 			}
 		} catch (supabaseErr: unknown) {
 			console.error('[Roles API] Error creando usuario en Supabase Auth:', supabaseErr);
