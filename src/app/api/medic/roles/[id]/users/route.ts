@@ -88,17 +88,42 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 		}
 
 		// Verificar que no exista un usuario con ese email en la tabla User usando Supabase
-		const { data: existingUserByEmail } = await supabaseAdmin
+		// PERMITIR mismo email si tiene rol diferente (ej: DOCTOR puede tener también PACIENTE)
+		const { data: existingUsersByEmail } = await supabaseAdmin
 			.from('user')
-			.select('id')
-			.eq('email', email.trim())
-			.maybeSingle();
+			.select('id, email, role')
+			.eq('email', email.trim());
 
-		if (existingUserByEmail) {
-			return NextResponse.json({ error: 'Ya existe un usuario registrado con ese correo electrónico' }, { status: 409 });
+		if (existingUsersByEmail && existingUsersByEmail.length > 0) {
+			// Roles permitidos para tener el mismo email: DOCTOR/MEDICO puede tener PACIENTE, RECEPCION/RECEPCIONISTA puede tener PACIENTE
+			const allowedRoleCombinations: Record<string, string[]> = {
+				'MEDICO': ['PACIENTE'],
+				'DOCTOR': ['PACIENTE'],
+				'RECEPCION': ['PACIENTE'],
+				'RECEPCIONISTA': ['PACIENTE'],
+				'PACIENTE': ['MEDICO', 'DOCTOR', 'RECEPCION', 'RECEPCIONISTA'],
+			};
+
+			// El nuevo usuario será de rol RECEPCION (usuario de rol interno)
+			const newRoleUpper = 'RECEPCION';
+			const existingRoles = existingUsersByEmail.map(u => String(u.role || '').toUpperCase()).filter(r => r);
+
+			// Verificar si el nuevo rol es compatible con los roles existentes
+			const isCompatible = existingRoles.some(existingRole => {
+				// Si el nuevo rol está en la lista de permitidos para el rol existente, o viceversa
+				return allowedRoleCombinations[existingRole]?.includes(newRoleUpper) || 
+				       allowedRoleCombinations[newRoleUpper]?.includes(existingRole);
+			});
+
+			if (!isCompatible) {
+				return NextResponse.json({ 
+					error: `Ya existe un usuario registrado con ese correo electrónico con rol(es): ${existingRoles.join(', ')}. Solo se permite el mismo email si los roles son compatibles (ej: DOCTOR puede tener también PACIENTE).` 
+				}, { status: 409 });
+			}
 		}
 
 		// Verificar que no exista un usuario con esa cédula en la tabla User (buscando en patient)
+		// PERMITIR mismo identifier si tiene rol diferente (ej: DOCTOR puede tener también PACIENTE)
 		const { data: existingPatientByIdentifier } = await supabaseAdmin
 			.from('patient')
 			.select('id, patientProfileId')
@@ -109,12 +134,32 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 			// Verificar si hay un user asociado a este patient
 			const { data: existingUserByPatientId } = await supabaseAdmin
 				.from('user')
-				.select('id')
+				.select('id, role')
 				.eq('patientProfileId', existingPatientByIdentifier.id)
 				.maybeSingle();
 
 			if (existingUserByPatientId) {
-				return NextResponse.json({ error: 'Ya existe un usuario registrado con esa cédula de identidad' }, { status: 409 });
+				// Roles permitidos para tener el mismo identifier: DOCTOR/MEDICO puede tener PACIENTE, RECEPCION/RECEPCIONISTA puede tener PACIENTE
+				const allowedRoleCombinations: Record<string, string[]> = {
+					'MEDICO': ['PACIENTE'],
+					'DOCTOR': ['PACIENTE'],
+					'RECEPCION': ['PACIENTE'],
+					'RECEPCIONISTA': ['PACIENTE'],
+					'PACIENTE': ['MEDICO', 'DOCTOR', 'RECEPCION', 'RECEPCIONISTA'],
+				};
+
+				const existingRole = String(existingUserByPatientId.role || '').toUpperCase();
+				const newRoleUpper = 'RECEPCION'; // El nuevo usuario será de rol RECEPCION (usuario de rol interno)
+
+				// Verificar si el nuevo rol es compatible con el rol existente
+				const isCompatible = allowedRoleCombinations[existingRole]?.includes(newRoleUpper) || 
+				                     allowedRoleCombinations[newRoleUpper]?.includes(existingRole);
+
+				if (!isCompatible) {
+					return NextResponse.json({ 
+						error: `Ya existe un usuario registrado con esa cédula de identidad con rol: ${existingRole}. Solo se permite el mismo identifier si los roles son compatibles (ej: DOCTOR puede tener también PACIENTE).` 
+					}, { status: 409 });
+				}
 			}
 		}
 
@@ -131,14 +176,34 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 		}
 
 		// Verificar que no exista un usuario con ese email en consultorio_role_users
-		const { data: existingRoleUserByEmail } = await supabase
+		// PERMITIR mismo email si tiene rol diferente (ej: DOCTOR puede tener también PACIENTE)
+		const { data: existingRoleUsersByEmail } = await supabase
 			.from('consultorio_role_users')
-			.select('id')
-			.eq('email', email.trim())
-			.maybeSingle();
+			.select('id, email, role_id')
+			.eq('email', email.trim());
 
-		if (existingRoleUserByEmail) {
-			return NextResponse.json({ error: 'Ya existe un usuario con ese correo electrónico asignado a otro rol' }, { status: 409 });
+		if (existingRoleUsersByEmail && existingRoleUsersByEmail.length > 0) {
+			// Obtener los nombres de los roles existentes
+			const existingRoleIds = existingRoleUsersByEmail.map(u => u.role_id).filter(id => id);
+			if (existingRoleIds.length > 0) {
+				const { data: existingRoles } = await supabase
+					.from('consultorio_roles')
+					.select('id, role_name')
+					.in('id', existingRoleIds);
+
+				if (existingRoles && existingRoles.length > 0) {
+					const existingRoleNames = existingRoles.map(r => r.role_name).filter(name => name);
+					// Permitir si el email ya está en otro rol interno (roles internos pueden compartir email)
+					// Solo rechazar si es exactamente el mismo rol
+					const isSameRole = existingRoleIds.includes(roleId);
+					if (isSameRole) {
+						return NextResponse.json({ 
+							error: `Ya existe un usuario con ese correo electrónico asignado al rol "${existingRoleNames.join(', ')}"` 
+						}, { status: 409 });
+					}
+					// Si es diferente rol, permitir (puede tener múltiples roles internos)
+				}
+			}
 		}
 
 		// Hash de contraseña

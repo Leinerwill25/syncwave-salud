@@ -399,3 +399,5 @@ Ahora tienes n8n funcionando **sin necesidad de Environment Variables premium**.
 **¡Perfecto!** Ahora funciona sin necesidad del plan premium. 🎉
 
 
+
+

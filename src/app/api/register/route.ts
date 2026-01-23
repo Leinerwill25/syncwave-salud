@@ -166,19 +166,44 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 		}
 
 		// Prevent duplicates - Email usando Supabase (tabla User según Database.sql)
-		const { data: existing, error: userCheckError } = await supabaseAdmin
+		// PERMITIR mismo email si tiene rol diferente (ej: DOCTOR puede tener también PACIENTE)
+		const { data: existingUsers, error: userCheckError } = await supabaseAdmin
 			.from('user')
-			.select('id, email')
-			.eq('email', account.email)
-			.maybeSingle();
+			.select('id, email, role')
+			.eq('email', account.email);
 
 		if (userCheckError && userCheckError.code !== 'PGRST116') { // PGRST116 = no rows returned
 			console.error('[Register API] Error verificando email:', userCheckError);
 			return NextResponse.json({ ok: false, message: 'Error al verificar el email' }, { status: 500 });
 		}
 
-		if (existing) {
-			return NextResponse.json({ ok: false, message: 'Ya existe un usuario con ese email' }, { status: 409 });
+		// Si hay usuarios existentes con el mismo email, verificar si tienen roles diferentes
+		if (existingUsers && existingUsers.length > 0) {
+			// Roles permitidos para tener el mismo email: DOCTOR/MEDICO puede tener PACIENTE, RECEPCION/RECEPCIONISTA puede tener PACIENTE
+			const allowedRoleCombinations: Record<string, string[]> = {
+				'MEDICO': ['PACIENTE'],
+				'DOCTOR': ['PACIENTE'],
+				'RECEPCION': ['PACIENTE'],
+				'RECEPCIONISTA': ['PACIENTE'],
+				'PACIENTE': ['MEDICO', 'DOCTOR', 'RECEPCION', 'RECEPCIONISTA'],
+			};
+
+			const newRoleUpper = role.toUpperCase();
+			const existingRoles = existingUsers.map(u => String(u.role || '').toUpperCase()).filter(r => r);
+
+			// Verificar si el nuevo rol es compatible con los roles existentes
+			const isCompatible = existingRoles.some(existingRole => {
+				// Si el nuevo rol está en la lista de permitidos para el rol existente, o viceversa
+				return allowedRoleCombinations[existingRole]?.includes(newRoleUpper) || 
+				       allowedRoleCombinations[newRoleUpper]?.includes(existingRole);
+			});
+
+			if (!isCompatible) {
+				return NextResponse.json({ 
+					ok: false, 
+					message: `Ya existe un usuario con ese email con rol(es): ${existingRoles.join(', ')}. Solo se permite el mismo email si los roles son compatibles (ej: DOCTOR puede tener también PACIENTE).` 
+				}, { status: 409 });
+			}
 		}
 
 		// Variable para almacenar el ID del paciente no registrado si se encuentra
@@ -199,9 +224,10 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 			}
 
 			// Verificar en pacientes registrados usando Supabase (tabla Patient según Database.sql)
+			// PERMITIR mismo identifier si tiene rol diferente (ej: DOCTOR puede tener también PACIENTE)
 			const { data: existingRegistered, error: registeredCheckError } = await supabaseAdmin
 				.from('patient')
-				.select('id, identifier')
+				.select('id, identifier, patientProfileId')
 				.eq('identifier', identifier)
 				.maybeSingle();
 
@@ -216,14 +242,44 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 				);
 			}
 
-			if (existingRegistered) {
-				return NextResponse.json(
-					{
-						ok: false,
-						message: `La cédula de identidad "${identifier}" ya está registrada en el sistema. Por favor, verifique su cédula o contacte al administrador si cree que esto es un error.`,
-					},
-					{ status: 409 }
-				);
+			if (existingRegistered && existingRegistered.patientProfileId) {
+				// Verificar si hay un user asociado a este patient y qué rol tiene
+				const { data: existingUserByPatientId } = await supabaseAdmin
+					.from('user')
+					.select('id, role')
+					.eq('patientProfileId', existingRegistered.patientProfileId)
+					.maybeSingle();
+
+				if (existingUserByPatientId) {
+					// Roles permitidos para tener el mismo identifier: DOCTOR/MEDICO puede tener PACIENTE, RECEPCION/RECEPCIONISTA puede tener PACIENTE
+					const allowedRoleCombinations: Record<string, string[]> = {
+						'MEDICO': ['PACIENTE'],
+						'DOCTOR': ['PACIENTE'],
+						'RECEPCION': ['PACIENTE'],
+						'RECEPCIONISTA': ['PACIENTE'],
+						'PACIENTE': ['MEDICO', 'DOCTOR', 'RECEPCION', 'RECEPCIONISTA'],
+					};
+
+					const existingRole = String(existingUserByPatientId.role || '').toUpperCase();
+					const newRoleUpper = role.toUpperCase(); // El nuevo usuario será de rol PACIENTE
+
+					// Verificar si el nuevo rol es compatible con el rol existente
+					const isCompatible = allowedRoleCombinations[existingRole]?.includes(newRoleUpper) || 
+					                     allowedRoleCombinations[newRoleUpper]?.includes(existingRole);
+
+					if (!isCompatible) {
+						return NextResponse.json(
+							{
+								ok: false,
+								message: `La cédula de identidad "${identifier}" ya está registrada con rol: ${existingRole}. Solo se permite el mismo identifier si los roles son compatibles (ej: DOCTOR puede tener también PACIENTE).`,
+							},
+							{ status: 409 }
+						);
+					}
+				} else {
+					// Si existe el patient pero no tiene user asociado, permitir el registro
+					// (puede ser un paciente no registrado que se está registrando ahora)
+				}
 			}
 
 			// Verificar en pacientes no registrados usando Supabase

@@ -61,12 +61,25 @@ export default function LoginFormAdvanced(): React.ReactElement {
 
 	async function fetchRoleFromServer(authId: string): Promise<Role | null> {
 		try {
-			const resp = await fetch(`/api/auth/profile?authId=${encodeURIComponent(authId)}`);
+			// Add timeout to prevent hanging
+			const controller = new AbortController();
+			const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+			
+			const resp = await fetch(`/api/auth/profile?authId=${encodeURIComponent(authId)}`, {
+				signal: controller.signal,
+				credentials: 'include',
+			});
+			clearTimeout(timeoutId);
+			
 			if (!resp.ok) return null;
 			const json = await resp.json();
 			return json?.data?.role ?? null;
-		} catch (err) {
-			console.warn('fetchRoleFromServer error', err);
+		} catch (err: any) {
+			if (err.name === 'AbortError') {
+				console.warn('fetchRoleFromServer timeout');
+			} else {
+				console.warn('fetchRoleFromServer error', err);
+			}
 			return null;
 		}
 	}
@@ -74,15 +87,25 @@ export default function LoginFormAdvanced(): React.ReactElement {
 	async function postSessionToServer(session: { access_token?: string; refresh_token?: string; expires_in?: number; session?: any }, remember: boolean = false) {
 		if (!session?.access_token) return false;
 		try {
+			// Add timeout to prevent hanging
+			const controller = new AbortController();
+			const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+			
 			const resp = await fetch('/api/auth/set-session', {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
 				credentials: 'include',
 				body: JSON.stringify({ ...session, rememberMe: remember }),
+				signal: controller.signal,
 			});
+			clearTimeout(timeoutId);
 			return resp.ok;
-		} catch (err) {
-			console.error('postSessionToServer error', err);
+		} catch (err: any) {
+			if (err.name === 'AbortError') {
+				console.error('postSessionToServer timeout');
+			} else {
+				console.error('postSessionToServer error', err);
+			}
 			return false;
 		}
 	}
@@ -154,11 +177,15 @@ export default function LoginFormAdvanced(): React.ReactElement {
 			// Ejecutar llamadas en paralelo para mayor velocidad
 			const isRoleUser = (user.user_metadata as any)?.isRoleUser === true;
 			
-			// Hacer ambas llamadas en paralelo
-			const [sessionResult, roleFromServer] = await Promise.all([
+			// Hacer ambas llamadas en paralelo con timeout individual
+			const results = await Promise.allSettled([
 				access_token ? postSessionToServer({ access_token, refresh_token, expires_in, session }, rememberMe) : Promise.resolve(true),
 				user.id ? fetchRoleFromServer(user.id) : Promise.resolve(null),
 			]);
+			
+			// Extract values from settled promises, defaulting to safe values on failure
+			const sessionResult = results[0].status === 'fulfilled' ? results[0].value : false;
+			const roleFromServer: Role | null = results[1].status === 'fulfilled' ? (results[1].value as Role | null) : null;
 
 			// Precargar datos de sesión en background (no bloquea la redirección)
 			if (access_token && sessionResult) {
