@@ -163,9 +163,82 @@ export async function POST(req: NextRequest) {
 				
 				console.log(`[Login Multiple Users] ✓ Contraseña actualizada en Supabase Auth`);
 				
-				// Actualizar authId en TODOS los usuarios con este email
+				// PRIMERO: Actualizar el authId del usuario RECEPCION (el que tiene la contraseña válida)
+				// Este es el usuario que se usará para la sesión
+				const recepcionUser = allUsers.find(u => {
+					const role = String(u.role || '').toUpperCase();
+					return (role === 'RECEPCION' || role === 'RECEPCIONISTA') && u.id === validPasswordUser.id;
+				});
+				
+				if (recepcionUser) {
+					console.log(`[Login Multiple Users] Actualizando authId para usuario RECEPCION ${recepcionUser.id} PRIMERO`);
+					
+					// Si el authId ya está en uso por otro usuario, quitarlo primero
+					const { data: existingUserWithAuthId } = await supabaseAdmin
+						.from('user')
+						.select('id, email, role')
+						.eq('authId', authUser.id)
+						.neq('id', recepcionUser.id)
+						.maybeSingle();
+					
+					if (existingUserWithAuthId) {
+						console.log(`[Login Multiple Users] authId ${authUser.id} está en uso por usuario ${existingUserWithAuthId.id} (rol: ${existingUserWithAuthId.role}), removiéndolo primero`);
+						const { error: removeAuthIdError } = await supabaseAdmin
+							.from('user')
+							.update({ authId: null })
+							.eq('id', existingUserWithAuthId.id);
+						
+						if (removeAuthIdError) {
+							console.error(`[Login Multiple Users] Error removiendo authId del usuario ${existingUserWithAuthId.id}:`, removeAuthIdError);
+						} else {
+							console.log(`[Login Multiple Users] ✓ authId removido del usuario ${existingUserWithAuthId.id}`);
+						}
+					}
+					
+					// Actualizar el authId del usuario RECEPCION
+					const { error: updateRecepcionAuthIdError } = await supabaseAdmin
+						.from('user')
+						.update({ authId: authUser.id })
+						.eq('id', recepcionUser.id);
+					
+					if (updateRecepcionAuthIdError) {
+						console.error(`[Login Multiple Users] Error actualizando authId para usuario RECEPCION ${recepcionUser.id}:`, updateRecepcionAuthIdError);
+					} else {
+						console.log(`[Login Multiple Users] ✓ authId actualizado para usuario RECEPCION ${recepcionUser.id}`);
+						// Actualizar el objeto en memoria para que se use en la respuesta
+						recepcionUser.authId = authUser.id;
+					}
+				}
+				
+				// SEGUNDO: Actualizar otros usuarios si no tienen authId (pero no forzar si ya tienen uno diferente)
 				for (const u of allUsers) {
-					if (!u.authId || u.authId !== authUser.id) {
+					// Si el usuario ya tiene el authId correcto, no hacer nada
+					if (u.authId === authUser.id) {
+						console.log(`[Login Multiple Users] Usuario ${u.id} (rol: ${u.role}) ya tiene authId correcto`);
+						continue;
+					}
+					
+					// Si es el usuario RECEPCION, ya lo actualizamos arriba
+					const isRecepcion = String(u.role || '').toUpperCase() === 'RECEPCION' || String(u.role || '').toUpperCase() === 'RECEPCIONISTA';
+					if (isRecepcion && u.id === recepcionUser?.id) {
+						continue; // Ya actualizado
+					}
+					
+					// Solo actualizar si no tiene authId (no forzar actualización si ya tiene uno diferente)
+					if (!u.authId) {
+						// Verificar si el authId ya está en uso
+						const { data: existingUserWithAuthId } = await supabaseAdmin
+							.from('user')
+							.select('id, email, role')
+							.eq('authId', authUser.id)
+							.neq('id', u.id)
+							.maybeSingle();
+						
+						if (existingUserWithAuthId) {
+							console.log(`[Login Multiple Users] Saltando actualización de authId para usuario ${u.id} (rol: ${u.role}) - authId ya en uso`);
+							continue;
+						}
+						
 						const { error: updateAuthIdError } = await supabaseAdmin
 							.from('user')
 							.update({ authId: authUser.id })
@@ -176,6 +249,8 @@ export async function POST(req: NextRequest) {
 						} else {
 							console.log(`[Login Multiple Users] ✓ authId actualizado para usuario ${u.id} (rol: ${u.role})`);
 						}
+					} else {
+						console.log(`[Login Multiple Users] Saltando actualización de authId para usuario ${u.id} (rol: ${u.role}) - ya tiene authId diferente`);
 					}
 				}
 				
@@ -191,8 +266,18 @@ export async function POST(req: NextRequest) {
 
 				if (!authError && authData?.user && authData?.session) {
 					console.log(`[Login Multiple Users] ✓ Login exitoso después de actualizar contraseña`);
-					const recepcionUser = allUsers.find(u => String(u.role || '').toUpperCase() === 'RECEPCION');
-					const selectedUser = recepcionUser || validPasswordUser;
+					// Priorizar usuario RECEPCION/RECEPCIONISTA, luego el que tiene passwordHash válido
+					const recepcionUser = allUsers.find(u => {
+						const role = String(u.role || '').toUpperCase();
+						return role === 'RECEPCION' || role === 'RECEPCIONISTA';
+					});
+					const selectedUser = recepcionUser || validPasswordUser || allUsers.find(u => u.authId === authData.user.id) || allUsers[0];
+					
+					console.log(`[Login Multiple Users] Usuario seleccionado para respuesta:`, {
+						id: selectedUser?.id,
+						role: selectedUser?.role,
+						hasAuthId: !!selectedUser?.authId
+					});
 					
 					return NextResponse.json({
 						success: true,
@@ -220,17 +305,86 @@ export async function POST(req: NextRequest) {
 
 				console.log(`[Login Multiple Users] ✓ Usuario creado en Supabase Auth (ID: ${newAuthUser.user.id})`);
 				
-				// Actualizar authId en TODOS los usuarios con este email
-				for (const u of allUsers) {
-					const { error: updateAuthIdError } = await supabaseAdmin
+				// PRIMERO: Actualizar el authId del usuario RECEPCION (el que tiene la contraseña válida)
+				const recepcionUser = allUsers.find(u => {
+					const role = String(u.role || '').toUpperCase();
+					return (role === 'RECEPCION' || role === 'RECEPCIONISTA') && u.id === validPasswordUser.id;
+				});
+				
+				if (recepcionUser) {
+					console.log(`[Login Multiple Users] Actualizando authId para usuario RECEPCION ${recepcionUser.id} PRIMERO`);
+					
+					// Si el authId ya está en uso por otro usuario, quitarlo primero
+					const { data: existingUserWithAuthId } = await supabaseAdmin
+						.from('user')
+						.select('id, email, role')
+						.eq('authId', newAuthUser.user.id)
+						.neq('id', recepcionUser.id)
+						.maybeSingle();
+					
+					if (existingUserWithAuthId) {
+						console.log(`[Login Multiple Users] authId ${newAuthUser.user.id} está en uso por usuario ${existingUserWithAuthId.id} (rol: ${existingUserWithAuthId.role}), removiéndolo primero`);
+						const { error: removeAuthIdError } = await supabaseAdmin
+							.from('user')
+							.update({ authId: null })
+							.eq('id', existingUserWithAuthId.id);
+						
+						if (removeAuthIdError) {
+							console.error(`[Login Multiple Users] Error removiendo authId del usuario ${existingUserWithAuthId.id}:`, removeAuthIdError);
+						} else {
+							console.log(`[Login Multiple Users] ✓ authId removido del usuario ${existingUserWithAuthId.id}`);
+						}
+					}
+					
+					// Actualizar el authId del usuario RECEPCION
+					const { error: updateRecepcionAuthIdError } = await supabaseAdmin
 						.from('user')
 						.update({ authId: newAuthUser.user.id })
-						.eq('id', u.id);
+						.eq('id', recepcionUser.id);
 					
-					if (updateAuthIdError) {
-						console.error(`[Login Multiple Users] Error actualizando authId para usuario ${u.id}:`, updateAuthIdError);
+					if (updateRecepcionAuthIdError) {
+						console.error(`[Login Multiple Users] Error actualizando authId para usuario RECEPCION ${recepcionUser.id}:`, updateRecepcionAuthIdError);
 					} else {
-						console.log(`[Login Multiple Users] ✓ authId actualizado para usuario ${u.id} (rol: ${u.role})`);
+						console.log(`[Login Multiple Users] ✓ authId actualizado para usuario RECEPCION ${recepcionUser.id}`);
+						recepcionUser.authId = newAuthUser.user.id;
+					}
+				}
+				
+				// SEGUNDO: Actualizar otros usuarios si no tienen authId
+				for (const u of allUsers) {
+					if (u.authId === newAuthUser.user.id) {
+						continue; // Ya tiene el authId correcto
+					}
+					
+					const isRecepcionUser = String(u.role || '').toUpperCase() === 'RECEPCION' || String(u.role || '').toUpperCase() === 'RECEPCIONISTA';
+					if (isRecepcionUser && u.id === recepcionUser?.id) {
+						continue; // Ya actualizado
+					}
+					
+					// Solo actualizar si no tiene authId
+					if (!u.authId) {
+						const { data: existingUserWithAuthId } = await supabaseAdmin
+							.from('user')
+							.select('id, email, role')
+							.eq('authId', newAuthUser.user.id)
+							.neq('id', u.id)
+							.maybeSingle();
+						
+						if (existingUserWithAuthId) {
+							console.log(`[Login Multiple Users] Saltando actualización de authId para usuario ${u.id} (rol: ${u.role}) - authId ya en uso`);
+							continue;
+						}
+						
+						const { error: updateAuthIdError } = await supabaseAdmin
+							.from('user')
+							.update({ authId: newAuthUser.user.id })
+							.eq('id', u.id);
+						
+						if (updateAuthIdError) {
+							console.error(`[Login Multiple Users] Error actualizando authId para usuario ${u.id}:`, updateAuthIdError);
+						} else {
+							console.log(`[Login Multiple Users] ✓ authId actualizado para usuario ${u.id} (rol: ${u.role})`);
+						}
 					}
 				}
 
@@ -246,8 +400,18 @@ export async function POST(req: NextRequest) {
 
 				if (!authError && authData?.user && authData?.session) {
 					console.log(`[Login Multiple Users] ✓ Login exitoso después de crear usuario`);
-					const recepcionUser = allUsers.find(u => String(u.role || '').toUpperCase() === 'RECEPCION');
-					const selectedUser = recepcionUser || validPasswordUser;
+					// Priorizar usuario RECEPCION/RECEPCIONISTA, luego el que tiene passwordHash válido
+					const recepcionUser = allUsers.find(u => {
+						const role = String(u.role || '').toUpperCase();
+						return role === 'RECEPCION' || role === 'RECEPCIONISTA';
+					});
+					const selectedUser = recepcionUser || validPasswordUser || allUsers.find(u => u.authId === authData.user.id) || allUsers[0];
+					
+					console.log(`[Login Multiple Users] Usuario seleccionado para respuesta:`, {
+						id: selectedUser?.id,
+						role: selectedUser?.role,
+						hasAuthId: !!selectedUser?.authId
+					});
 					
 					return NextResponse.json({
 						success: true,
@@ -274,8 +438,18 @@ export async function POST(req: NextRequest) {
 
 			if (!normalAuthError && normalAuthData?.user && normalAuthData?.session) {
 				console.log('[Login Multiple Users] ✓ Login normal exitoso');
-				const recepcionUser = allUsers.find(u => String(u.role || '').toUpperCase() === 'RECEPCION');
+				// Priorizar usuario RECEPCION/RECEPCIONISTA
+				const recepcionUser = allUsers.find(u => {
+					const role = String(u.role || '').toUpperCase();
+					return role === 'RECEPCION' || role === 'RECEPCIONISTA';
+				});
 				const selectedUser = recepcionUser || allUsers.find(u => u.authId === normalAuthData.user.id) || allUsers[0];
+				
+				console.log(`[Login Multiple Users] Usuario seleccionado para respuesta (login normal):`, {
+					id: selectedUser?.id,
+					role: selectedUser?.role,
+					hasAuthId: !!selectedUser?.authId
+				});
 				
 				return NextResponse.json({
 					success: true,

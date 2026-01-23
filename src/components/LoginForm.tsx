@@ -6,14 +6,50 @@ import { createClient } from '@supabase/supabase-js';
 import { useRouter } from 'next/navigation';
 import { FiMail, FiEye, FiEyeOff, FiShield, FiBriefcase, FiCheckCircle, FiLogIn, FiRefreshCw } from 'react-icons/fi';
 
-const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
-const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+// Función para obtener el cliente de Supabase de forma segura
+function getSupabaseClient() {
+	const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
+	const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+	
+	if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
+		console.error('Error: NEXT_PUBLIC_SUPABASE_URL o NEXT_PUBLIC_SUPABASE_ANON_KEY no están definidas');
+		throw new Error('Configuración de Supabase no encontrada. Por favor, verifica las variables de entorno.');
+	}
+	
+	return createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+}
 
 type Role = 'ADMIN' | 'MEDICO' | 'FARMACIA' | 'PACIENTE' | string;
 
 export default function LoginFormAdvanced(): React.ReactElement {
 	const router = useRouter();
+	
+	// Obtener cliente de Supabase de forma segura
+	const supabase = React.useMemo(() => {
+		try {
+			const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
+			const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+			
+			if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
+				console.error('Error: Variables de entorno de Supabase no están definidas');
+				return null as any;
+			}
+			
+			return createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+		} catch (error) {
+			console.error('Error inicializando Supabase:', error);
+			return null as any;
+		}
+	}, []);
+	
+	// Estado para verificar si hay error de configuración
+	const [configError, setConfigError] = React.useState<string | null>(null);
+	
+	React.useEffect(() => {
+		if (!supabase) {
+			setConfigError('Error de configuración: Las variables de entorno de Supabase no están disponibles. Por favor, contacta al administrador.');
+		}
+	}, [supabase]);
 
 	// Cargar preferencia de "recuérdame" y email desde localStorage
 	const [email, setEmail] = useState(() => {
@@ -36,12 +72,19 @@ export default function LoginFormAdvanced(): React.ReactElement {
 	});
 
 	function routeForRole(role?: Role, isRoleUser?: boolean) {
-		// Si es un usuario de rol, redirigir al dashboard de usuarios de rol
+		const roleUpper = (role || '').toString().toUpperCase();
+		
+		// Si es RECEPCION, SIEMPRE redirigir a /login/role-user (independientemente de isRoleUser)
+		if (roleUpper === 'RECEPCION' || roleUpper === 'RECEPCIONISTA') {
+			return '/login/role-user';
+		}
+		
+		// Si es un usuario de rol (pero no RECEPCION), redirigir al dashboard de usuarios de rol
 		if (isRoleUser) {
 			return '/dashboard/role-user';
 		}
 
-		switch ((role || '').toString().toUpperCase()) {
+		switch (roleUpper) {
 			case 'ADMIN':
 				return '/dashboard/clinic';
 			case 'MEDICO':
@@ -50,10 +93,6 @@ export default function LoginFormAdvanced(): React.ReactElement {
 				return '/dashboard/pharmacy';
 			case 'PACIENTE':
 				return '/dashboard/patient';
-			case 'RECEPCION':
-				// Si es RECEPCION y tiene isRoleUser, ir al dashboard de roles
-				// Si no, redirigir al login de usuarios de rol
-				return '/login/role-user';
 			default:
 				return '/dashboard';
 		}
@@ -120,7 +159,9 @@ export default function LoginFormAdvanced(): React.ReactElement {
 			// Limpiar sesiones anteriores antes de iniciar una nueva
 			try {
 				// Cerrar cualquier sesión existente en Supabase
-				await supabase.auth.signOut();
+				if (supabase) {
+					await supabase.auth.signOut();
+				}
 				
 				// Limpiar cookies del servidor
 				await fetch('/api/auth/clear-session', {
@@ -164,14 +205,21 @@ export default function LoginFormAdvanced(): React.ReactElement {
 
 				if (loginResponse.ok) {
 					const loginData = await loginResponse.json();
-					console.log('[LoginForm] Datos recibidos:', { success: loginData.success, hasUser: !!loginData.user, hasSession: !!loginData.session });
+					console.log('[LoginForm] Datos recibidos:', { 
+						success: loginData.success, 
+						hasUser: !!loginData.user, 
+						hasSession: !!loginData.session,
+						hasDbUser: !!loginData.dbUser,
+						dbUserRole: loginData.dbUser?.role
+					});
 					
 					if (loginData.success && loginData.user && loginData.session) {
 						data = {
 							user: loginData.user,
 							session: loginData.session,
+							dbUser: loginData.dbUser, // Guardar dbUser para usar después
 						};
-						console.log('[LoginForm] Login exitoso con endpoint múltiple');
+						console.log('[LoginForm] Login exitoso con endpoint múltiple, dbUser:', loginData.dbUser);
 					} else {
 						console.warn('[LoginForm] Respuesta OK pero sin datos válidos:', loginData);
 						error = { message: 'Invalid login credentials' };
@@ -184,11 +232,15 @@ export default function LoginFormAdvanced(): React.ReactElement {
 			} catch (fetchError) {
 				console.error('[LoginForm] Error en login-multiple-users, intentando login normal:', fetchError);
 				// Fallback a login normal si el endpoint falla
-				const normalLogin = await supabase.auth.signInWithPassword({ email, password });
-				data = normalLogin.data;
-				error = normalLogin.error;
-				if (error) {
-					console.error('[LoginForm] Error en login normal:', error.message);
+				if (supabase) {
+					const normalLogin = await supabase.auth.signInWithPassword({ email, password });
+					data = normalLogin.data;
+					error = normalLogin.error;
+					if (error) {
+						console.error('[LoginForm] Error en login normal:', error.message);
+					}
+				} else {
+					error = { message: 'Error de configuración: Supabase no está disponible' };
 				}
 			}
 
@@ -261,8 +313,15 @@ export default function LoginFormAdvanced(): React.ReactElement {
 			}
 
 			// Determinar el rol a usar
+			// Priorizar dbUser del endpoint login-multiple-users si está disponible
+			const dbUser = (data as any)?.dbUser;
 			let roleToUse: Role | null = null;
-			if (roleFromServer) {
+			
+			if (dbUser && dbUser.role) {
+				// Si tenemos dbUser del endpoint login-multiple-users, usar su rol
+				roleToUse = dbUser.role as Role;
+				console.log('[LoginForm] Usando rol de dbUser:', roleToUse);
+			} else if (roleFromServer) {
 				roleToUse = roleFromServer;
 			} else {
 				// Fallback a user_metadata solo si no se puede obtener de la BD
@@ -270,36 +329,9 @@ export default function LoginFormAdvanced(): React.ReactElement {
 				roleToUse = metadataRole ?? null;
 			}
 
-			// Si es RECEPCION, verificar si está en consultorio_role_users para redirigir correctamente
-			let finalIsRoleUser = isRoleUser;
-			let isRecepcion = roleToUse && (String(roleToUse).toUpperCase() === 'RECEPCION' || String(roleToUse).toUpperCase() === 'RECEPCIONISTA');
-			
-			if (isRecepcion && !isRoleUser) {
-				try {
-					console.log('[LoginForm] Verificando si usuario RECEPCION está en consultorio_role_users, email:', email);
-					const roleUserCheck = await fetch(`/api/role-users/check?email=${encodeURIComponent(email)}`, {
-						credentials: 'include',
-					});
-					
-					if (roleUserCheck.ok) {
-						const roleUserData = await roleUserCheck.json();
-						console.log('[LoginForm] Respuesta de verificación:', roleUserData);
-						if (roleUserData.exists) {
-							finalIsRoleUser = true;
-							console.log('[LoginForm] ✓ Usuario RECEPCION encontrado en consultorio_role_users, redirigiendo a dashboard');
-						} else {
-							console.log('[LoginForm] ✗ Usuario RECEPCION NO encontrado en consultorio_role_users');
-						}
-					} else {
-						console.warn('[LoginForm] Error en respuesta de verificación:', roleUserCheck.status, roleUserCheck.statusText);
-					}
-				} catch (err) {
-					console.error('[LoginForm] Error verificando consultorio_role_users:', err);
-				}
-			}
-
 			// Determinar la ruta de destino ANTES de cualquier delay
-			const targetRoute = routeForRole(roleToUse ?? '', finalIsRoleUser);
+			// Para usuarios RECEPCION, SIEMPRE redirigir a /login/role-user
+			const targetRoute = routeForRole(roleToUse ?? '', isRoleUser);
 			
 			// Prefetch del dashboard y datos críticos ANTES de redirigir (no bloquea)
 			if (targetRoute && targetRoute !== '/dashboard/role-user') {
@@ -332,19 +364,20 @@ export default function LoginFormAdvanced(): React.ReactElement {
 			// Esperar un momento para asegurar que las cookies se hayan establecido correctamente
 			await new Promise((resolve) => setTimeout(resolve, 200));
 
-			// Si es un usuario de rol (incluyendo RECEPCION verificado), redirigir al dashboard de usuarios de rol
-			if (finalIsRoleUser || isRoleUser) {
-				console.log('[LoginForm] Redirigiendo a dashboard de role-user (finalIsRoleUser:', finalIsRoleUser, ', isRoleUser:', isRoleUser, ')');
+			// Si es RECEPCION, SIEMPRE redirigir a /login/role-user
+			const isRecepcion = roleToUse && (String(roleToUse).toUpperCase() === 'RECEPCION' || String(roleToUse).toUpperCase() === 'RECEPCIONISTA');
+			if (isRecepcion) {
+				console.log('[LoginForm] Usuario RECEPCION detectado, redirigiendo a /login/role-user');
 				// Usar window.location para forzar una recarga completa y evitar problemas de caché
-				window.location.href = '/dashboard/role-user';
+				window.location.href = '/login/role-user';
 				return;
 			}
 
-			// Si es RECEPCION pero NO está en consultorio_role_users, redirigir al login de roles
-			if (isRecepcion && !finalIsRoleUser) {
-				console.log('[LoginForm] Usuario RECEPCION no verificado en consultorio_role_users, redirigiendo a login de roles');
+			// Si es un usuario de rol (pero no RECEPCION), redirigir al dashboard de usuarios de rol
+			if (isRoleUser) {
+				console.log('[LoginForm] Redirigiendo a dashboard de role-user (isRoleUser:', isRoleUser, ')');
 				// Usar window.location para forzar una recarga completa y evitar problemas de caché
-				window.location.href = '/login/role-user';
+				window.location.href = '/dashboard/role-user';
 				return;
 			}
 
@@ -376,6 +409,11 @@ export default function LoginFormAdvanced(): React.ReactElement {
 		setErrorMsg(null);
 		setLoading(true);
 		try {
+			if (!supabase) {
+				setErrorMsg('Error de configuración: Supabase no está disponible');
+				setLoading(false);
+				return;
+			}
 			const { error } = await supabase.auth.resetPasswordForEmail(email, {
 				redirectTo: `${window.location.origin}/reset-password`,
 			});
@@ -395,6 +433,24 @@ export default function LoginFormAdvanced(): React.ReactElement {
 	// text: #2C3E50
 	// error: #E74C3C
 	// success: #27AE60
+
+	// Si hay error de configuración, mostrar mensaje
+	if (configError) {
+		return (
+			<div className="w-full max-w-6xl mx-auto px-3 sm:px-6 mt-6 sm:mt-12">
+				<div className="rounded-2xl sm:rounded-3xl overflow-hidden bg-red-50 border-2 border-red-200 p-6">
+					<div className="flex items-center gap-3 mb-4">
+						<div className="flex-shrink-0 w-10 h-10 rounded-full bg-red-100 flex items-center justify-center">
+							<FiShield className="w-5 h-5 text-red-600" />
+						</div>
+						<h2 className="text-lg font-semibold text-red-900">Error de Configuración</h2>
+					</div>
+					<p className="text-red-700 mb-4">{configError}</p>
+					<p className="text-sm text-red-600">Por favor, contacta al administrador del sistema.</p>
+				</div>
+			</div>
+		);
+	}
 
 	return (
 		<form onSubmit={handleSubmit} className="w-full max-w-6xl mx-auto px-3 sm:px-6 mt-6 sm:mt-12 overflow-x-hidden">

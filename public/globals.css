@@ -120,3 +120,43 @@ body {
 		transform: translateX(100%);
 	}
 }
+
+/* Forzar paleta de colores ASHIRA - Verde y Azul */
+:root {
+	--ashira-teal: #0d9488;
+	--ashira-teal-light: #14b8a6;
+	--ashira-cyan: #06b6d4;
+	--ashira-cyan-light: #22d3ee;
+	--ashira-blue: #2563eb;
+	--ashira-blue-light: #3b82f6;
+	--ashira-green: #10b981;
+	--ashira-bg-gradient: linear-gradient(to bottom right, #f8fafc, #eff6ff, #f0fdfa);
+}
+
+/* Asegurar que los gradientes de teal y cyan se muestren correctamente */
+.bg-gradient-teal-cyan {
+	background: linear-gradient(to right, #0d9488, #06b6d4) !important;
+}
+
+.bg-gradient-teal-cyan-blue {
+	background: linear-gradient(to bottom right, #0d9488, #06b6d4, #2563eb) !important;
+}
+
+.text-gradient-teal-cyan {
+	background: linear-gradient(to right, #0d9488, #06b6d4) !important;
+	-webkit-background-clip: text !important;
+	-webkit-text-fill-color: transparent !important;
+	background-clip: text !important;
+}
+
+/* Forzar colores de fondo en la página principal */
+body {
+	color-scheme: light !important;
+}
+
+/* Prevenir que el navegador aplique estilos de dark mode */
+@media (prefers-color-scheme: dark) {
+	:root {
+		color-scheme: light !important;
+	}
+}

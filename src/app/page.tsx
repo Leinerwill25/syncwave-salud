@@ -50,7 +50,7 @@ export default function HomePage() {
 	};
 
 	return (
-		<div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-teal-50 overflow-x-hidden w-full max-w-full">
+		<div className="min-h-screen overflow-x-hidden w-full max-w-full" style={{ background: 'linear-gradient(to bottom right, #f8fafc, #eff6ff, #f0fdfa)' }}>
 			<script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
 			{/* Hero Section */}
 			<section className="relative overflow-hidden pt-20 pb-16 sm:pt-24 sm:pb-20 md:pt-32 md:pb-28">
@@ -69,17 +69,17 @@ export default function HomePage() {
 						<motion.div variants={containerVariants} initial="hidden" animate="visible" className="text-center lg:text-left">
 							<motion.div variants={itemVariants} className="mb-6 flex justify-center lg:justify-start">
 								<div className="relative inline-flex items-center justify-center">
-									<div className="absolute inset-0 bg-gradient-to-r from-teal-600 to-cyan-600 rounded-3xl blur-xl opacity-50 animate-pulse" />
-									<div className="relative inline-flex items-center justify-center w-20 h-20 sm:w-24 sm:h-24 rounded-3xl bg-gradient-to-br from-teal-600 via-cyan-600 to-blue-600 shadow-2xl">
+									<div className="absolute inset-0 rounded-3xl blur-xl opacity-50 animate-pulse" style={{ background: 'linear-gradient(to right, #0d9488, #06b6d4)' }} />
+									<div className="relative inline-flex items-center justify-center w-20 h-20 sm:w-24 sm:h-24 rounded-3xl shadow-2xl" style={{ background: 'linear-gradient(to bottom right, #0d9488, #06b6d4, #2563eb)' }}>
 										<HeartPulse className="w-10 h-10 sm:w-12 sm:h-12 text-white" />
 									</div>
 								</div>
 							</motion.div>
 
-							<motion.h1 variants={itemVariants} className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-extrabold text-slate-900 mb-6 leading-tight">
-								<span className="bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-600 bg-clip-text text-transparent">ASHIRA</span>
+							<motion.h1 variants={itemVariants} className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-extrabold mb-6 leading-tight" style={{ color: '#0f172a' }}>
+								<span style={{ background: 'linear-gradient(to right, #0d9488, #06b6d4, #2563eb)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>ASHIRA</span>
 								<br />
-								<span className="text-slate-800">Plataforma Integral de Salud Digital para Venezuela</span>
+								<span style={{ color: '#1e293b' }}>Plataforma Integral de Salud Digital para Venezuela</span>
 							</motion.h1>
 
 							<motion.p variants={itemVariants} className="text-lg sm:text-xl md:text-2xl text-slate-600 mb-8 leading-relaxed">
@@ -87,11 +87,11 @@ export default function HomePage() {
 							</motion.p>
 
 							<motion.div variants={itemVariants} className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start">
-								<Link href="/register" className="group inline-flex items-center justify-center gap-2 px-8 py-4 bg-gradient-to-r from-teal-600 to-cyan-600 hover:from-teal-700 hover:to-cyan-700 text-white font-semibold rounded-2xl shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-300 text-base sm:text-lg">
+								<Link href="/register" className="group inline-flex items-center justify-center gap-2 px-8 py-4 text-white font-semibold rounded-2xl shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-300 text-base sm:text-lg" style={{ background: 'linear-gradient(to right, #0d9488, #06b6d4)' }}>
 									Comenzar Ahora
 									<ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
 								</Link>
-								<Link href="/login" className="inline-flex items-center justify-center gap-2 px-8 py-4 bg-white hover:bg-slate-50 text-slate-700 font-semibold rounded-2xl border-2 border-slate-200 hover:border-teal-300 shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-300 text-base sm:text-lg">
+								<Link href="/login" className="inline-flex items-center justify-center gap-2 px-8 py-4 bg-white rounded-2xl border-2 shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-300 text-base sm:text-lg" style={{ color: '#334155', borderColor: '#e2e8f0' }} onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = '#f8fafc'; e.currentTarget.style.borderColor = '#5eead4'; }} onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = '#ffffff'; e.currentTarget.style.borderColor = '#e2e8f0'; }}>
 									Iniciar Sesión
 								</Link>
 							</motion.div>
@@ -129,7 +129,7 @@ export default function HomePage() {
 
 								<motion.div animate={{ y: [0, 20, 0] }} transition={{ duration: 5, repeat: Infinity, ease: 'easeInOut', delay: 0.5 }} className="absolute -bottom-10 -right-10 bg-white rounded-2xl p-4 shadow-xl border border-slate-200 z-10">
 									<div className="flex items-center gap-3">
-										<div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-500 flex items-center justify-center">
+										<div className="w-12 h-12 rounded-xl flex items-center justify-center" style={{ background: 'linear-gradient(to bottom right, #2563eb, #6366f1)' }}>
 											<Activity className="w-6 h-6 text-white" />
 										</div>
 										<div>
@@ -140,17 +140,17 @@ export default function HomePage() {
 								</motion.div>
 
 								{/* Main Illustration Container */}
-								<div className="relative bg-gradient-to-br from-teal-500/10 via-cyan-500/10 to-blue-500/10 rounded-3xl p-12 backdrop-blur-sm border border-white/20">
+								<div className="relative rounded-3xl p-12 backdrop-blur-sm border border-white/20" style={{ background: 'linear-gradient(to bottom right, rgba(13, 148, 136, 0.1), rgba(6, 182, 212, 0.1), rgba(37, 99, 235, 0.1))' }}>
 									<div className="grid grid-cols-2 gap-6">
 										{/* Medical Icons Grid */}
 										{[Stethoscope, Pill, FlaskConical, Building2].map((Icon, index) => (
 											<motion.div key={index} initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.5 + index * 0.1 }} whileHover={{ scale: 1.1, rotate: 5 }} className="bg-white rounded-2xl p-6 shadow-lg flex items-center justify-center">
-												<Icon className="w-12 h-12 text-teal-600" />
+												<Icon className="w-12 h-12" style={{ color: '#0d9488' }} />
 											</motion.div>
 										))}
 									</div>
 									{/* Central Icon */}
-									<motion.div animate={{ rotate: [0, 360] }} transition={{ duration: 20, repeat: Infinity, ease: 'linear' }} className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-24 h-24 bg-gradient-to-br from-teal-600 to-cyan-600 rounded-full flex items-center justify-center shadow-2xl">
+									<motion.div animate={{ rotate: [0, 360] }} transition={{ duration: 20, repeat: Infinity, ease: 'linear' }} className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-24 h-24 rounded-full flex items-center justify-center shadow-2xl" style={{ background: 'linear-gradient(to bottom right, #0d9488, #06b6d4)' }}>
 										<HeartPulse className="w-12 h-12 text-white" />
 									</motion.div>
 								</div>

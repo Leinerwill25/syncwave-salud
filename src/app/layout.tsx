@@ -25,8 +25,8 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
 	return (
-		<html lang="es" className="overflow-x-hidden">
-			<body className="antialiased bg-[#F5F7FA] text-[#2C3E50] overflow-x-hidden w-full max-w-full">
+		<html lang="es" className="overflow-x-hidden" style={{ colorScheme: 'light' }}>
+			<body className="antialiased overflow-x-hidden w-full max-w-full" style={{ backgroundColor: '#F5F7FA', color: '#2C3E50' }}>
 				<QueryProvider>
 					{/* Navbar dinámico */}
 					<NavbarSwitcher />
