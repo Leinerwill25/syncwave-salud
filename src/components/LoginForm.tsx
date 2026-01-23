@@ -152,6 +152,7 @@ export default function LoginFormAdvanced(): React.ReactElement {
 			let error: any = null;
 			
 			try {
+				console.log('[LoginForm] Intentando login con endpoint login-multiple-users');
 				const loginResponse = await fetch('/api/auth/login-multiple-users', {
 					method: 'POST',
 					headers: { 'Content-Type': 'application/json' },
@@ -159,26 +160,36 @@ export default function LoginFormAdvanced(): React.ReactElement {
 					body: JSON.stringify({ email, password }),
 				});
 
+				console.log('[LoginForm] Respuesta del endpoint:', loginResponse.status, loginResponse.statusText);
+
 				if (loginResponse.ok) {
 					const loginData = await loginResponse.json();
+					console.log('[LoginForm] Datos recibidos:', { success: loginData.success, hasUser: !!loginData.user, hasSession: !!loginData.session });
+					
 					if (loginData.success && loginData.user && loginData.session) {
 						data = {
 							user: loginData.user,
 							session: loginData.session,
 						};
+						console.log('[LoginForm] Login exitoso con endpoint múltiple');
 					} else {
+						console.warn('[LoginForm] Respuesta OK pero sin datos válidos:', loginData);
 						error = { message: 'Invalid login credentials' };
 					}
 				} else {
-					const errorData = await loginResponse.json();
+					const errorData = await loginResponse.json().catch(() => ({ error: 'Error desconocido' }));
+					console.error('[LoginForm] Error en endpoint:', errorData);
 					error = { message: errorData.error || 'Invalid login credentials' };
 				}
 			} catch (fetchError) {
-				console.warn('[LoginForm] Error en login-multiple-users, intentando login normal:', fetchError);
+				console.error('[LoginForm] Error en login-multiple-users, intentando login normal:', fetchError);
 				// Fallback a login normal si el endpoint falla
 				const normalLogin = await supabase.auth.signInWithPassword({ email, password });
 				data = normalLogin.data;
 				error = normalLogin.error;
+				if (error) {
+					console.error('[LoginForm] Error en login normal:', error.message);
+				}
 			}
 
 			if (error) {
