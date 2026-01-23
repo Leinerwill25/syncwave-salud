@@ -264,40 +264,68 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 			return NextResponse.json({ error: `Error al crear el usuario: ${errorMessage}` }, { status: 500 });
 		}
 
-		// Crear usuario en la tabla User usando Supabase
+		// Verificar si ya existe un User con este email Y rol RECEPCION
+		// Si existe, reutilizarlo en lugar de crear uno nuevo
+		const { data: existingUserWithRole, error: existingUserCheckError } = await supabaseAdmin
+			.from('user')
+			.select('id, email, role, authId')
+			.eq('email', email.trim())
+			.eq('role', 'RECEPCION')
+			.maybeSingle();
+
 		let appUserId: string;
-		try {
-			const fullName = `${firstName.trim()} ${lastName.trim()}`;
-			const { data: newAppUser, error: userCreateError } = await supabaseAdmin
-				.from('user')
-				.insert({
-					email: email.trim(),
-					name: fullName,
-					role: 'RECEPCION',
-					organizationId: user.organizationId,
-					authId: supabaseUserId,
-					passwordHash: passwordHash,
-				} as any)
-				.select('id')
-				.single();
-
-			if (userCreateError || !newAppUser) {
-				throw new Error(userCreateError?.message || 'Error al crear usuario en tabla user');
-			}
-
-			appUserId = (newAppUser as any).id;
-		} catch (userErr: unknown) {
-			console.error('[Roles API] Error creando usuario en User table:', userErr);
-			// Si falla la creación en User, intentar eliminar el usuario de Supabase Auth
-			if (supabaseAdmin && supabaseUserId) {
-				try {
-					await supabaseAdmin.auth.admin.deleteUser(supabaseUserId);
-				} catch (deleteErr) {
-					console.error('[Roles API] Error eliminando usuario de Supabase después de fallo:', deleteErr);
+		
+		if (existingUserWithRole && !existingUserCheckError) {
+			// Ya existe un usuario con este email y rol, reutilizarlo
+			console.log('[Roles API] Usuario ya existe con este email y rol RECEPCION, reutilizando:', existingUserWithRole.id);
+			appUserId = existingUserWithRole.id;
+			
+			// Actualizar el authId si no tenía uno y ahora lo tenemos
+			if (!existingUserWithRole.authId && supabaseUserId) {
+				const { error: updateError } = await supabaseAdmin
+					.from('user')
+					.update({ authId: supabaseUserId })
+					.eq('id', appUserId);
+				
+				if (!updateError) {
+					console.log('[Roles API] AuthId actualizado para usuario existente');
 				}
 			}
-			const errorMessage = userErr instanceof Error ? userErr.message : 'Error desconocido';
-			return NextResponse.json({ error: `Error al crear el usuario en la base de datos: ${errorMessage}` }, { status: 500 });
+		} else {
+			// Crear nuevo usuario en la tabla User usando Supabase
+			try {
+				const fullName = `${firstName.trim()} ${lastName.trim()}`;
+				const { data: newAppUser, error: userCreateError } = await supabaseAdmin
+					.from('user')
+					.insert({
+						email: email.trim(),
+						name: fullName,
+						role: 'RECEPCION',
+						organizationId: user.organizationId,
+						authId: supabaseUserId,
+						passwordHash: passwordHash,
+					} as any)
+					.select('id')
+					.single();
+
+				if (userCreateError || !newAppUser) {
+					throw new Error(userCreateError?.message || 'Error al crear usuario en tabla user');
+				}
+
+				appUserId = (newAppUser as any).id;
+			} catch (userErr: unknown) {
+				console.error('[Roles API] Error creando usuario en User table:', userErr);
+				// Si falla la creación en User, intentar eliminar el usuario de Supabase Auth (solo si lo creamos)
+				if (supabaseAdmin && supabaseUserId && supabaseCreated) {
+					try {
+						await supabaseAdmin.auth.admin.deleteUser(supabaseUserId);
+					} catch (deleteErr) {
+						console.error('[Roles API] Error eliminando usuario de Supabase después de fallo:', deleteErr);
+					}
+				}
+				const errorMessage = userErr instanceof Error ? userErr.message : 'Error desconocido';
+				return NextResponse.json({ error: `Error al crear el usuario en la base de datos: ${errorMessage}` }, { status: 500 });
+			}
 		}
 
 		// Crear el usuario del rol en consultorio_role_users

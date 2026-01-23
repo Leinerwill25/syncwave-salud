@@ -586,88 +586,120 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 				userCreateData.passwordHash = hashed;
 			}
 
-			// 4. Crear User
-			// Según Database.sql: User tiene: email, name, passwordHash, role, organizationId, patientProfileId, authId, used
-			const userInsertData: any = {
-				email: userCreateData.email,
-				name: userCreateData.name,
-				role: userCreateData.role, // USER-DEFINED type según Database.sql
-				organizationId: userCreateData.organizationId ?? null,
-				patientProfileId: userCreateData.patientProfileId ?? null,
-				authId: userCreateData.authId ?? null,
-				passwordHash: userCreateData.passwordHash ?? null,
-				used: true, // DEFAULT true según Database.sql
-			};
+			// 4. Verificar si ya existe un User con este email Y este rol específico
+			// Si existe, reutilizarlo en lugar de crear uno nuevo
+			const { data: existingUserWithRole, error: existingUserCheckError } = await supabaseAdmin
+				.from('user')
+				.select('id, email, role, authId, organizationId')
+				.eq('email', userCreateData.email)
+				.eq('role', userCreateData.role)
+				.maybeSingle();
 
-			console.log('[Register API] Intentando crear User con datos:', {
-				email: userInsertData.email,
-				role: userInsertData.role,
-				organizationId: userInsertData.organizationId,
-				hasAuthId: !!userInsertData.authId,
-				hasPasswordHash: !!userInsertData.passwordHash,
-				fullInsertData: userInsertData,
-			});
-
-			// Nota: 'user' es una palabra reservada en PostgreSQL, usar comillas dobles para evitar problemas
-			// Intentar primero con comillas dobles, si falla intentar sin comillas
 			let userData: any = null;
 			let userError: any = null;
 
-			// Intentar con comillas dobles primero (más seguro para palabras reservadas)
-			const { data: userDataQuoted, error: userErrorQuoted } = await supabaseAdmin
-				.from('"user"')
-				.insert(userInsertData)
-				.select('id, email, role, authId, organizationId')
-				.single();
+			if (existingUserWithRole && !existingUserCheckError) {
+				// Ya existe un usuario con este email y rol, reutilizarlo
+				console.log('[Register API] Usuario ya existe con este email y rol, reutilizando:', existingUserWithRole.id);
+				userData = existingUserWithRole;
+				
+				// Actualizar el authId si no tenía uno y ahora lo tenemos
+				if (!userData.authId && userCreateData.authId) {
+					const { error: updateError } = await supabaseAdmin
+						.from('user')
+						.update({ authId: userCreateData.authId })
+						.eq('id', userData.id);
+					
+					if (!updateError) {
+						userData.authId = userCreateData.authId;
+						console.log('[Register API] AuthId actualizado para usuario existente');
+					}
+				}
+				
+				userRecord = userData;
+				createdIds.push({ type: 'user', id: userRecord.id });
+				console.log('[Register API] Usuario reutilizado exitosamente:', userRecord.id);
+			} else {
+				// Crear nuevo User
+				// Según Database.sql: User tiene: email, name, passwordHash, role, organizationId, patientProfileId, authId, used
+				const userInsertData: any = {
+					email: userCreateData.email,
+					name: userCreateData.name,
+					role: userCreateData.role, // USER-DEFINED type según Database.sql
+					organizationId: userCreateData.organizationId ?? null,
+					patientProfileId: userCreateData.patientProfileId ?? null,
+					authId: userCreateData.authId ?? null,
+					passwordHash: userCreateData.passwordHash ?? null,
+					used: true, // DEFAULT true según Database.sql
+				};
 
-			if (userErrorQuoted && userErrorQuoted.code === '42P01') {
-				// Tabla no encontrada con comillas, intentar sin comillas
-				console.log('[Register API] Tabla "user" no encontrada con comillas, intentando sin comillas...');
-				const { data: userDataUnquoted, error: userErrorUnquoted } = await supabaseAdmin
-					.from('user')
+				console.log('[Register API] Intentando crear User con datos:', {
+					email: userInsertData.email,
+					role: userInsertData.role,
+					organizationId: userInsertData.organizationId,
+					hasAuthId: !!userInsertData.authId,
+					hasPasswordHash: !!userInsertData.passwordHash,
+					fullInsertData: userInsertData,
+				});
+
+				// Nota: 'user' es una palabra reservada en PostgreSQL, usar comillas dobles para evitar problemas
+				// Intentar primero con comillas dobles, si falla intentar sin comillas
+				// Intentar con comillas dobles primero (más seguro para palabras reservadas)
+				const { data: userDataQuoted, error: userErrorQuoted } = await supabaseAdmin
+					.from('"user"')
 					.insert(userInsertData)
 					.select('id, email, role, authId, organizationId')
 					.single();
-				userData = userDataUnquoted;
-				userError = userErrorUnquoted;
-			} else {
-				userData = userDataQuoted;
-				userError = userErrorQuoted;
-			}
 
-			if (userError) {
-				console.error('[Register API] Error creando User:', {
-					message: userError.message,
-					code: userError.code,
-					details: userError.details,
-					hint: userError.hint,
-					data: userInsertData,
-				});
-				// Rollback: eliminar lo creado
-				if (patientRecord) {
-					await supabaseAdmin.from('patient').delete().eq('id', patientRecord.id);
+				if (userErrorQuoted && userErrorQuoted.code === '42P01') {
+					// Tabla no encontrada con comillas, intentar sin comillas
+					console.log('[Register API] Tabla "user" no encontrada con comillas, intentando sin comillas...');
+					const { data: userDataUnquoted, error: userErrorUnquoted } = await supabaseAdmin
+						.from('user')
+						.insert(userInsertData)
+						.select('id, email, role, authId, organizationId')
+						.single();
+					userData = userDataUnquoted;
+					userError = userErrorUnquoted;
+				} else {
+					userData = userDataQuoted;
+					userError = userErrorQuoted;
 				}
-				if (orgRecord) {
-					await supabaseAdmin.from('organization').delete().eq('id', orgRecord.id);
-				}
-				throw new Error(`Error al crear usuario: ${userError.message} (Código: ${userError.code})`);
-			}
 
-			if (!userData || !userData.id) {
-				console.error('[Register API] User creado pero sin ID:', userData);
-				// Rollback
-				if (patientRecord) {
-					await supabaseAdmin.from('patient').delete().eq('id', patientRecord.id);
+				if (userError) {
+					console.error('[Register API] Error creando User:', {
+						message: userError.message,
+						code: userError.code,
+						details: userError.details,
+						hint: userError.hint,
+						data: userInsertData,
+					});
+					// Rollback: eliminar lo creado
+					if (patientRecord) {
+						await supabaseAdmin.from('patient').delete().eq('id', patientRecord.id);
+					}
+					if (orgRecord) {
+						await supabaseAdmin.from('organization').delete().eq('id', orgRecord.id);
+					}
+					throw new Error(`Error al crear usuario: ${userError.message} (Código: ${userError.code})`);
 				}
-				if (orgRecord) {
-					await supabaseAdmin.from('organization').delete().eq('id', orgRecord.id);
-				}
-				throw new Error('Error al crear usuario: No se recibió ID del usuario creado');
-			}
 
-			userRecord = userData;
-			createdIds.push({ type: 'user', id: userRecord.id }); // Usar nombre de tabla en minúsculas para rollback
-			console.log('[Register API] User creado exitosamente:', userRecord.id);
+				if (!userData || !userData.id) {
+					console.error('[Register API] User creado pero sin ID:', userData);
+					// Rollback
+					if (patientRecord) {
+						await supabaseAdmin.from('patient').delete().eq('id', patientRecord.id);
+					}
+					if (orgRecord) {
+						await supabaseAdmin.from('organization').delete().eq('id', orgRecord.id);
+					}
+					throw new Error('Error al crear usuario: No se recibió ID del usuario creado');
+				}
+
+				userRecord = userData;
+				createdIds.push({ type: 'user', id: userRecord.id }); // Usar nombre de tabla en minúsculas para rollback
+				console.log('[Register API] User creado exitosamente:', userRecord.id);
+			}
 
 			// 5. Crear Subscription si existe plan
 			if (plan) {
