@@ -146,7 +146,41 @@ export default function LoginFormAdvanced(): React.ReactElement {
 			// Pequeña pausa para asegurar que las cookies se hayan limpiado
 			await new Promise((resolve) => setTimeout(resolve, 100));
 
-			const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+			// Intentar login con el endpoint especial que maneja múltiples usuarios
+			// Esto es necesario para usuarios con roles RECEPCION/Asistente De Citas que pueden tener múltiples registros
+			let data: any = null;
+			let error: any = null;
+			
+			try {
+				const loginResponse = await fetch('/api/auth/login-multiple-users', {
+					method: 'POST',
+					headers: { 'Content-Type': 'application/json' },
+					credentials: 'include',
+					body: JSON.stringify({ email, password }),
+				});
+
+				if (loginResponse.ok) {
+					const loginData = await loginResponse.json();
+					if (loginData.success && loginData.user && loginData.session) {
+						data = {
+							user: loginData.user,
+							session: loginData.session,
+						};
+					} else {
+						error = { message: 'Invalid login credentials' };
+					}
+				} else {
+					const errorData = await loginResponse.json();
+					error = { message: errorData.error || 'Invalid login credentials' };
+				}
+			} catch (fetchError) {
+				console.warn('[LoginForm] Error en login-multiple-users, intentando login normal:', fetchError);
+				// Fallback a login normal si el endpoint falla
+				const normalLogin = await supabase.auth.signInWithPassword({ email, password });
+				data = normalLogin.data;
+				error = normalLogin.error;
+			}
+
 			if (error) {
 				setErrorMsg(error.message || 'Error al iniciar sesión');
 				setLoading(false);
