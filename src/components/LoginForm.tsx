@@ -270,8 +270,36 @@ export default function LoginFormAdvanced(): React.ReactElement {
 				roleToUse = metadataRole ?? null;
 			}
 
+			// Si es RECEPCION, verificar si está en consultorio_role_users para redirigir correctamente
+			let finalIsRoleUser = isRoleUser;
+			let isRecepcion = roleToUse && (String(roleToUse).toUpperCase() === 'RECEPCION' || String(roleToUse).toUpperCase() === 'RECEPCIONISTA');
+			
+			if (isRecepcion && !isRoleUser) {
+				try {
+					console.log('[LoginForm] Verificando si usuario RECEPCION está en consultorio_role_users, email:', email);
+					const roleUserCheck = await fetch(`/api/role-users/check?email=${encodeURIComponent(email)}`, {
+						credentials: 'include',
+					});
+					
+					if (roleUserCheck.ok) {
+						const roleUserData = await roleUserCheck.json();
+						console.log('[LoginForm] Respuesta de verificación:', roleUserData);
+						if (roleUserData.exists) {
+							finalIsRoleUser = true;
+							console.log('[LoginForm] ✓ Usuario RECEPCION encontrado en consultorio_role_users, redirigiendo a dashboard');
+						} else {
+							console.log('[LoginForm] ✗ Usuario RECEPCION NO encontrado en consultorio_role_users');
+						}
+					} else {
+						console.warn('[LoginForm] Error en respuesta de verificación:', roleUserCheck.status, roleUserCheck.statusText);
+					}
+				} catch (err) {
+					console.error('[LoginForm] Error verificando consultorio_role_users:', err);
+				}
+			}
+
 			// Determinar la ruta de destino ANTES de cualquier delay
-			const targetRoute = routeForRole(roleToUse ?? '', isRoleUser);
+			const targetRoute = routeForRole(roleToUse ?? '', finalIsRoleUser);
 			
 			// Prefetch del dashboard y datos críticos ANTES de redirigir (no bloquea)
 			if (targetRoute && targetRoute !== '/dashboard/role-user') {
@@ -304,10 +332,19 @@ export default function LoginFormAdvanced(): React.ReactElement {
 			// Esperar un momento para asegurar que las cookies se hayan establecido correctamente
 			await new Promise((resolve) => setTimeout(resolve, 200));
 
-			// Si es un usuario de rol, redirigir al dashboard de usuarios de rol
-			if (isRoleUser) {
+			// Si es un usuario de rol (incluyendo RECEPCION verificado), redirigir al dashboard de usuarios de rol
+			if (finalIsRoleUser || isRoleUser) {
+				console.log('[LoginForm] Redirigiendo a dashboard de role-user (finalIsRoleUser:', finalIsRoleUser, ', isRoleUser:', isRoleUser, ')');
 				// Usar window.location para forzar una recarga completa y evitar problemas de caché
 				window.location.href = '/dashboard/role-user';
+				return;
+			}
+
+			// Si es RECEPCION pero NO está en consultorio_role_users, redirigir al login de roles
+			if (isRecepcion && !finalIsRoleUser) {
+				console.log('[LoginForm] Usuario RECEPCION no verificado en consultorio_role_users, redirigiendo a login de roles');
+				// Usar window.location para forzar una recarga completa y evitar problemas de caché
+				window.location.href = '/login/role-user';
 				return;
 			}
 
