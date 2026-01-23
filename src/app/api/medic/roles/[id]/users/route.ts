@@ -273,6 +273,27 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 			.eq('role', 'RECEPCION')
 			.maybeSingle();
 
+		// Verificar si ya existe un usuario con el mismo authId
+		// Si existe, no podemos usar ese authId para el nuevo registro (violaría la restricción UNIQUE)
+		let authIdToUse: string | null = null;
+		if (supabaseUserId) {
+			const authIdStr = String(supabaseUserId);
+			const { data: existingUserWithAuthId } = await supabaseAdmin
+				.from('user')
+				.select('id, email, role')
+				.eq('authId', authIdStr)
+				.maybeSingle();
+			
+			if (existingUserWithAuthId) {
+				// Ya existe un usuario con este authId, no podemos usarlo para el nuevo registro
+				// El nuevo registro tendrá authId como null, ya que el authId ya está asociado a otro registro
+				console.log(`[Roles API] AuthId ${authIdStr} ya está en uso por usuario ${existingUserWithAuthId.id} (${existingUserWithAuthId.email}, ${existingUserWithAuthId.role}). El nuevo registro tendrá authId null.`);
+				authIdToUse = null;
+			} else {
+				authIdToUse = authIdStr;
+			}
+		}
+
 		let appUserId: string;
 		
 		if (existingUserWithRole && !existingUserCheckError) {
@@ -280,11 +301,11 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 			console.log('[Roles API] Usuario ya existe con este email y rol RECEPCION, reutilizando:', existingUserWithRole.id);
 			appUserId = existingUserWithRole.id;
 			
-			// Actualizar el authId si no tenía uno y ahora lo tenemos
-			if (!existingUserWithRole.authId && supabaseUserId) {
+			// Actualizar el authId solo si no tenía uno y ahora lo tenemos Y no está en uso
+			if (!existingUserWithRole.authId && authIdToUse) {
 				const { error: updateError } = await supabaseAdmin
 					.from('user')
-					.update({ authId: supabaseUserId })
+					.update({ authId: authIdToUse })
 					.eq('id', appUserId);
 				
 				if (!updateError) {
@@ -302,7 +323,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 						name: fullName,
 						role: 'RECEPCION',
 						organizationId: user.organizationId,
-						authId: supabaseUserId,
+						authId: authIdToUse, // Usar authIdToUse que puede ser null si ya está en uso
 						passwordHash: passwordHash,
 					} as any)
 					.select('id')

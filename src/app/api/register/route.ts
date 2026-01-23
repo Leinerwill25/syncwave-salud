@@ -595,6 +595,27 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 				.eq('role', userCreateData.role)
 				.maybeSingle();
 
+			// Verificar si ya existe un usuario con el mismo authId
+			// Si existe, no podemos usar ese authId para el nuevo registro (violaría la restricción UNIQUE)
+			let authIdToUse: string | null = userCreateData.authId ?? null;
+			if (userCreateData.authId) {
+				const authIdStr = String(userCreateData.authId);
+				const { data: existingUserWithAuthId } = await supabaseAdmin
+					.from('user')
+					.select('id, email, role')
+					.eq('authId', authIdStr)
+					.maybeSingle();
+				
+				if (existingUserWithAuthId) {
+					// Ya existe un usuario con este authId, no podemos usarlo para el nuevo registro
+					// El nuevo registro tendrá authId como null, ya que el authId ya está asociado a otro registro
+					console.log(`[Register API] AuthId ${authIdStr} ya está en uso por usuario ${existingUserWithAuthId.id} (${existingUserWithAuthId.email}, ${existingUserWithAuthId.role}). El nuevo registro tendrá authId null.`);
+					authIdToUse = null;
+				} else {
+					authIdToUse = authIdStr;
+				}
+			}
+
 			let userData: any = null;
 			let userError: any = null;
 
@@ -603,15 +624,15 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 				console.log('[Register API] Usuario ya existe con este email y rol, reutilizando:', existingUserWithRole.id);
 				userData = existingUserWithRole;
 				
-				// Actualizar el authId si no tenía uno y ahora lo tenemos
-				if (!userData.authId && userCreateData.authId) {
+				// Actualizar el authId solo si no tenía uno y ahora lo tenemos Y no está en uso
+				if (!userData.authId && authIdToUse) {
 					const { error: updateError } = await supabaseAdmin
 						.from('user')
-						.update({ authId: userCreateData.authId })
+						.update({ authId: authIdToUse })
 						.eq('id', userData.id);
 					
 					if (!updateError) {
-						userData.authId = userCreateData.authId;
+						userData.authId = authIdToUse;
 						console.log('[Register API] AuthId actualizado para usuario existente');
 					}
 				}
@@ -628,7 +649,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 					role: userCreateData.role, // USER-DEFINED type según Database.sql
 					organizationId: userCreateData.organizationId ?? null,
 					patientProfileId: userCreateData.patientProfileId ?? null,
-					authId: userCreateData.authId ?? null,
+					authId: authIdToUse, // Usar authIdToUse que puede ser null si ya está en uso
 					passwordHash: userCreateData.passwordHash ?? null,
 					used: true, // DEFAULT true según Database.sql
 				};
