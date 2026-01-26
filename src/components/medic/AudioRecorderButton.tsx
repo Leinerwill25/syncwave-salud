@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useRef, useEffect } from 'react';
-import { Mic, Square, Loader2, Check, X, AlertCircle } from 'lucide-react';
+import { Mic, Square, Loader2, Check, X, AlertCircle, Sparkles, Brain, Zap } from 'lucide-react';
 
 interface AudioRecorderButtonProps {
 	consultationId: string;
@@ -265,83 +265,146 @@ export default function AudioRecorderButton({
 
 	return (
 		<div className={`flex flex-col gap-3 ${className}`}>
-			{/* Botón de grabar/detener */}
+			{/* Botón de grabar/detener - Diseño mejorado con énfasis en IA */}
 			{!recordedAudio && (
-				<div className="flex items-center gap-3">
+				<div className="flex flex-col gap-3">
 					{!isRecording ? (
 						<button
 							type="button"
 							onClick={startRecording}
 							disabled={isProcessing}
-							className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+							className="group relative flex flex-col items-center justify-center gap-2 px-6 py-4 bg-gradient-to-br from-purple-600 via-blue-600 to-cyan-500 text-white rounded-xl shadow-lg hover:shadow-2xl transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed overflow-hidden transform hover:scale-105 active:scale-100"
 						>
-							<Mic size={18} />
-							<span>Grabar Audio</span>
+							{/* Efecto de brillo animado */}
+							<div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000" />
+							
+							{/* Contenido del botón */}
+							<div className="relative z-10 flex items-center gap-3">
+								<div className="relative">
+									<Mic size={24} className="animate-pulse" />
+									<Sparkles size={12} className="absolute -top-1 -right-1 text-yellow-300 animate-ping" />
+								</div>
+								<div className="flex flex-col items-start">
+									<span className="text-lg font-bold">Generar Informe con IA</span>
+									<span className="text-xs text-white/80 font-medium">Grabar audio de la consulta</span>
+								</div>
+							</div>
+							
+							{/* Badge de IA */}
+							<div className="absolute top-2 right-2 flex items-center gap-1 px-2 py-1 bg-white/20 backdrop-blur-sm rounded-full">
+								<Brain size={12} className="text-yellow-300" />
+								<span className="text-[10px] font-bold uppercase tracking-wide">IA 2026</span>
+							</div>
 						</button>
 					) : (
-						<button
-							type="button"
-							onClick={stopRecording}
-							className="flex items-center gap-2 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors"
-						>
-							<Square size={18} />
-							<span>Detener Grabación</span>
-						</button>
+						<div className="flex flex-col gap-3">
+							<button
+								type="button"
+								onClick={stopRecording}
+								className="group relative flex items-center justify-center gap-3 px-6 py-4 bg-gradient-to-br from-red-600 to-red-700 text-white rounded-xl shadow-lg hover:shadow-2xl transition-all duration-300 overflow-hidden transform hover:scale-105 active:scale-100"
+							>
+								{/* Efecto de pulso rojo */}
+								<div className="absolute inset-0 bg-red-500 rounded-xl animate-ping opacity-20" />
+								
+								<div className="relative z-10 flex items-center gap-3">
+									<Square size={20} className="fill-current" />
+									<span className="text-lg font-bold">Detener Grabación</span>
+								</div>
+							</button>
+							
+							{/* Indicador de tiempo con diseño mejorado */}
+							<div className="flex items-center justify-center gap-3 px-4 py-3 bg-gradient-to-r from-red-50 to-orange-50 border-2 border-red-200 rounded-xl">
+								<div className="relative">
+									<div className="w-4 h-4 bg-red-600 rounded-full animate-pulse" />
+									<div className="absolute inset-0 w-4 h-4 bg-red-600 rounded-full animate-ping opacity-75" />
+								</div>
+								<div className="flex flex-col items-center">
+									<span className="text-2xl font-bold text-red-600 tabular-nums">{formatTime(recordingTime)}</span>
+									<span className="text-xs text-gray-600 font-medium">Grabando...</span>
+								</div>
+							</div>
+						</div>
 					)}
-
-					{isRecording && (
-						<div className="flex items-center gap-2 text-red-600">
-							<div className="w-3 h-3 bg-red-600 rounded-full animate-pulse" />
-							<span className="text-sm font-medium">{formatTime(recordingTime)}</span>
+					
+					{/* Mensaje informativo sobre IA */}
+					{!isRecording && (
+						<div className="flex items-start gap-2 px-4 py-3 bg-gradient-to-r from-blue-50 to-purple-50 border border-blue-200 rounded-lg">
+							<Zap size={16} className="text-blue-600 mt-0.5 flex-shrink-0" />
+							<div className="flex-1">
+								<p className="text-xs font-semibold text-gray-800 mb-1">
+									✨ Tecnología de Inteligencia Artificial 2026
+								</p>
+								<p className="text-xs text-gray-600 leading-relaxed">
+									La IA transcribe tu audio, extrae la información médica y genera automáticamente el informe completo en formato Word.
+								</p>
+							</div>
 						</div>
 					)}
 				</div>
 			)}
 
-			{/* Audio grabado - Mostrar controles */}
+			{/* Audio grabado - Mostrar controles con diseño mejorado */}
 			{recordedAudio && !isProcessing && (
-				<div className="flex flex-col gap-3 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+				<div className="flex flex-col gap-4 p-5 bg-gradient-to-br from-green-50 to-emerald-50 rounded-xl border-2 border-green-200 shadow-lg">
 					<div className="flex items-center justify-between">
-						<div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
-							<Check size={16} className="text-green-600" />
-							<span>Audio grabado ({Math.round(recordedAudio.size / 1024)} KB)</span>
+						<div className="flex items-center gap-3">
+							<div className="p-2 bg-green-100 rounded-lg">
+								<Check size={20} className="text-green-600" />
+							</div>
+							<div className="flex flex-col">
+								<span className="text-sm font-bold text-gray-800">Audio grabado exitosamente</span>
+								<span className="text-xs text-gray-600">{Math.round(recordedAudio.size / 1024)} KB · {formatTime(recordingTime)}</span>
+							</div>
 						</div>
 						<audio
 							src={URL.createObjectURL(recordedAudio)}
 							controls
-							className="max-w-xs"
+							className="max-w-xs rounded-lg"
 						/>
 					</div>
 
-					<div className="flex items-center gap-2">
+					<div className="flex items-center gap-3">
 						<button
 							type="button"
 							onClick={handleSubmit}
 							disabled={isProcessing}
-							className="flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+							className="group relative flex-1 flex items-center justify-center gap-3 px-6 py-4 bg-gradient-to-br from-green-600 via-emerald-600 to-teal-600 text-white rounded-xl shadow-lg hover:shadow-2xl transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed overflow-hidden transform hover:scale-105 active:scale-100"
 						>
-							{isProcessing ? (
-								<>
-									<Loader2 size={18} className="animate-spin" />
-									<span>Procesando...</span>
-								</>
-							) : (
-								<>
-									<Check size={18} />
-									<span>Generar Informe desde Audio</span>
-								</>
-							)}
+							{/* Efecto de brillo animado */}
+							<div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000" />
+							
+							<div className="relative z-10 flex items-center gap-3">
+								{isProcessing ? (
+									<>
+										<Loader2 size={20} className="animate-spin" />
+										<span className="font-bold">Procesando con IA...</span>
+									</>
+								) : (
+									<>
+										<Sparkles size={20} className="text-yellow-300" />
+										<span className="font-bold">Generar Informe con IA</span>
+									</>
+								)}
+							</div>
 						</button>
 
 						<button
 							type="button"
 							onClick={handleCancel}
 							disabled={isProcessing}
-							className="flex items-center gap-2 px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+							className="flex items-center gap-2 px-5 py-4 bg-gray-500 hover:bg-gray-600 text-white rounded-xl transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed shadow-md hover:shadow-lg"
 						>
 							<X size={18} />
-							<span>Cancelar</span>
+							<span className="font-medium">Cancelar</span>
 						</button>
+					</div>
+					
+					{/* Mensaje informativo */}
+					<div className="flex items-start gap-2 px-3 py-2 bg-white/60 backdrop-blur-sm rounded-lg border border-green-200">
+						<Brain size={14} className="text-purple-600 mt-0.5 flex-shrink-0" />
+						<p className="text-xs text-gray-700">
+							La IA procesará tu audio y generará automáticamente el informe médico completo.
+						</p>
 					</div>
 				</div>
 			)}
@@ -361,28 +424,55 @@ export default function AudioRecorderButton({
 				</div>
 			)}
 
-			{/* Pantalla de carga con barra de progreso */}
+			{/* Pantalla de carga con barra de progreso - Diseño mejorado */}
 			{isProcessing && (
-				<div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-					<div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl p-8 max-w-md w-full mx-4">
+				<div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50">
+					<div className="bg-gradient-to-br from-white to-gray-50 rounded-3xl shadow-2xl p-8 max-w-md w-full mx-4 border-2 border-purple-200">
 						<div className="flex flex-col items-center gap-6">
-							<Loader2 size={48} className="animate-spin text-blue-600" />
+							{/* Icono de IA animado */}
+							<div className="relative">
+								<div className="absolute inset-0 bg-gradient-to-r from-purple-600 to-blue-600 rounded-full blur-xl opacity-50 animate-pulse" />
+								<div className="relative bg-gradient-to-br from-purple-600 to-blue-600 p-4 rounded-2xl">
+									<Brain size={48} className="text-white animate-pulse" />
+									<Sparkles size={16} className="absolute -top-1 -right-1 text-yellow-300 animate-ping" />
+								</div>
+							</div>
+							
 							<div className="w-full">
-								<h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2 text-center">
-									Generando Informe
+								<h3 className="text-xl font-bold text-gray-900 mb-1 text-center bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent">
+									Generando Informe con IA
 								</h3>
-								<p className="text-sm text-gray-600 dark:text-gray-400 mb-4 text-center">
+								<p className="text-sm text-gray-600 mb-1 text-center font-medium">
 									{progressMessage}
 								</p>
-								<div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-3 overflow-hidden">
-									<div
-										className="h-full bg-gradient-to-r from-blue-600 to-cyan-600 transition-all duration-300 ease-out rounded-full"
-										style={{ width: `${progress}%` }}
-									/>
-								</div>
-								<p className="text-xs text-gray-500 dark:text-gray-500 mt-2 text-center">
-									{Math.round(progress)}% completado
+								<p className="text-xs text-gray-500 mb-4 text-center">
+									Tecnología de Inteligencia Artificial 2026
 								</p>
+								
+								{/* Barra de progreso mejorada */}
+								<div className="w-full bg-gray-200 rounded-full h-4 overflow-hidden shadow-inner">
+									<div
+										className="h-full bg-gradient-to-r from-purple-600 via-blue-600 to-cyan-500 transition-all duration-300 ease-out rounded-full relative overflow-hidden"
+										style={{ width: `${progress}%` }}
+									>
+										{/* Efecto de brillo animado */}
+										<div 
+											className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent"
+											style={{
+												animation: 'shimmer 2s infinite',
+											}}
+										/>
+									</div>
+								</div>
+								
+								<div className="flex items-center justify-between mt-3">
+									<p className="text-xs font-semibold text-gray-700">
+										Progreso
+									</p>
+									<p className="text-sm font-bold text-purple-600 tabular-nums">
+										{Math.round(progress)}%
+									</p>
+								</div>
 							</div>
 						</div>
 					</div>

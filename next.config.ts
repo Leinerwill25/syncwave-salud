@@ -1,6 +1,8 @@
 import type { NextConfig } from 'next';
 
 const nextConfig: NextConfig = {
+	// Deshabilitar source maps en desarrollo para evitar warnings
+	productionBrowserSourceMaps: false,
 	images: {
 		remotePatterns: [
 			{

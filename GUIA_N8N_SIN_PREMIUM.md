@@ -401,3 +401,4 @@ Ahora tienes n8n funcionando **sin necesidad de Environment Variables premium**.
 
 
 
+

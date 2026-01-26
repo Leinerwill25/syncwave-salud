@@ -28,9 +28,19 @@ export async function POST(request: NextRequest) {
 			return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 		}
 
-		if (!consultationId || !doctorId || !transcription) {
+		// Validar parámetros requeridos
+		// transcription ya no es obligatorio porque usamos extractedFields directamente
+		if (!consultationId || !doctorId) {
 			return NextResponse.json(
-				{ error: 'Faltan parámetros requeridos' },
+				{ error: 'Faltan parámetros requeridos: consultationId y doctorId son obligatorios' },
+				{ status: 400 }
+			);
+		}
+
+		// Validar que tenemos datos para generar el informe
+		if (!extractedFields || (typeof extractedFields === 'object' && Object.keys(extractedFields).length === 0)) {
+			return NextResponse.json(
+				{ error: 'Faltan datos extraídos del audio (extractedFields)' },
 				{ status: 400 }
 			);
 		}
@@ -74,23 +84,94 @@ export async function POST(request: NextRequest) {
 			);
 		}
 
-		if (!medicProfile?.report_template_url) {
+		if (!medicProfile) {
 			return NextResponse.json(
-				{ error: 'No se encontró plantilla de informe para este médico' },
+				{ error: 'No se encontró perfil médico para este doctor' },
+				{ status: 404 }
+			);
+		}
+
+		// Mapeo de reportType a nombres de especialidades en español
+		const REPORT_TYPE_TO_SPECIALTY: Record<string, string[]> = {
+			'gynecology': ['Ginecologia', 'Ginecología', 'gynecology'],
+			'obstetrics': ['Obstetricia', 'obstetrics'],
+			'obstetricia': ['Obstetricia', 'obstetrics'],
+			'general': ['General', 'general'],
+		};
+
+		// Obtener todas las posibles claves para buscar una especialidad
+		function getSpecialtyKeys(reportType: string): string[] {
+			const normalized = reportType.toLowerCase().trim();
+			const mapped = REPORT_TYPE_TO_SPECIALTY[normalized] || [];
+			return [
+				...new Set([
+					reportType, // Original
+					reportType.charAt(0).toUpperCase() + reportType.slice(1), // Capitalized
+					...mapped, // Mapeadas
+				])
+			];
+		}
+
+		// Resolver plantilla según reportType
+		let templateUrl: string | null = medicProfile.report_template_url;
+		let templateName: string = medicProfile.report_template_name || 'Plantilla médica';
+
+		// Parsear report_templates_by_specialty (puede venir como string desde Supabase)
+		let specialtyTemplates: Record<string, { url?: string; template_url?: string; name?: string; template_name?: string }> | null = null;
+		
+		if (medicProfile.report_templates_by_specialty) {
+			if (typeof medicProfile.report_templates_by_specialty === 'string') {
+				try {
+					specialtyTemplates = JSON.parse(medicProfile.report_templates_by_specialty);
+				} catch (e) {
+					console.warn('[N8N Internal] Error parseando report_templates_by_specialty como string:', e);
+				}
+			} else if (typeof medicProfile.report_templates_by_specialty === 'object') {
+				specialtyTemplates = medicProfile.report_templates_by_specialty as Record<string, any>;
+			}
+		}
+
+		// Intentar buscar la plantilla con diferentes variantes del reportType
+		if (specialtyTemplates && reportType) {
+			const specialtyKeys = getSpecialtyKeys(reportType);
+			console.log('[N8N Internal] Buscando plantilla con claves:', specialtyKeys);
+			console.log('[N8N Internal] Claves disponibles en report_templates_by_specialty:', Object.keys(specialtyTemplates));
+
+			for (const key of specialtyKeys) {
+				const template = specialtyTemplates[key];
+				if (template) {
+					// Soportar tanto 'url' como 'template_url'
+					templateUrl = template.url || template.template_url || null;
+					// Soportar tanto 'name' como 'template_name'
+					templateName = template.name || template.template_name || templateName;
+					
+					if (templateUrl) {
+						console.log(`[N8N Internal] ✅ Plantilla encontrada con clave: "${key}"`);
+						break;
+					}
+				}
+			}
+
+			if (!templateUrl) {
+				console.warn('[N8N Internal] ⚠️ No se encontró plantilla para reportType:', reportType);
+				console.warn('[N8N Internal] Claves disponibles:', Object.keys(specialtyTemplates));
+			}
+		}
+
+		if (!templateUrl) {
+			console.error('[N8N Internal] No hay plantilla configurada para reportType:', reportType);
+			return NextResponse.json(
+				{ error: `No hay plantilla configurada para el tipo de informe "${reportType}"` },
 				{ status: 400 }
 			);
 		}
 
 		console.log('[N8N Internal] Plantilla obtenida:', {
-			url: medicProfile.report_template_url,
-			name: medicProfile.report_template_name,
-			hasTemplatesBySpecialty: !!medicProfile.report_templates_by_specialty
+			url: templateUrl.substring(0, 100) + '...',
+			name: templateName,
+			reportType,
+			doctorId
 		});
-
-		// Verificar que se use la plantilla correcta
-		if (medicProfile.report_template_name && !medicProfile.report_template_name.includes('INFORME_MEDICO_DRA_CARWIN')) {
-			console.warn('[N8N Internal] Advertencia: La plantilla no coincide con INFORME_MEDICO_DRA_CARWIN.docx. Nombre actual:', medicProfile.report_template_name);
-		}
 
 		// IMPORTANTE: NO actualizar vitals de la consulta con datos del audio
 		// Solo usar extractedFields del audio para generar el informe
@@ -179,53 +260,61 @@ export async function POST(request: NextRequest) {
 			: new Date().toLocaleDateString('es-ES');
 
 		// Descargar plantilla Word
-		// Usar URL directamente sin caché para obtener la versión más reciente
-		const templateUrl = medicProfile.report_template_url;
 		const bucket = 'report-templates';
 
-		console.log('[N8N Internal] Descargando plantilla desde:', templateUrl);
+		console.log('[N8N Internal] Descargando plantilla desde:', templateUrl?.substring(0, 100) + '...');
 
 		let templateBuffer: Buffer;
-		if (templateUrl.startsWith('http://') || templateUrl.startsWith('https://')) {
-			// Agregar timestamp para evitar caché
-			const urlWithCacheBuster = templateUrl.includes('?') 
-				? `${templateUrl}&t=${Date.now()}` 
-				: `${templateUrl}?t=${Date.now()}`;
-			
-			const response = await fetch(urlWithCacheBuster, {
-				cache: 'no-store',
-				headers: {
-					'Cache-Control': 'no-cache, no-store, must-revalidate',
-					'Pragma': 'no-cache',
-					'Expires': '0'
-				}
-			});
-			if (!response.ok) {
-				throw new Error(`Error descargando plantilla: ${response.statusText}`);
-			}
-			const blob = await response.blob();
-			const arrayBuffer = await blob.arrayBuffer();
-			templateBuffer = Buffer.from(arrayBuffer);
-			console.log('[N8N Internal] Plantilla descargada desde URL externa, tamaño:', templateBuffer.length);
-		} else {
-			let filePath = templateUrl;
-			if (templateUrl.includes('/storage/v1/object/')) {
-				const urlParts = templateUrl.split('/storage/v1/object/');
-				if (urlParts.length > 1) {
-					filePath = urlParts[1].split('?')[0];
-					if (filePath.startsWith('sign/')) filePath = filePath.substring(5);
-					if (filePath.startsWith(bucket + '/')) filePath = filePath.substring(bucket.length + 1);
-				}
-			}
-			filePath = decodeURIComponent(filePath);
 
-			// Descargar sin caché usando signed URL con timestamp
-			const { data: signedUrlData } = await supabaseAdmin.storage
-				.from(bucket)
-				.createSignedUrl(filePath, 60); // URL válida por 60 segundos
-			
-			if (signedUrlData?.signedUrl) {
-				const response = await fetch(signedUrlData.signedUrl, {
+		try {
+			// 1️⃣ Si viene signed URL → extraer bucket/path y regenerar
+			if (templateUrl.includes('/object/sign/')) {
+				console.log('[N8N Internal] Descargando desde signed URL...');
+				const signedUrl = new URL(templateUrl);
+				const match = signedUrl.pathname.match(
+					/\/storage\/v1\/object\/sign\/([^/]+)\/(.+)/
+				);
+
+				if (!match) {
+					console.error('[N8N Internal] Signed URL inválida:', signedUrl.pathname);
+					throw new Error('Signed URL inválida');
+				}
+
+				const bucketName = match[1];
+				const path = decodeURIComponent(match[2]);
+				console.log('[N8N Internal] Bucket:', bucketName, 'Path:', path);
+
+				// 🔑 Generar NUEVA signed URL con service role
+				const { data, error } =
+					await supabaseAdmin.storage
+						.from(bucketName)
+						.createSignedUrl(path, 120); // 2 minutos
+
+				if (error || !data?.signedUrl) {
+					console.error('[N8N Internal] Error generando signed URL:', error);
+					throw new Error(`No se pudo regenerar signed URL: ${error?.message || 'unknown error'}`);
+				}
+
+				console.log('[N8N Internal] Nueva signed URL generada, descargando...');
+				const response = await fetch(data.signedUrl, { cache: 'no-store' });
+
+				if (!response.ok) {
+					const errorText = await response.text().catch(() => '');
+					console.error('[N8N Internal] Error descargando desde signed URL:', {
+						status: response.status,
+						statusText: response.statusText,
+						error: errorText.substring(0, 200)
+					});
+					throw new Error(`Error descargando plantilla (signed URL): ${response.status} ${response.statusText}`);
+				}
+
+				templateBuffer = Buffer.from(await response.arrayBuffer());
+				console.log('[N8N Internal] ✅ Archivo descargado desde signed URL, tamaño:', templateBuffer.length, 'bytes');
+			}
+			// 2️⃣ URL pública → descarga directa
+			else if (templateUrl.startsWith('http://') || templateUrl.startsWith('https://')) {
+				console.log('[N8N Internal] Descargando desde URL pública...');
+				const response = await fetch(templateUrl, {
 					cache: 'no-store',
 					headers: {
 						'Cache-Control': 'no-cache, no-store, must-revalidate',
@@ -233,27 +322,57 @@ export async function POST(request: NextRequest) {
 						'Expires': '0'
 					}
 				});
+				
 				if (!response.ok) {
-					throw new Error(`Error descargando plantilla desde Supabase: ${response.statusText}`);
+					throw new Error(`Error descargando plantilla: ${response.status} ${response.statusText}`);
 				}
-				const blob = await response.blob();
-				const arrayBuffer = await blob.arrayBuffer();
-				templateBuffer = Buffer.from(arrayBuffer);
-				console.log('[N8N Internal] Plantilla descargada desde Supabase Storage, tamaño:', templateBuffer.length);
-			} else {
-				// Fallback al método anterior
-				const { data: templateData, error: downloadError } = await supabaseAdmin.storage
-					.from(bucket)
-					.download(filePath);
-
-				if (downloadError || !templateData) {
-					throw new Error('Error descargando plantilla');
-				}
-
-				const arrayBuffer = await templateData.arrayBuffer();
-				templateBuffer = Buffer.from(arrayBuffer);
-				console.log('[N8N Internal] Plantilla descargada usando método fallback, tamaño:', templateBuffer.length);
+				
+				templateBuffer = Buffer.from(await response.arrayBuffer());
+				console.log('[N8N Internal] ✅ Archivo descargado desde URL pública, tamaño:', templateBuffer.length, 'bytes');
 			}
+			// 3️⃣ Path relativo → extraer y descargar desde storage
+			else {
+				console.log('[N8N Internal] Descargando desde path relativo...');
+				let filePath = templateUrl;
+				if (templateUrl.includes('/storage/v1/object/')) {
+					const urlParts = templateUrl.split('/storage/v1/object/');
+					if (urlParts.length > 1) {
+						filePath = urlParts[1].split('?')[0];
+						if (filePath.startsWith('sign/')) filePath = filePath.substring(5);
+						if (filePath.startsWith(bucket + '/')) filePath = filePath.substring(bucket.length + 1);
+					}
+				}
+				filePath = decodeURIComponent(filePath);
+				console.log('[N8N Internal] Bucket:', bucket, 'Path:', filePath);
+
+				const { data, error } =
+					await supabaseAdmin.storage.from(bucket).download(filePath);
+
+				if (error) {
+					console.error('[N8N Internal] Error descargando desde storage:', {
+						error: error.message,
+						statusCode: (error as any).statusCode,
+						bucket,
+						filePath
+					});
+					throw new Error(`Error descargando plantilla (storage): ${error.message}`);
+				}
+
+				if (!data) {
+					console.error('[N8N Internal] No se recibió data del storage');
+					throw new Error('Error descargando plantilla: respuesta vacía');
+				}
+
+				templateBuffer = Buffer.from(await data.arrayBuffer());
+				console.log('[N8N Internal] ✅ Archivo descargado desde storage, tamaño:', templateBuffer.length, 'bytes');
+			}
+		} catch (downloadError: any) {
+			console.error('[N8N Internal] Error completo al descargar plantilla:', {
+				message: downloadError.message,
+				stack: downloadError.stack,
+				templateUrl: templateUrl?.substring(0, 200)
+			});
+			throw new Error(`Error descargando plantilla: ${downloadError.message}`);
 		}
 
 		// Procesar plantilla
@@ -268,21 +387,164 @@ export async function POST(request: NextRequest) {
 		});
 
 		// Obtener datos SOLO del audio (extractedFields) - NO usar vitals del formulario
-		// Los datos del audio vienen en updatedVitals, pero debemos usar extractedFields directamente
-		const gyn = (updatedVitals?.gynecology || {}) as any;
-		const colposcopy = (gyn.colposcopy || {}) as any;
-		const obst = (updatedVitals?.obstetrics || {}) as any;
-		const firstTrim = (obst.first_trimester || {}) as any;
-		const secondTrim = (obst.second_third_trimester || {}) as any;
+		// Los datos del audio vienen estructurados en extractedFields
+		const toUpper = (val: any): string => {
+			if (!val || val === '' || val === null || val === undefined) return '';
+			if (typeof val === 'string') return val.toUpperCase();
+			if (typeof val === 'boolean') return val ? 'SÍ' : 'NO';
+			return String(val).toUpperCase();
+		};
 
-		// Convertir transcripción a mayúsculas si no lo está ya
-		const transcriptionUpper = transcription ? transcription.toUpperCase() : '';
+		// NO construir contenido estructurado - la plantilla ya tiene su formato
+		// Solo rellenar las variables {{}} de la plantilla con los datos del audio
+		// NO generar texto nuevo, solo mapear datos a variables
 		
-		// Preparar datos para plantilla (similar a generate-report/route.ts)
+		// Función para mapear recursivamente todos los campos de extractedFields a variables de plantilla
+		function mapAllFieldsToTemplate(data: any, prefix: string = ''): Record<string, string> {
+			const result: Record<string, string> = {};
+			
+			if (!data || typeof data !== 'object' || Array.isArray(data) || data instanceof Date) {
+				return result;
+			}
+			
+			for (const [key, value] of Object.entries(data)) {
+				if (value === null || value === undefined) continue;
+				
+				const fullKey = prefix ? `${prefix}_${key}` : key;
+				
+				// Si es un objeto anidado, mapear recursivamente
+				if (typeof value === 'object' && !Array.isArray(value) && !(value instanceof Date)) {
+					// Mapear recursivamente el objeto anidado
+					const nested = mapAllFieldsToTemplate(value, fullKey);
+					Object.assign(result, nested);
+					
+					// También crear variables directas para cada campo anidado
+					// Ejemplo: ginecologicos.ultima_regla -> ginecologicos_ultima_regla, ultima_regla, FUR, etc.
+					for (const [nestedKey, nestedValue] of Object.entries(value)) {
+						if (nestedValue === null || nestedValue === undefined) continue;
+						
+						if (typeof nestedValue !== 'object' || Array.isArray(nestedValue) || nestedValue instanceof Date) {
+							// Variable con prefijo completo (ej: ginecologicos_ultima_regla)
+							result[fullKey + '_' + nestedKey] = toUpper(nestedValue);
+							
+							// Variable sin prefijo (ej: ultima_regla) - solo si no existe ya
+							if (!result[nestedKey]) {
+								result[nestedKey] = toUpper(nestedValue);
+							}
+							
+							// Variantes en mayúsculas y minúsculas
+							result[nestedKey.toUpperCase()] = toUpper(nestedValue);
+							result[nestedKey.toLowerCase()] = toUpper(nestedValue);
+							result[(fullKey + '_' + nestedKey).toUpperCase()] = toUpper(nestedValue);
+							result[(fullKey + '_' + nestedKey).toLowerCase()] = toUpper(nestedValue);
+							
+							// Variantes sin guiones bajos
+							const keyNoUnderscore = nestedKey.replace(/_/g, '');
+							result[keyNoUnderscore] = toUpper(nestedValue);
+							result[keyNoUnderscore.toUpperCase()] = toUpper(nestedValue);
+							result[keyNoUnderscore.toLowerCase()] = toUpper(nestedValue);
+						}
+					}
+				} else {
+					// Variable directa (no anidada)
+					result[fullKey] = toUpper(value);
+					
+					// Crear variantes en diferentes formatos
+					result[fullKey.toUpperCase()] = toUpper(value);
+					result[fullKey.toLowerCase()] = toUpper(value);
+					
+					// Variantes sin guiones bajos
+					const keyNoUnderscore = fullKey.replace(/_/g, '');
+					result[keyNoUnderscore] = toUpper(value);
+					result[keyNoUnderscore.toUpperCase()] = toUpper(value);
+					result[keyNoUnderscore.toLowerCase()] = toUpper(value);
+				}
+			}
+			
+			return result;
+		}
+		
+		// Mapear TODAS las variables desde extractedFields
+		const allMappedFields = mapAllFieldsToTemplate(extractedFields);
+		
+		// Mapeo específico para variables comunes que pueden estar en diferentes lugares
+		// Esto asegura que variables como FUR, método anticonceptivo, etc. se encuentren
+		// sin importar dónde estén en la estructura de datos
+		const commonVariableMappings: Record<string, string> = {
+			// FUR / Última regla (puede estar en ginecologicos.ultima_regla o en raíz)
+			fur: toUpper(
+				extractedFields?.ginecologicos?.ultima_regla ||
+				extractedFields?.ultima_regla ||
+				extractedFields?.fur ||
+				''
+			),
+			FUR: toUpper(
+				extractedFields?.ginecologicos?.ultima_regla ||
+				extractedFields?.ultima_regla ||
+				extractedFields?.fur ||
+				''
+			),
+			ultima_regla: toUpper(
+				extractedFields?.ginecologicos?.ultima_regla ||
+				extractedFields?.ultima_regla ||
+				extractedFields?.fur ||
+				''
+			),
+			ULTIMA_REGLA: toUpper(
+				extractedFields?.ginecologicos?.ultima_regla ||
+				extractedFields?.ultima_regla ||
+				extractedFields?.fur ||
+				''
+			),
+			// Historia obstétrica / HO
+			ho: toUpper(
+				extractedFields?.ginecologicos?.historia_obstetrica ||
+				extractedFields?.historia_obstetrica ||
+				extractedFields?.ho ||
+				''
+			),
+			HO: toUpper(
+				extractedFields?.ginecologicos?.historia_obstetrica ||
+				extractedFields?.historia_obstetrica ||
+				extractedFields?.ho ||
+				''
+			),
+			historia_obstetrica: toUpper(
+				extractedFields?.ginecologicos?.historia_obstetrica ||
+				extractedFields?.historia_obstetrica ||
+				extractedFields?.ho ||
+				''
+			),
+			HISTORIA_OBSTETRICA: toUpper(
+				extractedFields?.ginecologicos?.historia_obstetrica ||
+				extractedFields?.historia_obstetrica ||
+				extractedFields?.ho ||
+				''
+			),
+			// Método anticonceptivo
+			metodo_anticonceptivo: toUpper(
+				extractedFields?.ginecologicos?.metodo_anticonceptivo ||
+				extractedFields?.metodo_anticonceptivo ||
+				''
+			),
+			método_anticonceptivo: toUpper(
+				extractedFields?.ginecologicos?.metodo_anticonceptivo ||
+				extractedFields?.metodo_anticonceptivo ||
+				''
+			),
+			METODO_ANTICONCEPTIVO: toUpper(
+				extractedFields?.ginecologicos?.metodo_anticonceptivo ||
+				extractedFields?.metodo_anticonceptivo ||
+				''
+			),
+		};
+		
+		// Preparar datos base para plantilla
+		// NO generar contenido estructurado - solo rellenar variables {{}} de la plantilla
 		const baseTemplateData: Record<string, string> = {
-			contenido: transcriptionUpper, // Usar transcripción en MAYÚSCULAS como contenido
-			content: transcriptionUpper,
-			informe: transcriptionUpper,
+			contenido: '', // NO usar - la plantilla tiene su propio formato
+			content: '', // NO usar - la plantilla tiene su propio formato
+			informe: '', // NO usar - la plantilla tiene su propio formato
 			fecha: consultationDate,
 			date: consultationDate,
 			paciente: patientName.toUpperCase(),
@@ -296,12 +558,19 @@ export async function POST(request: NextRequest) {
 			medico: doctorName.toUpperCase(),
 			doctor: doctorName.toUpperCase(),
 			// Usar SOLO datos del audio (extractedFields) - NO datos del formulario
-			diagnostico: (extractedFields?.diagnosis || extractedFields?.diagnostico || '').toUpperCase(),
-			diagnosis: (extractedFields?.diagnosis || extractedFields?.diagnostico || '').toUpperCase(),
-			motivo: (extractedFields?.motivo || extractedFields?.motivo_consulta || extractedFields?.historia_enfermedad_actual || '').toUpperCase(),
-			complaint: (extractedFields?.motivo || extractedFields?.motivo_consulta || '').toUpperCase(),
-			notas: (extractedFields?.notas || extractedFields?.notes || '').toUpperCase(),
-			notes: (extractedFields?.notas || extractedFields?.notes || '').toUpperCase(),
+			diagnostico: toUpper(extractedFields?.diagnosis || extractedFields?.diagnostico || ''),
+			diagnosis: toUpper(extractedFields?.diagnosis || extractedFields?.diagnostico || ''),
+			motivo: toUpper(extractedFields?.motivo || extractedFields?.motivo_consulta || extractedFields?.historia_enfermedad_actual || ''),
+			complaint: toUpper(extractedFields?.motivo || extractedFields?.motivo_consulta || ''),
+			notas: toUpper(extractedFields?.notas || extractedFields?.notes || ''),
+			notes: toUpper(extractedFields?.notas || extractedFields?.notes || ''),
+			// Plan de tratamiento del audio
+			plan: toUpper(extractedFields?.plan || extractedFields?.plan_tratamiento || ''),
+			plan_tratamiento: toUpper(extractedFields?.plan || extractedFields?.plan_tratamiento || ''),
+			// Mapeo de variables comunes (tiene prioridad)
+			...commonVariableMappings,
+			// Incluir TODAS las variables mapeadas dinámicamente
+			...allMappedFields,
 		};
 
 		// Construir templateDataObj según tipo de informe
@@ -394,26 +663,72 @@ export async function POST(request: NextRequest) {
 				conclusiones: extractedFields?.conclusiones || '',
 			};
 		} else {
-			// Ginecología - convertir valores a mayúsculas
-			const toUpper = (val: any) => {
-				if (!val || val === '') return '';
-				if (typeof val === 'string') return val.toUpperCase();
-				return String(val).toUpperCase();
-			};
+			// Ginecología - mapear todas las variables desde extractedFields según la plantilla
+			// Extraer datos anidados correctamente
+			const gyn = extractedFields?.ginecologicos || {};
+			const exam = extractedFields?.examen_fisico || {};
+			const ant = extractedFields?.antecedentes || {};
+			const eco = extractedFields?.ecografia || {};
+			const mamas = exam.mamas || {};
+			const tacto = exam.tacto || {};
 			
-			// Extraer FUR, HO y método anticonceptivo SOLO del audio (extractedFields)
-			// NO usar datos de gyn (vitals del formulario)
-			const ultimaRegla = extractedFields?.ultima_regla || extractedFields?.fur || extractedFields?.FUR || extractedFields?.ULTIMA_REGLA || '';
-			const ho = extractedFields?.ho || extractedFields?.HO || extractedFields?.historia_obstetrica || extractedFields?.HISTORIA_OBSTETRICA || '';
-			const metodoAnticonceptivo = extractedFields?.metodo_anticonceptivo || extractedFields?.METODO_ANTICONCEPTIVO || extractedFields?.contraceptive || extractedFields?.anticonceptivo || '';
-			
-			templateDataObj = {
-				...baseTemplateData,
-				ultima_regla: toUpper(ultimaRegla),
-				ho: toUpper(ho),
-				metodo_anticonceptivo: toUpper(metodoAnticonceptivo),
-				método_anticonceptivo: toUpper(metodoAnticonceptivo),
-				// Usar SOLO datos del audio (extractedFields) - NO datos de gyn o colposcopy del formulario
+			// Mapeo explícito según los nombres de variables de la plantilla del usuario
+			const explicitMappings: Record<string, string> = {
+				// Variables de la plantilla del usuario
+				historia_enfermedad_actual: toUpper(extractedFields?.motivo_consulta || extractedFields?.historia_enfermedad_actual || ''),
+				alergicos: toUpper(ant.alergias || ''),
+				quirurgicos: toUpper(ant.quirurgicos || ''),
+				antecedentes_madre: toUpper(ant.madre || ''),
+				antecedentes_padre: toUpper(ant.padre || ''),
+				antecedentes_cancer_mama: ant.cancer_mama !== undefined ? (ant.cancer_mama ? 'SÍ' : 'NO') : '',
+				its: toUpper(gyn.its || ''),
+				tipo_menstruacion: toUpper(gyn.menstruacion_tipo || ''),
+				patron_menstruacion: toUpper(gyn.menstruacion_tipo || ''),
+				dismenorrea: gyn.dismenorrea !== undefined ? (gyn.dismenorrea ? 'SÍ' : 'NO') : '',
+				primera_relacion_sexual: toUpper(gyn.primera_relacion || ''),
+				parejas_sexuales: gyn.parejas_sexuales !== undefined ? String(gyn.parejas_sexuales) : '',
+				condiciones_generales: toUpper(exam.condiciones_generales || ''),
+				tamano_mamas: toUpper(mamas.tamaño || mamas.tamano || ''),
+				simetria_mamas: toUpper(mamas.simetria || ''),
+				cap_mamas: toUpper(mamas.cap || ''),
+				secrecion_mamas: toUpper(mamas.secrecion || ''),
+				fosas_axilares: toUpper(exam.fosas_axilares || ''),
+				abdomen: toUpper(exam.abdomen || ''),
+				genitales_externos: toUpper(exam.genitales_externos || ''),
+				especuloscopia: toUpper(exam.especuloscopia || ''),
+				tacto_cervix: toUpper(tacto.cervix || ''),
+				fondo_sacos: toUpper(tacto.fondo_sacos || ''),
+				anexos: toUpper(tacto.anexos || ''),
+				dimensiones_utero: toUpper(eco.utero_dimensiones || ''),
+				interfase_endometrial: toUpper(eco.interfase_endometrial || ''),
+				tipo_interfase_endometrial: toUpper(eco.interfase_endometrial || ''),
+				dimensiones_ovario_izquierdo: toUpper(eco.ovario_izquierdo || ''),
+				dimensiones_ovario_derecho: toUpper(eco.ovario_derecho || ''),
+				liquido_fondo_saco: toUpper(eco.liquido_fondo_saco || ''),
+				// Variantes comunes (FUR, método anticonceptivo, etc.)
+				ultima_regla: toUpper(gyn.ultima_regla || extractedFields?.ultima_regla || extractedFields?.fur || ''),
+				fur: toUpper(gyn.ultima_regla || extractedFields?.ultima_regla || extractedFields?.fur || ''),
+				FUR: toUpper(gyn.ultima_regla || extractedFields?.ultima_regla || extractedFields?.fur || ''),
+				ULTIMA_REGLA: toUpper(gyn.ultima_regla || extractedFields?.ultima_regla || extractedFields?.fur || ''),
+				ho: toUpper(gyn.historia_obstetrica || extractedFields?.historia_obstetrica || extractedFields?.ho || ''),
+				HO: toUpper(gyn.historia_obstetrica || extractedFields?.historia_obstetrica || extractedFields?.ho || ''),
+				historia_obstetrica: toUpper(gyn.historia_obstetrica || extractedFields?.historia_obstetrica || ''),
+				HISTORIA_OBSTETRICA: toUpper(gyn.historia_obstetrica || extractedFields?.historia_obstetrica || ''),
+				metodo_anticonceptivo: toUpper(gyn.metodo_anticonceptivo || extractedFields?.metodo_anticonceptivo || ''),
+				método_anticonceptivo: toUpper(gyn.metodo_anticonceptivo || extractedFields?.metodo_anticonceptivo || ''),
+				METODO_ANTICONCEPTIVO: toUpper(gyn.metodo_anticonceptivo || extractedFields?.metodo_anticonceptivo || ''),
+				// Variantes adicionales para compatibilidad
+				mamas_tamaño: toUpper(mamas.tamaño || mamas.tamano || ''),
+				mamas_tamano: toUpper(mamas.tamaño || mamas.tamano || ''),
+				mamas_simetria: toUpper(mamas.simetria || ''),
+				mamas_cap: toUpper(mamas.cap || ''),
+				mamas_secrecion: toUpper(mamas.secrecion || ''),
+				menstruacion_tipo: toUpper(gyn.menstruacion_tipo || ''),
+				primera_relacion: toUpper(gyn.primera_relacion || ''),
+				utero_dimensiones: toUpper(eco.utero_dimensiones || ''),
+				ovario_izquierdo: toUpper(eco.ovario_izquierdo || ''),
+				ovario_derecho: toUpper(eco.ovario_derecho || ''),
+				// Colposcopia (si está en los datos)
 				test_hinselmann: toUpper(extractedFields?.test_hinselmann || extractedFields?.hinselmann_test || ''),
 				test_schiller: toUpper(extractedFields?.test_schiller || extractedFields?.schiller_test || ''),
 				colposcopia_acetico_5: toUpper(extractedFields?.colposcopia_acetico_5 || extractedFields?.acetico_5 || ''),
@@ -435,8 +750,26 @@ export async function POST(request: NextRequest) {
 				colposcopia_biopsia_localizacion: toUpper(extractedFields?.colposcopia_biopsia_localizacion || extractedFields?.biopsia_localizacion || ''),
 				colposcopia_lugol: toUpper(extractedFields?.colposcopia_lugol || extractedFields?.lugol || ''),
 			};
+			
+			// Combinar mapeo explícito con mapeo dinámico
+			templateDataObj = {
+				...baseTemplateData,
+				...explicitMappings,
+			};
 		}
 
+		// Log para debugging: mostrar cuántas variables se mapearon
+		const totalVariables = Object.keys(templateDataObj).length;
+		console.log(`[N8N Internal] Total de variables mapeadas para plantilla: ${totalVariables}`);
+		console.log(`[N8N Internal] Primeras 20 variables:`, Object.keys(templateDataObj).slice(0, 20).join(', '));
+		
+		// Verificar que tenemos las variables más comunes
+		const commonVars = ['fur', 'FUR', 'ultima_regla', 'metodo_anticonceptivo', 'ho', 'HO', 'contenido'];
+		const missingVars = commonVars.filter(v => !templateDataObj[v] && templateDataObj[v] !== '');
+		if (missingVars.length > 0) {
+			console.warn(`[N8N Internal] Variables comunes no encontradas:`, missingVars);
+		}
+		
 		// Renderizar plantilla
 		doc.render(templateDataObj);
 
