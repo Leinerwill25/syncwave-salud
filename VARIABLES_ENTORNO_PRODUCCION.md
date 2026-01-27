@@ -30,7 +30,10 @@ SUPABASE_SERVICE_ROLE_KEY=tu-service-role-key-aqui
 
 ```bash
 # URL del webhook de N8N donde se ejecuta el workflow
-N8N_WEBHOOK_URL=https://tu-n8n-instance.com/webhook/generate-report-multiagent
+# IMPORTANTE: El path del webhook debe ser "generate-report-from-audio"
+# Para producción: usar /webhook/ (no /webhook-test/)
+# Ejemplo: https://ashirasoftware.app.n8n.cloud/webhook/generate-report-from-audio
+N8N_WEBHOOK_URL=https://ashirasoftware.app.n8n.cloud/webhook/generate-report-from-audio
 
 # Clave secreta para autenticar llamadas entre N8N y Next.js
 # ⚠️ IMPORTANTE: Debe ser una cadena segura y aleatoria
@@ -68,6 +71,8 @@ API_GROQ=tu-groq-api-key-aqui
 
 ```bash
 # URL pública de tu aplicación Next.js
+# ⚠️ CRÍTICO: Esta variable es OBLIGATORIA en producción
+# N8N necesita esta URL para llamar a los endpoints de la API
 # ⚠️ IMPORTANTE: Debe ser la URL completa sin barra final
 NEXT_PUBLIC_APP_URL=https://tu-dominio.com
 # O para desarrollo local:
@@ -78,6 +83,7 @@ NEXT_PUBLIC_APP_URL=https://tu-dominio.com
 - En producción: URL completa de tu dominio (ej: `https://clinica-syncwave.com`)
 - En desarrollo: `http://localhost:3000`
 - **No incluir barra final** (`/`)
+- **CRÍTICO:** Si esta variable no está configurada o apunta a `localhost`, N8N no podrá conectarse a tu API y fallará con `ECONNREFUSED`
 
 ---
 
@@ -94,7 +100,8 @@ SUPABASE_SERVICE_ROLE_KEY=tu-service-role-key-aqui
 # ============================================
 # N8N
 # ============================================
-N8N_WEBHOOK_URL=https://tu-n8n-instance.com/webhook/generate-report-multiagent
+# IMPORTANTE: Usar /webhook/ para producción (no /webhook-test/)
+N8N_WEBHOOK_URL=https://ashirasoftware.app.n8n.cloud/webhook/generate-report-from-audio
 N8N_API_KEY=tu-clave-secreta-super-segura-aqui
 
 # ============================================
@@ -181,6 +188,16 @@ Para verificar que todas las variables están configuradas correctamente:
 ### Error: "Error descargando plantilla"
 - Verifica que `SUPABASE_SERVICE_ROLE_KEY` tenga permisos de lectura en Storage
 - Verifica que las plantillas estén en el bucket correcto (`report-templates`)
+
+### Error: "ECONNREFUSED" o "The service refused the connection" en N8N
+- **Causa:** `NEXT_PUBLIC_APP_URL` no está configurada o apunta a `localhost`
+- **Solución:** 
+  1. Configura `NEXT_PUBLIC_APP_URL` con la URL pública de tu aplicación (ej: `https://tu-dominio.com`)
+  2. Verifica que la URL sea accesible públicamente (no use `localhost` o `127.0.0.1`)
+  3. El workflow de N8N necesita esta URL para llamar a `/api/groq/transcribe` y otros endpoints
+  4. Si estás usando Vercel/Netlify, usa la URL de producción completa
+- **Ejemplo correcto:** `NEXT_PUBLIC_APP_URL=https://tu-app.vercel.app` o `https://tu-dominio.com`
+- **Ejemplo incorrecto:** `NEXT_PUBLIC_APP_URL=http://localhost:3000` (no funciona en producción)
 
 ---
 

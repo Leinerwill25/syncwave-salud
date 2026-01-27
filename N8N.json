@@ -4,7 +4,7 @@
 		{
 			"parameters": {
 				"httpMethod": "POST",
-				"path": "generate-report-multiagent",
+				"path": "generate-report-from-audio",
 				"responseMode": "responseNode",
 				"options": {}
 			},
@@ -16,7 +16,7 @@
 		},
 		{
 			"parameters": {
-				"jsCode": "const webhookData = $json.body || $json;\n\nif (!webhookData.audioUrl) {\n  throw new Error('audioUrl requerido');\n}\n\nif (!webhookData.groqApiKey) {\n  throw new Error('groqApiKey requerido');\n}\n\nreturn {\n  audioUrl: webhookData.audioUrl,\n  groqApiKey: webhookData.groqApiKey,\n  consultationId: webhookData.consultationId,\n  doctorId: webhookData.doctorId,\n  reportType: webhookData.reportType || 'gynecology',\n  specialty: webhookData.specialty || '',\n  patientData: webhookData.patientData || {},\n  consultationData: webhookData.consultationData || {},\n  medicProfile: webhookData.medicProfile || {},\n  nextAppUrl: webhookData.nextAppUrl,\n  n8nApiKey: webhookData.n8nApiKey,\n  timestamp: new Date().toISOString()\n};"
+				"jsCode": "const webhookData = $json.body || $json;\n\nif (!webhookData.audioUrl) {\n  throw new Error('audioUrl requerido');\n}\n\nif (!webhookData.groqApiKey) {\n  throw new Error('groqApiKey requerido');\n}\n\n// Validar que nextAppUrl esté configurado y no sea localhost\nif (!webhookData.nextAppUrl || webhookData.nextAppUrl.includes('localhost')) {\n  throw new Error('nextAppUrl no está configurado correctamente. Debe ser la URL pública de la aplicación en producción (ej: https://tu-dominio.com). Verifica la variable de entorno NEXT_PUBLIC_APP_URL.');\n}\n\nreturn {\n  audioUrl: webhookData.audioUrl,\n  groqApiKey: webhookData.groqApiKey,\n  consultationId: webhookData.consultationId,\n  doctorId: webhookData.doctorId,\n  reportType: webhookData.reportType || 'gynecology',\n  specialty: webhookData.specialty || '',\n  patientData: webhookData.patientData || {},\n  consultationData: webhookData.consultationData || {},\n  medicProfile: webhookData.medicProfile || {},\n  nextAppUrl: webhookData.nextAppUrl,\n  n8nApiKey: webhookData.n8nApiKey,\n  timestamp: new Date().toISOString()\n};"
 			},
 			"id": "normalize-input",
 			"name": "1. Normalizar Entrada",

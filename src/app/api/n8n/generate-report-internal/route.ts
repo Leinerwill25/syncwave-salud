@@ -72,7 +72,7 @@ export async function POST(request: NextRequest) {
 		// Usar .select() sin caché para obtener la versión más reciente
 		const { data: medicProfile, error: medicProfileError } = await supabaseAdmin
 			.from('medic_profile')
-			.select('report_template_url, report_template_name, report_templates_by_specialty, report_font_family')
+			.select('report_template_url, report_template_name, report_template_text, report_templates_by_specialty, report_font_family')
 			.eq('doctor_id', doctorId)
 			.maybeSingle();
 
@@ -115,9 +115,10 @@ export async function POST(request: NextRequest) {
 		// Resolver plantilla según reportType
 		let templateUrl: string | null = medicProfile.report_template_url;
 		let templateName: string = medicProfile.report_template_name || 'Plantilla médica';
+		let templateText: string | null = medicProfile.report_template_text || null;
 
 		// Parsear report_templates_by_specialty (puede venir como string desde Supabase)
-		let specialtyTemplates: Record<string, { url?: string; template_url?: string; name?: string; template_name?: string }> | null = null;
+		let specialtyTemplates: Record<string, { url?: string; template_url?: string; name?: string; template_name?: string; template_text?: string }> | null = null;
 		
 		if (medicProfile.report_templates_by_specialty) {
 			if (typeof medicProfile.report_templates_by_specialty === 'string') {
@@ -144,6 +145,11 @@ export async function POST(request: NextRequest) {
 					templateUrl = template.url || template.template_url || null;
 					// Soportar tanto 'name' como 'template_name'
 					templateName = template.name || template.template_name || templateName;
+					// Extraer template_text si existe (tiene prioridad sobre el del nivel superior)
+					if (template.template_text) {
+						templateText = template.template_text;
+						console.log(`[N8N Internal] ✅ Template text encontrado en especialidad "${key}" (primeros 100 chars):`, templateText.substring(0, 100));
+					}
 					
 					if (templateUrl) {
 						console.log(`[N8N Internal] ✅ Plantilla encontrada con clave: "${key}"`);
@@ -170,7 +176,10 @@ export async function POST(request: NextRequest) {
 			url: templateUrl.substring(0, 100) + '...',
 			name: templateName,
 			reportType,
-			doctorId
+			doctorId,
+			hasTemplateText: !!templateText,
+			templateTextLength: templateText?.length || 0,
+			templateTextPreview: templateText ? templateText.substring(0, 150) + '...' : 'No disponible'
 		});
 
 		// IMPORTANTE: NO actualizar vitals de la consulta con datos del audio
@@ -539,12 +548,20 @@ export async function POST(request: NextRequest) {
 			),
 		};
 		
+		// Plantilla de texto para construir {{contenido}}
+		// Función para reemplazar variables en una plantilla de texto
+		function replaceTemplateVars(template: string, data: Record<string, string>): string {
+			return template.replace(/\{\{(\w+)\}\}/g, (match, key) => {
+				return data[key] !== undefined && data[key] !== null ? String(data[key]) : '';
+			});
+		}
+
 		// Preparar datos base para plantilla
-		// NO generar contenido estructurado - solo rellenar variables {{}} de la plantilla
+		// NOTA: contenido se construirá después de mapear todas las variables
 		const baseTemplateData: Record<string, string> = {
-			contenido: '', // NO usar - la plantilla tiene su propio formato
-			content: '', // NO usar - la plantilla tiene su propio formato
-			informe: '', // NO usar - la plantilla tiene su propio formato
+			contenido: '', // Se construirá después con la plantilla de texto
+			content: '', // Alias
+			informe: '', // Alias
 			fecha: consultationDate,
 			date: consultationDate,
 			paciente: patientName.toUpperCase(),
@@ -672,6 +689,16 @@ export async function POST(request: NextRequest) {
 			const mamas = exam.mamas || {};
 			const tacto = exam.tacto || {};
 			
+			// Log para debugging
+			console.log('[N8N Internal] Datos extraídos:', {
+				motivo_consulta: extractedFields?.motivo_consulta,
+				alergias: ant.alergias,
+				quirurgicos: ant.quirurgicos,
+				tamano_mamas: mamas.tamaño || mamas.tamano,
+				simetria_mamas: mamas.simetria,
+				ultima_regla: gyn.ultima_regla,
+			});
+			
 			// Mapeo explícito según los nombres de variables de la plantilla del usuario
 			const explicitMappings: Record<string, string> = {
 				// Variables de la plantilla del usuario
@@ -689,7 +716,7 @@ export async function POST(request: NextRequest) {
 				parejas_sexuales: gyn.parejas_sexuales !== undefined ? String(gyn.parejas_sexuales) : '',
 				condiciones_generales: toUpper(exam.condiciones_generales || ''),
 				tamano_mamas: toUpper(mamas.tamaño || mamas.tamano || ''),
-				simetria_mamas: toUpper(mamas.simetria || ''),
+				simetria_mamas: mamas.simetria !== undefined ? (mamas.simetria ? 'SÍ' : 'NO') : toUpper(mamas.simetria || ''),
 				cap_mamas: toUpper(mamas.cap || ''),
 				secrecion_mamas: toUpper(mamas.secrecion || ''),
 				fosas_axilares: toUpper(exam.fosas_axilares || ''),
@@ -756,22 +783,78 @@ export async function POST(request: NextRequest) {
 				...baseTemplateData,
 				...explicitMappings,
 			};
+			
+			// Construir {{contenido}} usando la plantilla de texto de la base de datos
+			if (templateText) {
+				// Reemplazar \n literales por saltos de línea reales
+				const templateTextProcessed = templateText.replace(/\\n/g, '\n');
+				const contenidoGenerado = replaceTemplateVars(templateTextProcessed, templateDataObj);
+				templateDataObj.contenido = contenidoGenerado;
+				templateDataObj.content = contenidoGenerado;
+				templateDataObj.informe = contenidoGenerado;
+				
+				console.log(`[N8N Internal] Contenido generado desde BD (primeros 200 chars):`, contenidoGenerado.substring(0, 200));
+			} else {
+				console.warn(`[N8N Internal] ⚠️ No se encontró template_text en la base de datos para construir {{contenido}}`);
+				// Dejar contenido vacío si no hay plantilla de texto
+				templateDataObj.contenido = '';
+				templateDataObj.content = '';
+				templateDataObj.informe = '';
+			}
 		}
 
 		// Log para debugging: mostrar cuántas variables se mapearon
 		const totalVariables = Object.keys(templateDataObj).length;
 		console.log(`[N8N Internal] Total de variables mapeadas para plantilla: ${totalVariables}`);
-		console.log(`[N8N Internal] Primeras 20 variables:`, Object.keys(templateDataObj).slice(0, 20).join(', '));
+		console.log(`[N8N Internal] Primeras 30 variables:`, Object.keys(templateDataObj).slice(0, 30).join(', '));
 		
 		// Verificar que tenemos las variables más comunes
-		const commonVars = ['fur', 'FUR', 'ultima_regla', 'metodo_anticonceptivo', 'ho', 'HO', 'contenido'];
+		const commonVars = ['fur', 'FUR', 'ultima_regla', 'metodo_anticonceptivo', 'ho', 'HO', 'contenido', 'historia_enfermedad_actual', 'alergicos', 'quirurgicos'];
 		const missingVars = commonVars.filter(v => !templateDataObj[v] && templateDataObj[v] !== '');
 		if (missingVars.length > 0) {
 			console.warn(`[N8N Internal] Variables comunes no encontradas:`, missingVars);
 		}
 		
+		// Log de algunas variables clave para verificar que tienen valores
+		const keyVars = ['historia_enfermedad_actual', 'alergicos', 'quirurgicos', 'tamano_mamas', 'simetria_mamas', 'fur', 'metodo_anticonceptivo', 'edad', 'paciente', 'fecha'];
+		console.log(`[N8N Internal] Valores de variables clave:`);
+		keyVars.forEach(v => {
+			const value = templateDataObj[v];
+			console.log(`  ${v}: "${value}" (${typeof value}, length: ${value?.length || 0})`);
+		});
+		
+		// Contar cuántas variables tienen valores no vacíos
+		const varsWithValues = Object.entries(templateDataObj).filter(([_, value]) => value && value !== '').length;
+		console.log(`[N8N Internal] Variables con valores: ${varsWithValues} de ${totalVariables}`);
+		
 		// Renderizar plantilla
-		doc.render(templateDataObj);
+		try {
+			console.log(`[N8N Internal] Iniciando renderizado de plantilla...`);
+			doc.render(templateDataObj);
+			console.log(`[N8N Internal] ✅ Plantilla renderizada exitosamente`);
+			
+			// Verificar que el documento tiene contenido después del renderizado
+			const zip = doc.getZip();
+			const documentXml = zip.files['word/document.xml'];
+			if (documentXml) {
+				const xmlContent = documentXml.asText();
+				// Contar cuántas variables {{}} quedan sin reemplazar
+				const remainingVars = (xmlContent.match(/\{\{[^}]+\}\}/g) || []).length;
+				console.log(`[N8N Internal] Variables sin reemplazar en documento: ${remainingVars}`);
+				if (remainingVars > 0) {
+					const sampleVars = xmlContent.match(/\{\{[^}]+\}\}/g)?.slice(0, 10) || [];
+					console.warn(`[N8N Internal] Ejemplos de variables sin reemplazar:`, sampleVars);
+				}
+			}
+		} catch (renderError: any) {
+			console.error(`[N8N Internal] ❌ Error al renderizar plantilla:`, {
+				message: renderError.message,
+				name: renderError.name,
+				properties: renderError.properties,
+				stack: renderError.stack?.substring(0, 500)
+			});
+			throw new Error(`Error al renderizar plantilla: ${renderError.message}`);
+		}
 
 		// Aplicar formato
 		try {
@@ -796,9 +879,48 @@ export async function POST(request: NextRequest) {
 			compression: 'DEFLATE',
 		});
 
+		// Validar que el buffer se generó correctamente
+		if (!generatedBuffer || generatedBuffer.length === 0) {
+			console.error('[N8N Internal] Error: Buffer generado está vacío');
+			return NextResponse.json(
+				{ error: 'Error al guardar informe', detail: 'El documento generado está vacío' },
+				{ status: 500 }
+			);
+		}
+
+		console.log('[N8N Internal] Documento generado exitosamente:', {
+			bufferSize: generatedBuffer.length,
+			bufferSizeKB: Math.round(generatedBuffer.length / 1024),
+		});
+
 		// Subir informe a Supabase Storage
 		const reportsBucket = 'consultation-reports';
 		const reportFileName = `${consultationId}/${Date.now()}-informe-${consultationId}.docx`;
+
+		console.log('[N8N Internal] Intentando subir informe:', {
+			bucket: reportsBucket,
+			fileName: reportFileName,
+			bufferSize: generatedBuffer.length,
+		});
+
+		// Verificar que el bucket existe
+		const { data: buckets, error: bucketsError } = await supabaseAdmin.storage.listBuckets();
+		if (bucketsError) {
+			console.error('[N8N Internal] Error listando buckets:', bucketsError);
+			return NextResponse.json(
+				{ error: 'Error al guardar informe', detail: `Error accediendo a Storage: ${bucketsError.message}` },
+				{ status: 500 }
+			);
+		}
+
+		const bucketExists = buckets?.some(b => b.name === reportsBucket);
+		if (!bucketExists) {
+			console.error('[N8N Internal] Bucket no existe:', reportsBucket);
+			return NextResponse.json(
+				{ error: 'Error al guardar informe', detail: `El bucket "${reportsBucket}" no existe. Debe crearse en Supabase Storage.` },
+				{ status: 500 }
+			);
+		}
 
 		const { data: uploadData, error: uploadError } = await supabaseAdmin.storage
 			.from(reportsBucket)
@@ -808,8 +930,21 @@ export async function POST(request: NextRequest) {
 			});
 
 		if (uploadError) {
-			console.error('[N8N Internal] Error subiendo informe:', uploadError);
-			return NextResponse.json({ error: 'Error al guardar informe' }, { status: 500 });
+			console.error('[N8N Internal] Error subiendo informe:', {
+				error: uploadError,
+				message: uploadError.message,
+				statusCode: uploadError.statusCode,
+				errorCode: uploadError.error,
+			});
+			return NextResponse.json(
+				{ 
+					error: 'Error al guardar informe', 
+					detail: uploadError.message || 'Error desconocido al subir el archivo',
+					errorCode: uploadError.error,
+					statusCode: uploadError.statusCode,
+				},
+				{ status: 500 }
+			);
 		}
 
 		// Obtener URL firmada
