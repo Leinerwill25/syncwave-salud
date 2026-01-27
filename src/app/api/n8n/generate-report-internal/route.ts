@@ -933,15 +933,15 @@ export async function POST(request: NextRequest) {
 			console.error('[N8N Internal] Error subiendo informe:', {
 				error: uploadError,
 				message: uploadError.message,
-				statusCode: uploadError.statusCode,
-				errorCode: uploadError.error,
+				errorCode: (uploadError as any).error,
+				statusCode: (uploadError as any).statusCode,
 			});
 			return NextResponse.json(
 				{ 
 					error: 'Error al guardar informe', 
 					detail: uploadError.message || 'Error desconocido al subir el archivo',
-					errorCode: uploadError.error,
-					statusCode: uploadError.statusCode,
+					errorCode: (uploadError as any).error,
+					statusCode: (uploadError as any).statusCode,
 				},
 				{ status: 500 }
 			);
