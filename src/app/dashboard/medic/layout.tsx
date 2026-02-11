@@ -1,6 +1,7 @@
 // app/dashboard/medic/layout.tsx
 import React from 'react';
 import MedicSidebar from '../medic/components/MedicSidebar';
+import MedicAdvancedToolsSidebar from '../medic/components/MedicAdvancedToolsSidebar';
 import MedicHamburgerMenu from '@/components/medic/MedicHamburgerMenu';
 import ServerDashboardGuard from '@/components/auth/ServerDashboardGuard';
 import AlertsButton from '@/components/medic/AlertsButton';
@@ -20,7 +21,7 @@ export default function MedicLayout({ children }: { children: React.ReactNode })
 		<ServerDashboardGuard allowedRoles={['MEDICO']}>
 			<ProfileCompleteGuard>
 				<LiteModeProvider>
-					<div className="min-h-screen rounded-2xl bg-gradient-to-br from-blue-50 via-cyan-50 to-teal-50 w-full max-w-full overflow-x-hidden">
+					<div className="min-h-screen rounded-2xl bg-gradient-to-br from-blue-50 via-cyan-50 to-teal-50 w-full max-w-full overflow-x-hidden relative">
 						{/* Menú Hamburger para móviles */}
 						<MedicHamburgerMenu />
 
@@ -32,6 +33,9 @@ export default function MedicLayout({ children }: { children: React.ReactNode })
 									<main className="bg-white rounded-2xl p-6 shadow-sm border border-blue-100 flex-1 w-full min-w-0 overflow-x-hidden">{children}</main>
 								</div>
 							</div>
+
+							{/* Panel de Herramientas Avanzadas (Derecha) */}
+							<MedicAdvancedToolsSidebar />
 
 							{/* Botón de Alertas - Burbuja flotante */}
 							<div className="fixed bottom-6 right-6 z-50">

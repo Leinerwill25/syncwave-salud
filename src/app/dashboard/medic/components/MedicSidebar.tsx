@@ -4,11 +4,8 @@ import React, { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { usePrefetchApiData } from '@/hooks/usePrefetchRoute';
-import { LayoutDashboard, CalendarDays, User, ClipboardList, FileText, Settings, MessageCircle, CheckSquare, Folder, ChevronRight, ChevronDown, Search, FileCheck, CreditCard, DollarSign, Users, FileType, Share2, Zap } from 'lucide-react';
+import { LayoutDashboard, CalendarDays, User, ClipboardList, FileText, ChevronRight, ChevronDown, Search, FileCheck, Users } from 'lucide-react';
 import type { MedicConfig } from '@/types/medic-config';
-import PaymentsModal from '@/components/medic/PaymentsModal';
-import PublicLinkModal from '@/components/medic/PublicLinkModal';
-import { useLiteMode } from '@/contexts/LiteModeContext';
 
 type IconComponent = React.ComponentType<React.SVGProps<SVGSVGElement>>;
 
@@ -41,7 +38,7 @@ const LINKS: LinkItem[] = [
 		submenu: [
 			{ href: '/dashboard/medic/consultas', label: 'Todas las consultas' },
 			{ href: '/dashboard/medic/consultas/new', label: 'Nueva consulta' },
-			{ href: '/dashboard/medic/consulta-sucesiva', label: 'Consulta Sucesiva' }, // Botón de consultas sucesivas
+			{ href: '/dashboard/medic/consulta-sucesiva', label: 'Consulta Sucesiva' },
 		],
 	},
 	{
@@ -70,51 +67,6 @@ const LINKS: LinkItem[] = [
 			{ href: '/dashboard/medic/lab-results', label: 'Resultados Cargados' },
 		],
 	},
-	{
-		href: '/dashboard/medic/resultados',
-		label: 'Resultados',
-		icon: Folder,
-	},
-	{
-		href: '/dashboard/medic/mensajes',
-		label: 'Mensajes',
-		icon: MessageCircle,
-	},
-	{
-		href: '/dashboard/medic/mensajeria',
-		label: 'Mensajería Privada',
-		icon: MessageCircle,
-	},
-	{
-		href: '/dashboard/medic/tareas',
-		label: 'Tareas',
-		icon: CheckSquare,
-	},
-	{
-		label: 'Configuración',
-		icon: Settings,
-		submenu: [
-			{ href: '/dashboard/medic/configuracion', label: 'Perfil Profesional' },
-			{ href: '/dashboard/medic/configuracion/consultorio', label: 'Consultorio', showOnlyForOrgType: 'CONSULTORIO' },
-			{ href: '/dashboard/medic/configuracion/roles', label: 'Crear Rol', showOnlyForOrgType: 'CONSULTORIO' },
-			{ href: '/dashboard/medic/configuracion/moneda', label: 'Configuración de Moneda', icon: DollarSign },
-		],
-	},
-	{
-		href: '/dashboard/medic/reportes',
-		label: 'Reportes',
-		icon: FileText,
-	},
-	{
-		href: '/dashboard/medic/plantilla-informe',
-		label: 'Plantilla de Informe',
-		icon: FileType,
-	},
-	{
-		href: '/dashboard/medic/plantilla-receta',
-		label: 'Plantilla de Receta',
-		icon: FileText,
-	},
 ];
 
 // Caché simple en memoria para la configuración del médico
@@ -126,9 +78,6 @@ export default function MedicSidebar() {
 	const [openMenus, setOpenMenus] = useState<string[]>([]);
 	const [medicConfig, setMedicConfig] = useState<MedicConfig | null>(null);
 	const [loadingConfig, setLoadingConfig] = useState(true);
-	const [paymentsModalOpen, setPaymentsModalOpen] = useState(false);
-	const [publicLinkModalOpen, setPublicLinkModalOpen] = useState(false);
-	const { isLiteMode, toggleLiteMode, loading: liteModeLoading } = useLiteMode();
 
 	// Prefetch de datos críticos para rutas comunes
 	usePrefetchApiData('/api/consultations?page=1&pageSize=8', pathname !== '/dashboard/medic/consultas');
@@ -382,38 +331,8 @@ export default function MedicSidebar() {
 						<ul className="flex flex-col gap-1">{LINKS.map(renderLink)}</ul>
 					</nav>
 
-					{/* Action Buttons */}
-					<div className="mt-3 pt-2 border-t border-blue-100 space-y-2">
-						{/* Versión Lite Button */}
-						<button 
-							onClick={toggleLiteMode} 
-							disabled={liteModeLoading}
-							className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors group ${
-								isLiteMode 
-									? 'bg-gradient-to-r from-teal-600 to-cyan-600 text-white shadow-md' 
-									: 'text-slate-700 hover:bg-blue-50'
-							}`}
-						>
-							<Zap className={`w-5 h-5 ${isLiteMode ? 'text-white' : 'text-teal-600 group-hover:text-teal-700'}`} />
-							<span>{isLiteMode ? 'Versión Lite Activa' : 'Habilitar Versión Lite'}</span>
-							{isLiteMode && (
-								<span className="ml-auto px-2 py-0.5 text-[10px] font-semibold rounded-full bg-white/20 text-white border border-white/30">
-									ON
-								</span>
-							)}
-						</button>
-						{/* Link Público Button - Solo para consultorios privados */}
-						{medicConfig?.organizationType === 'CONSULTORIO' && (medicConfig?.user?.organizationId || (medicConfig as any)?.organizationId) && (
-							<button onClick={() => setPublicLinkModalOpen(true)} className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-slate-700 hover:bg-gradient-to-r hover:from-teal-50 hover:to-cyan-50 transition-all group border border-teal-200 hover:border-teal-300">
-								<Share2 className="w-5 h-5 text-teal-600 group-hover:text-teal-700" />
-								<span>Link Público</span>
-								<span className="ml-auto px-2 py-0.5 text-[10px] font-semibold rounded-full bg-teal-100 text-teal-700 border border-teal-200">Nuevo</span>
-							</button>
-						)}
-						<button onClick={() => setPaymentsModalOpen(true)} className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-slate-700 hover:bg-blue-50 transition-colors group">
-							<CreditCard className="w-5 h-5 text-teal-600 group-hover:text-teal-700" />
-							<span>Pagos Efectuados</span>
-						</button>
+					<div className="mt-4 pt-4 border-t border-blue-100 italic text-[11px] text-slate-400 text-center">
+						Gestión Diaria ASHIRA
 					</div>
 
 					{/* Footer */}
@@ -425,12 +344,6 @@ export default function MedicSidebar() {
 					</div>
 				</div>
 			</div>
-
-			{/* Payments Modal */}
-			<PaymentsModal isOpen={paymentsModalOpen} onClose={() => setPaymentsModalOpen(false)} />
-
-			{/* Public Link Modal */}
-			<PublicLinkModal isOpen={publicLinkModalOpen} onClose={() => setPublicLinkModalOpen(false)} organizationId={medicConfig?.user?.organizationId || (medicConfig as any)?.organizationId || null} />
 		</aside>
 	);
 }
