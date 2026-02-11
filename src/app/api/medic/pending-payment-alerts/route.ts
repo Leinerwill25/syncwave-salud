@@ -65,7 +65,7 @@ export async function GET() {
 			}
 		}
 
-		// Buscar consultas del día con facturaciones pendientes
+		// Buscar consultas con facturaciones pendientes (sin filtro de fecha para asegurar que no se omitan)
 		const { data: consultations, error: consultationsError } = await supabase
 			.from('consultation')
 			.select(`
@@ -79,9 +79,7 @@ export async function GET() {
 				patient:patient_id(firstName, lastName, identifier),
 				unregisteredPatient:unregistered_patient_id(first_name, last_name, identification)
 			`)
-			.eq('doctor_id', user.userId)
-			.gte('started_at', today.toISOString())
-			.lte('started_at', tomorrow.toISOString());
+			.eq('doctor_id', user.userId);
 
 		if (consultationsError) {
 			console.error('[Pending Payment Alerts API] Error obteniendo consultas:', consultationsError);
@@ -132,6 +130,11 @@ export async function GET() {
 
 				if (consultationData) {
 					consultationId = consultationData.id;
+				}
+
+				// Prioridad 0: Si la facturación ya tiene un consultation_id, usarlo
+				if (facturacion.consultation_id) {
+					consultationId = facturacion.consultation_id;
 				}
 
 				const patient = normalizePatient(apt.patient);
