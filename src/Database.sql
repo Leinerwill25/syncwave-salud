@@ -28,6 +28,7 @@ CREATE TABLE public.appointment (
   referral_source character varying DEFAULT NULL::character varying,
   created_by_role_user_id uuid,
   created_by_doctor_id uuid,
+  office_id text,
   CONSTRAINT appointment_pkey PRIMARY KEY (id),
   CONSTRAINT fk_appointment_doctor FOREIGN KEY (doctor_id) REFERENCES public.user(id),
   CONSTRAINT appointment_created_by_role_user_fkey FOREIGN KEY (created_by_role_user_id) REFERENCES public.consultorio_role_users(id),
@@ -270,6 +271,20 @@ CREATE TABLE public.doctor_private_notes (
   CONSTRAINT doctor_private_notes_patient_id_fkey FOREIGN KEY (patient_id) REFERENCES public.patient(id),
   CONSTRAINT doctor_private_notes_unregistered_patient_id_fkey FOREIGN KEY (unregistered_patient_id) REFERENCES public.unregisteredpatients(id)
 );
+CREATE TABLE public.doctor_schedule_config (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  doctor_id uuid NOT NULL UNIQUE,
+  organization_id uuid NOT NULL,
+  consultation_type text NOT NULL DEFAULT 'TURNOS'::text CHECK (consultation_type = ANY (ARRAY['TURNOS'::text, 'ORDEN_LLEGADA'::text])),
+  max_patients_per_day integer DEFAULT 20 CHECK (max_patients_per_day > 0 AND max_patients_per_day <= 200),
+  shift_config jsonb DEFAULT '{"shifts": [{"id": "morning", "name": "Turno Mañana", "enabled": true}, {"id": "afternoon", "name": "Turno Tarde", "enabled": true}], "enabled": true}'::jsonb,
+  offices jsonb DEFAULT '[]'::jsonb,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT doctor_schedule_config_pkey PRIMARY KEY (id),
+  CONSTRAINT doctor_schedule_config_doctor_fkey FOREIGN KEY (doctor_id) REFERENCES public.user(id),
+  CONSTRAINT doctor_schedule_config_org_fkey FOREIGN KEY (organization_id) REFERENCES public.organization(id)
+);
 CREATE TABLE public.facturacion (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
   appointment_id uuid NOT NULL,
@@ -354,6 +369,76 @@ CREATE TABLE public.lab_result (
   CONSTRAINT lab_result_pkey PRIMARY KEY (id),
   CONSTRAINT fk_labresult_consultation FOREIGN KEY (consultation_id) REFERENCES public.consultation(id),
   CONSTRAINT lab_result_unregistered_patient_id_fkey FOREIGN KEY (unregistered_patient_id) REFERENCES public.unregisteredpatients(id)
+);
+CREATE TABLE public.lab_result_upload (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  consultation_id uuid,
+  patient_id uuid,
+  doctor_id uuid,
+  organization_id uuid NOT NULL,
+  upload_link_id uuid,
+  title text NOT NULL,
+  description text,
+  result_type text,
+  additional_details text,
+  attachments jsonb DEFAULT '[]'::jsonb,
+  specialist_name text NOT NULL,
+  specialist_id_number text NOT NULL,
+  specialist_lab_name text NOT NULL,
+  specialist_email text,
+  specialist_phone text,
+  patient_first_name text,
+  patient_last_name text,
+  patient_id_number text NOT NULL,
+  patient_email text,
+  patient_phone text,
+  status text DEFAULT 'pending'::text,
+  is_critical boolean DEFAULT false,
+  viewed_by_patient boolean DEFAULT false,
+  viewed_by_doctor boolean DEFAULT false,
+  approved_at timestamp with time zone,
+  approved_by uuid,
+  rejected_at timestamp with time zone,
+  rejected_by uuid,
+  rejection_reason text,
+  created_at timestamp with time zone DEFAULT now(),
+  updated_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT lab_result_upload_pkey PRIMARY KEY (id),
+  CONSTRAINT lab_result_upload_consultation_id_fkey FOREIGN KEY (consultation_id) REFERENCES public.consultation(id),
+  CONSTRAINT lab_result_upload_patient_id_fkey FOREIGN KEY (patient_id) REFERENCES public.patient(id),
+  CONSTRAINT lab_result_upload_doctor_id_fkey FOREIGN KEY (doctor_id) REFERENCES public.user(id),
+  CONSTRAINT lab_result_upload_organization_id_fkey FOREIGN KEY (organization_id) REFERENCES public.organization(id),
+  CONSTRAINT lab_result_upload_upload_link_id_fkey FOREIGN KEY (upload_link_id) REFERENCES public.lab_upload_link(id),
+  CONSTRAINT lab_result_upload_approved_by_fkey FOREIGN KEY (approved_by) REFERENCES public.user(id),
+  CONSTRAINT lab_result_upload_rejected_by_fkey FOREIGN KEY (rejected_by) REFERENCES public.user(id)
+);
+CREATE TABLE public.lab_upload_link (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  organization_id uuid NOT NULL,
+  token text NOT NULL UNIQUE,
+  is_active boolean DEFAULT true,
+  created_at timestamp with time zone DEFAULT now(),
+  updated_at timestamp with time zone DEFAULT now(),
+  created_by uuid,
+  CONSTRAINT lab_upload_link_pkey PRIMARY KEY (id),
+  CONSTRAINT lab_upload_link_organization_id_fkey FOREIGN KEY (organization_id) REFERENCES public.organization(id),
+  CONSTRAINT lab_upload_link_created_by_fkey FOREIGN KEY (created_by) REFERENCES public.user(id)
+);
+CREATE TABLE public.lab_upload_notification (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  lab_result_id uuid NOT NULL,
+  recipient_type text NOT NULL,
+  recipient_id uuid,
+  recipient_email text NOT NULL,
+  notification_type text NOT NULL,
+  status text DEFAULT 'pending'::text,
+  sent_at timestamp with time zone,
+  error_message text,
+  resend_id text,
+  created_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT lab_upload_notification_pkey PRIMARY KEY (id),
+  CONSTRAINT lab_upload_notification_lab_result_id_fkey FOREIGN KEY (lab_result_id) REFERENCES public.lab_result_upload(id),
+  CONSTRAINT lab_upload_notification_recipient_id_fkey FOREIGN KEY (recipient_id) REFERENCES public.user(id)
 );
 CREATE TABLE public.medic_profile (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
@@ -827,7 +912,7 @@ CREATE TABLE public.unregisteredpatients (
 );
 CREATE TABLE public.user (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
-  email text NOT NULL UNIQUE,
+  email text NOT NULL,
   name text,
   passwordHash text,
   role USER-DEFINED NOT NULL,

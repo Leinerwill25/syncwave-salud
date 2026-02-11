@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import createSupabaseServerClient from '@/app/adapters/server';
 import { createClient } from '@supabase/supabase-js';
 import { createNotifications } from '@/lib/notifications';
+import { sendNotificationEmail } from '@/lib/email';
 import { Pool } from 'pg';
 
 const supabaseAdmin = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!, { auth: { persistSession: false } });
@@ -213,24 +214,20 @@ export async function PATCH(req: Request, context: { params: Promise<{ id: strin
 			let patientName: string | undefined;
 			let doctorName: string | undefined;
 			let patientUserId: string | null = null;
+			let unregisteredEmail: string | null = null;
+
 			try {
 				// Helper para consultar la tabla user con diferentes variantes
 				const queryUserTable = async (queryFn: (tableName: string) => any) => {
 					try {
-						// Intentar primero con 'user' en minúscula (nombre correcto de la tabla)
 						const queryBuilder1 = queryFn('user');
 						const result = await queryBuilder1;
-						if (result?.data && !result.error) {
-							return result;
-						}
+						if (result?.data && !result.error) return result;
 						if (result?.error) {
-							// Si falla, intentar con comillas dobles
 							try {
 								const queryBuilder2 = queryFn('"user"');
 								const result2 = await queryBuilder2;
-								if (result2?.data && !result2.error) {
-									return result2;
-								}
+								if (result2?.data && !result2.error) return result2;
 							} catch (err2) {
 								console.warn('[Appointment Update] Error con variante "user":', err2);
 							}
@@ -241,23 +238,31 @@ export async function PATCH(req: Request, context: { params: Promise<{ id: strin
 					return { data: null, error: null };
 				};
 
-				const [patientRes, doctorRes, patientUserRes] = await Promise.all([
-					supabaseAdmin.from('patient').select('firstName, lastName').eq('id', patient_id).maybeSingle(),
+				const [patientRes, doctorRes, patientUserRes, unregisteredRes] = await Promise.all([
+					patient_id 
+						? supabaseAdmin.from('patient').select('firstName, lastName').eq('id', patient_id).maybeSingle()
+						: Promise.resolve({ data: null }),
 					doctor_id
 						? queryUserTable((tableName) => supabaseAdmin.from(tableName).select('name').eq('id', doctor_id).maybeSingle())
 						: Promise.resolve({ data: null }),
-					// Obtener el user_id del paciente
-					queryUserTable((tableName) => supabaseAdmin.from(tableName).select('id').eq('patientProfileId', patient_id).maybeSingle()),
+					patient_id
+						? queryUserTable((tableName) => supabaseAdmin.from(tableName).select('id').eq('patientProfileId', patient_id).maybeSingle())
+						: Promise.resolve({ data: null }),
+					current.unregistered_patient_id
+						? supabaseAdmin.from('unregisteredpatients').select('first_name, last_name, email').eq('id', current.unregistered_patient_id).maybeSingle()
+						: Promise.resolve({ data: null }),
 				]);
+
 				if (patientRes.data) {
 					patientName = `${patientRes.data.firstName} ${patientRes.data.lastName}`;
+				} else if (unregisteredRes.data) {
+					patientName = `${unregisteredRes.data.first_name} ${unregisteredRes.data.last_name}`;
 				}
-				if (doctorRes.data) {
-					doctorName = doctorRes.data.name || undefined;
-				}
-				if (patientUserRes.data) {
-					patientUserId = patientUserRes.data.id;
-				}
+				
+				if (doctorRes.data) doctorName = doctorRes.data.name || undefined;
+				if (patientUserRes.data) patientUserId = patientUserRes.data.id;
+				if (unregisteredRes.data) unregisteredEmail = unregisteredRes.data.email;
+
 			} catch (err) {
 				console.warn('[Appointment Update] Error obteniendo datos para notificaciones:', err);
 			}
@@ -274,6 +279,29 @@ export async function PATCH(req: Request, context: { params: Promise<{ id: strin
 				: '';
 
 			const appointmentUrl = `${process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_VERCEL_URL ? `https://${process.env.NEXT_PUBLIC_VERCEL_URL}` : 'http://localhost:3000'}/dashboard/medic/consultas/${id}`;
+
+			// 5.1 Enviar email directo a paciente NO registrado si aplica
+			if (unregisteredEmail && !patientUserId) {
+				try {
+					await sendNotificationEmail(
+						'APPOINTMENT_STATUS',
+						unregisteredEmail,
+						{
+							patientName,
+							doctorName,
+							scheduledAt: appointmentDate,
+							reason: current.selected_service?.name || reason || null,
+							location: location || null,
+							appointmentUrl: '', 
+							newStatus: body.status,
+							isForDoctor: false,
+							isUnregisteredPatient: true
+						}
+					);
+				} catch (emailErr) {
+					console.error('[Appointment Update] Error enviando email a no registrado:', emailErr);
+				}
+			}
 
 			// Crear notificaciones solo si tenemos los user_ids
 			const notifications = [];
@@ -331,7 +359,6 @@ export async function PATCH(req: Request, context: { params: Promise<{ id: strin
 					await createNotifications(notifications);
 				} catch (notifError) {
 					console.error('[Appointment Update] Error creando notificaciones:', notifError);
-					// No fallar la operación si fallan las notificaciones
 				}
 			}
 		}

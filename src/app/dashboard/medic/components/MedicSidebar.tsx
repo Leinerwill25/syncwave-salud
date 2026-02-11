@@ -63,6 +63,14 @@ const LINKS: LinkItem[] = [
 		icon: CalendarDays,
 	},
 	{
+		label: 'Laboratorios',
+		icon: FileText,
+		submenu: [
+			{ href: '/dashboard/medic/lab-upload-link', label: 'Link de Carga' },
+			{ href: '/dashboard/medic/lab-results', label: 'Resultados Cargados' },
+		],
+	},
+	{
 		href: '/dashboard/medic/resultados',
 		label: 'Resultados',
 		icon: Folder,

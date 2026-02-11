@@ -1,10 +1,11 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Calendar, Clock, User, Phone, Mail, Package, CheckCircle2, Loader2 } from 'lucide-react';
+import { X, Calendar, Clock, User, Phone, Mail, Package, CheckCircle2, Loader2, Users, MapPin, Zap } from 'lucide-react';
 
-type Service = {
+export type Service = {
 	id?: string;
 	name: string;
 	description?: string;
@@ -12,7 +13,7 @@ type Service = {
 	currency?: string;
 };
 
-type ServiceCombo = {
+export type ServiceCombo = {
 	id?: string;
 	name: string;
 	description?: string;
@@ -22,13 +23,23 @@ type ServiceCombo = {
 	services_included?: any[];
 };
 
-type Doctor = {
+export type Doctor = {
 	id: string;
 	name: string | null;
+	email?: string | null;
 	medic_profile: {
 		services: Service[];
 		serviceCombos?: ServiceCombo[];
 		availability: any;
+		private_specialty?: string | any;
+		specialty?: string | any;
+		photo_url?: string | null;
+		doctor_schedule_config?: {
+			consultation_type: 'TURNOS' | 'ORDEN_LLEGADA';
+			max_patients_per_day: number;
+			shift_config: any;
+			offices: any[];
+		} | null;
 	} | null;
 };
 
@@ -49,6 +60,11 @@ export default function AppointmentBookingModal({
 	const [loading, setLoading] = useState(false);
 	const [error, setError] = useState<string | null>(null);
 	const [success, setSuccess] = useState(false);
+	const [mounted, setMounted] = useState(false);
+
+	useEffect(() => {
+		setMounted(true);
+	}, []);
 
 	// Datos del paciente
 	const [firstName, setFirstName] = useState('');
@@ -57,14 +73,24 @@ export default function AppointmentBookingModal({
 	const [email, setEmail] = useState('');
 	const [birthDate, setBirthDate] = useState('');
 
-	// Selección de doctor
+	// Selección de doctor y consultorio
 	const [selectedDoctorId, setSelectedDoctorId] = useState<string | null>(null);
+	const [selectedOfficeId, setSelectedOfficeId] = useState<string | null>(null);
+	const [alternativeOffice, setAlternativeOffice] = useState<any | null>(null);
 	const selectedDoctor = doctors.find((d) => d.id === selectedDoctorId);
+	const selectedOffice = selectedDoctor?.medic_profile?.doctor_schedule_config?.offices?.find(o => o.id === selectedOfficeId);
 
 	// Selección de fecha y horario
 	const [selectedDate, setSelectedDate] = useState('');
 	const [selectedTime, setSelectedTime] = useState('');
 	const [availableTimeSlots, setAvailableTimeSlots] = useState<string[]>([]);
+	const [busySlots, setBusySlots] = useState<string[]>([]);
+	const [capacityInfo, setCapacityInfo] = useState<{
+		total: number;
+		morning: number;
+		afternoon: number;
+		config: any;
+	} | null>(null);
 
 	// Selección de servicio
 	const [selectedService, setSelectedService] = useState<Service | ServiceCombo | null>(null);
@@ -74,66 +100,157 @@ export default function AppointmentBookingModal({
 	const allServices: Service[] = doctors.flatMap((d) => d.medic_profile?.services || []);
 	const allCombos: ServiceCombo[] = doctors.flatMap((d) => d.medic_profile?.serviceCombos || []);
 
-	// Generar slots de tiempo basados en disponibilidad del doctor
+	// Función helper para formatear fechas sin desfase de zona horaria (UTC)
+	const formatDateLocal = (dateStr: string) => {
+		if (!dateStr) return '';
+		const [year, month, day] = dateStr.split('-').map(Number);
+		const dateObj = new Date(year, month - 1, day);
+		return dateObj.toLocaleDateString('es-ES', { 
+			weekday: 'long', 
+			day: 'numeric', 
+			month: 'long' 
+		});
+	};
+
+	// Generar slots de tiempo basados en disponibilidad del doctor y cargar ocupación
 	useEffect(() => {
-		if (!selectedDoctor || !selectedDate || !selectedDoctor.medic_profile?.availability) {
-			setAvailableTimeSlots([]);
-			return;
-		}
+		const fetchAvailability = async () => {
+			if (!selectedDoctor || !selectedDate) {
+				setAvailableTimeSlots([]);
+				setBusySlots([]);
+				setCapacityInfo(null);
+				setAlternativeOffice(null);
+				return;
+			}
 
-		const availability = selectedDoctor.medic_profile.availability;
-		const schedule = availability.schedule || {};
-		const selectedDay = new Date(selectedDate).toLocaleDateString('en-US', { weekday: 'long' }).toLowerCase();
+			try {
+				const response = await fetch(`/api/public/appointments/availability?doctorId=${selectedDoctor.id}&date=${selectedDate}`);
+				if (response.ok) {
+					const data = await response.json();
+					setBusySlots(data.busySlots || []);
+					setCapacityInfo({
+						total: data.stats.total,
+						morning: data.stats.morning,
+						afternoon: data.stats.afternoon,
+						config: data.config
+					});
+				}
+			} catch (err) {
+				console.error('Error fetching availability:', err);
+			}
 
-		// Mapeo de días en español a inglés
-		const dayMap: Record<string, string> = {
-			lunes: 'monday',
-			martes: 'tuesday',
-			miércoles: 'wednesday',
-			jueves: 'thursday',
-			viernes: 'friday',
-			sábado: 'saturday',
-			domingo: 'sunday',
-		};
+			// Obtener el horario según si hay oficina seleccionada o no
+			let daySlots: any[] = [];
+			const consultationType = selectedDoctor.medic_profile?.doctor_schedule_config?.consultation_type || 'TURNOS';
 
-		const dayKey = dayMap[selectedDay] || selectedDay;
-		const daySlots = schedule[dayKey] || [];
+			if (selectedOffice && selectedOffice.id !== 'default' && selectedOffice.schedules) {
+				// Prioridad 1: Horario específico del consultorio seleccionado
+				const selectedDay = new Date(selectedDate).toLocaleDateString('en-US', { weekday: 'long' }).toLowerCase();
+				const dayMap: Record<string, string> = {
+					lunes: 'monday', martes: 'tuesday', miércoles: 'wednesday', jueves: 'thursday',
+					viernes: 'friday', sábado: 'saturday', domingo: 'sunday'
+				};
+				const dayKey = dayMap[selectedDay] || selectedDay;
+				
+				// Buscar en los schedules del consultorio si alguno incluye el día seleccionado
+				const officeScheduleForDay = selectedOffice.schedules.find((s: any) => 
+					s.days && s.days.includes(dayKey)
+				);
 
-		if (Array.isArray(daySlots) && daySlots.length > 0) {
-			const slots: string[] = [];
-			daySlots.forEach((slot: any) => {
-				if (slot.enabled && slot.startTime && slot.endTime) {
-					// Generar slots cada 30 minutos
-					const start = slot.startTime.split(':');
-					const end = slot.endTime.split(':');
-					const startHour = parseInt(start[0]);
-					const startMin = parseInt(start[1]);
-					const endHour = parseInt(end[0]);
-					const endMin = parseInt(end[1]);
-
-					let currentHour = startHour;
-					let currentMin = startMin;
-
-					while (
-						currentHour < endHour ||
-						(currentHour === endHour && currentMin < endMin)
-					) {
-						const timeStr = `${String(currentHour).padStart(2, '0')}:${String(currentMin).padStart(2, '0')}`;
-						slots.push(timeStr);
-
-						currentMin += 30;
-						if (currentMin >= 60) {
-							currentMin = 0;
-							currentHour += 1;
-						}
+				if (officeScheduleForDay) {
+					if (consultationType === 'ORDEN_LLEGADA') {
+						// Si es orden de llegada, los slots son los turnos habilitados (Mañana/Tarde)
+						if (officeScheduleForDay.shifts?.includes('morning')) daySlots.push({ startTime: '08:00', endTime: '08:01', enabled: true, isShift: true, name: 'Mañana' });
+						if (officeScheduleForDay.shifts?.includes('afternoon')) daySlots.push({ startTime: '14:00', endTime: '14:01', enabled: true, isShift: true, name: 'Tarde' });
+					} else {
+						// Si es por turnos, convertir el formato de la oficina al formato de slots
+						Object.entries(officeScheduleForDay.hours || {}).forEach(([shiftId, hours]: [string, any]) => {
+							if (officeScheduleForDay.shifts?.includes(shiftId) && hours.start && hours.end) {
+								daySlots.push({ startTime: hours.start, endTime: hours.end, enabled: true });
+							}
+						});
 					}
 				}
-			});
-			setAvailableTimeSlots(slots);
-		} else {
-			setAvailableTimeSlots([]);
-		}
-	}, [selectedDoctor, selectedDate]);
+			} else if (selectedDoctor.medic_profile?.availability?.schedule) {
+				// Prioridad 2: Horario general del médico (fallback)
+				const schedule = selectedDoctor.medic_profile.availability.schedule || {};
+				const selectedDay = new Date(selectedDate).toLocaleDateString('en-US', { weekday: 'long' }).toLowerCase();
+				const dayMap: Record<string, string> = {
+					lunes: 'monday', martes: 'tuesday', miércoles: 'wednesday', jueves: 'thursday',
+					viernes: 'friday', sábado: 'saturday', domingo: 'sunday'
+				};
+				const dayKey = dayMap[selectedDay] || selectedDay;
+				daySlots = schedule[dayKey] || [];
+			}
+
+			if (Array.isArray(daySlots) && daySlots.length > 0) {
+				setAlternativeOffice(null);
+				const slots: string[] = [];
+				daySlots.forEach((slot: any) => {
+					if (slot.enabled && slot.startTime && slot.endTime) {
+						if (slot.isShift) {
+							// Caso Orden de Llegada: solo el inicio del turno
+							slots.push(slot.startTime);
+						} else {
+							// Caso Turnos: generar slots de 30min
+							const start = slot.startTime.split(':');
+							const end = slot.endTime.split(':');
+							const startHour = parseInt(start[0]);
+							const startMin = parseInt(start[1]);
+							const endHour = parseInt(end[0]);
+							const endMin = parseInt(end[1]);
+
+							let currentHour = startHour;
+							let currentMin = startMin;
+
+							while (
+								currentHour < endHour ||
+								(currentHour === endHour && currentMin < endMin)
+							) {
+								const timeStr = `${String(currentHour).padStart(2, '0')}:${String(currentMin).padStart(2, '0')}`;
+								slots.push(timeStr);
+
+								currentMin += 30;
+								if (currentMin >= 60) {
+									currentMin = 0;
+									currentHour += 1;
+								}
+							}
+						}
+					}
+				});
+				setAvailableTimeSlots([...new Set(slots)].sort()); // Eliminar duplicados y ordenar
+			} else {
+				setAvailableTimeSlots([]);
+				
+				// Buscar en otros consultorios si el actual no tiene disponibilidad hoy
+				const allOffices = selectedDoctor?.medic_profile?.doctor_schedule_config?.offices || [];
+				if (allOffices.length > 1 && selectedOfficeId && selectedDate) {
+					const selectedDay = new Date(selectedDate).toLocaleDateString('en-US', { weekday: 'long' }).toLowerCase();
+					const dayMap: Record<string, string> = {
+						lunes: 'monday', martes: 'tuesday', miércoles: 'wednesday', jueves: 'thursday',
+						viernes: 'friday', sábado: 'saturday', domingo: 'sunday'
+					};
+					const dayKey = dayMap[selectedDay] || selectedDay;
+
+					const foundAlternative = allOffices.find((office: any) => {
+						if (office.id === selectedOfficeId) return false;
+						return office.schedules?.some((s: any) => s.days && s.days.includes(dayKey));
+					});
+
+					if (foundAlternative) {
+						setAlternativeOffice(foundAlternative);
+					} else {
+						setAlternativeOffice(null);
+					}
+				} else {
+					setAlternativeOffice(null);
+				}
+			}
+		};
+
+		fetchAvailability();
+	}, [selectedDoctor, selectedDate, selectedOffice]);
 
 	// Resetear formulario al cerrar
 	useEffect(() => {
@@ -160,6 +277,17 @@ export default function AppointmentBookingModal({
 			setSelectedDoctorId(doctors[0].id);
 		}
 	}, [doctors, selectedDoctorId]);
+
+	// Si solo hay un consultorio para el doctor seleccionado, seleccionarlo automáticamente
+	useEffect(() => {
+		const offices = selectedDoctor?.medic_profile?.doctor_schedule_config?.offices || [];
+		if (offices.length === 1 && !selectedOfficeId) {
+			setSelectedOfficeId(offices[0].id);
+		} else if (offices.length === 0 && !selectedOfficeId) {
+			// Si no hay consultorios definidos en la config, usar un ID genérico o nulo
+			setSelectedOfficeId('default');
+		}
+	}, [selectedDoctor, selectedOfficeId]);
 
 	const handleSubmit = async () => {
 		setError(null);
@@ -191,8 +319,9 @@ export default function AppointmentBookingModal({
 				return;
 			}
 
-			// Crear fecha/hora combinada
-			const scheduledAt = new Date(`${selectedDate}T${selectedTime}:00`);
+			// Crear fecha/hora combinada asegurando que se trate como local
+			// Fix mismatch: Usar el formato ISO local para que el backend lo reciba exactamente como se seleccionó
+			const scheduledAt = `${selectedDate}T${selectedTime}:00`;
 
 			// Crear paciente no registrado primero
 			const unregisteredPatientResponse = await fetch('/api/public/unregistered-patients', {
@@ -224,7 +353,8 @@ export default function AppointmentBookingModal({
 					unregisteredPatientId,
 					doctorId: selectedDoctorId,
 					organizationId,
-					scheduledAt: scheduledAt.toISOString(),
+					officeId: selectedOfficeId && selectedOfficeId !== 'default' ? selectedOfficeId : null,
+					scheduledAt, // Enviamos el string "YYYY-MM-DDTHH:mm:00"
 					durationMinutes: 30,
 					selectedService: {
 						name: selectedService.name,
@@ -252,14 +382,16 @@ export default function AppointmentBookingModal({
 		}
 	};
 
-	const canProceedToStep2 = firstName && lastName && phone && selectedDoctorId;
+	const canProceedToStep2 = firstName && lastName && phone && selectedDoctorId && selectedOfficeId;
 	const canProceedToStep3 = selectedDate && selectedTime;
 	const canSubmit = selectedService !== null;
 
-	return (
+	if (!mounted) return null;
+
+	return createPortal(
 		<AnimatePresence>
 			{isOpen && (
-				<div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+				<div className="fixed inset-0 z-[99999] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
 					<motion.div
 						initial={{ opacity: 0, scale: 0.95 }}
 						animate={{ opacity: 1, scale: 1 }}
@@ -329,6 +461,15 @@ export default function AppointmentBookingModal({
 												Datos del Paciente
 											</h3>
 
+											{doctors.length === 0 && (
+												<div className="p-3 bg-red-50 border border-red-100 text-red-600 text-sm rounded-lg mb-4">
+													⚠️ No se encontraron médicos disponibles para este consultorio. Por favor, contacta a la clínica directamente.
+												</div>
+											)}
+											<div className="text-xs text-slate-500 mb-4 bg-slate-50 p-2 rounded border border-slate-100">
+												<strong>Validación:</strong> {firstName?.trim() ? '✅ Nombre' : '❌ Nombre'} | {lastName?.trim() ? '✅ Apellido' : '❌ Apellido'} | {phone?.trim() ? '✅ Teléfono' : '❌ Teléfono'} | {selectedDoctorId ? '✅ Médico' : '❌ Médico'} | {selectedOfficeId ? '✅ Consultorio' : '❌ Consultorio'}
+											</div>
+
 											{doctors.length > 1 && (
 												<div>
 													<label className="block text-sm font-semibold text-slate-700 mb-2">
@@ -336,7 +477,10 @@ export default function AppointmentBookingModal({
 													</label>
 													<select
 														value={selectedDoctorId || ''}
-														onChange={(e) => setSelectedDoctorId(e.target.value)}
+														onChange={(e) => {
+															setSelectedDoctorId(e.target.value);
+															setSelectedOfficeId(null); // Reset office when doctor changes
+														}}
 														className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
 													>
 														<option value="">Selecciona un doctor</option>
@@ -347,6 +491,45 @@ export default function AppointmentBookingModal({
 														))}
 													</select>
 												</div>
+											)}
+
+											{selectedDoctor?.medic_profile?.doctor_schedule_config?.offices && selectedDoctor.medic_profile.doctor_schedule_config.offices.length > 1 && (
+												<motion.div
+													initial={{ opacity: 0, y: -10 }}
+													animate={{ opacity: 1, y: 0 }}
+												>
+													<label className="block text-sm font-semibold text-slate-700 mb-2">
+														Seleccionar Sede / Consultorio *
+													</label>
+													<div className="grid grid-cols-1 gap-2">
+														{selectedDoctor.medic_profile.doctor_schedule_config.offices.map((office: any) => (
+															<button
+																key={office.id}
+																type="button"
+																onClick={() => setSelectedOfficeId(office.id)}
+																className={`p-4 border-2 rounded-xl text-left transition flex items-center justify-between ${
+																	selectedOfficeId === office.id
+																		? 'border-teal-600 bg-teal-50 ring-2 ring-teal-100'
+																		: 'border-slate-200 hover:border-teal-300 bg-white'
+																}`}
+															>
+																<div>
+																	<p className={`font-bold ${selectedOfficeId === office.id ? 'text-teal-700' : 'text-slate-900'}`}>
+																		{office.name}
+																	</p>
+																	<p className="text-xs text-slate-500 mt-1">
+																		{typeof office.location === 'object' 
+																			? (office.location.address || 'Ubicación no especificada') 
+																			: (office.location || 'Ubicación no especificada')}
+																	</p>
+																</div>
+																{selectedOfficeId === office.id && (
+																	<CheckCircle2 className="w-5 h-5 text-teal-600" />
+																)}
+															</button>
+														))}
+													</div>
+												</motion.div>
 											)}
 
 											<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -451,31 +634,127 @@ export default function AppointmentBookingModal({
 											{selectedDate && availableTimeSlots.length > 0 && (
 												<div>
 													<label className="block text-sm font-semibold text-slate-700 mb-2">
-														Horario Disponible *
+														{selectedDoctor?.medic_profile?.doctor_schedule_config?.consultation_type === 'ORDEN_LLEGADA' 
+															? 'Seleccionar Turno *' 
+															: 'Horario Disponible *'}
 													</label>
-													<div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
-														{availableTimeSlots.map((time) => (
-															<button
-																key={time}
-																type="button"
-																onClick={() => setSelectedTime(time)}
-																className={`px-4 py-2 rounded-lg border-2 transition ${
-																	selectedTime === time
-																		? 'border-teal-600 bg-teal-50 text-teal-700 font-bold'
-																		: 'border-slate-200 hover:border-teal-300 text-slate-700'
-																}`}
-															>
-																{time}
-															</button>
-														))}
+													<div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+														{availableTimeSlots.map((time) => {
+															const isBusy = busySlots.includes(time);
+															const isOrdenLlegada = selectedDoctor?.medic_profile?.doctor_schedule_config?.consultation_type === 'ORDEN_LLEGADA';
+															const label = isOrdenLlegada 
+																? (time === '08:00' ? 'Mañana' : time === '14:00' ? 'Tarde' : time)
+																: time;
+															
+															return (
+																<button
+																	key={time}
+																	type="button"
+																	disabled={isBusy}
+																	onClick={() => setSelectedTime(time)}
+																	className={`px-4 py-2 rounded-lg border-2 transition relative ${
+																		selectedTime === time
+																			? 'border-teal-600 bg-teal-50 text-teal-700 font-bold'
+																			: isBusy
+																			? 'border-slate-100 bg-slate-50 text-slate-300 cursor-not-allowed line-through'
+																			: 'border-slate-200 hover:border-teal-300 text-slate-700'
+																	}`}
+																>
+																	{label}
+																</button>
+															);
+														})}
 													</div>
 												</div>
 											)}
 
-											{selectedDate && availableTimeSlots.length === 0 && (
-												<div className="p-4 bg-amber-50 border border-amber-200 rounded-lg text-amber-700">
-													No hay horarios disponibles para esta fecha. Por favor selecciona otra fecha.
+											{selectedDate && capacityInfo && (
+												<div className="p-4 bg-slate-50 rounded-xl border border-slate-200">
+													<div className="flex items-center gap-2 mb-3 text-slate-700 font-semibold">
+														<Users className="w-4 h-4 text-teal-600" />
+														Estado de Cupos (Máximo: {capacityInfo.config.max_patients_per_day})
+													</div>
+													
+													{capacityInfo.config.consultation_type === 'ORDEN_LLEGADA' ? (
+														<p className="text-sm text-slate-600">
+															Hay <strong>{capacityInfo.total}</strong> citas agendadas para hoy. 
+															Quedan aproximadamente <strong>{Math.max(0, capacityInfo.config.max_patients_per_day - capacityInfo.total)}</strong> cupos disponibles.
+															<br />
+															<span className="text-amber-600 font-medium mt-2 block">
+																⚠️ Ten en cuenta que el doctor trabaja por orden de llegada. Si eres de los primeros en llegar, serás atendido antes. ¡Puedes reservar ahora!
+															</span>
+														</p>
+													) : (
+														<div className="space-y-2">
+															<p className="text-sm text-slate-600">
+																El doctor trabaja por turnos. Cupos asignados por turno:
+															</p>
+															<div className="grid grid-cols-2 gap-4">
+																<div className="p-3 bg-white rounded-lg border border-slate-100 shadow-sm">
+																	<p className="text-xs text-slate-500 uppercase font-bold">Mañana</p>
+																	<p className="text-lg font-bold text-teal-700">
+																		{capacityInfo.morning} / {Math.floor(capacityInfo.config.max_patients_per_day / 2)}
+																	</p>
+																</div>
+																<div className="p-3 bg-white rounded-lg border border-slate-100 shadow-sm">
+																	<p className="text-xs text-slate-500 uppercase font-bold">Tarde</p>
+																	<p className="text-lg font-bold text-blue-700">
+																		{capacityInfo.afternoon} / {Math.ceil(capacityInfo.config.max_patients_per_day / 2)}
+																	</p>
+																</div>
+															</div>
+															{capacityInfo.config.max_patients_per_day - capacityInfo.total <= 3 && capacityInfo.config.max_patients_per_day - capacityInfo.total > 0 && (
+																<p className="text-xs text-orange-600 font-bold mt-2 animat-pulse">
+																	¡Solo quedan {capacityInfo.config.max_patients_per_day - capacityInfo.total} cupos disponibles para hoy!
+																</p>
+															)}
+														</div>
+													)}
 												</div>
+											)}
+
+											{selectedDate && availableTimeSlots.length === 0 && !alternativeOffice && (
+												<div className="p-4 bg-amber-50 border border-amber-200 rounded-xl text-amber-700 text-sm">
+													⚠️ No hay horarios disponibles para el {formatDateLocal(selectedDate)}. Por favor intenta con otra fecha.
+												</div>
+											)}
+
+											{selectedDate && availableTimeSlots.length === 0 && alternativeOffice && (
+												<motion.div 
+													initial={{ opacity: 0, y: 10 }}
+													animate={{ opacity: 1, y: 0 }}
+													className="p-6 bg-teal-50 border-2 border-teal-200 rounded-2xl text-teal-800 shadow-sm mt-4"
+												>
+													<div className="flex items-start gap-4 mb-4">
+														<div className="p-3 bg-white rounded-xl shadow-sm border border-teal-100">
+															<MapPin className="w-6 h-6 text-teal-600" />
+														</div>
+														<div className="flex-1">
+															<h4 className="font-bold text-teal-900 text-lg leading-tight">
+																¡Sede Alternativa!
+															</h4>
+															<p className="text-sm text-teal-700 mt-2 leading-relaxed">
+																Upss, el doctor no atiende en <strong>{selectedOffice?.name}</strong> este día, pero podemos agendarte la cita para su otro consultorio en <strong>{alternativeOffice.name}</strong>, ubicado en {typeof alternativeOffice.location === 'object' ? alternativeOffice.location.address : (alternativeOffice.location || 'la misma zona')}.
+															</p>
+														</div>
+													</div>
+													<div className="flex flex-col gap-2">
+														<button
+															type="button"
+															onClick={() => {
+																setSelectedOfficeId(alternativeOffice.id);
+																setAlternativeOffice(null);
+															}}
+															className="w-full py-3.5 bg-teal-600 text-white rounded-xl font-bold hover:bg-teal-700 transition shadow-lg flex items-center justify-center gap-2 transform hover:scale-[1.02] active:scale-95"
+														>
+															<Zap className="w-5 h-5" />
+															Agendar en {alternativeOffice.name}
+														</button>
+														<p className="text-[10px] text-teal-500 text-center uppercase tracking-wider font-bold">
+															Disponible para el {formatDateLocal(selectedDate)}
+														</p>
+													</div>
+												</motion.div>
 											)}
 										</motion.div>
 									)}
@@ -605,12 +884,24 @@ export default function AppointmentBookingModal({
 												if (step === 1 && canProceedToStep2) setStep(2);
 												else if (step === 2 && canProceedToStep3) setStep(3);
 											}}
+											title={
+												step === 1 && !canProceedToStep2 
+													? `Faltan: ${[!firstName && 'Nombre', !lastName && 'Apellido', !phone && 'Teléfono', !selectedDoctorId && 'Médico'].filter(Boolean).join(', ')}`
+													: step === 2 && !canProceedToStep3
+													? `Faltan: ${[!selectedDate && 'Fecha', !selectedTime && 'Hora'].filter(Boolean).join(', ')}`
+													: ''
+											}
 											disabled={
 												(step === 1 && !canProceedToStep2) || (step === 2 && !canProceedToStep3)
 											}
-											className="px-6 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
+											className="px-6 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 transition disabled:opacity-50 disabled:cursor-not-allowed group relative"
 										>
 											Siguiente
+											{((step === 1 && !canProceedToStep2) || (step === 2 && !canProceedToStep3)) && (
+												<div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-slate-800 text-white text-[10px] rounded opacity-0 group-hover:opacity-100 transition whitespace-nowrap z-[100001] pointer-events-none">
+													Completa todos los campos obligatorios (*)
+												</div>
+											)}
 										</button>
 									) : (
 										<button
@@ -634,7 +925,8 @@ export default function AppointmentBookingModal({
 					</motion.div>
 				</div>
 			)}
-		</AnimatePresence>
+		</AnimatePresence>,
+		document.body
 	);
 }
 

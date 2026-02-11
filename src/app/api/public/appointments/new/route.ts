@@ -2,6 +2,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { createNotification } from '@/lib/notifications';
+import { sendNotificationEmail } from '@/lib/email';
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL ?? process.env.SUPABASE_URL ?? '';
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY ?? '';
@@ -21,6 +22,7 @@ export async function POST(request: Request) {
 			scheduledAt,
 			durationMinutes,
 			selectedService,
+			officeId,
 		} = body;
 
 		// Validaciones
@@ -96,6 +98,7 @@ export async function POST(request: Request) {
 			duration_minutes: appointmentDuration,
 			status: 'SCHEDULED',
 			selected_service: selectedService,
+			office_id: officeId || null,
 			// No establecer created_by_role_user_id, booked_by_patient_id, ni created_by_doctor_id
 			// Esto la identifica como cita de página pública
 		};
@@ -161,14 +164,21 @@ export async function POST(request: Request) {
 				// Ignorar error
 			}
 
-			const formattedDate = appointmentDate.toLocaleDateString('es-ES', {
-				weekday: 'long',
-				year: 'numeric',
-				month: 'long',
-				day: 'numeric',
-				hour: '2-digit',
-				minute: '2-digit',
-			});
+			// Formatear fecha manualmente desde el string original para evitar desfases de zona horaria
+			// Input: YYYY-MM-DDTHH:mm:00
+			const [datePart, timePart] = scheduledAt.split('T');
+			const [year, month, day] = datePart.split('-');
+			const [hour, minute] = timePart.split(':');
+			
+			const monthNames = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
+			const dayNames = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'];
+			
+			// Para el nombre del día necesitamos un objeto Date, pero con cuidado
+			const d = new Date(year, month - 1, day);
+			const dayName = dayNames[d.getDay()];
+			const monthName = monthNames[parseInt(month) - 1];
+
+			const formattedDate = `${dayName}, ${day} de ${monthName} de ${year} a las ${hour}:${minute}`;
 
 			const appointmentUrl = `${process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_VERCEL_URL ? `https://${process.env.NEXT_PUBLIC_VERCEL_URL}` : 'http://localhost:3000'}/dashboard/medic/citas`;
 
@@ -197,6 +207,24 @@ export async function POST(request: Request) {
 				},
 				sendEmail: true,
 			});
+
+			// Enviar email de confirmación al PACIENTE (No registrado)
+			if (unregisteredPatient.email) {
+				await sendNotificationEmail(
+					'APPOINTMENT_REQUEST',
+					unregisteredPatient.email,
+					{
+						patientName: `${unregisteredPatient.first_name} ${unregisteredPatient.last_name}`,
+						doctorName: doctorName || 'Médico Especialista',
+						scheduledAt: formattedDate,
+						reason: selectedService.name,
+						location: officeId ? 'Consultorio Seleccionado' : 'Dirección del Consultorio', // Idealmente obtener nombre del office
+						appointmentUrl: '', // Los pacientes no registrados no tienen dashboard normalmente
+						isForDoctor: false,
+						isUnregisteredPatient: true
+					}
+				);
+			}
 		}
 
 		return NextResponse.json({

@@ -70,31 +70,62 @@ export function useAppointments(selectedDate?: Date) {
 
 	// Actualizar cita existente
 	const updateAppointment = async (id: string, updates: any) => {
-		const res = await fetch(`/api/dashboard/medic/appointments/${id}`, {
-			method: 'PATCH',
-			headers: { 'Content-Type': 'application/json' },
-			body: JSON.stringify(updates),
-		});
-		const responseData = await res.json();
-		if (!res.ok) throw new Error(responseData.error || 'Error al actualizar cita');
+		console.log('🔄 [useAppointments] Updating appointment:', { id, updates });
 		
-		// Actualizar optimísticamente el cache con los datos retornados
-		if (responseData.appointment) {
+		try {
+			// Actualización optimista: actualizar UI inmediatamente
 			mutate(
 				(currentData: Appointment[] | undefined) => {
 					if (!currentData) return currentData;
 					return currentData.map((apt) => 
-						apt.id === id ? { ...apt, ...responseData.appointment } : apt
+						apt.id === id ? { ...apt, ...updates } : apt
 					);
 				},
-				{ revalidate: true } // Revalidar en background para asegurar datos actualizados
+				false // No revalidar todavía
 			);
-		} else {
-			// Si no hay datos retornados, solo revalidar
-			mutate();
+
+			const res = await fetch(`/api/dashboard/medic/appointments/${id}`, {
+				method: 'PATCH',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify(updates),
+			});
+			
+			console.log('📡 [useAppointments] Response status:', res.status);
+			
+			const responseData = await res.json();
+			console.log('📦 [useAppointments] Response data:', responseData);
+			
+			if (!res.ok) {
+				console.error('❌ [useAppointments] Update failed:', responseData.error);
+				// Revertir cambio optimista
+				mutate();
+				throw new Error(responseData.error || 'Error al actualizar cita');
+			}
+			
+			// Actualizar con datos reales del servidor
+			if (responseData.appointment) {
+				console.log('✅ [useAppointments] Updating cache with server data:', responseData.appointment);
+				mutate(
+					(currentData: Appointment[] | undefined) => {
+						if (!currentData) return currentData;
+						return currentData.map((apt) => 
+							apt.id === id ? { ...apt, ...responseData.appointment } : apt
+						);
+					},
+					false // No revalidar, ya tenemos los datos frescos
+				);
+			} else {
+				console.log('⚠️ [useAppointments] No appointment in response, revalidating');
+				// Si no hay datos retornados, revalidar para obtener datos frescos
+				await mutate();
+			}
+			
+			console.log('✅ [useAppointments] Update completed successfully');
+			return responseData;
+		} catch (error) {
+			console.error('❌ [useAppointments] Update error:', error);
+			throw error;
 		}
-		
-		return responseData;
 	};
 
 	return {

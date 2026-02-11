@@ -268,7 +268,7 @@ export default async function ConsultorioPublicRoute({ params }: { params: Promi
 					id,
 					name,
 					email,
-					medic_profile:medic_profile!fk_medic_profile_doctor (
+					medic_profile (
 						id,
 						specialty,
 						private_specialty,
@@ -278,25 +278,74 @@ export default async function ConsultorioPublicRoute({ params }: { params: Promi
 						service_combos,
 						availability,
 						has_cashea
+					),
+					doctor_schedule_config (
+						consultation_type,
+						max_patients_per_day,
+						shift_config,
+						offices
 					)
 				`)
 				.eq('organizationId', organization.id)
-				.eq('role', 'MEDICO');
+				.in('role', ['MEDICO', 'ADMIN']);
 
 			const result = await doctorsQuery;
 			doctors = result.data;
 			doctorsError = result.error;
 
+			console.log(`[Consultorio Page] Búsqueda primaria en orgId: ${organization.id}`);
+			console.log(`[Consultorio Page] Médicos encontrados:`, doctors?.length || 0);
+			if (doctorsError) console.error('[Consultorio Page] Error en búsqueda primaria:', doctorsError.message);
+
+			console.log(`[Consultorio Page] Médicos encontrados por orgId (${organization.id}):`, doctors?.length || 0);
+
+			// Fallback: Si no hay médicos vinculados por organizationId, intentar por email
+			if ((!doctors || doctors.length === 0) && organizationBasic.contactEmail) {
+				console.log(`[Consultorio Page] Reintentando búsqueda de médico por email: ${organizationBasic.contactEmail}`);
+				const fallbackEmailQuery = supabase
+					.from('user')
+					.select(`
+						id,
+						name,
+						email,
+						medic_profile (
+							id,
+							specialty,
+							private_specialty,
+							photo_url,
+							credentials,
+							services,
+							service_combos,
+							availability,
+							has_cashea
+						),
+						doctor_schedule_config (
+							consultation_type,
+							max_patients_per_day,
+							shift_config,
+							offices
+						)
+					`)
+					.eq('email', organizationBasic.contactEmail)
+					.in('role', ['MEDICO', 'ADMIN']);
+				
+				const fallbackEmailResult = await fallbackEmailQuery;
+				if (fallbackEmailResult.data && fallbackEmailResult.data.length > 0) {
+					doctors = fallbackEmailResult.data;
+					console.log(`[Consultorio Page] Médico encontrado por email fallback:`, doctors.length);
+				}
+			}
+
 			// Si la consulta falla por service_combos, intentar sin él
 			if (doctorsError && (doctorsError.message?.includes('service_combos') || doctorsError.code === 'PGRST116')) {
-				console.warn('[Consultorio Page] Campo service_combos no encontrado, intentando sin él:', doctorsError.message);
+				console.warn('[Consultorio Page] Campo service_combos no encontrado, intentando sin él');
 				const fallbackQuery = supabase
 					.from('user')
 					.select(`
 						id,
 						name,
 						email,
-						medic_profile:medic_profile!fk_medic_profile_doctor (
+						medic_profile (
 							id,
 							specialty,
 							private_specialty,
@@ -305,14 +354,21 @@ export default async function ConsultorioPublicRoute({ params }: { params: Promi
 							services,
 							availability,
 							has_cashea
+						),
+						doctor_schedule_config (
+							consultation_type,
+							max_patients_per_day,
+							shift_config,
+							offices
 						)
 					`)
 					.eq('organizationId', organization.id)
-					.eq('role', 'MEDICO');
+					.in('role', ['MEDICO', 'ADMIN']);
 				
 				const fallbackResult = await fallbackQuery;
-				doctors = fallbackResult.data;
-				doctorsError = fallbackResult.error;
+				if (!fallbackResult.error) {
+					doctors = fallbackResult.data;
+				}
 			}
 		} catch (err) {
 			console.error('[Consultorio Page] Error en consulta de médicos:', err);
@@ -467,6 +523,8 @@ export default async function ConsultorioPublicRoute({ params }: { params: Promi
 		// Parsear información de médicos
 		const doctorsWithParsedData = (doctors || []).map((doctor: any) => {
 			const profile = doctor.medic_profile;
+			const scheduleConfig = doctor.doctor_schedule_config;
+
 			if (!profile) {
 				// Si no hay perfil, retornar doctor con estructura mínima
 				return {
@@ -481,6 +539,7 @@ export default async function ConsultorioPublicRoute({ params }: { params: Promi
 						credentials: {},
 						availability: {},
 						has_cashea: null,
+						doctor_schedule_config: scheduleConfig || null,
 					},
 				};
 			}
@@ -542,6 +601,7 @@ export default async function ConsultorioPublicRoute({ params }: { params: Promi
 					serviceCombos, // Siempre incluimos serviceCombos, incluso si está vacío
 					credentials,
 					availability,
+					doctor_schedule_config: scheduleConfig || null,
 				},
 			};
 		});

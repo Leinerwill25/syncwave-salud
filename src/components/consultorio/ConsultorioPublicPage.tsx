@@ -2,10 +2,10 @@
 
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Stethoscope, MapPin, Phone, Mail, Globe, Clock, Calendar, Instagram, Facebook, Linkedin, CheckCircle2, Shield, Award, Star, ExternalLink, MessageCircle, Heart, Users, FileText, Building2, Sparkles, Image as ImageIcon, Package, Percent, Zap } from 'lucide-react';
+import { Stethoscope, MapPin, Phone, Mail, Globe, Clock, Calendar, Instagram, Facebook, Linkedin, CheckCircle2, Shield, Award, Star, ExternalLink, MessageCircle, Heart, Users, FileText, Building2, Sparkles, Image as ImageIcon, Package, Percent, Zap, Info } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
-import AppointmentBookingModal from './AppointmentBookingModal';
+import AppointmentBookingModal, { Doctor } from './AppointmentBookingModal';
 
 type ConsultorioData = {
 	id: string;
@@ -50,22 +50,7 @@ type ConsultorioData = {
 	billing_series?: string | null;
 	tax_regime?: string | null;
 	billing_address?: string | null;
-	doctors: Array<{
-		id: string;
-		name: string | null;
-		email: string | null;
-		medic_profile: {
-			id: string;
-			specialty: string | null;
-			private_specialty: string | null;
-			photo_url: string | null;
-			services: any[];
-			serviceCombos?: any[];
-			credentials: any;
-			availability: any;
-			has_cashea: boolean | null;
-		} | null;
-	}>;
+	doctors: Doctor[];
 };
 
 export default function ConsultorioPublicPage({ consultorio }: { consultorio: ConsultorioData }) {
@@ -287,6 +272,32 @@ export default function ConsultorioPublicPage({ consultorio }: { consultorio: Co
 
 	const doctorSchedules = getAvailabilityFromDoctors();
 	const openingHoursFormatted = formatOpeningHours(doctorSchedules);
+
+	// Agrupar consultorios únicos y sus configuraciones
+	const officesInfo = (() => {
+		const officesMap = new Map<string, any>();
+		
+		consultorio.doctors.forEach(doctor => {
+			const config = doctor.medic_profile?.doctor_schedule_config;
+			const offices = config?.offices || [];
+			
+			offices.forEach((office: any) => {
+				if (!officesMap.has(office.id)) {
+					officesMap.set(office.id, {
+						...office,
+						consultationType: config?.consultation_type || 'TURNOS'
+					});
+				}
+			});
+		});
+		
+		return Array.from(officesMap.values());
+	})();
+
+	const dayNameMap: Record<string, string> = {
+		monday: 'Lun', tuesday: 'Mar', wednesday: 'Mié', thursday: 'Jue',
+		friday: 'Vie', saturday: 'Sáb', sunday: 'Dom'
+	};
 
 	return (
 		<div className="min-h-screen bg-white">
@@ -592,6 +603,126 @@ export default function ConsultorioPublicPage({ consultorio }: { consultorio: Co
 					</div>
 				</motion.section>
 
+				{/* Offices Section */}
+				{officesInfo.length > 0 && (
+					<motion.section 
+						initial={{ opacity: 0, y: 20 }} 
+						whileInView={{ opacity: 1, y: 0 }} 
+						viewport={{ once: true }} 
+						transition={{ duration: 0.6 }} 
+						className="relative"
+					>
+						<div className="flex items-center gap-4 mb-10">
+							<div className="p-4 bg-gradient-to-br from-teal-600 to-cyan-600 rounded-2xl shadow-lg">
+								<Building2 className="w-8 h-8 text-white" />
+							</div>
+							<div>
+								<h2 className="text-3xl lg:text-4xl font-bold text-slate-900">Nuestras Sedes</h2>
+								<p className="text-slate-600">Encuéntranos en nuestras diferentes ubicaciones</p>
+							</div>
+						</div>
+
+						<div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+							{officesInfo.map((office) => (
+								<div 
+									key={office.id} 
+									className="bg-white rounded-3xl p-8 border border-slate-200 shadow-sm hover:shadow-xl transition-all group overflow-hidden relative"
+								>
+									{/* Decorative badge for mode */}
+									<div className="absolute top-0 right-0 p-4">
+										<div className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider ${
+											office.consultationType === 'ORDEN_LLEGADA' 
+												? 'bg-amber-100 text-amber-700' 
+												: 'bg-teal-100 text-teal-700'
+										}`}>
+											{office.consultationType === 'ORDEN_LLEGADA' ? (
+												<>
+													<Zap className="w-3.5 h-3.5" />
+													Orden de Llegada
+												</>
+											) : (
+												<>
+													<Clock className="w-3.5 h-3.5" />
+													Previa Cita
+												</>
+											)}
+										</div>
+									</div>
+
+									<h3 className="text-2xl font-bold text-slate-900 mb-4 group-hover:text-teal-600 transition-colors">
+										{office.name}
+									</h3>
+									
+									<div className="flex items-start gap-3 mb-6">
+										<div className="p-2 bg-slate-50 rounded-lg group-hover:bg-teal-50 transition-colors">
+											<MapPin className="w-5 h-5 text-slate-500 group-hover:text-teal-600" />
+										</div>
+										<p className="text-slate-600 leading-relaxed pt-1">
+											{typeof office.location === 'object' ? office.location.address : (office.location || 'Dirección no especificada')}
+										</p>
+									</div>
+
+									<div className="space-y-4">
+										<h4 className="text-sm font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
+											<Clock className="w-4 h-4" />
+											Horarios de Atención
+										</h4>
+										<div className="grid grid-cols-1 gap-3">
+											{office.schedules && office.schedules.length > 0 ? (
+												office.schedules.map((schedule: any, sIdx: number) => (
+													<div key={sIdx} className="bg-slate-50 rounded-2xl p-4 flex flex-col gap-2 border border-transparent group-hover:border-teal-100 transition-all">
+														<div className="flex flex-wrap gap-1.5">
+															{schedule.days?.map((day: string) => (
+																<span key={day} className="px-2 py-0.5 bg-white border border-slate-200 rounded text-[10px] font-bold text-slate-500 uppercase">
+																	{dayNameMap[day] || day}
+																</span>
+															))}
+														</div>
+														<div className="flex items-center justify-between mt-1">
+															<div className="flex flex-col">
+																{office.consultationType === 'ORDEN_LLEGADA' ? (
+																	<div className="flex gap-3">
+																		{schedule.shifts?.includes('morning') && (
+																			<span className="text-xs font-semibold text-slate-700 flex items-center gap-1">
+																				<span className="w-2 h-2 rounded-full bg-teal-400" />
+																				Mañana
+																			</span>
+																		)}
+																		{schedule.shifts?.includes('afternoon') && (
+																			<span className="text-xs font-semibold text-slate-700 flex items-center gap-1">
+																				<span className="w-2 h-2 rounded-full bg-blue-400" />
+																				Tarde
+																			</span>
+																		)}
+																	</div>
+																) : (
+																	<div className="text-sm font-bold text-slate-700">
+																		{schedule.hours ? (
+																			Object.entries(schedule.hours).map(([shiftId, h]: [string, any]) => {
+																				if (schedule.shifts?.includes(shiftId)) {
+																					return <div key={shiftId}>{h.start} - {h.end}</div>;
+																				}
+																				return null;
+																			})
+																		) : 'Consultar horario'}
+																	</div>
+																)}
+															</div>
+															<Info className="w-4 h-4 text-slate-300 group-hover:text-teal-400 transition-colors" />
+														</div>
+													</div>
+												))
+											) : (
+												<p className="text-sm text-slate-400 italic">No hay horarios configurados para esta sede</p>
+											)}
+										</div>
+									</div>
+								</div>
+							))}
+						</div>
+					</motion.section>
+				)}
+
 				{/* Doctors Section */}
 				{consultorio.doctors && consultorio.doctors.length > 0 && (
 					<motion.section initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.6 }} className="bg-gradient-to-br from-white to-slate-50 rounded-3xl shadow-xl border border-slate-200 p-8 lg:p-12">
@@ -738,8 +869,8 @@ export default function ConsultorioPublicPage({ consultorio }: { consultorio: Co
 										} else if (service && typeof service === 'object') {
 											serviceName = service.name || 'Servicio';
 											serviceDescription = service.description || '';
-											servicePrice = service.price || '';
-											serviceCurrency = service.currency || 'USD';
+											servicePrice = service.price !== undefined && service.price !== null ? String(service.price) : '';
+											serviceCurrency = (service.currency as 'USD' | 'VES' | 'EUR') || 'USD';
 										}
 
 										const formatPrice = (price: string, currency: string) => {

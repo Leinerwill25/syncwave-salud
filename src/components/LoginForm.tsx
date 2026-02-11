@@ -225,9 +225,21 @@ export default function LoginFormAdvanced(): React.ReactElement {
 						error = { message: 'Invalid login credentials' };
 					}
 				} else {
-					const errorData = await loginResponse.json().catch(() => ({ error: 'Error desconocido' }));
-					console.error('[LoginForm] Error en endpoint:', errorData);
-					error = { message: errorData.error || 'Invalid login credentials' };
+					// Intentar parsear como JSON, si falla obtener como texto
+					let errorData;
+					try {
+						errorData = await loginResponse.json();
+					} catch (jsonError) {
+						console.error('[LoginForm] Error parseando JSON:', jsonError);
+						const textResponse = await loginResponse.text().catch(() => 'Error desconocido');
+						console.error('[LoginForm] Respuesta (texto):', textResponse);
+						error = { message: `Error del servidor (${loginResponse.status}): ${textResponse.substring(0, 100)}` };
+					}
+					
+					if (!error) {
+						console.error('[LoginForm] Error en endpoint:', errorData);
+						error = { message: errorData.error || 'Invalid login credentials' };
+					}
 				}
 			} catch (fetchError) {
 				console.error('[LoginForm] Error en login-multiple-users, intentando login normal:', fetchError);

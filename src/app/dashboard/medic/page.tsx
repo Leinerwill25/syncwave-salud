@@ -12,6 +12,7 @@ import { useSessionCache } from '@/hooks/useSessionCache';
 
 // Lazy load de componentes pesados
 const KPISection = lazy(() => import('./components/KPISection'));
+const TodayConsultations = lazy(() => import('./components/TodayConsultations'));
 const DayAgenda = lazy(() => import('./components/DayAgenda'));
 const DayAppointments = lazy(() => import('./components/DayAppointments'));
 const PendingPaymentAlerts = lazy(() => import('./components/PendingPaymentAlerts'));
@@ -100,6 +101,12 @@ export default function MedicDashboardPage() {
 			<Suspense fallback={<ComponentSkeleton className="h-48" />}>
 				<motion.div {...getLiteAnimation(isLiteMode)}>
 					<KPISection />
+				</motion.div>
+			</Suspense>
+
+			<Suspense fallback={<ComponentSkeleton className="h-64" />}>
+				<motion.div {...getLiteAnimation(isLiteMode)}>
+					<TodayConsultations />
 				</motion.div>
 			</Suspense>
 

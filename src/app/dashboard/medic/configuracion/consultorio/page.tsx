@@ -44,7 +44,33 @@ interface ClinicProfile {
 	location?: { lat: number; lng: number; address: string } | string | null;
 	photos?: string[] | string | null;
 	profile_photo?: string | null;
+	website?: string;
+	social_facebook?: string;
+	social_instagram?: string;
+	sanitary_license?: string;
+	liability_insurance_number?: string;
+	has_cashea?: boolean;
 }
+
+const initialFormData = {
+	legal_name: '',
+	trade_name: '',
+	specialties: [] as string[],
+	phone_fixed: '',
+	phone_mobile: '',
+	contact_email: '',
+	website: '',
+	social_facebook: '',
+	social_instagram: '',
+	sanitary_license: '',
+	liability_insurance_number: '',
+	address_operational: '',
+	opening_hours: [] as any[],
+	location: null as { lat: number; lng: number; address: string } | null,
+	photos: [] as string[],
+	profile_photo: null as string | null,
+	has_cashea: false,
+};
 
 export default function ConsultorioConfigPage() {
 	const router = useRouter();
@@ -53,26 +79,17 @@ export default function ConsultorioConfigPage() {
 	const [showSuccessModal, setShowSuccessModal] = useState(false);
 	const [medicConfig, setMedicConfig] = useState<MedicConfig | null>(null);
 	const [profile, setProfile] = useState<ClinicProfile | null>(null);
-	const [formData, setFormData] = useState({
-		legal_name: '',
-		trade_name: '',
-		specialties: [] as string[],
-		phone_fixed: '',
-		phone_mobile: '',
-		contact_email: '',
-		website: '',
-		social_facebook: '',
-		social_instagram: '',
-		sanitary_license: '',
-		liability_insurance_number: '',
-		address_operational: '',
-		opening_hours: [] as any[],
-		location: null as { lat: number; lng: number; address: string } | null,
-		photos: [] as string[],
-		profile_photo: null as string | null,
-		has_cashea: false,
-	});
+	
+	// Estado para múltiples consultorios
+	const [offices, setOffices] = useState<Array<{ id: string; name: string; location: any }>>([]);
+	const [selectedOfficeIndex, setSelectedOfficeIndex] = useState(0);
+	const [selectedOfficeId, setSelectedOfficeId] = useState<string | null>(null);
+	
+	const [formData, setFormData] = useState(initialFormData);
 	const [profilePhotoPreview, setProfilePhotoPreview] = useState<string | null>(null);
+
+	// Cache local para perfiles de consultorio: Record<officeId, ClinicProfile>
+	const [profileCache, setProfileCache] = useState<Record<string, ClinicProfile>>({});
 
 	useEffect(() => {
 		checkAccess();
@@ -95,8 +112,8 @@ export default function ConsultorioConfigPage() {
 					return;
 				}
 				
-				// Si es CONSULTORIO, cargar el perfil
-				await fetchProfile();
+				// Cargar consultorios de la configuración de horarios
+				await loadOffices();
 			}
 		} catch (err) {
 			console.error('Error verificando acceso:', err);
@@ -105,94 +122,77 @@ export default function ConsultorioConfigPage() {
 		}
 	};
 
-	const fetchProfile = async () => {
+	const loadOffices = async () => {
 		try {
+			// Iniciar carga de configuración
+			const configPromise = fetch('/api/dashboard/medic/schedule-config', {
+				credentials: 'include',
+			}).then(res => res.json());
+
+			// Paralelamente intentar cargar el perfil del primer consultorio (o general) si es posible
+			// Nota: No podemos saber el ID del primer consultorio hasta que configPromise resuelva,
+			// pero podemos iniciar la petición general por si acaso.
+			
+			const data = await configPromise;
+
+			if (data.config && data.config.offices && data.config.offices.length > 0) {
+				const officesList = data.config.offices;
+				setOffices(officesList);
+				const firstOfficeId = officesList[0].id;
+				setSelectedOfficeId(firstOfficeId);
+				
+				// Cargar el perfil del primer consultorio
+				await fetchProfile(firstOfficeId);
+			} else {
+				// No hay consultorios configurados, cargar perfil general
+				await fetchProfile(null);
+			}
+		} catch (err) {
+			console.error('Error cargando consultorios:', err);
+			// Si falla, cargar perfil general
+			await fetchProfile(null);
+		}
+	};
+
+	const fetchProfile = async (officeId: string | null = null) => {
+		try {
+			const cacheKey = officeId || 'global';
+			
+			// 1. Verificar Caché Local
+			if (profileCache[cacheKey]) {
+				console.log(`[consultorio/page] Usando caché para officeId: ${officeId}`);
+				populateForm(profileCache[cacheKey]);
+				setLoading(false);
+				return;
+			}
+
+			// 2. Si no está en caché, cargar de la API
+			// Limpiar datos previos antes de cargar nuevos
+			setProfile(null);
+			setProfilePhotoPreview(null);
+			setFormData(initialFormData);
 			setLoading(true);
-			// Intentar obtener desde la API de clinic profile
-			const res = await fetch('/api/clinic/profile', {
+
+			const url = officeId ? `/api/clinic/profile?officeId=${officeId}` : '/api/clinic/profile';
+			console.log('[consultorio/page] Buscando perfil en red:', url);
+			const res = await fetch(url, {
 				credentials: 'include',
 			});
 
 			if (res.ok) {
 				const data = await res.json();
 				if (data.profile) {
-					setProfile(data.profile);
+					// Guardar en caché
+					setProfileCache(prev => ({
+						...prev,
+						[cacheKey]: data.profile
+					}));
 					
-					// Parsear location si existe
-					let location = null;
-					if (data.profile.location) {
-						try {
-							location = typeof data.profile.location === 'string' 
-								? JSON.parse(data.profile.location) 
-								: data.profile.location;
-						} catch {
-							location = null;
-						}
-					}
-
-					// Parsear photos si existe y convertir a URLs públicas si son paths de Supabase Storage
-					let photos: string[] = [];
-					if (data.profile.photos) {
-						try {
-							const parsedPhotos = Array.isArray(data.profile.photos)
-								? data.profile.photos
-								: typeof data.profile.photos === 'string'
-								? JSON.parse(data.profile.photos)
-								: [];
-							
-							// Convertir paths de Supabase Storage a URLs públicas
-							photos = parsedPhotos.map((photo: string) => getPublicImageUrl(photo));
-						} catch {
-							photos = [];
-						}
-					}
-
-					// Parsear opening_hours si existe
-					let openingHours: any[] = [];
-					if (data.profile.opening_hours) {
-						try {
-							openingHours = Array.isArray(data.profile.opening_hours)
-								? data.profile.opening_hours
-								: typeof data.profile.opening_hours === 'string'
-								? JSON.parse(data.profile.opening_hours)
-								: [];
-						} catch {
-							openingHours = [];
-						}
-					}
-
-					// Cargar todos los campos en el formulario
-					setFormData({
-						legal_name: data.profile.legal_name || '',
-						trade_name: data.profile.trade_name || '',
-						specialties: Array.isArray(data.profile.specialties) ? data.profile.specialties : [],
-						phone_fixed: data.profile.phone_fixed || '',
-						phone_mobile: data.profile.phone_mobile || '',
-						contact_email: data.profile.contact_email || '',
-						website: data.profile.website || '',
-						social_facebook: data.profile.social_facebook || '',
-						social_instagram: data.profile.social_instagram || '',
-						sanitary_license: data.profile.sanitary_license || '',
-						liability_insurance_number: data.profile.liability_insurance_number || '',
-						address_operational: data.profile.address_operational || '',
-						opening_hours: openingHours,
-						location,
-						photos,
-						profile_photo: data.profile.profile_photo || null,
-						has_cashea: data.profile.has_cashea ?? false,
-					});
-
-					// Convertir profile_photo a URL pública si es un path de Supabase Storage
-					if (data.profile.profile_photo) {
-						const profilePhotoUrl = getPublicImageUrl(data.profile.profile_photo);
-						setProfilePhotoPreview(profilePhotoUrl);
-					}
+					populateForm(data.profile);
 				} else {
-					// No hay perfil guardado aún, mantener valores por defecto
-					console.log('No hay perfil guardado aún. El formulario está listo para crear uno nuevo.');
+					console.log('No hay perfil guardado aún.');
 				}
 			} else {
-				// Error al obtener el perfil
 				const errorData = await res.json().catch(() => ({}));
 				console.error('Error al obtener perfil:', errorData);
 			}
@@ -200,6 +200,76 @@ export default function ConsultorioConfigPage() {
 			console.error('Error al cargar perfil:', err);
 		} finally {
 			setLoading(false);
+		}
+	};
+
+	const populateForm = (profileData: ClinicProfile) => {
+		setProfile(profileData);
+		
+		// Parsear location si existe
+		let location = null;
+		if (profileData.location) {
+			try {
+				location = typeof profileData.location === 'string' 
+					? JSON.parse(profileData.location) 
+					: profileData.location;
+			} catch {
+				location = null;
+			}
+		}
+
+		// Parsear photos
+		let photos: string[] = [];
+		if (profileData.photos) {
+			try {
+				const parsedPhotos = Array.isArray(profileData.photos)
+					? profileData.photos
+					: typeof profileData.photos === 'string'
+					? JSON.parse(profileData.photos)
+					: [];
+				photos = parsedPhotos.map((photo: string) => getPublicImageUrl(photo));
+			} catch {
+				photos = [];
+			}
+		}
+
+		// Parsear opening_hours
+		let openingHours: any[] = [];
+		if (profileData.opening_hours) {
+			try {
+				openingHours = Array.isArray(profileData.opening_hours)
+					? profileData.opening_hours
+					: typeof profileData.opening_hours === 'string'
+					? JSON.parse(profileData.opening_hours)
+					: [];
+			} catch {
+				openingHours = [];
+			}
+		}
+
+		setFormData({
+			legal_name: profileData.legal_name || '',
+			trade_name: profileData.trade_name || '',
+			specialties: Array.isArray(profileData.specialties) ? profileData.specialties : [],
+			phone_fixed: profileData.phone_fixed || '',
+			phone_mobile: profileData.phone_mobile || '',
+			contact_email: profileData.contact_email || '',
+			website: profileData.website || '',
+			social_facebook: profileData.social_facebook || '',
+			social_instagram: profileData.social_instagram || '',
+			sanitary_license: profileData.sanitary_license || '',
+			liability_insurance_number: profileData.liability_insurance_number || '',
+			address_operational: profileData.address_operational || '',
+			opening_hours: openingHours,
+			location,
+			photos,
+			profile_photo: profileData.profile_photo || null,
+			has_cashea: profileData.has_cashea ?? false, // Corregido el acceso a has_cashea
+		});
+
+		if (profileData.profile_photo) {
+			const profilePhotoUrl = getPublicImageUrl(profileData.profile_photo);
+			setProfilePhotoPreview(profilePhotoUrl);
 		}
 	};
 
@@ -232,6 +302,7 @@ export default function ConsultorioConfigPage() {
 				specialties: formData.specialties.length > 0 ? JSON.stringify(formData.specialties) : null,
 				profile_photo: formData.profile_photo || null,
 				has_cashea: formData.has_cashea || false,
+				office_id: selectedOfficeId || null,
 			};
 
 			const res = await fetch('/api/clinic/profile', {
@@ -251,8 +322,15 @@ export default function ConsultorioConfigPage() {
 			const savedData = await res.json();
 			console.log('Datos guardados exitosamente:', savedData);
 
-			// Recargar los datos primero
-			await fetchProfile();
+			// Actualizar caché con los nuevos datos
+			const cacheKey = selectedOfficeId || 'global';
+			setProfileCache(prev => ({
+				...prev,
+				[cacheKey]: savedData
+			}));
+
+			// Recargar los datos del consultorio actual (usará caché si acabamos de guardar)
+			await fetchProfile(selectedOfficeId);
 			
 			// Mostrar modal de éxito
 			setShowSuccessModal(true);
@@ -414,9 +492,17 @@ export default function ConsultorioConfigPage() {
 					<Building2 className="w-8 h-8 text-white" />
 				</div>
 				<div>
-					<h1 className="text-3xl font-bold text-slate-900">Configuración del Consultorio</h1>
+					<h1 className="text-3xl font-bold text-slate-900">
+						Configuración del Consultorio
+						{offices.length > 1 && selectedOfficeId && (
+							<span className="text-teal-600">
+								{' - '}{offices[selectedOfficeIndex]?.name || `Consultorio ${selectedOfficeIndex + 1}`}
+							</span>
+						)}
+					</h1>
 					<p className="text-slate-600 mt-1">
 						{profile ? 'Edita la información y ubicación de tu consultorio' : 'Completa la información de tu consultorio'}
+						{offices.length > 1 && ' - Usa las pestañas para cambiar entre consultorios'}
 					</p>
 				</div>
 			</div>
@@ -429,6 +515,44 @@ export default function ConsultorioConfigPage() {
 						<p className="text-sm font-semibold text-teal-900">Datos del consultorio cargados</p>
 						<p className="text-xs text-teal-700 mt-0.5">Puedes editar cualquier campo y guardar los cambios</p>
 					</div>
+				</div>
+			)}
+
+			{/* Pestañas de Consultorios - Solo mostrar si hay múltiples consultorios */}
+			{offices.length > 1 && (
+				<div className="bg-white rounded-2xl border border-slate-200 shadow-md p-2">
+					<div className="flex gap-2 overflow-x-auto">
+						{offices.map((office, index) => (
+							<button
+								key={office.id}
+								type="button"
+								onClick={() => {
+									setSelectedOfficeIndex(index);
+									setSelectedOfficeId(office.id);
+									// Cargar datos del consultorio seleccionado
+									fetchProfile(office.id);
+								}}
+								className={`px-6 py-3 rounded-xl font-semibold transition-all whitespace-nowrap ${
+									selectedOfficeIndex === index
+										? 'bg-gradient-to-r from-teal-600 to-cyan-600 text-white shadow-lg'
+										: 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+								}`}
+							>
+								<div className="flex items-center gap-2">
+									<Building2 className="w-4 h-4" />
+									<span>{office.name || `Consultorio ${index + 1}`}</span>
+								</div>
+								{office.location?.address && (
+									<p className="text-xs mt-1 opacity-80">
+										{office.location.address.substring(0, 30)}...
+									</p>
+								)}
+							</button>
+						))}
+					</div>
+					<p className="text-xs text-slate-500 mt-3 px-2">
+						Selecciona un consultorio para ver y editar su información detallada
+					</p>
 				</div>
 			)}
 

@@ -148,13 +148,18 @@ async function tryRestoreSessionFromCookies(supabase: Supa, cookieStore: CookieS
 
 export async function GET(req: Request) {
 	try {
-		// Usar getAuthenticatedUser de auth-guards que maneja correctamente la restauración de sesión
+		// 151: Usar getAuthenticatedUser de auth-guards que maneja correctamente la restauración de sesión
 		const authenticatedUser = await getAuthenticatedUser();
 		
 		if (!authenticatedUser) {
 			console.error('[GET /api/clinic/profile] Usuario no autenticado');
 			return NextResponse.json({ error: 'Usuario no autenticado.' }, { status: 401 });
 		}
+
+		// Obtener officeId de los query params
+		const { searchParams } = new URL(req.url);
+		const officeId = searchParams.get('officeId');
+		console.log('[GET /api/clinic/profile] Buscando perfil para officeId:', officeId);
 
 		// Verificar que el usuario tenga una organización
 		const orgId = authenticatedUser.organizationId;
@@ -165,11 +170,19 @@ export async function GET(req: Request) {
 		const cookieStore = await cookies();
 		const supabase = await createSupabaseServerClient();
 
-		// ---------------- clinic_profile ----------------
+		// 168: ---------------- clinic_profile ----------------
 		let clinicProfile: any = null;
 		const cpFetch = await tryFromVariants(supabase, CLINIC_PROFILE_VARIANTS, '*');
 		if (cpFetch.name) {
-			const cpQ = await supabase.from(cpFetch.name).select('*').eq('organization_id', orgId).maybeSingle();
+			let query = supabase.from(cpFetch.name).select('*').eq('organization_id', orgId);
+			
+			if (officeId) {
+				query = query.eq('office_id', officeId);
+			} else {
+				query = query.is('office_id', null);
+			}
+
+			const cpQ = await query.maybeSingle();
 			if (!cpQ.error && cpQ.data) {
 				clinicProfile = cpQ.data;
 				// Parsear location y photos si son strings JSON
@@ -320,12 +333,19 @@ export async function PUT(req: Request) {
 		const cpFetch = await tryFromVariants(supabase, CLINIC_PROFILE_VARIANTS, '*');
 		if (!cpFetch.name) return NextResponse.json({ error: 'No se encontró la tabla clinic_profile.' }, { status: 500 });
 
-		// Verificar si ya existe un registro para esta organización
-		const existingCheck = await supabase
+		// Verificar si ya existe un registro para esta organización (y oficina si aplica)
+		let query = supabase
 			.from(cpFetch.name)
 			.select('id')
-			.eq('organization_id', orgId)
-			.maybeSingle();
+			.eq('organization_id', orgId);
+		
+		if (body.office_id) {
+			query = query.eq('office_id', body.office_id);
+		} else {
+			query = query.is('office_id', null);
+		}
+
+		const existingCheck = await query.maybeSingle();
 
 		// Preparar datos para insertar/actualizar
 		const dataToSave: any = {
@@ -343,6 +363,7 @@ export async function PUT(req: Request) {
 			liability_insurance_number: body.liability_insurance_number || null,
 			offices_count: body.offices_count || 0,
 			has_cashea: body.has_cashea !== undefined ? Boolean(body.has_cashea) : false,
+			office_id: body.office_id || null,
 			updated_at: new Date().toISOString(),
 		};
 
@@ -383,12 +404,18 @@ export async function PUT(req: Request) {
 		if (existingCheck.data) {
 			// Actualizar registro existente
 			const { id, ...updates } = dataToSave;
-			result = await supabase
+			let updateQuery = supabase
 				.from(cpFetch.name)
 				.update(updates)
-				.eq('organization_id', orgId)
-				.select('*')
-				.single();
+				.eq('organization_id', orgId);
+			
+			if (body.office_id) {
+				updateQuery = updateQuery.eq('office_id', body.office_id);
+			} else {
+				updateQuery = updateQuery.is('office_id', null);
+			}
+
+			result = await updateQuery.select('*').single();
 		} else {
 			// Crear nuevo registro
 			result = await supabase

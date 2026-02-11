@@ -43,9 +43,14 @@ const LINKS: LinkItem[] = [
 		icon: FileText,
 	},
 	{
-		href: '/dashboard/patient/resultados',
-		label: 'Resultados',
+		href: '/dashboard/patient/lab-resultados',
+		label: 'Resultados de Laboratorio',
 		icon: FlaskConical,
+	},
+	{
+		href: '/dashboard/patient/resultados',
+		label: 'Otros Resultados',
+		icon: FileText,
 	},
 	{
 		href: '/dashboard/patient/recetas',
