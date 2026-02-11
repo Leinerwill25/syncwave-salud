@@ -1,0 +1,69 @@
+═══════════════════════════════════════════════════════════════════════════════════
+SISTEMA DE AGENDAMIENTO PÚBLICO - GUÍA DE FUNCIONAMIENTO Y BENEFICIOS
+═══════════════════════════════════════════════════════════════════════════════════
+
+1. ¿QUÉ ES Y PARA QUÉ SIRVE?
+────────────────────────────────────────────────────────────────────────────
+Es una interfaz web abierta (Landing Page del Consultorio) que permite a cualquier
+paciente solicitar una cita médica de forma autónoma, sin necesidad de llamar por
+teléfono o descargar una aplicación. Sirve como la "puerta de entrada" digital al
+consultorio, disponible las 24 horas del día, los 7 días de la semana.
+
+2. ¿CÓMO FUNCIONA? (FLUJO DEL PACIENTE)
+────────────────────────────────────────────────────────────────────────────
+A. Selección de Sede: El paciente visualiza las distintas sedes donde atiende el
+   médico y elige la más conveniente.
+B. Datos del Paciente: Ingresa su información básica (Nombre, Cédula, Teléfono, 
+   Email). El sistema soporta pacientes ya registrados y pacientes nuevos ("No Registrados").
+C. Elección de Servicio: Selecciona el motivo de consulta o servicio específico.
+D. Selección de Horario: 
+   - Si la sede es por "Turnos": Elige un slot exacto en el calendario.
+   - Si la sede es por "Orden de Llegada": Elige un bloque (Mañana/Tarde).
+E. Smart Switching: Si no hay cupos, el sistema sugiere automáticamente otra sede
+   donde el doctor sí tenga disponibilidad ese mismo día.
+F. Confirmación: El paciente envía la solicitud con un solo clic.
+
+3. ¿CÓMO LLEGAN LAS NOTIFICACIONES? (FLUJO DE COMUNICACIÓN)
+────────────────────────────────────────────────────────────────────────────
+El sistema utiliza la tecnología de Resend para asegurar que los mensajes lleguen
+directamente a la bandeja de entrada:
+
+A. Para el Médico (INSTANTÁNEO):
+   - Tan pronto el paciente termina el proceso, el médico recibe un email con
+     todos los detalles del paciente, el servicio solicitado y la hora elegida.
+   - La notificación también aparece en tiempo real dentro del Dashboard del médico.
+
+B. Para el Paciente (CONFIRMACIÓN INICIAL):
+   - El paciente recibe un correo automático confirmando que su "Solicitud de Cita"
+     ha sido enviada con éxito. Esto le da tranquilidad de que será atendido.
+
+C. Para el Paciente (CONFIRMACIÓN FINAL):
+   - Una vez que el médico o asistente valida la cita desde el Dashboard, se envía
+     un SEGUNDO email al paciente notificándole que su cita ha sido "CONFIRMADA".
+
+4. ¿QUÉ SUCEDE DESPUÉS DE AGENDAR?
+────────────────────────────────────────────────────────────────────────────
+A. Registro en Agenda: La cita aparece automáticamente en el calendario del médico
+   en estado "Pendiente" o "Confirmada" según la configuración.
+B. Generación de Factura: El sistema crea automáticamente una pre-factura ligada
+   a la cita para que el cobro esté listo.
+C. Gestión de Estados: El médico puede confirmar, reagendar o cancelar la cita.
+   Cada cambio dispara una notificación al correo del paciente para mantenerlo
+   informado en todo momento.
+
+5. BENEFICIOS PARA EL DOCTOR (VALOR PARA LA CONSULTA)
+────────────────────────────────────────────────────────────────────────────
+✓ Reducción de Carga Administrativa: El médico (o su asistente) ya no gasta tiempo
+  en llamadas interminables para coordinar horarios. El sistema lo hace solo.
+✓ Eliminación del "No-Show": Las confirmaciones por email y recordatorios reducen
+  drásticamente las inasistencias de última hora.
+✓ Disponibilidad 24/7: Captación de pacientes incluso fuera del horario de 
+  atención de la recepción.
+✓ Prestigio Profesional: Ofrecer una plataforma moderna de agendamiento proyecta
+  una imagen de excelencia y tecnología de vanguardia.
+✓ Centralización de Datos: Toda la información de nuevos pacientes se guarda
+  automáticamente en la base de datos, lista para ser convertida en historia médica.
+
+────────────────────────────────────────────────────────────────────────────
+Sistema de Gestión Clínica MVP - ASHIRA SOFTWARE
+Actualizado: 11 de Febrero de 2026

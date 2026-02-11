@@ -30,6 +30,11 @@ interface Consultation {
     firstName: string;
     lastName: string;
   } | null;
+  unregistered_patient?: {
+    id: string;
+    first_name: string;
+    last_name: string;
+  } | null;
   appointment: {
     id: string;
     reason: string | null;
@@ -89,7 +94,12 @@ export default function TodayConsultations() {
       // Consultar las consultas programadas para hoy (usando started_at)
       const { data, error } = await supabase
         .from('consultation')
-        .select('*')
+        .select(`
+          *,
+          patient:patient_id (id, firstName, lastName),
+          unregistered_patient:unregistered_patient_id (id, first_name, last_name),
+          appointment:appointment_id (id, reason, scheduled_at)
+        `)
         .eq('doctor_id', userData.id)
         .gte('started_at', today.toISOString())
         .lt('started_at', tomorrow.toISOString())
@@ -110,8 +120,9 @@ export default function TodayConsultations() {
         started_at: item.started_at,
         status: item.status,
         chief_complaint: item.chief_complaint,
-        patient: null, // Will be populated when we add relations back
-        appointment: null
+        patient: item.patient,
+        unregistered_patient: item.unregistered_patient,
+        appointment: item.appointment
       }));
 
       console.log('Transformed consultations:', transformedData.length);
@@ -173,6 +184,9 @@ export default function TodayConsultations() {
   const getPatientName = (consultation: Consultation) => {
     if (consultation.patient) {
       return `${consultation.patient.firstName} ${consultation.patient.lastName}`;
+    }
+    if (consultation.unregistered_patient) {
+      return `${consultation.unregistered_patient.first_name} ${consultation.unregistered_patient.last_name}`;
     }
     return 'Paciente sin nombre';
   };

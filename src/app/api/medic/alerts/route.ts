@@ -71,6 +71,10 @@ export async function GET(req: Request) {
 				Patient:patient_id (
 					firstName,
 					lastName
+				),
+				UnregisteredPatient:unregistered_patient_id (
+					first_name,
+					last_name
 				)
 			`)
 			.eq('doctor_id', doctorId)
@@ -84,6 +88,8 @@ export async function GET(req: Request) {
 				const scheduledTime = new Date(apt.scheduled_at);
 				const hoursUntil = (scheduledTime.getTime() - now.getTime()) / (1000 * 60 * 60);
 				const patient = Array.isArray(apt.Patient) ? apt.Patient[0] : apt.Patient;
+				const unregPatient = Array.isArray(apt.UnregisteredPatient) ? apt.UnregisteredPatient[0] : apt.UnregisteredPatient;
+				const patientName = patient ? `${patient.firstName} ${patient.lastName}` : (unregPatient ? `${unregPatient.first_name} ${unregPatient.last_name}` : 'Paciente');
 
 				if (hoursUntil <= 2) {
 					// CRÍTICO: Cita en menos de 2 horas
@@ -92,7 +98,7 @@ export async function GET(req: Request) {
 						type: 'APPOINTMENT_IMMINENT',
 						level: 'CRITICAL',
 						title: 'Cita Inminente',
-						message: `Cita con ${patient?.firstName} ${patient?.lastName} en ${Math.round(hoursUntil * 60)} minutos`,
+						message: `Cita con ${patientName} en ${Math.round(hoursUntil * 60)} minutos`,
 						dueAt: apt.scheduled_at,
 						actionUrl: `/dashboard/medic/citas/${apt.id}`,
 						metadata: {
@@ -109,7 +115,7 @@ export async function GET(req: Request) {
 						type: 'APPOINTMENT_SOON',
 						level: 'WARNING',
 						title: 'Cita Próxima',
-						message: `Cita con ${patient?.firstName} ${patient?.lastName} en ${Math.round(hoursUntil)} horas`,
+						message: `Cita con ${patientName} en ${Math.round(hoursUntil)} horas`,
 						dueAt: apt.scheduled_at,
 						actionUrl: `/dashboard/medic/citas/${apt.id}`,
 						metadata: {
@@ -136,6 +142,10 @@ export async function GET(req: Request) {
 				Patient:patient_id (
 					firstName,
 					lastName
+				),
+				UnregisteredPatient:unregistered_patient_id (
+					first_name,
+					last_name
 				)
 			`)
 			.eq('doctor_id', doctorId)
@@ -150,6 +160,8 @@ export async function GET(req: Request) {
 				const validUntil = new Date(presc.valid_until);
 				const daysUntil = (validUntil.getTime() - now.getTime()) / (1000 * 60 * 60 * 24);
 				const patient = Array.isArray(presc.Patient) ? presc.Patient[0] : presc.Patient;
+				const unregPatient = Array.isArray(presc.UnregisteredPatient) ? presc.UnregisteredPatient[0] : presc.UnregisteredPatient;
+				const patientName = patient ? `${patient.firstName} ${patient.lastName}` : (unregPatient ? `${unregPatient.first_name} ${unregPatient.last_name}` : 'Paciente');
 
 				if (daysUntil <= 0) {
 					// CRÍTICO: Receta vencida
@@ -158,7 +170,7 @@ export async function GET(req: Request) {
 						type: 'PRESCRIPTION_EXPIRED',
 						level: 'CRITICAL',
 						title: 'Receta Vencida',
-						message: `Receta para ${patient?.firstName} ${patient?.lastName} venció`,
+						message: `Receta para ${patientName} venció`,
 						dueAt: presc.valid_until,
 						actionUrl: `/dashboard/medic/recetas/${presc.id}`,
 						metadata: {
@@ -174,7 +186,7 @@ export async function GET(req: Request) {
 						type: 'PRESCRIPTION_EXPIRING',
 						level: 'WARNING',
 						title: 'Receta Próxima a Vencer',
-						message: `Receta para ${patient?.firstName} ${patient?.lastName} vence en ${Math.round(daysUntil)} días`,
+						message: `Receta para ${patientName} vence en ${Math.round(daysUntil)} días`,
 						dueAt: presc.valid_until,
 						actionUrl: `/dashboard/medic/recetas/${presc.id}`,
 						metadata: {
@@ -201,6 +213,10 @@ export async function GET(req: Request) {
 				Patient:patient_id (
 					firstName,
 					lastName
+				),
+				UnregisteredPatient:unregistered_patient_id (
+					first_name,
+					last_name
 				)
 			`)
 			.eq('ordering_provider_id', doctorId)
@@ -211,12 +227,14 @@ export async function GET(req: Request) {
 		if (!labError && criticalResults) {
 			for (const result of criticalResults) {
 				const patient = Array.isArray(result.Patient) ? result.Patient[0] : result.Patient;
+				const unregPatient = Array.isArray(result.UnregisteredPatient) ? result.UnregisteredPatient[0] : result.UnregisteredPatient;
+				const patientName = patient ? `${patient.firstName} ${patient.lastName}` : (unregPatient ? `${unregPatient.first_name} ${unregPatient.last_name}` : 'Paciente');
 				alerts.push({
 					id: `lab-critical-${result.id}`,
 					type: 'LAB_RESULT_CRITICAL',
 					level: 'CRITICAL',
 					title: 'Resultado Crítico',
-					message: `Resultado crítico de ${result.result_type} para ${patient?.firstName} ${patient?.lastName}`,
+					message: `Resultado crítico de ${result.result_type} para ${patientName}`,
 					actionUrl: `/dashboard/medic/resultados/${result.id}`,
 					metadata: {
 						labResultId: result.id,
@@ -243,6 +261,10 @@ export async function GET(req: Request) {
 				Patient:patient_id (
 					firstName,
 					lastName
+				),
+				UnregisteredPatient:unregistered_patient_id (
+					first_name,
+					last_name
 				)
 			`)
 			.eq('assigned_to', doctorId)
@@ -256,7 +278,8 @@ export async function GET(req: Request) {
 				const dueAt = new Date(task.due_at);
 				const hoursUntil = (dueAt.getTime() - now.getTime()) / (1000 * 60 * 60);
 				const patient = Array.isArray(task.Patient) ? task.Patient[0] : task.Patient;
-				const patientName = patient ? `${patient.firstName} ${patient.lastName}` : '';
+				const unregPatient = Array.isArray(task.UnregisteredPatient) ? task.UnregisteredPatient[0] : task.UnregisteredPatient;
+				const patientName = patient ? `${patient.firstName} ${patient.lastName}` : (unregPatient ? `${unregPatient.first_name} ${unregPatient.last_name}` : '');
 
 				if (hoursUntil < 0) {
 					// CRÍTICO: Tarea vencida
@@ -307,6 +330,10 @@ export async function GET(req: Request) {
 				Patient:patient_id (
 					firstName,
 					lastName
+				),
+				UnregisteredPatient:unregistered_patient_id (
+					first_name,
+					last_name
 				)
 			`)
 			.eq('doctor_id', doctorId)
@@ -317,12 +344,14 @@ export async function GET(req: Request) {
 		if (!consError && unfinishedConsultations) {
 			for (const cons of unfinishedConsultations) {
 				const patient = Array.isArray(cons.Patient) ? cons.Patient[0] : cons.Patient;
+				const unregPatient = Array.isArray(cons.UnregisteredPatient) ? cons.UnregisteredPatient[0] : cons.UnregisteredPatient;
+				const patientName = patient ? `${patient.firstName} ${patient.lastName}` : (unregPatient ? `${unregPatient.first_name} ${unregPatient.last_name}` : 'Paciente');
 				alerts.push({
 					id: `cons-unfinished-${cons.id}`,
 					type: 'CONSULTATION_UNFINISHED',
 					level: 'WARNING',
 					title: 'Consulta Sin Finalizar',
-					message: `Consulta con ${patient?.firstName} ${patient?.lastName} iniciada pero no finalizada`,
+					message: `Consulta con ${patientName} iniciada pero no finalizada`,
 					actionUrl: `/dashboard/medic/consultas/${cons.id}`,
 					metadata: {
 						consultationId: cons.id,
@@ -348,6 +377,10 @@ export async function GET(req: Request) {
 				Patient:patient_id (
 					firstName,
 					lastName
+				),
+				UnregisteredPatient:unregistered_patient_id (
+					first_name,
+					last_name
 				)
 			`)
 			.eq('doctor_id', doctorId)
@@ -358,12 +391,14 @@ export async function GET(req: Request) {
 		if (!invError && pendingInvoices) {
 			for (const invoice of pendingInvoices) {
 				const patient = Array.isArray(invoice.Patient) ? invoice.Patient[0] : invoice.Patient;
+				const unregPatient = Array.isArray(invoice.UnregisteredPatient) ? invoice.UnregisteredPatient[0] : invoice.UnregisteredPatient;
+				const patientName = patient ? `${patient.firstName} ${patient.lastName}` : (unregPatient ? `${unregPatient.first_name} ${unregPatient.last_name}` : 'Paciente');
 				alerts.push({
 					id: `inv-pending-${invoice.id}`,
 					type: 'INVOICE_PENDING',
 					level: 'INFO',
 					title: 'Factura Pendiente',
-					message: `Factura de $${invoice.total} para ${patient?.firstName} ${patient?.lastName} pendiente de pago`,
+					message: `Factura de $${invoice.total} para ${patientName} pendiente de pago`,
 					actionUrl: `/dashboard/medic/pagos/${invoice.id}`,
 					metadata: {
 						invoiceId: invoice.id,

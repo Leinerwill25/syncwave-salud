@@ -3059,63 +3059,42 @@ B. RECEPCIÓN - SOLO LECTURA:
    - No puede enviar mensajes manuales
 
 ═══════════════════════════════════════════════════════════════════════════════════
-RESUMEN PARA PLANES DE SUSCRIPCIÓN
+═══════════════════════════════════════════════════════════════════════════════════
+XVII. GESTIÓN MULTI-SEDE Y NOTIFICACIONES INTELIGENTES (VALOR AGREGADO)
 ═══════════════════════════════════════════════════════════════════════════════════
 
-PLAN BÁSICO (Médico Individual)
-────────────────────────────────────────────────────────────────────────────
-✓ Dashboard con KPIs
-✓ Gestión de Pacientes (Listado, Búsqueda)
-✓ Consultas (Crear, Ver, Editar)
-✓ Recetas Simples (Crear, Listar)
-✓ Agenda con Vista de Calendario
-✓ Citas (Crear, Gestionar Estados)
-✓ Configuración Básica (Perfil, Moneda)
-✓ Facturación Manual
-✓ Pacientes Registrados y No Registrados
+1. Sistema de Gestión Multi-Sede (Ubicaciones Flexibles):
+   - Funcionamiento: Permite al médico configurar y operar en múltiples consultorios físicos de manera simultánea, cada uno con su propio flujo de trabajo (Turnos vs Orden de Llegada) y horarios específicos.
+   - Valor para el Doctor: Centralización operativa. El médico ya no necesita sistemas separados para diferentes clínicas. Todo su flujo de pacientes, sin importar dónde se encuentre físicamente, converge en un solo tablero de control.
+   - Mejora la Atención: Claridad absoluta para el paciente sobre dónde debe asistir, reduciendo confusiones geográficas y ausentismo.
 
-PLAN PRO (Consultorio Pequeño)
-────────────────────────────────────────────────────────────────────────────
-✓ Todo lo del Plan Básico, MÁS:
-✓ Consulta Sucesiva (Seguimiento con Resultados de Laboratorio)
-✓ Órdenes y Resultados de Laboratorio
-✓ Mensajes con Pacientes (Chat externo)
-✓ Tareas y Recordatorios
-✓ Plantillas Word Personalizadas (Informes y Recetas)
-✓ Reportes Financieros Básicos
-✓ Configuración de Consultorio
-✓ Carga de Imágenes del Consultorio
-✓ Integración con Pago Móvil
-✓ Verificación de Pagos
-✓ Moneda Multidivisa
+2. Sugerencia Inteligente de Sede (Smart Office Switching):
+   - Funcionamiento: Un algoritmo de disponibilidad que, al detectar que no hay cupos en el consultorio preferido del paciente, analiza en tiempo real las otras sedes del mismo doctor para el mismo día y ofrece una alternativa inmediata.
+   - Valor para el Doctor: Optimización de la agenda y retención de pacientes. Evita que un paciente se retire por falta de cupo, redirigiéndolo a huecos disponibles en otras sedes que de otro modo quedarían vacíos.
+   - Mejora la Atención: Respuesta inmediata al paciente. En lugar de un "no hay citas", el sistema ofrece una solución proactiva: "El doctor no está en Sede A, pero puede atenderte hoy mismo en Sede B".
 
-PLAN ENTERPRISE (Consultorio/Clínica con Equipo)
-────────────────────────────────────────────────────────────────────────────
-✓ Todo lo del Plan Pro, MÁS:
-✓ Gestión de Roles y Permisos COMPLETA (Multi-usuario ilimitado)
-✓ Panel de Role-User con funcionalidades dedicadas:
-  • Gestión de Citas por Asistentes
-  • Gestión de Servicios y Combos
-  • Métodos de Pago Personalizados
-  • Estadísticas de Efectividad de Citas
-  • Estadísticas de Servicios (con mapa de calor)
-  • Origen de Citas (análisis de marketing)
-  • Mis Citas (historial personal)
-  • Reportes de Citas
-  • Configuración de WhatsApp para Recordatorios
-✓ Chat Interno (Mensajería del Equipo)
-✓ Carga Masiva de Pacientes (Excel/Word)
-✓ Exportación de Reportes (Excel, PDF)
-✓ Soporte para Múltiples Ubicaciones
-✓ API de Integración (futuro)
-✓ Usuarios de Rol Ilimitados
-✓ Personalización Avanzada de Permisos
+3. Sección Estructurada "Nuestras Sedes":
+   - Funcionamiento: Galería informativa premium que detalla la infraestructura, ubicación exacta (mapa virtual) y las reglas de atención de cada consultorio del médico.
+   - Valor para el Doctor: Posicionamiento de marca y profesionalismo. Proyecta una imagen de robustez y conveniencia al mostrar que cuenta con múltiples puntos de atención bien organizados.
+   - Mejora la Atención: Transparencia informativa. El paciente conoce de antemano la logística de llegada, si debe esperar por turno o por orden de llegada, y los horarios exactos de operación.
+
+4. Notificaciones Automáticas vía Resend (Omnicanal):
+   - Funcionamiento: Envío de correos electrónicos transaccionales de alta fiabilidad en hitos críticos: agendamiento inicial, cambios de estado (confirmación/reagendamiento) y recordatorios.
+   - Valor para el Doctor: Automatización total de la secretaría. Reduce la carga administrativa de realizar llamadas o enviar correos manuales. Asegura que el paciente siempre esté informado, lo que disminuye drásticamente el "No-Show" (inasistencia).
+   - Mejora la Atención: Experiencia de usuario "clase ejecutiva". El paciente recibe confirmaciones profesionales en su bandeja de entrada, lo que genera confianza y seguridad en el servicio médico contratado.
+
+5. Soporte para Pacientes No Registrados:
+   - Funcionamiento: Capacidad técnica de capturar datos y enviar todas las comunicaciones anteriores incluso a personas que no desean crear una cuenta en la plataforma, usando solo su email/teléfono.
+   - Valor para el Doctor: Ampliación de la base de datos de captación. Elimina la fricción del registro obligatorio para agendar, permitiendo que cualquier persona(público general) sea un paciente potencial atendido con la misma calidad comunicativa.
+   - Mejora la Atención: Inclusividad y rapidez. Facilita el acceso a la salud para usuarios ocasionales o familiares que agendan por terceros sin complicaciones de perfiles.
+
 
 ═══════════════════════════════════════════════════════════════════════════════════
 NOTAS TÉCNICAS ADICIONALES
 ═══════════════════════════════════════════════════════════════════════════════════
 
 • Tecnologías: Next.js, React, Supabase, Tailwind CSS, Framer Motion
+• Email Service: Resend API
 • Autenticación: Basada en sesiones con Supabase
 • Base de Datos: PostgreSQL (Supabase)
 • Realtime: Supabase Realtime para mensajes y notificaciones
@@ -3128,5 +3107,5 @@ NOTAS TÉCNICAS ADICIONALES
 FIN DEL INFORME
 ═══════════════════════════════════════════════════════════════════════════════════
 Documento generado para: ASHIRA SOFTWARE - Sistema de Gestión Clínica MVP
-Versión: 2.0 - Actualizada con Nuevas Funcionalidades
-Fecha de Actualización: 07 de Febrero de 2026
+Versión: 2.1 - Actualizada con Gestión Multi-Sede y Notificaciones Inteligentes
+Fecha de Actualización: 11 de Febrero de 2026
