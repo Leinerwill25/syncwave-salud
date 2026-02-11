@@ -169,7 +169,7 @@ export async function PATCH(req: Request, context: { params: Promise<{ id: strin
 											appointment_id: id,
 											total: existingFacturacion.total,
 											currency: existingFacturacion.currency,
-											paymentUrl: `${process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_VERCEL_URL ? `https://${process.env.NEXT_PUBLIC_VERCEL_URL}` : 'http://localhost:3000'}/dashboard/patient/pagos`,
+											paymentUrl: `${process.env.NEXT_PUBLIC_APP_URL || 'https://ashira.click'}/dashboard/patient/pagos`,
 										},
 										sendEmail: true,
 									},
@@ -238,7 +238,7 @@ export async function PATCH(req: Request, context: { params: Promise<{ id: strin
 					return { data: null, error: null };
 				};
 
-				const [patientRes, doctorRes, patientUserRes, unregisteredRes] = await Promise.all([
+				const [patientRes, doctorRes, patientUserRes, unregisteredRes, orgRes, medicProfileRes] = await Promise.all([
 					patient_id 
 						? supabaseAdmin.from('patient').select('firstName, lastName').eq('id', patient_id).maybeSingle()
 						: Promise.resolve({ data: null }),
@@ -251,6 +251,12 @@ export async function PATCH(req: Request, context: { params: Promise<{ id: strin
 					current.unregistered_patient_id
 						? supabaseAdmin.from('unregisteredpatients').select('first_name, last_name, email').eq('id', current.unregistered_patient_id).maybeSingle()
 						: Promise.resolve({ data: null }),
+					organization_id
+						? supabaseAdmin.from('organization').select('phone').eq('id', organization_id).maybeSingle()
+						: Promise.resolve({ data: null }),
+					doctor_id
+						? supabaseAdmin.from('medic_profile').select('whatsapp_number').eq('doctor_id', doctor_id).maybeSingle()
+						: Promise.resolve({ data: null }),
 				]);
 
 				if (patientRes.data) {
@@ -262,6 +268,9 @@ export async function PATCH(req: Request, context: { params: Promise<{ id: strin
 				if (doctorRes.data) doctorName = doctorRes.data.name || undefined;
 				if (patientUserRes.data) patientUserId = patientUserRes.data.id;
 				if (unregisteredRes.data) unregisteredEmail = unregisteredRes.data.email;
+
+				const contactPhone = orgRes?.data?.phone || medicProfileRes?.data?.whatsapp_number || '';
+				(data as any).contactPhone = contactPhone;
 
 			} catch (err) {
 				console.warn('[Appointment Update] Error obteniendo datos para notificaciones:', err);
@@ -278,7 +287,7 @@ export async function PATCH(req: Request, context: { params: Promise<{ id: strin
 				  })
 				: '';
 
-			const appointmentUrl = `${process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_VERCEL_URL ? `https://${process.env.NEXT_PUBLIC_VERCEL_URL}` : 'http://localhost:3000'}/dashboard/medic/consultas/${id}`;
+			const appointmentUrl = `${process.env.NEXT_PUBLIC_APP_URL || 'https://ashira.click'}/dashboard/${patientUserId ? 'patient' : 'public'}/appointments`;
 
 			// 5.1 Enviar email directo a paciente NO registrado si aplica
 			if (unregisteredEmail && !patientUserId) {
@@ -293,7 +302,9 @@ export async function PATCH(req: Request, context: { params: Promise<{ id: strin
 							reason: current.selected_service?.name || reason || null,
 							location: location || null,
 							appointmentUrl: '', 
+							status: body.status,
 							newStatus: body.status,
+							contactPhone: (data as any).contactPhone,
 							isForDoctor: false,
 							isUnregisteredPatient: true
 						}
@@ -324,6 +335,7 @@ export async function PATCH(req: Request, context: { params: Promise<{ id: strin
 						reason: reason || null,
 						location: location || null,
 						appointmentUrl,
+						contactPhone: (data as any).contactPhone,
 						isForDoctor: false,
 					},
 					sendEmail: true,

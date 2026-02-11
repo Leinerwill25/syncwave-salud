@@ -6,9 +6,7 @@ import { Resend } from 'resend';
 const RESEND_API_KEY = process.env.RESEND_API_KEY;
 const EMAIL_FROM = process.env.EMAIL_FROM || process.env.RESEND_FROM_EMAIL || 'onboarding@resend.dev';
 const APP_NAME = process.env.APP_NAME || 'ASHIRA';
-const APP_URL = process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_VERCEL_URL 
-	? `https://${process.env.NEXT_PUBLIC_VERCEL_URL}` 
-	: 'http://localhost:3000';
+const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://ashira.click';
 
 // Inicializar cliente Resend
 let resendClient: Resend | null = null;

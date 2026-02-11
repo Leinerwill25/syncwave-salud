@@ -97,7 +97,7 @@ export default function RoleUserWhatsappConfigPage() {
 			.replace('{FECHA}', '15/12/2025')
 			.replace('{HORA}', '10:30 am')
 			.replace('{NOMBRE_DOCTORA}', doctorName || 'Nombre del médico')
-			.replace('{CLÍNICA}', 'Consultorio Syncwave')
+			.replace('{CLÍNICA}', 'ASHIRA')
 			.replace('{SERVICIOS}', 'Consulta ginecológica, Ecografía transvaginal');
 
 		return exampleMessage;

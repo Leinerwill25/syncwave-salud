@@ -128,9 +128,7 @@ export async function createNotifications(
  * Helper para obtener URL de detalles según el tipo de notificación
  */
 export function getNotificationUrl(type: string, payload: Record<string, unknown>): string | undefined {
-	const appUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_VERCEL_URL 
-		? `https://${process.env.NEXT_PUBLIC_VERCEL_URL}` 
-		: 'http://localhost:3000';
+	const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://ashira.click';
 	
 	switch (type) {
 		case 'APPOINTMENT_REQUEST':

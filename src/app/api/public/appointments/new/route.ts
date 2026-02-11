@@ -180,7 +180,7 @@ export async function POST(request: Request) {
 
 			const formattedDate = `${dayName}, ${day} de ${monthName} de ${year} a las ${hour}:${minute}`;
 
-			const appointmentUrl = `${process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_VERCEL_URL ? `https://${process.env.NEXT_PUBLIC_VERCEL_URL}` : 'http://localhost:3000'}/dashboard/medic/citas`;
+			const appointmentUrl = `${process.env.NEXT_PUBLIC_APP_URL || 'https://ashira.click'}/dashboard/medic/appointments`;
 
 			const notificationMessage = `El paciente ${unregisteredPatient.first_name} ${unregisteredPatient.last_name} (${unregisteredPatient.phone}) ha solicitado una cita para el ${formattedDate} - Servicio: ${selectedService.name} (${selectedService.price} ${selectedService.currency})`;
 

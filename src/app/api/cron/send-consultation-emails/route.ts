@@ -15,8 +15,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import { sendEmail } from '@/lib/email/resend';
-import { getAppUrl } from '@/lib/email/resend';
+import { sendEmail, getAppUrl, getConsultationReportTemplate, getRegistrationInviteTemplate } from '@/lib/email';
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY!;
@@ -186,71 +185,17 @@ export async function GET(req: NextRequest) {
 					minute: '2-digit',
 				});
 
-				// Crear template de email
-				const emailHtml = `
-<!DOCTYPE html>
-<html>
-<head>
-	<meta charset="UTF-8">
-	<meta name="viewport" content="width=device-width, initial-scale=1.0">
-	<title>Informe Médico - ${organizationName}</title>
-</head>
-<body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
-	<div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 30px; text-align: center; border-radius: 10px 10px 0 0;">
-		<h1 style="color: white; margin: 0; font-size: 24px;">📋 Informe Médico</h1>
-	</div>
-	
-	<div style="background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px; border: 1px solid #e0e0e0;">
-		<p style="font-size: 16px; margin-bottom: 20px;">Hola <strong>${patientName}</strong>,</p>
-		
-		<p style="font-size: 16px; margin-bottom: 20px;">
-			Le informamos que su informe médico ha sido generado y está disponible para su descarga.
-		</p>
-		
-		<div style="background: white; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #667eea;">
-			<p style="margin: 5px 0;"><strong>📅 Fecha de generación:</strong> ${formattedDate}</p>
-			<p style="margin: 5px 0;"><strong>👨‍⚕️ Doctor:</strong> ${doctorName}</p>
-			<p style="margin: 5px 0;"><strong>🏥 Consultorio:</strong> ${organizationName}</p>
-		</div>
-		
-		<div style="text-align: center; margin: 30px 0;">
-			<a href="${consultation.report_url}" 
-			   style="display: inline-block; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 16px;">
-				📥 Descargar Informe Médico
-			</a>
-		</div>
-		
-		<div style="background: #fff3cd; border: 1px solid #ffc107; border-radius: 8px; padding: 20px; margin: 30px 0;">
-			<h3 style="color: #856404; margin-top: 0;">⭐ Su opinión es importante para nosotros</h3>
-			<p style="color: #856404; margin-bottom: 15px;">
-				Nos gustaría conocer su experiencia con la atención recibida. Por favor, tómese un momento para calificar su consulta.
-			</p>
-			<div style="text-align: center;">
-				<a href="${ratingUrl}" 
-				   style="display: inline-block; background: #ffc107; color: #856404; padding: 12px 25px; text-decoration: none; border-radius: 8px; font-weight: bold;">
-					⭐ Calificar Atención
-				</a>
-			</div>
-		</div>
-		
-		<p style="font-size: 14px; color: #666; margin-top: 30px;">
-			Si tiene alguna pregunta o necesita asistencia, no dude en contactarnos.
-		</p>
-		
-		<p style="font-size: 14px; color: #666; margin-top: 20px;">
-			Atentamente,<br>
-			<strong>${organizationName}</strong>
-		</p>
-	</div>
-	
-	<div style="text-align: center; margin-top: 20px; padding: 20px; color: #999; font-size: 12px;">
-		<p>Este es un email automático, por favor no responda a este mensaje.</p>
-	</div>
-</body>
-</html>
-				`;
+				// Crear template de email de informe
+				const emailHtml = getConsultationReportTemplate({
+					patientName,
+					doctorName,
+					organizationName,
+					reportUrl: consultation.report_url,
+					formattedDate,
+					ratingUrl,
+				});
 
-				// Enviar email
+				// Enviar email de informe
 				const emailResult = await sendEmail({
 					to: patientEmail,
 					subject: `Informe Médico - ${organizationName}`,
@@ -258,6 +203,28 @@ export async function GET(req: NextRequest) {
 				});
 
 				if (emailResult.success) {
+					// Si el paciente no está registrado, enviar invitación
+					const isUnregistered = !!consultation.unregistered_patient_id && !consultation.patient_id;
+					
+					if (isUnregistered) {
+						try {
+							const registerUrl = `${getAppUrl()}/auth/register?email=${encodeURIComponent(patientEmail)}&name=${encodeURIComponent(patientName)}`;
+							const inviteHtml = getRegistrationInviteTemplate({
+								patientName,
+								registerUrl,
+								doctorName: doctorName !== 'Dr.' ? doctorName : undefined,
+							});
+
+							await sendEmail({
+								to: patientEmail,
+								subject: `Centralice su información médica en ASHIRA`,
+								html: inviteHtml,
+							});
+							console.log(`[Cron Send Emails] Invitación enviada a paciente no registrado: ${patientEmail}`);
+						} catch (inviteErr) {
+							console.error('[Cron Send Emails] Error enviando invitación:', inviteErr);
+						}
+					}
 					// Marcar como enviado
 					await supabase
 						.from('consultation_email_queue')

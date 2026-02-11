@@ -12,6 +12,8 @@ export {
 	getPasswordResetTemplate,
 	getWelcomeEmailTemplate,
 	getEmailConfirmationTemplate,
+	getConsultationReportTemplate,
+	getRegistrationInviteTemplate,
 } from './templates';
 
 /**
@@ -41,18 +43,57 @@ export async function sendNotificationEmail(
 		case 'APPOINTMENT_REQUEST':
 		case 'APPOINTMENT_CONFIRMED':
 		case 'APPOINTMENT_STATUS':
-			subject = data.isForDoctor 
-				? 'Nueva Cita Solicitada' 
-				: (data.newStatus ? `Cita ${String(data.newStatus).replace('_', ' ')}` : 'Cita Confirmada');
-			html = templates.getAppointmentNotificationTemplate({
-				patientName: data.patientName as string,
-				doctorName: data.doctorName as string,
-				scheduledAt: data.scheduledAt as string,
-				reason: data.reason as string,
-				location: data.location as string,
-				appointmentUrl: data.appointmentUrl as string,
-				isForDoctor: data.isForDoctor as boolean,
-			});
+		case 'APPOINTMENT_CREATED':
+		case 'APPOINTMENT_RESCHEDULED':
+		case 'APPOINTMENT_CANCELLED':
+		case 'APPOINTMENT_NOSHOW':
+			{
+				const status = (data.newStatus || data.status || type.replace('APPOINTMENT_', '')) as any;
+				
+				if (data.isForDoctor) {
+					subject = status === 'SCHEDULED' || type === 'APPOINTMENT_REQUEST' 
+						? 'Nueva Cita Solicitada' 
+						: 'Actualización de Cita';
+				} else {
+					switch (status?.toString().toUpperCase()) {
+						case 'SCHEDULED':
+						case 'CREATED':
+							subject = 'Tu cita ha sido agendada';
+							break;
+						case 'CONFIRMED':
+						case 'CONFIRMADA':
+							subject = 'Tu cita ha sido confirmada';
+							break;
+						case 'RESCHEDULED':
+						case 'REAGENDADA':
+							subject = 'Tu cita ha sido reagendada';
+							break;
+						case 'CANCELLED':
+						case 'CANCELADA':
+							subject = 'Tu cita ha sido cancelada';
+							break;
+						case 'NO_SHOW':
+						case 'NO_ASISTIO':
+						case 'NOSHOW':
+							subject = 'No pudimos concretar tu cita';
+							break;
+						default:
+							subject = 'Actualización de tu cita médica';
+					}
+				}
+
+				html = templates.getAppointmentNotificationTemplate({
+					patientName: data.patientName as string,
+					doctorName: data.doctorName as string,
+					scheduledAt: data.scheduledAt as string,
+					reason: data.reason as string,
+					location: data.location as string,
+					appointmentUrl: data.appointmentUrl as string,
+					isForDoctor: data.isForDoctor as boolean,
+					status: status,
+					contactPhone: data.contactPhone as string,
+				});
+			}
 			break;
 
 		case 'PRESCRIPTION':
