@@ -1,54 +1,34 @@
 // app/api/notifications/route.ts
 import { NextResponse } from 'next/server';
 import { createSupabaseServerClient } from '@/app/adapters/server';
+import { apiRequireAuth } from '@/lib/auth-guards';
 
 export async function GET(req: Request) {
 	try {
-		const authHeader = req.headers.get('authorization') || '';
-		const token = authHeader.replace('Bearer ', '').trim();
-		console.debug('[API/notifications] token present?', !!token);
+		const authResult = await apiRequireAuth();
+		if (authResult.response) return authResult.response;
 
-		// Crea el cliente server-side. Si tu helper acepta { req }, pásalo.
+		const authUser = authResult.user;
+		if (!authUser) {
+			return NextResponse.json({ error: 'No autenticado' }, { status: 401 });
+		}
+
+		console.debug('[API/notifications] authUser present?', !!authUser);
+
+		// Crea el cliente server-side
 		const supabase = await createSupabaseServerClient();
 
-		// 1) Obtener usuario auth (desde token o cookies)
-		let userDataResp;
-		if (token) {
-			userDataResp = await supabase.auth.getUser(token);
-		} else {
-			userDataResp = await supabase.auth.getUser();
-		}
-		const { data: userData, error: userErr } = userDataResp ?? {};
-		if (userErr || !userData?.user) {
-			console.warn('[API/notifications] user invalid', userErr);
-			return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
-		}
-
-		const authUser = userData.user; // este es el user del Auth (authUser.id = auth uid)
-		const authUserId = authUser.id;
-		const role = (authUser.user_metadata as any)?.role ?? 'PATIENT';
-		let orgId = (authUser.user_metadata as any)?.organizationId ?? null;
-
-		// 2) Obtener fila en tabla public.users para mapear authId -> app user id
-		const { data: appUserRow, error: appUserErr } = await supabase.from('users').select('id, "organizationId"').eq('authId', authUserId).limit(1).maybeSingle();
-
-		if (appUserErr) {
-			console.error('[API/notifications] error fetching app user row:', appUserErr);
-			// podemos continuar si no existe (pero entonces no hay appUserId para filtrar)
-		}
-
-		const appUserId = appUserRow?.id ?? null;
-		// usar organizationId de la tabla User si no viene en metadata
-		orgId = orgId ?? appUserRow?.organizationId ?? null;
+		const authUserId = authUser.authId;
+		const role = authUser.role;
+		let orgId = authUser.organizationId;
+		const appUserId = authUser.userId;
 
 		console.debug('[API/notifications] authUserId, appUserId, role, orgId:', authUserId, appUserId, role, orgId);
 
 		if (!orgId) return NextResponse.json({ notifications: [], appUserId: null });
 
 		// 3) Filtrar NOTIFICACIONES por appUserId (userId de la tabla Notification)
-		// Si deseas únicamente notificaciones del usuario en específico:
 		if (!appUserId) {
-			// no hay usuario en la tabla User: devolver vacío (o manejar según tu lógica)
 			return NextResponse.json({ notifications: [], appUserId: null });
 		}
 
@@ -56,7 +36,7 @@ export async function GET(req: Request) {
 			.from('notification')
 			.select('*')
 			.eq('organizationId', orgId)
-			.eq('userId', appUserId) // <-- aquí comparamos con el id de la tabla User
+			.eq('userId', appUserId)
 			.order('createdAt', { ascending: false })
 			.limit(200);
 

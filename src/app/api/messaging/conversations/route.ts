@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createSupabaseServerClient } from '@/app/adapters/server';
 import { getRoleUserSessionFromServer } from '@/lib/role-user-auth';
+import { apiRequireAuth } from '@/lib/auth-guards';
 
 // GET: Obtener lista de conversaciones (usuarios con los que hay mensajes)
 export async function GET(req: NextRequest) {
@@ -23,24 +24,19 @@ export async function GET(req: NextRequest) {
 			// No es role-user
 		}
 
-		// Si no es role-user, obtener usuario regular
+		// Si no es role-user, obtener usuario regular con la robustez del guard
 		if (!currentUserId) {
-			const {
-				data: { user },
-			} = await supabase.auth.getUser();
-			if (!user) {
-				return NextResponse.json({ error: 'No autenticado' }, { status: 401 });
-			}
+			const authResult = await apiRequireAuth();
+			if (authResult.response) return authResult.response;
 
-			const { data: appUser } = await supabase.from('users').select('id, organizationId').eq('authId', user.id).maybeSingle();
-
+			const appUser = authResult.user;
 			if (!appUser) {
 				return NextResponse.json({ error: 'Usuario no encontrado' }, { status: 404 });
 			}
 
-			currentUserId = appUser.id;
+			currentUserId = appUser.userId;
 			currentUserType = 'user';
-			organizationId = appUser.organizationId;
+			organizationId = appUser.organizationId ?? null;
 		}
 
 		if (!currentUserId || !organizationId) {

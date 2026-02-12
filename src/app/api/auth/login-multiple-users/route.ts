@@ -43,12 +43,26 @@ export async function POST(req: NextRequest) {
 		console.log(`[Login Multiple Users] ===== INICIO LOGIN para: ${emailTrimmed} =====`);
 
 		// 1. Buscar todos los usuarios con ese email en la tabla User
-		const { data: allUsers, error: usersError } = await supabaseAdmin
-			.from('users')
-			.select('id, email, role, authId, passwordHash')
-			.eq('email', emailTrimmed);
+		let allUsers: any[] | null = null;
+		let usersError: any = null;
+		const tableCandidates = ['users', 'user', 'User', '"users"', '"user"', '"User"'];
 
-		if (usersError) {
+		for (const tableName of tableCandidates) {
+			const { data, error } = await supabaseAdmin
+				.from(tableName)
+				.select('id, email, role, authId, passwordHash')
+				.eq('email', emailTrimmed);
+			
+			if (!error && data && data.length > 0) {
+				allUsers = data;
+				break;
+			}
+			if (error && String(error.code) !== 'PGRST205' && !error.message.includes('Could not find')) {
+				usersError = error;
+			}
+		}
+
+		if (usersError && (!allUsers || allUsers.length === 0)) {
 			console.error('[Login Multiple Users] Error buscando usuarios:', usersError);
 			return NextResponse.json({ error: 'Error al buscar usuarios' }, { status: 500 });
 		}

@@ -93,30 +93,19 @@ export async function getAuthenticatedUser(): Promise<AuthenticatedUser | null> 
 			return null;
 		}
 
-		// Obtener usuario de la app - usar nombre en minúsculas después del renombrado
-		const tableCandidates = ['users', 'user'];
+		// Obtener usuario de la app - usar nombres robustos
+		const tableCandidates = ['users', 'user', '"users"', '"user"', '"User"', 'User'];
 		let appUser: any = null;
-		let userError: any = null;
+		let lastError: any = null;
 		let usedTableName: string | null = null;
 
 		// Verificar sesión antes de consultar - CRÍTICO para que RLS funcione
-		const { data: sessionCheck, error: sessionCheckError } = await supabase.auth.getSession();
-		console.debug('[Auth Guard] Sesión activa:', !!sessionCheck?.session, 'authId buscado:', user.id);
+		const { data: sessionCheck } = await supabase.auth.getSession();
 		
 		// Si no hay sesión activa, intentar restaurar antes de consultar
 		if (!sessionCheck?.session) {
 			console.warn('[Auth Guard] No hay sesión activa antes de consultar, intentando restaurar...');
-			const restored = await tryRestoreSessionFromCookies(supabase as unknown as SupabaseClient, cookieStore);
-			if (restored) {
-				console.debug('[Auth Guard] Sesión restaurada, verificando nuevamente...');
-				const afterSession = await supabase.auth.getSession();
-				if (!afterSession.data?.session) {
-					console.error('[Auth Guard] CRITICAL: Sesión no disponible después de restaurar. RLS bloqueará las consultas.');
-					console.error('[Auth Guard] auth.uid() será NULL y las políticas RLS no permitirán acceso.');
-				}
-			} else {
-				console.error('[Auth Guard] CRITICAL: No se pudo restaurar la sesión. RLS bloqueará las consultas.');
-			}
+			await tryRestoreSessionFromCookies(supabase as unknown as SupabaseClient, cookieStore);
 		}
 
 		// Verificar que tenemos una sesión activa antes de consultar (necesaria para RLS)
@@ -135,59 +124,43 @@ export async function getAuthenticatedUser(): Promise<AuthenticatedUser | null> 
 					.maybeSingle();
 
 				if (error) {
-					console.error(`[Auth Guard] Error con tabla "${tableName}":`, {
-						code: error.code,
-						message: error.message,
-						details: error.details,
-						hint: error.hint,
-						hasSession: !!finalSessionCheck?.session,
-					});
+					lastError = error;
 					// Si es error de tabla no encontrada, probar siguiente candidato
 					if (String(error?.code) === 'PGRST205' || String(error?.message).includes('Could not find the table')) {
 						continue;
 					}
-					// Si es error de permisos RLS (42501) o PGRST116, podría ser que RLS está bloqueando
-					if (String(error?.code) === '42501' || String(error?.code) === 'PGRST116') {
-						console.error(`[Auth Guard] Error de RLS con tabla "${tableName}". Verifica que la sesión esté activa y que las políticas RLS permitan el acceso.`);
-						// Intentar siguiente candidato pero reportar el problema
-						userError = error;
-						continue;
-					}
-					// Otro error (permiso, constraint, etc.) - guardar y continuar
-					userError = error;
+					// Si es error de permisos RLS, el usuario existe pero no podemos verlo sin sesión
+					// En este punto, no podemos hacer mucho más
 					continue;
 				}
 
 				if (data) {
 					appUser = data;
 					usedTableName = tableName;
-					console.debug(`[Auth Guard] Usuario encontrado usando tabla "${tableName}"`);
 					break;
-				} else {
-					console.warn(`[Auth Guard] No se encontraron datos en tabla "${tableName}" para authId: ${user.id}. Posiblemente bloqueado por RLS o usuario no existe.`);
 				}
 			} catch (err: any) {
-				console.error(`[Auth Guard] Excepción con tabla "${tableName}":`, err?.message);
-				// Continuar con siguiente candidato si hay excepción
 				continue;
 			}
 		}
 
-		if (userError && !appUser) {
-			console.error('[Auth Guard] Error obteniendo usuario de la app:', {
-				error: userError,
-				authId: user.id,
-				hasSession: !!finalSessionCheck?.session,
-			});
-			return null;
+		// Fallback: buscar por email si no se encontró por authId (esto ayuda si el authId está desincronizado)
+		if (!appUser) {
+			for (const tableName of ['users', 'user']) {
+				try {
+					const { data } = await supabase.from(tableName).select('id, email, role, organizationId, patientProfileId, authId').eq('email', user.email).maybeSingle();
+					if (data) {
+						appUser = data;
+						// Si encontramos por email pero el authId era diferente o nulo, podríamos actualizarlo,
+						// pero aquí solo lo usamos para autenticar
+						break;
+					}
+				} catch { continue; }
+			}
 		}
 
 		if (!appUser) {
-			console.warn('[Auth Guard] No se encontró usuario en la tabla user para authId:', user.id, 'Intentadas tablas:', tableCandidates);
-			console.warn('[Auth Guard] Posibles causas:');
-			console.warn('  1. Usuario no existe en la tabla user con ese authId');
-			console.warn('  2. Las políticas RLS están bloqueando el acceso (verifica que la sesión esté activa)');
-			console.warn('  3. El nombre de la tabla es incorrecto');
+			console.warn('[Auth Guard] Usuario no encontrado en BD para authId:', user.id, 'email:', user.email);
 			return null;
 		}
 
@@ -202,6 +175,7 @@ export async function getAuthenticatedUser(): Promise<AuthenticatedUser | null> 
 	} catch (err) {
 		const errorMessage = err instanceof Error ? err.message : 'Error desconocido';
 		console.error('[Auth Guard] Error:', errorMessage, err);
+		// Retornar null solo en errores fatales
 		return null;
 	}
 }
@@ -220,114 +194,70 @@ interface SupabaseClient {
 }
 
 /**
- * Restaura la sesión desde cookies
+ * Restaura la sesión desde cookies - Versión ultra-robusta para producción
  */
-export async function tryRestoreSessionFromCookies(supabase: SupabaseClient, cookieStore: CookieStore): Promise<boolean> {
+export async function tryRestoreSessionFromCookies(supabase: SupabaseClient, cookieStore: any): Promise<boolean> {
 	if (!cookieStore) return false;
 
-	const cookieCandidates = ['sb-session', 'sb:token', 'supabase-auth-token', 'sb-access-token', 'sb-refresh-token'];
+	try {
+		// 1. Obtener todas las cookies para buscar por prefijo dinámico
+		const allCookies = typeof cookieStore.getAll === 'function' ? cookieStore.getAll() : [];
+		
+		// 2. Identificar cookies candidatas (formato estándar de Supabase SSR)
+		// Supabase suele usar sb-<project-id>-auth-token o sb-access-token / sb-refresh-token
+		const candidates = allCookies.filter((c: any) => 
+			c.name.includes('auth-token') || 
+			c.name.includes('sb-') || 
+			c.name.includes('supabase-')
+		);
 
-	for (const name of cookieCandidates) {
-		try {
-			const c = typeof cookieStore.get === 'function' ? cookieStore.get(name) : undefined;
-			const raw = c?.value ?? null;
-			if (!raw) continue;
-
-			let parsed: Record<string, unknown> | null = null;
-			try {
-				parsed = JSON.parse(raw) as Record<string, unknown>;
-			} catch {
-				parsed = null;
-			}
+		for (const cookie of candidates) {
+			const rawValue = cookie.value;
+			if (!rawValue) continue;
 
 			let access_token: string | null = null;
 			let refresh_token: string | null = null;
 
-			if (parsed) {
-				const getNestedValue = (obj: Record<string, unknown>, ...paths: string[]): string | null => {
-					for (const path of paths) {
-						const keys = path.split('.');
-						let current: unknown = obj;
-						for (const key of keys) {
-							if (current && typeof current === 'object' && key in current) {
-								current = (current as Record<string, unknown>)[key];
-							} else {
-								return null;
-							}
-						}
-						if (typeof current === 'string') return current;
-					}
-					return null;
-				};
-
-				if (name === 'sb-session') {
-					access_token = getNestedValue(parsed, 'access_token', 'session.access_token', 'currentSession.access_token');
-					refresh_token = getNestedValue(parsed, 'refresh_token', 'session.refresh_token', 'currentSession.refresh_token');
-				} else {
-					access_token = getNestedValue(parsed, 'access_token', 'currentSession.access_token', 'current_session.access_token');
-					refresh_token = getNestedValue(parsed, 'refresh_token', 'currentSession.refresh_token', 'current_session.refresh_token');
-					
-					// Algunos formatos guardan en currentSession como objeto
-					if (!access_token && parsed?.currentSession && typeof parsed.currentSession === 'object') {
-						const cs = parsed.currentSession as Record<string, unknown>;
-						access_token = (cs.access_token as string) || null;
-						refresh_token = (cs.refresh_token as string) || null;
-					}
-				}
-			} else {
-				if (name === 'sb-access-token') {
-					access_token = raw;
-				} else if (name === 'sb-refresh-token') {
-					refresh_token = raw;
-				}
+			// Intentar parsear como JSON (muchos formatos de Supabase guardan un objeto)
+			try {
+				const parsed = JSON.parse(rawValue);
+				access_token = parsed?.access_token || parsed?.currentSession?.access_token || parsed?.session?.access_token;
+				refresh_token = parsed?.refresh_token || parsed?.currentSession?.refresh_token || parsed?.session?.refresh_token;
+			} catch {
+				// Si no es JSON, ver si es el token directo (pasa con sb-access-token)
+				if (cookie.name.includes('access-token')) access_token = rawValue;
+				if (cookie.name.includes('refresh-token')) refresh_token = rawValue;
 			}
 
-			if (!access_token && !refresh_token) continue;
-
-			// Si solo tenemos refresh_token, usar refreshSession
-			if (refresh_token && !access_token) {
-				try {
-					const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession({ refresh_token });
-					if (!refreshError && refreshData?.session) {
-						return true;
-					}
-				} catch {
-					// ignore
-				}
-				continue;
-			}
-
-			// Si tenemos access_token pero no refresh_token, no podemos usar setSession
-			// Intentar obtener la sesión actual o continuar
-			if (access_token && !refresh_token) {
-				// Verificar si ya hay una sesión activa
-				const { data: currentSession } = await supabase.auth.getSession();
-				if (currentSession?.session) return true;
-				continue;
-			}
-
-			// Si tenemos ambos tokens, usar setSession
 			if (access_token && refresh_token) {
-				const sessionPayload: { access_token: string; refresh_token: string } = {
-					access_token,
-					refresh_token,
-				};
-
-				const { data, error } = await supabase.auth.setSession(sessionPayload);
-				if (error) {
-					continue;
-				}
-
-				if (data?.session) return true;
-
-				// Verificar si la sesión está disponible después de setSession
-				const { data: sessionAfter } = await supabase.auth.getSession();
-				if (sessionAfter?.session) return true;
+				const { data, error } = await supabase.auth.setSession({ access_token, refresh_token });
+				if (!error && data?.session) return true;
+			} else if (refresh_token) {
+				const { data, error } = await supabase.auth.refreshSession({ refresh_token });
+				if (!error && data?.session) return true;
 			}
-		} catch (err) {
-			// Continuar con la siguiente cookie si hay error
-			continue;
 		}
+
+		// 3. Intento secundario: Si no funcionó lo anterior, probar con los nombres fijos clásicos
+		const fixedNames = ['sb-session', 'sb:token', 'supabase-auth-token', 'sb-access-token', 'sb-refresh-token'];
+		for (const name of fixedNames) {
+			const c = typeof cookieStore.get === 'function' ? cookieStore.get(name) : undefined;
+			if (!c?.value) continue;
+			
+			try {
+				const parsed = JSON.parse(c.value);
+				const at = parsed?.access_token || parsed?.currentSession?.access_token;
+				const rt = parsed?.refresh_token || parsed?.currentSession?.refresh_token;
+				if (at && rt) {
+					const { data, error } = await supabase.auth.setSession({ access_token: at, refresh_token: rt });
+					if (!error && data?.session) return true;
+				}
+			} catch {
+				// ignore
+			}
+		}
+	} catch (err) {
+		console.error('[Auth Guard] Error catastrófico restaurando sesión:', err);
 	}
 
 	return false;

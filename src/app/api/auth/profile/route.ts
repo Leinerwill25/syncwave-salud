@@ -77,11 +77,28 @@ export async function GET(req: NextRequest) {
 		const email = supaUser.email as string | null;
 
 		// 3️⃣ Buscar en tabla User del schema público de Supabase
-		const { data: user, error: userErr } = await supabaseAdmin.from('users').select('id, role, organizationId, used').eq('authId', authId).maybeSingle();
+		let user: any = null;
+		const tableCandidates = ['users', 'user'];
+		
+		for (const tableName of tableCandidates) {
+			const { data, error } = await supabaseAdmin.from(tableName).select('id, role, organizationId, used').eq('authId', authId).maybeSingle();
+			if (!error && data) {
+				user = data;
+				break;
+			}
+		}
 
-		if (userErr) {
-			console.error('Error fetching user row from Supabase:', userErr);
-			return NextResponse.json({ ok: false, message: 'Error interno al consultar el usuario.' }, { status: 500 });
+		if (!user) {
+			// Fallback por email si el authId no coincide
+			if (email) {
+				for (const tableName of tableCandidates) {
+					const { data } = await supabaseAdmin.from(tableName).select('id, role, organizationId, used').eq('email', email).maybeSingle();
+					if (data) {
+						user = data;
+						break;
+					}
+				}
+			}
 		}
 
 		if (!user) {

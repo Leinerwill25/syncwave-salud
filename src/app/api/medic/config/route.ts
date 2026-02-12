@@ -17,17 +17,31 @@ export async function GET(request: Request) {
 
 		const supabase = await createSupabaseServerClient();
 
-		// Obtener datos completos del usuario de la app usando authId (las políticas RLS funcionan con authId)
-		// apiRequireRole ya validó que existe y es MEDICO, pero necesitamos más campos (name, etc.)
-		const { data: appUser, error: userError } = await supabase.from('users').select('id, name, email, organizationId, role').eq('authId', user.authId).maybeSingle();
-
-		if (userError) {
-			console.error('[Medic Config API] Error obteniendo usuario de la base de datos:', userError);
-			return NextResponse.json({ error: 'Error al obtener datos del usuario' }, { status: 500 });
+		// Obtener datos completos del usuario de la app
+		let appUser: any = null;
+		const tableCandidates = ['users', 'user'];
+		
+		for (const tableName of tableCandidates) {
+			const { data, error } = await supabase.from(tableName).select('id, name, email, organizationId, role').eq('authId', user.authId).maybeSingle();
+			if (!error && data) {
+				appUser = data;
+				break;
+			}
 		}
 
 		if (!appUser) {
-			console.error('[Medic Config API] Usuario no encontrado en la tabla User. userId:', user.userId, 'authId:', user.authId, 'email:', user.email);
+			// Fallback por email
+			for (const tableName of tableCandidates) {
+				const { data } = await supabase.from(tableName).select('id, name, email, organizationId, role').eq('email', user.email).maybeSingle();
+				if (data) {
+					appUser = data;
+					break;
+				}
+			}
+		}
+
+		if (!appUser) {
+			console.error('[Medic Config API] Usuario no encontrado en el sistema. Email:', user.email);
 			return NextResponse.json({ error: 'Usuario no encontrado en el sistema' }, { status: 404 });
 		}
 
@@ -274,15 +288,30 @@ export async function PATCH(request: Request) {
 
 		// Obtener datos del usuario de la app usando authId (las políticas RLS funcionan con authId)
 		// apiRequireRole ya validó que existe y es MEDICO
-		const { data: appUser, error: userError } = await supabase.from('users').select('id, organizationId, role').eq('authId', user.authId).maybeSingle();
-
-		if (userError) {
-			console.error('[Medic Config API PATCH] Error obteniendo usuario de la base de datos:', userError);
-			return NextResponse.json({ error: 'Error al obtener datos del usuario' }, { status: 500 });
+		let appUser: any = null;
+		const tableCandidates = ['users', 'user'];
+		
+		for (const tableName of tableCandidates) {
+			const { data, error } = await supabase.from(tableName).select('id, organizationId, role').eq('authId', user.authId).maybeSingle();
+			if (!error && data) {
+				appUser = data;
+				break;
+			}
 		}
 
 		if (!appUser) {
-			console.error('[Medic Config API PATCH] Usuario no encontrado en la tabla User. userId:', user.userId, 'authId:', user.authId, 'email:', user.email);
+			// Fallback por email si el authId no coincide
+			for (const tableName of tableCandidates) {
+				const { data } = await supabase.from(tableName).select('id, organizationId, role').eq('email', user.email).maybeSingle();
+				if (data) {
+					appUser = data;
+					break;
+				}
+			}
+		}
+
+		if (!appUser) {
+			console.error('[Medic Config API PATCH] Usuario no encontrado en el sistema. Email:', user.email);
 			return NextResponse.json({ error: 'Usuario no encontrado en el sistema' }, { status: 404 });
 		}
 

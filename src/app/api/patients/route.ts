@@ -16,130 +16,7 @@ function parseIntOrDefault(v: string | null, d = 1) {
 	return Number.isNaN(n) ? d : n;
 }
 
-async function tryRestoreSessionFromCookies(supabase: any, cookieStore: any): Promise<boolean> {
-	if (!cookieStore) return false;
-
-	const tried: string[] = [];
-	// Priorizar sb-session como primera opción
-	const cookieCandidates = ['sb-session', 'sb:token', 'supabase-auth-token', 'sb-access-token', 'sb-refresh-token'];
-
-	for (const name of cookieCandidates) {
-		tried.push(name);
-		try {
-			const c = typeof cookieStore.get === 'function' ? cookieStore.get(name) : undefined;
-			const raw = c?.value ?? null;
-			if (!raw) {
-				console.debug(`[Patients API] Cookie "${name}" no encontrada`);
-				continue;
-			}
-
-			console.debug(`[Patients API] Intentando restaurar sesión desde cookie "${name}"`);
-
-			// `sb-session` y `sb:token` son JSON. `sb-access-token` es JWT string.
-			// Intentamos parsear JSON; si no es JSON, lo tratamos según el nombre.
-			let parsed: any = null;
-			try {
-				parsed = JSON.parse(raw);
-			} catch {
-				parsed = null;
-			}
-
-			// Casos:
-			// - sb-session: { access_token, refresh_token, ... } o el objeto session completo
-			// - sb:token or supabase-auth-token: object with currentSession or similar
-			// - sb-access-token: just an access token string (sin refresh)
-			let access_token: string | null = null;
-			let refresh_token: string | null = null;
-
-			if (parsed) {
-				// Para sb-session, buscar directamente access_token y refresh_token
-				if (name === 'sb-session') {
-					// sb-session puede contener la sesión completa de Supabase
-					// Puede ser: { access_token, refresh_token } o el objeto session completo
-					access_token = parsed?.access_token ?? parsed?.session?.access_token ?? parsed?.currentSession?.access_token ?? null;
-					refresh_token = parsed?.refresh_token ?? parsed?.session?.refresh_token ?? parsed?.currentSession?.refresh_token ?? null;
-
-					// Si es el objeto session completo de Supabase (formato de set-session)
-					if (!access_token && parsed?.user) {
-						access_token = parsed.access_token ?? null;
-						refresh_token = parsed.refresh_token ?? null;
-					}
-
-					console.debug(`[Patients API] sb-session parseado - access_token: ${access_token ? 'encontrado' : 'no encontrado'}, refresh_token: ${refresh_token ? 'encontrado' : 'no encontrado'}`);
-				} else {
-					// Para otras cookies JSON, buscar en varias rutas
-					access_token = parsed?.access_token ?? parsed?.currentSession?.access_token ?? parsed?.current_session?.access_token ?? null;
-					refresh_token = parsed?.refresh_token ?? parsed?.currentSession?.refresh_token ?? parsed?.current_session?.refresh_token ?? null;
-
-					// algunos formatos guardan en currentSession: { access_token: '...', refresh_token: '...' }
-					if (!access_token && parsed?.currentSession && typeof parsed.currentSession === 'object') {
-						access_token = parsed.currentSession.access_token ?? null;
-						refresh_token = parsed.currentSession.refresh_token ?? null;
-					}
-				}
-			} else {
-				// no JSON: puede ser sólo el access token
-				if (name === 'sb-access-token') {
-					access_token = raw;
-				} else if (name === 'sb-refresh-token') {
-					refresh_token = raw;
-				}
-			}
-
-			if (!access_token && !refresh_token) {
-				console.debug(`[Patients API] No se encontraron tokens en cookie "${name}"`);
-				continue;
-			}
-
-			// Llamamos a setSession para que supabase-js tenga la sesión en memoria
-			const payload: any = {};
-			if (access_token) {
-				payload.access_token = access_token;
-				console.debug(`[Patients API] Usando access_token de cookie "${name}"`);
-			}
-			if (refresh_token) {
-				payload.refresh_token = refresh_token;
-				console.debug(`[Patients API] Usando refresh_token de cookie "${name}"`);
-			}
-
-			// setSession devuelve data con session o error
-			const { data, error } = await supabase.auth.setSession(payload);
-			if (error) {
-				console.warn(`[Patients API] Intento de setSession desde cookie "${name}" fallo:`, error.message);
-				// Si solo tenemos refresh_token y falla, intentar refresh
-				if (refresh_token && !access_token && error.message.includes('session')) {
-					try {
-						const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession({ refresh_token });
-						if (!refreshError && refreshData?.session) {
-							console.log(`[Patients API] Sesión refrescada exitosamente desde cookie "${name}"`);
-							return true;
-						}
-					} catch (refreshErr: any) {
-						console.debug(`[Patients API] Error al refrescar sesión:`, refreshErr?.message);
-					}
-				}
-				continue;
-			}
-
-			if (data?.session) {
-				console.log(`[Patients API] Sesión restaurada desde cookie "${name}"`);
-				return true;
-			}
-
-			// si setSession no devolvió session, intentar getSession luego de setSession igualmente
-			const { data: sessionAfter } = await supabase.auth.getSession();
-			if (sessionAfter?.session) {
-				console.log(`[Patients API] Sesión disponible luego de setSession (cookie: "${name}")`);
-				return true;
-			}
-		} catch (err: any) {
-			console.debug(`[Patients API] Error procesando cookie "${name}":`, err?.message ?? String(err));
-			continue;
-		}
-	}
-
-	return false;
-}
+// La restauración de sesión ahora se maneja de forma centralizada en el guard apiRequireRole
 function isoOrNull(v: string | null) {
 	if (!v) return null;
 	const d = new Date(v);
@@ -182,15 +59,8 @@ export async function GET(request: Request) {
 		/* ---------- HISTORIAL DETALLADO ---------- */
 		const historyFor = qp.get('historyFor');
 		if (historyFor) {
-			// Obtener el app user ID (necesario para doctor_id en consultation)
-			const { data: appUserData, error: appUserError } = await supabase.from('users').select('id').eq('authId', authId).maybeSingle();
-
-			if (appUserError || !appUserData) {
-				console.error('Error fetching app user for history', appUserError);
-				return NextResponse.json({ error: 'Error al obtener datos del usuario' }, { status: 500 });
-			}
-
-			const currentAppUserId = appUserData.id;
+			// Obtener el app user ID - USAR DATOS DEL GUARD QUE SON ROBUSTOS
+			const currentAppUserId = user.userId;
 
 			// Verificar si es un paciente registrado o no registrado
 			// Primero verificamos en la tabla Patient
@@ -550,17 +420,9 @@ export async function GET(request: Request) {
 		const gender = qp.get('gender');
 		const includeSummary = qp.get('include_summary') === 'true';
 
-		// Buscar el usuario en la tabla User usando authId
-		const { data: userData, error: userError } = await supabase.from('users').select('id, role').eq('authId', authId).maybeSingle();
-
-		if (userError || !userData) {
-			console.error('Error fetching user role', userError);
-			return NextResponse.json({ error: 'Error fetching user data' }, { status: 500 });
-		}
-
-		// userData.id es el app user ID (de la tabla User), necesario para consultas con doctor_id
-		const appUserId = userData.id;
-		const isMedic = userData.role === 'MEDICO';
+		// Robustez: Usar datos validados por el guard
+		const appUserId = user.userId;
+		const isMedic = user.role === 'MEDICO';
 
 		let baseQuery = supabase.from('patient').select('id,firstName,lastName,identifier,dob,gender,phone,address,createdAt,updatedAt', { count: 'exact' });
 
@@ -882,43 +744,15 @@ export async function GET(request: Request) {
 /* ---------------------- POST ---------------------- */
 export async function POST(request: Request) {
 	try {
-		// Obtener cookie store explícitamente
-		const cookieStore = await cookies();
-		const supabase = await createSupabaseServerClient();
+		const authResult = await apiRequireAuth();
+		if (authResult.response) return authResult.response;
 
-		// Intentar obtener access_token directamente de cookies primero
-		let accessTokenFromCookie: string | null = null;
-		try {
-			const sbAccessToken = cookieStore.get('sb-access-token');
-			if (sbAccessToken?.value) {
-				accessTokenFromCookie = sbAccessToken.value;
-				console.debug('[Patients API POST] Encontrado sb-access-token en cookies');
-			}
-		} catch (err) {
-			console.debug('[Patients API POST] Error leyendo sb-access-token:', err);
-		}
-
-		// Intentar obtener usuario con access_token directo si está disponible
-		let {
-			data: { user },
-			error: authError,
-		} = accessTokenFromCookie ? await supabase.auth.getUser(accessTokenFromCookie) : await supabase.auth.getUser();
-
-		if (authError) {
-			console.error('[Patients API POST] Auth error:', authError);
-		}
-
-		// Si getUser falla, intentar restaurar sesión desde cookies
+		const user = authResult.user;
 		if (!user) {
-			const restored = await tryRestoreSessionFromCookies(supabase, cookieStore);
-			if (restored) {
-				const after = await supabase.auth.getUser();
-				user = after.data?.user ?? null;
-				if (user) {
-					console.log('[Patients API POST] Sesión restaurada exitosamente');
-				}
-			}
+			return NextResponse.json({ error: 'No autenticado' }, { status: 401 });
 		}
+
+		const supabase = await createSupabaseServerClient();
 
 		if (!user) {
 			return NextResponse.json({ error: 'No autenticado' }, { status: 401 });

@@ -37,14 +37,40 @@ export async function GET(req: Request) {
 		if (authResult.response) return authResult.response;
 
 		const user = authResult.user;
-		if (!user) {
-			return NextResponse.json({ error: 'Usuario no autenticado' }, { status: 401 });
-		}
-
-		const cookieStore = await cookies();
 		const supabase = await createSupabaseServerClient();
 
-		const doctorId = user.userId;
+		// Robustez: Obtener datos del usuario de la app con fallbacks
+		let appUser: any = null;
+		const tableCandidates = ['users', 'user'];
+		
+		const currentAuthId = user?.authId || '';
+		const currentEmail = user?.email || '';
+
+		for (const tableName of tableCandidates) {
+			const { data, error } = await supabase.from(tableName).select('id, organizationId, role').eq('authId', currentAuthId).maybeSingle();
+			if (!error && data) {
+				appUser = data;
+				break;
+			}
+		}
+
+		if (!appUser && currentEmail) {
+			// Fallback por email
+			for (const tableName of tableCandidates) {
+				const { data } = await supabase.from(tableName).select('id, organizationId, role').eq('email', currentEmail).maybeSingle();
+				if (data) {
+					appUser = data;
+					break;
+				}
+			}
+		}
+
+		if (!appUser) {
+			console.error('[Medic Alerts API] Usuario no encontrado en el sistema. Email:', currentEmail);
+			return NextResponse.json({ error: 'Usuario no encontrado en el sistema' }, { status: 404 });
+		}
+
+		const doctorId = appUser.id;
 		const now = new Date();
 		const nowISO = now.toISOString();
 		
