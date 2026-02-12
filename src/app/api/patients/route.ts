@@ -2,7 +2,7 @@
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { createSupabaseServerClient } from '@/app/adapters/server';
-import { apiRequireRole } from '@/lib/auth-guards';
+import { apiRequireRole, apiRequireAuth } from '@/lib/auth-guards';
 import { getApiResponseHeaders } from '@/lib/api-cache-utils';
 
 // Configurar caché optimizada para esta ruta (semi-static: datos que cambian ocasionalmente)
