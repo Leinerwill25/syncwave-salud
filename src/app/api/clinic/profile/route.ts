@@ -37,7 +37,7 @@ async function tryFromVariants(supabase: Supa, variants: string | string[], sele
 
 const PLAN_VARIANTS = ['plan', '"plan"', '"public"."plan"'];
 const ORG_VARIANTS = ['organization', '"organization"', '"public"."organization"'];
-const USER_VARIANTS = ['user', '"user"', '"public"."user"'];
+const USER_VARIANTS = ['users', 'user', '"user"', '"public"."user"', '"users"'];
 const SUBS_VARIANTS = ['subscription', '"subscription"', '"public"."subscription"'];
 const INVITE_VARIANTS = ['invite', '"invite"', '"public"."invite"'];
 const CLINIC_PROFILE_VARIANTS = ['clinic_profile', '"clinic_profile"', '"public"."clinic_profile"', 'clinicProfile'];

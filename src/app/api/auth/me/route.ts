@@ -8,7 +8,7 @@ import createSupabaseServerClient from '@/app/adapters/server';
  */
 async function queryUserByAuthId(supabase: any, authId: string) {
 	// Después del renombrado, usar 'user' en minúsculas
-	const candidates = ['user'];
+	const candidates = ['users', 'user'];
 
 	let lastError: any = null;
 

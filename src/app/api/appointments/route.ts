@@ -44,7 +44,7 @@ export async function POST(req: NextRequest) {
 				organizationId = roleUserOrgId;
 
 				// Obtener el primer doctor (User con role='MEDICO') asociado a esa organización
-				const doctorQuery = await client.query(`SELECT id FROM public."user" WHERE "organizationId" = $1 AND role = 'MEDICO' LIMIT 1`, [roleUserOrgId]);
+				const doctorQuery = await client.query(`SELECT id FROM public.users WHERE "organizationId" = $1 AND role = 'MEDICO' LIMIT 1`, [roleUserOrgId]);
 
 				if (doctorQuery.rows.length === 0) {
 					return NextResponse.json({ success: false, error: 'No se encontró un médico asociado a la organización del role-user.' }, { status: 404 });

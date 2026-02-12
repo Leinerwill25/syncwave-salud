@@ -94,7 +94,7 @@ export async function getAuthenticatedUser(): Promise<AuthenticatedUser | null> 
 		}
 
 		// Obtener usuario de la app - usar nombre en minúsculas después del renombrado
-		const tableCandidates = ['user'];
+		const tableCandidates = ['users', 'user'];
 		let appUser: any = null;
 		let userError: any = null;
 		let usedTableName: string | null = null;

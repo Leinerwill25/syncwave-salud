@@ -29,7 +29,7 @@ export async function GET(req: Request) {
 		const role = (authUser.user_metadata as any)?.role ?? 'PATIENT';
 		let orgId = (authUser.user_metadata as any)?.organizationId ?? null;
 
-		// 2) Obtener fila en tabla public."User" para mapear authId -> app user id
+		// 2) Obtener fila en tabla public.users para mapear authId -> app user id
 		const { data: appUserRow, error: appUserErr } = await supabase.from('users').select('id, "organizationId"').eq('authId', authUserId).limit(1).maybeSingle();
 
 		if (appUserErr) {

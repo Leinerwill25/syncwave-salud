@@ -54,7 +54,7 @@ export async function createNotification(options: CreateNotificationOptions): Pr
 			try {
 				// Obtener email del usuario - intentar diferentes variantes del nombre de tabla
 				let user: { email: string; role?: string } | null = null;
-				const userTableVariants = ['user', '"user"'];
+				const userTableVariants = ['users', 'user', '"user"'];
 				for (const tableName of userTableVariants) {
 					try {
 						const { data, error: userError } = await supabase

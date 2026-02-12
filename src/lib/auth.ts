@@ -61,7 +61,7 @@ export async function getCurrentOrganizationId(options?: { verbose?: boolean }):
 
 		// buscar app user por authId usando Supabase directamente
 		// Intentar diferentes variantes del nombre de tabla según Database.sql
-		const tableCandidates = ['User', 'user', '"User"'];
+		const tableCandidates = ['users', 'User', 'user', '"User"'];
 		let appUser: { organizationId: string | null } | null = null;
 
 		for (const tableName of tableCandidates) {
