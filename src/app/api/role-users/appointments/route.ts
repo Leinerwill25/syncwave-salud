@@ -1,6 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createSupabaseServerClient } from '@/app/adapters/server';
+
 import { getRoleUserSessionFromServer } from '@/lib/role-user-auth';
+
+import { createClient } from '@supabase/supabase-js';
+
+const supabaseAdmin = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!, {
+    auth: { persistSession: false }
+});
 
 export async function GET(req: NextRequest) {
 	try {
@@ -9,13 +15,12 @@ export async function GET(req: NextRequest) {
 			return NextResponse.json({ error: 'No autenticado' }, { status: 401 });
 		}
 
-		const supabase = await createSupabaseServerClient();
 		const url = new URL(req.url);
 		const month = url.searchParams.get('month'); // Formato: YYYY-MM
 		const year = url.searchParams.get('year'); // Formato: YYYY
 
 		// Construir query base
-		let query = supabase
+		let query = supabaseAdmin
 			.from('appointment')
 			.select(
 				`id, 
@@ -29,7 +34,9 @@ export async function GET(req: NextRequest) {
 				unregistered_patient:unregistered_patient_id(first_name, last_name, identification),
 				doctor:doctor_id(name)`
 			)
-			.eq('created_by_role_user_id', session.roleUserId)
+            // Mostrar todas las citas de la organización, no solo las creadas por este usuario.
+            // Si se requiere filtrar solo por "Mis Citas", descomentar la siguiente línea:
+			// .eq('created_by_role_user_id', session.roleUserId) 
 			.eq('organization_id', session.organizationId)
 			.order('scheduled_at', { ascending: false });
 

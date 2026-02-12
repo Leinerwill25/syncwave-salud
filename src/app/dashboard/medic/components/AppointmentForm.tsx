@@ -763,7 +763,7 @@ export default function AppointmentForm() {
 										<input type="text" value={unregisteredLastName} onChange={(e) => setUnregisteredLastName(e.target.value)} placeholder="Apellido" className={`${inputNeutral} min-w-0`} />
 									</div>
 									<div className="min-w-0">
-										<label className={labelClass}>Cédula</label>
+										<label className={labelClass}>Cédula (Opcional)</label>
 										<input type="text" value={unregisteredIdentification} onChange={(e) => setUnregisteredIdentification(e.target.value)} placeholder="V-12345678" className={`${inputNeutral} min-w-0`} />
 									</div>
 									<div className="min-w-0">
@@ -771,15 +771,15 @@ export default function AppointmentForm() {
 										<input type="tel" value={unregisteredPhone} onChange={(e) => setUnregisteredPhone(e.target.value)} placeholder="0412-1234567" className={`${inputNeutral} min-w-0`} />
 									</div>
 									<div className="min-w-0">
-										<label className={labelClass}>Email</label>
+										<label className={labelClass}>Email (Opcional)</label>
 										<input type="email" value={unregisteredEmail} onChange={(e) => setUnregisteredEmail(e.target.value)} placeholder="email@ejemplo.com" className={`${inputNeutral} min-w-0`} />
 									</div>
 									<div className="min-w-0">
-										<label className={labelClass}>Fecha de Nacimiento</label>
+										<label className={labelClass}>Fecha de Nacimiento (Opcional)</label>
 										<input type="date" value={unregisteredBirthDate} onChange={(e) => setUnregisteredBirthDate(e.target.value)} className={`${inputNeutral} min-w-0`} />
 									</div>
 									<div className="min-w-0">
-										<label className={labelClass}>Sexo</label>
+										<label className={labelClass}>Sexo (Opcional)</label>
 										<select value={unregisteredSex} onChange={(e) => setUnregisteredSex(e.target.value as 'M' | 'F' | 'OTHER' | '')} className={`${inputNeutral} min-w-0`}>
 											<option value="">Seleccionar...</option>
 											<option value="M">Masculino</option>
@@ -788,7 +788,7 @@ export default function AppointmentForm() {
 										</select>
 									</div>
 									<div className="min-w-0">
-										<label className={labelClass}>Dirección</label>
+										<label className={labelClass}>Dirección (Opcional)</label>
 										<input type="text" value={unregisteredAddress} onChange={(e) => setUnregisteredAddress(e.target.value)} placeholder="Dirección" className={`${inputNeutral} min-w-0`} />
 									</div>
 								</div>

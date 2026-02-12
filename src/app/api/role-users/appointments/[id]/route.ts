@@ -1,6 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createSupabaseServerClient } from '@/app/adapters/server';
+
 import { getRoleUserSessionFromServer } from '@/lib/role-user-auth';
+
+import { createClient } from '@supabase/supabase-js';
+
+const supabaseAdmin = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!, {
+    auth: { persistSession: false }
+});
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
 	try {
@@ -9,8 +15,8 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
 			return NextResponse.json({ error: 'No autenticado' }, { status: 401 });
 		}
 
-		const supabase = await createSupabaseServerClient();
 		const { id } = await params;
+        const supabase = supabaseAdmin;
 
 		// Obtener la cita con todas sus relaciones
 		// Nota: unregisteredpatients usa snake_case (first_name, last_name, identification)
@@ -94,9 +100,9 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 			return NextResponse.json({ error: 'No autenticado' }, { status: 401 });
 		}
 
-		const supabase = await createSupabaseServerClient();
 		const { id } = await params;
 		const body = await req.json();
+        const supabase = supabaseAdmin;
 
 		// Verificar que la cita pertenece a la organización del role-user
 		const { data: existingAppointment, error: checkError } = await supabase.from('appointment').select('id, organization_id').eq('id', id).eq('organization_id', session.organizationId).single();
