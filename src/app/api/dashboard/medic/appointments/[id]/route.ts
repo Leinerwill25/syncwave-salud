@@ -3,14 +3,8 @@ import createSupabaseServerClient from '@/app/adapters/server';
 import { createClient } from '@supabase/supabase-js';
 import { createNotifications } from '@/lib/notifications';
 import { sendNotificationEmail } from '@/lib/email';
-import { Pool } from 'pg';
 
 const supabaseAdmin = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!, { auth: { persistSession: false } });
-
-// Pool de conexión PostgreSQL para queries directas que eviten validación de Supabase
-const pool = new Pool({
-	connectionString: process.env.DATABASE_URL,
-});
 
 export async function PATCH(req: Request, context: { params: Promise<{ id: string }> }) {
 	try {
@@ -34,54 +28,15 @@ export async function PATCH(req: Request, context: { params: Promise<{ id: strin
 		if (body.location) updateFields.location = body.location;
 		updateFields.updated_at = new Date().toISOString();
 
-		// 2️⃣ Actualizar cita usando SQL directo para evitar problemas con validación de foreign keys de Supabase
-		const client = await pool.connect();
-		try {
-			// Construir la query SQL dinámicamente
-			const setClauses: string[] = [];
-			const values: any[] = [];
-			let paramIndex = 1;
+		// 2️⃣ Actualizar cita usando supabaseAdmin (Service Role) para mayor estabilidad y permisos adecuados
+		const { error: updateError } = await supabaseAdmin
+			.from('appointment')
+			.update(updateFields)
+			.eq('id', id);
 
-			if (updateFields.status !== undefined) {
-				setClauses.push(`status = $${paramIndex++}`);
-				values.push(updateFields.status);
-			}
-			if (updateFields.scheduled_at !== undefined) {
-				setClauses.push(`scheduled_at = $${paramIndex++}`);
-				values.push(updateFields.scheduled_at);
-			}
-			if (updateFields.reason !== undefined) {
-				setClauses.push(`reason = $${paramIndex++}`);
-				values.push(updateFields.reason);
-			}
-			if (updateFields.location !== undefined) {
-				setClauses.push(`location = $${paramIndex++}`);
-				values.push(updateFields.location);
-			}
-			if (updateFields.updated_at !== undefined) {
-				setClauses.push(`updated_at = $${paramIndex++}`);
-				values.push(updateFields.updated_at);
-			}
-
-			if (setClauses.length === 0) {
-				return NextResponse.json({ error: 'No hay campos para actualizar.' }, { status: 400 });
-			}
-
-			// Agregar el id como último parámetro
-			values.push(id);
-
-			const updateQuery = `
-				UPDATE public.appointment 
-				SET ${setClauses.join(', ')}
-				WHERE id = $${paramIndex}
-			`;
-
-			await client.query(updateQuery, values);
-		} catch (sqlError: any) {
-			console.error('❌ Error al actualizar cita (SQL directo):', sqlError.message, sqlError);
-			return NextResponse.json({ error: 'No se pudo actualizar la cita.', detail: sqlError.message }, { status: 500 });
-		} finally {
-			client.release();
+		if (updateError) {
+			console.error('❌ Error al actualizar cita (Supabase Admin):', updateError);
+			throw new Error(updateError.message);
 		}
 
 		// Usar los datos de current con los campos actualizados (evitamos hacer select para evitar problemas con foreign keys)

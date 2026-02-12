@@ -166,48 +166,12 @@ export async function GET(req: NextRequest) {
 			}
 		}
 
-		// Filtrar servicios creados por este usuario (asistente de citas)
-		// Si el servicio no tiene createdBy, también incluirlo (pueden ser servicios antiguos o compartidos)
-		const userServices = servicesWithIds.filter((s: RawService) => {
-			// Normalizar valores para comparación
-			const serviceCreatedBy = s.createdBy ? String(s.createdBy).trim() : null;
-			const sessionRoleUserId = session.roleUserId ? String(session.roleUserId).trim() : null;
-			
-			// Si no tiene createdBy, incluirlo (servicios antiguos o compartidos de la organización)
-			if (!serviceCreatedBy || serviceCreatedBy === 'null' || serviceCreatedBy === 'undefined') {
-				console.log('[Role User Services API] Incluyendo servicio sin createdBy:', s.name);
-				return true;
-			}
-			
-			// Si tiene createdBy, solo incluirlo si coincide con el usuario actual
-			const matches = serviceCreatedBy === sessionRoleUserId;
-			
-			if (!matches) {
-				console.log('[Role User Services API] Excluyendo servicio - createdBy no coincide:', {
-					serviceName: s.name,
-					serviceId: s.id,
-					serviceCreatedBy: serviceCreatedBy,
-					serviceCreatedByType: typeof s.createdBy,
-					sessionRoleUserId: sessionRoleUserId,
-					sessionRoleUserIdType: typeof session.roleUserId,
-					comparison: `"${serviceCreatedBy}" === "${sessionRoleUserId}"`,
-					matches: matches
-				});
-			} else {
-				console.log('[Role User Services API] Incluyendo servicio - createdBy coincide:', {
-					serviceName: s.name,
-					serviceId: s.id,
-					createdBy: serviceCreatedBy
-				});
-			}
-			
-			return matches;
-		});
+		// Para usuarios de rol (Asistente/Recepción), mostramos TODOS los servicios de la organización/médico.
+		// No filtramos por createdBy para que el personal administrativo pueda agendar cualquier servicio del médico.
+		const userServices = servicesWithIds;
 
-		// Debug: Log para ver qué servicios se filtraron
-		console.log('[Role User Services API] Servicios filtrados:', JSON.stringify(userServices, null, 2));
-		console.log('[Role User Services API] Total servicios antes del filtro:', servicesWithIds.length);
-		console.log('[Role User Services API] Total servicios después del filtro:', userServices.length);
+		// Debug: Log para ver qué servicios se devuelven
+		console.log('[Role User Services API] Total servicios cargados:', userServices.length);
 
 		// Filtrar solo servicios activos
 		const activeServices = userServices.filter((s: RawService) => s.is_active !== false);
@@ -437,11 +401,8 @@ export async function POST(req: NextRequest) {
 			console.log('[Role User Services API] Nuevo servicio encontrado en BD después de guardar:', newServiceInDb ? 'SÍ' : 'NO');
 		}
 
-		// Filtrar servicios para devolver solo los del usuario actual
-		const userUpdatedServices = updatedServices.filter((s: RawService) => {
-			if (!s.createdBy) return true; // Servicios antiguos
-			return String(s.createdBy).trim() === String(session.roleUserId).trim();
-		});
+		// Devolver todos los servicios de la organización (no solo los creados por el usuario actual)
+		const userUpdatedServices = updatedServices;
 		const activeUpdatedServices = userUpdatedServices.filter((s: RawService) => s.is_active !== false);
 
 		console.log('[Role User Services API] Servicios actualizados después de guardar:', activeUpdatedServices.length);

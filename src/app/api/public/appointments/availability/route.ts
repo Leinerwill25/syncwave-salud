@@ -54,23 +54,42 @@ export async function GET(request: Request) {
 			return `${String(d.getUTCHours()).padStart(2, '0')}:${String(d.getUTCMinutes()).padStart(2, '0')}`;
 		}) || [];
 
-		// Contar por turnos (Mañana: antes de las 12:00 UTC, Tarde: después)
-		// NOTA: Esto es una simplificación, deberíamos usar la configuración de turnos del médico
+		// Contar por turnos (Mañana: antes de las 13:00 local aprox, Tarde: después)
+		// Usamos 12:00 UTC como punto de corte referencial, ajustando según la lógica de negocio
 		let morningCount = 0;
 		let afternoonCount = 0;
 
 		appointments?.forEach(apt => {
 			const hour = new Date(apt.scheduled_at).getUTCHours();
+			// Asumimos corte a las 12:00 PM (12:00 UTC si guardamos sin offset, pero en realidad depende de cómo se guarden)
+            // Si las citas se guardan como T08:00 (Mañana) y T14:00 (Tarde)
 			if (hour < 12) morningCount++;
 			else afternoonCount++;
 		});
+        
+        // Calcular cupos totales si existe configuración
+        let slotsMorning = 0;
+        let slotsAfternoon = 0;
+        
+        if (config && config.max_patients_per_day) {
+            const totalMax = config.max_patients_per_day;
+            // División simple: mitad para mañana, mitad para tarde
+            // Si es impar, la tarde tiene uno más (o mañana, decisión de diseño: vamos por Math.ceil para asegurarnos que cubra)
+            const maxMorning = Math.floor(totalMax / 2); 
+            const maxAfternoon = Math.ceil(totalMax / 2);
+            
+            slotsMorning = Math.max(0, maxMorning - morningCount);
+            slotsAfternoon = Math.max(0, maxAfternoon - afternoonCount);
+        }
 
 		return NextResponse.json({
 			busySlots,
 			stats: {
 				total: appointments?.length || 0,
 				morning: morningCount,
-				afternoon: afternoonCount
+				afternoon: afternoonCount,
+                slots_morning: slotsMorning,
+                slots_afternoon: slotsAfternoon
 			},
 			config: config || {
                 consultation_type: 'TURNOS',

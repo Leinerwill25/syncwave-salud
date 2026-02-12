@@ -25,9 +25,11 @@ export default function RescheduleModal({ isOpen, onClose, appointment, onResche
 	useEffect(() => {
 		if (appointment && isOpen) {
 			const scheduledAt = appointment.scheduled_at || new Date().toISOString();
-			const currentDate = new Date(scheduledAt);
-			const dateStr = currentDate.toISOString().split('T')[0];
-			const timeStr = currentDate.toTimeString().split(' ')[0].slice(0, 5); // HH:MM
+			// Fix: Parse JSON ISO string explicitly to avoid local timezone conversion
+			// The backend sends ISO string like "2023-10-10T08:00:00" which means 8:00 AM.
+			// extracting parts directly preserves the "intended" time.
+			const dateStr = scheduledAt.split('T')[0];
+			const timeStr = scheduledAt.split('T')[1].substring(0, 5); // HH:MM
 			setNewDate(dateStr);
 			setNewTime(timeStr);
 			setError(null);
@@ -45,8 +47,12 @@ export default function RescheduleModal({ isOpen, onClose, appointment, onResche
 		try {
 			setLoading(true);
 			setError(null);
-			const newDateTime = new Date(`${newDate}T${newTime}:00`);
-			const newDateTimeISO = newDateTime.toISOString();
+			// Fix: Construct UTC date specifically to preserve the selected time
+			const [year, month, day] = newDate.split('-').map(Number);
+			const [hours, minutes] = newTime.split(':').map(Number);
+			const utcDate = new Date(Date.UTC(year, month - 1, day, hours, minutes));
+			const newDateTimeISO = utcDate.toISOString();
+			
 			await onReschedule(appointment.id, newDateTimeISO);
 			setSuccess(true);
 			setTimeout(() => {
@@ -69,10 +75,12 @@ export default function RescheduleModal({ isOpen, onClose, appointment, onResche
 		year: 'numeric',
 		month: 'long',
 		day: 'numeric',
+		timeZone: 'UTC', // Fix: Force UTC display
 	});
 	const formattedCurrentTime = currentDate.toLocaleTimeString('es-ES', {
 		hour: '2-digit',
 		minute: '2-digit',
+		timeZone: 'UTC', // Fix: Force UTC display
 	});
 
 	return (

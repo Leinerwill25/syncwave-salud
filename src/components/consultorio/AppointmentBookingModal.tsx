@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Calendar, Clock, User, Phone, Mail, Package, CheckCircle2, Loader2, Users, MapPin, Zap } from 'lucide-react';
+import { X, Calendar, Clock, User, Phone, Mail, Package, CheckCircle2, Loader2, Users, MapPin, Zap, Info } from 'lucide-react';
 
 export type Service = {
 	id?: string;
@@ -89,6 +89,8 @@ export default function AppointmentBookingModal({
 		total: number;
 		morning: number;
 		afternoon: number;
+        slots_morning?: number;
+        slots_afternoon?: number;
 		config: any;
 	} | null>(null);
 
@@ -132,6 +134,8 @@ export default function AppointmentBookingModal({
 						total: data.stats.total,
 						morning: data.stats.morning,
 						afternoon: data.stats.afternoon,
+                        slots_morning: data.stats.slots_morning,
+                        slots_afternoon: data.stats.slots_afternoon,
 						config: data.config
 					});
 				}
@@ -145,7 +149,11 @@ export default function AppointmentBookingModal({
 
 			if (selectedOffice && selectedOffice.id !== 'default' && selectedOffice.schedules) {
 				// Prioridad 1: Horario específico del consultorio seleccionado
-				const selectedDay = new Date(selectedDate).toLocaleDateString('en-US', { weekday: 'long' }).toLowerCase();
+				// Fix: Parse date parts manually to avoid UTC conversion issues
+				const [year, month, day] = selectedDate.split('-').map(Number);
+				const dateObj = new Date(year, month - 1, day);
+				const selectedDay = dateObj.toLocaleDateString('en-US', { weekday: 'long' }).toLowerCase();
+
 				const dayMap: Record<string, string> = {
 					lunes: 'monday', martes: 'tuesday', miércoles: 'wednesday', jueves: 'thursday',
 					viernes: 'friday', sábado: 'saturday', domingo: 'sunday'
@@ -172,9 +180,13 @@ export default function AppointmentBookingModal({
 					}
 				}
 			} else if (selectedDoctor.medic_profile?.availability?.schedule) {
-				// Prioridad 2: Horario general del médico (fallback)
+			// Prioridad 2: Horario general del médico (fallback)
 				const schedule = selectedDoctor.medic_profile.availability.schedule || {};
-				const selectedDay = new Date(selectedDate).toLocaleDateString('en-US', { weekday: 'long' }).toLowerCase();
+				// Fix: Parse date parts manually to avoid UTC conversion issues
+				const [year, month, day] = selectedDate.split('-').map(Number);
+				const dateObj = new Date(year, month - 1, day);
+				const selectedDay = dateObj.toLocaleDateString('en-US', { weekday: 'long' }).toLowerCase();
+
 				const dayMap: Record<string, string> = {
 					lunes: 'monday', martes: 'tuesday', miércoles: 'wednesday', jueves: 'thursday',
 					viernes: 'friday', sábado: 'saturday', domingo: 'sunday'
@@ -186,13 +198,19 @@ export default function AppointmentBookingModal({
 			if (Array.isArray(daySlots) && daySlots.length > 0) {
 				setAlternativeOffice(null);
 				const slots: string[] = [];
+                
+                // Si es ORDEN_LLEGADA, usaremos un formato especial o flags
+                const isOrdenLlegada = consultationType === 'ORDEN_LLEGADA';
+                
 				daySlots.forEach((slot: any) => {
 					if (slot.enabled && slot.startTime && slot.endTime) {
-						if (slot.isShift) {
+						if (slot.isShift && isOrdenLlegada) {
 							// Caso Orden de Llegada: solo el inicio del turno
-							slots.push(slot.startTime);
-						} else {
-							// Caso Turnos: generar slots de 30min
+                            // Mapeamos a 08:00 (Mañana) y 14:00 (Tarde) como identificadores
+                            if (slot.name === 'Mañana') slots.push('08:00');
+                            if (slot.name === 'Tarde') slots.push('14:00');
+						} else if (!isOrdenLlegada) {
+							// Caso Turnos: generar slots de 30min (o duración configurada)
 							const start = slot.startTime.split(':');
 							const end = slot.endTime.split(':');
 							const startHour = parseInt(start[0]);
@@ -210,7 +228,7 @@ export default function AppointmentBookingModal({
 								const timeStr = `${String(currentHour).padStart(2, '0')}:${String(currentMin).padStart(2, '0')}`;
 								slots.push(timeStr);
 
-								currentMin += 30;
+								currentMin += 30; // TODO: Usar duración configurada
 								if (currentMin >= 60) {
 									currentMin = 0;
 									currentHour += 1;
@@ -226,7 +244,11 @@ export default function AppointmentBookingModal({
 				// Buscar en otros consultorios si el actual no tiene disponibilidad hoy
 				const allOffices = selectedDoctor?.medic_profile?.doctor_schedule_config?.offices || [];
 				if (allOffices.length > 1 && selectedOfficeId && selectedDate) {
-					const selectedDay = new Date(selectedDate).toLocaleDateString('en-US', { weekday: 'long' }).toLowerCase();
+					// Fix: Parse date parts manually to avoid UTC conversion issues
+					const [year, month, day] = selectedDate.split('-').map(Number);
+					const dateObj = new Date(year, month - 1, day);
+					const selectedDay = dateObj.toLocaleDateString('en-US', { weekday: 'long' }).toLowerCase();
+					
 					const dayMap: Record<string, string> = {
 						lunes: 'monday', martes: 'tuesday', miércoles: 'wednesday', jueves: 'thursday',
 						viernes: 'friday', sábado: 'saturday', domingo: 'sunday'
@@ -638,78 +660,113 @@ export default function AppointmentBookingModal({
 															? 'Seleccionar Turno *' 
 															: 'Horario Disponible *'}
 													</label>
-													<div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-														{availableTimeSlots.map((time) => {
-															const isBusy = busySlots.includes(time);
-															const isOrdenLlegada = selectedDoctor?.medic_profile?.doctor_schedule_config?.consultation_type === 'ORDEN_LLEGADA';
-															const label = isOrdenLlegada 
-																? (time === '08:00' ? 'Mañana' : time === '14:00' ? 'Tarde' : time)
-																: time;
-															
-															return (
-																<button
-																	key={time}
-																	type="button"
-																	disabled={isBusy}
-																	onClick={() => setSelectedTime(time)}
-																	className={`px-4 py-2 rounded-lg border-2 transition relative ${
-																		selectedTime === time
-																			? 'border-teal-600 bg-teal-50 text-teal-700 font-bold'
-																			: isBusy
-																			? 'border-slate-100 bg-slate-50 text-slate-300 cursor-not-allowed line-through'
-																			: 'border-slate-200 hover:border-teal-300 text-slate-700'
-																	}`}
-																>
-																	{label}
-																</button>
-															);
-														})}
-													</div>
+                                                    
+                                                    {selectedDoctor?.medic_profile?.doctor_schedule_config?.consultation_type === 'ORDEN_LLEGADA' ? (
+                                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                                            {availableTimeSlots.includes('08:00') && (
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => setSelectedTime('08:00')}
+                                                                    className={`p-4 rounded-xl border-2 transition text-left relative overflow-hidden group ${
+                                                                        selectedTime === '08:00'
+                                                                            ? 'border-teal-600 bg-teal-50 ring-2 ring-teal-100'
+                                                                            : 'border-slate-200 hover:border-teal-300 bg-white'
+                                                                    }`}
+                                                                >
+                                                                    <div className="flex justify-between items-start mb-2">
+                                                                        <span className={`font-bold text-lg ${selectedTime === '08:00' ? 'text-teal-700' : 'text-slate-800'}`}>Turno Mañana</span>
+                                                                        {selectedTime === '08:00' && <CheckCircle2 className="w-6 h-6 text-teal-600" />}
+                                                                    </div>
+                                                                    <div className="flex items-center gap-2 text-sm text-slate-600 mb-1">
+                                                                        <Clock className="w-4 h-4" />
+                                                                        <span>08:00 AM - 12:00 PM</span>
+                                                                    </div>
+                                                                    <div className="flex items-center gap-2 text-sm font-medium">
+                                                                        <Users className="w-4 h-4 text-teal-500" />
+                                                                        <span className="text-teal-700">
+                                                                            {capacityInfo?.slots_morning !== undefined ? `${capacityInfo.slots_morning} cupos disponibles` : 'Cupos disponibles'}
+                                                                        </span>
+                                                                    </div>
+                                                                    {capacityInfo?.slots_morning !== undefined && capacityInfo.slots_morning <= 3 && (
+                                                                         <div className="absolute top-0 right-0 bg-orange-100 text-orange-700 text-[10px] font-bold px-2 py-1 rounded-bl-lg">
+                                                                             ¡Quedan pocos!
+                                                                         </div>
+                                                                    )}
+                                                                </button>
+                                                            )}
+                                                            
+                                                            {availableTimeSlots.includes('14:00') && (
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => setSelectedTime('14:00')}
+                                                                    className={`p-4 rounded-xl border-2 transition text-left relative overflow-hidden group ${
+                                                                        selectedTime === '14:00'
+                                                                            ? 'border-blue-600 bg-blue-50 ring-2 ring-blue-100'
+                                                                            : 'border-slate-200 hover:border-blue-300 bg-white'
+                                                                    }`}
+                                                                >
+                                                                    <div className="flex justify-between items-start mb-2">
+                                                                        <span className={`font-bold text-lg ${selectedTime === '14:00' ? 'text-blue-700' : 'text-slate-800'}`}>Turno Tarde</span>
+                                                                        {selectedTime === '14:00' && <CheckCircle2 className="w-6 h-6 text-blue-600" />}
+                                                                    </div>
+                                                                    <div className="flex items-center gap-2 text-sm text-slate-600 mb-1">
+                                                                        <Clock className="w-4 h-4" />
+                                                                        <span>02:00 PM - 06:00 PM</span>
+                                                                    </div>
+                                                                    <div className="flex items-center gap-2 text-sm font-medium">
+                                                                        <Users className="w-4 h-4 text-blue-500" />
+                                                                        <span className="text-blue-700">
+                                                                             {capacityInfo?.slots_afternoon !== undefined ? `${capacityInfo.slots_afternoon} cupos disponibles` : 'Cupos disponibles'}
+                                                                        </span>
+                                                                    </div>
+                                                                     {capacityInfo?.slots_afternoon !== undefined && capacityInfo.slots_afternoon <= 3 && (
+                                                                         <div className="absolute top-0 right-0 bg-orange-100 text-orange-700 text-[10px] font-bold px-2 py-1 rounded-bl-lg">
+                                                                             ¡Quedan pocos!
+                                                                         </div>
+                                                                    )}
+                                                                </button>
+                                                            )}
+                                                        </div>
+                                                    ) : (
+                                                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                                                            {availableTimeSlots.map((time) => {
+                                                                const isBusy = busySlots.includes(time);
+                                                                return (
+                                                                    <button
+                                                                        key={time}
+                                                                        type="button"
+                                                                        disabled={isBusy}
+                                                                        onClick={() => setSelectedTime(time)}
+                                                                        className={`px-4 py-2 rounded-lg border-2 transition relative ${
+                                                                            selectedTime === time
+                                                                                ? 'border-teal-600 bg-teal-50 text-teal-700 font-bold'
+                                                                                : isBusy
+                                                                                ? 'border-slate-100 bg-slate-50 text-slate-300 cursor-not-allowed line-through'
+                                                                                : 'border-slate-200 hover:border-teal-300 text-slate-700'
+                                                                        }`}
+                                                                    >
+                                                                        {time}
+                                                                    </button>
+                                                                );
+                                                            })}
+                                                        </div>
+                                                    )}
 												</div>
 											)}
 
-											{selectedDate && capacityInfo && (
-												<div className="p-4 bg-slate-50 rounded-xl border border-slate-200">
-													<div className="flex items-center gap-2 mb-3 text-slate-700 font-semibold">
-														<Users className="w-4 h-4 text-teal-600" />
-														Estado de Cupos (Máximo: {capacityInfo.config.max_patients_per_day})
-													</div>
-													
-													{capacityInfo.config.consultation_type === 'ORDEN_LLEGADA' ? (
-														<p className="text-sm text-slate-600">
-															Hay <strong>{capacityInfo.total}</strong> citas agendadas para hoy. 
-															Quedan aproximadamente <strong>{Math.max(0, capacityInfo.config.max_patients_per_day - capacityInfo.total)}</strong> cupos disponibles.
-															<br />
-															<span className="text-amber-600 font-medium mt-2 block">
-																⚠️ Ten en cuenta que el doctor trabaja por orden de llegada. Si eres de los primeros en llegar, serás atendido antes. ¡Puedes reservar ahora!
-															</span>
-														</p>
-													) : (
-														<div className="space-y-2">
-															<p className="text-sm text-slate-600">
-																El doctor trabaja por turnos. Cupos asignados por turno:
-															</p>
-															<div className="grid grid-cols-2 gap-4">
-																<div className="p-3 bg-white rounded-lg border border-slate-100 shadow-sm">
-																	<p className="text-xs text-slate-500 uppercase font-bold">Mañana</p>
-																	<p className="text-lg font-bold text-teal-700">
-																		{capacityInfo.morning} / {Math.floor(capacityInfo.config.max_patients_per_day / 2)}
-																	</p>
-																</div>
-																<div className="p-3 bg-white rounded-lg border border-slate-100 shadow-sm">
-																	<p className="text-xs text-slate-500 uppercase font-bold">Tarde</p>
-																	<p className="text-lg font-bold text-blue-700">
-																		{capacityInfo.afternoon} / {Math.ceil(capacityInfo.config.max_patients_per_day / 2)}
-																	</p>
-																</div>
-															</div>
-															{capacityInfo.config.max_patients_per_day - capacityInfo.total <= 3 && capacityInfo.config.max_patients_per_day - capacityInfo.total > 0 && (
-																<p className="text-xs text-orange-600 font-bold mt-2 animat-pulse">
-																	¡Solo quedan {capacityInfo.config.max_patients_per_day - capacityInfo.total} cupos disponibles para hoy!
-																</p>
-															)}
-														</div>
-													)}
+											{selectedDate && capacityInfo && capacityInfo.config.consultation_type === 'ORDEN_LLEGADA' && (
+												<div className="mt-4 p-4 bg-slate-50 rounded-xl border border-slate-200">
+                                                    <div className="flex gap-3">
+                                                        <Info className="w-5 h-5 text-slate-400 shrink-0 mt-0.5" />
+                                                        <div>
+                                                            <p className="text-sm font-medium text-slate-700">
+                                                                Atención por Orden de Llegada
+                                                            </p>
+                                                            <p className="text-xs text-slate-500 mt-1 leading-relaxed">
+                                                                El médico atiende según el orden de registro en recepción. La hora seleccionada (08:00 AM o 02:00 PM) es referencial para el inicio del turno. Te recomendamos llegar temprano.
+                                                            </p>
+                                                        </div>
+                                                    </div>
 												</div>
 											)}
 
