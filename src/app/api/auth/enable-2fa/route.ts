@@ -146,7 +146,7 @@ export async function POST(request: Request) {
 		}
 
 		// TODO: Actualizar campo 2FA en User table
-		// await supabase.from('user').update({ twoFactorEnabled: true }).eq('id', appUser.id);
+		// await supabase.from('users').update({ twoFactorEnabled: true }).eq('id', appUser.id);
 
 		return NextResponse.json({ 
 			success: true, 
