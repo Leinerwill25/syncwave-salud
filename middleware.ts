@@ -53,13 +53,10 @@ export async function middleware(request: NextRequest) {
 	// Inyectar nonce en la request para que pueda ser leído en layouts/pages
 	response.headers.set('x-nonce', nonce);
 
-	// Configurar CSP (Restrictivo, sin unsafe-inline/eval donde sea posible)
-	// Nota: 'unsafe-inline' se mantiene para styles por compatibilidad con Next.js App Router 
-	// si no se implementa el paso de nonce a cada componente de estilo, 
-	// pero lo ideal es usar el nonce generado.
+	// Configurar CSP (Ajustado para evitar bloqueo de scripts de Next.js)
 	const cspHeader = `
 		default-src 'self';
-		script-src 'self' 'nonce-${nonce}' 'strict-dynamic' https: 'unsafe-inline' 'unsafe-eval';
+		script-src 'self' 'unsafe-inline' 'unsafe-eval' https://*.supabase.co https://*.google.com https://*.vercel-scripts.com;
 		style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
 		img-src 'self' blob: data: https://*.supabase.co https://*.ashira.click https://*.google.com https://*.vercel-scripts.com;
 		font-src 'self' https://fonts.gstatic.com;
