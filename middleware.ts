@@ -53,14 +53,14 @@ export async function middleware(request: NextRequest) {
 	// Inyectar nonce en la request para que pueda ser leído en layouts/pages
 	response.headers.set('x-nonce', nonce);
 
-	// Configurar CSP (Ajustado para evitar bloqueo de scripts de Next.js)
+	// Configurar CSP (Ajustado para permitir OpenStreetMap y evitar bloqueo de scripts de Next.js)
 	const cspHeader = `
 		default-src 'self';
 		script-src 'self' 'unsafe-inline' 'unsafe-eval' https://*.supabase.co https://*.google.com https://*.vercel-scripts.com;
 		style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
-		img-src 'self' blob: data: https://*.supabase.co https://*.ashira.click https://*.google.com https://*.vercel-scripts.com;
+		img-src 'self' blob: data: https://*.supabase.co https://*.ashira.click https://*.google.com https://*.vercel-scripts.com https://*.tile.openstreetmap.org;
 		font-src 'self' https://fonts.gstatic.com;
-		connect-src 'self' https://*.supabase.co https://*.ashira.click https://api.groq.com;
+		connect-src 'self' https://*.supabase.co https://*.ashira.click https://api.groq.com https://nominatim.openstreetmap.org;
 		frame-ancestors 'none';
 		base-uri 'self';
 		form-action 'self';
