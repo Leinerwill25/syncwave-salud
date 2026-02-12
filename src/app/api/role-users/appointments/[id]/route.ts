@@ -95,8 +95,16 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
 	try {
+        console.log('[Role User Appointment PATCH] Starting...');
+        
+        if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
+            console.error('[Role User Appointment PATCH] CRITICAL: SUPABASE_SERVICE_ROLE_KEY is missing');
+            return NextResponse.json({ error: 'Configuration error: Missing Service Role Key' }, { status: 500 });
+        }
+
 		const session = await getRoleUserSessionFromServer();
 		if (!session) {
+            console.warn('[Role User Appointment PATCH] No session found');
 			return NextResponse.json({ error: 'No autenticado' }, { status: 401 });
 		}
 
@@ -104,18 +112,22 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 		const body = await req.json();
         const supabase = supabaseAdmin;
 
+        console.log(`[Role User Appointment PATCH] Updating appointment ${id} for org ${session.organizationId}`);
+
 		// Verificar que la cita pertenece a la organización del role-user
 		const { data: existingAppointment, error: checkError } = await supabase.from('appointment').select('id, organization_id').eq('id', id).eq('organization_id', session.organizationId).single();
 
 		if (checkError || !existingAppointment) {
-			return NextResponse.json({ error: 'Cita no encontrada o no autorizada' }, { status: 404 });
+            console.error('[Role User Appointment PATCH] Check error:', checkError);
+			return NextResponse.json({ error: 'Cita no encontrada o no autorizada', details: checkError }, { status: 404 });
 		}
 
 		// Obtener la cita actual para verificar el estado previo
 		const { data: currentAppointment, error: fetchError } = await supabase.from('appointment').select('status, scheduled_at').eq('id', id).single();
 
 		if (fetchError || !currentAppointment) {
-			return NextResponse.json({ error: 'Cita no encontrada' }, { status: 404 });
+             console.error('[Role User Appointment PATCH] Fetch error:', fetchError);
+			return NextResponse.json({ error: 'Cita no encontrada (fetch)', details: fetchError }, { status: 404 });
 		}
 
 		// Preparar actualización
@@ -126,12 +138,14 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 			updates.updated_at = new Date().toISOString();
 		}
 
+        console.log('[Role User Appointment PATCH] Updates to apply:', updates);
+
 		// Actualizar la cita
 		const { data: updatedAppointment, error: updateError } = await supabase.from('appointment').update(updates).eq('id', id).select().single();
 
 		if (updateError) {
 			console.error('[Role User Appointment API] Error actualizando:', updateError);
-			return NextResponse.json({ error: 'Error al actualizar la cita' }, { status: 500 });
+			return NextResponse.json({ error: 'Error al actualizar la cita', details: updateError }, { status: 500 });
 		}
 
 		// Si la cita estaba CONFIRMADA y se reagenda (cambió scheduled_at), actualizar consultation.started_at si existe
@@ -152,7 +166,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
 		return NextResponse.json({ success: true, appointment: updatedAppointment }, { status: 200 });
 	} catch (err: any) {
-		console.error('[Role User Appointment API] Error:', err);
-		return NextResponse.json({ error: err.message || 'Error interno' }, { status: 500 });
+		console.error('[Role User Appointment API] Global Error:', err);
+		return NextResponse.json({ error: err.message || 'Error interno', stack: err.stack }, { status: 500 });
 	}
 }

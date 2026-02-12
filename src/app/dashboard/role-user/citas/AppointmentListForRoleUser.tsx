@@ -244,11 +244,41 @@ export default function AppointmentListForRoleUser({ selectedDate, roleName, can
 			return;
 		}
 
+		// Lógica inteligente para formatear número (asumiendo Venezuela +58 por defecto si falta)
+		let cleanPhone = rawPhone.replace(/\D/g, '');
+
+		// Si empieza por '0' (ej: 0412...), quitamos el '0'
+		if (cleanPhone.startsWith('0')) {
+			cleanPhone = cleanPhone.substring(1);
+		}
+
+		// Si tiene 10 dígitos (ej: 4121234567), agregamos '58' al inicio
+		if (cleanPhone.length === 10) {
+			cleanPhone = '58' + cleanPhone;
+		}
+
+		// Validar que tengamos un número útil
+		if (cleanPhone.length < 10) {
+			alert('Número de teléfono inválido (muy corto). Verifique el número en la ficha del paciente.');
+			return;
+		}
+
 		const mensaje = buildWhatsappMessage(appt);
 		const encodedMessage = encodeURIComponent(mensaje);
 
-		// El número de WhatsApp del paciente debe incluir código de país
-		const url = `https://wa.me/${encodeURIComponent(rawPhone)}?text=${encodedMessage}`;
+        // Detectar si es dispositivo móvil
+        const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+        
+        let url = '';
+        
+        if (isMobile) {
+            // En móvil, api.whatsapp.com suele funcionar mejor para deep linking
+            url = `https://api.whatsapp.com/send?phone=${cleanPhone}&text=${encodedMessage}`;
+        } else {
+            // En desktop, web.whatsapp.com requiere formato internacional estricto
+            // cleanPhone ya debería tener el 58 si era un número local de Venezuela
+            url = `https://web.whatsapp.com/send?phone=${cleanPhone}&text=${encodedMessage}`;
+        }
 
 		if (typeof window !== 'undefined') {
 			window.open(url, '_blank');

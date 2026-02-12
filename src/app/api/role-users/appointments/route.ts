@@ -43,8 +43,11 @@ export async function GET(req: NextRequest) {
 		// Filtrar por mes y año si se proporcionan
 		if (month && year) {
 			const startDate = `${year}-${month}-01`;
-			const endDate = `${year}-${month}-31`;
-			query = query.gte('scheduled_at', startDate).lte('scheduled_at', endDate);
+			// Calcular el último día del mes real para evitar "February 31"
+			const lastDay = new Date(parseInt(year), parseInt(month), 0).getDate();
+			const endDate = `${year}-${month}-${lastDay}`;
+			// Incluimos hasta el final del día
+			query = query.gte('scheduled_at', startDate).lte('scheduled_at', endDate + ' 23:59:59');
 		} else if (year) {
 			const startDate = `${year}-01-01`;
 			const endDate = `${year}-12-31`;
@@ -55,7 +58,8 @@ export async function GET(req: NextRequest) {
 
 		if (error) {
 			console.error('[Role User Appointments API] Error:', error);
-			return NextResponse.json({ error: 'Error al obtener citas' }, { status: 500 });
+			// Retornar detalles del error para depuración
+			return NextResponse.json({ error: 'Error al obtener citas', details: error }, { status: 500 });
 		}
 
 		// Normalizar las citas para incluir información del paciente
