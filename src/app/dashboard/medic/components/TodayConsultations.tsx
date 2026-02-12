@@ -72,7 +72,7 @@ export default function TodayConsultations() {
 
       // Obtener el ID del usuario de la tabla user
       const { data: userData, error: userError } = await supabase
-        .from('user')
+        .from('users')
         .select('id')
         .eq('authId', authId)
         .single();

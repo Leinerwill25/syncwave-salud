@@ -166,7 +166,7 @@ export async function getAuthenticatedPatient(): Promise<{
 
 		// Obtener usuario de la app
 		const { data: appUser, error: userError } = await supabase
-			.from('user')
+			.from('users')
 			.select('id, role, patientProfileId')
 			.eq('authId', user.id)
 			.maybeSingle();

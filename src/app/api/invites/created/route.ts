@@ -125,7 +125,7 @@ export async function POST(req: Request) {
 
 		// 5) buscar dbUser por authId usando Supabase
 		const { data: dbUser, error: userError } = await supabaseAdmin
-			.from('user')
+			.from('users')
 			.select('id, email, role, organizationId, authId')
 			.eq('authId', authUserId)
 			.maybeSingle();

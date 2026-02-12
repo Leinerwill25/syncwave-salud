@@ -19,7 +19,7 @@ CREATE TABLE IF NOT EXISTS public.lab_upload_link (
   is_active BOOLEAN DEFAULT true,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW(),
-  created_by UUID REFERENCES public."user"(id),
+  created_by UUID REFERENCES public.users(id),
   
   -- Constraint: Solo un link activo por organización
   CONSTRAINT unique_active_link_per_org UNIQUE (organization_id, is_active)
@@ -46,7 +46,7 @@ CREATE TABLE IF NOT EXISTS public.lab_result_upload (
   -- ===== RELACIONES =====
   consultation_id UUID REFERENCES public.consultation(id) ON DELETE SET NULL,
   patient_id UUID REFERENCES public.patient(id) ON DELETE CASCADE,
-  doctor_id UUID REFERENCES public."user"(id) ON DELETE SET NULL,
+  doctor_id UUID REFERENCES public.users(id) ON DELETE SET NULL,
   organization_id UUID NOT NULL REFERENCES public.organization(id) ON DELETE CASCADE,
   upload_link_id UUID REFERENCES public.lab_upload_link(id) ON DELETE SET NULL,
   
@@ -81,9 +81,9 @@ CREATE TABLE IF NOT EXISTS public.lab_result_upload (
   viewed_by_patient BOOLEAN DEFAULT false,
   viewed_by_doctor BOOLEAN DEFAULT false,
   approved_at TIMESTAMPTZ,
-  approved_by UUID REFERENCES public."user"(id),
+  approved_by UUID REFERENCES public.users(id),
   rejected_at TIMESTAMPTZ,
-  rejected_by UUID REFERENCES public."user"(id),
+  rejected_by UUID REFERENCES public.users(id),
   rejection_reason TEXT,
   
   created_at TIMESTAMPTZ DEFAULT NOW(),
@@ -123,7 +123,7 @@ CREATE TABLE IF NOT EXISTS public.lab_upload_notification (
   
   -- ===== DESTINATARIO =====
   recipient_type TEXT NOT NULL, -- 'patient', 'doctor'
-  recipient_id UUID REFERENCES public."user"(id), -- NULL si paciente no registrado
+  recipient_id UUID REFERENCES public.users(id), -- NULL si paciente no registrado
   recipient_email TEXT NOT NULL,
   
   -- ===== TIPO Y ESTADO =====
@@ -166,7 +166,7 @@ CREATE POLICY "Médicos ven links de su organización"
   ON public.lab_upload_link FOR SELECT
   USING (
     organization_id IN (
-      SELECT organization_id FROM public."user" WHERE id = auth.uid()
+      SELECT organization_id FROM public.users WHERE id = auth.uid()
     )
   );
 
@@ -175,7 +175,7 @@ CREATE POLICY "Médicos crean links para su organización"
   ON public.lab_upload_link FOR INSERT
   WITH CHECK (
     organization_id IN (
-      SELECT organization_id FROM public."user" WHERE id = auth.uid()
+      SELECT organization_id FROM public.users WHERE id = auth.uid()
     )
   );
 
@@ -184,7 +184,7 @@ CREATE POLICY "Médicos actualizan links de su organización"
   ON public.lab_upload_link FOR UPDATE
   USING (
     organization_id IN (
-      SELECT organization_id FROM public."user" WHERE id = auth.uid()
+      SELECT organization_id FROM public.users WHERE id = auth.uid()
     )
   );
 
@@ -195,7 +195,7 @@ CREATE POLICY "Médicos ven resultados de su organización"
   ON public.lab_result_upload FOR SELECT
   USING (
     organization_id IN (
-      SELECT organization_id FROM public."user" WHERE id = auth.uid()
+      SELECT organization_id FROM public.users WHERE id = auth.uid()
     )
   );
 
@@ -211,7 +211,7 @@ CREATE POLICY "Médicos actualizan resultados de su organización"
   ON public.lab_result_upload FOR UPDATE
   USING (
     organization_id IN (
-      SELECT organization_id FROM public."user" WHERE id = auth.uid()
+      SELECT organization_id FROM public.users WHERE id = auth.uid()
     )
   );
 

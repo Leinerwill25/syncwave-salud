@@ -31,7 +31,7 @@ export async function POST(req: Request) {
 		// Resolve orgId (same approach as GET)
 		let orgId = (user.user_metadata as any)?.organizationId ?? null;
 		if (!orgId) {
-			const { data: urow } = await supabaseAdmin.from('user').select('organizationId').eq('authId', user.id).limit(1).maybeSingle();
+			const { data: urow } = await supabaseAdmin.from('users').select('organizationId').eq('authId', user.id).limit(1).maybeSingle();
 			orgId = urow?.organizationId ?? orgId;
 		}
 

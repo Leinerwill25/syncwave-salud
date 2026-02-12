@@ -44,7 +44,7 @@ export async function POST(req: NextRequest) {
 
 		// 1. Buscar todos los usuarios con ese email en la tabla User
 		const { data: allUsers, error: usersError } = await supabaseAdmin
-			.from('user')
+			.from('users')
 			.select('id, email, role, authId, passwordHash')
 			.eq('email', emailTrimmed);
 
@@ -175,7 +175,7 @@ export async function POST(req: NextRequest) {
 					
 					// Si el authId ya está en uso por otro usuario, quitarlo primero
 					const { data: existingUserWithAuthId } = await supabaseAdmin
-						.from('user')
+						.from('users')
 						.select('id, email, role')
 						.eq('authId', authUser.id)
 						.neq('id', recepcionUser.id)
@@ -184,7 +184,7 @@ export async function POST(req: NextRequest) {
 					if (existingUserWithAuthId) {
 						console.log(`[Login Multiple Users] authId ${authUser.id} está en uso por usuario ${existingUserWithAuthId.id} (rol: ${existingUserWithAuthId.role}), removiéndolo primero`);
 						const { error: removeAuthIdError } = await supabaseAdmin
-							.from('user')
+							.from('users')
 							.update({ authId: null })
 							.eq('id', existingUserWithAuthId.id);
 						
@@ -197,7 +197,7 @@ export async function POST(req: NextRequest) {
 					
 					// Actualizar el authId del usuario RECEPCION
 					const { error: updateRecepcionAuthIdError } = await supabaseAdmin
-						.from('user')
+						.from('users')
 						.update({ authId: authUser.id })
 						.eq('id', recepcionUser.id);
 					
@@ -228,7 +228,7 @@ export async function POST(req: NextRequest) {
 					if (!u.authId) {
 						// Verificar si el authId ya está en uso
 						const { data: existingUserWithAuthId } = await supabaseAdmin
-							.from('user')
+							.from('users')
 							.select('id, email, role')
 							.eq('authId', authUser.id)
 							.neq('id', u.id)
@@ -240,7 +240,7 @@ export async function POST(req: NextRequest) {
 						}
 						
 						const { error: updateAuthIdError } = await supabaseAdmin
-							.from('user')
+							.from('users')
 							.update({ authId: authUser.id })
 							.eq('id', u.id);
 						
@@ -316,7 +316,7 @@ export async function POST(req: NextRequest) {
 					
 					// Si el authId ya está en uso por otro usuario, quitarlo primero
 					const { data: existingUserWithAuthId } = await supabaseAdmin
-						.from('user')
+						.from('users')
 						.select('id, email, role')
 						.eq('authId', newAuthUser.user.id)
 						.neq('id', recepcionUser.id)
@@ -325,7 +325,7 @@ export async function POST(req: NextRequest) {
 					if (existingUserWithAuthId) {
 						console.log(`[Login Multiple Users] authId ${newAuthUser.user.id} está en uso por usuario ${existingUserWithAuthId.id} (rol: ${existingUserWithAuthId.role}), removiéndolo primero`);
 						const { error: removeAuthIdError } = await supabaseAdmin
-							.from('user')
+							.from('users')
 							.update({ authId: null })
 							.eq('id', existingUserWithAuthId.id);
 						
@@ -338,7 +338,7 @@ export async function POST(req: NextRequest) {
 					
 					// Actualizar el authId del usuario RECEPCION
 					const { error: updateRecepcionAuthIdError } = await supabaseAdmin
-						.from('user')
+						.from('users')
 						.update({ authId: newAuthUser.user.id })
 						.eq('id', recepcionUser.id);
 					
@@ -364,7 +364,7 @@ export async function POST(req: NextRequest) {
 					// Solo actualizar si no tiene authId
 					if (!u.authId) {
 						const { data: existingUserWithAuthId } = await supabaseAdmin
-							.from('user')
+							.from('users')
 							.select('id, email, role')
 							.eq('authId', newAuthUser.user.id)
 							.neq('id', u.id)
@@ -376,7 +376,7 @@ export async function POST(req: NextRequest) {
 						}
 						
 						const { error: updateAuthIdError } = await supabaseAdmin
-							.from('user')
+							.from('users')
 							.update({ authId: newAuthUser.user.id })
 							.eq('id', u.id);
 						

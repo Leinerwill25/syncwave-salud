@@ -128,28 +128,15 @@ export async function PATCH(req: Request, context: { params: Promise<{ id: strin
 							// Obtener información del paciente y su user_id
 							const { data: patientData } = await supabaseAdmin.from('patient').select('firstName, lastName').eq('id', patient_id).maybeSingle();
 
-							// Obtener el user_id del paciente - intentar diferentes variantes del nombre de tabla
+							// Obtener el user_id del paciente
 							let userData: { id: string } | null = null;
 							try {
-								// Intentar primero con 'user' en minúscula (nombre correcto de la tabla)
-								const { data, error } = await supabaseAdmin.from('user').select('id').eq('patientProfileId', patient_id).maybeSingle();
+								const { data, error } = await supabaseAdmin.from('users').select('id').eq('patientProfileId', patient_id).maybeSingle();
 								if (!error && data) {
 									userData = data;
-								} else if (error) {
-									console.warn('[Appointment Update] Error consultando tabla user:', error.message);
-									// Si falla, intentar con comillas dobles
-									try {
-										const { data: data2, error: error2 } = await supabaseAdmin.from('"user"').select('id').eq('patientProfileId', patient_id).maybeSingle();
-										if (!error2 && data2) {
-											userData = data2;
-										}
-									} catch (err2) {
-										console.warn('[Appointment Update] Error con variante "user":', err2);
-									}
 								}
 							} catch (err) {
 								console.warn('[Appointment Update] Error obteniendo user_id del paciente:', err);
-								// Continuar sin userData - no se creará la notificación pero no fallará la operación
 							}
 
 							const patientName = patientData ? `${patientData.firstName} ${patientData.lastName}` : 'Paciente';
@@ -219,23 +206,7 @@ export async function PATCH(req: Request, context: { params: Promise<{ id: strin
 			try {
 				// Helper para consultar la tabla user con diferentes variantes
 				const queryUserTable = async (queryFn: (tableName: string) => any) => {
-					try {
-						const queryBuilder1 = queryFn('user');
-						const result = await queryBuilder1;
-						if (result?.data && !result.error) return result;
-						if (result?.error) {
-							try {
-								const queryBuilder2 = queryFn('"user"');
-								const result2 = await queryBuilder2;
-								if (result2?.data && !result2.error) return result2;
-							} catch (err2) {
-								console.warn('[Appointment Update] Error con variante "user":', err2);
-							}
-						}
-					} catch (err) {
-						console.warn('[Appointment Update] Error en queryUserTable:', err);
-					}
-					return { data: null, error: null };
+					return queryFn('users');
 				};
 
 				const [patientRes, doctorRes, patientUserRes, unregisteredRes, orgRes, medicProfileRes] = await Promise.all([

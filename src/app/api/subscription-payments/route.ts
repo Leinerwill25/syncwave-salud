@@ -55,7 +55,7 @@ export async function POST(req: NextRequest) {
 		}
 
 		const { data: userData, error: userError } = await supabaseAdmin
-			.from('user')
+			.from('users')
 			.select('id')
 			.eq('id', userId)
 			.single();

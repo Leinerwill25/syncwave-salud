@@ -154,7 +154,7 @@ export async function GET(
 
 		// Obtener médicos de la clínica
 		const { data: doctors, error: doctorsError } = await supabase
-			.from('user')
+			.from('users')
 			.select(`
 				id,
 				name,

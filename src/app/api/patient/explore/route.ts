@@ -218,7 +218,7 @@ export async function GET(request: Request) {
 
 				// PASO 4: Buscar todos los médicos asociados a estas organizaciones
 				const { data: users, error: usersError } = await supabase
-					.from('user')
+					.from('users')
 					.select(
 						`
 						id,

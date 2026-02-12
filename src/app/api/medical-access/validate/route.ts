@@ -49,7 +49,7 @@ export async function POST(request: Request) {
 		let doctorId: string | null = null;
 		if (authUser) {
 			const { data: appUser } = await supabase
-				.from('user')
+				.from('users')
 				.select('id, role')
 				.eq('authId', authUser.id)
 				.maybeSingle();

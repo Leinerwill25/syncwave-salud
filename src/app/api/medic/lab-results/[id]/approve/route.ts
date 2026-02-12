@@ -32,7 +32,7 @@ export async function PATCH(
 
     // Verificar que el resultado pertenece    // Obtener información del médico
     const { data: userData, error: userError } = await supabase
-      .from('user')
+      .from('users')
       .select('organizationId')
       .eq('authId', user.id)
       .single();
@@ -73,7 +73,7 @@ export async function PATCH(
         .single();
 
       const { data: patientUser } = await supabase
-        .from('user')
+        .from('users')
         .select('email')
         .eq('id', result.patient_id)
         .single();

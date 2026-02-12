@@ -33,7 +33,7 @@ export async function GET(req: Request) {
 			// Si tenemos sesión, obtener el usuario de la app
 			const authId = sessionData.session.user.id;
 			const { data: appUser, error: userError } = await supabase
-				.from('user')
+				.from('users')
 				.select('id, role')
 				.eq('authId', authId)
 				.maybeSingle();

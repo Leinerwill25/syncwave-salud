@@ -86,7 +86,7 @@ export async function POST(request: Request) {
 
 		// 3) Crear user en Supabase y marcar invite usado
 		// Usar transacción simulada con múltiples operaciones
-		const { error: userError } = await supabaseAdmin.from('user').insert({
+		const { error: userError } = await supabaseAdmin.from('users').insert({
 			email,
 			name: `${firstName} ${lastName}`,
 			role: invite.role,

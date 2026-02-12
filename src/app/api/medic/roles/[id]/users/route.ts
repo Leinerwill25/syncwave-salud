@@ -91,7 +91,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 		// PERMITIR mismo email si tiene rol diferente (ej: DOCTOR puede tener también PACIENTE)
 		// Si existe, reutilizar el authId existente en lugar de crear uno nuevo
 		const { data: existingUsersByEmail } = await supabaseAdmin
-			.from('user')
+			.from('users')
 			.select('id, email, role, authId')
 			.eq('email', email.trim());
 
@@ -147,7 +147,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 		if (existingPatientByIdentifier) {
 			// Verificar si hay un user asociado a este patient
 			const { data: existingUserByPatientId } = await supabaseAdmin
-				.from('user')
+				.from('users')
 				.select('id, role')
 				.eq('patientProfileId', existingPatientByIdentifier.id)
 				.maybeSingle();
@@ -267,7 +267,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 		// Verificar si ya existe un User con este email Y rol RECEPCION
 		// Si existe, reutilizarlo en lugar de crear uno nuevo
 		const { data: existingUserWithRole, error: existingUserCheckError } = await supabaseAdmin
-			.from('user')
+			.from('users')
 			.select('id, email, role, authId')
 			.eq('email', email.trim())
 			.eq('role', 'RECEPCION')
@@ -279,7 +279,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 		if (supabaseUserId) {
 			const authIdStr = String(supabaseUserId);
 			const { data: existingUserWithAuthId } = await supabaseAdmin
-				.from('user')
+				.from('users')
 				.select('id, email, role')
 				.eq('authId', authIdStr)
 				.maybeSingle();
@@ -304,7 +304,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 			// Actualizar el authId solo si no tenía uno y ahora lo tenemos Y no está en uso
 			if (!existingUserWithRole.authId && authIdToUse) {
 				const { error: updateError } = await supabaseAdmin
-					.from('user')
+					.from('users')
 					.update({ authId: authIdToUse })
 					.eq('id', appUserId);
 				
@@ -317,7 +317,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 			try {
 				const fullName = `${firstName.trim()} ${lastName.trim()}`;
 				const { data: newAppUser, error: userCreateError } = await supabaseAdmin
-					.from('user')
+					.from('users')
 					.insert({
 						email: email.trim(),
 						name: fullName,
@@ -370,7 +370,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 			console.error('[Roles API] Error creando usuario en consultorio_role_users:', createError);
 			// Rollback: eliminar usuario de User y Supabase Auth
 			try {
-				await supabaseAdmin.from('user').delete().eq('id', appUserId);
+				await supabaseAdmin.from('users').delete().eq('id', appUserId);
 			} catch (deleteErr) {
 				console.error('[Roles API] Error eliminando usuario de User después de fallo:', deleteErr);
 			}
@@ -386,7 +386,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 
 		// Obtener nombre del usuario desde la tabla User
 		const { data: userData } = await supabase
-			.from('user')
+			.from('users')
 			.select('name')
 			.eq('id', user.userId)
 			.maybeSingle();

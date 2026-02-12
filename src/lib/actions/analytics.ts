@@ -69,7 +69,7 @@ export async function getClinicGeneralStats(organizationId: string, period: Peri
 
     // 4. Active Specialists
     const { count: activeSpecialists, error: specialistsError } = await supabase
-      .from('user')
+      .from('users')
       .select('*', { count: 'exact', head: true })
       .eq('organizationId', organizationId)
       .eq('role', 'MEDICO');
@@ -104,7 +104,7 @@ export async function getSpecialistsPerformance(organizationId: string, period: 
   try {
     // Get specialists
     const { data: specialists, error: specialistsError } = await supabase
-      .from('user')
+      .from('users')
       .select('id, name, email')
       .eq('organizationId', organizationId)
       .eq('role', 'MEDICO');
@@ -263,7 +263,7 @@ export async function getSpecialistDetails(organizationId: string, specialistId:
     const supabase = await createSupabaseServerClient();
     try {
         const { data: specialist, error: userError } = await supabase
-            .from('user')
+            .from('users')
             .select('id, name, email, role, createdAt')
             .eq('id', specialistId)
             .single();

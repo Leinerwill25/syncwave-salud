@@ -77,7 +77,7 @@ async function resolveOrganizationId(body: any, headers: Headers) {
 
 	// Obtener usuario de la tabla user usando Supabase
 	const { data: user, error: userError } = await supabaseAdmin
-		.from('user')
+		.from('users')
 		.select('id, organizationId')
 		.eq('authId', data.user.id)
 		.maybeSingle();

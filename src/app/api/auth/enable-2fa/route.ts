@@ -136,7 +136,7 @@ export async function POST(request: Request) {
 
 		// Por ahora, simulamos éxito
 		const { data: appUser } = await supabase
-			.from('user')
+			.from('users')
 			.select('id')
 			.eq('authId', user.id)
 			.maybeSingle();

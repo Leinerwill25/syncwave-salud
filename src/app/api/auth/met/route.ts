@@ -138,7 +138,7 @@ export async function GET(req: NextRequest) {
 		}
 
 		// 5) Buscar el perfil en la tabla User usando authId
-		const { data: appUser, error: appUserErr } = await supabase.from('user').select('id, organizationId').eq('authId', authUser.id).maybeSingle();
+		const { data: appUser, error: appUserErr } = await supabase.from('users').select('id, organizationId').eq('authId', authUser.id).maybeSingle();
 
 		if (appUserErr) {
 			console.error('/api/auth/met error buscando User por authId:', appUserErr);

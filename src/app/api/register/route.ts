@@ -169,7 +169,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 		// PERMITIR mismo email si tiene rol diferente (ej: DOCTOR puede tener también PACIENTE)
 		// Si existe, reutilizar el authId existente en lugar de crear uno nuevo
 		const { data: existingUsers, error: userCheckError } = await supabaseAdmin
-			.from('user')
+			.from('users')
 			.select('id, email, role, authId')
 			.eq('email', account.email);
 
@@ -259,7 +259,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 			if (existingRegistered && existingRegistered.patientProfileId) {
 				// Verificar si hay un user asociado a este patient y qué rol tiene
 				const { data: existingUserByPatientId } = await supabaseAdmin
-					.from('user')
+					.from('users')
 					.select('id, role')
 					.eq('patientProfileId', existingRegistered.patientProfileId)
 					.maybeSingle();
@@ -589,7 +589,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 			// 4. Verificar si ya existe un User con este email Y este rol específico
 			// Si existe, reutilizarlo en lugar de crear uno nuevo
 			const { data: existingUserWithRole, error: existingUserCheckError } = await supabaseAdmin
-				.from('user')
+				.from('users')
 				.select('id, email, role, authId, organizationId')
 				.eq('email', userCreateData.email)
 				.eq('role', userCreateData.role)
@@ -601,7 +601,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 			if (userCreateData.authId) {
 				const authIdStr = String(userCreateData.authId);
 				const { data: existingUserWithAuthId } = await supabaseAdmin
-					.from('user')
+					.from('users')
 					.select('id, email, role')
 					.eq('authId', authIdStr)
 					.maybeSingle();
@@ -627,7 +627,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 				// Actualizar el authId solo si no tenía uno y ahora lo tenemos Y no está en uso
 				if (!userData.authId && authIdToUse) {
 					const { error: updateError } = await supabaseAdmin
-						.from('user')
+						.from('users')
 						.update({ authId: authIdToUse })
 						.eq('id', userData.id);
 					
@@ -642,7 +642,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 				console.log('[Register API] Usuario reutilizado exitosamente:', userRecord.id);
 			} else {
 				// Crear nuevo User
-				// Según Database.sql: User tiene: email, name, passwordHash, role, organizationId, patientProfileId, authId, used
+				// Según Database.sql: Users tiene: email, name, passwordHash, role, organizationId, patientProfileId, authId, used
 				const userInsertData: any = {
 					email: userCreateData.email,
 					name: userCreateData.name,
@@ -654,41 +654,25 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 					used: true, // DEFAULT true según Database.sql
 				};
 
-				console.log('[Register API] Intentando crear User con datos:', {
+				console.log('[Register API] Intentando crear User en tabla "users" con datos:', {
 					email: userInsertData.email,
 					role: userInsertData.role,
 					organizationId: userInsertData.organizationId,
 					hasAuthId: !!userInsertData.authId,
 					hasPasswordHash: !!userInsertData.passwordHash,
-					fullInsertData: userInsertData,
 				});
 
-				// Nota: 'user' es una palabra reservada en PostgreSQL, usar comillas dobles para evitar problemas
-				// Intentar primero con comillas dobles, si falla intentar sin comillas
-				// Intentar con comillas dobles primero (más seguro para palabras reservadas)
-				const { data: userDataQuoted, error: userErrorQuoted } = await supabaseAdmin
-					.from('"user"')
+				const { data: createdUserData, error: createError } = await supabaseAdmin
+					.from('users')
 					.insert(userInsertData)
 					.select('id, email, role, authId, organizationId')
 					.single();
 
-				if (userErrorQuoted && userErrorQuoted.code === '42P01') {
-					// Tabla no encontrada con comillas, intentar sin comillas
-					console.log('[Register API] Tabla "user" no encontrada con comillas, intentando sin comillas...');
-					const { data: userDataUnquoted, error: userErrorUnquoted } = await supabaseAdmin
-						.from('user')
-						.insert(userInsertData)
-						.select('id, email, role, authId, organizationId')
-						.single();
-					userData = userDataUnquoted;
-					userError = userErrorUnquoted;
-				} else {
-					userData = userDataQuoted;
-					userError = userErrorQuoted;
-				}
+				userData = createdUserData;
+				userError = createError;
 
 				if (userError) {
-					console.error('[Register API] Error creando User:', {
+					console.error('[Register API] Error creando User en tabla "users":', {
 						message: userError.message,
 						code: userError.code,
 						details: userError.details,
@@ -718,8 +702,8 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 				}
 
 				userRecord = userData;
-				createdIds.push({ type: 'user', id: userRecord.id }); // Usar nombre de tabla en minúsculas para rollback
-				console.log('[Register API] User creado exitosamente:', userRecord.id);
+				createdIds.push({ type: 'users', id: userRecord.id }); // Usar nombre de tabla correcto para rollback
+				console.log('[Register API] User creado exitosamente en tabla "users":', userRecord.id);
 			}
 
 			// 5. Crear Subscription si existe plan

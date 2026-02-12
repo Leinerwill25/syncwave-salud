@@ -244,7 +244,7 @@ export default function UserNotificationsBell({ user }: Props) {
 					try {
 						const authUserId = sessionData?.session?.user?.id ?? user?.id;
 						if (authUserId) {
-							const { data: appUserRow, error } = await supabase.from('user').select('id, "organizationId"').eq('authId', authUserId).limit(1).maybeSingle();
+							const { data: appUserRow, error } = await supabase.from('users').select('id, "organizationId"').eq('authId', authUserId).limit(1).maybeSingle();
 
 							if (!error && appUserRow?.id) {
 								appUserIdRef.current = appUserRow.id;

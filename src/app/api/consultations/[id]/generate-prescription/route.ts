@@ -177,7 +177,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 		// Obtener datos del médico
 		let doctorName = 'Médico';
 		if (consultation.doctor_id) {
-			const { data: doctorData } = await supabase.from('user').select('name, email').eq('id', consultation.doctor_id).single();
+			const { data: doctorData } = await supabase.from('users').select('name, email').eq('id', consultation.doctor_id).single();
 
 			if (doctorData) {
 				doctorName = doctorData.name || doctorData.email || 'Médico';

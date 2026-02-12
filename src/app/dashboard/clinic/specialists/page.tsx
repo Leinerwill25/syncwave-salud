@@ -108,7 +108,7 @@ export default async function EspecialistasPage() {
 	const authId = authUser.id;
 
 	// Buscar fila local en tabla User
-	const { data: me, error: meErr } = await supabase.from('user').select('id, organizationId').eq('authId', authId).single();
+	const { data: me, error: meErr } = await supabase.from('users').select('id, organizationId').eq('authId', authId).single();
 
 	if (meErr || !me) {
 		console.error('Error fetching local User by authId OR user not found:', meErr);

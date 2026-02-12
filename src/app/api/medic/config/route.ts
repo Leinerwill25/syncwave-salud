@@ -19,7 +19,7 @@ export async function GET(request: Request) {
 
 		// Obtener datos completos del usuario de la app usando authId (las políticas RLS funcionan con authId)
 		// apiRequireRole ya validó que existe y es MEDICO, pero necesitamos más campos (name, etc.)
-		const { data: appUser, error: userError } = await supabase.from('user').select('id, name, email, organizationId, role').eq('authId', user.authId).maybeSingle();
+		const { data: appUser, error: userError } = await supabase.from('users').select('id, name, email, organizationId, role').eq('authId', user.authId).maybeSingle();
 
 		if (userError) {
 			console.error('[Medic Config API] Error obteniendo usuario de la base de datos:', userError);
@@ -274,7 +274,7 @@ export async function PATCH(request: Request) {
 
 		// Obtener datos del usuario de la app usando authId (las políticas RLS funcionan con authId)
 		// apiRequireRole ya validó que existe y es MEDICO
-		const { data: appUser, error: userError } = await supabase.from('user').select('id, organizationId, role').eq('authId', user.authId).maybeSingle();
+		const { data: appUser, error: userError } = await supabase.from('users').select('id, organizationId, role').eq('authId', user.authId).maybeSingle();
 
 		if (userError) {
 			console.error('[Medic Config API PATCH] Error obteniendo usuario de la base de datos:', userError);
@@ -404,7 +404,7 @@ export async function PATCH(request: Request) {
 
 		// Actualizar nombre si se proporciona
 		if (body.name !== undefined) {
-			updatePromises.push(Promise.resolve(supabase.from('user').update({ name: body.name }).eq('id', appUser.id)).then((r) => r) as unknown as Promise<any>);
+			updatePromises.push(Promise.resolve(supabase.from('users').update({ name: body.name }).eq('id', appUser.id)).then((r) => r) as unknown as Promise<any>);
 		}
 
 		// Usar upsert para actualizar o crear en una sola operación (más eficiente que verificar + insert/update)

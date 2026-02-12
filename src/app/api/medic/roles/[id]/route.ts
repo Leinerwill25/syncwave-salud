@@ -164,7 +164,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
 
 		// Obtener nombre del usuario desde la tabla User
 		const { data: userData } = await supabase
-			.from('user')
+			.from('users')
 			.select('name')
 			.eq('id', user.userId)
 			.maybeSingle();
@@ -251,7 +251,7 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
 
 		// Obtener nombre del usuario desde la tabla User
 		const { data: userData } = await supabase
-			.from('user')
+			.from('users')
 			.select('name')
 			.eq('id', user.userId)
 			.maybeSingle();

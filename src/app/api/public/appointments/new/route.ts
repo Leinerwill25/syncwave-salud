@@ -155,7 +155,7 @@ export async function POST(request: Request) {
 			let doctorName: string | undefined;
 			try {
 				const { data: doctor } = await supabaseAdmin
-					.from('user')
+					.from('users')
 					.select('name, email')
 					.eq('id', doctorId)
 					.maybeSingle();

@@ -226,7 +226,7 @@ export async function POST(request: NextRequest) {
 		// Obtener datos del médico
 		let doctorName = 'Médico';
 		const { data: doctorData } = await supabaseAdmin
-			.from('user')
+			.from('users')
 			.select('name, email')
 			.eq('id', doctorId)
 			.maybeSingle();

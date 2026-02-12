@@ -240,7 +240,7 @@ export default function MensajeriaPage() {
 					data: { user },
 				} = await supabase.auth.getUser();
 				if (user) {
-					const { data: appUser } = await supabase.from('user').select('id, organizationId').eq('authId', user.id).maybeSingle();
+					const { data: appUser } = await supabase.from('users').select('id, organizationId').eq('authId', user.id).maybeSingle();
 
 					if (appUser) {
 						setCurrentUserId(appUser.id);

@@ -21,7 +21,7 @@ export async function GET(req: NextRequest) {
 
 		// Buscar el usuario en la tabla User usando authId
 		const { data: appUser, error: userError } = await supabase
-			.from('user')
+			.from('users')
 			.select('id')
 			.eq('authId', authId)
 			.maybeSingle();

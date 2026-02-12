@@ -85,14 +85,14 @@ async function resolveDbUserFromToken(token: string | null) {
 			const supUser = (userResp as any)?.data?.user ?? null;
 			if (supUser?.id) {
 				let { data: dbUser } = await supabaseAdmin
-					.from('user')
+					.from('users')
 					.select('id, email, role, organizationId, authId')
 					.eq('authId', supUser.id)
 					.maybeSingle();
 				if (dbUser) return dbUser;
 				if (supUser?.email) {
 					const { data: dbByEmail } = await supabaseAdmin
-						.from('user')
+						.from('users')
 						.select('id, email, role, organizationId, authId')
 						.eq('email', supUser.email)
 						.maybeSingle();
@@ -114,7 +114,7 @@ async function resolveDbUserFromToken(token: string | null) {
 		const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, { auth: { persistSession: false } });
 		if (authId) {
 			const { data: dbUser } = await supabaseAdmin
-				.from('user')
+				.from('users')
 				.select('id, email, role, organizationId, authId')
 				.eq('authId', authId)
 				.maybeSingle();
@@ -122,7 +122,7 @@ async function resolveDbUserFromToken(token: string | null) {
 		}
 		if (email) {
 			const { data: dbUser } = await supabaseAdmin
-				.from('user')
+				.from('users')
 				.select('id, email, role, organizationId, authId')
 				.eq('email', email)
 				.maybeSingle();

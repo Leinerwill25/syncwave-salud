@@ -39,7 +39,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
 
 		// Si no es role-user autorizado, verificar usuario regular
 		if (!authorized && sessionUser?.id) {
-			const { data: appUser } = await supabase.from('user').select('id, organizationId').eq('authId', sessionUser.id).maybeSingle();
+			const { data: appUser } = await supabase.from('users').select('id, organizationId').eq('authId', sessionUser.id).maybeSingle();
 			if (appUser && (appUser as any).organizationId === existingFacturacion.organization_id) {
 				authorized = true;
 				userOrganizationId = (appUser as any).organizationId;
@@ -104,7 +104,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
 
 		// Si hay sesión server-side, permitir actualizar doctor_id y organization_id
 		if (sessionUser?.id) {
-			const { data: appUser } = await supabase.from('user').select('id, organizationId').eq('authId', sessionUser.id).maybeSingle();
+			const { data: appUser } = await supabase.from('users').select('id, organizationId').eq('authId', sessionUser.id).maybeSingle();
 			if (appUser) {
 				if (doctor_id !== undefined) updatePayload.doctor_id = doctor_id || null;
 				if (organization_id !== undefined) updatePayload.organization_id = organization_id || (appUser as any).organizationId || null;

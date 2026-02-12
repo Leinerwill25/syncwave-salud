@@ -180,7 +180,7 @@ export async function GET(request: NextRequest) {
         const [patients, unregistered, doctors] = await Promise.all([
           patientIds.length > 0 ? supabaseAdmin.from('patient').select('id, address').in('id', patientIds) : { data: [] },
           unregisteredIds.length > 0 ? supabaseAdmin.from('unregisteredpatients').select('id, address').in('id', unregisteredIds) : { data: [] },
-          doctorIds.length > 0 ? supabaseAdmin.from('user').select('id, medic_profile(specialty)').in('id', doctorIds) : { data: [] }
+          doctorIds.length > 0 ? supabaseAdmin.from('users').select('id, medic_profile(specialty)').in('id', doctorIds) : { data: [] }
         ]);
 
         const patientsMap = new Map((patients.data || []).map((p: any) => [p.id, p]));
@@ -265,7 +265,7 @@ export async function GET(request: NextRequest) {
             const docIds = [...new Set(prescDoctors.map((p: any) => p.doctor_id).filter(Boolean))];
             if (docIds.length > 0) {
               const { data: doctors } = await supabaseAdmin
-                .from('user')
+                .from('users')
                 .select('id, medic_profile(specialty)')
                 .in('id', docIds);
 

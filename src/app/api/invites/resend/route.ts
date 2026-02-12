@@ -83,7 +83,7 @@ async function findDbUserBySupabaseUser(supabaseUser: any, supabaseAdmin: any) {
 	let dbUser = null;
 	if (authId) {
 		const { data } = await supabaseAdmin
-			.from('user')
+			.from('users')
 			.select('id, email, role, organizationId, authId')
 			.eq('authId', authId)
 			.maybeSingle();
@@ -91,7 +91,7 @@ async function findDbUserBySupabaseUser(supabaseUser: any, supabaseAdmin: any) {
 	}
 	if (!dbUser && email) {
 		const { data } = await supabaseAdmin
-			.from('user')
+			.from('users')
 			.select('id, email, role, organizationId, authId')
 			.eq('email', email)
 			.maybeSingle();

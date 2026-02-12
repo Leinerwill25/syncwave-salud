@@ -173,7 +173,7 @@ export async function POST(req: NextRequest) {
 
 		// Obtener el app user ID desde la tabla User usando authId
 		const { data: appUser, error: appUserError } = await supabase
-			.from('user')
+			.from('users')
 			.select('id')
 			.eq('authId', authUser.id)
 			.maybeSingle();

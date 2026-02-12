@@ -306,7 +306,7 @@ export async function POST(request: Request) {
 		try {
 			let userRow: any = null;
 			try {
-				const res = await supabase.from('user').select('patientProfileId').eq('authId', user.id).maybeSingle();
+				const res = await supabase.from('users').select('patientProfileId').eq('authId', user.id).maybeSingle();
 				if (!res?.error && res?.data) userRow = res.data;
 			} catch (err) {
 				console.warn('[ADVICE_API] reading User table failed (possible schema mismatch)', err);

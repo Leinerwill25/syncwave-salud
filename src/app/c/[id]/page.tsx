@@ -263,7 +263,7 @@ export default async function ConsultorioPublicRoute({ params }: { params: Promi
 
 		try {
 			const doctorsQuery = supabase
-				.from('user')
+				.from('users')
 				.select(`
 					id,
 					name,
@@ -303,7 +303,7 @@ export default async function ConsultorioPublicRoute({ params }: { params: Promi
 			if ((!doctors || doctors.length === 0) && organizationBasic.contactEmail) {
 				console.log(`[Consultorio Page] Reintentando búsqueda de médico por email: ${organizationBasic.contactEmail}`);
 				const fallbackEmailQuery = supabase
-					.from('user')
+					.from('users')
 					.select(`
 						id,
 						name,
@@ -340,7 +340,7 @@ export default async function ConsultorioPublicRoute({ params }: { params: Promi
 			if (doctorsError && (doctorsError.message?.includes('service_combos') || doctorsError.code === 'PGRST116')) {
 				console.warn('[Consultorio Page] Campo service_combos no encontrado, intentando sin él');
 				const fallbackQuery = supabase
-					.from('user')
+					.from('users')
 					.select(`
 						id,
 						name,

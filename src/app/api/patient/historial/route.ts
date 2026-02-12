@@ -244,7 +244,7 @@ export async function GET(request: Request) {
 		const authorsMap: Record<string, AuthorData> = {};
 		if (authorIds.length > 0) {
 			const { data: authors } = await supabase
-				.from('user')
+				.from('users')
 				.select('id, name')
 				.in('id', authorIds);
 			

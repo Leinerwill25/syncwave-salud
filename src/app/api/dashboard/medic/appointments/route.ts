@@ -69,7 +69,7 @@ export async function GET(req: Request) {
 			});
 
 			// Validar que el médico realmente pertenezca a esa organización
-			const { data: doctorCheck } = await supabase.from('user').select('id, organizationId').eq('id', user.userId).eq('organizationId', user.organizationId).maybeSingle();
+			const { data: doctorCheck } = await supabase.from('users').select('id, organizationId').eq('id', user.userId).eq('organizationId', user.organizationId).maybeSingle();
 
 			if (!doctorCheck) {
 				console.error('[Appointments API] Médico no pertenece a la organización especificada');

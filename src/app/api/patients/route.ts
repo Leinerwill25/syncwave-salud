@@ -183,7 +183,7 @@ export async function GET(request: Request) {
 		const historyFor = qp.get('historyFor');
 		if (historyFor) {
 			// Obtener el app user ID (necesario para doctor_id en consultation)
-			const { data: appUserData, error: appUserError } = await supabase.from('user').select('id').eq('authId', authId).maybeSingle();
+			const { data: appUserData, error: appUserError } = await supabase.from('users').select('id').eq('authId', authId).maybeSingle();
 
 			if (appUserError || !appUserData) {
 				console.error('Error fetching app user for history', appUserError);
@@ -324,7 +324,7 @@ export async function GET(request: Request) {
 			// Obtener nombres de doctores
 			const doctorNamesMap = new Map<string, string>();
 			if (doctorIds.length > 0) {
-				const { data: doctors } = await supabase.from('user').select('id, name').in('id', doctorIds);
+				const { data: doctors } = await supabase.from('users').select('id, name').in('id', doctorIds);
 
 				if (doctors) {
 					doctors.forEach((doc: any) => {
@@ -551,7 +551,7 @@ export async function GET(request: Request) {
 		const includeSummary = qp.get('include_summary') === 'true';
 
 		// Buscar el usuario en la tabla User usando authId
-		const { data: userData, error: userError } = await supabase.from('user').select('id, role').eq('authId', authId).maybeSingle();
+		const { data: userData, error: userError } = await supabase.from('users').select('id, role').eq('authId', authId).maybeSingle();
 
 		if (userError || !userData) {
 			console.error('Error fetching user role', userError);

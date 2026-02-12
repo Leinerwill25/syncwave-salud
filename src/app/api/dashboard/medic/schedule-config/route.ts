@@ -13,7 +13,7 @@ export async function GET() {
 
     // 2. Obtener datos del usuario desde la tabla user
     const { data: userData, error: userError } = await supabase
-      .from('user')
+      .from('users')
       .select('id, "organizationId"')
       .eq('authId', user.id)
       .single();
@@ -89,7 +89,7 @@ export async function POST(req: Request) {
 
     // 2. Obtener datos del usuario
     const { data: userData, error: userError } = await supabase
-      .from('user')
+      .from('users')
       .select('id, "organizationId"')
       .eq('authId', user.id)
       .single();

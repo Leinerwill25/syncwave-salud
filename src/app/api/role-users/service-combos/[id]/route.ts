@@ -31,7 +31,7 @@ async function getDoctorProfileForOrg(organizationId: string) {
 	const supabase = await createSupabaseServerClient();
 
 	const { data: doctor, error: doctorError } = await supabase
-		.from('user')
+		.from('users')
 		.select('id')
 		.eq('organizationId', organizationId)
 		.eq('role', 'MEDICO')

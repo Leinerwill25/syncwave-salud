@@ -54,7 +54,7 @@ CREATE TABLE IF NOT EXISTS public.doctor_schedule_config (
   CONSTRAINT doctor_schedule_config_pkey PRIMARY KEY (id),
   CONSTRAINT doctor_schedule_config_doctor_fkey 
     FOREIGN KEY (doctor_id) 
-    REFERENCES public.user(id) 
+    REFERENCES public.users(id) 
     ON DELETE CASCADE,
   CONSTRAINT doctor_schedule_config_org_fkey 
     FOREIGN KEY (organization_id) 

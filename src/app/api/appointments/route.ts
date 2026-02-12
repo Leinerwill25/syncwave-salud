@@ -230,7 +230,7 @@ export async function POST(req: NextRequest) {
 					const { data: patientData } = await supabaseAdmin.from('patient').select('firstName, lastName').eq('id', finalPatientId).maybeSingle();
 
 					// Obtener el user_id del paciente
-					const { data: userData } = await supabaseAdmin.from('user').select('id').eq('patientProfileId', finalPatientId).maybeSingle();
+					const { data: userData } = await supabaseAdmin.from('users').select('id').eq('patientProfileId', finalPatientId).maybeSingle();
 
 					const patientName = patientData ? `${patientData.firstName} ${patientData.lastName}` : 'Paciente';
 					const patientUserId = userData?.id || null;

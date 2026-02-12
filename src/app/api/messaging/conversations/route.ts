@@ -32,7 +32,7 @@ export async function GET(req: NextRequest) {
 				return NextResponse.json({ error: 'No autenticado' }, { status: 401 });
 			}
 
-			const { data: appUser } = await supabase.from('user').select('id, organizationId').eq('authId', user.id).maybeSingle();
+			const { data: appUser } = await supabase.from('users').select('id, organizationId').eq('authId', user.id).maybeSingle();
 
 			if (!appUser) {
 				return NextResponse.json({ error: 'Usuario no encontrado' }, { status: 404 });
@@ -122,7 +122,7 @@ export async function GET(req: NextRequest) {
 
 		// Obtener nombres de usuarios regulares
 		if (userIds.length > 0) {
-			const { data: users } = await supabase.from('user').select('id, name, role').in('id', userIds);
+			const { data: users } = await supabase.from('users').select('id, name, role').in('id', userIds);
 
 			users?.forEach((user: any) => {
 				const conv = conversationsMap.get(`user_${user.id}`);

@@ -35,7 +35,7 @@ export async function POST(req: NextRequest) {
 			}
 
 			const { data: appUser } = await supabase
-				.from('user')
+				.from('users')
 				.select('id')
 				.eq('authId', user.id)
 				.maybeSingle();

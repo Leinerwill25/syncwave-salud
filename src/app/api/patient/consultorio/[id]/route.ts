@@ -221,7 +221,7 @@ export async function GET(
 
 		// Obtener médicos del consultorio con información completa del perfil
 		const { data: doctors, error: doctorsError } = await supabase
-			.from('user')
+			.from('users')
 			.select(`
 				id,
 				name,

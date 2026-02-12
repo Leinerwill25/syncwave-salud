@@ -35,7 +35,7 @@ export async function PATCH(
     // Verificar que el resultado pertenece a la organización del médico
     // Obtener información del médico
     const { data: userData, error: userError } = await supabase
-      .from('user')
+      .from('users')
       .select('organizationId')
       .eq('authId', user.id)
       .single();

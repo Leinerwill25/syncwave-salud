@@ -165,7 +165,7 @@ export async function POST(
     // Notificación para el doctor
     if (doctorId) {
       const { data: doctor } = await supabase
-        .from('user')
+        .from('users')
         .select('email')
         .eq('id', doctorId)
         .single();
@@ -201,7 +201,7 @@ export async function POST(
 
       // Obtener email del usuario paciente
       const { data: patientUser } = await supabase
-        .from('user')
+        .from('users')
         .select('email')
         .eq('id', patientId)
         .single();

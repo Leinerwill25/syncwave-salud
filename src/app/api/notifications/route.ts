@@ -30,7 +30,7 @@ export async function GET(req: Request) {
 		let orgId = (authUser.user_metadata as any)?.organizationId ?? null;
 
 		// 2) Obtener fila en tabla public."User" para mapear authId -> app user id
-		const { data: appUserRow, error: appUserErr } = await supabase.from('user').select('id, "organizationId"').eq('authId', authUserId).limit(1).maybeSingle();
+		const { data: appUserRow, error: appUserErr } = await supabase.from('users').select('id, "organizationId"').eq('authId', authUserId).limit(1).maybeSingle();
 
 		if (appUserErr) {
 			console.error('[API/notifications] error fetching app user row:', appUserErr);

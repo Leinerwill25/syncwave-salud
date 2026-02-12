@@ -35,7 +35,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ user
 			}
 
 			const { data: appUser } = await supabase
-				.from('user')
+				.from('users')
 				.select('id, organizationId')
 				.eq('authId', user.id)
 				.maybeSingle();

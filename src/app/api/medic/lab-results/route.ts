@@ -26,7 +26,7 @@ export async function GET(req: NextRequest) {
 
     // Obtener información del médico
     const { data: userData, error: userError } = await supabase
-      .from('user')
+      .from('users')
       .select('organizationId')
       .eq('authId', user.id)
       .single();

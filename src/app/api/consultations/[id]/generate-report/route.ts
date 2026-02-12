@@ -522,7 +522,7 @@ async function getCurrentDoctorId(supabase: any, request?: Request): Promise<str
 		return null;
 	}
 
-	const { data: appUser, error: userError } = await supabase.from('user').select('id, role').eq('authId', authData.user.id).maybeSingle();
+	const { data: appUser, error: userError } = await supabase.from('users').select('id, role').eq('authId', authData.user.id).maybeSingle();
 
 	if (userError || !appUser || appUser.role !== 'MEDICO') {
 		return null;
@@ -1069,7 +1069,7 @@ ${isObstetrics ? `Tipo de informe: ${reportType === 'first_trimester' ? 'Primer 
 		// Obtener datos del médico desde la tabla User usando doctor_id
 		let doctorName = 'Médico';
 		if (consultation.doctor_id) {
-			const { data: doctorData } = await supabase.from('user').select('name, email').eq('id', consultation.doctor_id).single();
+			const { data: doctorData } = await supabase.from('users').select('name, email').eq('id', consultation.doctor_id).single();
 
 			if (doctorData) {
 				doctorName = doctorData.name || doctorData.email || 'Médico';
