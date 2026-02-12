@@ -49,7 +49,7 @@ export default function AppointmentList({ selectedDate }: Props) {
 			await updateAppointment(id, { status: newStatus });
 		} catch (err) {
 			console.error('❌ Error al cambiar estado:', err);
-			alert('No se pudo actualizar el estado de la cita.');
+			alert(err instanceof Error ? err.message : 'No se pudo actualizar el estado de la cita.');
 		} finally {
 			setLoadingId(null);
 		}
@@ -62,9 +62,9 @@ export default function AppointmentList({ selectedDate }: Props) {
 				status: 'REAGENDADA',
 				scheduled_at: newDate,
 			});
-		} catch (err) {
+		} catch (err: any) {
 			console.error('❌ Error al reagendar:', err);
-			throw new Error('No se pudo reagendar la cita.');
+			throw new Error(err.message || 'No se pudo reagendar la cita.');
 		}
 	};
 

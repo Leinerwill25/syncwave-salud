@@ -302,16 +302,28 @@ export async function PATCH(req: Request, context: { params: Promise<{ id: strin
 		}
 
 		// 6️⃣ Obtener la cita actualizada completa para retornarla
+		// Simplificamos el select para minimizar errores de relación.
+		// Intentamos obtener patiend_id y luego hacer fetch si es necesario, o usar una query más estándar.
 		const { data: updatedAppointment, error: fetchUpdatedError } = await supabaseAdmin
 			.from('appointment')
-			.select('*, selected_service, patient:patient_id(firstName, lastName, identifier, phone), doctor:doctor_id(name)')
+			.select(`
+				*,
+				selected_service,
+				patient (firstName, lastName, identifier, phone),
+				doctor (name)
+			`)
 			.eq('id', id)
 			.single();
 
 		if (fetchUpdatedError) {
-			console.warn('[Appointment Update] Error obteniendo cita actualizada, retornando datos construidos:', fetchUpdatedError);
-			// Retornar datos construidos si falla el fetch
-			return NextResponse.json({ success: true, appointment: data });
+			console.warn('[Appointment Update] Error obteniendo cita actualizada:', fetchUpdatedError);
+			// Retornar datos básicos + los campos actualizados si falla el fetch completo
+			// Esto evita que la UI se rompa completamente si solo falla el refetch
+			return NextResponse.json({ 
+                success: true, 
+                appointment: data, // data contiene los campos básicos actualizados
+                debug_error: fetchUpdatedError.message 
+            });
 		}
 
 		// Normalizar el estado: convertir "EN_ESPERA" a "EN ESPERA" para consistencia con el frontend
@@ -344,7 +356,8 @@ export async function PATCH(req: Request, context: { params: Promise<{ id: strin
 		return NextResponse.json({ success: true, appointment: formattedAppointment });
 	} catch (error) {
 		console.error('❌ Error general al actualizar cita:', error);
-		const errorMessage = error instanceof Error ? error.message : 'Error interno';
-		return NextResponse.json({ error: 'Error interno al actualizar cita.', detail: errorMessage }, { status: 500 });
+		const errorMessage = error instanceof Error ? error.message : 'Error desconocido';
+        // Incluimos el detalle en el mensaje de error para que el usuario/nosotros lo veamos en el alert
+		return NextResponse.json({ error: `Error al actualizar: ${errorMessage}`, detail: errorMessage }, { status: 500 });
 	}
 }
