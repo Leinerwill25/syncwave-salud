@@ -1,7 +1,8 @@
 'use client';
 
 import React, { useEffect, useMemo, useState } from 'react';
-import { Loader2, Save, Trash2, FileText, Download, ChevronDown, ChevronUp, Activity, ClipboardList, Stethoscope, FileCheck, Image, X, Upload, Lock } from 'lucide-react';
+import { toast } from 'sonner';
+import { Loader2, Save, Trash2, FileText, Download, ChevronDown, ChevronUp, Activity, ClipboardList, Stethoscope, FileCheck, Image, X, Upload, Lock, Sparkles } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import ICD11Search from '@/components/ICD11Search';
@@ -10,6 +11,8 @@ import { useDebouncedSave } from '@/lib/debounced-save';
 import { useLiteMode } from '@/contexts/LiteModeContext';
 import DoctorPrivateNotesModal from '@/components/medic/DoctorPrivateNotesModal';
 import AudioRecorderButton from '@/components/medic/AudioRecorderButton';
+import { GenericReportConfig, ConsultationData } from '@/types/generic-report';
+import { generateGenericReport } from '@/lib/reports/generateGenericReport';
 
 type ConsultationShape = {
 	id: string;
@@ -53,6 +56,24 @@ export default function EditConsultationForm({ initial, patient, doctor, doctorS
 	const { saveOptimistically } = useOptimisticSave();
 	const { isLiteMode } = useLiteMode();
 	const [showPrivateNotesModal, setShowPrivateNotesModal] = useState(false);
+	const [genericReportConfig, setGenericReportConfig] = useState<GenericReportConfig | null>(null);
+
+	useEffect(() => {
+		const loadGenericConfig = async () => {
+			try {
+				const res = await fetch('/api/medic/generic-report-config');
+				if (res.ok) {
+					const data = await res.json();
+					if (data && data.id) {
+						setGenericReportConfig(data);
+					}
+				}
+			} catch (error) {
+				console.error('Error loading generic report config:', error);
+			}
+		};
+		loadGenericConfig();
+	}, []);
 
 	// Función auxiliar para normalizar texto (eliminar acentos, espacios extra, convertir a minúsculas)
 	const normalizeText = (text: string): string => {
@@ -1472,9 +1493,82 @@ export default function EditConsultationForm({ initial, patient, doctor, doctorS
 
 	async function handleGenerateReport() {
 		// Solo validar contenido para informes que no son de obstetricia (1er trimestre o 2do/3er trimestre)
-		if (selectedReportType !== 'first_trimester' && selectedReportType !== 'second_third_trimester') {
+		const isObstetrics = selectedReportType === 'first_trimester' || selectedReportType === 'second_third_trimester';
+		
+		if (!isObstetrics) {
 			if (!reportContent.trim()) {
-				setReportError('Por favor, escribe el contenido del informe');
+				// Si no hay contenido, intentar generar con configuración genérica
+				if (genericReportConfig) {
+					try {
+						setGeneratingReport(true);
+						setReportError(null);
+						setReportSuccess(null);
+
+						// Preparar datos del paciente
+						let patientInfo: any = {};
+						if (patient) {
+							// Manejar diferentes formatos de datos de paciente (registrado vs no registrado)
+							patientInfo = {
+								firstName: patient.first_name || patient.firstName,
+								lastName: patient.last_name || patient.lastName,
+								identifier: patient.identification || patient.identifier,
+								birthDate: patient.birth_date || patient.dob,
+								// Calcular edad si es posible
+								age: patient.age // Asumir que viene calculado o calcularlo si es necesario
+							};
+
+							// Si no hay edad pero hay fecha de nacimiento, calcular
+							if (!patientInfo.age && patientInfo.birthDate) {
+								const birth = new Date(patientInfo.birthDate);
+								const now = new Date();
+								let age = now.getFullYear() - birth.getFullYear();
+								const m = now.getMonth() - birth.getMonth();
+								if (m < 0 || (m === 0 && now.getDate() < birth.getDate())) {
+									age--;
+								}
+								patientInfo.age = age;
+							}
+						}
+
+						const blob = await generateGenericReport(
+							genericReportConfig, 
+							initial as unknown as ConsultationData, 
+							patientInfo
+						);
+
+						// Subir el archivo generado
+						const formData = new FormData();
+						formData.append('file', blob, `informe-${initial.id}.docx`);
+						formData.append('consultation_id', initial.id);
+						formData.append('file_name', `informe-${new Date().toISOString().split('T')[0]}.docx`);
+
+						const res = await fetch('/api/consultations/upload-report', {
+							method: 'POST',
+							body: formData,
+						});
+
+						const data = await res.json();
+
+						if (!res.ok) {
+							throw new Error(data.error || 'Error al subir informe generado');
+						}
+
+						if (data.url) {
+							setReportUrl(data.url);
+							setReportSuccess('Informe generado automáticamente usando la configuración genérica.');
+						} else {
+							throw new Error('No se recibió la URL del informe');
+						}
+					} catch (err: any) {
+						console.error('Error generating generic report:', err);
+						setReportError(err.message || 'Error al generar informe genérico');
+					} finally {
+						setGeneratingReport(false);
+					}
+					return;
+				}
+
+				setReportError('Por favor, escribe el contenido del informe o configura un diseño de informe genérico.');
 				return;
 			}
 		}
@@ -4756,7 +4850,7 @@ export default function EditConsultationForm({ initial, patient, doctor, doctorS
 							) : (
 								<div className="bg-teal-50 dark:bg-teal-900/20 border border-teal-200 dark:border-teal-800 rounded-lg p-4 mb-6">
 									<p className="text-sm text-teal-800 dark:text-teal-200">
-										<strong>Informe de Ginecología:</strong> Se generará el informe de ginecología estándar.
+										<strong>Informe Médico Generado:</strong> Se generará un informe médico estándar basado en los datos de la consulta.
 									</p>
 								</div>
 							)}
@@ -4781,16 +4875,19 @@ export default function EditConsultationForm({ initial, patient, doctor, doctorS
 							) : (
 								<div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4 mb-6">
 									<p className="text-sm text-blue-800 dark:text-blue-200">
-										<strong>Instrucciones:</strong> El contenido del informe se genera automáticamente desde la plantilla de texto configurada. Puedes revisar y editar el contenido antes de generar el informe. El contenido se insertará en el marcador <code className="bg-blue-100 dark:bg-blue-900 px-1.5 py-0.5 rounded font-mono text-xs">{'{{contenido}}'}</code> de tu plantilla Word.
+										<strong>Instrucciones:</strong> El contenido del informe se genera automáticamente desde la plantilla de texto configurada o puedes escribirlo manualmente.
 										<span className="block mt-2">
-											<strong>Importante:</strong> Asegúrate de haber cargado la plantilla de Word correspondiente en{' '}
+											Si tienes una plantilla de Word configurada en{' '}
 											<Link 
 												href="/dashboard/medic/plantilla-informe" 
 												className="text-blue-700 dark:text-blue-300 underline font-semibold hover:text-blue-800 dark:hover:text-blue-200 transition-colors"
 											>
-												"dashboard/medic/plantilla-informe"
+												"Plantillas"
 											</Link>
-											{' '}para el tipo de informe seleccionado.
+											, el contenido se insertará en el marcador <code className="bg-blue-100 dark:bg-blue-900 px-1.5 py-0.5 rounded font-mono text-xs">{'{{contenido}}'}</code>.
+										</span>
+										<span className="block mt-2">
+											<strong>Nota:</strong> Si no tienes una plantilla cargada y dejas el contenido vacío, se generará un informe automático con el diseño genérico (logo y colores configurados).
 										</span>
 									</p>
 								</div>
@@ -4813,40 +4910,82 @@ export default function EditConsultationForm({ initial, patient, doctor, doctorS
 								{/* Campo de Contenido del Informe - Solo para informes que NO son de obstetricia (1er trimestre o 2do/3er trimestre) */}
 								{(selectedReportType !== 'first_trimester' && selectedReportType !== 'second_third_trimester') && (
 									<>
-										<div className="flex items-center justify-between">
-											<label className={labelClass}>Contenido del Informe</label>
-											<button
-												type="button"
-												onClick={async () => {
-													try {
-														// Determinar el tipo de informe
-														const vitals = initial.vitals || {};
-														const obst = vitals.obstetrics || {};
-														const reportType = obst.report_type || selectedReportType;
-														
-														const res = await fetch(`/api/consultations/${initial.id}/generate-report-content?report_type=${reportType}`, {
-															credentials: 'include',
-														});
-														const data = await res.json();
-														if (res.ok && data.content) {
-															setReportContent(data.content);
-															if (data.font_family) {
-																setFontFamily(data.font_family);
+										<div className="flex flex-col gap-4 mb-4">
+											<div className="flex items-center justify-between">
+												<label className={labelClass}>Contenido del Informe</label>
+												<button
+													type="button"
+													onClick={async () => {
+														try {
+															// Determinar el tipo de informe
+															const vitals = initial.vitals || {};
+															const obst = vitals.obstetrics || {};
+															const reportType = obst.report_type || selectedReportType;
+															
+															const res = await fetch(`/api/consultations/${initial.id}/generate-report-content?report_type=${reportType}`, {
+																credentials: 'include',
+															});
+															const data = await res.json();
+															if (res.ok && data.content) {
+																setReportContent(data.content);
+																if (data.font_family) {
+																	setFontFamily(data.font_family);
+																}
+																setReportSuccess('Contenido generado automáticamente desde la plantilla');
+																setReportError(null);
+															} else {
+																// Manejo amigable del error para plantillas no encontradas
+																if (res.status === 404 || data.error?.includes('configura una plantilla')) {
+																	setReportError('No tienes una plantilla de texto configurada. Puedes configurar una en tu perfil o usar la IA para generar el contenido.');
+																} else {
+																	setReportError(data.error || 'Error al cargar plantilla');
+																}
+																setReportSuccess(null);
 															}
-															setReportSuccess('Contenido generado automáticamente desde la plantilla');
-															setReportError(null);
-														} else {
-															setReportError(data.error || 'Error al generar contenido automáticamente');
+														} catch (err: any) {
+															setReportError(err.message || 'Error al generar contenido automáticamente');
 															setReportSuccess(null);
 														}
-													} catch (err: any) {
-														setReportError(err.message || 'Error al generar contenido automáticamente');
+													}}
+													className="px-4 py-2 rounded-lg bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 text-sm font-medium hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors border border-slate-200 dark:border-slate-700">
+													📄 Cargar Plantilla Guardada
+												</button>
+											</div>
+
+											{/* Botón de Audio con IA para informe completo (N8N) */}
+											<div className="p-4 bg-gradient-to-br from-indigo-50 to-purple-50 dark:from-indigo-900/20 dark:to-purple-900/20 rounded-xl border border-indigo-100 dark:border-indigo-800">
+												<h4 className="text-sm font-semibold text-indigo-900 dark:text-indigo-200 mb-3 flex items-center gap-2">
+													<Sparkles size={16} />
+													Generar Informe con IA
+												</h4>
+												<AudioRecorderButton
+													consultationId={initial.id}
+													reportType="general"
+													specialty="General"
+													onStart={() => {
+														setReportError(null);
 														setReportSuccess(null);
-													}
-												}}
-												className="px-4 py-2 rounded-lg bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-700 transition-colors">
-												🔄 Generar Automáticamente
-											</button>
+													}}
+													onSuccess={(url) => {
+                                                        setReportUrl(url);
+														setReportSuccess('Informe generado exitosamente con IA. El archivo se descargará automáticamente.');
+														setReportError(null);
+                                                        toast.success('Informe generado con IA');
+                                                        
+                                                        // Descarga automática
+                                                        setTimeout(() => {
+                                                            window.open(url, '_blank');
+                                                        }, 500);
+													}}
+													onError={(errorMsg) => {
+														setReportError(`Error al generar con IA: ${errorMsg}`);
+													}}
+													className="w-full"
+												/>
+												<p className="mt-2 text-xs text-indigo-600 dark:text-indigo-400">
+													Graba el audio de la consulta y la IA generará automáticamente el informe completo (DOCX) usando el flujo avanzado (N8N).
+												</p>
+											</div>
 										</div>
 										<textarea value={reportContent} onChange={(e) => setReportContent(e.target.value)} rows={16} className={`${inputBase} ${inputDark} resize-none font-mono text-sm`} placeholder="El contenido se generará automáticamente desde la plantilla de texto. Haz clic en 'Generar Automáticamente' o escribe el contenido manualmente..." />
 									</>

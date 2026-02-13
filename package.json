@@ -66,6 +66,7 @@
 		"cookie": "^1.0.2",
 		"date-fns": "^4.1.0",
 		"dayjs": "^1.11.18",
+		"docx": "^9.5.1",
 		"docxtemplater": "^3.67.5",
 		"embla-carousel-react": "^8.6.0",
 		"framer-motion": "^12.23.19",

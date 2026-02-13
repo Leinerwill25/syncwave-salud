@@ -292,6 +292,8 @@ async function generateReportContentFromTemplate(
 		diagnostico: consultation.diagnosis || 'No especificado',
 		motivo: consultation.chief_complaint || 'No especificado',
 		notas: consultation.notes || '',
+        plan: consultation.notes || '',
+        tratamiento: consultation.notes || '',
 		
 		// Fecha de consulta
 		fecha_consulta: consultation.started_at 
@@ -776,6 +778,13 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 			return NextResponse.json({ error: 'Error al obtener plantilla' }, { status: 500 });
 		}
 
+        // Obtener configuración de informe genérico (nueva tabla)
+        const { data: genericConfig } = await supabase
+            .from('medical_report_templates')
+            .select('template_text')
+            .eq('user_id', doctorId)
+            .maybeSingle();
+
 		// Si es obstetricia, buscar plantilla específica
 		let templateText: string | null = null;
 		let templateFontFamily: string = medicProfile?.report_font_family || 'Arial';
@@ -877,7 +886,11 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 
 			// Si no se encontró en report_templates_by_specialty, usar plantilla general (compatibilidad hacia atrás)
 			if (!templateText) {
-				templateText = medicProfile?.report_template_text || null;
+                if (genericConfig?.template_text) {
+                    templateText = genericConfig.template_text;
+                } else {
+				    templateText = medicProfile?.report_template_text || null;
+                }
 			}
 		}
 

@@ -100,6 +100,13 @@ export async function POST(
 			.eq('doctor_id', doctorId)
 			.maybeSingle();
 
+        // Obtener configuración del informe genérico (texto, colores, etc.)
+        const { data: genericConfig } = await supabase
+            .from('medical_report_templates')
+            .select('*')
+            .eq('user_id', doctorId)
+            .maybeSingle();
+
 		// Obtener datos del paciente
 		let patientData: any = null;
 		if (consultation.patient_id) {
@@ -190,6 +197,7 @@ export async function POST(
 				report_template_name: medicProfile?.report_template_name || null,
 				report_templates_by_specialty: medicProfile?.report_templates_by_specialty || null,
 			},
+            genericConfig: genericConfig || null,
 			// Variables de configuración (pasar desde Next.js para evitar usar Environment Variables premium)
 			groqApiKey: GROQ_API_KEY,
 			n8nApiKey: N8N_API_KEY,

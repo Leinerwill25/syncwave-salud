@@ -123,6 +123,19 @@ export async function POST(request: NextRequest) {
     let templateUrl: string | null = medicProfile.report_template_url;
     let templateName: string =
       medicProfile.report_template_name || 'Plantilla médica';
+    let templateTextConfig: string | null = null;
+    let templateSource: 'file' | 'text' = 'file';
+
+    // Obtener configuración de informe genérico (nueva tabla)
+    const { data: genericConfig } = await supabaseAdmin
+        .from('medical_report_templates')
+        .select('template_text')
+        .eq('user_id', doctorId)
+        .maybeSingle();
+
+    if (genericConfig?.template_text) {
+        templateTextConfig = genericConfig.template_text;
+    }
 
     // Parsear report_templates_by_specialty (puede venir como string desde Supabase)
     let specialtyTemplates: Record<string, { url?: string; template_url?: string; name?: string; template_name?: string }> | null = null;
@@ -167,32 +180,40 @@ export async function POST(request: NextRequest) {
     }
 
     if (!templateUrl) {
-      console.warn('[Analyze Template] No hay plantilla configurada para reportType:', reportType);
-      return NextResponse.json({
-        success: false,
-        error: `No hay plantilla configurada para el tipo de informe "${reportType}"`,
-        templateText: '',
-        variables: [],
-        sections: [],
-        debug: {
-          reportType,
-          availableKeys: specialtyTemplates ? Object.keys(specialtyTemplates) : [],
-          triedKeys: getSpecialtyKeys(reportType)
-        }
-      });
+      // Si no hay archivo DOCX, verificar si tenemos texto de plantilla
+      if (templateTextConfig && (reportType === 'general' || reportType === 'generic' || !templateUrl)) {
+          console.log('[Analyze Template] No hay archivo DOCX, pero se encontró texto de plantilla genérica.');
+          templateSource = 'text';
+          // Continuamos sin error, usaremos el texto
+      } else {
+          console.warn('[Analyze Template] No hay plantilla configurada para reportType:', reportType);
+          return NextResponse.json({
+            success: false,
+            error: `No hay plantilla configurada para el tipo de informe "${reportType}"`,
+            templateText: '',
+            variables: [],
+            sections: [],
+            debug: {
+              reportType,
+              availableKeys: specialtyTemplates ? Object.keys(specialtyTemplates) : [],
+              triedKeys: getSpecialtyKeys(reportType)
+            }
+          });
+      }
     }
 
-    console.log('[Analyze Template] URL de plantilla encontrada:', templateUrl?.substring(0, 100) + '...');
+    console.log('[Analyze Template] Fuente de plantilla:', templateSource, templateSource === 'file' ? (templateUrl?.substring(0, 100) + '...') : '(Texto Configurado)');
 
    /* =========================
    Descargar DOCX (robusto)
 ========================= */
 
-let arrayBuffer: ArrayBuffer;
+   let arrayBuffer: ArrayBuffer | null = null;
 
-try {
-  // 1️⃣ Si viene signed URL → extraer bucket/path y regenerar
-  if (templateUrl.includes('/object/sign/')) {
+   if (templateSource === 'file' && templateUrl) {
+    try {
+        // 1️⃣ Si viene signed URL → extraer bucket/path y regenerar
+        if (templateUrl.includes('/object/sign/')) {
     console.log('[Analyze Template] Descargando desde signed URL...');
     const signedUrl = new URL(templateUrl);
     const match = signedUrl.pathname.match(
@@ -270,25 +291,34 @@ try {
   });
   throw downloadError;
 }
+   }
 
 
     /* =========================
        Texto plano (Mammoth)
     ========================= */
     let extractedText = '';
-    try {
-      const mammothResult = await mammoth.extractRawText({
-        arrayBuffer
-      });
-      extractedText = mammothResult.value || '';
-    } catch {
-      extractedText = '';
+
+    if (templateSource === 'text' && templateTextConfig) {
+        extractedText = templateTextConfig;
+    } else if (arrayBuffer) {
+        try {
+            const mammothResult = await mammoth.extractRawText({
+                arrayBuffer: arrayBuffer as ArrayBuffer
+            });
+            extractedText = mammothResult.value || '';
+        } catch {
+            extractedText = '';
+        }
     }
 
     /* =========================
        Variables (texto + XML)
     ========================= */
-    const xmlVariables = await extractVariablesFromDocx(arrayBuffer);
+    let xmlVariables: string[] = [];
+    if (arrayBuffer) {
+        xmlVariables = await extractVariablesFromDocx(arrayBuffer as ArrayBuffer);
+    }
     const textVariables = extractVariablesFromText(extractedText);
 
     const variables: string[] = Array.from(

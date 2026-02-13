@@ -10,6 +10,9 @@ interface AudioRecorderButtonProps {
 	onSuccess?: (reportUrl: string, transcription?: string) => void;
 	onError?: (error: string) => void;
 	className?: string;
+	customEndpoint?: string;
+	onSuccessContent?: (content: string, transcription?: string) => void;
+	onStart?: () => void;
 }
 
 export default function AudioRecorderButton({
@@ -17,8 +20,11 @@ export default function AudioRecorderButton({
 	reportType,
 	specialty,
 	onSuccess,
+	onSuccessContent,
 	onError,
+	onStart,
 	className = '',
+	customEndpoint,
 }: AudioRecorderButtonProps) {
 	const [isRecording, setIsRecording] = useState(false);
 	const [isProcessing, setIsProcessing] = useState(false);
@@ -81,6 +87,10 @@ export default function AudioRecorderButton({
 			recorder.start();
 			setMediaRecorder(recorder);
 			setIsRecording(true);
+			
+			if (onStart) {
+				onStart();
+			}
 
 			// Iniciar temporizador
 			timerRef.current = setInterval(() => {
@@ -156,8 +166,10 @@ export default function AudioRecorderButton({
 			formData.append('reportType', reportType);
 			formData.append('specialty', specialty);
 
+			const endpoint = customEndpoint || `/api/consultations/${consultationId}/generate-report-from-audio`;
+			
 			const response = await fetch(
-				`/api/consultations/${consultationId}/generate-report-from-audio`,
+				endpoint,
 				{
 					method: 'POST',
 					body: formData,
@@ -170,13 +182,6 @@ export default function AudioRecorderButton({
 				throw new Error(result.error || 'Error al procesar el audio');
 			}
 
-			// Obtener reportUrl de la respuesta
-			const reportUrl = result.report_url || result.reportUrl;
-			
-			if (!reportUrl) {
-				throw new Error('No se recibió la URL del informe generado');
-			}
-
 			// Limpiar intervalo de progreso
 			if (progressIntervalRef.current) {
 				clearInterval(progressIntervalRef.current);
@@ -185,17 +190,26 @@ export default function AudioRecorderButton({
 			
 			// Completar progreso
 			setProgress(100);
-			setProgressMessage('Informe generado exitosamente');
+			setProgressMessage('Procesamiento exitoso');
 			
 			setSuccess('Informe generado exitosamente');
 			setRecordedAudio(null);
 
-			if (onSuccess) {
-				onSuccess(reportUrl, result.transcription);
+			// Manejar respuesta de contenido (texto)
+			if (result.content && onSuccessContent) {
+				onSuccessContent(result.content, result.transcription);
+				return;
 			}
 
-			// Descargar automáticamente el informe si está disponible
+			// Manejar respuesta de URL (archivo)
+			const reportUrl = result.report_url || result.reportUrl;
+			
 			if (reportUrl) {
+				if (onSuccess) {
+					onSuccess(reportUrl, result.transcription);
+				}
+
+				// Descargar automáticamente el informe si está disponible
 				setTimeout(() => {
 					try {
 						// Intentar descargar usando fetch para obtener el blob
@@ -227,6 +241,9 @@ export default function AudioRecorderButton({
 						window.open(reportUrl, '_blank');
 					}
 				}, 1500); // Esperar 1.5 segundos para asegurar que el archivo esté disponible
+			} else if (!onSuccessContent) {
+				// Si no hay URL ni handler de contenido, lanzar error (a menos que sea solo transcripción pero no es el caso usual)
+				throw new Error('No se recibió la URL del informe generado');
 			}
 
 			// Limpiar después de 5 segundos

@@ -1,14 +1,15 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Settings, User, Clock, Bell, Lock, Building2, Stethoscope } from 'lucide-react';
+import { Settings, User, Clock, Bell, Lock, Building2, Stethoscope, FileText } from 'lucide-react';
+import GenericReportConfig from '@/components/medic/GenericReportConfig';
 import ProfessionalProfile from '@/components/medic/ProfessionalProfile';
 import AvailabilitySchedule from '@/components/medic/AvailabilitySchedule';
 import NotificationPreferences from '@/components/medic/NotificationPreferences';
 import SecuritySettings from '@/components/medic/SecuritySettings';
 import type { MedicConfig } from '@/types/medic-config';
 
-type TabType = 'profile' | 'availability' | 'notifications' | 'security';
+type TabType = 'profile' | 'availability' | 'notifications' | 'security' | 'report';
 
 export default function MedicConfigurationPage() {
 	const [activeTab, setActiveTab] = useState<TabType>('profile');
@@ -49,6 +50,7 @@ export default function MedicConfigurationPage() {
 		{ id: 'availability', label: 'Horarios', icon: Clock },
 		{ id: 'notifications', label: 'Preferencias', icon: Bell },
 		{ id: 'security', label: 'Seguridad', icon: Lock },
+		{ id: 'report', label: 'Informe Genérico', icon: FileText },
 	];
 
 	if (loading) {
@@ -224,6 +226,9 @@ export default function MedicConfigurationPage() {
 								config={config} 
 								onUpdate={loadConfig}
 							/>
+						)}
+						{activeTab === 'report' && (
+							<GenericReportConfig />
 						)}
 					</div>
 				</div>

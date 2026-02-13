@@ -4,6 +4,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import Docxtemplater from 'docxtemplater';
 import PizZip from 'pizzip';
+import { Document, Packer, Paragraph, TextRun, Header, Footer, AlignmentType, ImageRun, Table, TableRow, TableCell, WidthType, BorderStyle, VerticalAlign, HeadingLevel } from 'docx';
 
 /**
  * Endpoint interno para que n8n genere el informe
@@ -38,7 +39,12 @@ export async function POST(request: NextRequest) {
 		}
 
 		// Validar que tenemos datos para generar el informe
+		console.log('[N8N Internal] Recibido extractedFields:', JSON.stringify(extractedFields).substring(0, 1000));
+		console.log('[N8N Internal] Structure check:', Object.keys(extractedFields).map(k => `${k}: ${typeof extractedFields[k]} ${JSON.stringify(extractedFields[k]).substring(0, 50)}`));
+		console.log('[N8N Internal] Recibido transcription length:', transcription?.length || 0);
+
 		if (!extractedFields || (typeof extractedFields === 'object' && Object.keys(extractedFields).length === 0)) {
+			console.error('[N8N Internal] extractedFields está vacío o es inválido');
 			return NextResponse.json(
 				{ error: 'Faltan datos extraídos del audio (extractedFields)' },
 				{ status: 400 }
@@ -91,6 +97,13 @@ export async function POST(request: NextRequest) {
 			);
 		}
 
+		// Obtener configuración de informe genérico (nueva tabla)
+		const { data: genericConfig } = await supabaseAdmin
+			.from('medical_report_templates')
+			.select('template_text, logo_url, header_text, footer_text, primary_color, secondary_color, font_family')
+			.eq('user_id', doctorId)
+			.maybeSingle();
+
 		// Mapeo de reportType a nombres de especialidades en español
 		const REPORT_TYPE_TO_SPECIALTY: Record<string, string[]> = {
 			'gynecology': ['Ginecologia', 'Ginecología', 'gynecology'],
@@ -116,6 +129,11 @@ export async function POST(request: NextRequest) {
 		let templateUrl: string | null = medicProfile.report_template_url;
 		let templateName: string = medicProfile.report_template_name || 'Plantilla médica';
 		let templateText: string | null = medicProfile.report_template_text || null;
+
+		// Prioridad: 1. genericConfig.template_text, 2. medicProfile.report_template_text
+		if (genericConfig?.template_text) {
+			templateText = genericConfig.template_text;
+		}
 
 		// Parsear report_templates_by_specialty (puede venir como string desde Supabase)
 		let specialtyTemplates: Record<string, { url?: string; template_url?: string; name?: string; template_name?: string; template_text?: string }> | null = null;
@@ -165,15 +183,20 @@ export async function POST(request: NextRequest) {
 		}
 
 		if (!templateUrl) {
-			console.error('[N8N Internal] No hay plantilla configurada para reportType:', reportType);
-			return NextResponse.json(
-				{ error: `No hay plantilla configurada para el tipo de informe "${reportType}"` },
-				{ status: 400 }
-			);
+			// Si hay texto de plantilla, permitimos continuar (generaremos un DOCX base)
+			if (templateText) {
+				console.log('[N8N Internal] No hay URL de plantilla, pero hay texto de plantilla. Se generará DOCX base.');
+			} else {
+				console.error('[N8N Internal] No hay plantilla configurada para reportType:', reportType);
+				return NextResponse.json(
+					{ error: `No hay plantilla configurada para el tipo de informe "${reportType}"` },
+					{ status: 400 }
+				);
+			}
 		}
 
 		console.log('[N8N Internal] Plantilla obtenida:', {
-			url: templateUrl.substring(0, 100) + '...',
+			url: templateUrl?.substring(0, 100) + '...' || 'Sin URL (Texto)',
 			name: templateName,
 			reportType,
 			doctorId,
@@ -253,8 +276,14 @@ export async function POST(request: NextRequest) {
 			}
 		}
 
-		// Preparar fecha de consulta
-		const consultationDate = consultation.started_at
+		// Preparar fecha del informe (hoy) y de consulta
+		const reportDate = new Date().toLocaleDateString('es-ES', {
+			year: 'numeric',
+			month: 'long',
+			day: 'numeric',
+		});
+
+        const consultationDate = consultation.started_at
 			? new Date(consultation.started_at).toLocaleDateString('es-ES', {
 					year: 'numeric',
 					month: 'long',
@@ -266,18 +295,340 @@ export async function POST(request: NextRequest) {
 					month: 'long',
 					day: 'numeric',
 			  })
-			: new Date().toLocaleDateString('es-ES');
+			: reportDate;
 
 		// Descargar plantilla Word
 		const bucket = 'report-templates';
 
 		console.log('[N8N Internal] Descargando plantilla desde:', templateUrl?.substring(0, 100) + '...');
 
-		let templateBuffer: Buffer;
+		let templateBuffer: Buffer = Buffer.alloc(0);
+
+
+		// Consolidar estilos y textos desde la configuración - Sincronizado con dashboard
+		const primaryColor = (genericConfig?.primary_color || "#0F172A").replace('#', '');
+		const secondaryColor = (genericConfig?.secondary_color || "#3B82F6").replace('#', '');
+		const fontFamily = genericConfig?.font_family || medicProfile.report_font_family || "Arial";
+		const headerText = genericConfig?.header_text || doctorName || "INFORME MÉDICO";
+		const footerText = genericConfig?.footer_text || `Generado el ${reportDate}`;
+
+		// Función auxiliar robusta para convertir a string
+		const toUpper = (val: any): string => {
+			if (val === null || val === undefined) return '';
+			if (typeof val === 'string') return val.toUpperCase();
+			if (typeof val === 'boolean') return val ? 'SÍ' : 'NO';
+            if (Array.isArray(val)) {
+                return val.map((item: any) => toUpper(item)).join(', ');
+            }
+			if (typeof val === 'object') {
+				// Intentar extraer texto de objetos comunes de N8N/AI
+				if (val.text) return String(val.text).toUpperCase();
+				if (val.content) return String(val.content).toUpperCase();
+				if (val.value) return String(val.value).toUpperCase();
+                if (val.json) return toUpper(val.json);
+                
+				try {
+					const str = JSON.stringify(val);
+					if (str === '{}' || str === '[]') return '';
+					return Object.values(val)
+                        .map(v => {
+                            if (typeof v === 'object' && v !== null) return ''; 
+                            return String(v);
+                        })
+                        .filter(v => v !== '')
+                        .join(', ')
+                        .toUpperCase();
+				} catch {
+					return '';
+				}
+			}
+			return String(val).toUpperCase();
+		};
 
 		try {
+
+
+		// 0️⃣ Si no hay URL pero si texto → Generar DOCX base al vuelo con estilos
+		// 0️⃣ Si no hay URL pero si texto → Generar DOCX base al vuelo con estilos
+        if (!templateUrl && templateText) {
+			console.log('[N8N Internal] Generando DOCX base al vuelo con estilos y logo (Layout Mejorado V2)...');
+			
+            // Utilizar constantes consolidadas arriba
+
+            // --- HEADER CONSTRUCTION ---
+			const headerChildren: any[] = [];
+            
+            // Header Text Components
+            const doctorNameText = new TextRun({
+                text: headerText,
+                bold: true,
+                font: fontFamily,
+                size: 28, // 14pt
+            });
+            
+            const dateText = new TextRun({
+                text: new Date().toLocaleDateString('es-ES'),
+                font: fontFamily,
+                color: "666666",
+                size: 20, // 10pt
+            });
+
+            // Logica del Logo
+            let logoImageRun: ImageRun | undefined;
+			if (genericConfig?.logo_url) {
+                try {
+                    console.log('[N8N Internal] Descargando logo para cabecera:', genericConfig.logo_url);
+                    const logoResp = await fetch(genericConfig.logo_url);
+                    if (logoResp.ok) {
+                        const logoBuffer = await logoResp.arrayBuffer();
+                        logoImageRun = new ImageRun({
+                            data: logoBuffer,
+                            transformation: {
+                                width: 80,
+                                height: 80,
+                            },
+                            type: "png",
+                        });
+                    }
+                } catch (e) {
+                    console.error('[N8N Internal] Error descargando logo:', e);
+                }
+            }
+
+            // Header Grid: 
+            // Left Column: Logo (if exists) stacked with Doctor Name
+            // Right Column: Date
+            const headerRows = [];
+            
+            if (logoImageRun) {
+                 headerRows.push(
+                    new TableRow({
+                        children: [
+                            // Left Cell: Logo + Doctor Name
+                            new TableCell({
+                                children: [
+                                    new Paragraph({ children: [logoImageRun] }),
+                                    new Paragraph({ spacing: { before: 100 }, children: [doctorNameText] })
+                                ],
+                                width: { size: 70, type: WidthType.PERCENTAGE },
+                                verticalAlign: VerticalAlign.BOTTOM,
+                                borders: { top: { style: BorderStyle.NONE }, bottom: { style: BorderStyle.SINGLE, color: secondaryColor, size: 6 }, left: { style: BorderStyle.NONE }, right: { style: BorderStyle.NONE } }
+                            }),
+                            // Right Cell: Date
+                            new TableCell({
+                                children: [
+                                    new Paragraph({ alignment: AlignmentType.RIGHT, children: [dateText] })
+                                ],
+                                width: { size: 30, type: WidthType.PERCENTAGE },
+                                verticalAlign: VerticalAlign.BOTTOM,
+                                borders: { top: { style: BorderStyle.NONE }, bottom: { style: BorderStyle.SINGLE, color: secondaryColor, size: 6 }, left: { style: BorderStyle.NONE }, right: { style: BorderStyle.NONE } }
+                            }),
+                        ]
+                    })
+                );
+            } else {
+                 headerRows.push(
+                    new TableRow({
+                        children: [
+                            // Left Cell: Just Doctor Name
+                            new TableCell({
+                                children: [
+                                    new Paragraph({ children: [doctorNameText] })
+                                ],
+                                width: { size: 70, type: WidthType.PERCENTAGE },
+                                verticalAlign: VerticalAlign.BOTTOM,
+                                borders: { top: { style: BorderStyle.NONE }, bottom: { style: BorderStyle.SINGLE, color: secondaryColor, size: 6 }, left: { style: BorderStyle.NONE }, right: { style: BorderStyle.NONE } }
+                            }),
+                            // Right Cell: Date
+                            new TableCell({
+                                children: [
+                                    new Paragraph({ alignment: AlignmentType.RIGHT, children: [dateText] })
+                                ],
+                                width: { size: 30, type: WidthType.PERCENTAGE },
+                                verticalAlign: VerticalAlign.BOTTOM,
+                                borders: { top: { style: BorderStyle.NONE }, bottom: { style: BorderStyle.SINGLE, color: secondaryColor, size: 6 }, left: { style: BorderStyle.NONE }, right: { style: BorderStyle.NONE } }
+                            }),
+                        ]
+                    })
+                );
+            }
+
+            headerChildren.push(new Table({
+                width: { size: 100, type: WidthType.PERCENTAGE },
+                borders: { top: { style: BorderStyle.NONE }, bottom: { style: BorderStyle.NONE }, left: { style: BorderStyle.NONE }, right: { style: BorderStyle.NONE }, insideVertical: { style: BorderStyle.NONE } },
+                rows: headerRows
+            }));
+            
+            // Spacer
+            headerChildren.push(new Paragraph({ spacing: { after: 200 } }));
+
+			const headers = {
+				default: new Header({
+					children: headerChildren
+				})
+			};
+
+			// Configurar Footer
+			const footers = {
+				default: new Footer({
+					children: [
+						new Paragraph({
+                            border: {
+                                top: { color: "E5E7EB", space: 10, style: BorderStyle.SINGLE, size: 6 }
+                            },
+							alignment: AlignmentType.CENTER,
+							children: [
+								new TextRun({
+									text: footerText,
+									font: fontFamily,
+									size: 16, // 8pt
+									color: "666666"
+								})
+							]
+						})
+					]
+				})
+			};
+
+            // --- BODY CONSTRUCTION ---
+			const children: any[] = [];
+            
+            // 1. Title
+            children.push(new Paragraph({
+                alignment: AlignmentType.CENTER,
+                spacing: { before: 200, after: 400 },
+                children: [
+                    new TextRun({
+                        text: "INFORME MÉDICO",
+                        bold: true,
+                        font: fontFamily,
+                        color: primaryColor,
+                        size: 32, // 16pt
+                    })
+                ]
+            }));
+
+            // 2. Patient Info Grid (2x2)
+            // Paciente: {{paciente}}   Edad: {{edad}}
+            // Cédula: {{cedula}}       Fecha: {{fecha}}
+            children.push(new Table({
+                width: { size: 100, type: WidthType.PERCENTAGE },
+                borders: { top: { style: BorderStyle.NONE }, bottom: { style: BorderStyle.NONE }, left: { style: BorderStyle.NONE }, right: { style: BorderStyle.NONE }, insideVertical: { style: BorderStyle.NONE }, insideHorizontal: { style: BorderStyle.NONE } },
+                rows: [
+                    new TableRow({
+                        children: [
+                            new TableCell({
+                                children: [
+                                    new Paragraph({
+                                        children: [
+                                            new TextRun({ text: "Paciente: ", bold: true, color: primaryColor, font: fontFamily }),
+                                            new TextRun({ text: "{{paciente}}", font: fontFamily })
+                                        ]
+                                    })
+                                ],
+                                width: { size: 50, type: WidthType.PERCENTAGE }
+                            }),
+                            new TableCell({
+                                children: [
+                                    new Paragraph({
+                                        children: [
+                                            new TextRun({ text: "Edad: ", bold: true, color: primaryColor, font: fontFamily }),
+                                            new TextRun({ text: "{{edad}}", font: fontFamily })
+                                        ]
+                                    })
+                                ],
+                                width: { size: 50, type: WidthType.PERCENTAGE }
+                            })
+                        ]
+                    }),
+                    new TableRow({
+                        children: [
+                            new TableCell({
+                                children: [
+                                    new Paragraph({
+                                        children: [
+                                            new TextRun({ text: "Cédula: ", bold: true, color: primaryColor, font: fontFamily }),
+                                            new TextRun({ text: "{{cedula}}", font: fontFamily })
+                                        ]
+                                    })
+                                ],
+                                width: { size: 50, type: WidthType.PERCENTAGE }
+                            }),
+                            new TableCell({
+                                children: [
+                                    new Paragraph({
+                                        children: [
+                                            new TextRun({ text: "Fecha: ", bold: true, color: primaryColor, font: fontFamily }),
+                                            new TextRun({ text: "{{fecha}}", font: fontFamily })
+                                        ]
+                                    })
+                                ],
+                                width: { size: 50, type: WidthType.PERCENTAGE }
+                            })
+                        ]
+                    })
+                ]
+            }));
+
+            children.push(new Paragraph({ spacing: { after: 400 } })); // Spacer after grid
+
+            // 3. Smart Body Parser
+            // Split templateText by lines. If line has {{var}}, it's content. If not, it's a Title.
+            const lines = templateText.split('\n');
+            
+            for (const line of lines) {
+                if (!line.trim()) {
+                    children.push(new Paragraph({ spacing: { after: 100 } })); // Empty line spacing
+                    continue;
+                }
+
+                if (line.includes('{{')) {
+                    // Content Line (Normal Text)
+                    children.push(new Paragraph({
+                        children: [
+                            new TextRun({
+                                text: line,
+                                font: fontFamily,
+                                size: 24, // 12pt
+                            })
+                        ],
+                        spacing: { after: 200 }
+                    }));
+                } else {
+                    // Title Line (Styled: Blue + Bottom Border)
+                    children.push(new Paragraph({
+                        children: [
+                            new TextRun({
+                                text: line,
+                                bold: true,
+                                color: primaryColor,
+                                font: fontFamily,
+                                size: 24 // 12pt
+                            })
+                        ],
+                        border: {
+                            bottom: { color: secondaryColor, space: 1, style: BorderStyle.SINGLE, size: 6 }
+                        },
+                        spacing: { before: 200, after: 100 }
+                    }));
+                }
+            }
+
+			const doc = new Document({
+				sections: [{
+					properties: {},
+					headers: headers,
+					footers: footers,
+					children: children
+				}]
+			});
+			
+			const buffer = await Packer.toBuffer(doc);
+			templateBuffer = buffer as Buffer;
+			console.log('[N8N Internal] ✅ DOCX base generado con estilos (Enhanced), tamaño:', templateBuffer.length);
+		}
 			// 1️⃣ Si viene signed URL → extraer bucket/path y regenerar
-			if (templateUrl.includes('/object/sign/')) {
+			else if (templateUrl && templateUrl.includes('/object/sign/')) {
 				console.log('[N8N Internal] Descargando desde signed URL...');
 				const signedUrl = new URL(templateUrl);
 				const match = signedUrl.pathname.match(
@@ -321,7 +672,7 @@ export async function POST(request: NextRequest) {
 				console.log('[N8N Internal] ✅ Archivo descargado desde signed URL, tamaño:', templateBuffer.length, 'bytes');
 			}
 			// 2️⃣ URL pública → descarga directa
-			else if (templateUrl.startsWith('http://') || templateUrl.startsWith('https://')) {
+			else if (templateUrl && (templateUrl.startsWith('http://') || templateUrl.startsWith('https://'))) {
 				console.log('[N8N Internal] Descargando desde URL pública...');
 				const response = await fetch(templateUrl, {
 					cache: 'no-store',
@@ -340,7 +691,7 @@ export async function POST(request: NextRequest) {
 				console.log('[N8N Internal] ✅ Archivo descargado desde URL pública, tamaño:', templateBuffer.length, 'bytes');
 			}
 			// 3️⃣ Path relativo → extraer y descargar desde storage
-			else {
+			else if (templateUrl) {
 				console.log('[N8N Internal] Descargando desde path relativo...');
 				let filePath = templateUrl;
 				if (templateUrl.includes('/storage/v1/object/')) {
@@ -397,12 +748,7 @@ export async function POST(request: NextRequest) {
 
 		// Obtener datos SOLO del audio (extractedFields) - NO usar vitals del formulario
 		// Los datos del audio vienen estructurados en extractedFields
-		const toUpper = (val: any): string => {
-			if (!val || val === '' || val === null || val === undefined) return '';
-			if (typeof val === 'string') return val.toUpperCase();
-			if (typeof val === 'boolean') return val ? 'SÍ' : 'NO';
-			return String(val).toUpperCase();
-		};
+
 
 		// NO construir contenido estructurado - la plantilla ya tiene su formato
 		// Solo rellenar las variables {{}} de la plantilla con los datos del audio
@@ -446,14 +792,17 @@ export async function POST(request: NextRequest) {
 							result[nestedKey.toLowerCase()] = toUpper(nestedValue);
 							result[(fullKey + '_' + nestedKey).toUpperCase()] = toUpper(nestedValue);
 							result[(fullKey + '_' + nestedKey).toLowerCase()] = toUpper(nestedValue);
-							
-							// Variantes sin guiones bajos
-							const keyNoUnderscore = nestedKey.replace(/_/g, '');
-							result[keyNoUnderscore] = toUpper(nestedValue);
-							result[keyNoUnderscore.toUpperCase()] = toUpper(nestedValue);
-							result[keyNoUnderscore.toLowerCase()] = toUpper(nestedValue);
 						}
 					}
+
+                    // ✨ MAGIA: Si el objeto tiene una propiedad "descripcion", usarla como valor directo
+                    // Esto arregla el problema de [OBJECT OBJECT] para motivo_de_consulta: { descripcion: "..." }
+                    if (value && typeof value === 'object' && 'descripcion' in value) {
+                        const desc = (value as any).descripcion;
+                        result[fullKey] = toUpper(desc);
+                        // Si es una variable clave, mapearla sin prefijo también
+                        if (!result[key]) result[key] = toUpper(desc);
+                    }
 				} else {
 					// Variable directa (no anidada)
 					result[fullKey] = toUpper(value);
@@ -559,11 +908,18 @@ export async function POST(request: NextRequest) {
 		// Preparar datos base para plantilla
 		// NOTA: contenido se construirá después de mapear todas las variables
 		const baseTemplateData: Record<string, string> = {
-			contenido: '', // Se construirá después con la plantilla de texto
-			content: '', // Alias
-			informe: '', // Alias
-			fecha: consultationDate,
-			date: consultationDate,
+			// Mapeos de variables comunes (pueden ser sobrescritos si están en la BD)
+			...commonVariableMappings,
+			// Incluir TODAS las variables mapeadas dinámicamente desde el audio
+			...allMappedFields,
+			
+            // --- PRIORIDAD: Datos del sistema/BD que NO deben ser sobrescritos por la IA ---
+			contenido: '', 
+			content: '', 
+			informe: '', 
+			fecha: reportDate, // Fecha de emisión del informe (hoy)
+			fecha_consulta: consultationDate, // Fecha en que ocurrió la consulta
+			date: reportDate,
 			paciente: patientName.toUpperCase(),
 			patient: patientName.toUpperCase(),
 			edad: patientAge,
@@ -574,110 +930,120 @@ export async function POST(request: NextRequest) {
 			phone: patientPhone,
 			medico: doctorName.toUpperCase(),
 			doctor: doctorName.toUpperCase(),
-			// Usar SOLO datos del audio (extractedFields) - NO datos del formulario
-			diagnostico: toUpper(extractedFields?.diagnosis || extractedFields?.diagnostico || ''),
-			diagnosis: toUpper(extractedFields?.diagnosis || extractedFields?.diagnostico || ''),
-			motivo: toUpper(extractedFields?.motivo || extractedFields?.motivo_consulta || extractedFields?.historia_enfermedad_actual || ''),
-			complaint: toUpper(extractedFields?.motivo || extractedFields?.motivo_consulta || ''),
-			notas: toUpper(extractedFields?.notas || extractedFields?.notes || ''),
-			notes: toUpper(extractedFields?.notas || extractedFields?.notes || ''),
-			// Plan de tratamiento del audio
-			plan: toUpper(extractedFields?.plan || extractedFields?.plan_tratamiento || ''),
-			plan_tratamiento: toUpper(extractedFields?.plan || extractedFields?.plan_tratamiento || ''),
-			// Mapeo de variables comunes (tiene prioridad)
-			...commonVariableMappings,
-			// Incluir TODAS las variables mapeadas dinámicamente
-			...allMappedFields,
+			
+			// Variables de configuración de informe
+			header_text: headerText,
+			footer_text: footerText,
+			header: headerText,
+			footer: footerText,
+			font_family: fontFamily,
+			primary_color: `#${primaryColor}`,
+			secondary_color: `#${secondaryColor}`,
+			
+			// Motivo y Plan: Se extraen del audio pero tienen fallback en baseTemplateData
+			diagnostico: allMappedFields['diagnosis'] || allMappedFields['diagnostico'] || '',
+			diagnosis: allMappedFields['diagnosis'] || allMappedFields['diagnostico'] || '',
+			
+			motivo: allMappedFields['motivo'] || allMappedFields['motivo_consulta'] || allMappedFields['complaint'] || allMappedFields['historia_enfermedad_actual'] || allMappedFields['presentacion'] || '',
+			complaint: allMappedFields['motivo'] || allMappedFields['motivo_consulta'] || allMappedFields['complaint'] || allMappedFields['historia_enfermedad_actual'] || allMappedFields['presentacion'] || '',
+			
+			notas: allMappedFields['notas'] || allMappedFields['notes'] || '',
+			notes: allMappedFields['notas'] || allMappedFields['notes'] || '',
+			
+			plan: allMappedFields['plan'] || allMappedFields['plan_tratamiento'] || allMappedFields['tratamiento'] || '',
+			plan_tratamiento: allMappedFields['plan'] || allMappedFields['plan_tratamiento'] || allMappedFields['tratamiento'] || '',
+			tratamiento: allMappedFields['tratamiento'] || allMappedFields['treatment'] || allMappedFields['plan'] || allMappedFields['plan_tratamiento'] || '',
+			treatment: allMappedFields['tratamiento'] || allMappedFields['treatment'] || allMappedFields['plan'] || allMappedFields['plan_tratamiento'] || '',
 		};
 
 		// Construir templateDataObj según tipo de informe
 		let templateDataObj: Record<string, string>;
 		if (reportType === 'first_trimester') {
-			// Usar SOLO datos del audio (extractedFields) - NO datos de firstTrim del formulario
+			// Usar datos procesados de allMappedFields
 			templateDataObj = {
 				...baseTemplateData,
-				edad_gestacional: extractedFields?.edad_gestacional || '',
-				fur: extractedFields?.fur || extractedFields?.ultima_regla || '',
-				fpp: extractedFields?.fpp || '',
-				gestas: extractedFields?.gestas || '',
-				paras: extractedFields?.paras || '',
-				cesareas: extractedFields?.cesareas || '',
-				abortos: extractedFields?.abortos || '',
-				otros: extractedFields?.otros || '',
-				motivo_consulta: extractedFields?.motivo_consulta || extractedFields?.motivo || baseTemplateData.motivo,
-				referencia: extractedFields?.referencia || '',
-				posicion: extractedFields?.posicion || '',
-				superficie: extractedFields?.superficie || '',
-				miometrio: extractedFields?.miometrio || '',
-				endometrio: extractedFields?.endometrio || '',
-				ovario_derecho: extractedFields?.ovario_derecho || '',
-				ovario_izquierdo: extractedFields?.ovario_izquierdo || '',
-				anexos_ecopatron: extractedFields?.anexos_ecopatron || '',
-				fondo_de_saco: extractedFields?.fondo_de_saco || '',
-				cuerpo_luteo: extractedFields?.cuerpo_luteo || '',
-				gestacion: extractedFields?.gestacion || '',
-				localizacion: extractedFields?.localizacion || '',
-				vesicula: extractedFields?.vesicula || '',
-				cavidad_exocelomica: extractedFields?.cavidad_exocelomica || '',
-				embrion_visto: extractedFields?.embrion_visto || '',
-				ecoanatomia: extractedFields?.ecoanatomia || '',
-				lcr: extractedFields?.lcr || '',
-				acorde_a: extractedFields?.acorde_a || '',
-				actividad_cardiaca: extractedFields?.actividad_cardiaca || '',
-				movimientos_embrionarios: extractedFields?.movimientos_embrionarios || '',
-				conclusiones: extractedFields?.conclusiones || '',
+				edad_gestacional: allMappedFields['edad_gestacional'] || '',
+				fur: allMappedFields['fur'] || allMappedFields['ultima_regla'] || '',
+				fpp: allMappedFields['fpp'] || '',
+				gestas: allMappedFields['gestas'] || '',
+				paras: allMappedFields['paras'] || '',
+				cesareas: allMappedFields['cesareas'] || '',
+				abortos: allMappedFields['abortos'] || '',
+				otros: allMappedFields['otros'] || '',
+				motivo_consulta: allMappedFields['motivo_consulta'] || allMappedFields['motivo'] || baseTemplateData.motivo || '',
+				referencia: allMappedFields['referencia'] || '',
+				posicion: allMappedFields['posicion'] || '',
+				superficie: allMappedFields['superficie'] || '',
+				miometrio: allMappedFields['miometrio'] || '',
+				endometrio: allMappedFields['endometrio'] || '',
+				ovario_derecho: allMappedFields['ovario_derecho'] || '',
+				ovario_izquierdo: allMappedFields['ovario_izquierdo'] || '',
+				anexos_ecopatron: allMappedFields['anexos_ecopatron'] || '',
+				fondo_de_saco: allMappedFields['fondo_de_saco'] || '',
+				cuerpo_luteo: allMappedFields['cuerpo_luteo'] || '',
+				gestacion: allMappedFields['gestacion'] || '',
+				localizacion: allMappedFields['localizacion'] || '',
+				vesicula: allMappedFields['vesicula'] || '',
+				cavidad_exocelomica: allMappedFields['cavidad_exocelomica'] || '',
+				embrion_visto: allMappedFields['embrion_visto'] || '',
+				ecoanatomia: allMappedFields['ecoanatomia'] || '',
+				lcr: allMappedFields['lcr'] || '',
+				acorde_a: allMappedFields['acorde_a'] || '',
+				actividad_cardiaca: allMappedFields['actividad_cardiaca'] || '',
+				movimientos_embrionarios: allMappedFields['movimientos_embrionarios'] || '',
+				conclusiones: allMappedFields['conclusiones'] || '',
 			};
 		} else if (reportType === 'second_third_trimester') {
-			// Usar SOLO datos del audio (extractedFields) - NO datos de secondTrim del formulario
+			// Usar datos procesados de allMappedFields
 			templateDataObj = {
 				...baseTemplateData,
-				edad_gestacional: extractedFields?.edad_gestacional || '',
-				fur: extractedFields?.fur || extractedFields?.ultima_regla || '',
-				fpp: extractedFields?.fpp || '',
-				gestas: extractedFields?.gestas || '',
-				paras: extractedFields?.paras || '',
-				cesareas: extractedFields?.cesareas || '',
-				abortos: extractedFields?.abortos || '',
-				otros: extractedFields?.otros || '',
-				motivo_consulta: extractedFields?.motivo_consulta || extractedFields?.motivo || baseTemplateData.motivo,
-				referencia: extractedFields?.referencia || '',
-				num_fetos: extractedFields?.num_fetos || '',
-				actividad_cardiaca: extractedFields?.actividad_cardiaca || '',
-				situacion: extractedFields?.situacion || '',
-				presentacion: extractedFields?.presentacion || '',
-				dorso: extractedFields?.dorso || '',
-				dbp: extractedFields?.dbp || '',
-				cc: extractedFields?.cc || '',
-				ca: extractedFields?.ca || '',
-				lf: extractedFields?.lf || '',
-				peso_estimado_fetal: extractedFields?.peso_estimado_fetal || '',
-				para: extractedFields?.para || '',
-				placenta: extractedFields?.placenta || '',
-				ubi: extractedFields?.ubi || '',
-				insercion: extractedFields?.insercion || '',
-				grado: extractedFields?.grado || '',
-				cordon_umbilical: extractedFields?.cordon_umbilical || '',
-				liqu_amniotico: extractedFields?.liqu_amniotico || '',
-				p: extractedFields?.p || '',
-				ila: extractedFields?.ila || '',
-				craneo: extractedFields?.craneo || '',
-				corazon: extractedFields?.corazon || '',
-				fcf: extractedFields?.fcf || '',
-				pulmones: extractedFields?.pulmones || '',
-				situs_visceral: extractedFields?.situs_visceral || '',
-				intestino: extractedFields?.intestino || '',
-				vejiga: extractedFields?.vejiga || '',
-				vejiga_extra: extractedFields?.vejiga_extra || '',
-				estomago: extractedFields?.estomago || '',
-				estomago_extra: extractedFields?.estomago_extra || '',
-				rinones: extractedFields?.rinones || '',
-				rinones_extra: extractedFields?.rinones_extra || '',
-				genitales: extractedFields?.genitales || '',
-				miembros_superiores: extractedFields?.miembros_superiores || '',
-				manos: extractedFields?.manos || '',
-				miembros_inferiores: extractedFields?.miembros_inferiores || '',
-				pies: extractedFields?.pies || '',
-				conclusiones: extractedFields?.conclusiones || '',
+				edad_gestacional: allMappedFields['edad_gestacional'] || '',
+				fur: allMappedFields['fur'] || allMappedFields['ultima_regla'] || '',
+				fpp: allMappedFields['fpp'] || '',
+				gestas: allMappedFields['gestas'] || '',
+				paras: allMappedFields['paras'] || '',
+				cesareas: allMappedFields['cesareas'] || '',
+				abortos: allMappedFields['abortos'] || '',
+				otros: allMappedFields['otros'] || '',
+				motivo_consulta: allMappedFields['motivo_consulta'] || allMappedFields['motivo'] || baseTemplateData.motivo || '',
+				referencia: allMappedFields['referencia'] || '',
+				num_fetos: allMappedFields['num_fetos'] || '',
+				actividad_cardiaca: allMappedFields['actividad_cardiaca'] || '',
+				situacion: allMappedFields['situacion'] || '',
+				presentacion: allMappedFields['presentacion'] || '',
+				dorso: allMappedFields['dorso'] || '',
+				dbp: allMappedFields['dbp'] || '',
+				cc: allMappedFields['cc'] || '',
+				ca: allMappedFields['ca'] || '',
+				lf: allMappedFields['lf'] || '',
+				peso_estimado_fetal: allMappedFields['peso_estimado_fetal'] || '',
+				para: allMappedFields['para'] || '',
+				placenta: allMappedFields['placenta'] || '',
+				ubi: allMappedFields['ubi'] || '',
+				insercion: allMappedFields['insercion'] || '',
+				grado: allMappedFields['grado'] || '',
+				cordon_umbilical: allMappedFields['cordon_umbilical'] || '',
+				liqu_amniotico: allMappedFields['liqu_amniotico'] || '',
+				p: allMappedFields['p'] || '',
+				ila: allMappedFields['ila'] || '',
+				craneo: allMappedFields['craneo'] || '',
+				corazon: allMappedFields['corazon'] || '',
+				fcf: allMappedFields['fcf'] || '',
+				pulmones: allMappedFields['pulmones'] || '',
+				situs_visceral: allMappedFields['situs_visceral'] || '',
+				intestino: allMappedFields['intestino'] || '',
+				vejiga: allMappedFields['vejiga'] || '',
+				vejiga_extra: allMappedFields['vejiga_extra'] || '',
+				estomago: allMappedFields['estomago'] || '',
+				estomago_extra: allMappedFields['estomago_extra'] || '',
+				rinones: allMappedFields['rinones'] || '',
+				rinones_extra: allMappedFields['rinones_extra'] || '',
+				genitales: allMappedFields['genitales'] || '',
+				miembros_superiores: allMappedFields['miembros_superiores'] || '',
+				manos: allMappedFields['manos'] || '',
+				miembros_inferiores: allMappedFields['miembros_inferiores'] || '',
+				pies: allMappedFields['pies'] || '',
+				conclusiones: allMappedFields['conclusiones'] || '',
 			};
 		} else {
 			// Ginecología - mapear todas las variables desde extractedFields según la plantilla
@@ -702,36 +1068,36 @@ export async function POST(request: NextRequest) {
 			// Mapeo explícito según los nombres de variables de la plantilla del usuario
 			const explicitMappings: Record<string, string> = {
 				// Variables de la plantilla del usuario
-				historia_enfermedad_actual: toUpper(extractedFields?.motivo_consulta || extractedFields?.historia_enfermedad_actual || ''),
-				alergicos: toUpper(ant.alergias || ''),
-				quirurgicos: toUpper(ant.quirurgicos || ''),
-				antecedentes_madre: toUpper(ant.madre || ''),
-				antecedentes_padre: toUpper(ant.padre || ''),
-				antecedentes_cancer_mama: ant.cancer_mama !== undefined ? (ant.cancer_mama ? 'SÍ' : 'NO') : '',
-				its: toUpper(gyn.its || ''),
-				tipo_menstruacion: toUpper(gyn.menstruacion_tipo || ''),
-				patron_menstruacion: toUpper(gyn.menstruacion_tipo || ''),
-				dismenorrea: gyn.dismenorrea !== undefined ? (gyn.dismenorrea ? 'SÍ' : 'NO') : '',
-				primera_relacion_sexual: toUpper(gyn.primera_relacion || ''),
-				parejas_sexuales: gyn.parejas_sexuales !== undefined ? String(gyn.parejas_sexuales) : '',
-				condiciones_generales: toUpper(exam.condiciones_generales || ''),
-				tamano_mamas: toUpper(mamas.tamaño || mamas.tamano || ''),
-				simetria_mamas: mamas.simetria !== undefined ? (mamas.simetria ? 'SÍ' : 'NO') : toUpper(mamas.simetria || ''),
-				cap_mamas: toUpper(mamas.cap || ''),
-				secrecion_mamas: toUpper(mamas.secrecion || ''),
-				fosas_axilares: toUpper(exam.fosas_axilares || ''),
-				abdomen: toUpper(exam.abdomen || ''),
-				genitales_externos: toUpper(exam.genitales_externos || ''),
-				especuloscopia: toUpper(exam.especuloscopia || ''),
-				tacto_cervix: toUpper(tacto.cervix || ''),
-				fondo_sacos: toUpper(tacto.fondo_sacos || ''),
-				anexos: toUpper(tacto.anexos || ''),
-				dimensiones_utero: toUpper(eco.utero_dimensiones || ''),
-				interfase_endometrial: toUpper(eco.interfase_endometrial || ''),
-				tipo_interfase_endometrial: toUpper(eco.interfase_endometrial || ''),
-				dimensiones_ovario_izquierdo: toUpper(eco.ovario_izquierdo || ''),
-				dimensiones_ovario_derecho: toUpper(eco.ovario_derecho || ''),
-				liquido_fondo_saco: toUpper(eco.liquido_fondo_saco || ''),
+				historia_enfermedad_actual: allMappedFields['motivo_consulta'] || allMappedFields['historia_enfermedad_actual'] || allMappedFields['motivo'] || allMappedFields['presentacion'] || '',
+				alergicos: allMappedFields['alergias'] || allMappedFields['alergicos'] || '',
+				quirurgicos: allMappedFields['quirurgicos'] || '',
+				antecedentes_madre: allMappedFields['antecedentes_madre'] || allMappedFields['madre'] || '',
+				antecedentes_padre: allMappedFields['antecedentes_padre'] || allMappedFields['padre'] || '',
+				antecedentes_cancer_mama: allMappedFields['antecedentes_cancer_mama'] || allMappedFields['cancer_mama'] || '',
+				its: allMappedFields['its'] || '',
+				tipo_menstruacion: allMappedFields['menstruacion_tipo'] || allMappedFields['tipo_menstruacion'] || '',
+				patron_menstruacion: allMappedFields['menstruacion_tipo'] || allMappedFields['patron_menstruacion'] || '',
+				dismenorrea: allMappedFields['dismenorrea'] || '',
+				primera_relacion_sexual: allMappedFields['primera_relacion'] || allMappedFields['primera_relacion_sexual'] || '',
+				parejas_sexuales: allMappedFields['parejas_sexuales'] || '',
+				condiciones_generales: allMappedFields['condiciones_generales'] || '',
+				tamano_mamas: allMappedFields['tamano'] || allMappedFields['tamano_mamas'] || allMappedFields['tamaño'] || '',
+				simetria_mamas: allMappedFields['simetria'] || allMappedFields['simetria_mamas'] || '',
+				cap_mamas: allMappedFields['cap'] || allMappedFields['cap_mamas'] || '',
+				secrecion_mamas: allMappedFields['secrecion'] || allMappedFields['secrecion_mamas'] || '',
+				fosas_axilares: allMappedFields['fosas_axilares'] || '',
+				abdomen: allMappedFields['abdomen'] || '',
+				genitales_externos: allMappedFields['genitales_externos'] || '',
+				especuloscopia: allMappedFields['especuloscopia'] || '',
+				tacto_cervix: allMappedFields['cervix'] || allMappedFields['tacto_cervix'] || '',
+				fondo_sacos: allMappedFields['fondo_sacos'] || '',
+				anexos: allMappedFields['anexos'] || '',
+				dimensiones_utero: allMappedFields['utero_dimensiones'] || allMappedFields['dimensiones_utero'] || '',
+				interfase_endometrial: allMappedFields['interfase_endometrial'] || '',
+				tipo_interfase_endometrial: allMappedFields['interfase_endometrial'] || '',
+				dimensiones_ovario_izquierdo: allMappedFields['ovario_izquierdo'] || allMappedFields['dimensiones_ovario_izquierdo'] || '',
+				dimensiones_ovario_derecho: allMappedFields['ovario_derecho'] || allMappedFields['dimensiones_ovario_derecho'] || '',
+				liquido_fondo_saco: allMappedFields['liquido_fondo_saco'] || '',
 				// Variantes comunes (FUR, método anticonceptivo, etc.)
 				ultima_regla: toUpper(gyn.ultima_regla || extractedFields?.ultima_regla || extractedFields?.fur || ''),
 				fur: toUpper(gyn.ultima_regla || extractedFields?.ultima_regla || extractedFields?.fur || ''),
@@ -756,26 +1122,26 @@ export async function POST(request: NextRequest) {
 				ovario_izquierdo: toUpper(eco.ovario_izquierdo || ''),
 				ovario_derecho: toUpper(eco.ovario_derecho || ''),
 				// Colposcopia (si está en los datos)
-				test_hinselmann: toUpper(extractedFields?.test_hinselmann || extractedFields?.hinselmann_test || ''),
-				test_schiller: toUpper(extractedFields?.test_schiller || extractedFields?.schiller_test || ''),
-				colposcopia_acetico_5: toUpper(extractedFields?.colposcopia_acetico_5 || extractedFields?.acetico_5 || ''),
-				colposcopia_ectocervix: toUpper(extractedFields?.colposcopia_ectocervix || extractedFields?.ectocervix || ''),
-				colposcopia_tipo: toUpper(extractedFields?.colposcopia_tipo || extractedFields?.tipo_colposcopia || ''),
-				colposcopia_extension: toUpper(extractedFields?.colposcopia_extension || extractedFields?.extension_colposcopia || ''),
-				colposcopia_descripcion: toUpper(extractedFields?.colposcopia_descripcion || extractedFields?.descripcion_colposcopia || ''),
-				colposcopia_localizacion: toUpper(extractedFields?.colposcopia_localizacion || extractedFields?.localizacion_colposcopia || ''),
-				colposcopia_acetowhite: toUpper(extractedFields?.colposcopia_acetowhite || extractedFields?.acetowhite || ''),
-				colposcopia_acetowhite_detalles: toUpper(extractedFields?.colposcopia_acetowhite_detalles || extractedFields?.acetowhite_detalles || ''),
-				colposcopia_mosaico: toUpper(extractedFields?.colposcopia_mosaico || extractedFields?.mosaico || ''),
-				colposcopia_punteado: toUpper(extractedFields?.colposcopia_punteado || extractedFields?.punteado || ''),
-				colposcopia_vasos_atipicos: toUpper(extractedFields?.colposcopia_vasos_atipicos || extractedFields?.vasos_atipicos || ''),
-				colposcopia_carcinoma_invasivo: toUpper(extractedFields?.colposcopia_carcinoma_invasivo || extractedFields?.carcinoma_invasivo || ''),
-				colposcopia_bordes: toUpper(extractedFields?.colposcopia_bordes || extractedFields?.bordes_colposcopia || ''),
-				colposcopia_situacion: toUpper(extractedFields?.colposcopia_situacion || extractedFields?.situacion_colposcopia || ''),
-				colposcopia_elevacion: toUpper(extractedFields?.colposcopia_elevacion || extractedFields?.elevacion_colposcopia || ''),
-				colposcopia_biopsia: toUpper(extractedFields?.colposcopia_biopsia || extractedFields?.biopsia || ''),
-				colposcopia_biopsia_localizacion: toUpper(extractedFields?.colposcopia_biopsia_localizacion || extractedFields?.biopsia_localizacion || ''),
-				colposcopia_lugol: toUpper(extractedFields?.colposcopia_lugol || extractedFields?.lugol || ''),
+				test_hinselmann: allMappedFields['test_hinselmann'] || allMappedFields['hinselmann_test'] || '',
+				test_schiller: allMappedFields['test_schiller'] || allMappedFields['schiller_test'] || '',
+				colposcopia_acetico_5: allMappedFields['colposcopia_acetico_5'] || allMappedFields['acetico_5'] || '',
+				colposcopia_ectocervix: allMappedFields['colposcopia_ectocervix'] || allMappedFields['ectocervix'] || '',
+				colposcopia_tipo: allMappedFields['colposcopia_tipo'] || allMappedFields['tipo_colposcopia'] || '',
+				colposcopia_extension: allMappedFields['colposcopia_extension'] || allMappedFields['extension_colposcopia'] || '',
+				colposcopia_descripcion: allMappedFields['colposcopia_descripcion'] || allMappedFields['descripcion_colposcopia'] || '',
+				colposcopia_localizacion: allMappedFields['colposcopia_localizacion'] || allMappedFields['localizacion_colposcopia'] || '',
+				colposcopia_acetowhite: allMappedFields['colposcopia_acetowhite'] || allMappedFields['acetowhite'] || '',
+				colposcopia_acetowhite_detalles: allMappedFields['colposcopia_acetowhite_detalles'] || allMappedFields['acetowhite_detalles'] || '',
+				colposcopia_mosaico: allMappedFields['colposcopia_mosaico'] || allMappedFields['mosaico'] || '',
+				colposcopia_punteado: allMappedFields['colposcopia_punteado'] || allMappedFields['punteado'] || '',
+				colposcopia_vasos_atipicos: allMappedFields['colposcopia_vasos_atipicos'] || allMappedFields['vasos_atipicos'] || '',
+				colposcopia_carcinoma_invasivo: allMappedFields['colposcopia_carcinoma_invasivo'] || allMappedFields['carcinoma_invasivo'] || '',
+				colposcopia_bordes: allMappedFields['colposcopia_bordes'] || allMappedFields['bordes_colposcopia'] || '',
+				colposcopia_situacion: allMappedFields['colposcopia_situacion'] || allMappedFields['situacion_colposcopia'] || '',
+				colposcopia_elevacion: allMappedFields['colposcopia_elevacion'] || allMappedFields['elevacion_colposcopia'] || '',
+				colposcopia_biopsia: allMappedFields['colposcopia_biopsia'] || allMappedFields['biopsia'] || '',
+				colposcopia_biopsia_localizacion: allMappedFields['colposcopia_biopsia_localizacion'] || allMappedFields['biopsia_localizacion'] || '',
+				colposcopia_lugol: allMappedFields['colposcopia_lugol'] || allMappedFields['lugol'] || '',
 			};
 			
 			// Combinar mapeo explícito con mapeo dinámico
@@ -862,7 +1228,7 @@ export async function POST(request: NextRequest) {
 			const documentXml = zip.files['word/document.xml'];
 			if (documentXml) {
 				let xmlContent = documentXml.asText();
-				const selectedFont = medicProfile.report_font_family || 'Arial';
+				const selectedFont = fontFamily; // Usar la fuente consolidada
 				xmlContent = xmlContent.replace(/<w:sz\s+w:val="\d+"/g, '<w:sz w:val="18"');
 				xmlContent = xmlContent.replace(/(<w:rPr[^>]*>)(?![^<]*<w:sz)/g, '$1<w:sz w:val="18"/>');
 				xmlContent = xmlContent.replace(/<w:rFonts[^>]*>/g, `<w:rFonts w:ascii="${selectedFont}" w:hAnsi="${selectedFont}" w:cs="${selectedFont}"/>`);
