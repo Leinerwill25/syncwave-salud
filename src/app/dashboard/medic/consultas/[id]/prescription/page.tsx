@@ -70,6 +70,7 @@ export default async function Page({ params }: Props) {
 			.select(`
 				id,
 				notes,
+				recipe_text,
 				valid_until,
 				status,
 				issued_at,

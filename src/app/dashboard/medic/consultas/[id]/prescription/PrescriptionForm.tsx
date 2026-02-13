@@ -1,8 +1,10 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { Loader2, Plus, Trash, FileDown, Save, FileCheck } from 'lucide-react';
+import { Loader2, Plus, Trash, FileDown, Save, FileCheck, FileText, Eye } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import { extractTextFromDocx } from '@/lib/docx-parser';
+import { renderAsync } from 'docx-preview'; // <--- Import docx-preview
 
 type Item = {
 	id: string;
@@ -17,9 +19,17 @@ type Item = {
 	instructions?: string;
 };
 
+type Template = {
+	id: string;
+	name: string;
+	file_path: string;
+	file_url?: string;
+};
+
 type ExistingPrescription = {
 	id: string;
 	notes: string | null;
+	recipe_text?: string | null; // <--- Add this
 	valid_until: string | null;
 	status: string;
 	issued_at: string;
@@ -47,6 +57,157 @@ type Props = {
 function uid(prefix = '') {
 	return prefix + Math.random().toString(36).slice(2, 9);
 }
+
+// ... existing helper functions ...
+
+/* -------------------------
+   PrescriptionForm (principal)
+   - layout with clear visual hierarchy
+   ------------------------- */
+export default function PrescriptionForm({ consultationId, patientId, unregisteredPatientId, doctorId, existingPrescription }: Props) {
+	const [items, setItems] = useState<Item[]>([]);
+	const [loading, setLoading] = useState(false);
+	const router = useRouter();
+	const [error, setError] = useState<string | null>(null);
+	const [success, setSuccess] = useState<string | null>(null);
+	const [isEditMode, setIsEditMode] = useState(false);
+	const [prescriptionUrl, setPrescriptionUrl] = useState<string | null>(null);
+	const [generatingPrescription, setGeneratingPrescription] = useState(false);
+	const [savingPrescription, setSavingPrescription] = useState(false);
+	const [fontFamily, setFontFamily] = useState<string>('Arial');
+
+	// Template States
+	const [templates, setTemplates] = useState<Template[]>([]);
+	const [selectedTemplateId, setSelectedTemplateId] = useState<string>('');
+	const [recipeBody, setRecipeBody] = useState<string>('');
+	const [loadingTemplates, setLoadingTemplates] = useState(false);
+	const [extractingText, setExtractingText] = useState(false);
+	const [zoom, setZoom] = useState(0.6); // Zoom inicial mas pequeño para ver hoja completa
+
+	// Drag to Scroll Logic
+	const previewContainerRef = React.useRef<HTMLDivElement>(null);
+	const [isDragging, setIsDragging] = useState(false);
+	const [startX, setStartX] = useState(0);
+	const [startY, setStartY] = useState(0);
+	const [scrollLeft, setScrollLeft] = useState(0);
+	const [scrollTop, setScrollTop] = useState(0);
+
+	const handleMouseDown = (e: React.MouseEvent) => {
+		if (!previewContainerRef.current) return;
+		setIsDragging(true);
+		setStartX(e.pageX - previewContainerRef.current.offsetLeft);
+		setStartY(e.pageY - previewContainerRef.current.offsetTop);
+		setScrollLeft(previewContainerRef.current.scrollLeft);
+		setScrollTop(previewContainerRef.current.scrollTop);
+	};
+
+	const handleMouseLeave = () => {
+		setIsDragging(false);
+	};
+
+	const handleMouseUp = () => {
+		setIsDragging(false);
+	};
+
+	const handleMouseMove = (e: React.MouseEvent) => {
+		if (!isDragging || !previewContainerRef.current) return;
+		e.preventDefault();
+		const x = e.pageX - previewContainerRef.current.offsetLeft;
+		const y = e.pageY - previewContainerRef.current.offsetTop;
+		const walkX = (x - startX) * 1.5; // Velocidad de scroll
+		const walkY = (y - startY) * 1.5;
+		previewContainerRef.current.scrollLeft = scrollLeft - walkX;
+		previewContainerRef.current.scrollTop = scrollTop - walkY;
+	};
+
+	// Load templates on mount
+	useEffect(() => {
+		const loadTemplates = async () => {
+			try {
+				setLoadingTemplates(true);
+				const res = await fetch('/api/medic/prescription-templates');
+				if (res.ok) {
+					const data = await res.json();
+					setTemplates(data.templates || []);
+				}
+			} catch (err) {
+				console.error('Error loading templates:', err);
+			} finally {
+				setLoadingTemplates(false);
+			}
+		};
+		loadTemplates();
+	}, []);
+
+	// Handle Template Selection
+	const handleTemplateSelect = async (templateId: string) => {
+		setSelectedTemplateId(templateId);
+		
+		// Limpiar si se deselecciona
+		if (!templateId) {
+			setRecipeBody('');
+			const container = document.getElementById('docx-preview-container');
+			if (container) container.innerHTML = '';
+			return;
+		}
+
+		const template = templates.find((t) => t.id === templateId);
+		if (!template) return;
+
+		try {
+			setExtractingText(true);
+			
+			// Si no hay URL (raro), intentar recargar o avisar
+			if (!template.file_url && template.file_path) {
+				// Aquí podríamos intentar obtener la URL de nuevo si fuera necesario
+				console.warn('Template has path but no URL:', template);
+			}
+			
+			const fileUrl = template.file_url;
+			if (!fileUrl) throw new Error('No se pudo obtener la URL del archivo de la plantilla.');
+
+			// Download file
+			const res = await fetch(fileUrl);
+			if (!res.ok) throw new Error('Error descargando archivo de plantilla');
+			
+			const blob = await res.blob();
+			const arrayBuffer = await blob.arrayBuffer();
+			
+			// 1. Render Preview
+			const container = document.getElementById('docx-preview-container');
+			if (container) {
+				// Limpiar contenedor
+				container.innerHTML = '';
+				// Renderizar usando docx-preview
+				await renderAsync(blob, container, container, {
+					className: 'docx-preview',
+					inWrapper: false,
+					ignoreWidth: false,
+					ignoreHeight: false,
+				});
+			}
+
+			// 2. Extract Text
+			const text = await extractTextFromDocx(arrayBuffer);
+			setRecipeBody(text);
+			
+		} catch (err: any) {
+			console.error('Error processing template:', err);
+			setError(err.message || 'Error al procesar la plantilla.');
+		} finally {
+			setExtractingText(false);
+		}
+	};
+
+	// Fuentes profesionales disponibles
+	const availableFonts = [
+		{ value: 'Arial', label: 'Arial' },
+		{ value: 'Calibri', label: 'Calibri' },
+		{ value: 'Georgia', label: 'Georgia' },
+		{ value: 'Cambria', label: 'Cambria' },
+		{ value: 'Garamond', label: 'Garamond' },
+		{ value: 'Microsoft JhengHei', label: 'Microsoft JhengHei' },
+	];
 
 /* -------------------------
    PrescriptionItemsEditor
@@ -248,32 +409,6 @@ function PrescriptionItemsEditor({ items, setItems }: { items: Item[]; setItems:
 	);
 }
 
-/* -------------------------
-   PrescriptionForm (principal)
-   - layout with clear visual hierarchy
-   ------------------------- */
-export default function PrescriptionForm({ consultationId, patientId, unregisteredPatientId, doctorId, existingPrescription }: Props) {
-	const [items, setItems] = useState<Item[]>([]);
-	const [loading, setLoading] = useState(false);
-	const router = useRouter();
-	const [error, setError] = useState<string | null>(null);
-	const [success, setSuccess] = useState<string | null>(null);
-	const [isEditMode, setIsEditMode] = useState(false);
-	const [prescriptionUrl, setPrescriptionUrl] = useState<string | null>(null);
-	const [generatingPrescription, setGeneratingPrescription] = useState(false);
-	const [savingPrescription, setSavingPrescription] = useState(false);
-	const [fontFamily, setFontFamily] = useState<string>('Arial');
-
-	// Fuentes profesionales disponibles
-	const availableFonts = [
-		{ value: 'Arial', label: 'Arial' },
-		{ value: 'Calibri', label: 'Calibri' },
-		{ value: 'Georgia', label: 'Georgia' },
-		{ value: 'Cambria', label: 'Cambria' },
-		{ value: 'Garamond', label: 'Garamond' },
-		{ value: 'Microsoft JhengHei', label: 'Microsoft JhengHei' },
-	];
-
 	// Función para cargar items de prescripción desde la base de datos
 	const loadPrescriptionItems = async (preserveNewItems = false) => {
 		try {
@@ -354,102 +489,154 @@ export default function PrescriptionForm({ consultationId, patientId, unregister
 				});
 				setItems(loadedItems);
 			}
+			
+			// Cargar texto de la receta si existe
+			if (existingPrescription.recipe_text) {
+				setRecipeBody(existingPrescription.recipe_text);
+			}
 		}
 	}, [existingPrescription]);
+
+	// Función auxiliar para generar y descargar la receta
+	const generateAndDownload = async (savedItems: any[], savedRecipeBody: string) => {
+		try {
+			setGeneratingPrescription(true);
+			
+			const itemsToSend = savedItems.map((item) => {
+				const frequencyText = item.frequency || generateFrequencyText(item.frequencyHours, item.frequencyDays);
+				return {
+					name: item.name,
+					dosage: item.dosage,
+					form: item.form || '',
+					frequency: frequencyText,
+					duration: item.duration,
+					quantity: item.quantity,
+					instructions: item.instructions,
+				};
+			});
+
+			const res = await fetch(`/api/consultations/${consultationId}/generate-prescription`, {
+				method: 'POST',
+				credentials: 'include',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({
+					items: itemsToSend,
+					recipe_body: savedRecipeBody,
+					issued_at: new Date().toISOString(), // Usar fecha actual para la generación
+					prescription_id: existingPrescription?.id || null, // Si ya existía, usar su ID
+					font_family: fontFamily,
+					template_url: templates.find(t => t.id === selectedTemplateId)?.file_url, // <--- Add this
+				}),
+			});
+
+			const data = await res.json();
+			if (!res.ok) throw new Error(data.error || 'Error al generar documento de receta');
+
+			// Guardar URL y abrir en nueva pestaña
+			setPrescriptionUrl(data.prescription_url);
+			if (data.prescription_url) {
+				window.open(data.prescription_url, '_blank');
+			}
+			
+			return true;
+		} catch (err: any) {
+			console.error('Error generando documento:', err);
+			setError('Prescripción guardada, pero hubo un error generando el documento: ' + err.message);
+			return false;
+		} finally {
+			setGeneratingPrescription(false);
+		}
+	};
 
 	async function handleSubmit(e: React.FormEvent) {
 		e.preventDefault();
 		setError(null);
 		setSuccess(null);
 
-		// Validar que haya al menos un tipo de paciente (registrado o no registrado)
+		// Validar que haya al menos un tipo de paciente
 		if (!consultationId || (!patientId && !unregisteredPatientId) || !doctorId) {
 			setError('Faltan datos requeridos (consulta / paciente / doctor).');
 			return;
 		}
 
-		if (items.length === 0 && !confirm('No has añadido ítems. ¿Deseas continuar con una prescripción vacía?')) {
+		// Validar items o texto
+		if (items.length === 0 && (!recipeBody || recipeBody.trim() === '') && !confirm('No has añadido ítems ni texto en la receta. ¿Deseas continuar con una prescripción vacía?')) {
 			return;
 		}
 
 		setLoading(true);
 
 		try {
-			// Si estamos en modo edición, actualizar la prescripción existente
+			// Preparar items para guardar
+			const itemsToSave = items.map((item) => {
+				const frequencyText = item.frequency || generateFrequencyText(item.frequencyHours, item.frequencyDays);
+				return {
+					...item,
+					frequency: frequencyText,
+				};
+			});
+
+			let savedPrescriptionData;
+
+			// 1. Guardar o Actualizar en BD
 			if (isEditMode && existingPrescription) {
 				const form = new FormData();
 				form.append('prescription_id', existingPrescription.id);
 				form.append('consultation_id', consultationId);
-				if (patientId) {
-					form.append('patient_id', String(patientId));
-				}
-				if (unregisteredPatientId) {
-					form.append('unregistered_patient_id', String(unregisteredPatientId));
-				}
+				if (patientId) form.append('patient_id', String(patientId));
+				if (unregisteredPatientId) form.append('unregistered_patient_id', String(unregisteredPatientId));
 				form.append('doctor_id', String(doctorId));
-				// Preparar items para guardar: asegurar que frequency esté generado desde frequencyHours y frequencyDays
-				const itemsToSave = items.map((item) => {
-					const frequencyText = item.frequency || generateFrequencyText(item.frequencyHours, item.frequencyDays);
-					return {
-						...item,
-						frequency: frequencyText,
-						// No guardar frequencyHours y frequencyDays en la BD, solo frequency como texto
-					};
-				});
 				form.append('items', JSON.stringify(itemsToSave));
+				if (recipeBody) form.append('recipe_body', recipeBody);
 
-				const res = await fetch('/api/prescriptions', {
-					method: 'PATCH',
-					body: form,
-				});
-
+				const res = await fetch('/api/prescriptions', { method: 'PATCH', body: form });
 				const data = await res.json();
 				if (!res.ok) throw new Error(data?.error || 'Error actualizando prescripción');
-
-				setSuccess('Prescripción actualizada correctamente.');
-				setLoading(false);
-
-				setTimeout(() => {
-					router.push(`/dashboard/medic/consultas/${consultationId}`);
-				}, 800);
+				
+				savedPrescriptionData = data.prescription; // Asumimos que la API devuelve la prescripción actualizada
 			} else {
-				// Crear nueva prescripción
 				const form = new FormData();
 				form.append('consultation_id', consultationId);
-				if (patientId) {
-					form.append('patient_id', String(patientId));
-				}
-				if (unregisteredPatientId) {
-					form.append('unregistered_patient_id', String(unregisteredPatientId));
-				}
+				if (patientId) form.append('patient_id', String(patientId));
+				if (unregisteredPatientId) form.append('unregistered_patient_id', String(unregisteredPatientId));
 				form.append('doctor_id', String(doctorId));
-				// Preparar items para guardar: asegurar que frequency esté generado desde frequencyHours y frequencyDays
-				const itemsToSave = items.map((item) => {
-					const frequencyText = item.frequency || generateFrequencyText(item.frequencyHours, item.frequencyDays);
-					return {
-						...item,
-						frequency: frequencyText,
-						// No guardar frequencyHours y frequencyDays en la BD, solo frequency como texto
-					};
-				});
 				form.append('items', JSON.stringify(itemsToSave));
+				if (recipeBody) form.append('recipe_body', recipeBody);
 
-				const res = await fetch('/api/prescriptions', {
-					method: 'POST',
-					body: form,
-				});
-
+				const res = await fetch('/api/prescriptions', { method: 'POST', body: form });
 				const data = await res.json();
 				if (!res.ok) throw new Error(data?.error || 'Error creando prescripción');
-
-				setSuccess('Prescripción creada correctamente.');
-				setLoading(false);
-
-				setTimeout(() => {
-					router.push(`/dashboard/medic/consultas/${consultationId}`);
-				}, 800);
+				
+				savedPrescriptionData = data.prescription;
 			}
+
+			// 2. Generar y Descargar Documento Automáticamente
+			const generated = await generateAndDownload(items, recipeBody);
+
+			setSuccess(`Prescripción ${isEditMode ? 'actualizada' : 'creada'} y descargada correctamente.`);
+			setLoading(false);
+
+			// 3. NO Redireccionar - Actualizar estado local
+			if (savedPrescriptionData) {
+				// Actualizar existingPrescription para pasar a modo edición y mostrar datos guardados
+				// OJO: Necesitamos asegurarnos que existingPrescription tenga el formato correcto
+				// Si la API devuelve el objeto prescription completo, lo usamos.
+				// Si no, recargamos los items o usamos lo que tenemos.
+				
+				// Forzamos modo edición
+				setIsEditMode(true);
+				
+				// Recargar la página o actualizar el estado para reflejar cambios podría ser ideal, 
+				// pero por ahora actualizaremos la UI lo mejor posible.
+				// Una opción limpia es hacer router.refresh() para que Next.js revalide datos del servidor si usas server components,
+				// pero aquí estamos en create client.
+				
+				// Vamos a simular que se cargó
+				// window.location.reload(); // Un poco brusco
+			}
+
 		} catch (err: any) {
+			console.error(err);
 			setError(err?.message ?? String(err));
 			setLoading(false);
 		}
@@ -483,6 +670,134 @@ export default function PrescriptionForm({ consultationId, patientId, unregister
 						<div className="text-xs text-slate-700">Consulta</div>
 						<div className="font-mono font-medium text-slate-900">{consultationId}</div>
 					</div>
+				</div>
+			</div>
+
+			{/* Template Selection & Preview Section */}
+			<div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+				{/* Template Selector */}
+				<div className="rounded-2xl bg-white border border-indigo-100 p-5 shadow-sm">
+					<div className="flex items-center gap-2 mb-4">
+						<FileText className="w-5 h-5 text-indigo-600" />
+						<h3 className="text-lg font-semibold text-slate-900">Plantilla de Receta</h3>
+					</div>
+
+					<div className="space-y-4">
+						<div>
+							<label className="block text-sm font-medium text-slate-700 mb-1">Cargar desde mis plantillas</label>
+							<select
+								value={selectedTemplateId}
+								onChange={(e) => handleTemplateSelect(e.target.value)}
+								className="w-full px-4 py-2 rounded-lg border border-slate-300 bg-white text-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+								disabled={loadingTemplates || extractingText}
+							>
+								<option value="">-- Seleccionar Plantilla --</option>
+								{templates.map((t) => (
+									<option key={t.id} value={t.id}>
+										{t.name}
+									</option>
+								))}
+							</select>
+							{loadingTemplates && <p className="text-xs text-slate-500 mt-1">Cargando plantillas...</p>}
+							{extractingText && (
+								<div className="flex items-center gap-2 mt-2 text-indigo-600 text-xs font-medium">
+									<Loader2 className="w-3 h-3 animate-spin" />
+									Extrayendo texto de la plantilla...
+								</div>
+							)}
+						</div>
+						
+						{recipeBody && (
+							<div>
+								<div className="flex items-center justify-between mb-1">
+									<label className="block text-sm font-medium text-slate-700">Contenido de la Receta (Editable)</label>
+									<span className="text-xs text-slate-500">Lo que escribas aquí aparecerá en el documento.</span>
+								</div>
+								<textarea
+									value={recipeBody}
+									onChange={(e) => setRecipeBody(e.target.value)}
+									rows={12}
+									className="w-full px-4 py-3 rounded-lg border border-slate-300 bg-white text-slate-900 font-mono text-sm leading-relaxed resize-none focus:outline-none focus:ring-2 focus:ring-indigo-500"
+									placeholder="El contenido de la receta aparecerá aquí..."
+								/>
+							</div>
+						)}
+					</div>
+				</div>
+
+				{/* Live Preview (DOCX Render) */}
+				<div className="rounded-2xl bg-slate-50 border border-slate-200 p-5 shadow-inner flex flex-col h-[700px]">
+					<div className="flex items-center justify-between mb-4">
+						<div className="flex items-center gap-2">
+							<Eye className="w-5 h-5 text-indigo-600" />
+							<h3 className="text-lg font-semibold text-slate-900">Vista Previa</h3>
+						</div>
+						
+						{/* Zoom Controls */}
+						<div className="flex items-center gap-2 bg-white rounded-lg border border-slate-300 p-1">
+							<button
+								type="button"
+								onClick={() => setZoom((prev) => Math.max(0.5, prev - 0.1))}
+								className="p-1 hover:bg-slate-100 rounded text-slate-600"
+								title="Reducir"
+							>
+								<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><line x1="8" y1="11" x2="14" y2="11"/></svg>
+							</button>
+							<span className="text-xs font-mono w-12 text-center text-slate-700">{Math.round(zoom * 100)}%</span>
+							<button
+								type="button"
+								onClick={() => setZoom((prev) => Math.min(2.0, prev + 0.1))}
+								className="p-1 hover:bg-slate-100 rounded text-slate-600"
+								title="Aumentar"
+							>
+								<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><line x1="11" y1="8" x2="11" y2="14"/><line x1="8" y1="11" x2="14" y2="11"/></svg>
+							</button>
+						</div>
+					</div>
+					
+					<div className="flex-1 bg-slate-200/50 border border-slate-300 rounded-lg overflow-hidden relative">
+						<div 
+							ref={previewContainerRef}
+							onMouseDown={handleMouseDown}
+							onMouseLeave={handleMouseLeave}
+							onMouseUp={handleMouseUp}
+							onMouseMove={handleMouseMove}
+							className={`absolute inset-0 overflow-auto flex p-8 cursor-${isDragging ? 'grabbing' : 'grab'}`}
+						>
+							<div 
+								style={{ 
+									// @ts-ignore
+									zoom: zoom,
+									width: 'fit-content',
+									margin: 'auto',
+									pointerEvents: 'none', // Allow clicks to pass through to drag container
+								}}
+								className="bg-white shadow-lg origin-top-left"
+							>
+								<div id="docx-preview-container">
+									{!selectedTemplateId && (
+										<div className="min-h-[500px] w-[600px] flex flex-col items-center justify-center text-slate-400">
+											<FileText className="w-16 h-16 mb-4 opacity-30" />
+											<p>Selecciona una plantilla para visualizarla aquí</p>
+										</div>
+									)}
+								</div>
+							</div>
+						</div>
+					</div>
+					<p className="mt-3 text-center text-xs text-slate-500">
+						Usa los controles de zoom o arrastra el documento para navegar.
+					</p>
+				</div>
+			</div>
+
+			{/* Separator / Divider */}
+			<div className="relative">
+				<div className="absolute inset-0 flex items-center" aria-hidden="true">
+					<div className="w-full border-t border-slate-200"></div>
+				</div>
+				<div className="relative flex justify-center">
+					<span className="bg-gradient-to-br from-blue-50 via-cyan-50 to-teal-50 px-2 text-sm text-slate-500">O agregar medicamentos manualmente</span>
 				</div>
 			</div>
 
@@ -545,6 +860,7 @@ export default function PrescriptionForm({ consultationId, patientId, unregister
 										},
 										body: JSON.stringify({
 											items: itemsToSend,
+											recipe_body: recipeBody, // <--- Added this
 											issued_at: existingPrescription?.issued_at || null,
 											prescription_id: existingPrescription?.id || null,
 											font_family: fontFamily,

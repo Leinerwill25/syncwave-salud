@@ -84,6 +84,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 					`
 				id,
 				notes,
+				recipe_text, // <--- Add this
 				valid_until,
 				issued_at,
 				prescription_item (
@@ -120,11 +121,20 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 			prescriptionIssuedAt = prescription.issued_at;
 		}
 
-		// Obtener plantilla del médico
-		const { data: medicProfile, error: profileError } = await supabase.from('medic_profile').select('prescription_template_url, prescription_template_name, prescription_template_text, prescription_font_family').eq('doctor_id', doctorId).maybeSingle();
+		// Obtener URL de la plantilla: Prioridad 1: Body, Prioridad 2: Perfil Médico
+		let templateUrl = body?.template_url;
 
-		if (profileError || !medicProfile?.prescription_template_url) {
-			return NextResponse.json({ error: 'No se encontró plantilla de receta. Por favor, carga una plantilla primero en Configuración > Plantilla de Receta.' }, { status: 400 });
+		// Obtener perfil médico (necesario para fallback de URL y para font family)
+		const { data: medicProfile, error: profileError } = await supabase.from('medic_profile').select('prescription_template_url, prescription_font_family').eq('doctor_id', doctorId).maybeSingle();
+
+		if (!templateUrl) {
+			if (!profileError && medicProfile?.prescription_template_url) {
+				templateUrl = medicProfile.prescription_template_url;
+			}
+		}
+
+		if (!templateUrl) {
+			return NextResponse.json({ error: 'No se encontró plantilla de receta. Por favor, selecciona una plantilla en el formulario o carga una predeterminada en Configuración.' }, { status: 400 });
 		}
 
 		// Función auxiliar para calcular edad desde fecha de nacimiento
@@ -198,7 +208,15 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 		});
 
 		// Variable {{recipe}} o {{receta}}: todos los medicamentos juntos, uno por línea
-		const recipeText = medicamentosFormateados.join('\n');
+		// Prioridad: 
+		// 1. body.recipe_body (texto editado manualmente en tiempo real)
+		// 2. prescription.recipe_text (texto guardado en BD de una plantilla previa)
+		// 3. Generado automáticamente desde los items (fallback)
+		const recipeText = (body && body.recipe_body) 
+			? body.recipe_body 
+			: (prescription && prescription.recipe_text 
+				? prescription.recipe_text 
+				: medicamentosFormateados.join('\n'));
 
 		// Variable {{instrucciones}}: nombre del medicamento seguido de dos puntos y las instrucciones
 		// Formato: "NOMBRE_MEDICAMENTO: INSTRUCCIONES"
@@ -283,8 +301,6 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 			auth: { persistSession: false },
 		});
 
-		// Descargar plantilla desde Supabase Storage
-		const templateUrl = medicProfile.prescription_template_url;
 		const bucket = 'prescription-templates';
 
 		console.log('[Generate Prescription API] URL de plantilla:', templateUrl);

@@ -167,6 +167,9 @@ dependencies:
   docx:
     specifier: ^9.5.1
     version: 9.5.1
+  docx-preview:
+    specifier: ^0.3.7
+    version: 0.3.7
   docxtemplater:
     specifier: ^3.67.5
     version: 3.67.5
@@ -12411,6 +12414,12 @@ packages:
     dependencies:
       esutils: 2.0.3
     dev: true
+
+  /docx-preview@0.3.7:
+    resolution: {integrity: sha512-Lav69CTA/IYZPJTsKH7oYeoZjyg96N0wEJMNslGJnZJ+dMUZK85Lt5ASC79yUlD48ecWjuv+rkcmFt6EVPV0Xg==}
+    dependencies:
+      jszip: 3.10.1
+    dev: false
 
   /docx@9.5.1:
     resolution: {integrity: sha512-ABDI7JEirFD2+bHhOBlsGZxaG1UgZb2M/QMKhLSDGgVNhxDesTCDcP+qoDnDGjZ4EOXTRfUjUgwHVuZ6VSTfWQ==}

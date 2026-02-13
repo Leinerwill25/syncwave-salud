@@ -23,6 +23,7 @@ export async function POST(req: Request) {
 		const notes = (form.get('notes') as string) ?? null;
 		const valid_until = (form.get('valid_until') as string) ?? null;
 		const itemsRaw = (form.get('items') as string) ?? '[]';
+		const recipe_text = (form.get('recipe_body') as string) ?? null; // <--- Extract recipe_body
 
 		// parse items safely
 		let items: any[] = [];
@@ -45,6 +46,7 @@ export async function POST(req: Request) {
 			notes,
 			valid_until: valid_until || null,
 			status: 'ACTIVE',
+			recipe_text: recipe_text, // <--- Save to DB
 			// avoid writing updated_at (no existe en tu schema). created_at y issued_at tienen default DB.
 		};
 
@@ -382,6 +384,7 @@ export async function PATCH(req: Request) {
 		const notes = (form.get('notes') as string) ?? null;
 		const valid_until = (form.get('valid_until') as string) ?? null;
 		const itemsRaw = (form.get('items') as string) ?? '[]';
+		const recipe_text = (form.get('recipe_body') as string) ?? null;
 
 		if (!prescription_id) {
 			return NextResponse.json({ error: 'Falta el prescription_id requerido para actualizar.' }, { status: 400 });
@@ -401,6 +404,7 @@ export async function PATCH(req: Request) {
 		// Actualizar la prescripción
 		const updatePayload: any = {};
 		if (notes !== null) updatePayload.notes = notes;
+		if (recipe_text !== null) updatePayload.recipe_text = recipe_text;
 		if (valid_until !== null) updatePayload.valid_until = valid_until || null;
 		// Actualizar patient_id o unregistered_patient_id si se proporcionan
 		if (patient_id !== null) {

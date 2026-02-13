@@ -44,7 +44,10 @@ const LINKS: LinkItem[] = [
 	{
 		label: 'Recetas',
 		icon: ClipboardList,
-		submenu: [{ href: '/dashboard/medic/recetas', label: 'Todas las recetas' }],
+		submenu: [
+			{ href: '/dashboard/medic/recetas', label: 'Historial de Recetas' },
+			{ href: '/dashboard/medic/plantillas', label: 'Mis Plantillas' },
+		],
 	},
 	{
 		label: 'Órdenes Médicas',
