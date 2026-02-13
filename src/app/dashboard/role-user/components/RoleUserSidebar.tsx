@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { LayoutDashboard, CalendarDays, User, ClipboardList, FileText, MessageCircle, CheckSquare, Folder, ChevronRight, ChevronDown, Search, FileCheck, LogOut, Shield, Calendar, BarChart3, TrendingUp, CreditCard, Stethoscope } from 'lucide-react';
 import { hasRoleUserPermission, getRoleUserSession, type RoleUserSession, roleNameEquals, getRoleUserDisplayName } from '@/lib/role-user-auth-client';
+import CurrencyRateWidget from '@/components/role-user/CurrencyRateWidget';
 
 type IconComponent = React.ComponentType<React.SVGProps<SVGSVGElement>>;
 
@@ -389,20 +390,24 @@ export default function RoleUserSidebar() {
 						<ul className="flex flex-col gap-1">{filteredLinks.map(renderLink)}</ul>
 					</nav>
 
-					{/* Logout Button */}
-					<div className="mt-3 pt-2 border-t border-blue-100">
-						<button onClick={handleLogout} className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-slate-700 hover:bg-red-50 hover:text-red-700 transition-colors group">
-							<LogOut className="w-5 h-5 text-slate-600 group-hover:text-red-600" />
-							<span>Cerrar Sesión</span>
-						</button>
-					</div>
+					<div className="mt-auto pt-4">
+						<CurrencyRateWidget />
+						
+						{/* Logout Button */}
+						<div className="pt-2 border-t border-blue-100">
+							<button onClick={handleLogout} className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-slate-700 hover:bg-red-50 hover:text-red-700 transition-colors group">
+								<LogOut className="w-5 h-5 text-slate-600 group-hover:text-red-600" />
+								<span>Cerrar Sesión</span>
+							</button>
+						</div>
 
-					{/* Footer */}
-					<div className="mt-3 pt-2 border-t border-blue-100 flex items-center justify-between text-xs text-slate-500">
-						<div>Soporte</div>
-						<a href="/help" className="text-teal-600 hover:underline">
-							Ayuda
-						</a>
+						{/* Footer */}
+						<div className="mt-2 pt-2 border-t border-blue-100 flex items-center justify-between text-xs text-slate-500">
+							<div>Soporte</div>
+							<a href="/help" className="text-teal-600 hover:underline">
+								Ayuda
+							</a>
+						</div>
 					</div>
 				</div>
 			</div>

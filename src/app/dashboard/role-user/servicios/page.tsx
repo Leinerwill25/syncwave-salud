@@ -4,6 +4,7 @@ import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Stethoscope, Plus, Edit2, Trash2, Loader2, Save, X, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { getRoleUserSession, type RoleUserSession, roleNameEquals } from '@/lib/role-user-auth-client';
+import CurrencyDisplay from '@/components/CurrencyDisplay';
 
 type Service = {
 	id: string;
@@ -678,10 +679,13 @@ export default function RoleUserServicesPage() {
 											<div className="flex flex-col sm:flex-row sm:items-center gap-1.5 sm:gap-2 mb-1.5">
 												<h3 className="text-base sm:text-lg font-semibold text-slate-900 break-words">{service.name}</h3>
 												<span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] sm:text-xs font-medium bg-teal-50 text-teal-700 border border-teal-100 w-fit">
-													{(() => {
-														const numericPrice = Number(typeof service.price === 'string' ? service.price.replace(',', '.') : service.price);
-														return Number.isNaN(numericPrice) ? '-' : `${numericPrice.toFixed(2)} ${service.currency}`;
-													})()}
+													<CurrencyDisplay 
+														amount={Number(typeof service.price === 'string' ? service.price.replace(',', '.') : service.price)} 
+														currency={service.currency} 
+														showBoth={true}
+														size="xs"
+														className="gap-1"
+													/>
 												</span>
 											</div>
 											{service.description && <p className="text-xs sm:text-sm text-slate-600 mt-1 break-words">{service.description}</p>}
@@ -933,7 +937,15 @@ export default function RoleUserServicesPage() {
 											</div>
 											<div className="flex items-center gap-3">
 												<div className="flex flex-col items-end gap-1 min-w-[140px]">
-													<span className="text-sm font-semibold text-teal-700">{Number.isNaN(numericPrice) ? '-' : `${numericPrice.toFixed(2)} ${combo.currency}`}</span>
+													<span className="text-sm font-semibold text-teal-700">
+														<CurrencyDisplay 
+															amount={numericPrice} 
+															currency={combo.currency} 
+															showBoth={true}
+															size="sm"
+															className="items-end"
+														/>
+													</span>
 												</div>
 												{canEdit && (
 													<div className="flex items-center gap-2">

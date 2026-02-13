@@ -16,7 +16,7 @@ interface CurrencyDisplayProps {
 	showBoth?: boolean; // Si true, muestra ambas monedas
 	primaryCurrency?: 'USD' | 'BS' | string; // Moneda principal a mostrar (si no se especifica, usa la preferencia del usuario)
 	className?: string;
-	size?: 'sm' | 'md' | 'lg';
+	size?: 'xs' | 'sm' | 'md' | 'lg';
 }
 
 export default function CurrencyDisplay({ amount, currency = 'USD', showBoth = true, primaryCurrency, className = '', size = 'md' }: CurrencyDisplayProps) {

@@ -20,6 +20,7 @@ import {
 	CalendarClock,
 	MessageCircle,
 } from 'lucide-react';
+import CurrencyDisplay from '@/components/CurrencyDisplay';
 import { useAppointmentsForRoleUser } from '@/app/hooks/useAppointmentsForRoleUser';
 import ReceptionAppointmentModal from './ReceptionAppointmentModal';
 import RescheduleModal from './RescheduleModal';
@@ -399,7 +400,13 @@ export default function AppointmentListForRoleUser({ selectedDate, roleName, can
 												{appt.selected_service.description && <p className="text-xs text-teal-700 mt-1">{appt.selected_service.description}</p>}
 												{appt.selected_service.price && (
 													<div className="text-xs text-teal-600 mt-1 font-semibold">
-														{appt.selected_service.currency || 'USD'} {appt.selected_service.price}
+														<CurrencyDisplay 
+															amount={Number(appt.selected_service.price)} 
+															currency={appt.selected_service.currency || 'USD'} 
+															showBoth={true}
+															size="xs"
+															className="gap-1 items-start"
+														/>
 													</div>
 												)}
 												{/* Si hay múltiples servicios incluidos */}

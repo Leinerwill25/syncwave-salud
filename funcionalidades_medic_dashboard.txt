@@ -622,6 +622,32 @@ D. Generación de PDF:
    - Utiliza plantilla Word personalizada (si está configurada)
    - Sistema de placeholders para datos dinámicos
 
+E. Gestión de Plantillas (NUEVO):
+   - Selección de diseño visual para la receta
+   - Soporte para múltiples plantillas personalizadas (.docx)
+   - Priorización: Plantilla seleccionada > Plantilla por defecto del perfil > Plantilla base
+   - Capacidad de gestionar (subir/eliminar) plantillas directo desde la configuración
+
+F. Modalidad de Edición Flexible (NUEVO):
+   - Opción para alternar entre "Lista de Medicamentos" y "Texto Libre"
+   - Modo Texto Libre:
+     • Editor de texto enriquecido para redacción libre
+     • Ideal para dietas, indicaciones complejas o formatos no estándar
+     • Reemplaza la lista estructurada en el documento final
+     • Beneficio: Mayor versatilidad para diferentes tipos de indicaciones médicas
+
+G. Experiencia de Emisión Optimizada (NUEVO):
+   - Previsualización Web del DOCX:
+     • Visualización fiel del documento antes de generarlo
+     • Controles de Zoom (Acercar/Alejar) para revisar detalles
+     • Desplazamiento (Pan) para navegar por el documento
+     • Muestra datos reales del paciente y médico en tiempo real
+   - Flujo "One-Click":
+     • Botón "Crear Receta" genera y descarga el archivo automáticamente
+     • Mantiene al médico en el formulario (sin redirecciones molestas)
+     • Feedback visual inmediato de éxito
+     • Agiliza la atención de pacientes sucesivos
+
 ═══════════════════════════════════════════════════════════════════════════════════
 5. AGENDA Y CITAS
 ═══════════════════════════════════════════════════════════════════════════════════
