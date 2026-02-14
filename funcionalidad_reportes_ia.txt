@@ -1,0 +1,36 @@
+🚀 FUNCIONALIDAD REVOLUCIONARIA: Generación de Informes Médicos con IA Avanzada
+
+DOCTOR, IMAGINE ESTO:
+Termina su consulta, toma su teléfono, dicta un resumen de 30 segundos y... ¡LISTO!
+Antes de que el paciente salga del consultorio, su informe médico ya está redactado, formateado y listo para imprimir en SU propia papelería.
+
+¿CÓMO FUNCIONA ESTA MAGIA? (El flujo "Invisible" de ASHIRA)
+
+1. 🎙️ DICTADO INTELIGENTE (No es un simple dictado)
+Olvídese de escribir. Simplemente hable. Nuestra IA no solo transcribe, ENTIENDE.
+- Detecta y elimina muletillas ("eh", "este", "hum") automáticamente.
+- Interpreta el contexto médico: Si usted dice "dolor de vientre", la IA sabe que debe ir en "Motivo de Consulta" como "Dolor Abdominal".
+
+2. 🧠 CEREBRO CLÍNICO ANALÍTICO (Modelos LLaMA 3 de Última Generación)
+A diferencia de otros softwares que usan plantillas rígidas, ASHIRA usa Inteligencia Artificial Generativa que "piensa" como su mejor asistente:
+- Estructura la información: Separa antecedentes, examen físico y diagnóstico aunque usted los dicte desordenados.
+- Respeta sus silencios: Si usted no menciona un dato, la IA sabe dejar el campo limpio, sin textos de relleno o "N/A" molestos.
+
+3. 📄 SU PLANTILLA, SU FORMATO (Personalización Absoluta)
+Aquí está la verdadera innovación. No le obligamos a usar "nuestros" formatos.
+- ASHIRA analiza SU documento de Word actual.
+- Identifica dónde va cada dato (Nombre, Cédula, Diagnóstico, Tratamiento).
+- Rellena las variables automáticamente respetando su fuente, su logo y su diseño de siempre.
+
+4. ⚡ VELOCIDAD SUPERSÓNICA
+El proceso completo (Audio -> Transcripción -> Análisis -> Generación de Word) toma segundos.
+Lo que antes le tomaba 10-15 minutos de redacción, ahora le toma 45 segundos de dictado.
+
+¿POR QUÉ ESTO CAMBIA LAS REGLAS DEL JUEGO?
+Porque le devolvemos lo más valioso que tiene: TIEMPO.
+- 40% más de tiempo para ver más pacientes (o para descansar).
+- Cero estrés por acumulación de informes al final del día.
+- Pacientes impresionados por la tecnología y rapidez de su atención.
+
+ASHIRA no es solo un software médico. Es su nuevo Asistente Clínico con Inteligencia Artificial.
+¿Está listo para dejar de teclear y empezar a practicar medicina del futuro?
