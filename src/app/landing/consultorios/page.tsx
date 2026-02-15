@@ -697,88 +697,201 @@ export default function ConsultoriosLandingPage() {
                   ETAPA 5 — CARRUSEL DE FUNCIONALIDADES
                   ══════════════════════════════════════════════
                 */}
-                <section id="funcionalidades" className="py-24 bg-teal-50/30 overflow-hidden">
-                    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mb-12 flex flex-col sm:flex-row items-end justify-between gap-6">
-                        <div className="max-w-xl">
-                            <h2 className="text-3xl sm:text-4xl font-bold text-slate-900 mb-4">Todo lo que necesitas en un solo lugar</h2>
-                            <p className="text-slate-600 text-lg">Más allá de informes, ASHIRA es un sistema operativo completo para tu consultorio.</p>
-                        </div>
-                        <Link href="/register" className="text-teal-600 font-bold hover:underline">
-                            Ver todas las funciones →
-                        </Link>
-                    </div>
-
-                    {/* Draggable/Scrollable List (Simulated Carousel) */}
-                    <div className="flex overflow-x-auto pb-12 gap-8 px-4 sm:px-6 lg:px-8 snap-x no-scrollbar">
-                        {[
-                            { 
-                                name: "Gestión de Citas", 
-                                desc: "Calendario intuitivo y recordatorios.", 
-                                icon: Calendar, 
-                                bg: "bg-blue-100 text-blue-600",
-                                image: "/referencia/Captura de pantalla 2026-02-11 131316.png"
-                            },
-                            { 
-                                name: "Resultados Laboratorio", 
-                                desc: "Centraliza exámenes de pacientes.", 
-                                icon: Activity, 
-                                bg: "bg-red-100 text-red-600",
-                                image: "/referencia/Captura de pantalla 2026-02-11 131545.png"
-                            },
-                            { 
-                                name: "Tasas de Cambio", 
-                                desc: "Precios en USD y Bs automáticos.", 
-                                icon: DollarSign, 
-                                bg: "bg-green-100 text-green-600",
-                                image: "/referencia/Captura de pantalla 2026-02-11 131656.png"
-                            },
-                            { 
-                                name: "Chat Pacientes", 
-                                desc: "Comunicación directa y segura.", 
-                                icon: MessageCircle, 
-                                bg: "bg-purple-100 text-purple-600",
-                                image: "/referencia/Captura de pantalla 2026-02-11 131727.png"
-                            },
-                            { 
-                                name: "Validación Pagos", 
-                                desc: "Verifica transferencias al instante.", 
-                                icon: CreditCard, 
-                                bg: "bg-amber-100 text-amber-600",
-                                image: "/referencia/Captura de pantalla 2026-02-11 131817.png"
-                            },
-                            { 
-                                name: "Historial Clínico", 
-                                desc: "Toda la info en un solo clic.", 
-                                icon: FileCheck, 
-                                bg: "bg-teal-100 text-teal-600",
-                                image: "/referencia/Captura de pantalla 2026-02-11 131933.png"
-                            },
-                        ].map((feat, i) => (
+                {/* 
+                  ══════════════════════════════════════════════
+                  ETAPA 5 — BENTO GRID DE FUNCIONALIDADES
+                  ══════════════════════════════════════════════
+                */}
+                <section id="funcionalidades" className="py-24 bg-slate-50 relative overflow-hidden">
+                    {/* Background Pattern */}
+                    <div className="absolute inset-0 bg-[url('/grid-pattern.svg')] opacity-5"></div>
+                    
+                    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+                        <div className="text-center max-w-3xl mx-auto mb-16">
                             <motion.div 
-                                key={i} 
-                                className="min-w-[320px] sm:min-w-[360px] bg-white rounded-2xl shadow-xl overflow-hidden border border-slate-100 snap-center hover:shadow-2xl transition-all duration-300 group"
-                                whileHover={{ y: -5 }}
+                                initial={{ opacity: 0, y: 20 }}
+                                whileInView={{ opacity: 1, y: 0 }}
+                                viewport={{ once: true }}
+                                className="inline-flex items-center gap-2 px-4 py-2 bg-teal-50 border border-teal-100 rounded-full text-teal-600 text-sm font-bold uppercase tracking-widest mb-6"
                             >
-                                {/* Image Area */}
-                                <div className="h-48 relative overflow-hidden bg-slate-100">
-                                    <Image 
-                                        src={feat.image} 
-                                        alt={feat.name}
-                                        fill
-                                        className="object-cover group-hover:scale-105 transition-transform duration-500"
-                                    />
-                                    <div className="absolute inset-0 bg-gradient-to-t from-slate-900/60 to-transparent opacity-60"></div>
-                                    <div className={`absolute top-4 right-4 w-10 h-10 rounded-xl ${feat.bg} flex items-center justify-center shadow-lg`}>
-                                        <feat.icon className="w-5 h-5" />
+                                <Sparkles className="w-4 h-4" />
+                                Ecosistema Digital
+                            </motion.div>
+                            <motion.h2 
+                                initial={{ opacity: 0, y: 20 }}
+                                whileInView={{ opacity: 1, y: 0 }}
+                                viewport={{ once: true }}
+                                transition={{ delay: 0.1 }}
+                                className="text-3xl sm:text-5xl font-bold text-slate-900 mb-6 tracking-tight"
+                            >
+                                Todo lo que necesitas, <span className="text-teal-600">perfectamente integrado</span>
+                            </motion.h2>
+                            <motion.p 
+                                initial={{ opacity: 0, y: 20 }}
+                                whileInView={{ opacity: 1, y: 0 }}
+                                viewport={{ once: true }}
+                                transition={{ delay: 0.2 }}
+                                className="text-lg text-slate-600 leading-relaxed"
+                            >
+                                ASHIRA no es solo software, es tu centro de comando. Cada herramienta está diseñada para trabajar en armonía y potenciar tu práctica médica.
+                            </motion.p>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-3 auto-rows-[300px] gap-6">
+                            {/* Card 1: Historial Clínico (Hero - 2x2) */}
+                            <motion.div 
+                                initial={{ opacity: 0, scale: 0.95 }}
+                                whileInView={{ opacity: 1, scale: 1 }}
+                                viewport={{ once: true }}
+                                whileHover={{ y: -5 }}
+                                className="md:col-span-2 md:row-span-2 relative group rounded-3xl overflow-hidden shadow-2xl border border-slate-200 bg-white"
+                            >
+                                <Image 
+                                    src="/referencia/Historial.png" 
+                                    alt="Historia Clínica" 
+                                    fill 
+                                    className="object-cover group-hover:scale-105 transition-transform duration-700" 
+                                />
+                                <div className="absolute inset-0 bg-gradient-to-t from-slate-900 via-slate-900/20 to-transparent opacity-90 group-hover:opacity-100 transition-opacity"></div>
+                                <div className="absolute bottom-0 left-0 p-8 sm:p-10 w-full">
+                                    <div className="w-14 h-14 bg-teal-500 rounded-2xl flex items-center justify-center mb-4 shadow-lg shadow-teal-500/30 group-hover:scale-110 transition-transform">
+                                        <FileCheck className="w-7 h-7 text-white" />
                                     </div>
-                                </div>
-                                
-                                <div className="p-6">
-                                    <h3 className="font-bold text-xl text-slate-900 mb-2">{feat.name}</h3>
-                                    <p className="text-slate-600 text-sm leading-relaxed">{feat.desc}</p>
+                                    <h3 className="text-2xl sm:text-4xl font-bold text-white mb-3">Historia Clínica Centralizada</h3>
+                                    <p className="text-slate-300 text-lg sm:text-xl max-w-lg leading-relaxed">
+                                        Accede a antecedentes, alergias, evoluciones y archivos adjuntos al instante. Todo el historial de tu paciente en una vista unificada y elegante.
+                                    </p>
                                 </div>
                             </motion.div>
-                        ))}
+
+                            {/* Card 2: Gestión de Citas */}
+                            <motion.div 
+                                initial={{ opacity: 0, x: 20 }}
+                                whileInView={{ opacity: 1, x: 0 }}
+                                viewport={{ once: true }}
+                                transition={{ delay: 0.2 }}
+                                whileHover={{ y: -5 }}
+                                className="relative group rounded-3xl overflow-hidden shadow-xl border border-slate-200 bg-white"
+                            >
+                                <Image 
+                                    src="/referencia/Captura de pantalla 2026-02-11 131316.png" 
+                                    alt="Citas" 
+                                    fill 
+                                    className="object-cover group-hover:scale-105 transition-transform duration-700" 
+                                />
+                                <div className="absolute inset-0 bg-gradient-to-t from-blue-900/90 to-transparent opacity-90"></div>
+                                <div className="absolute bottom-0 left-0 p-6">
+                                    <div className="flex justify-between items-end mb-2">
+                                        <Calendar className="w-8 h-8 text-blue-400 mb-2" />
+                                        <div className="bg-white/10 backdrop-blur-sm px-2 py-1 rounded text-xs text-white font-mono">AGENDA</div>
+                                    </div>
+                                    <h3 className="text-xl font-bold text-white mb-1">Agenda Inteligente</h3>
+                                    <p className="text-blue-100 text-sm">Gestiona citas, lista de espera y recordatorios automáticos.</p>
+                                </div>
+                            </motion.div>
+
+                            {/* Card 3: Chat Pacientes */}
+                            <motion.div 
+                                initial={{ opacity: 0, x: 20 }}
+                                whileInView={{ opacity: 1, x: 0 }}
+                                viewport={{ once: true }}
+                                transition={{ delay: 0.3 }}
+                                whileHover={{ y: -5 }}
+                                className="relative group rounded-3xl overflow-hidden shadow-xl border border-slate-200 bg-white"
+                            >
+                                <Image 
+                                    src="/referencia/Captura de pantalla 2026-02-11 131727.png" 
+                                    alt="Chat" 
+                                    fill 
+                                    className="object-cover group-hover:scale-105 transition-transform duration-700" 
+                                />
+                                <div className="absolute inset-0 bg-gradient-to-t from-purple-900/90 to-transparent opacity-90"></div>
+                                <div className="absolute bottom-0 left-0 p-6">
+                                    <div className="flex justify-between items-end mb-2">
+                                        <MessageCircle className="w-8 h-8 text-purple-400 mb-2" />
+                                        <div className="bg-white/10 backdrop-blur-sm px-2 py-1 rounded text-xs text-white font-mono">COMUNICACIÓN</div>
+                                    </div>
+                                    <h3 className="text-xl font-bold text-white mb-1">Chat Seguro</h3>
+                                    <p className="text-purple-100 text-sm">Comunicación directa con pacientes sin dar tu número personal.</p>
+                                </div>
+                            </motion.div>
+
+                            {/* Card 4: Resultados Laboratorio */}
+                             <motion.div 
+                                initial={{ opacity: 0, y: 20 }}
+                                whileInView={{ opacity: 1, y: 0 }}
+                                viewport={{ once: true }}
+                                transition={{ delay: 0.4 }}
+                                whileHover={{ y: -5 }}
+                                className="relative group rounded-3xl overflow-hidden shadow-xl border border-slate-200 bg-white"
+                            >
+                                <Image 
+                                    src="/referencia/Laboratorio.png" 
+                                    alt="Laboratorio" 
+                                    fill 
+                                    className="object-cover group-hover:scale-105 transition-transform duration-700" 
+                                />
+                                <div className="absolute inset-0 bg-gradient-to-t from-red-900/90 to-transparent opacity-90"></div>
+                                <div className="absolute bottom-0 left-0 p-6">
+                                    <Activity className="w-8 h-8 text-red-400 mb-3" />
+                                    <h3 className="text-xl font-bold text-white mb-1">Laboratorio Integrado</h3>
+                                    <p className="text-red-100 text-sm">Resultados y exámenes adjuntos directamente al expediente.</p>
+                                </div>
+                            </motion.div>
+
+                             {/* Card 5: Tasas de Cambio */}
+                             <motion.div 
+                                initial={{ opacity: 0, y: 20 }}
+                                whileInView={{ opacity: 1, y: 0 }}
+                                viewport={{ once: true }}
+                                transition={{ delay: 0.5 }}
+                                whileHover={{ y: -5 }}
+                                className="relative group rounded-3xl overflow-hidden shadow-xl border border-slate-200 bg-white"
+                            >
+                                <Image 
+                                    src="/referencia/Moneda.png" 
+                                    alt="Tasas" 
+                                    fill 
+                                    className="object-cover group-hover:scale-105 transition-transform duration-700" 
+                                />
+                                <div className="absolute inset-0 bg-gradient-to-t from-green-900/90 to-transparent opacity-90"></div>
+                                <div className="absolute bottom-0 left-0 p-6">
+                                    <DollarSign className="w-8 h-8 text-green-400 mb-3" />
+                                    <h3 className="text-xl font-bold text-white mb-1">Multimoneda</h3>
+                                    <p className="text-green-100 text-sm">Tasa del día (BCV/Paralelo) actualizada automáticamente.</p>
+                                </div>
+                            </motion.div>
+
+                             {/* Card 6: Pagos */}
+                             <motion.div 
+                                initial={{ opacity: 0, y: 20 }}
+                                whileInView={{ opacity: 1, y: 0 }}
+                                viewport={{ once: true }}
+                                transition={{ delay: 0.6 }}
+                                whileHover={{ y: -5 }}
+                                className="relative group rounded-3xl overflow-hidden shadow-xl border border-slate-200 bg-white"
+                            >
+                                <Image 
+                                    src="/referencia/Pagos.png" 
+                                    alt="Pagos" 
+                                    fill 
+                                    className="object-cover group-hover:scale-105 transition-transform duration-700" 
+                                />
+                                <div className="absolute inset-0 bg-gradient-to-t from-amber-900/90 to-transparent opacity-90"></div>
+                                <div className="absolute bottom-0 left-0 p-6">
+                                    <CreditCard className="w-8 h-8 text-amber-400 mb-3" />
+                                    <h3 className="text-xl font-bold text-white mb-1">Control de Pagos</h3>
+                                    <p className="text-amber-100 text-sm">Valida transferencias, reporta ingresos y controla caja.</p>
+                                </div>
+                            </motion.div>
+                        </div>
+                        
+                        <div className="mt-16 text-center">
+                            <Link href="/register" className="inline-flex items-center gap-3 px-8 py-4 bg-slate-900 text-white rounded-xl font-bold text-lg hover:bg-slate-800 hover:scale-105 transition-all shadow-xl hover:shadow-2xl">
+                                <span>Explorar todas las funcionalidades</span>
+                                <ArrowRight className="w-5 h-5" />
+                            </Link>
+                        </div>
                     </div>
                 </section>
 
