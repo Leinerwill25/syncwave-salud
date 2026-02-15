@@ -61,6 +61,7 @@ export async function middleware(request: NextRequest) {
 		img-src 'self' blob: data: https://*.supabase.co https://*.ashira.click https://*.google.com https://*.vercel-scripts.com https://*.tile.openstreetmap.org;
 		font-src 'self' https://fonts.gstatic.com;
 		connect-src 'self' https://*.supabase.co https://*.ashira.click https://api.groq.com https://nominatim.openstreetmap.org;
+		frame-src 'self' https://www.youtube.com https://youtube.com;
 		frame-ancestors 'none';
 		base-uri 'self';
 		form-action 'self';

@@ -985,10 +985,18 @@ export default function ConsultoriosLandingPage() {
                         <div className="space-y-4">
                             {[
                                 { q: "¿Necesito tarjeta de crédito para registrarme?", a: "No. Puedes registrarte y configurar tu consultorio totalmente gratis. Solo pagas cuando estés listo para suscribirte a un plan." },
-                                { q: "¿Cuánto tiempo toma la configuración?", a: "El promedio es de 3 a 5 minutos. Nuestra interfaz es intuitiva y te guía en cada paso." },
-                                { q: "¿Puedo cancelar en cualquier momento?", a: "Sí, absolutamente. No hay contratos forzosos en el plan mensual." },
-                                { q: "¿Mis datos clínicos están seguros?", a: "Sí. Utilizamos encriptación de grado bancario y backups diarios para garantizar la seguridad de tu información." },
-                                { q: "¿Funciona con internet lento?", a: "Sí. ASHIRA está optimizada para cargar rápido incluso en conexiones inestables." }
+                                {
+                                    q: "¿Necesito instalar algo en mi computadora?",
+                                    a: "No. ASHIRA funciona 100% en la nube. Solo necesitas un navegador (Chrome, Safari, Edge) y conexión a internet."
+                                },
+                                {
+                                    q: "¿Mis datos están seguros?",
+                                    a: "Absolutamente. Usamos encriptación de grado bancario y copias de seguridad automáticas diarias."
+                                },
+                                {
+                                    q: "¿Funciona con internet lento?",
+                                    a: "Sí. ASHIRA está optimizada para cargar rápido incluso en conexiones inestables."
+                                }
                             ].map((item, i) => (
                                 <details key={i} className="group bg-slate-50 rounded-xl border border-slate-100 overflow-hidden">
                                     <summary className="flex items-center justify-between p-4 cursor-pointer font-medium text-slate-900 hover:bg-slate-100 transition-colors list-none">
@@ -1021,7 +1029,7 @@ export default function ConsultoriosLandingPage() {
                             <Link href="/register" className="px-8 py-4 bg-white text-teal-700 font-bold rounded-xl shadow-xl hover:shadow-2xl hover:bg-teal-50 transition-all transform hover:-translate-y-1">
                                 Comenzar Gratis
                             </Link>
-                            <a href="https://wa.me/584241234567" target="_blank" className="px-8 py-4 bg-teal-700 text-white font-bold rounded-xl border border-teal-500 hover:bg-teal-800 transition-all flex items-center justify-center gap-2">
+                            <a href="https://wa.me/584124885623" target="_blank" className="px-8 py-4 bg-teal-700 text-white font-bold rounded-xl border border-teal-500 hover:bg-teal-800 transition-all flex items-center justify-center gap-2">
                                 <MessageCircle className="w-5 h-5" />
                                 Contactar Ventas
                             </a>
@@ -1035,14 +1043,14 @@ export default function ConsultoriosLandingPage() {
                  <Link href="/register" className="flex-1 bg-teal-600 text-white font-bold py-3 rounded-lg text-center shadow-md">
                     Comenzar Gratis
                  </Link>
-                 <a href="https://wa.me/584241234567" className="p-3 bg-green-500 text-white rounded-lg shadow-md">
+                 <a href="https://wa.me/584124885623" className="p-3 bg-green-500 text-white rounded-lg shadow-md">
                     <MessageCircle className="w-6 h-6" />
                  </a>
             </div>
 
             {/* Floating WhatsApp Button (Desktop) */}
             <a 
-                href="https://wa.me/123456789" 
+                href="https://wa.me/584124885623" 
                 target="_blank" 
                 className="hidden md:flex fixed bottom-8 right-8 z-50 bg-green-500 hover:bg-green-600 text-white p-4 rounded-full shadow-2xl transition-transform hover:scale-110 items-center justify-center group"
             >
