@@ -864,14 +864,14 @@ export default function ConsultoriosLandingPage() {
                                         className="object-contain grayscale invert"
                                     />
                                 </div>
-                                <div className="relative h-64 w-full">
+                                <div className="relative h-80 w-full">
                                     <Image 
-                                        src="/consultorios/dracarwin/IMG_5197.JPG" 
+                                        src="/consultorios/dracarwin/IMG_5189.JPG" 
                                         alt="Dra. Carwin Silva" 
                                         fill 
-                                        className="object-cover object-top"
+                                        className="object-cover object-center"
                                     />
-                                    <div className="absolute inset-0 bg-gradient-to-t from-slate-900 via-slate-900/40 to-transparent" />
+                                    <div className="absolute inset-0 bg-gradient-to-t from-slate-900 via-slate-900/20 to-transparent" />
                                 </div>
                                 <div className="p-8 pt-2 flex-1 flex flex-col justify-between">
                                     <blockquote className="text-xl font-medium text-slate-200 leading-relaxed mb-6">
