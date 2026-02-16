@@ -72,6 +72,7 @@
 		"embla-carousel-react": "^8.6.0",
 		"framer-motion": "^12.23.19",
 		"gl-matrix": "^3.4.4",
+		"groq-sdk": "^0.37.0",
 		"gsap": "^3.13.0",
 		"html2canvas": "^1.4.1",
 		"input-otp": "^1.4.2",

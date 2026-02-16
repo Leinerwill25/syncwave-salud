@@ -34,8 +34,8 @@ export async function GET(req: NextRequest) {
 		const limitParam = parseInt(url.searchParams.get('limit') ?? '', 10);
 		const limit = Number.isFinite(limitParam) && limitParam > 0 ? Math.min(limitParam, 500) : 100;
 
-		// Tabla según tu esquema: "Organization" (si tu tabla es lowercase, cámbialo a 'organization')
-		const tableName = 'Organization';
+		// Tabla según tu esquema: "organization" (lowercase)
+		const tableName = 'organization';
 
 		let builder = supabase.from(tableName).select('id, name, inviteBaseUrl, contactEmail, createdAt').order('name', { ascending: true }).limit(limit);
 

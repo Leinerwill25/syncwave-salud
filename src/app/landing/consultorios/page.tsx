@@ -13,6 +13,7 @@ import {
   Menu, X, Mic, Wand2, BrainCircuit, FileJson
 } from 'lucide-react';
 import Head from 'next/head';
+import { VoiceDemo } from './VoiceDemo';
 
 // --- SEO & Schema Components ---
 const SEOMetadata = () => (
@@ -219,13 +220,13 @@ export default function ConsultoriosLandingPage() {
                 </AnimatePresence>
             </header>
 
-            <main className="pt-16 sm:pt-20">
+            <main>
                 {/* 
                   ══════════════════════════════════════════════
                   ETAPA 1 — CAPTURA DE ATENCIÓN (Hero Section)
                   ══════════════════════════════════════════════
                 */}
-                <section className="relative pt-12 pb-20 lg:pt-24 lg:pb-32 overflow-hidden bg-gradient-to-br from-teal-50 via-cyan-50 to-blue-50">
+                <section className="relative pt-32 pb-20 lg:pt-40 lg:pb-32 overflow-hidden bg-gradient-to-br from-teal-50 via-cyan-50 to-blue-50">
                     {/* Animated background elements */}
                     <div className="absolute inset-0 overflow-hidden pointer-events-none">
                         <motion.div 
@@ -574,72 +575,11 @@ export default function ConsultoriosLandingPage() {
                         <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-24 items-center">
                             
                             {/* Interactive Demo Visualization */}
-                            <motion.div 
-                                initial={{ opacity: 0, x: -50 }}
-                                whileInView={{ opacity: 1, x: 0 }}
-                                className="relative"
-                            >
-                                {/* Central Card */}
-                                <div className="bg-slate-800 rounded-3xl p-8 border border-slate-700 shadow-2xl relative z-10">
-                                    {/* Header */}
-                                    <div className="flex items-center justify-between mb-8 border-b border-slate-700 pb-4">
-                                        <div className="flex items-center gap-3">
-                                            <div className="w-3 h-3 rounded-full bg-red-500 animate-pulse"></div>
-                                            <span className="text-slate-300 font-mono text-sm">Grabando...</span>
-                                        </div>
-                                        <Mic className="w-5 h-5 text-teal-400" />
-                                    </div>
 
-                                    {/* Waveform Visualization */}
-                                    <div className="flex items-center justify-center gap-1 h-16 mb-8">
-                                        {[...Array(20)].map((_, i) => (
-                                            <motion.div
-                                                key={i}
-                                                animate={{ height: [10, 40, 10] }}
-                                                transition={{ 
-                                                    duration: 1, 
-                                                    repeat: Infinity, 
-                                                    delay: i * 0.05,
-                                                    ease: "easeInOut" 
-                                                }}
-                                                className="w-1.5 bg-teal-500 rounded-full"
-                                            />
-                                        ))}
-                                    </div>
+                            <div className="relative z-10">
+                                <VoiceDemo />
+                            </div>
 
-                                    {/* Transformation Arrow */}
-                                    <div className="flex justify-center -my-5 relative z-20">
-                                        <div className="bg-slate-900 rounded-full p-3 border border-teal-500/50 shadow-[0_0_15px_rgba(20,184,166,0.5)]">
-                                            <BrainCircuit className="w-6 h-6 text-teal-400" />
-                                        </div>
-                                    </div>
-
-                                    {/* Result Preview */}
-                                    <div className="bg-white rounded-xl p-6 mt-4 shadow-inner">
-                                        <div className="flex items-center gap-3 mb-4">
-                                            <FileText className="w-8 h-8 text-blue-600" />
-                                            <div>
-                                                <div className="h-2 w-24 bg-slate-200 rounded mb-1"></div>
-                                                <div className="h-2 w-16 bg-slate-200 rounded"></div>
-                                            </div>
-                                        </div>
-                                        
-                                        <div className="space-y-2">
-                                            <div className="p-2 bg-blue-500/10 rounded border-l-4 border-blue-500">
-                                                <div className="text-[10px] text-blue-800 font-bold mb-1">MOTIVO CONSULTA</div>
-                                                <div className="text-xs text-slate-700 font-medium">Dolor abdominal agudo...</div>
-                                            </div>
-                                            <div className="p-2 bg-teal-500/10 rounded border-l-4 border-teal-500">
-                                                <div className="text-[10px] text-teal-800 font-bold mb-1">DIAGNÓSTICO</div>
-                                                <div className="text-xs text-slate-700 font-medium">Gastritis erosiva...</div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                {/* Abstract Decor */}
-                                <div className="absolute -inset-4 bg-gradient-to-r from-teal-500 to-purple-600 rounded-[2.5rem] opacity-20 blur-xl -z-10"></div>
-                            </motion.div>
 
                             {/* Features List */}
                             <div className="space-y-8">
@@ -683,7 +623,7 @@ export default function ConsultoriosLandingPage() {
                                     className="pt-8"
                                 >
                                     <Link href="/register" className="inline-flex items-center gap-3 px-8 py-4 bg-gradient-to-r from-teal-600 to-cyan-600 rounded-xl font-bold text-lg hover:shadow-[0_0_20px_rgba(20,184,166,0.4)] transition-all hover:-translate-y-1">
-                                        Probar Tecnología IA Gratis
+                                        Regístrate para generar informes con tu plantilla
                                         <ArrowRight className="w-5 h-5" />
                                     </Link>
                                 </motion.div>
@@ -906,34 +846,73 @@ export default function ConsultoriosLandingPage() {
                             <h2 className="text-3xl sm:text-4xl font-bold text-slate-900">Médicos que ya transformaron su práctica</h2>
                         </div>
 
-                        {/* Testimonial Hero Card */}
-                        <div className="max-w-5xl mx-auto bg-gradient-to-br from-slate-900 to-slate-800 rounded-3xl overflow-hidden shadow-2xl text-white">
-                            <div className="grid grid-cols-1 md:grid-cols-2">
-                                <div className="relative h-64 md:h-auto min-h-[300px]">
+                        {/* Testimonials Grid */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                            {/* Card 1: Dra. Carwin Silva */}
+                            <motion.div 
+                                initial={{ opacity: 0, y: 20 }}
+                                whileInView={{ opacity: 1, y: 0 }}
+                                viewport={{ once: true }}
+                                className="relative bg-slate-900 rounded-3xl overflow-hidden shadow-2xl flex flex-col"
+                            >
+                                <div className="absolute top-0 right-0 p-6 opacity-20">
+                                    <Image 
+                                        src="/consultorios/dracarwin/Recurso 26.png" 
+                                        alt="NovaFem Logo" 
+                                        width={120} 
+                                        height={60} 
+                                        className="object-contain grayscale invert"
+                                    />
+                                </div>
+                                <div className="relative h-64 w-full">
                                     <Image 
                                         src="/consultorios/dracarwin/IMG_5197.JPG" 
                                         alt="Dra. Carwin Silva" 
                                         fill 
-                                        className="object-cover"
-                                        priority
+                                        className="object-cover object-top"
                                     />
-                                    <div className="absolute inset-0 bg-gradient-to-t from-slate-900/80 to-transparent md:bg-gradient-to-r" />
+                                    <div className="absolute inset-0 bg-gradient-to-t from-slate-900 via-slate-900/40 to-transparent" />
                                 </div>
-                                <div className="p-8 md:p-12 flex flex-col justify-center">
-                                    <div className="mb-6">
-                                        <div className="flex text-amber-400 mb-2">
-                                            {[1,2,3,4,5].map(s => <Star key={s} className="w-5 h-5 fill-current" />)}
-                                        </div>
-                                        <blockquote className="text-xl md:text-2xl font-medium leading-relaxed">
-                                            "Con ASHIRA reduje a la mitad el tiempo que pasaba haciendo informes. Ahora me enfoco en lo que realmente importa: mis pacientes."
-                                        </blockquote>
-                                    </div>
+                                <div className="p-8 pt-2 flex-1 flex flex-col justify-between">
+                                    <blockquote className="text-xl font-medium text-slate-200 leading-relaxed mb-6">
+                                        "Veo un potencial inmenso en ASHIRA. Es la herramienta que los médicos hemos estado esperando para modernizar nuestra gestión diaria sin complicaciones."
+                                    </blockquote>
                                     <div>
-                                        <cite className="not-italic font-bold text-lg block">Dra. Carwin Silva</cite>
-                                        <span className="text-slate-400 text-sm">Ginecóloga y Obstetra • Caracas, Venezuela</span>
+                                        <cite className="not-italic font-bold text-lg text-white block">Dra. Carwin Silva</cite>
+                                        <span className="text-teal-400 text-sm font-medium">Ginecóloga y Obstetra • Embajadora ASHIRA</span>
                                     </div>
                                 </div>
-                            </div>
+                            </motion.div>
+
+                            {/* Card 2: Dra. Lisangela Utrera */}
+                            <motion.div 
+                                initial={{ opacity: 0, y: 20 }}
+                                whileInView={{ opacity: 1, y: 0 }}
+                                viewport={{ once: true }}
+                                transition={{ delay: 0.2 }}
+                                className="relative bg-white border border-slate-100 rounded-3xl overflow-hidden shadow-xl flex flex-col"
+                            >
+                                <div className="p-8 flex-1 flex flex-col">
+                                    <div className="flex items-center gap-4 mb-6">
+                                        <div className="w-16 h-16 rounded-full bg-teal-100 flex items-center justify-center text-teal-700 font-bold text-2xl border-2 border-teal-50">
+                                            LU
+                                        </div>
+                                        <div>
+                                            <div className="flex text-amber-500 mb-1">
+                                                {[1,2,3,4,5].map(s => <Star key={s} className="w-4 h-4 fill-current" />)}
+                                            </div>
+                                            <span className="text-slate-400 text-xs font-bold uppercase tracking-wider">Verificado</span>
+                                        </div>
+                                    </div>
+                                    <blockquote className="text-lg text-slate-600 leading-relaxed mb-8 flex-1">
+                                        "Lo que más valoro es que <span className="text-slate-900 font-bold bg-teal-50 px-1">respeta mi plantilla de Word de siempre</span>, a diferencia de otros softwares genéricos. Además, grabar la consulta me ahorra muchísimo tiempo."
+                                    </blockquote>
+                                    <div className="border-t border-slate-100 pt-6">
+                                        <cite className="not-italic font-bold text-lg text-slate-900 block">Dra. Lisangela Utrera</cite>
+                                        <span className="text-slate-500 text-sm">Ginecóloga y Obstetra</span>
+                                    </div>
+                                </div>
+                            </motion.div>
                         </div>
 
                         {/* Stats Strip */}
