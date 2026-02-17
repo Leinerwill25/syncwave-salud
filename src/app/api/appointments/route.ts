@@ -150,6 +150,11 @@ export async function POST(req: NextRequest) {
 			// Intentar insertar con created_by_doctor_id si existe el campo
 			// Si el campo no existe en la BD, la query fallará y usaremos una versión sin ese campo
 			let appointmentResult;
+			
+			// Usar SAVEPOINT para manejar el intento de inserción con campos nuevos
+			// Si falla, podemos hacer rollback al savepoint y probar el fallback sin abortar la transacción principal
+			await client.query('SAVEPOINT attempt_insert_with_doctor');
+
 			try {
 				appointmentResult = await client.query(
 						`
@@ -174,7 +179,14 @@ export async function POST(req: NextRequest) {
 							notes || null,
 						]
 					);
+				
+                // Si llegamos aquí, el insert funcionó, liberamos el savepoint
+                await client.query('RELEASE SAVEPOINT attempt_insert_with_doctor');
+
 				} catch (insertError: any) {
+                    // Si falló, hacemos rollback al savepoint para restaurar el estado de la transacción
+                    await client.query('ROLLBACK TO SAVEPOINT attempt_insert_with_doctor');
+
 					// Si el campo created_by_doctor_id no existe, intentar sin ese campo
 					if (insertError.message?.includes('created_by_doctor_id') || insertError.code === '42703') {
 						console.warn('[Appointments API] Campo created_by_doctor_id no existe, insertando sin ese campo');
@@ -201,6 +213,7 @@ export async function POST(req: NextRequest) {
 							]
 						);
 					} else {
+						// Si fue otro error, lo relanzamos para que el catch externo haga ROLLBACK general
 						throw insertError;
 					}
 				}
