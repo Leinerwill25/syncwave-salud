@@ -164,15 +164,48 @@ export default function AppointmentList({ selectedDate }: Props) {
 									<div className="bg-teal-50 border border-teal-200 rounded-lg p-2 sm:p-3 ml-6">
 										<div className="flex items-center gap-2 mb-1">
 											<CreditCard className="w-4 h-4 text-teal-600 shrink-0" />
-											<span className="text-xs font-semibold text-teal-900">Servicio:</span>
+											<span className="text-xs font-semibold text-teal-900">Servicios:</span>
 										</div>
-										<div className="text-sm font-medium text-teal-800">{appt.selected_service.name}</div>
-										{appt.selected_service.description && <p className="text-xs text-teal-700 mt-1">{appt.selected_service.description}</p>}
-										{appt.selected_service.price !== undefined && (
-											<div className="text-xs text-teal-600 mt-1 font-semibold">
-												{appt.selected_service.currency || 'USD'} {appt.selected_service.price}
-											</div>
-										)}
+                                        
+                                        {/* Manejar array de servicios (nuevo formato) */}
+                                        {Array.isArray(appt.selected_service) ? (
+                                            <div className="space-y-2">
+                                                {appt.selected_service.map((item: any, idx: number) => (
+                                                    <div key={idx} className="border-b border-teal-100 last:border-0 pb-1 last:pb-0">
+                                                        <div className="text-sm font-medium text-teal-800">{item.name}</div>
+                                                        {item.description && <p className="text-xs text-teal-700 mt-0.5">{item.description}</p>}
+                                                        {item.price !== undefined && (
+                                                            <div className="text-xs text-teal-600 font-semibold">
+                                                                {item.currency || 'USD'} {item.price}
+                                                            </div>
+                                                        )}
+                                                        {/* Si es un combo */}
+                                                        {item.type === 'combo' && item.serviceIds && (
+                                                             <div className="mt-1">
+                                                                <p className="text-[10px] font-semibold text-teal-900 opacity-80">Incluye:</p>
+                                                             </div>
+                                                        )}
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        ) : (
+                                            /* Manejar diferentes formatos legacy (objeto único o string) */
+                                            typeof appt.selected_service === 'string' ? (
+                                                <div className="text-sm font-medium text-teal-800">{appt.selected_service}</div>
+                                            ) : appt.selected_service.name ? (
+                                                <>
+                                                    <div className="text-sm font-medium text-teal-800">{appt.selected_service.name}</div>
+                                                    {appt.selected_service.description && <p className="text-xs text-teal-700 mt-1">{appt.selected_service.description}</p>}
+                                                    {appt.selected_service.price !== undefined && (
+                                                        <div className="text-xs text-teal-600 mt-1 font-semibold">
+                                                            {appt.selected_service.currency || 'USD'} {appt.selected_service.price}
+                                                        </div>
+                                                    )}
+                                                </>
+                                            ) : (
+                                                <div className="text-sm font-medium text-teal-800">Servicio no especificado</div>
+                                            )
+                                        )}
 									</div>
 								)}
 

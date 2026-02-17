@@ -559,9 +559,24 @@ export default function AppointmentForm() {
 				}
 			}
 
-			// Obtener el servicio o combo seleccionado (tomar el primero si hay varios)
-			const firstSelectedService = selectedServicesData.length > 0 ? selectedServicesData[0] : null;
-			const firstSelectedCombo = selectedCombosData.length > 0 ? selectedCombosData[0] : null;
+			// Obtener TODOS los servicios y combos seleccionados
+            const allSelectedItems = [
+                ...selectedServicesData.map(s => ({
+                    id: s.id,
+                    name: s.name,
+                    price: s.price,
+                    currency: s.currency,
+                    type: 'service'
+                })),
+                ...selectedCombosData.map(c => ({
+                    id: c.id,
+                    name: c.name,
+                    price: c.price,
+                    currency: c.currency,
+                    type: 'combo',
+                    serviceIds: c.serviceIds
+                }))
+            ];
 
 			// Crear la cita
 			const appointmentPayload: any = {
@@ -572,24 +587,7 @@ export default function AppointmentForm() {
 				reason: reason || null,
 				location,
 				referralSource: referralSource || null,
-				selectedService: firstSelectedService
-					? JSON.stringify({
-							id: firstSelectedService.id,
-							name: firstSelectedService.name,
-							price: firstSelectedService.price,
-							currency: firstSelectedService.currency,
-							type: 'service',
-					  })
-					: firstSelectedCombo
-					? JSON.stringify({
-							id: firstSelectedCombo.id,
-							name: firstSelectedCombo.name,
-							price: firstSelectedCombo.price,
-							currency: firstSelectedCombo.currency,
-							type: 'combo',
-							serviceIds: firstSelectedCombo.serviceIds,
-					  })
-					: null,
+				selectedService: allSelectedItems.length > 0 ? JSON.stringify(allSelectedItems) : null,
 				billing: {
 					subtotal: subtotal || 0,
 					impuestos: 0, // No se aplican impuestos en el área de salud
@@ -1129,19 +1127,7 @@ export default function AppointmentForm() {
 						{(selectedServices.length > 0 || selectedCombos.length > 0) && (
 							<div className="p-4 border border-gray-100 rounded-md bg-white">
 								<h4 className="text-sm font-semibold text-gray-900 mb-3">Resumen de Facturación</h4>
-								<div className="space-y-2">
-									{selectedServices.length > 0 && (
-										<div className="flex justify-between text-xs text-gray-600">
-											<span>Servicios seleccionados:</span>
-											<strong>{selectedServices.length}</strong>
-										</div>
-									)}
-									{selectedCombos.length > 0 && (
-										<div className="flex justify-between text-xs text-gray-600">
-											<span>Combos seleccionados:</span>
-											<strong>{selectedCombos.length}</strong>
-										</div>
-									)}
+								<div className="space-y-3">
 									{(() => {
 										const selectedServicesData = services.filter((s) => selectedServices.includes(s.id));
 										const selectedCombosData = combos.filter((c) => selectedCombos.includes(c.id));
@@ -1151,18 +1137,36 @@ export default function AppointmentForm() {
 										const total = subtotal; // Sin impuestos en área de salud
 										const currency = selectedServicesData[0]?.currency || selectedCombosData[0]?.currency || 'USD';
 
-										return (
-											<div>
-												<div className="flex justify-between items-center pt-2 border-t border-gray-200">
-													<span className="font-semibold text-base">Total ({currency})</span>
-													<strong className="text-lg text-teal-700 font-bold">{total.toFixed(2)}</strong>
-												</div>
-												<div className="mt-3 pt-3 border-t border-gray-200">
-													<CurrencyDisplay amount={total} currency={currency as 'USD' | 'EUR'} showBoth={true} size="md" />
-												</div>
-												<p className="text-xs text-gray-500 mt-3 italic bg-blue-50 p-2 rounded border border-blue-100">💡 Esta factura se creará automáticamente como pendiente de pago para el paciente</p>
-											</div>
-										);
+                                        return (
+                                            <>
+                                                {/* Lista detallada */}
+                                                <div className="space-y-1 text-xs text-gray-600">
+                                                    {selectedServicesData.map(s => (
+                                                        <div key={s.id} className="flex justify-between">
+                                                            <span>• {s.name}</span>
+                                                            <span className="font-medium">{formatMoney(s.price)} {s.currency}</span>
+                                                        </div>
+                                                    ))}
+                                                    {selectedCombosData.map(c => (
+                                                        <div key={c.id} className="flex justify-between">
+                                                            <span>• {c.name} (Combo)</span>
+                                                            <span className="font-medium">{formatMoney(c.price)} {c.currency}</span>
+                                                        </div>
+                                                    ))}
+                                                </div>
+
+                                                <div className="items-center pt-2 border-t border-gray-200">
+                                                    <div className="flex justify-between items-center mb-2">
+                                                        <span className="font-semibold text-base">Total ({currency})</span>
+                                                        <strong className="text-lg text-teal-700 font-bold">{total.toFixed(2)}</strong>
+                                                    </div>
+                                                    
+                                                    <CurrencyDisplay amount={total} currency={currency as 'USD' | 'EUR'} showBoth={true} size="md" />
+                                                    
+                                                    <p className="text-xs text-gray-500 mt-3 italic bg-blue-50 p-2 rounded border border-blue-100">💡 Esta factura se creará automáticamente como pendiente de pago para el paciente</p>
+                                                </div>
+                                            </>
+                                        );
 									})()}
 								</div>
 							</div>

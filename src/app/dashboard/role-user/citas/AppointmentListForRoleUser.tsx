@@ -389,41 +389,73 @@ export default function AppointmentListForRoleUser({ selectedDate, roleName, can
 									<div className="bg-teal-50 border border-teal-200 rounded-lg p-2 sm:p-3 ml-6">
 										<div className="flex items-center gap-2 mb-1">
 											<CreditCard className="w-4 h-4 text-teal-600 shrink-0" />
-											<span className="text-xs font-semibold text-teal-900">Servicio:</span>
+											<span className="text-xs font-semibold text-teal-900">Servicios:</span>
 										</div>
-										{/* Manejar diferentes formatos de selected_service */}
-										{typeof appt.selected_service === 'string' ? (
-											<div className="text-sm font-medium text-teal-800">{appt.selected_service}</div>
-										) : appt.selected_service.name ? (
-											<>
-												<div className="text-sm font-medium text-teal-800">{appt.selected_service.name}</div>
-												{appt.selected_service.description && <p className="text-xs text-teal-700 mt-1">{appt.selected_service.description}</p>}
-												{appt.selected_service.price && (
-													<div className="text-xs text-teal-600 mt-1 font-semibold">
-														<CurrencyDisplay 
-															amount={Number(appt.selected_service.price)} 
-															currency={appt.selected_service.currency || 'USD'} 
-															showBoth={true}
-															size="xs"
-															className="gap-1 items-start"
-														/>
-													</div>
-												)}
-												{/* Si hay múltiples servicios incluidos */}
-												{('services_included' in appt.selected_service && appt.selected_service.services_included && Array.isArray((appt.selected_service as any).services_included) && (appt.selected_service as any).services_included.length > 0) && (
-													<div className="mt-2 space-y-1">
-														<p className="text-xs font-semibold text-teal-900">Servicios incluidos:</p>
-														{(appt.selected_service as any).services_included.map((service: any, idx: number) => (
-															<div key={idx} className="text-xs text-teal-700 pl-2">
-																• {service?.name || service}
-															</div>
-														))}
-													</div>
-												)}
-											</>
-										) : (
-											<div className="text-sm font-medium text-teal-800">Servicio no especificado</div>
-										)}
+                                        
+                                        {/* Manejar array de servicios (nuevo formato) */}
+                                        {Array.isArray(appt.selected_service) ? (
+                                            <div className="space-y-2">
+                                                {appt.selected_service.map((item: any, idx: number) => (
+                                                    <div key={idx} className="border-b border-teal-100 last:border-0 pb-1 last:pb-0">
+                                                        <div className="text-sm font-medium text-teal-800">{item.name}</div>
+                                                        {item.description && <p className="text-xs text-teal-700 mt-0.5">{item.description}</p>}
+                                                        {item.price !== undefined && (
+                                                            <div className="text-xs text-teal-600 font-semibold">
+                                                                <CurrencyDisplay 
+                                                                    amount={Number(item.price)} 
+                                                                    currency={item.currency || 'USD'} 
+                                                                    showBoth={true}
+                                                                    size="xs"
+                                                                    className="gap-1 items-start"
+                                                                />
+                                                            </div>
+                                                        )}
+                                                        {/* Si es un combo */}
+                                                        {item.type === 'combo' && item.serviceIds && (
+                                                             <div className="mt-1">
+                                                                <p className="text-[10px] font-semibold text-teal-900 opacity-80">Incluye:</p>
+                                                                {/* Aquí solo tenemos serviceIds, no nombres, a menos que el backend los popule. 
+                                                                    Por ahora mostramos 'Combo' indicator */}
+                                                             </div>
+                                                        )}
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        ) : (
+                                            /* Manejar diferentes formatos legacy (objeto único o string) */
+                                            typeof appt.selected_service === 'string' ? (
+                                                <div className="text-sm font-medium text-teal-800">{appt.selected_service}</div>
+                                            ) : appt.selected_service.name ? (
+                                                <>
+                                                    <div className="text-sm font-medium text-teal-800">{appt.selected_service.name}</div>
+                                                    {appt.selected_service.description && <p className="text-xs text-teal-700 mt-1">{appt.selected_service.description}</p>}
+                                                    {appt.selected_service.price && (
+                                                        <div className="text-xs text-teal-600 mt-1 font-semibold">
+                                                            <CurrencyDisplay 
+                                                                amount={Number(appt.selected_service.price)} 
+                                                                currency={appt.selected_service.currency || 'USD'} 
+                                                                showBoth={true}
+                                                                size="xs"
+                                                                className="gap-1 items-start"
+                                                            />
+                                                        </div>
+                                                    )}
+                                                    {/* Si hay múltiples servicios incluidos (Legacy Combo structure) */}
+                                                    {('services_included' in appt.selected_service && appt.selected_service.services_included && Array.isArray((appt.selected_service as any).services_included) && (appt.selected_service as any).services_included.length > 0) && (
+                                                        <div className="mt-2 space-y-1">
+                                                            <p className="text-xs font-semibold text-teal-900">Servicios incluidos:</p>
+                                                            {(appt.selected_service as any).services_included.map((service: any, idx: number) => (
+                                                                <div key={idx} className="text-xs text-teal-700 pl-2">
+                                                                    • {service?.name || service}
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    )}
+                                                </>
+                                            ) : (
+                                                <div className="text-sm font-medium text-teal-800">Servicio no especificado</div>
+                                            )
+                                        )}
 									</div>
 								)}
 
