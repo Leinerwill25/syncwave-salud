@@ -2,6 +2,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import createSupabaseServerClient from '@/app/adapters/server';
 import { cookies } from 'next/headers';
+import { createClient } from '@supabase/supabase-js';
 
 /**
  * Helper: intenta reconstruir sesión a partir de cookies conocidas.
@@ -72,7 +73,15 @@ async function tryRestoreSessionFromCookies(supabase: any, cookieStore: any): Pr
 export async function POST(req: NextRequest) {
 	try {
 		const supabase = await createSupabaseServerClient();
-		const cookieStore = await cookies();
+        const cookieStore = await cookies();
+		
+        // Initialize Admin Client to bypass RLS for table without organization_id
+        const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL ?? process.env.SUPABASE_URL ?? '';
+        const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY ?? '';
+        const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
+            auth: { persistSession: false },
+        });
+
 		const body = await req.json();
 
 		const {
@@ -107,8 +116,8 @@ export async function POST(req: NextRequest) {
 
 		// Validar que la cédula de identidad sea única (si se proporciona)
 		if (identification) {
-			// Verificar en pacientes registrados
-			const { data: existingRegistered, error: registeredCheckError } = await supabase
+			// Verificar en pacientes registrados (Admin check for global uniqueness)
+			const { data: existingRegistered, error: registeredCheckError } = await supabaseAdmin
 				.from('patient')
 				.select('id, identifier')
 				.eq('identifier', identification.trim())
@@ -129,8 +138,8 @@ export async function POST(req: NextRequest) {
 				);
 			}
 
-			// Verificar en pacientes no registrados
-			const { data: existingUnregistered, error: unregisteredCheckError } = await supabase
+			// Verificar en pacientes no registrados (Admin check)
+			const { data: existingUnregistered, error: unregisteredCheckError } = await supabaseAdmin
 				.from('unregisteredpatients')
 				.select('id, identification')
 				.eq('identification', identification.trim())
@@ -152,7 +161,7 @@ export async function POST(req: NextRequest) {
 			}
 		}
 
-		// Intentar obtener el usuario desde la sesión
+		// Intentar obtener el usuario desde la sesión (Mantener validación de usuario)
 		let authUser = null;
 		const { data: { user }, error: getUserError } = await supabase.auth.getUser();
 
@@ -172,7 +181,7 @@ export async function POST(req: NextRequest) {
 		}
 
 		// Obtener el app user ID desde la tabla User usando authId
-		const { data: appUser, error: appUserError } = await supabase
+		const { data: appUser, error: appUserError } = await supabaseAdmin
 			.from('users')
 			.select('id')
 			.eq('authId', authUser.id)
@@ -190,7 +199,7 @@ export async function POST(req: NextRequest) {
 		// Get medic profile to get created_by (opcional - puede ser null)
 		let createdBy = null;
 		if (appUser) {
-			const { data: medicProfile } = await supabase
+			const { data: medicProfile } = await supabaseAdmin
 				.from('medic_profile')
 				.select('id')
 				.eq('doctor_id', appUser.id)
@@ -225,7 +234,8 @@ export async function POST(req: NextRequest) {
 			created_by: createdBy,
 		};
 
-		const { data, error } = await supabase.from('unregisteredpatients').insert([insertData]).select('id').single();
+        // Use Admin client for insert
+		const { data, error } = await supabaseAdmin.from('unregisteredpatients').insert([insertData]).select('id').single();
 
 		if (error) {
 			console.error('Error creating unregistered patient:', error);
