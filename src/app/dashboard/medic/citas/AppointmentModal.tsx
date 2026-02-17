@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { X, CalendarDays } from 'lucide-react';
+import { X, CalendarDays, CheckCircle2 } from 'lucide-react';
 import { useAppointments } from '@/app/hooks/useAppointments';
 
 interface Props {
@@ -23,6 +23,9 @@ export default function AppointmentModal({ isOpen, onClose, selectedDate }: Prop
 		location: '',
 	});
 
+    const [schedulingType, setSchedulingType] = useState<'specific_time' | 'shift'>('specific_time');
+    const [selectedShift, setSelectedShift] = useState<'morning' | 'afternoon'>('morning');
+
 	const [isSubmitting, setIsSubmitting] = useState(false);
 
 	if (!isOpen) return null;
@@ -33,8 +36,18 @@ export default function AppointmentModal({ isOpen, onClose, selectedDate }: Prop
 			setIsSubmitting(true);
 
 			const scheduled_at = new Date(selectedDate || new Date());
-			const [hours, minutes] = form.time.split(':').map(Number);
-			scheduled_at.setHours(hours, minutes, 0, 0);
+            let notes = '';
+
+            if (schedulingType === 'shift') {
+                const timeStr = selectedShift === 'morning' ? '08:00' : '14:00';
+                const [hours, minutes] = timeStr.split(':').map(Number);
+                scheduled_at.setHours(hours, minutes, 0, 0);
+                const shiftLabel = selectedShift === 'morning' ? 'Turno Diurno (AM)' : 'Turno Vespertino (PM)';
+                notes = `Cita agendada por: ${shiftLabel}.`;
+            } else {
+                const [hours, minutes] = form.time.split(':').map(Number);
+                scheduled_at.setHours(hours, minutes, 0, 0);
+            }
 
 			await createAppointment({
 				patient_id: form.patient_id,
@@ -43,6 +56,7 @@ export default function AppointmentModal({ isOpen, onClose, selectedDate }: Prop
 				reason: form.reason,
 				status: form.status,
 				location: form.location,
+                notes: notes || null,
 			});
 
 			onClose();
@@ -78,27 +92,92 @@ export default function AppointmentModal({ isOpen, onClose, selectedDate }: Prop
 						<textarea className="w-full mt-1 p-2 border rounded-xl focus:ring-2 focus:ring-indigo-500" rows={2} value={form.reason} onChange={(e) => setForm({ ...form, reason: e.target.value })} />
 					</div>
 
-					<div className="grid grid-cols-2 gap-4">
-						<div>
-							<label className="text-sm font-medium text-gray-700">Hora</label>
-							<input type="time" className="w-full mt-1 p-2 border rounded-xl" value={form.time} onChange={(e) => setForm({ ...form, time: e.target.value })} />
-						</div>
+					<div className="space-y-4">
+                        {/* Toggle Tipo de Agendamiento */}
+                        <div>
+                            <label className="text-sm font-medium text-gray-700 block mb-1">Tipo de Agendamiento</label>
+                            <div className="flex p-1 bg-slate-100 rounded-lg">
+                                <button
+                                    type="button"
+                                    onClick={() => setSchedulingType('specific_time')}
+                                    className={`flex-1 py-1.5 text-sm font-medium rounded-md transition ${
+                                        schedulingType === 'specific_time'
+                                            ? 'bg-white text-teal-700 shadow-sm'
+                                            : 'text-slate-500 hover:text-slate-700'
+                                    }`}
+                                >
+                                    Hora Exacta
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => setSchedulingType('shift')}
+                                    className={`flex-1 py-1.5 text-sm font-medium rounded-md transition ${
+                                        schedulingType === 'shift'
+                                            ? 'bg-white text-teal-700 shadow-sm'
+                                            : 'text-slate-500 hover:text-slate-700'
+                                    }`}
+                                >
+                                    Por Turno
+                                </button>
+                            </div>
+                        </div>
 
-						<div>
-							<label className="text-sm font-medium text-gray-700">Estado</label>
-							<select
-								className="w-full mt-1 p-2 border rounded-xl"
-								value={form.status}
-								onChange={(e) => setForm({ ...form, status: e.target.value })}
-							>
-								<option value="EN_ESPERA">En espera</option>
-								<option value="CONFIRMADA">Confirmada</option>
-								<option value="REAGENDADA">Reagendada</option>
-								<option value="CANCELADA">Cancelada</option>
-								<option value="COMPLETADA">Finalizada</option>
-							</select>
-						</div>
-					</div>
+                        {schedulingType === 'specific_time' ? (
+                            <div>
+                                <label className="text-sm font-medium text-gray-700">Hora</label>
+                                <input type="time" className="w-full mt-1 p-2 border rounded-xl" value={form.time} onChange={(e) => setForm({ ...form, time: e.target.value })} />
+                            </div>
+                        ) : (
+                            <div className="grid grid-cols-2 gap-3">
+                                <button
+                                    type="button"
+                                    onClick={() => setSelectedShift('morning')}
+                                    className={`p-3 rounded-xl border-2 transition text-left relative overflow-hidden ${
+                                        selectedShift === 'morning'
+                                            ? 'border-yellow-500 bg-yellow-50 ring-1 ring-yellow-200'
+                                            : 'border-slate-200 hover:border-yellow-300 bg-white'
+                                    }`}
+                                >
+                                    <div className="flex justify-between items-center mb-1">
+                                        <span className={`font-bold text-sm ${selectedShift === 'morning' ? 'text-yellow-700' : 'text-slate-800'}`}>Diurno (AM)</span>
+                                        {selectedShift === 'morning' && <CheckCircle2 className="w-4 h-4 text-yellow-600" />}
+                                    </div>
+                                    <span className="text-xs text-slate-600 block">08:00 AM - 12:00 PM</span>
+                                </button>
+
+                                <button
+                                    type="button"
+                                    onClick={() => setSelectedShift('afternoon')}
+                                    className={`p-3 rounded-xl border-2 transition text-left relative overflow-hidden ${
+                                        selectedShift === 'afternoon'
+                                            ? 'border-blue-600 bg-blue-50 ring-1 ring-blue-200'
+                                            : 'border-slate-200 hover:border-blue-300 bg-white'
+                                    }`}
+                                >
+                                    <div className="flex justify-between items-center mb-1">
+                                        <span className={`font-bold text-sm ${selectedShift === 'afternoon' ? 'text-blue-700' : 'text-slate-800'}`}>Vespertino (PM)</span>
+                                        {selectedShift === 'afternoon' && <CheckCircle2 className="w-4 h-4 text-blue-600" />}
+                                    </div>
+                                    <span className="text-xs text-slate-600 block">02:00 PM - 06:00 PM</span>
+                                </button>
+                            </div>
+                        )}
+
+                        <div>
+                            <label className="text-sm font-medium text-gray-700">Estado</label>
+                            <select
+                                className="w-full mt-1 p-2 border rounded-xl"
+                                value={form.status}
+                                onChange={(e) => setForm({ ...form, status: e.target.value })}
+                            >
+                                <option value="EN_ESPERA">En espera</option>
+                                <option value="CONFIRMADA">Confirmada</option>
+                                <option value="REAGENDADA">Reagendada</option>
+                                <option value="CANCELADA">Cancelada</option>
+                                <option value="COMPLETADA">Finalizada</option>
+                            </select>
+                        </div>
+                    </div>
 
 					<div>
 						<label className="text-sm font-medium text-gray-700">Ubicación</label>

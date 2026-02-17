@@ -17,7 +17,7 @@ export async function POST(req: Request) {
 		const supabase = await createSupabaseServerClient();
 		const body = await req.json();
 
-		const { patient_id, unregistered_patient_id, doctor_id, organization_id, scheduled_at, duration_minutes = 30, status = 'SCHEDULED', reason, location } = body;
+		const { patient_id, unregistered_patient_id, doctor_id, organization_id, scheduled_at, duration_minutes = 30, status = 'SCHEDULED', reason, location, notes } = body;
 
 		// El doctor puede crear citas para pacientes registrados O no registrados
 		if ((!patient_id && !unregistered_patient_id) || !doctor_id || !scheduled_at) {
@@ -40,13 +40,14 @@ export async function POST(req: Request) {
 			reason,
 			location,
 			created_by_doctor_id: createdByDoctorId, // Rastrear que fue creada por el doctor
+			notes: notes || null,
 			// NO establecer created_by_role_user_id ni booked_by_patient_id
 		};
 
 		const { data, error } = await supabase
 			.from('appointment')
 			.insert([appointmentData])
-			.select('id, scheduled_at, status, reason, location')
+			.select('id, scheduled_at, status, reason, location, notes')
 			.single();
 
 		if (error) {

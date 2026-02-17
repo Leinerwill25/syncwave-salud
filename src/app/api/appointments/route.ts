@@ -19,7 +19,7 @@ export async function POST(req: NextRequest) {
 		// 🔹 Leer cuerpo JSON
 		const body = await req.json();
 
-		let { patientId, unregisteredPatientId, doctorId, organizationId, scheduledAt, durationMinutes, reason, location, referralSource, createdByRoleUserId, createdByDoctorId, selectedService, billing } = body;
+		let { patientId, unregisteredPatientId, doctorId, organizationId, scheduledAt, durationMinutes, reason, location, referralSource, createdByRoleUserId, createdByDoctorId, selectedService, billing, notes } = body;
 
 		// 🔹 PRIORIDAD: Si la cita fue creada por un role-user (asistente de citas)
 		// NOTA: El asistente puede crear citas para pacientes registrados O no registrados
@@ -154,8 +154,8 @@ export async function POST(req: NextRequest) {
 				appointmentResult = await client.query(
 						`
           INSERT INTO public.appointment
-            (patient_id, unregistered_patient_id, doctor_id, organization_id, scheduled_at, duration_minutes, reason, location, referral_source, created_by_role_user_id, created_by_doctor_id, selected_service)
-          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+            (patient_id, unregistered_patient_id, doctor_id, organization_id, scheduled_at, duration_minutes, reason, location, referral_source, created_by_role_user_id, created_by_doctor_id, selected_service, notes)
+          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
           RETURNING id
         `,
 						[
@@ -171,6 +171,7 @@ export async function POST(req: NextRequest) {
 							createdByRoleUserId || null,
 							createdByDoctorId || null,
 							selectedService || null,
+							notes || null,
 						]
 					);
 				} catch (insertError: any) {
@@ -180,8 +181,8 @@ export async function POST(req: NextRequest) {
 						appointmentResult = await client.query(
 							`
           INSERT INTO public.appointment
-            (patient_id, unregistered_patient_id, doctor_id, organization_id, scheduled_at, duration_minutes, reason, location, referral_source, created_by_role_user_id, selected_service)
-          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+            (patient_id, unregistered_patient_id, doctor_id, organization_id, scheduled_at, duration_minutes, reason, location, referral_source, created_by_role_user_id, selected_service, notes)
+          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
           RETURNING id
         `,
 							[
@@ -196,6 +197,7 @@ export async function POST(req: NextRequest) {
 								referralSource || null,
 								createdByRoleUserId || null,
 								selectedService || null,
+								notes || null,
 							]
 						);
 					} else {

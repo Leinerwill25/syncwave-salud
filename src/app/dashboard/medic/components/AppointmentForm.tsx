@@ -89,6 +89,7 @@ export default function AppointmentForm() {
 	const [scheduleConfig, setScheduleConfig] = useState<any>(null);
 	const [loadingConfig, setLoadingConfig] = useState(false);
 	const [selectedShift, setSelectedShift] = useState<'morning' | 'afternoon'>('morning');
+	const [schedulingType, setSchedulingType] = useState<'specific_time' | 'shift'>('specific_time');
 
 	const [submitting, setSubmitting] = useState(false);
 	const searchDebounceRef = useRef<number | null>(null);
@@ -176,8 +177,18 @@ export default function AppointmentForm() {
 			}
 		}
 
+
 		fetchScheduleConfig();
 	}, [userId]);
+
+    // Establecer tipo de agendamiento por defecto según configuración
+    useEffect(() => {
+        if (scheduleConfig?.consultation_type === 'ORDEN_LLEGADA') {
+            setSchedulingType('shift');
+        } else {
+            setSchedulingType('specific_time');
+        }
+    }, [scheduleConfig]);
 
 	// Cargar combos de servicios
 	useEffect(() => {
@@ -492,30 +503,21 @@ export default function AppointmentForm() {
 		const total = subtotal; // Total igual al subtotal sin impuestos
 		const currency = selectedServicesData[0]?.currency || selectedCombosData[0]?.currency || 'USD'; // Usar la moneda del primer servicio/combo
 
-		// Ajustar hora si es por orden de llegada
+		// Ajustar hora si es por orden de llegada o turno seleccionado
 		let finalScheduledAt = scheduledAt;
-		if (scheduleConfig?.consultation_type === 'ORDEN_LLEGADA') {
+        let notes = '';
+
+        if (schedulingType === 'shift') {
 			// Si el input 'scheduledAt' es datetime-local, necesitamos construir la fecha correcta
-			// Pero aquí 'scheduledAt' viene del input datetime-local que ocultamos/modificamos
-			// Si es ORDEN_LLEGADA, deberíamos tener una fecha base (del día seleccionado) y asignar la hora del turno
-			
-			// Como AppointmentList usa 'scheduledAt' string, y aquí usamos un input datetime-local
 			// Vamos a asumir que 'scheduledAt' tiene la fecha del día elegido.
-			// Si mostramos solo input DATE para orden de llegada, entonces scheduledAt tendrá 'YYYY-MM-DD'
-			
 			const datePart = scheduledAt.split('T')[0]; // YYYY-MM-DD
-			const dateObj = new Date(datePart);
-			if (selectedShift === 'morning') {
-				dateObj.setHours(8, 0, 0, 0);
-			} else {
-				dateObj.setHours(13, 0, 0, 0);
-			}
-			// Ajustar a ISO string local o UTC según corresponda
-			// Para simplificar, usamos una construcción manual o .toISOString()
-			// CUIDADO con las zonas horarias. 
-			// Simplemente concatenamos la hora al string de fecha para mantener consistencia local
-			finalScheduledAt = `${datePart}T${selectedShift === 'morning' ? '08:00' : '13:00'}`;
-		}
+			
+            // Construir fecha con hora fija del turno
+			finalScheduledAt = `${datePart}T${selectedShift === 'morning' ? '08:00' : '14:00'}`;
+            
+            // Agregar nota sobre el turno
+            notes = `Cita agendada por: ${selectedShift === 'morning' ? 'Turno Diurno (AM)' : 'Turno Vespertino (PM)'}`;
+        }
 
 		setSubmitting(true);
 		try {
@@ -594,6 +596,7 @@ export default function AppointmentForm() {
 					total: total || subtotal,
 					currency,
 				},
+                notes: notes || null,
 			};
 
 			if (patientType === 'registered') {
@@ -887,52 +890,87 @@ export default function AppointmentForm() {
 
 						<div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
 							<div className="min-w-0">
-								{scheduleConfig?.consultation_type === 'ORDEN_LLEGADA' ? (
-									<div>
-										<label className={labelClass}>Fecha y Turno (Orden de Llegada)</label>
-										<div className="space-y-2">
-											<input 
-												type="date" 
-												value={scheduledAt ? scheduledAt.split('T')[0] : ''} 
-												onChange={(e) => setScheduledAt(e.target.value)} 
-												className={`${inputNeutral} min-w-0`} 
-											/>
-											<div className="grid grid-cols-2 gap-2">
-												<button
-													type="button"
-													onClick={() => setSelectedShift('morning')}
-													className={`p-2 text-sm rounded-md border text-center transition-all ${
-														selectedShift === 'morning'
-															? 'bg-indigo-50 border-indigo-500 text-indigo-700 font-medium'
-															: 'bg-white border-gray-200 text-gray-600 hover:border-gray-300'
-													}`}
-												>
-													🌞 Mañana
-												</button>
-												<button
-													type="button"
-													onClick={() => setSelectedShift('afternoon')}
-													className={`p-2 text-sm rounded-md border text-center transition-all ${
-														selectedShift === 'afternoon'
-															? 'bg-indigo-50 border-indigo-500 text-indigo-700 font-medium'
-															: 'bg-white border-gray-200 text-gray-600 hover:border-gray-300'
-													}`}
-												>
-													🌇 Tarde
-												</button>
-											</div>
-											<div className="text-xs text-blue-600 bg-blue-50 p-2 rounded flex items-start gap-1">
-												<Info className="w-3 h-3 shrink-0 mt-0.5" />
-												<span>Se notificará el turno por email si está disponible.</span>
-											</div>
-										</div>
-									</div>
-								) : (
-									<div>
-										<label className={labelClass}>Fecha y hora</label>
-										<input type="datetime-local" value={scheduledAt} onChange={(e) => setScheduledAt(e.target.value)} className={`${inputNeutral} min-w-0`} />
-									</div>
-								)}
+								<div className="space-y-4">
+                                    {/* Toggle Tipo de Agendamiento */}
+                                    <div>
+                                        <label className={labelClass}>Tipo de Agendamiento</label>
+                                        <div className="flex p-1 bg-slate-100 rounded-lg mt-1">
+                                            <button
+                                                type="button"
+                                                onClick={() => setSchedulingType('specific_time')}
+                                                className={`flex-1 py-1.5 text-sm font-medium rounded-md transition ${
+                                                    schedulingType === 'specific_time'
+                                                        ? 'bg-white text-teal-700 shadow-sm'
+                                                        : 'text-slate-500 hover:text-slate-700'
+                                                }`}
+                                            >
+                                                Hora Exacta
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={() => setSchedulingType('shift')}
+                                                className={`flex-1 py-1.5 text-sm font-medium rounded-md transition ${
+                                                    schedulingType === 'shift'
+                                                        ? 'bg-white text-teal-700 shadow-sm'
+                                                        : 'text-slate-500 hover:text-slate-700'
+                                                }`}
+                                            >
+                                                Por Turno
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    {schedulingType === 'shift' ? (
+                                        <div>
+                                            <label className={labelClass}>Fecha y Turno</label>
+                                            <div className="space-y-2">
+                                                <input 
+                                                    type="date" 
+                                                    value={scheduledAt ? scheduledAt.split('T')[0] : ''} 
+                                                    onChange={(e) => setScheduledAt(e.target.value)} 
+                                                    className={`${inputNeutral} min-w-0`} 
+                                                />
+                                                <div className="grid grid-cols-2 gap-2">
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setSelectedShift('morning')}
+                                                        className={`p-3 rounded-lg border-2 text-center transition-all flex flex-col items-center gap-1 ${
+                                                            selectedShift === 'morning'
+                                                                ? 'bg-yellow-50 border-yellow-500 text-yellow-700'
+                                                                : 'bg-white border-gray-200 text-gray-600 hover:border-gray-300'
+                                                        }`}
+                                                    >
+                                                        <span className="text-lg">🌞</span>
+                                                        <span className="font-medium text-sm">Mañana</span>
+                                                        <span className="text-[10px] opacity-80">08:00 - 12:00</span>
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setSelectedShift('afternoon')}
+                                                        className={`p-3 rounded-lg border-2 text-center transition-all flex flex-col items-center gap-1 ${
+                                                            selectedShift === 'afternoon'
+                                                                ? 'bg-blue-50 border-blue-600 text-blue-700'
+                                                                : 'bg-white border-gray-200 text-gray-600 hover:border-gray-300'
+                                                        }`}
+                                                    >
+                                                        <span className="text-lg">🌇</span>
+                                                        <span className="font-medium text-sm">Tarde</span>
+                                                        <span className="text-[10px] opacity-80">14:00 - 18:00</span>
+                                                    </button>
+                                                </div>
+                                                <div className="text-xs text-blue-600 bg-blue-50 p-2 rounded flex items-start gap-1">
+                                                    <Info className="w-3 h-3 shrink-0 mt-0.5" />
+                                                    <span>Se notificará el turno por email.</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <div>
+                                            <label className={labelClass}>Fecha y hora</label>
+                                            <input type="datetime-local" value={scheduledAt} onChange={(e) => setScheduledAt(e.target.value)} className={`${inputNeutral} min-w-0`} />
+                                        </div>
+                                    )}
+                                </div>
 							</div>
 							<div className="min-w-0">
 								<label className={labelClass}>Duración (min)</label>
