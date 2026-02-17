@@ -26,6 +26,7 @@ export async function PATCH(req: Request, context: { params: Promise<{ id: strin
 		if (body.scheduled_at) updateFields.scheduled_at = body.scheduled_at;
 		if (body.reason) updateFields.reason = body.reason;
 		if (body.location) updateFields.location = body.location;
+        if (body.selected_service) updateFields.selected_service = body.selected_service;
 		updateFields.updated_at = new Date().toISOString();
 
 		// 2️⃣ Actualizar cita usando supabaseAdmin (Service Role) para mayor estabilidad y permisos adecuados
@@ -146,6 +147,26 @@ export async function PATCH(req: Request, context: { params: Promise<{ id: strin
 				}
 			}
 		}
+
+        // 4.5 Actualizar facturación si se envía billing (para AddService)
+        if (body.billing) {
+            const { subtotal, total, currency } = body.billing;
+             if (total !== undefined) { 
+                 try {
+                    const { data: existingFacturacion } = await supabaseAdmin.from('facturacion').select('id').eq('appointment_id', id).maybeSingle();
+                    if (existingFacturacion) {
+                        await supabaseAdmin.from('facturacion').update({
+                            subtotal: subtotal || total,
+                            total: total,
+                            currency: currency || 'USD',
+                            updated_at: new Date().toISOString()
+                        }).eq('id', existingFacturacion.id);
+                    }
+                 } catch (err) {
+                     console.error('[Appointment Update] Error updating facturacion:', err);
+                 }
+            }
+        }
 
 		// 5️⃣ Si cambió el status → crear notificaciones y enviar emails
 		if (body.status && body.status !== current.status) {

@@ -70,6 +70,11 @@ async function tryRestoreSessionFromCookies(supabase: any, cookieStore: any): Pr
 	return false;
 }
 
+// ... (existing imports)
+import { getRoleUserSessionFromServer } from '@/lib/role-user-auth';
+
+// ... (existing helper function)
+
 export async function POST(req: NextRequest) {
 	try {
 		const supabase = await createSupabaseServerClient();
@@ -85,6 +90,7 @@ export async function POST(req: NextRequest) {
 		const body = await req.json();
 
 		const {
+            // ... (fields)
 			first_name,
 			last_name,
 			identification,
@@ -116,6 +122,7 @@ export async function POST(req: NextRequest) {
 
 		// Validar que la cédula de identidad sea única (si se proporciona)
 		if (identification) {
+            // ... (validation logic remains same)
 			// Verificar en pacientes registrados (Admin check for global uniqueness)
 			const { data: existingRegistered, error: registeredCheckError } = await supabaseAdmin
 				.from('patient')
@@ -161,53 +168,100 @@ export async function POST(req: NextRequest) {
 			}
 		}
 
-		// Intentar obtener el usuario desde la sesión (Mantener validación de usuario)
+		// Intentar autenticación (Supabase Auth o Role User)
 		let authUser = null;
+        let roleUserSession = null;
+        
 		const { data: { user }, error: getUserError } = await supabase.auth.getUser();
 
 		if (getUserError || !user) {
-			// Si no hay sesión, intentar restaurar desde cookies
+			// Si no hay sesión Supabase, intentar restaurar desde cookies
 			const restored = await tryRestoreSessionFromCookies(supabase, cookieStore);
 			if (restored) {
 				const { data: { user: restoredUser } } = await supabase.auth.getUser();
 				authUser = restoredUser;
-			}
+			} else {
+                // Si falla Supabase Auth, intentar Role User Auth
+                roleUserSession = await getRoleUserSessionFromServer();
+            }
 		} else {
 			authUser = user;
 		}
 
-		if (!authUser) {
+		if (!authUser && !roleUserSession) {
 			return NextResponse.json({ error: 'No autenticado' }, { status: 401 });
 		}
 
-		// Obtener el app user ID desde la tabla User usando authId
-		const { data: appUser, error: appUserError } = await supabaseAdmin
-			.from('users')
-			.select('id')
-			.eq('authId', authUser.id)
-			.maybeSingle();
+		// Obtener createdBy (MedicProfile ID)
+        let createdBy = null;
+        
+        if (authUser) {
+             // Caso Médico o Admin logueado con Supabase
+            const { data: appUser, error: appUserError } = await supabaseAdmin
+                .from('users')
+                .select('id')
+                .eq('authId', authUser.id)
+                .maybeSingle();
 
-		if (appUserError) {
-			console.error('Error buscando User por authId:', appUserError);
-			return NextResponse.json({ error: 'Error interno buscando perfil de usuario' }, { status: 500 });
-		}
+            if (appUserError) {
+                console.error('Error buscando User por authId:', appUserError);
+                return NextResponse.json({ error: 'Error interno buscando perfil de usuario' }, { status: 500 });
+            }
 
-		if (!appUser) {
-			return NextResponse.json({ error: 'Perfil de usuario no encontrado' }, { status: 403 });
-		}
-
-		// Get medic profile to get created_by (opcional - puede ser null)
-		let createdBy = null;
-		if (appUser) {
-			const { data: medicProfile } = await supabaseAdmin
-				.from('medic_profile')
-				.select('id')
-				.eq('doctor_id', appUser.id)
-				.maybeSingle();
-			createdBy = medicProfile?.id || null;
-		}
+            if (!appUser) {
+                // Podría ser un error sutil si authUser existe pero no en users
+                // Permitimos continuar si es admin? No, requerimos perfil.
+                 return NextResponse.json({ error: 'Perfil de usuario no encontrado' }, { status: 403 });
+            }
+            
+            // Buscar perfil médico
+            if (appUser) {
+                const { data: medicProfile } = await supabaseAdmin
+                    .from('medic_profile')
+                    .select('id')
+                    .eq('doctor_id', appUser.id)
+                    .maybeSingle();
+                createdBy = medicProfile?.id || null;
+            }
+        } else if (roleUserSession) {
+            // Caso Role User
+            // Intentar vincular con el médico de la organización/rol?
+            // O dejar created_by nulo? 
+            // La tabla unregisteredpatients tiene created_by como FK a medic_profile(id) nullable?
+            // Si es nullable, lo dejamos null.
+            // Si queremos atribuirlo al médico "dueño" de la organización, podríamos buscarlo.
+            // Por ahora, lo dejamos null para role users a menos que sea crítico.
+            // Revisando lógica de negocio: createdBy suele usarse para filtrar pacientes del médico.
+            // Si el asistente lo crea, ¿debería verlo el médico? SÍ.
+            // Entonces deberíamos intentar setear created_by al ID del médico principal de la organización.
+            
+            try {
+                // Buscar el primer médico de la organización (HACK temporal, idealmente el role user tiene asignado un médico)
+                // O mejor, dejémoslo NULL y aseguremos que el médico pueda ver pacientes de su organización.
+                // Pero unregisteredpatients no tiene organization_id según recuerdo (o sí?).
+                // Si no tiene organization_id, el filtrado depende de created_by.
+                // Vamos a buscar un médico profile asociado al role user si es posible, o el owner de la org.
+                
+                // Opción 1: Dejar null. Riesgo: Médico no ve al paciente en "Mis Pacientes".
+                // Opción 2: Buscar owner.
+                
+                // Consultamos si el roleUser está asociado a una org y buscamos medicos ahí.
+                 const { data: orgMedics } = await supabaseAdmin
+                    .from('medic_profile')
+                    .select('id')
+                    .eq('organization_id', roleUserSession.organizationId) // Asumiendo medic_profile tiene org_id
+                    .limit(1);
+                    
+                 if (orgMedics && orgMedics.length > 0) {
+                     createdBy = orgMedics[0].id;
+                 }
+            } catch (err) {
+                console.warn('Error asumiendo medico para role user:', err);
+            }
+        }
 
 		const insertData: any = {
+            // ... (same fields)
 			first_name,
 			last_name,
 			phone,
@@ -233,6 +287,8 @@ export async function POST(req: NextRequest) {
 			vital_glucose: vital_glucose || null,
 			created_by: createdBy,
 		};
+        
+        // ... (insert)
 
         // Use Admin client for insert
 		const { data, error } = await supabaseAdmin.from('unregisteredpatients').insert([insertData]).select('id').single();

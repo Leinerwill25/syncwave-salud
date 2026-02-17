@@ -137,6 +137,9 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 			updates.scheduled_at = body.scheduled_at;
 			updates.updated_at = new Date().toISOString();
 		}
+        if (body.selected_service !== undefined) {
+            updates.selected_service = body.selected_service;
+        }
 
         console.log('[Role User Appointment PATCH] Updates to apply:', updates);
 
@@ -163,6 +166,32 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 				}
 			}
 		}
+        
+        // Actualizar facturación si se envía billing (ej: al agregar servicios)
+        if (body.billing) {
+            const { subtotal, total, currency } = body.billing;
+            if (total !== undefined) { // Solo si hay un total válido
+                 try {
+                     // Verificar si existe facturación
+                    const { data: existingFacturacion } = await supabase.from('facturacion').select('id').eq('appointment_id', id).maybeSingle();
+                    
+                    if (existingFacturacion) {
+                        await supabase.from('facturacion').update({
+                            subtotal: subtotal || total,
+                            total: total,
+                            currency: currency || 'USD',
+                            updated_at: new Date().toISOString()
+                        }).eq('id', existingFacturacion.id);
+                    } else {
+                         // Si no existe, podríamos crearla, pero por lo general se crea al confirmar.
+                         // Para este caso, solo actualizamos si existe.
+                         console.warn('[Role User Appointment API] Billing received but no existing facturacion found.');
+                    }
+                 } catch (err) {
+                     console.error('[Role User Appointment API] Error updating facturacion:', err);
+                 }
+            }
+        }
 
 		return NextResponse.json({ success: true, appointment: updatedAppointment }, { status: 200 });
 	} catch (err: any) {
