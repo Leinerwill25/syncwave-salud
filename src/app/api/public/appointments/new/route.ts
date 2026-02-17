@@ -23,6 +23,7 @@ export async function POST(request: Request) {
 			durationMinutes,
 			selectedService,
 			officeId,
+            notes,
 		} = body;
 
 		// Validaciones
@@ -99,6 +100,7 @@ export async function POST(request: Request) {
 			status: 'SCHEDULED',
 			selected_service: selectedService,
 			office_id: officeId || null,
+            notes: notes || null,
 			// No establecer created_by_role_user_id, booked_by_patient_id, ni created_by_doctor_id
 			// Esto la identifica como cita de página pública
 		};
@@ -182,7 +184,12 @@ export async function POST(request: Request) {
 
 			const appointmentUrl = `${process.env.NEXT_PUBLIC_APP_URL || 'https://ashira.click'}/dashboard/medic/appointments`;
 
-			const notificationMessage = `El paciente ${unregisteredPatient.first_name} ${unregisteredPatient.last_name} (${unregisteredPatient.phone}) ha solicitado una cita para el ${formattedDate} - Servicio: ${selectedService.name} (${selectedService.price} ${selectedService.currency})`;
+            let extraInfo = `Servicio: ${selectedService.name} (${selectedService.price} ${selectedService.currency})`;
+            if (notes) {
+                extraInfo += ` - ${notes}`;
+            }
+
+			const notificationMessage = `El paciente ${unregisteredPatient.first_name} ${unregisteredPatient.last_name} (${unregisteredPatient.phone}) ha solicitado una cita para el ${formattedDate} - ${extraInfo}`;
 
 			await createNotification({
 				userId: doctorId,

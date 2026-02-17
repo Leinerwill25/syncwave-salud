@@ -98,6 +98,10 @@ export default function AppointmentBookingModal({
 	const [selectedService, setSelectedService] = useState<Service | ServiceCombo | null>(null);
 	const [serviceType, setServiceType] = useState<'individual' | 'combo' | null>(null);
 
+    // Tipo de Agendamiento
+    const [schedulingType, setSchedulingType] = useState<'specific_time' | 'shift'>('specific_time');
+    const [selectedShift, setSelectedShift] = useState<'morning' | 'afternoon' | null>(null);
+
 	// Obtener todos los servicios y combos disponibles
 	const allServices: Service[] = doctors.flatMap((d) => d.medic_profile?.services || []);
 	const allCombos: ServiceCombo[] = doctors.flatMap((d) => d.medic_profile?.serviceCombos || []);
@@ -286,6 +290,8 @@ export default function AppointmentBookingModal({
 			setSelectedDoctorId(null);
 			setSelectedDate('');
 			setSelectedTime('');
+            setSchedulingType('specific_time');
+            setSelectedShift(null);
 			setSelectedService(null);
 			setServiceType(null);
 			setError(null);
@@ -329,11 +335,17 @@ export default function AppointmentBookingModal({
 				return;
 			}
 
-			if (!selectedDate || !selectedTime) {
+			if (!selectedDate || (!selectedTime && schedulingType === 'specific_time')) {
 				setError('Por favor selecciona una fecha y horario');
 				setLoading(false);
 				return;
 			}
+
+            if (schedulingType === 'shift' && !selectedShift) {
+                setError('Por favor selecciona un turno (Mañana o Tarde)');
+                setLoading(false);
+                return;
+            }
 
 			if (!selectedService) {
 				setError('Por favor selecciona un servicio');
@@ -341,9 +353,20 @@ export default function AppointmentBookingModal({
 				return;
 			}
 
-			// Crear fecha/hora combinada asegurando que se trate como local
-			// Fix mismatch: Usar el formato ISO local para que el backend lo reciba exactamente como se seleccionó
-			const scheduledAt = `${selectedDate}T${selectedTime}:00`;
+			// Crear fecha/hora combinada
+            // Si es por turno, usamos una hora por defecto según el turno para la fecha
+            let scheduledAt = '';
+            let notes = '';
+
+            if (schedulingType === 'shift') {
+                // Mañana: 08:00, Tarde: 14:00 (como referencia)
+                const timeStr = selectedShift === 'morning' ? '08:00:00' : '14:00:00';
+                scheduledAt = `${selectedDate}T${timeStr}`;
+                const shiftLabel = selectedShift === 'morning' ? 'Turno Diurno (AM)' : 'Turno Vespertino (PM)';
+                notes = `Cita agendada por: ${shiftLabel}.`;
+            } else {
+                scheduledAt = `${selectedDate}T${selectedTime}:00`;
+            }
 
 			// Crear paciente no registrado primero
 			const unregisteredPatientResponse = await fetch('/api/public/unregistered-patients', {
@@ -378,6 +401,7 @@ export default function AppointmentBookingModal({
 					officeId: selectedOfficeId && selectedOfficeId !== 'default' ? selectedOfficeId : null,
 					scheduledAt, // Enviamos el string "YYYY-MM-DDTHH:mm:00"
 					durationMinutes: 30,
+                    notes, // Enviamos la nota del turno
 					selectedService: {
 						name: selectedService.name,
 						price: String(selectedService.price),
@@ -656,34 +680,69 @@ export default function AppointmentBookingModal({
 											{selectedDate && availableTimeSlots.length > 0 && (
 												<div>
 													<label className="block text-sm font-semibold text-slate-700 mb-2">
-														{selectedDoctor?.medic_profile?.doctor_schedule_config?.consultation_type === 'ORDEN_LLEGADA' 
+                                                        Tipo de Agendamiento
+                                                    </label>
+                                                    <div className="flex p-1 bg-slate-100 rounded-lg mb-4">
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => setSchedulingType('specific_time')}
+                                                            className={`flex-1 py-1.5 text-sm font-medium rounded-md transition ${
+                                                                schedulingType === 'specific_time'
+                                                                    ? 'bg-white text-teal-700 shadow-sm'
+                                                                    : 'text-slate-500 hover:text-slate-700'
+                                                            }`}
+                                                        >
+                                                            Por Hora Exacta
+                                                        </button>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => setSchedulingType('shift')}
+                                                            className={`flex-1 py-1.5 text-sm font-medium rounded-md transition ${
+                                                                schedulingType === 'shift'
+                                                                    ? 'bg-white text-teal-700 shadow-sm'
+                                                                    : 'text-slate-500 hover:text-slate-700'
+                                                            }`}
+                                                        >
+                                                            Por Turno (AM/PM)
+                                                        </button>
+                                                    </div>
+
+													<label className="block text-sm font-semibold text-slate-700 mb-2">
+														{selectedDoctor?.medic_profile?.doctor_schedule_config?.consultation_type === 'ORDEN_LLEGADA' || schedulingType === 'shift'
 															? 'Seleccionar Turno *' 
 															: 'Horario Disponible *'}
 													</label>
                                                     
-                                                    {selectedDoctor?.medic_profile?.doctor_schedule_config?.consultation_type === 'ORDEN_LLEGADA' ? (
+                                                    {selectedDoctor?.medic_profile?.doctor_schedule_config?.consultation_type === 'ORDEN_LLEGADA' || schedulingType === 'shift' ? (
                                                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                                            {availableTimeSlots.includes('08:00') && (
+                                                            {(availableTimeSlots.includes('08:00') || availableTimeSlots.some(t => t < '12:00')) && (
                                                                 <button
                                                                     type="button"
-                                                                    onClick={() => setSelectedTime('08:00')}
+                                                                    onClick={() => {
+                                                                        if (schedulingType === 'shift') {
+                                                                            setSelectedShift('morning');
+                                                                            // Reset time if needed or set dummy
+                                                                        } else {
+                                                                            setSelectedTime('08:00');
+                                                                        }
+                                                                    }}
                                                                     className={`p-4 rounded-xl border-2 transition text-left relative overflow-hidden group ${
-                                                                        selectedTime === '08:00'
-                                                                            ? 'border-teal-600 bg-teal-50 ring-2 ring-teal-100'
-                                                                            : 'border-slate-200 hover:border-teal-300 bg-white'
+                                                                        (schedulingType === 'shift' ? selectedShift === 'morning' : selectedTime === '08:00')
+                                                                            ? 'border-yellow-500 bg-yellow-50 ring-2 ring-yellow-100' // AM Color
+                                                                            : 'border-slate-200 hover:border-yellow-300 bg-white'
                                                                     }`}
                                                                 >
                                                                     <div className="flex justify-between items-start mb-2">
-                                                                        <span className={`font-bold text-lg ${selectedTime === '08:00' ? 'text-teal-700' : 'text-slate-800'}`}>Turno Mañana</span>
-                                                                        {selectedTime === '08:00' && <CheckCircle2 className="w-6 h-6 text-teal-600" />}
+                                                                        <span className={`font-bold text-lg ${(schedulingType === 'shift' ? selectedShift === 'morning' : selectedTime === '08:00') ? 'text-yellow-700' : 'text-slate-800'}`}>Turno Diurno (AM)</span>
+                                                                        {(schedulingType === 'shift' ? selectedShift === 'morning' : selectedTime === '08:00') && <CheckCircle2 className="w-6 h-6 text-yellow-600" />}
                                                                     </div>
                                                                     <div className="flex items-center gap-2 text-sm text-slate-600 mb-1">
                                                                         <Clock className="w-4 h-4" />
                                                                         <span>08:00 AM - 12:00 PM</span>
                                                                     </div>
                                                                     <div className="flex items-center gap-2 text-sm font-medium">
-                                                                        <Users className="w-4 h-4 text-teal-500" />
-                                                                        <span className="text-teal-700">
+                                                                        <Users className="w-4 h-4 text-yellow-500" />
+                                                                        <span className="text-yellow-700">
                                                                             {capacityInfo?.slots_morning !== undefined ? `${capacityInfo.slots_morning} cupos disponibles` : 'Cupos disponibles'}
                                                                         </span>
                                                                     </div>
@@ -695,19 +754,25 @@ export default function AppointmentBookingModal({
                                                                 </button>
                                                             )}
                                                             
-                                                            {availableTimeSlots.includes('14:00') && (
+                                                            {(availableTimeSlots.includes('14:00') || availableTimeSlots.some(t => t >= '12:00')) && (
                                                                 <button
                                                                     type="button"
-                                                                    onClick={() => setSelectedTime('14:00')}
+                                                                    onClick={() => {
+                                                                        if (schedulingType === 'shift') {
+                                                                            setSelectedShift('afternoon');
+                                                                        } else {
+                                                                            setSelectedTime('14:00');
+                                                                        }
+                                                                    }}
                                                                     className={`p-4 rounded-xl border-2 transition text-left relative overflow-hidden group ${
-                                                                        selectedTime === '14:00'
-                                                                            ? 'border-blue-600 bg-blue-50 ring-2 ring-blue-100'
+                                                                        (schedulingType === 'shift' ? selectedShift === 'afternoon' : selectedTime === '14:00')
+                                                                            ? 'border-blue-600 bg-blue-50 ring-2 ring-blue-100' // PM Color
                                                                             : 'border-slate-200 hover:border-blue-300 bg-white'
                                                                     }`}
                                                                 >
                                                                     <div className="flex justify-between items-start mb-2">
-                                                                        <span className={`font-bold text-lg ${selectedTime === '14:00' ? 'text-blue-700' : 'text-slate-800'}`}>Turno Tarde</span>
-                                                                        {selectedTime === '14:00' && <CheckCircle2 className="w-6 h-6 text-blue-600" />}
+                                                                        <span className={`font-bold text-lg ${(schedulingType === 'shift' ? selectedShift === 'afternoon' : selectedTime === '14:00') ? 'text-blue-700' : 'text-slate-800'}`}>Turno Vespertino (PM)</span>
+                                                                        {(schedulingType === 'shift' ? selectedShift === 'afternoon' : selectedTime === '14:00') && <CheckCircle2 className="w-6 h-6 text-blue-600" />}
                                                                     </div>
                                                                     <div className="flex items-center gap-2 text-sm text-slate-600 mb-1">
                                                                         <Clock className="w-4 h-4" />
