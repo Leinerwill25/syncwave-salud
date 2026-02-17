@@ -24,6 +24,8 @@ import CurrencyDisplay from '@/components/CurrencyDisplay';
 import { useAppointmentsForRoleUser } from '@/app/hooks/useAppointmentsForRoleUser';
 import ReceptionAppointmentModal from './ReceptionAppointmentModal';
 import RescheduleModal from './RescheduleModal';
+import AddServiceModal from '@/app/dashboard/components/AddServiceModal';
+import { PlusCircle } from 'lucide-react';
 
 interface Props {
 	selectedDate: Date;
@@ -34,13 +36,18 @@ interface Props {
 }
 
 export default function AppointmentListForRoleUser({ selectedDate, roleName, canEdit, isReception, organizationId }: Props) {
-	const { appointments, isLoading, isError, updateAppointment } = useAppointmentsForRoleUser(selectedDate);
+	const { appointments, isLoading, isError, updateAppointment, mutate } = useAppointmentsForRoleUser(selectedDate);
 	const [loadingId, setLoadingId] = useState<string | null>(null);
 	const [selectedAppointment, setSelectedAppointment] = useState<any>(null);
 	const [isModalOpen, setIsModalOpen] = useState(false);
 	const [rescheduleAppointment, setRescheduleAppointment] = useState<{ id: string; scheduled_at: string; patient: string } | null>(null);
 	const [isRescheduleModalOpen, setIsRescheduleModalOpen] = useState(false);
-	const [whatsappConfig, setWhatsappConfig] = useState<{
+	
+    // Estado para agregar servicios
+    const [selectedAppointmentForService, setSelectedAppointmentForService] = useState<any>(null);
+    const [isAddServiceModalOpen, setIsAddServiceModalOpen] = useState(false);
+
+    const [whatsappConfig, setWhatsappConfig] = useState<{
 		whatsappNumber: string | null;
 		whatsappMessageTemplate: string | null;
 		doctorName: string | null;
@@ -386,11 +393,26 @@ export default function AppointmentListForRoleUser({ selectedDate, roleName, can
 
 								{/* Servicio solicitado */}
 								{appt.selected_service && (
-									<div className="bg-teal-50 border border-teal-200 rounded-lg p-2 sm:p-3 ml-6">
-										<div className="flex items-center gap-2 mb-1">
-											<CreditCard className="w-4 h-4 text-teal-600 shrink-0" />
-											<span className="text-xs font-semibold text-teal-900">Servicios:</span>
-										</div>
+									<div className="bg-teal-50 border border-teal-200 rounded-lg p-2 sm:p-3 ml-6 mb-2">
+										<div className="flex items-center justify-between mb-1">
+                                            <div className="flex items-center gap-2">
+                                                <CreditCard className="w-4 h-4 text-teal-600 shrink-0" />
+                                                <span className="text-xs font-semibold text-teal-900">Servicios:</span>
+                                            </div>
+                                            {canEdit && (
+                                                <button 
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        setSelectedAppointmentForService(appt);
+                                                        setIsAddServiceModalOpen(true);
+                                                    }}
+                                                    className="text-teal-600 hover:text-teal-800 hover:bg-teal-100 p-1 rounded-full transition-colors"
+                                                    title="Agregar servicio extra"
+                                                >
+                                                    <PlusCircle className="w-4 h-4" />
+                                                </button>
+                                            )}
+                                        </div>
                                         
                                         {/* Manejar array de servicios (nuevo formato) */}
                                         {Array.isArray(appt.selected_service) ? (
@@ -598,6 +620,22 @@ export default function AppointmentListForRoleUser({ selectedDate, roleName, can
 				appointment={rescheduleAppointment}
 				onReschedule={handleReschedule}
 			/>
+
+            {/* Modal para agregar servicios */}
+            {selectedAppointmentForService && (
+                <AddServiceModal
+                    isOpen={isAddServiceModalOpen}
+                    onClose={() => {
+                        setIsAddServiceModalOpen(false);
+                        setSelectedAppointmentForService(null);
+                    }}
+                    appointment={selectedAppointmentForService}
+                    organizationId={organizationId}
+                    onSuccess={() => {
+                         mutate();
+                    }}
+                />
+            )}
 		</>
 	);
 }

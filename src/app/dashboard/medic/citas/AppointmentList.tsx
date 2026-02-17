@@ -2,9 +2,10 @@
 
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Clock, MapPin, Loader2, ChevronDown, Users, DollarSign, FileText, User, Phone, CreditCard, CalendarClock } from 'lucide-react';
+import { Clock, MapPin, Loader2, ChevronDown, Users, DollarSign, FileText, User, Phone, CreditCard, CalendarClock, PlusCircle } from 'lucide-react';
 import { useAppointments } from '@/app/hooks/useAppointments';
 import RescheduleModal from './RescheduleModal';
+import AddServiceModal from '@/app/dashboard/components/AddServiceModal';
 import { useLiteMode } from '@/contexts/LiteModeContext';
 
 interface Props {
@@ -12,10 +13,15 @@ interface Props {
 }
 
 export default function AppointmentList({ selectedDate }: Props) {
-	const { appointments, isLoading, isError, updateAppointment } = useAppointments(selectedDate);
+	const { appointments, isLoading, isError, updateAppointment, refetch } = useAppointments(selectedDate);
 	const [loadingId, setLoadingId] = useState<string | null>(null);
 	const [rescheduleAppointment, setRescheduleAppointment] = useState<{ id: string; scheduled_at?: string; patient: string } | null>(null);
 	const [isRescheduleModalOpen, setIsRescheduleModalOpen] = useState(false);
+    
+    // Estado para agregar servicios
+    const [selectedAppointmentForService, setSelectedAppointmentForService] = useState<any>(null);
+    const [isAddServiceModalOpen, setIsAddServiceModalOpen] = useState(false);
+
 	const { isLiteMode } = useLiteMode();
 
 	const getStatusColor = (status: string) => {
@@ -161,11 +167,24 @@ export default function AppointmentList({ selectedDate }: Props) {
 
 								{/* Servicio solicitado */}
 								{appt.selected_service && (
-									<div className="bg-teal-50 border border-teal-200 rounded-lg p-2 sm:p-3 ml-6">
-										<div className="flex items-center gap-2 mb-1">
-											<CreditCard className="w-4 h-4 text-teal-600 shrink-0" />
-											<span className="text-xs font-semibold text-teal-900">Servicios:</span>
-										</div>
+									<div className="bg-teal-50 border border-teal-200 rounded-lg p-2 sm:p-3 ml-6 mb-2">
+										<div className="flex items-center justify-between mb-1">
+                                            <div className="flex items-center gap-2">
+                                                <CreditCard className="w-4 h-4 text-teal-600 shrink-0" />
+                                                <span className="text-xs font-semibold text-teal-900">Servicios:</span>
+                                            </div>
+                                            <button 
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    setSelectedAppointmentForService(appt);
+                                                    setIsAddServiceModalOpen(true);
+                                                }}
+                                                className="text-teal-600 hover:text-teal-800 hover:bg-teal-100 p-1 rounded-full transition-colors"
+                                                title="Agregar servicio extra"
+                                            >
+                                                <PlusCircle className="w-4 h-4" />
+                                            </button>
+                                        </div>
                                         
                                         {/* Manejar array de servicios (nuevo formato) */}
                                         {Array.isArray(appt.selected_service) ? (
@@ -296,6 +315,24 @@ export default function AppointmentList({ selectedDate }: Props) {
 				appointment={rescheduleAppointment}
 				onReschedule={handleReschedule}
 			/>
+
+            {/* Modal para agregar servicios */}
+            {selectedAppointmentForService && (
+                <AddServiceModal
+                    isOpen={isAddServiceModalOpen}
+                    onClose={() => {
+                        setIsAddServiceModalOpen(false);
+                        setSelectedAppointmentForService(null);
+                    }}
+                    appointment={selectedAppointmentForService}
+                    organizationId={selectedAppointmentForService.organizationId}
+                    onSuccess={() => {
+                        // Recargar citas
+                         refetch(); 
+                    }}
+                />
+            )}
+
 		</>
 	);
 }
