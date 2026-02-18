@@ -249,6 +249,8 @@ export async function POST(request: NextRequest) {
 			}
 		}
 
+		console.log('[N8N Internal] Patient Email Source:', patientEmail);
+
 		// Obtener datos del médico
 		let doctorName = 'Médico';
 		const { data: doctorData } = await supabaseAdmin
@@ -999,6 +1001,9 @@ export async function POST(request: NextRequest) {
 			treatment: allMappedFields['tratamiento'] || allMappedFields['treatment'] || allMappedFields['plan'] || allMappedFields['plan_tratamiento'] || '',
 		};
 
+		console.log('[N8N Internal] debug: baseTemplateData.email:', baseTemplateData.email);
+		console.log('[N8N Internal] debug: baseTemplateData.correo:', baseTemplateData.correo);
+
 		// Construir templateDataObj según tipo de informe
 		let templateDataObj: Record<string, string>;
 		if (reportType === 'first_trimester') {
@@ -1192,6 +1197,9 @@ export async function POST(request: NextRequest) {
 				...baseTemplateData,
 				...explicitMappings,
 			};
+
+			console.log('[N8N Internal] debug final: templateDataObj.email:', templateDataObj.email);
+			console.log('[N8N Internal] debug final: templateDataObj.correo:', templateDataObj.correo);
 			
 			// Construir {{contenido}} usando la plantilla de texto de la base de datos
 			if (templateText) {

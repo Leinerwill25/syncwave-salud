@@ -106,7 +106,7 @@ export const generateGenericReport = async (
                                                             font: font_family,
                                                         }),
                                                     ],
-                                                    alignment: AlignmentType.RIGHT,
+                                                    alignment: AlignmentType.CENTER,
                                                 }),
                                                 new Paragraph({
                                                     children: [
@@ -117,7 +117,7 @@ export const generateGenericReport = async (
                                                             font: font_family,
                                                         }),
                                                     ],
-                                                    alignment: AlignmentType.RIGHT,
+                                                    alignment: AlignmentType.CENTER,
                                                 }),
                                             ],
                                             width: { size: 70, type: WidthType.PERCENTAGE },

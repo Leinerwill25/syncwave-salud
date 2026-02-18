@@ -479,6 +479,29 @@ async function generateReportContentFromTemplate(
 				ultima_regla: gyn.last_menstrual_period || '',
 				metodo_anticonceptivo: gyn.contraceptive || '',
 				ho: gyn.ho || 'NIEGA',
+				menarquia: gyn.menarche || '',
+				ultima_citologia: gyn.last_cytology || '',
+				pareja_actual: gyn.current_partner || '',
+				gardasil: gyn.gardasil || 'NO APLICADA',
+				hipersensibilidad: gyn.hypersensitivity || 'NIEGA',
+				habitos_psicobiologicos: gyn.psychobiological_habits || 'NIEGA TABAQUISMO, NIEGA ALCOHOLISMO',
+				diagnostico_ginecologico: Array.isArray(gyn.diagnoses) ? gyn.diagnoses.join(', ') : (gyn.diagnosis || ''),
+				
+				// Plan de tratamiento detallado
+				plan_indicaciones: Array.isArray(gyn.plan_indications) ? gyn.plan_indications.join(', ') : (gyn.plan_indications || ''),
+				plan_dieta: Array.isArray(gyn.diet_indications) ? gyn.diet_indications.join(', ') : (gyn.diet_indications || ''),
+				plan_reposo: Array.isArray(gyn.plan_rest) ? gyn.plan_rest.join(', ') : (gyn.plan_rest || ''),
+				plan_proximo_control: gyn.plan_next_control || '',
+				plan_jabon_intimo: gyn.intimate_soap || '',
+				plan_tratamiento_infeccion: gyn.treatment_infection || '',
+				plan_probioticos: gyn.probiotics || '',
+				plan_vitaminas: gyn.vitamins || '',
+				plan_tratamiento_anticonceptivo: gyn.contraceptive_treatment || '',
+				plan_tratamiento_sangrado: gyn.bleeding_treatment || '',
+
+
+
+
 
 				// Examen físico
 				condiciones_generales: gyn.general_conditions || 'ESTABLES',
@@ -524,6 +547,28 @@ async function generateReportContentFromTemplate(
 				ultima_regla: gyn.last_menstrual_period || '',
 				metodo_anticonceptivo: gyn.contraceptive || '',
 				ho: gyn.ho || 'NIEGA',
+				menarquia: gyn.menarche || '',
+				ultima_citologia: gyn.last_cytology || '',
+				pareja_actual: gyn.current_partner || '',
+				gardasil: gyn.gardasil || 'NO APLICADA',
+				hipersensibilidad: gyn.hypersensitivity || 'NIEGA',
+				habitos_psicobiologicos: gyn.psychobiological_habits || 'NIEGA TABAQUISMO, NIEGA ALCOHOLISMO',
+				diagnostico_ginecologico: Array.isArray(gyn.diagnoses) ? gyn.diagnoses.join(', ') : (gyn.diagnosis || ''),
+
+				// Plan de tratamiento detallado
+				plan_indicaciones: Array.isArray(gyn.plan_indications) ? gyn.plan_indications.join(', ') : (gyn.plan_indications || ''),
+				plan_dieta: Array.isArray(gyn.diet_indications) ? gyn.diet_indications.join(', ') : (gyn.diet_indications || ''),
+				plan_reposo: Array.isArray(gyn.plan_rest) ? gyn.plan_rest.join(', ') : (gyn.plan_rest || ''),
+				plan_proximo_control: gyn.plan_next_control || '',
+				plan_jabon_intimo: gyn.intimate_soap || '',
+				plan_tratamiento_infeccion: gyn.treatment_infection || '',
+				plan_probioticos: gyn.probiotics || '',
+				plan_vitaminas: gyn.vitamins || '',
+				plan_tratamiento_anticonceptivo: gyn.contraceptive_treatment || '',
+				plan_tratamiento_sangrado: gyn.bleeding_treatment || '',
+
+
+
 
 				// Examen físico
 				condiciones_generales: gyn.general_conditions || 'ESTABLES',
@@ -577,6 +622,27 @@ async function generateReportContentFromTemplate(
 				ultima_regla: gyn.last_menstrual_period || '',
 				metodo_anticonceptivo: gyn.contraceptive || '',
 				ho: gyn.ho || 'NIEGA',
+				menarquia: gyn.menarche || '',
+				ultima_citologia: gyn.last_cytology || '',
+				pareja_actual: gyn.current_partner || '',
+				gardasil: gyn.gardasil || 'NO APLICADA',
+				hipersensibilidad: gyn.hypersensitivity || 'NIEGA',
+				habitos_psicobiologicos: gyn.psychobiological_habits || 'NIEGA TABAQUISMO, NIEGA ALCOHOLISMO',
+				diagnostico_ginecologico: Array.isArray(gyn.diagnoses) ? gyn.diagnoses.join(', ') : (gyn.diagnosis || ''),
+
+				// Plan de tratamiento detallado
+				plan_indicaciones: Array.isArray(gyn.plan_indications) ? gyn.plan_indications.join(', ') : (gyn.plan_indications || ''),
+				plan_dieta: Array.isArray(gyn.diet_indications) ? gyn.diet_indications.join(', ') : (gyn.diet_indications || ''),
+				plan_reposo: Array.isArray(gyn.plan_rest) ? gyn.plan_rest.join(', ') : (gyn.plan_rest || ''),
+				plan_proximo_control: gyn.plan_next_control || '',
+				plan_jabon_intimo: gyn.intimate_soap || '',
+				plan_tratamiento_infeccion: gyn.treatment_infection || '',
+				plan_probioticos: gyn.probiotics || '',
+				plan_vitaminas: gyn.vitamins || '',
+				plan_tratamiento_anticonceptivo: gyn.contraceptive_treatment || '',
+				plan_tratamiento_sangrado: gyn.bleeding_treatment || '',
+
+
 
 				// Examen físico
 				condiciones_generales: gyn.general_conditions || 'ESTABLES',
