@@ -903,25 +903,25 @@ export async function POST(request: NextRequest) {
 		// Mapeos adicionales para Ginecología y Signos Vitales
 		const extraGynecologyMappings: Record<string, string> = {
 			// Hipersensibilidad
-			hipersensibilidad: toUpper(extractedFields?.ginecologicos?.hypersensitivity || extractedFields?.hypersensitivity || ''),
+			hipersensibilidad: toUpper(extractedFields?.ginecologicos?.hypersensitivity || extractedFields?.gynecology?.hypersensitivity || extractedFields?.hypersensitivity || ''),
 			
 			// Hábitos Psicobiológicos
-			habitos_psicobiologicos: toUpper(extractedFields?.ginecologicos?.psychobiological_habits || extractedFields?.psychobiological_habits || ''),
+			habitos_psicobiologicos: toUpper(extractedFields?.ginecologicos?.psychobiological_habits || extractedFields?.gynecology?.psychobiological_habits || extractedFields?.psychobiological_habits || ''),
 			
 			// Menarquía
-			menarquia: toUpper(extractedFields?.ginecologicos?.menarche || extractedFields?.menarche || ''),
+			menarquia: toUpper(extractedFields?.ginecologicos?.menarche || extractedFields?.gynecology?.menarche || extractedFields?.menarche || ''),
 			
 			// Última Citología
-			ultima_citologia: toUpper(extractedFields?.ginecologicos?.last_cytology || extractedFields?.last_cytology || ''),
+			ultima_citologia: toUpper(extractedFields?.ginecologicos?.last_cytology || extractedFields?.gynecology?.last_cytology || extractedFields?.last_cytology || ''),
 			
 			// Mastopatías
-			mastopatias: toUpper(extractedFields?.ginecologicos?.mastopathies || extractedFields?.mastopathies || ''),
+			mastopatias: toUpper(extractedFields?.ginecologicos?.mastopathies || extractedFields?.gynecology?.mastopathies || extractedFields?.mastopathies || ''),
 			
 			// Pareja Actual
-			pareja_actual: toUpper(extractedFields?.ginecologicos?.current_partner || extractedFields?.current_partner || ''),
+			pareja_actual: toUpper(extractedFields?.ginecologicos?.current_partner || extractedFields?.gynecology?.current_partner || extractedFields?.current_partner || ''),
 			
 			// Gardasil / VPH
-			gardasil: toUpper(extractedFields?.ginecologicos?.gardasil || extractedFields?.gardasil || ''),
+			gardasil: toUpper(extractedFields?.ginecologicos?.gardasil || extractedFields?.gynecology?.gardasil || extractedFields?.gardasil || ''),
 			
 			// Peso (Buscar en vitals o raíz)
 			peso: toUpper(extractedFields?.vitals?.weight || extractedFields?.weight || extractedFields?.peso || ''),
@@ -930,10 +930,10 @@ export async function POST(request: NextRequest) {
 			tension_arterial: toUpper(extractedFields?.vitals?.bloodPressure || extractedFields?.bloodPressure || extractedFields?.tension_arterial || extractedFields?.ta || ''),
 			
 			// Secreción Mamas
-			secrecion_mamas: toUpper(extractedFields?.ginecologicos?.breast_secretion || extractedFields?.breast_secretion || extractedFields?.secrecion_mamas || ''),
+			secrecion_mamas: toUpper(extractedFields?.ginecologicos?.breast_secretion || extractedFields?.gynecology?.breast_secretion || extractedFields?.breast_secretion || ''),
 			
 			// Colposcopia Realizada (Check if colposcopy data exists)
-			colposcopia_realizada: (extractedFields?.ginecologicos?.colposcopy || extractedFields?.colposcopy) ? 'SÍ' : 'NO',
+			colposcopia_realizada: (extractedFields?.ginecologicos?.colposcopy || extractedFields?.gynecology?.colposcopy || extractedFields?.colposcopy) ? 'SÍ' : 'NO',
 		};
 
         const allCustomMappings = { ...commonVariableMappings, ...extraGynecologyMappings };

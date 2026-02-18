@@ -51,6 +51,83 @@ function isNumericOrEmpty(s: string | number | null | undefined) {
 	return !Number.isNaN(Number(String(s).toString().replace(',', '.')));
 }
 
+const inputBase = 'w-full p-2 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all';
+const inputDark = 'dark:bg-slate-800 dark:border-slate-700 dark:text-slate-100';
+const labelClass = 'block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1';
+
+// Componente para entrada múltiple (lista dinámica)
+const MultiInput = ({ 
+	value, 
+	onChange, 
+	placeholder 
+}: { 
+	value: string; 
+	onChange: (val: string) => void; 
+	placeholder?: string 
+}) => {
+	const [inputValue, setInputValue] = useState('');
+	
+	// Convertir string separado por \n a array
+	const items = value ? value.split('\n').filter(line => line.trim() !== '') : [];
+
+	const handleAdd = () => {
+		if (inputValue.trim()) {
+			const newItems = [...items, inputValue.trim()];
+			onChange(newItems.join('\n'));
+			setInputValue('');
+		}
+	};
+
+	const handleRemove = (index: number) => {
+		const newItems = items.filter((_, i) => i !== index);
+		onChange(newItems.join('\n'));
+	};
+
+	const handleKeyDown = (e: React.KeyboardEvent) => {
+		if (e.key === 'Enter') {
+			e.preventDefault();
+			handleAdd();
+		}
+	};
+
+	return (
+		<div className="space-y-2">
+			<div className="flex gap-2">
+				<input
+					value={inputValue}
+					onChange={(e) => setInputValue(e.target.value)}
+					onKeyDown={handleKeyDown}
+					className={`${inputBase} ${inputDark} flex-1`}
+					placeholder={placeholder || "Escribir y presionar Enter..."}
+				/>
+				<button
+					type="button"
+					onClick={handleAdd}
+					className="p-2 bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors"
+				>
+					<Plus size={18} />
+				</button>
+			</div>
+			{items.length > 0 && (
+				<ul className="space-y-1">
+					{items.map((item, idx) => (
+						<li key={idx} className="flex items-start justify-between gap-2 bg-slate-50 dark:bg-slate-800/50 px-2 py-1.5 rounded text-sm group">
+							<span className="text-slate-700 dark:text-slate-300 break-words">{item}</span>
+							<button
+								type="button"
+								onClick={() => handleRemove(idx)}
+								className="text-slate-400 hover:text-rose-500 opacity-0 group-hover:opacity-100 transition-opacity"
+							>
+								<Trash2 size={14} />
+							</button>
+						</li>
+					))}
+				</ul>
+			)}
+		</div>
+	);
+};
+
 export default function EditConsultationForm({ initial, patient, doctor, doctorSpecialties, isSimpleConsulta = false, hasEcografiaTransvaginal = false, isOnlyVideoColposcopia = false, hasColposcopia = false, hasConsultaInService = false }: { initial: ConsultationShape; patient?: any; doctor?: any; doctorSpecialties?: string[]; isSimpleConsulta?: boolean; hasEcografiaTransvaginal?: boolean; isOnlyVideoColposcopia?: boolean; hasColposcopia?: boolean; hasConsultaInService?: boolean }) {
 	const router = useRouter();
 	const { saveOptimistically } = useOptimisticSave();
@@ -4533,39 +4610,44 @@ export default function EditConsultationForm({ initial, patient, doctor, doctorS
 																{/* Nuevo Bloque: Plan / Tratamiento */}
 																{!shouldOnlyShowColposcopy && (
 																	<div className="border-t border-slate-200 dark:border-slate-700 pt-4">
-																		<h4 className="text-sm font-semibold text-slate-900 dark:text-slate-100 mb-3">Plan / Tratamiento</h4>
-																		<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+																		<h4 className="text-sm font-semibold text-slate-900 dark:text-slate-100 mb-3 flex items-center gap-2">
+																			<FileText className="w-4 h-4 text-teal-500" />
+																			Plan / Tratamiento
+																		</h4>
+																		<div className="space-y-4">
 																			<div>
 																				<label className={labelClass}>Indicaciones del Plan</label>
-																				<textarea value={planIndications} onChange={(e) => setPlanIndications(e.target.value)} className={`${inputBase} ${inputDark}`} rows={2} placeholder="Indicaciones generales..." />
+																				<MultiInput value={planIndications} onChange={setPlanIndications} placeholder="Indicaciones generales..." />
 																			</div>
-																			<div>
-																				<label className={labelClass}>Indicaciones de Dieta</label>
-																				<textarea value={dietIndications} onChange={(e) => setDietIndications(e.target.value)} className={`${inputBase} ${inputDark}`} rows={2} placeholder="Recomendaciones dietéticas..." />
-																			</div>
-																			<div>
-																				<label className={labelClass}>Jabón Íntimo</label>
-																				<input value={intimateSoap} onChange={(e) => setIntimateSoap(e.target.value)} className={`${inputBase} ${inputDark}`} placeholder="Especificar..." />
-																			</div>
-																			<div>
-																				<label className={labelClass}>Tratamiento Infección</label>
-																				<input value={treatmentInfection} onChange={(e) => setTreatmentInfection(e.target.value)} className={`${inputBase} ${inputDark}`} placeholder="Antibióticos / Antifúngicos..." />
-																			</div>
-																			<div>
-																				<label className={labelClass}>Probióticos</label>
-																				<input value={probiotics} onChange={(e) => setProbiotics(e.target.value)} className={`${inputBase} ${inputDark}`} placeholder="Especificar..." />
-																			</div>
-																			<div>
-																				<label className={labelClass}>Vitaminas</label>
-																				<input value={vitamins} onChange={(e) => setVitamins(e.target.value)} className={`${inputBase} ${inputDark}`} placeholder="Especificar..." />
-																			</div>
-																			<div>
-																				<label className={labelClass}>Tratamiento Anticonceptivo</label>
-																				<input value={contraceptiveTreatment} onChange={(e) => setContraceptiveTreatment(e.target.value)} className={`${inputBase} ${inputDark}`} placeholder="Especificar..." />
-																			</div>
-																			<div>
-																				<label className={labelClass}>Tratamiento para Sangrado</label>
-																				<input value={bleedingTreatment} onChange={(e) => setBleedingTreatment(e.target.value)} className={`${inputBase} ${inputDark}`} placeholder="Especificar..." />
+																			<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+																				<div>
+																					<label className={labelClass}>Indicaciones de Dieta</label>
+																					<MultiInput value={dietIndications} onChange={setDietIndications} placeholder="Recomendaciones dietéticas..." />
+																				</div>
+																				<div>
+																					<label className={labelClass}>Jabón Íntimo</label>
+																					<MultiInput value={intimateSoap} onChange={setIntimateSoap} placeholder="Especificar..." />
+																				</div>
+																				<div>
+																					<label className={labelClass}>Tratamiento Infección</label>
+																					<MultiInput value={treatmentInfection} onChange={setTreatmentInfection} placeholder="Antibióticos / Antifúngicos..." />
+																				</div>
+																				<div>
+																					<label className={labelClass}>Probióticos</label>
+																					<MultiInput value={probiotics} onChange={setProbiotics} placeholder="Especificar..." />
+																				</div>
+																				<div>
+																					<label className={labelClass}>Vitaminas</label>
+																					<MultiInput value={vitamins} onChange={setVitamins} placeholder="Especificar..." />
+																				</div>
+																				<div>
+																					<label className={labelClass}>Tratamiento Anticonceptivo</label>
+																					<MultiInput value={contraceptiveTreatment} onChange={setContraceptiveTreatment} placeholder="Especificar..." />
+																				</div>
+																				<div>
+																					<label className={labelClass}>Tratamiento para Sangrado</label>
+																					<MultiInput value={bleedingTreatment} onChange={setBleedingTreatment} placeholder="Especificar..." />
+																				</div>
 																			</div>
 																		</div>
 																	</div>

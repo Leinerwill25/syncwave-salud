@@ -293,6 +293,177 @@ export const generateGenericReport = async (
                         spacing: { after: 300 },
                     }),
                 ] : []),
+
+                // GINECOLOGÍA
+                ...((() => {
+                    const gynecology = consultation.vitals?.gynecology;
+                    if (!gynecology) return [];
+
+                    return [
+                        new Paragraph({
+                            children: [
+                                new TextRun({
+                                    text: "GINECOLOGÍA",
+                                    bold: true,
+                                    color: primary_color.replace('#', ''),
+                                    font: font_family,
+                                }),
+                            ],
+                            border: { bottom: { style: BorderStyle.SINGLE, size: 6, color: secondary_color.replace('#', '') } },
+                            spacing: { before: 200, after: 100 },
+                        }),
+                        // Tabla de Antecedentes Ginecológicos
+                        new Table({
+                            width: { size: 100, type: WidthType.PERCENTAGE },
+                            borders: {
+                                top: { style: BorderStyle.NONE, size: 0, color: "auto" },
+                                bottom: { style: BorderStyle.NONE, size: 0, color: "auto" },
+                                left: { style: BorderStyle.NONE, size: 0, color: "auto" },
+                                right: { style: BorderStyle.NONE, size: 0, color: "auto" },
+                                insideHorizontal: { style: BorderStyle.NONE, size: 0, color: "auto" },
+                                insideVertical: { style: BorderStyle.NONE, size: 0, color: "auto" },
+                            },
+                            rows: [
+                                // Fila 1: FUR y Menarquía
+                                new TableRow({
+                                    children: [
+                                        new TableCell({
+                                            children: [
+                                                new Paragraph({
+                                                    children: [
+                                                        new TextRun({ text: "FUR: ", bold: true, font: font_family }),
+                                                        new TextRun({ text: gynecology.last_menstrual_period || 'N/A', font: font_family }),
+                                                    ],
+                                                }),
+                                            ],
+                                            width: { size: 50, type: WidthType.PERCENTAGE },
+                                        }),
+                                        new TableCell({
+                                            children: [
+                                                new Paragraph({
+                                                    children: [
+                                                        new TextRun({ text: "Menarquía: ", bold: true, font: font_family }),
+                                                        new TextRun({ text: gynecology.menarche || 'N/A', font: font_family }),
+                                                    ],
+                                                }),
+                                            ],
+                                            width: { size: 50, type: WidthType.PERCENTAGE },
+                                        }),
+                                    ],
+                                }),
+                                // Fila 2: Ciclo y Citología
+                                new TableRow({
+                                    children: [
+                                        new TableCell({
+                                            children: [
+                                                new Paragraph({
+                                                    children: [
+                                                        new TextRun({ text: "Ciclo: ", bold: true, font: font_family }),
+                                                        new TextRun({ 
+                                                            text: [gynecology.menstruation_type, gynecology.menstruation_pattern].filter(Boolean).join(' / ') || 'N/A', 
+                                                            font: font_family 
+                                                        }),
+                                                    ],
+                                                }),
+                                            ],
+                                        }),
+                                        new TableCell({
+                                            children: [
+                                                new Paragraph({
+                                                    children: [
+                                                        new TextRun({ text: "Última Citología: ", bold: true, font: font_family }),
+                                                        new TextRun({ text: gynecology.last_cytology || 'N/A', font: font_family }),
+                                                    ],
+                                                }),
+                                            ],
+                                        }),
+                                    ],
+                                }),
+                                // Fila 3: Pareja Actual y Gardasil
+                                new TableRow({
+                                    children: [
+                                        new TableCell({
+                                            children: [
+                                                new Paragraph({
+                                                    children: [
+                                                        new TextRun({ text: "Pareja Actual: ", bold: true, font: font_family }),
+                                                        new TextRun({ text: gynecology.current_partner || 'N/A', font: font_family }),
+                                                    ],
+                                                }),
+                                            ],
+                                        }),
+                                        new TableCell({
+                                            children: [
+                                                new Paragraph({
+                                                    children: [
+                                                        new TextRun({ text: "Gardasil: ", bold: true, font: font_family }),
+                                                        new TextRun({ text: gynecology.gardasil || 'N/A', font: font_family }),
+                                                    ],
+                                                }),
+                                            ],
+                                        }),
+                                    ],
+                                }),
+                            ],
+                        }),
+                        
+                        // Diagnósticos Ginecológicos
+                        ...(gynecology.diagnoses && Array.isArray(gynecology.diagnoses) && gynecology.diagnoses.length > 0 ? [
+                            new Paragraph({ text: "", spacing: { after: 200 } }),
+                            new Paragraph({
+                                children: [
+                                    new TextRun({ text: "Diagnósticos Ginecológicos:", bold: true, font: font_family }),
+                                ],
+                            }),
+                            ...gynecology.diagnoses.map((diag: string) => new Paragraph({
+                                children: [new TextRun({ text: `• ${diag}`, font: font_family })],
+                                indent: { left: 720 },
+                            })),
+                        ] : []),
+
+                        // Plan y Tratamiento
+                        ...((gynecology.plan_indications || 
+                            gynecology.diet_indications || 
+                            gynecology.treatment_infection ||
+                            gynecology.contraceptive_treatment) ? [
+                            
+                            new Paragraph({ text: "", spacing: { after: 200 } }),
+                            new Paragraph({
+                                children: [
+                                    new TextRun({
+                                        text: "PLAN Y TRATAMIENTO",
+                                        bold: true,
+                                        color: primary_color.replace('#', ''),
+                                        font: font_family,
+                                    }),
+                                ],
+                                border: { bottom: { style: BorderStyle.SINGLE, size: 6, color: "E0E0E0" } },
+                                spacing: { before: 200, after: 100 },
+                            }),
+                            
+                            ...(gynecology.plan_indications ? [
+                                new Paragraph({children: [new TextRun({ text: "Indicaciones Generales:", bold: true, font: font_family })]}),
+                                new Paragraph({children: [new TextRun({ text: gynecology.plan_indications, font: font_family })], spacing: { after: 100 }}),
+                            ] : []),
+
+                            ...(gynecology.diet_indications ? [
+                                new Paragraph({children: [new TextRun({ text: "Dieta:", bold: true, font: font_family })]}),
+                                new Paragraph({children: [new TextRun({ text: gynecology.diet_indications, font: font_family })], spacing: { after: 100 }}),
+                            ] : []),
+
+                            ...(gynecology.treatment_infection ? [
+                                new Paragraph({children: [new TextRun({ text: "Tratamiento Infección:", bold: true, font: font_family })]}),
+                                new Paragraph({children: [new TextRun({ text: gynecology.treatment_infection, font: font_family })], spacing: { after: 100 }}),
+                            ] : []),
+
+                            ...(gynecology.contraceptive_treatment ? [
+                                new Paragraph({children: [new TextRun({ text: "Tratamiento Anticonceptivo:", bold: true, font: font_family })]}),
+                                new Paragraph({children: [new TextRun({ text: gynecology.contraceptive_treatment, font: font_family })], spacing: { after: 100 }}),
+                            ] : []),
+
+                        ] : []),
+                    ];
+                })())
             ],
         }],
     });
