@@ -128,6 +128,11 @@ async function generateReportContentFromTemplate(
 		identificacion: patientId || 'N/A',
 		telefono: patientPhone || 'N/A',
 		phone: patientPhone || 'N/A',
+
+		// Signos vitales base
+		peso: vitals.weight || '',
+		tension_arterial: vitals.systolic && vitals.diastolic ? `${vitals.systolic}/${vitals.diastolic}` : (vitals.blood_pressure || ''),
+
 		
 		// Datos generales de la consulta
 		diagnostico: consultation.diagnosis || 'No especificado',
@@ -326,8 +331,26 @@ async function generateReportContentFromTemplate(
 				plan_tratamiento_infeccion: gyn.treatment_infection || '',
 				plan_probioticos: gyn.probiotics || '',
 				plan_vitaminas: gyn.vitamins || '',
-				plan_tratamiento_anticonceptivo: gyn.contraceptive_treatment || '',
 				plan_tratamiento_sangrado: gyn.bleeding_treatment || '',
+
+				// Aliases para Plan de tratamiento (sin prefijo plan_)
+				indicaciones_alimentacion: Array.isArray(gyn.diet_indications) ? gyn.diet_indications.join(', ') : (gyn.diet_indications || ''),
+				jabon_intimo: gyn.intimate_soap || '',
+				tratamiento_infeccion: gyn.treatment_infection || '',
+				probioticos: gyn.probiotics || '',
+				vitaminas: gyn.vitamins || '',
+				anticonceptivo: gyn.contraceptive_treatment || '',
+				tratamiento_sangrado: gyn.bleeding_treatment || '',
+
+				// Diagnósticos separados (hasta 3)
+				diagnostico_1: Array.isArray(gyn.diagnoses) && gyn.diagnoses[0] ? gyn.diagnoses[0] : '',
+				diagnostico_2: Array.isArray(gyn.diagnoses) && gyn.diagnoses[1] ? gyn.diagnoses[1] : '',
+				diagnostico_3: Array.isArray(gyn.diagnoses) && gyn.diagnoses[2] ? gyn.diagnoses[2] : '',
+
+				// Otras variables de ginecología
+				mastopatias: gyn.mastopathies || 'NIEGA',
+				colposcopia_realizada: (colposcopy && (colposcopy.acetic_5 || colposcopy.type)) ? 'SÍ' : 'NO',
+
 
 
 
@@ -395,6 +418,25 @@ async function generateReportContentFromTemplate(
 				plan_vitaminas: gyn.vitamins || '',
 				plan_tratamiento_anticonceptivo: gyn.contraceptive_treatment || '',
 				plan_tratamiento_sangrado: gyn.bleeding_treatment || '',
+
+				// Aliases para Plan de tratamiento (sin prefijo plan_)
+				indicaciones_alimentacion: Array.isArray(gyn.diet_indications) ? gyn.diet_indications.join(', ') : (gyn.diet_indications || ''),
+				jabon_intimo: gyn.intimate_soap || '',
+				tratamiento_infeccion: gyn.treatment_infection || '',
+				probioticos: gyn.probiotics || '',
+				vitaminas: gyn.vitamins || '',
+				anticonceptivo: gyn.contraceptive_treatment || '',
+				tratamiento_sangrado: gyn.bleeding_treatment || '',
+
+				// Diagnósticos separados (hasta 3)
+				diagnostico_1: Array.isArray(gyn.diagnoses) && gyn.diagnoses[0] ? gyn.diagnoses[0] : '',
+				diagnostico_2: Array.isArray(gyn.diagnoses) && gyn.diagnoses[1] ? gyn.diagnoses[1] : '',
+				diagnostico_3: Array.isArray(gyn.diagnoses) && gyn.diagnoses[2] ? gyn.diagnoses[2] : '',
+
+				// Otras variables de ginecología
+				mastopatias: gyn.mastopathies || 'NIEGA',
+				colposcopia_realizada: (colposcopy && (colposcopy.acetic_5 || colposcopy.type)) ? 'SÍ' : 'NO',
+
 
 
 
@@ -470,6 +512,25 @@ async function generateReportContentFromTemplate(
 				plan_vitaminas: gyn.vitamins || '',
 				plan_tratamiento_anticonceptivo: gyn.contraceptive_treatment || '',
 				plan_tratamiento_sangrado: gyn.bleeding_treatment || '',
+
+				// Aliases para Plan de tratamiento (sin prefijo plan_)
+				indicaciones_alimentacion: Array.isArray(gyn.diet_indications) ? gyn.diet_indications.join(', ') : (gyn.diet_indications || ''),
+				jabon_intimo: gyn.intimate_soap || '',
+				tratamiento_infeccion: gyn.treatment_infection || '',
+				probioticos: gyn.probiotics || '',
+				vitaminas: gyn.vitamins || '',
+				anticonceptivo: gyn.contraceptive_treatment || '',
+				tratamiento_sangrado: gyn.bleeding_treatment || '',
+
+				// Diagnósticos separados (hasta 3)
+				diagnostico_1: Array.isArray(gyn.diagnoses) && gyn.diagnoses[0] ? gyn.diagnoses[0] : '',
+				diagnostico_2: Array.isArray(gyn.diagnoses) && gyn.diagnoses[1] ? gyn.diagnoses[1] : '',
+				diagnostico_3: Array.isArray(gyn.diagnoses) && gyn.diagnoses[2] ? gyn.diagnoses[2] : '',
+
+				// Otras variables de ginecología
+				mastopatias: gyn.mastopathies || 'NIEGA',
+				colposcopia_realizada: (colposcopy && (colposcopy.acetic_5 || colposcopy.type)) ? 'SÍ' : 'NO',
+
 
 
 
@@ -1173,6 +1234,11 @@ ${isObstetrics ? `Tipo de informe: ${reportType === 'first_trimester' ? 'Primer 
 			identificacion: patientId,
 			telefono: patientPhone,
 			phone: patientPhone,
+			
+			// Signos vitales base
+			peso: vitals.weight || '',
+			tension_arterial: vitals.systolic && vitals.diastolic ? `${vitals.systolic}/${vitals.diastolic}` : (vitals.blood_pressure || ''),
+
 			medico: doctorName,
 			doctor: doctorName, // Variante en inglés
 			diagnostico: consultation.diagnosis || 'No especificado',
@@ -1320,6 +1386,26 @@ ${isObstetrics ? `Tipo de informe: ${reportType === 'first_trimester' ? 'Primer 
 				plan_vitaminas: gyn.vitamins || '',
 				plan_tratamiento_anticonceptivo: gyn.contraceptive_treatment || '',
 				plan_tratamiento_sangrado: gyn.bleeding_treatment || '',
+
+				// Aliases para Plan de tratamiento (sin prefijo plan_)
+				indicaciones_alimentacion: Array.isArray(gyn.diet_indications) ? gyn.diet_indications.join(', ') : (gyn.diet_indications || ''),
+				jabon_intimo: gyn.intimate_soap || '',
+				tratamiento_infeccion: gyn.treatment_infection || '',
+				probioticos: gyn.probiotics || '',
+				vitaminas: gyn.vitamins || '',
+				anticonceptivo: gyn.contraceptive_treatment || '',
+				tratamiento_sangrado: gyn.bleeding_treatment || '',
+
+				// Diagnósticos separados (hasta 3)
+				diagnostico_1: Array.isArray(gyn.diagnoses) && gyn.diagnoses[0] ? gyn.diagnoses[0] : '',
+				diagnostico_2: Array.isArray(gyn.diagnoses) && gyn.diagnoses[1] ? gyn.diagnoses[1] : '',
+				diagnostico_3: Array.isArray(gyn.diagnoses) && gyn.diagnoses[2] ? gyn.diagnoses[2] : '',
+
+				// Otras variables de ginecología
+				mastopatias: gyn.mastopathies || 'NIEGA',
+				secrecion_mamas: gyn.breast_secretion || 'NO SE EVIDENCIA SALIDA DE SECRECIÓN',
+				colposcopia_realizada: (colposcopy && (colposcopy.acetic_5 || colposcopy.type)) ? 'SÍ' : 'NO',
+
 
 
 
