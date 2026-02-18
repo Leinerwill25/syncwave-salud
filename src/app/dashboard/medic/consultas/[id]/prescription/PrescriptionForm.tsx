@@ -53,6 +53,7 @@ type Props = {
 	doctorId?: string;
 	existingPrescription?: ExistingPrescription | null; // Mantener por compatibilidad o eliminar si ya no se usa
 	prescriptions?: any[]; // Lista de prescripciones
+	vitals?: any; // Datos de la consulta (vitals)
 };
 
 function uid(prefix = '') {
@@ -65,7 +66,7 @@ function uid(prefix = '') {
    PrescriptionForm (principal)
    - layout with clear visual hierarchy
    ------------------------- */
-export default function PrescriptionForm({ consultationId, patientId, unregisteredPatientId, doctorId, existingPrescription, prescriptions = [] }: Props) {
+export default function PrescriptionForm({ consultationId, patientId, unregisteredPatientId, doctorId, existingPrescription, prescriptions = [], vitals = {} }: Props) {
 	const [items, setItems] = useState<Item[]>([]);
 	const [loading, setLoading] = useState(false);
 	const router = useRouter();
@@ -134,7 +135,15 @@ export default function PrescriptionForm({ consultationId, patientId, unregister
 				const res = await fetch('/api/medic/prescription-templates');
 				if (res.ok) {
 					const data = await res.json();
-					setTemplates(data.templates || []);
+					const fetchedTemplates = data.templates || [];
+					setTemplates(fetchedTemplates);
+
+					// Auto-seleccionar si hay un link y es una receta nueva
+					const linkedId = vitals?.gynecology?.linked_recipe_id;
+					if (linkedId && prescriptions.length === 0 && !selectedTemplateId) {
+						console.log('[PrescriptionForm] Auto-selecting linked recipe:', linkedId);
+						handleTemplateSelect(linkedId, fetchedTemplates);
+					}
 				}
 			} catch (err) {
 				console.error('Error loading templates:', err);
@@ -151,7 +160,7 @@ export default function PrescriptionForm({ consultationId, patientId, unregister
 	// ... (inside component)
 
 	// Handle Template Selection
-	const handleTemplateSelect = async (templateId: string) => {
+	const handleTemplateSelect = async (templateId: string, templatesList?: Template[]) => {
 		setSelectedTemplateId(templateId);
 		
 		// Limpiar si se deselecciona
@@ -163,7 +172,8 @@ export default function PrescriptionForm({ consultationId, patientId, unregister
 			return;
 		}
 
-		const template = templates.find((t) => t.id === templateId);
+		const list = templatesList || templates;
+		const template = list.find((t) => t.id === templateId);
 		if (!template) return;
 
 		try {

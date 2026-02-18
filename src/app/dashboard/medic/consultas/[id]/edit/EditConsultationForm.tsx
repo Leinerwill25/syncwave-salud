@@ -2,7 +2,27 @@
 
 import React, { useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
-import { Loader2, Save, Trash2, FileText, Download, ChevronDown, ChevronUp, Activity, ClipboardList, Stethoscope, FileCheck, Image, X, Upload, Lock, Sparkles, Plus } from 'lucide-react';
+import { 
+	Loader2, 
+	Save, 
+	Trash2, 
+	FileText, 
+	Download, 
+	ChevronDown, 
+	ChevronUp, 
+	Activity, 
+	ClipboardList, 
+	Stethoscope, 
+	FileCheck, 
+	Image, 
+	X, 
+	Upload, 
+	Lock, 
+	Sparkles, 
+	Plus,
+	Search,
+	Clipboard
+} from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import ICD11Search from '@/components/ICD11Search';
@@ -13,6 +33,8 @@ import DoctorPrivateNotesModal from '@/components/medic/DoctorPrivateNotesModal'
 import AudioRecorderButton from '@/components/medic/AudioRecorderButton';
 import { GenericReportConfig, ConsultationData } from '@/types/generic-report';
 import { generateGenericReport } from '@/lib/reports/generateGenericReport';
+import { extractTextFromDocx } from '@/lib/docx-parser';
+import { parseRecipeText } from '@/lib/docx-section-parser';
 
 type ConsultationShape = {
 	id: string;
@@ -787,6 +809,73 @@ export default function EditConsultationForm({ initial, patient, doctor, doctorS
 	const [iop, setIop] = useState<string>(initOph.iop ?? '');
 
 	/* -------------------------
+     Recetas (Templates)
+     ------------------------- */
+	const [templates, setTemplates] = useState<any[]>([]);
+	const [loadingTemplates, setLoadingTemplates] = useState(false);
+	const [applyingRecipe, setApplyingRecipe] = useState(false);
+	const [linkedRecipeId, setLinkedRecipeId] = useState<string | null>(initGyn.linked_recipe_id ?? null);
+
+	// Cargar plantillas de recetas al inicio
+	useEffect(() => {
+		const loadTemplates = async () => {
+			try {
+				setLoadingTemplates(true);
+				const res = await fetch('/api/medic/prescription-templates');
+				if (res.ok) {
+					const data = await res.json();
+					setTemplates(data.templates || []);
+				}
+			} catch (err) {
+				console.error('Error loading templates:', err);
+			} finally {
+				setLoadingTemplates(false);
+			}
+		};
+		if (isGynecology) {
+			loadTemplates();
+		}
+	}, [isGynecology]);
+
+	// Función para aplicar una plantilla de receta
+	const handleApplyRecipe = async (templateId: string) => {
+		const template = templates.find((t) => t.id === templateId);
+		if (!template) return;
+
+		try {
+			setApplyingRecipe(true);
+			setLinkedRecipeId(template.id);
+			
+			const fileUrl = template.file_url;
+			if (!fileUrl) throw new Error('No se pudo obtener la URL de la plantilla.');
+
+			const res = await fetch(fileUrl);
+			if (!res.ok) throw new Error('Error al descargar la plantilla.');
+			
+			const arrayBuffer = await res.arrayBuffer();
+			const text = await extractTextFromDocx(arrayBuffer);
+			const parsed = parseRecipeText(text);
+
+			// Auto-llenar campos
+			if (parsed.planIndications) setPlanIndications(parsed.planIndications);
+			if (parsed.dietIndications) setDietIndications(parsed.dietIndications);
+			if (parsed.intimateSoap) setIntimateSoap(parsed.intimateSoap);
+			if (parsed.treatmentInfection) setTreatmentInfection(parsed.treatmentInfection);
+			if (parsed.probiotics) setProbiotics(parsed.probiotics);
+			if (parsed.vitamins) setVitamins(parsed.vitamins);
+			if (parsed.contraceptiveTreatment) setContraceptiveTreatment(parsed.contraceptiveTreatment);
+			if (parsed.bleedingTreatment) setBleedingTreatment(parsed.bleedingTreatment);
+
+			toast.success(`Plantilla "${template.name}" aplicada correctamente.`);
+		} catch (err: any) {
+			console.error('Error applying recipe:', err);
+			toast.error('Error al procesar la plantilla: ' + err.message);
+		} finally {
+			setApplyingRecipe(false);
+		}
+	};
+
+	/* -------------------------
      UI
      ------------------------- */
 	const [loading, setLoading] = useState(false);
@@ -1264,6 +1353,7 @@ export default function EditConsultationForm({ initial, patient, doctor, doctorS
 			if (vitamins) gyn.vitamins = vitamins;
 			if (contraceptiveTreatment) gyn.contraceptive_treatment = contraceptiveTreatment;
 			if (bleedingTreatment) gyn.bleeding_treatment = bleedingTreatment;
+			if (linkedRecipeId) gyn.linked_recipe_id = linkedRecipeId;
 
 			// Datos de colposcopia
 			const colposcopy: Record<string, any> = {};
@@ -4614,6 +4704,49 @@ export default function EditConsultationForm({ initial, patient, doctor, doctorS
 																			<FileText className="w-4 h-4 text-teal-500" />
 																			Plan / Tratamiento
 																		</h4>
+																		
+																		{/* Buscador de Plantillas (Recipes) */}
+																		<div className="mb-6 bg-teal-50/50 dark:bg-teal-900/10 p-4 rounded-xl border border-teal-100 dark:border-teal-800">
+																			<div className="flex items-center gap-2 mb-3 text-teal-800 dark:text-teal-200">
+																				<Sparkles size={16} className="animate-pulse" />
+																				<span className="text-xs font-bold uppercase tracking-wider">Asistente de Recetas</span>
+																			</div>
+																			<div className="flex flex-col md:flex-row gap-3">
+																				<div className="flex-1 relative">
+																					<Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+																					<select 
+																						className={`${inputBase} ${inputDark} pl-10 h-11`}
+																						value={linkedRecipeId || ''}
+																						onChange={(e) => handleApplyRecipe(e.target.value)}
+																						disabled={applyingRecipe}
+																					>
+																						<option value="">Buscar plantilla de receta...</option>
+																						{templates.map((t) => (
+																							<option key={t.id} value={t.id}>{t.name}</option>
+																						))}
+																					</select>
+																				</div>
+																				{applyingRecipe && (
+																					<div className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-slate-800 rounded-lg border border-teal-200 dark:border-teal-700 animate-pulse text-teal-600 dark:text-teal-400 text-sm font-medium">
+																						<Loader2 className="animate-spin" size={16} />
+																						Procesando...
+																					</div>
+																				)}
+																				{!applyingRecipe && linkedRecipeId && (
+																					<button 
+																						type="button"
+																						onClick={() => handleApplyRecipe(linkedRecipeId)}
+																						className="px-4 py-2 bg-teal-100 dark:bg-teal-900/30 text-teal-700 dark:text-teal-300 rounded-lg border border-teal-200 dark:border-teal-700 hover:bg-teal-200 transition-colors text-sm font-medium flex items-center gap-2"
+																					>
+																						<Clipboard size={16} />
+																						Re-aplicar
+																					</button>
+																				)}
+																			</div>
+																			<p className="mt-2 text-[10px] text-slate-500 dark:text-slate-400">
+																				Al seleccionar una plantilla, se auto-completarán los campos de dieta, indicaciones y tratamientos basados en el texto del documento.
+																			</p>
+																		</div>
 																		<div className="space-y-4">
 																			<div>
 																				<label className={labelClass}>Indicaciones del Plan</label>
@@ -5385,11 +5518,18 @@ export default function EditConsultationForm({ initial, patient, doctor, doctorS
 								</p>
 							</div>
 
-							<div className="flex justify-center">
+							<div className="flex flex-col md:flex-row justify-center gap-4">
 								<Link href={`/dashboard/medic/consultas/${initial.id}/prescription`} className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-lg bg-gradient-to-r from-teal-600 to-cyan-600 text-white font-semibold shadow-lg hover:shadow-xl hover:scale-[1.02] transition-all" aria-label="Crear prescripción">
 									<ClipboardList size={18} />
 									Crear Prescripción
 								</Link>
+								
+								{linkedRecipeId && (
+									<Link href={`/dashboard/medic/consultas/${initial.id}/prescription`} className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-lg bg-gradient-to-r from-amber-500 to-orange-600 text-white font-semibold shadow-lg hover:shadow-xl hover:scale-[1.02] transition-all" aria-label="Generar Receta vinculada">
+										<Sparkles size={18} />
+										Generar Receta (Plantilla Vinculada)
+									</Link>
+								)}
 							</div>
 						</div>
 					)}
