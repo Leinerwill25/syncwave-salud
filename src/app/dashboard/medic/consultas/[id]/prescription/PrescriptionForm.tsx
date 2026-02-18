@@ -320,28 +320,7 @@ export default function PrescriptionForm({ consultationId, patientId, unregister
 
     // ... (rest of code)
 
-    // REPLACE THE JSX RENDERING PART
-    /* 
-								<div id="docx-preview-container">
-									{!selectedTemplateId && !prescriptionUrl && (
-										<div className="min-h-[500px] w-[600px] flex flex-col items-center justify-center text-slate-400">
-											<FileText className="w-16 h-16 mb-4 opacity-30" />
-											<p>Selecciona una plantilla para visualizarla aquí</p>
-										</div>
-									)}
-								</div>
-    */
-    // WITH:
-                                {/* Placeholder controlled by React */}
-                                {!selectedTemplateId && !prescriptionUrl && (
-                                    <div className="min-h-[500px] w-[600px] flex flex-col items-center justify-center text-slate-400 absolute inset-0 m-auto pointer-events-none">
-                                        <FileText className="w-16 h-16 mb-4 opacity-30" />
-                                        <p>Selecciona una plantilla para visualizarla aquí</p>
-                                    </div>
-                                )}
-								
-                                {/* Container for manual DOM manipulation via Ref */}
-								<div ref={previewRef} id="docx-preview-container" className="min-h-[100px]" />
+
 
 	// Resetear formulario para nueva prescripción
 	const handleNewPrescription = () => {
@@ -940,7 +919,7 @@ function PrescriptionItemsEditor({ items, setItems }: { items: Item[]; setItems:
 								}}
 								className="bg-white shadow-lg origin-top-left"
 							>
-								<div id="docx-preview-container">
+								<div ref={previewRef} id="docx-preview-container">
 									{!selectedTemplateId && !prescriptionUrl && (
 										<div className="min-h-[500px] w-[600px] flex flex-col items-center justify-center text-slate-400">
 											<FileText className="w-16 h-16 mb-4 opacity-30" />
