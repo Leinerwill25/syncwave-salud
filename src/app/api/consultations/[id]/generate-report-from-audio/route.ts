@@ -112,14 +112,14 @@ export async function POST(
 		if (consultation.patient_id) {
 			const { data } = await supabase
 				.from('patient')
-				.select('id, firstName, lastName, dob, gender, identifier')
+				.select('id, firstName, lastName, dob, gender, identifier, email')
 				.eq('id', consultation.patient_id)
 				.maybeSingle();
 			patientData = data;
 		} else if (consultation.unregistered_patient_id) {
 			const { data } = await supabase
 				.from('unregisteredpatients')
-				.select('id, first_name, last_name, birth_date, sex, identification')
+				.select('id, first_name, last_name, birth_date, sex, identification, email')
 				.eq('id', consultation.unregistered_patient_id)
 				.maybeSingle();
 			patientData = data;

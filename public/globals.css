@@ -160,3 +160,71 @@ body {
 		color-scheme: light !important;
 	}
 }
+
+/* Estilos de Impresión */
+/* Estilos de Impresión */
+@media print {
+    /* Ocultar elementos de layout principales para colapsar su espacio */
+    nav, header, aside, footer, .sidebar, [role="navigation"], [role="banner"] {
+        display: none !important;
+    }
+
+    /* Ocultar todo lo demás visualmente pero mantener print-container */
+    body * {
+        visibility: hidden;
+    }
+
+    /* Resetear el contenedor de impresión */
+    #print-container {
+        visibility: visible !important;
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 100%;
+        margin: 0;
+        padding: 0; 
+        z-index: 9999;
+        display: block !important;
+    }
+
+    /* Asegurar que el contenido interno sea visible */
+    #print-container * {
+        visibility: visible !important;
+    }
+    
+    /* Reglas para docx-preview */
+    /* Si inWrapper: false es usado, puede que no haya wrapper, pero si section.docx */
+    #print-container .docx-wrapper {
+        background: transparent !important;
+        padding: 0 !important;
+        box-shadow: none !important;
+    }
+
+    #print-container section.docx {
+        background: white !important;
+        box-shadow: none !important;
+        margin: 0 auto !important;
+        /* No forzar padding ni width, dejar que docx-preview use los estilos del documento */
+    }
+
+    /* PERMITIR style tags porque docx-preview los necesita para el formato */
+    #print-container style {
+        display: none; /* Default browser behavior is hidden, but don't force block */
+    }
+
+    /* Reglas de página */
+    @page {
+        size: auto;
+        margin: 0mm; /* El documento docx ya tiene márgenes internos */
+    }
+
+    /* Ajustes globales del body para impresión */
+    body, html {
+        background: white !important;
+        height: auto !important;
+        overflow: visible !important;
+        width: 100% !important;
+        margin: 0 !important;
+        padding: 0 !important;
+    }
+}

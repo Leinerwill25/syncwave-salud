@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { Loader2, Plus, Trash, FileDown, Save, FileCheck, FileText, Eye } from 'lucide-react';
+import { Loader2, Plus, Trash, FileDown, Save, FileCheck, FileText, Eye, Printer } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { extractTextFromDocx } from '@/lib/docx-parser';
 import { renderAsync } from 'docx-preview'; // <--- Import docx-preview
@@ -51,7 +51,8 @@ type Props = {
 	patientId?: string | null;
 	unregisteredPatientId?: string | null;
 	doctorId?: string;
-	existingPrescription?: ExistingPrescription | null;
+	existingPrescription?: ExistingPrescription | null; // Mantener por compatibilidad o eliminar si ya no se usa
+	prescriptions?: any[]; // Lista de prescripciones
 };
 
 function uid(prefix = '') {
@@ -64,13 +65,18 @@ function uid(prefix = '') {
    PrescriptionForm (principal)
    - layout with clear visual hierarchy
    ------------------------- */
-export default function PrescriptionForm({ consultationId, patientId, unregisteredPatientId, doctorId, existingPrescription }: Props) {
+export default function PrescriptionForm({ consultationId, patientId, unregisteredPatientId, doctorId, existingPrescription, prescriptions = [] }: Props) {
 	const [items, setItems] = useState<Item[]>([]);
 	const [loading, setLoading] = useState(false);
 	const router = useRouter();
 	const [error, setError] = useState<string | null>(null);
 	const [success, setSuccess] = useState<string | null>(null);
+	
+	// Estado para manejar múltiples prescripciones
+	const [prescriptionList, setPrescriptionList] = useState<any[]>(prescriptions);
+	const [selectedPrescriptionId, setSelectedPrescriptionId] = useState<string | null>(null);
 	const [isEditMode, setIsEditMode] = useState(false);
+
 	const [prescriptionUrl, setPrescriptionUrl] = useState<string | null>(null);
 	const [generatingPrescription, setGeneratingPrescription] = useState(false);
 	const [savingPrescription, setSavingPrescription] = useState(false);
@@ -139,15 +145,21 @@ export default function PrescriptionForm({ consultationId, patientId, unregister
 		loadTemplates();
 	}, []);
 
+	// Ref for the preview container
+	const previewRef = React.useRef<HTMLDivElement>(null);
+
+	// ... (inside component)
+
 	// Handle Template Selection
 	const handleTemplateSelect = async (templateId: string) => {
 		setSelectedTemplateId(templateId);
 		
 		// Limpiar si se deselecciona
 		if (!templateId) {
-			setRecipeBody('');
-			const container = document.getElementById('docx-preview-container');
-			if (container) container.innerHTML = '';
+			// Solo limpiar si no estamos editando una receta con contenido
+			if (!recipeBody && previewRef.current) {
+				previewRef.current.innerHTML = '';
+			}
 			return;
 		}
 
@@ -174,22 +186,25 @@ export default function PrescriptionForm({ consultationId, patientId, unregister
 			const arrayBuffer = await blob.arrayBuffer();
 			
 			// 1. Render Preview
-			const container = document.getElementById('docx-preview-container');
-			if (container) {
+			if (previewRef.current) {
 				// Limpiar contenedor
-				container.innerHTML = '';
+				previewRef.current.innerHTML = '';
 				// Renderizar usando docx-preview
-				await renderAsync(blob, container, container, {
+				await renderAsync(blob, previewRef.current, previewRef.current, {
 					className: 'docx-preview',
 					inWrapper: false,
 					ignoreWidth: false,
 					ignoreHeight: false,
+                    experimental: true,
 				});
 			}
 
 			// 2. Extract Text
-			const text = await extractTextFromDocx(arrayBuffer);
-			setRecipeBody(text);
+			// SOLO sobreescribir si el body está vacío o el usuario confirma (podríamos agregar confirmación)
+			if (!recipeBody || recipeBody.trim() === '') {
+				const text = await extractTextFromDocx(arrayBuffer);
+				setRecipeBody(text);
+			}
 			
 		} catch (err: any) {
 			console.error('Error processing template:', err);
@@ -198,6 +213,154 @@ export default function PrescriptionForm({ consultationId, patientId, unregister
 			setExtractingText(false);
 		}
 	};
+
+	// Cargar datos de una prescripción seleccionada
+	const handleSelectPrescription = async (pres: any) => {
+		setSelectedPrescriptionId(pres.id);
+		setIsEditMode(true);
+		setSuccess(null);
+		setError(null);
+		setPrescriptionUrl(null); // Reset URL initially
+		
+		// 1. Cargar items
+		if (pres.prescription_item && Array.isArray(pres.prescription_item)) {
+			const loadedItems: Item[] = pres.prescription_item.map((item: any) => {
+				const parsed = parseOldFrequency(item.frequency);
+				return {
+					id: item.id,
+					name: item.name || '',
+					dosage: item.dosage || '',
+					form: item.form || '',
+					frequency: item.frequency || '',
+					frequencyHours: parsed.hours,
+					frequencyDays: parsed.days,
+					duration: item.duration || '',
+					quantity: item.quantity || 1,
+					instructions: item.instructions || '',
+				};
+			});
+			setItems(loadedItems);
+		} else {
+			setItems([]);
+		}
+
+		// 2. Cargar texto
+		if (pres.recipe_text) {
+			setRecipeBody(pres.recipe_text);
+		} else {
+			setRecipeBody('');
+		}
+
+		// 3. Cargar archivo generado existente (Visualización)
+		// Buscar el archivo docx más reciente
+		let fileUrl = null;
+		if (pres.files && pres.files.length > 0) {
+			// Priorizar docx (case insensitive)
+			const docxFile = pres.files.find((f: any) => 
+                f.name.toLowerCase().endsWith('.docx') || 
+                f.type?.includes('word') ||
+                f.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+            );
+			if (docxFile) {
+				fileUrl = docxFile.url;
+				setPrescriptionUrl(fileUrl);
+			} else {
+				// Fallback a cualquier archivo
+				fileUrl = pres.files[0].url;
+				setPrescriptionUrl(fileUrl);
+			}
+		}
+
+		// Renderizar vista previa si hay archivo DOCX
+		if (previewRef.current) {
+			previewRef.current.innerHTML = ''; // Limpiar previo
+			
+            // Check robusto para intentar renderizar siempre que parezca un docx o sea el fallback
+			if (fileUrl) {
+				try {
+					setExtractingText(true); // Usar indicador de carga visual
+                    
+                    // Mostrar loader temporalmente en el contenedor
+                    previewRef.current.innerHTML = '<div class="flex flex-col items-center justify-center p-10 text-indigo-600"><div class="animate-spin mb-2 h-6 w-6 border-4 border-indigo-500 border-t-transparent rounded-full"></div><p class="text-xs">Cargando vista previa...</p></div>';
+
+					const res = await fetch(fileUrl);
+					if (res.ok) {
+						const blob = await res.blob();
+                        
+                        // Limpiar loader
+                        if (previewRef.current) previewRef.current.innerHTML = '';
+
+						await renderAsync(blob, previewRef.current!, previewRef.current!, {
+							className: 'docx-preview',
+							inWrapper: false,
+							ignoreWidth: false,
+							ignoreHeight: false,
+                            experimental: true,
+						});
+					} else {
+                        throw new Error(`Error fetching file: ${res.statusText}`);
+                    }
+				} catch (err: any) {
+					console.error('Error cargando vista previa del archivo existente:', err);
+                    if (previewRef.current) {
+					    previewRef.current.innerHTML = `<div class="flex flex-col items-center justify-center h-full text-rose-500 p-8 text-center"><p class="font-medium">No se pudo cargar la vista previa.</p><p class="text-xs mt-1 text-slate-500">${err?.message || 'Error desconocido'}</p></div>`;
+                    }
+				} finally {
+					setExtractingText(false);
+				}
+			} else {
+                 // Si no hay archivo, mostrar mensaje vacío
+                 previewRef.current.innerHTML = '';
+            }
+		}
+
+		// Scroll al formulario
+		window.scrollTo({ top: 0, behavior: 'smooth' });
+	};
+
+    // ... (rest of code)
+
+    // REPLACE THE JSX RENDERING PART
+    /* 
+								<div id="docx-preview-container">
+									{!selectedTemplateId && !prescriptionUrl && (
+										<div className="min-h-[500px] w-[600px] flex flex-col items-center justify-center text-slate-400">
+											<FileText className="w-16 h-16 mb-4 opacity-30" />
+											<p>Selecciona una plantilla para visualizarla aquí</p>
+										</div>
+									)}
+								</div>
+    */
+    // WITH:
+                                {/* Placeholder controlled by React */}
+                                {!selectedTemplateId && !prescriptionUrl && (
+                                    <div className="min-h-[500px] w-[600px] flex flex-col items-center justify-center text-slate-400 absolute inset-0 m-auto pointer-events-none">
+                                        <FileText className="w-16 h-16 mb-4 opacity-30" />
+                                        <p>Selecciona una plantilla para visualizarla aquí</p>
+                                    </div>
+                                )}
+								
+                                {/* Container for manual DOM manipulation via Ref */}
+								<div ref={previewRef} id="docx-preview-container" className="min-h-[100px]" />
+
+	// Resetear formulario para nueva prescripción
+	const handleNewPrescription = () => {
+		setSelectedPrescriptionId(null);
+		setIsEditMode(false);
+		setItems([]);
+		setRecipeBody('');
+		setSuccess(null);
+		setError(null);
+		setPrescriptionUrl(null);
+		// No reseteamos el template seleccionado para facilitar crear varias iguales
+	};
+
+    // Actualizar la lista si llegan nuevas props
+    useEffect(() => {
+        if (prescriptions) {
+            setPrescriptionList(prescriptions);
+        }
+    }, [prescriptions]);
 
 	// Fuentes profesionales disponibles
 	const availableFonts = [
@@ -464,41 +627,10 @@ function PrescriptionItemsEditor({ items, setItems }: { items: Item[]; setItems:
 		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, [consultationId]);
 
-	// También cargar si hay prescripción existente pasada como prop
-	useEffect(() => {
-		if (existingPrescription) {
-			setIsEditMode(true);
 
-			// Cargar items existentes
-			if (existingPrescription.prescription_item && Array.isArray(existingPrescription.prescription_item)) {
-				const loadedItems: Item[] = existingPrescription.prescription_item.map((item) => {
-					// Parsear frecuencia antigua si existe
-					const parsed = parseOldFrequency(item.frequency);
-					return {
-						id: item.id,
-						name: item.name || '',
-						dosage: item.dosage || '',
-						form: item.form || '', // Incluir forma/presentación
-						frequency: item.frequency || '',
-						frequencyHours: parsed.hours,
-						frequencyDays: parsed.days,
-						duration: item.duration || '',
-						quantity: item.quantity || 1,
-						instructions: item.instructions || '',
-					};
-				});
-				setItems(loadedItems);
-			}
-			
-			// Cargar texto de la receta si existe
-			if (existingPrescription.recipe_text) {
-				setRecipeBody(existingPrescription.recipe_text);
-			}
-		}
-	}, [existingPrescription]);
 
 	// Función auxiliar para generar y descargar la receta
-	const generateAndDownload = async (savedItems: any[], savedRecipeBody: string) => {
+	const generateAndDownload = async (savedItems: any[], savedRecipeBody: string, overridePrescriptionId: string | null = null) => {
 		try {
 			setGeneratingPrescription(true);
 			
@@ -515,6 +647,8 @@ function PrescriptionItemsEditor({ items, setItems }: { items: Item[]; setItems:
 				};
 			});
 
+            const targetPrescriptionId = overridePrescriptionId || existingPrescription?.id || null;
+
 			const res = await fetch(`/api/consultations/${consultationId}/generate-prescription`, {
 				method: 'POST',
 				credentials: 'include',
@@ -523,19 +657,25 @@ function PrescriptionItemsEditor({ items, setItems }: { items: Item[]; setItems:
 					items: itemsToSend,
 					recipe_body: savedRecipeBody,
 					issued_at: new Date().toISOString(), // Usar fecha actual para la generación
-					prescription_id: existingPrescription?.id || null, // Si ya existía, usar su ID
+					prescription_id: targetPrescriptionId,
 					font_family: fontFamily,
-					template_url: templates.find(t => t.id === selectedTemplateId)?.file_url, // <--- Add this
+					template_url: templates.find(t => t.id === selectedTemplateId)?.file_url,
 				}),
 			});
 
 			const data = await res.json();
 			if (!res.ok) throw new Error(data.error || 'Error al generar documento de receta');
 
-			// Guardar URL y abrir en nueva pestaña
+			// Guardar URL y descargar automáticamente
 			setPrescriptionUrl(data.prescription_url);
 			if (data.prescription_url) {
-				window.open(data.prescription_url, '_blank');
+                // Crear elemento link temporal para forzar la descarga
+                const link = document.createElement('a');
+                link.href = data.prescription_url;
+                link.download = `Receta_${new Date().toISOString().split('T')[0]}.docx`; // Nombre sugerido
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
 			}
 			
 			return true;
@@ -576,12 +716,12 @@ function PrescriptionItemsEditor({ items, setItems }: { items: Item[]; setItems:
 				};
 			});
 
-			let savedPrescriptionData;
+			let savedPrescriptionData: any;
 
 			// 1. Guardar o Actualizar en BD
-			if (isEditMode && existingPrescription) {
+			if (isEditMode && selectedPrescriptionId) {
 				const form = new FormData();
-				form.append('prescription_id', existingPrescription.id);
+				form.append('prescription_id', selectedPrescriptionId);
 				form.append('consultation_id', consultationId);
 				if (patientId) form.append('patient_id', String(patientId));
 				if (unregisteredPatientId) form.append('unregistered_patient_id', String(unregisteredPatientId));
@@ -593,7 +733,11 @@ function PrescriptionItemsEditor({ items, setItems }: { items: Item[]; setItems:
 				const data = await res.json();
 				if (!res.ok) throw new Error(data?.error || 'Error actualizando prescripción');
 				
-				savedPrescriptionData = data.prescription; // Asumimos que la API devuelve la prescripción actualizada
+				savedPrescriptionData = data.prescription; 
+                
+                // Actualizar lista local
+                setPrescriptionList(prev => prev.map(p => p.id === savedPrescriptionData.id ? {...p, ...savedPrescriptionData} : p));
+
 			} else {
 				const form = new FormData();
 				form.append('consultation_id', consultationId);
@@ -608,31 +752,27 @@ function PrescriptionItemsEditor({ items, setItems }: { items: Item[]; setItems:
 				if (!res.ok) throw new Error(data?.error || 'Error creando prescripción');
 				
 				savedPrescriptionData = data.prescription;
+
+                // Agregar a lista local
+                 setPrescriptionList(prev => [savedPrescriptionData, ...prev]);
+                 setSelectedPrescriptionId(savedPrescriptionData.id);
 			}
 
-			// 2. Generar y Descargar Documento Automáticamente
-			const generated = await generateAndDownload(items, recipeBody);
+			// 2. Generar y Descargar Documento Automáticamente (Pasando el ID correcto)
+			const generated = await generateAndDownload(items, recipeBody, savedPrescriptionData.id);
 
 			setSuccess(`Prescripción ${isEditMode ? 'actualizada' : 'creada'} y descargada correctamente.`);
 			setLoading(false);
 
 			// 3. NO Redireccionar - Actualizar estado local
 			if (savedPrescriptionData) {
-				// Actualizar existingPrescription para pasar a modo edición y mostrar datos guardados
-				// OJO: Necesitamos asegurarnos que existingPrescription tenga el formato correcto
-				// Si la API devuelve el objeto prescription completo, lo usamos.
-				// Si no, recargamos los items o usamos lo que tenemos.
-				
 				// Forzamos modo edición
 				setIsEditMode(true);
-				
-				// Recargar la página o actualizar el estado para reflejar cambios podría ser ideal, 
-				// pero por ahora actualizaremos la UI lo mejor posible.
-				// Una opción limpia es hacer router.refresh() para que Next.js revalide datos del servidor si usas server components,
-				// pero aquí estamos en create client.
-				
-				// Vamos a simular que se cargó
-				// window.location.reload(); // Un poco brusco
+                
+                // Recargar para ver el archivo generado en la lista
+                 setTimeout(() => {
+                     window.location.reload(); 
+                 }, 1000); // Pequeño delay para asegurar que el archivo se procesó
 			}
 
 		} catch (err: any) {
@@ -644,6 +784,22 @@ function PrescriptionItemsEditor({ items, setItems }: { items: Item[]; setItems:
 
 	return (
 		<form onSubmit={handleSubmit} className="space-y-6">
+			{/* Guía Paso a Paso */}
+			<div className="rounded-xl bg-blue-50 border border-blue-100 p-4 mb-6">
+				<h3 className="text-sm font-bold text-blue-900 mb-2 flex items-center gap-2">
+					<span className="flex items-center justify-center w-5 h-5 rounded-full bg-blue-600 text-white text-xs">i</span>
+					¿Cómo crear y gestionar recetas?
+				</h3>
+				<ol className="list-decimal list-inside text-sm text-blue-800 space-y-1 ml-1">
+					<li><strong>Seleccione una plantilla</strong> (opcional) para cargar un formato predefinido.</li>
+					<li><strong>Edite el contenido</strong> en el cuadro de texto si es necesario. Lo que escriba allí aparecerá tal cual en el documento.</li>
+					<li><strong>Agregue medicamentos</strong> manualmente en la sección inferior si desea detallar ítems específicos (estos se listarán al final).</li>
+					<li>Haga clic en <strong>"Guardar y Generar"</strong>. El documento se descargará automáticamente y quedará guardado en el historial.</li>
+                    <li><strong>Para editar:</strong> Haga clic en "Editar" en la lista inferior o "Regenerar" para volver a crear el archivo si hizo cambios.</li>
+                    <li><strong>Para imprimir:</strong> Haga clic en el botón "Imprimir" de la lista para descargar la versión lista para imprimir.</li>
+				</ol>
+			</div>
+
 			{/* Header card */}
 			<div className="rounded-2xl bg-gradient-to-r from-white to-blue-50 border border-blue-100 p-5 shadow-sm">
 				<div className="flex items-start justify-between gap-4">
@@ -665,17 +821,27 @@ function PrescriptionItemsEditor({ items, setItems }: { items: Item[]; setItems:
 							</div>
 						)}
 					</div>
-
-					<div className="text-right">
-						<div className="text-xs text-slate-700">Consulta</div>
-						<div className="font-mono font-medium text-slate-900">{consultationId}</div>
+					<div className="flex flex-col gap-2">
+						{/* Botón para nueva prescripción si estamos en modo edición */}
+						{isEditMode && (
+							<button
+								type="button"
+								onClick={handleNewPrescription}
+								className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 shadow-sm transition-colors text-sm font-medium"
+							>
+								<Plus size={16} />
+								Nueva Receta
+							</button>
+						)}
 					</div>
 				</div>
 			</div>
 
-			{/* Template Selection & Preview Section */}
-			<div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-				{/* Template Selector */}
+
+
+			{/* Template Selection & Preview Section - STACKED LAYOUT */}
+			<div className="flex flex-col gap-6">
+				{/* Template Selector & Editor (TOP) */}
 				<div className="rounded-2xl bg-white border border-indigo-100 p-5 shadow-sm">
 					<div className="flex items-center gap-2 mb-4">
 						<FileText className="w-5 h-5 text-indigo-600" />
@@ -707,7 +873,7 @@ function PrescriptionItemsEditor({ items, setItems }: { items: Item[]; setItems:
 							)}
 						</div>
 						
-						{recipeBody && (
+						{(true) && ( // Siempre mostrar el editor si se quiere (o condicional a recipeBody)
 							<div>
 								<div className="flex items-center justify-between mb-1">
 									<label className="block text-sm font-medium text-slate-700">Contenido de la Receta (Editable)</label>
@@ -725,7 +891,7 @@ function PrescriptionItemsEditor({ items, setItems }: { items: Item[]; setItems:
 					</div>
 				</div>
 
-				{/* Live Preview (DOCX Render) */}
+				{/* Live Preview (DOCX Render) (BOTTOM) */}
 				<div className="rounded-2xl bg-slate-50 border border-slate-200 p-5 shadow-inner flex flex-col h-[700px]">
 					<div className="flex items-center justify-between mb-4">
 						<div className="flex items-center gap-2">
@@ -775,7 +941,7 @@ function PrescriptionItemsEditor({ items, setItems }: { items: Item[]; setItems:
 								className="bg-white shadow-lg origin-top-left"
 							>
 								<div id="docx-preview-container">
-									{!selectedTemplateId && (
+									{!selectedTemplateId && !prescriptionUrl && (
 										<div className="min-h-[500px] w-[600px] flex flex-col items-center justify-center text-slate-400">
 											<FileText className="w-16 h-16 mb-4 opacity-30" />
 											<p>Selecciona una plantilla para visualizarla aquí</p>
@@ -792,212 +958,129 @@ function PrescriptionItemsEditor({ items, setItems }: { items: Item[]; setItems:
 			</div>
 
 			{/* Separator / Divider */}
-			<div className="relative">
+			<div className="relative my-8">
 				<div className="absolute inset-0 flex items-center" aria-hidden="true">
 					<div className="w-full border-t border-slate-200"></div>
 				</div>
 				<div className="relative flex justify-center">
-					<span className="bg-gradient-to-br from-blue-50 via-cyan-50 to-teal-50 px-2 text-sm text-slate-500">O agregar medicamentos manualmente</span>
+					<span className="bg-gradient-to-br from-blue-50 via-cyan-50 to-teal-50 px-2 text-sm text-slate-500">Agregar medicamentos manualmente</span>
 				</div>
 			</div>
 
-			{/* Items editor - muestra todos los items (guardados + nuevos) como cards editables */}
-			<PrescriptionItemsEditor items={items} setItems={setItems} />
+            {/* Manual Items Editor */}
+            <PrescriptionItemsEditor items={items} setItems={setItems} />
 
-			{/* Prescription Generation Section - Always visible when there are items */}
-			{items.length > 0 && (
-				<div className="rounded-2xl bg-gradient-to-br from-indigo-50 to-purple-50 border border-indigo-200 p-6 shadow-lg">
-					<div className="flex items-center gap-3 mb-4">
-						<FileCheck className="w-6 h-6 text-indigo-600" />
-						<h3 className="text-lg font-semibold text-slate-900">Generar Receta desde Plantilla</h3>
-					</div>
-					<p className="text-sm text-slate-700 mb-4">
-						Genera un archivo Word de la receta usando tu plantilla personalizada. El archivo contiene ambas hojas: una con el <strong>récipe completo</strong> de todos los medicamentos (variable {'{{recipe}}'}), incluyendo las <strong>instrucciones específicas</strong> de cada medicamento (variable {'{{instrucciones}}'}), y otra hoja con las <strong>indicaciones generales</strong> de la prescripción (variable {'{{indicaciones}}'}). Puedes generar la receta mientras escribes, sin necesidad de guardar primero.
-					</p>
-
-					{/* Font selector */}
-					<div className="mb-4">
-						<label className="block text-sm font-medium text-slate-700 mb-2">Fuente de la Receta</label>
-						<select value={fontFamily} onChange={(e) => setFontFamily(e.target.value)} className="w-full px-4 py-2 rounded-lg border border-slate-300 bg-white text-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent" style={{ fontFamily: fontFamily }}>
-							{availableFonts.map((font) => (
-								<option key={font.value} value={font.value} style={{ fontFamily: font.value }}>
-									{font.label}
-								</option>
-							))}
-						</select>
-						<p className="mt-1 text-xs text-slate-500">La fuente seleccionada se aplicará al generar la receta.</p>
-					</div>
-
-					{/* Generate and Download buttons side by side */}
-					<div className="flex flex-col sm:flex-row gap-3 mb-4">
-						<button
-							type="button"
-							onClick={async () => {
-								setGeneratingPrescription(true);
-								setError(null);
-								setSuccess(null);
-
-								try {
-									// Preparar items para enviar (incluyendo frequency generada si aplica)
-									const itemsToSend = items.map((item) => {
-										const frequencyText = item.frequency || generateFrequencyText(item.frequencyHours, item.frequencyDays);
-										return {
-											name: item.name,
-											dosage: item.dosage,
-											form: item.form || '', // Incluir forma/presentación del medicamento
-											frequency: frequencyText,
-											duration: item.duration,
-											quantity: item.quantity,
-											instructions: item.instructions,
-										};
-									});
-
-									const res = await fetch(`/api/consultations/${consultationId}/generate-prescription`, {
-										method: 'POST',
-										credentials: 'include',
-										headers: {
-											'Content-Type': 'application/json',
-										},
-										body: JSON.stringify({
-											items: itemsToSend,
-											recipe_body: recipeBody, // <--- Added this
-											issued_at: existingPrescription?.issued_at || null,
-											prescription_id: existingPrescription?.id || null,
-											font_family: fontFamily,
-										}),
-									});
-
-									const data = await res.json();
-
-									if (!res.ok) {
-										throw new Error(data.error || 'Error al generar receta');
-									}
-
-									setPrescriptionUrl(data.prescription_url);
-									setSuccess('Receta generada exitosamente. Puedes descargarla o guardarla en la base de datos.');
-								} catch (err: any) {
-									setError(err.message || 'Error al generar receta');
-								} finally {
-									setGeneratingPrescription(false);
-								}
-							}}
-							disabled={generatingPrescription || items.length === 0}
-							className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-3 rounded-lg bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-semibold shadow hover:scale-[1.01] transition disabled:opacity-50 disabled:cursor-not-allowed">
-							{generatingPrescription ? (
-								<>
-									<Loader2 className="w-5 h-5 animate-spin" />
-									Generando...
-								</>
-							) : (
-								<>
-									<FileCheck className="w-5 h-5" />
-									Generar Prescripción
-								</>
-							)}
-						</button>
-
-						{prescriptionUrl && (
-							<button
-								type="button"
-								onClick={() => {
-									window.open(prescriptionUrl, '_blank');
-								}}
-								className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-3 rounded-lg bg-gradient-to-r from-teal-600 to-cyan-600 text-white font-semibold shadow hover:scale-[1.01] transition">
-								<FileDown className="w-5 h-5" />
-								Descargar Receta (Word)
-							</button>
-						)}
-					</div>
-
-					{/* Save to database button - full width below */}
-					{prescriptionUrl && (
-						<button
-							type="button"
-							onClick={async () => {
-								setSavingPrescription(true);
-								setError(null);
-								setSuccess(null);
-
-								try {
-									// Preparar items para enviar (incluyendo frequency generada si aplica)
-									const itemsToSave = items.map((item) => {
-										const frequencyText = item.frequency || generateFrequencyText(item.frequencyHours, item.frequencyDays);
-										return {
-											name: item.name,
-											dosage: item.dosage,
-											form: item.form || '',
-											frequency: frequencyText,
-											duration: item.duration,
-											quantity: item.quantity,
-											instructions: item.instructions,
-										};
-									});
-
-									const res = await fetch(`/api/consultations/${consultationId}/save-prescription`, {
-										method: 'POST',
-										credentials: 'include',
-										headers: {
-											'Content-Type': 'application/json',
-										},
-										body: JSON.stringify({
-											prescriptionUrl: prescriptionUrl,
-											items: itemsToSave,
-										}),
-									});
-
-									const data = await res.json();
-
-									if (!res.ok) {
-										throw new Error(data.error || 'Error al guardar receta en la base de datos');
-									}
-
-									// Recargar los items desde la base de datos para mostrarlos
-									// Preservar cualquier item nuevo que el usuario haya agregado
-									await loadPrescriptionItems(true);
-
-									setSuccess('Receta guardada exitosamente en la base de datos. El paciente podrá visualizarla desde su panel.');
-								} catch (err: any) {
-									setError(err.message || 'Error al guardar receta');
-								} finally {
-									setSavingPrescription(false);
-								}
-							}}
-							disabled={savingPrescription}
-							className="w-full inline-flex items-center justify-center gap-2 px-4 py-3 rounded-lg bg-gradient-to-r from-emerald-600 to-teal-600 text-white font-semibold shadow hover:scale-[1.01] transition disabled:opacity-50 disabled:cursor-not-allowed">
-							{savingPrescription ? (
-								<>
-									<Loader2 className="w-5 h-5 animate-spin" />
-									Guardando...
-								</>
-							) : (
-								<>
-									<Save className="w-5 h-5" />
-									Guardar Receta en Base de Datos
-								</>
-							)}
-						</button>
-					)}
-				</div>
-			)}
-
-			{/* Messages */}
-			{error && <div className="rounded-md bg-rose-50 text-rose-700 p-3 text-sm">{error}</div>}
-			{success && <div className="rounded-md bg-emerald-50 text-emerald-700 p-3 text-sm">{success}</div>}
-
-			{/* Actions */}
-			<div className="flex items-center gap-3">
-				<button type="submit" disabled={loading} className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-gradient-to-r from-teal-600 to-cyan-600 text-white font-semibold shadow hover:from-teal-700 hover:to-cyan-700 hover:scale-[1.01] transition disabled:opacity-50">
-					{loading ? <Loader2 className="animate-spin" /> : <span>{isEditMode ? 'Actualizar prescripción' : 'Crear prescripción'}</span>}
+            {/* Action Buttons */}
+            <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-100">
+                {isEditMode && (
+					<button
+						type="button"
+						onClick={handleNewPrescription}
+						className="px-4 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-50"
+					>
+						Cancelar Edición / Nueva
+					</button>
+				)}
+				<button
+					type="submit"
+					disabled={loading || generatingPrescription}
+					className="inline-flex items-center gap-2 px-6 py-2.5 rounded-lg bg-indigo-600 text-white font-medium hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm transition-all"
+				>
+					{loading || generatingPrescription ? (
+                        <>
+                            <Loader2 className="animate-spin" size={18} />
+                            {generatingPrescription ? 'Generando documento...' : 'Guardando...'}
+                        </>
+                    ) : (
+                        <>
+                            <Save size={18} />
+                            {isEditMode ? 'Actualizar y Generar' : 'Guardar y Generar'}
+                        </>
+                    )}
 				</button>
-
-				<button type="button" onClick={() => router.back()} className="px-4 py-2 rounded-lg border border-blue-200 bg-white text-slate-800 hover:bg-blue-50 transition">
-					Cancelar
-				</button>
-
-				<div className="ml-auto text-xs text-slate-800">
-					<div className="hidden sm:block">La receta quedará guardada digitalmente para el paciente</div>
-				</div>
 			</div>
+
+            {/* PRESCRIPTION LIST */}
+            <div className="mt-12">
+                <h3 className="text-xl font-bold text-slate-800 mb-4 flex items-center gap-2">
+                    <FileCheck className="text-teal-600" />
+                    Historial de Prescripciones
+                </h3>
+
+                {prescriptionList.length === 0 ? (
+                    <div className="p-8 text-center bg-white rounded-xl border border-slate-200">
+                        <p className="text-slate-500">No hay prescripciones guardadas para esta consulta.</p>
+                    </div>
+                ) : (
+                    <div className="space-y-4">
+                        {prescriptionList.map((pres) => {
+                            // Buscar archivo principal
+                            const mainFile = pres.files && pres.files.length > 0 ? pres.files[0] : null;
+
+                            return (
+                                <li key={pres.id} className={`p-4 hover:bg-blue-50/50 transition-colors flex flex-col md:flex-row md:items-center justify-between gap-4 ${pres.id === selectedPrescriptionId ? 'bg-blue-50 ring-1 ring-blue-200' : ''}`}>
+                                    <div className="flex-1">
+                                        <div className="flex items-center gap-2 mb-1">
+                                             <span className="text-sm font-semibold text-slate-900">
+                                                Receta del {new Date(pres.created_at).toLocaleDateString()}
+                                             </span>
+                                             {pres.id === selectedPrescriptionId && (
+                                                 <span className="text-[10px] px-2 py-0.5 bg-blue-100 text-blue-700 rounded-full font-medium">Editando</span>
+                                             )}
+                                        </div>
+                                        <div className="text-xs text-slate-500 line-clamp-2">
+                                            {pres.prescription_item && pres.prescription_item.length > 0 
+                                                ? pres.prescription_item.map((i: any) => i.name).join(', ') 
+                                                : (pres.recipe_text ? 'Texto personalizado' : 'Sin items')}
+                                        </div>
+                                    </div>
+                                    <div className="flex items-center gap-2 shrink-0">
+                                        <button
+                                            type="button"
+                                            onClick={() => handleSelectPrescription(pres)}
+                                            className="p-2 text-slate-500 hover:text-blue-600 hover:bg-blue-100 rounded-lg transition-colors"
+                                            title="Editar / Ver"
+                                        >
+                                            <Eye size={18} />
+                                        </button>
+                                        
+                                        {mainFile ? (
+                                            <>
+                                            <a 
+                                                href={mainFile.url} 
+                                                download 
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="p-2 text-slate-500 hover:text-green-600 hover:bg-green-100 rounded-lg transition-colors flex items-center gap-1"
+                                                title="Descargar Documento"
+                                            >
+                                                <FileDown size={18} />
+                                            </a>
+                                            <button
+                                                type="button"
+                                                disabled={true}
+                                                className="px-3 py-1.5 text-xs font-medium text-slate-400 bg-slate-100 cursor-not-allowed rounded-md transition-colors flex items-center gap-2 border border-slate-200"
+                                                title="Esta función está deshabilitada temporalmente por mantenimiento"
+                                            >
+                                                <Printer size={14} />
+                                                Imprimir
+                                            </button>
+                                            </>
+                                        ) : (
+                                            <span className="text-xs text-slate-400 italic px-2">Sin archivo</span>
+                                        )}
+                                    </div>
+                                </li>
+                            );
+                        })}
+                    </div>
+                )}
+            </div>
+
+
+
+            {/* Contenedor oculto para impresión */}
+            <div id="print-container" style={{ display: 'none' }}></div>
 		</form>
 	);
 }

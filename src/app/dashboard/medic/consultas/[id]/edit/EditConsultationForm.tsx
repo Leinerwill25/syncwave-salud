@@ -2,7 +2,7 @@
 
 import React, { useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
-import { Loader2, Save, Trash2, FileText, Download, ChevronDown, ChevronUp, Activity, ClipboardList, Stethoscope, FileCheck, Image, X, Upload, Lock, Sparkles } from 'lucide-react';
+import { Loader2, Save, Trash2, FileText, Download, ChevronDown, ChevronUp, Activity, ClipboardList, Stethoscope, FileCheck, Image, X, Upload, Lock, Sparkles, Plus } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import ICD11Search from '@/components/ICD11Search';
@@ -598,7 +598,20 @@ export default function EditConsultationForm({ initial, patient, doctor, doctorS
      ------------------------- */
 	const [lmp, setLmp] = useState<string>(initGyn.last_menstrual_period ?? '');
 	const [contraceptiveUse, setContraceptiveUse] = useState<string>(initGyn.contraceptive ?? '');
-	const [gynDiagnosis, setGynDiagnosis] = useState<string>(initGyn.diagnosis ?? '');
+	// Diagnosis Logic
+	const [diagnosisInputMode, setDiagnosisInputMode] = useState<'cie11' | 'manual'>('cie11');
+	const [gynDiagnoses, setGynDiagnoses] = useState<string[]>(() => {
+		if (initGyn.diagnoses && Array.isArray(initGyn.diagnoses)) {
+			return initGyn.diagnoses;
+		}
+		// Fallback: try to parse from comma or newline separated string if legacy
+		if (initGyn.diagnosis) {
+			return [initGyn.diagnosis];
+		}
+		return [];
+	});
+	const [manualDiagnosisInput, setManualDiagnosisInput] = useState('');
+
 	const [cervicalExamNotes, setCervicalExamNotes] = useState<string>(initGyn.cervical_exam ?? '');
 
 	// Campos adicionales de la plantilla de ginecología
@@ -637,6 +650,26 @@ export default function EditConsultationForm({ initial, patient, doctor, doctorS
 	const [rightOvaryDimensions, setRightOvaryDimensions] = useState<string>(initGyn.right_ovary_dimensions ?? '');
 	const [fundusFluid, setFundusFluid] = useState<string>(initGyn.fundus_fluid ?? 'NO SE EVIDENCIA LÍQUIDO EN FONDO DE SACO');
 	const [ho, setHo] = useState<string>(initGyn.ho ?? '');
+
+	// Nuevos campos solicitados
+	const [hypersensitivity, setHypersensitivity] = useState<string>(initGyn.hypersensitivity ?? 'NIEGA');
+	const [psychobiologicalHabits, setPsychobiologicalHabits] = useState<string>(initGyn.psychobiological_habits ?? 'NIEGA TABAQUISMO, NIEGA ALCOHOLISMO');
+	const [menarche, setMenarche] = useState<string>(initGyn.menarche ?? '');
+	const [lastCytology, setLastCytology] = useState<string>(initGyn.last_cytology ?? '');
+	const [mastopathies, setMastopathies] = useState<string>(initGyn.mastopathies ?? 'NIEGA');
+	const [currentPartner, setCurrentPartner] = useState<string>(initGyn.current_partner ?? '');
+	const [gardasil, setGardasil] = useState<string>(initGyn.gardasil ?? 'NO APLICADA');
+	const [vaccinated, setVaccinated] = useState<string>(initGyn.vaccinated ?? 'NO');
+	const [firstPregnancyAge, setFirstPregnancyAge] = useState<string>(initGyn.first_pregnancy_age ?? '');
+	const [exclusiveBreastfeeding, setExclusiveBreastfeeding] = useState<string>(initGyn.exclusive_breastfeeding ?? 'NO');
+	const [planIndications, setPlanIndications] = useState<string>(initGyn.plan_indications ?? '');
+	const [dietIndications, setDietIndications] = useState<string>(initGyn.diet_indications ?? '');
+	const [intimateSoap, setIntimateSoap] = useState<string>(initGyn.intimate_soap ?? '');
+	const [treatmentInfection, setTreatmentInfection] = useState<string>(initGyn.treatment_infection ?? '');
+	const [probiotics, setProbiotics] = useState<string>(initGyn.probiotics ?? '');
+	const [vitamins, setVitamins] = useState<string>(initGyn.vitamins ?? '');
+	const [contraceptiveTreatment, setContraceptiveTreatment] = useState<string>(initGyn.contraceptive_treatment ?? '');
+	const [bleedingTreatment, setBleedingTreatment] = useState<string>(initGyn.bleeding_treatment ?? '');
 
 	/* -------------------------
      Colposcopia - Estados
@@ -707,6 +740,13 @@ export default function EditConsultationForm({ initial, patient, doctor, doctorS
 			setDiagnosis(`${icd11Code} - ${icd11Title}`);
 		}
 	}, [icd11Code, icd11Title]); // Solo ejecutar cuando cambie el CIE-11
+
+	// Efecto para sincronizar gynDiagnoses con el campo diagnosis principal (para compatibilidad)
+	useEffect(() => {
+		if (gynDiagnoses.length > 0) {
+			setDiagnosis(gynDiagnoses.join('\n'));
+		}
+	}, [gynDiagnoses]);
 
 	// Cargar contenido generado automáticamente y fuente cuando se abre la pestaña de informe o cambia el tipo
 	useEffect(() => {
@@ -784,6 +824,8 @@ export default function EditConsultationForm({ initial, patient, doctor, doctorS
 			colposcopyBiopsyLocation, // Ubicación de biopsia
 			colposcopyImage, // Imagen de colposcopia
 			colposcopyAdditionalDetails, // Detalles adicionales
+			hypersensitivity, psychobiologicalHabits, menarche, lastCytology, mastopathies, currentPartner, gardasil, vaccinated, firstPregnancyAge, exclusiveBreastfeeding,
+			planIndications, dietIndications, intimateSoap, treatmentInfection, probiotics, vitamins, contraceptiveTreatment, bleedingTreatment
 		];
 
 		// Si algún campo importante tiene valor, considerar que hay datos reales
@@ -829,6 +871,10 @@ export default function EditConsultationForm({ initial, patient, doctor, doctorS
 			{ value: colposcopyElevation, default: 'No' },
 			{ value: colposcopyBiopsy, default: 'No' },
 			{ value: colposcopyLugol, default: '' },
+			{ value: hypersensitivity, default: 'NIEGA' },
+			{ value: psychobiologicalHabits, default: 'NIEGA TABAQUISMO, NIEGA ALCOHOLISMO' },
+			{ value: mastopathies, default: 'NIEGA' },
+			{ value: gardasil, default: 'NO APLICADA' },
 		];
 
 		// Si algún campo tiene un valor diferente al predeterminado, hay datos reales
@@ -1078,7 +1124,13 @@ export default function EditConsultationForm({ initial, patient, doctor, doctorS
 			// LMP es obligatorio si hay datos de ginecología, así que siempre lo incluimos
 			if (lmp) gyn.last_menstrual_period = lmp;
 			if (contraceptiveUse) gyn.contraceptive = contraceptiveUse;
-			// gynDiagnosis removido - ahora se usa solo el diagnóstico CIE-11
+			// gynDiagnosis removido - ahora se usa solo el diagnóstico CIE-11 o manual array
+			// Guardar el array de diagnósticos
+			if (gynDiagnoses && gynDiagnoses.length > 0) {
+				gyn.diagnoses = gynDiagnoses;
+				// También guardar como string plano para compatibilidad
+				gyn.diagnosis = gynDiagnoses.join('\n');
+			}
 			if (cervicalExamNotes) gyn.cervical_exam = cervicalExamNotes;
 			if (currentIllnessHistory) gyn.current_illness_history = currentIllnessHistory;
 			if (allergies) gyn.allergies = allergies;
@@ -1115,6 +1167,26 @@ export default function EditConsultationForm({ initial, patient, doctor, doctorS
 			if (rightOvaryDimensions) gyn.right_ovary_dimensions = rightOvaryDimensions;
 			if (fundusFluid) gyn.fundus_fluid = fundusFluid;
 			if (ho) gyn.ho = ho;
+
+			// Nuevos campos
+			if (hypersensitivity) gyn.hypersensitivity = hypersensitivity;
+			if (psychobiologicalHabits) gyn.psychobiological_habits = psychobiologicalHabits;
+			if (menarche) gyn.menarche = menarche;
+			if (lastCytology) gyn.last_cytology = lastCytology;
+			if (mastopathies) gyn.mastopathies = mastopathies;
+			if (currentPartner) gyn.current_partner = currentPartner;
+			if (gardasil) gyn.gardasil = gardasil;
+			if (vaccinated) gyn.vaccinated = vaccinated;
+			if (firstPregnancyAge) gyn.first_pregnancy_age = firstPregnancyAge;
+			if (exclusiveBreastfeeding) gyn.exclusive_breastfeeding = exclusiveBreastfeeding;
+			if (planIndications) gyn.plan_indications = planIndications;
+			if (dietIndications) gyn.diet_indications = dietIndications;
+			if (intimateSoap) gyn.intimate_soap = intimateSoap;
+			if (treatmentInfection) gyn.treatment_infection = treatmentInfection;
+			if (probiotics) gyn.probiotics = probiotics;
+			if (vitamins) gyn.vitamins = vitamins;
+			if (contraceptiveTreatment) gyn.contraceptive_treatment = contraceptiveTreatment;
+			if (bleedingTreatment) gyn.bleeding_treatment = bleedingTreatment;
 
 			// Datos de colposcopia
 			const colposcopy: Record<string, any> = {};
@@ -4174,8 +4246,8 @@ export default function EditConsultationForm({ initial, patient, doctor, doctorS
 																	<h4 className="text-sm font-semibold text-slate-900 dark:text-slate-100 mb-3">Antecedentes Ginecológicos</h4>
 																	<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
 																		<div>
-																			<label className={labelClass}>ITS</label>
-																			<input value={its} onChange={(e) => setIts(e.target.value)} className={`${inputBase} ${inputDark}`} placeholder="NIEGA o especificar" />
+																			<label className={labelClass}>Menarquia</label>
+																			<input value={menarche} onChange={(e) => setMenarche(e.target.value)} className={`${inputBase} ${inputDark}`} placeholder="Edad (ej: 12 años)" />
 																		</div>
 																		<div>
 																			<label className={labelClass}>Menstruaciones</label>
@@ -4184,6 +4256,10 @@ export default function EditConsultationForm({ initial, patient, doctor, doctorS
 																		<div>
 																			<label className={labelClass}>Tipo de Menstruación (ej: 5/28)</label>
 																			<input value={menstruationPattern} onChange={(e) => setMenstruationPattern(e.target.value)} className={`${inputBase} ${inputDark}`} placeholder="5/28" />
+																		</div>
+																		<div>
+																			<label className={labelClass}>Fecha Última Regla (LMP)</label>
+																			<input value={lmp} onChange={(e) => setLmp(e.target.value)} className={`${inputBase} ${inputDark}`} type="text" placeholder="Ej: 2024-01-15 o Fecha Incierta" />
 																		</div>
 																		<div>
 																			<label className={labelClass}>Dismenorreica</label>
@@ -4201,16 +4277,55 @@ export default function EditConsultationForm({ initial, patient, doctor, doctorS
 																			<input value={sexualPartners} onChange={(e) => setSexualPartners(e.target.value)} className={`${inputBase} ${inputDark}`} placeholder="Número" />
 																		</div>
 																		<div>
-																			<label className={labelClass}>Fecha Última Regla (LMP)</label>
-																			<input value={lmp} onChange={(e) => setLmp(e.target.value)} className={`${inputBase} ${inputDark}`} type="text" placeholder="Ej: 2024-01-15 o Fecha Incierta" />
+																			<label className={labelClass}>Pareja Actual</label>
+																			<input value={currentPartner} onChange={(e) => setCurrentPartner(e.target.value)} className={`${inputBase} ${inputDark}`} placeholder="Nombre / Edad / Sano" />
 																		</div>
 																		<div>
 																			<label className={labelClass}>Método Anticonceptivo</label>
 																			<input value={contraceptiveUse} onChange={(e) => setContraceptiveUse(e.target.value)} className={`${inputBase} ${inputDark}`} />
 																		</div>
 																		<div>
+																			<label className={labelClass}>ITS</label>
+																			<input value={its} onChange={(e) => setIts(e.target.value)} className={`${inputBase} ${inputDark}`} placeholder="NIEGA o especificar" />
+																		</div>
+																		<div>
+																			<label className={labelClass}>Gardasil</label>
+																			<input value={gardasil} onChange={(e) => setGardasil(e.target.value)} className={`${inputBase} ${inputDark}`} placeholder="NO APLICADA / Esquema completo" />
+																		</div>
+																		<div>
+																			<label className={labelClass}>Última Citología</label>
+																			<input value={lastCytology} onChange={(e) => setLastCytology(e.target.value)} className={`${inputBase} ${inputDark}`} placeholder="Fecha o Resultado" />
+																		</div>
+																		<div>
+																			<label className={labelClass}>Mastopatías</label>
+																			<input value={mastopathies} onChange={(e) => setMastopathies(e.target.value)} className={`${inputBase} ${inputDark}`} placeholder="NIEGA o especificar" />
+																		</div>
+																		<div>
 																			<label className={labelClass}>Historia obstétrica (HO)</label>
 																			<input value={ho} onChange={(e) => setHo(e.target.value)} className={`${inputBase} ${inputDark}`} placeholder="NIEGA o especificar" />
+																		</div>
+																		<div>
+																			<label className={labelClass}>Edad Primer Embarazo</label>
+																			<input value={firstPregnancyAge} onChange={(e) => setFirstPregnancyAge(e.target.value)} className={`${inputBase} ${inputDark}`} placeholder="Edad" />
+																		</div>
+																		<div>
+																			<label className={labelClass}>Lactancia Materna Exclusiva</label>
+																			<select value={exclusiveBreastfeeding} onChange={(e) => setExclusiveBreastfeeding(e.target.value)} className={`${inputBase} ${inputDark}`}>
+																				<option value="NO">NO</option>
+																				<option value="SÍ">SÍ</option>
+																			</select>
+																		</div>
+																		<div>
+																			<label className={labelClass}>Húbitos Psicobiológicos</label>
+																			<input value={psychobiologicalHabits} onChange={(e) => setPsychobiologicalHabits(e.target.value)} className={`${inputBase} ${inputDark}`} placeholder="NIEGA TABAQUISMO, NIEGA ALCOHOLISMO" />
+																		</div>
+																		<div>
+																			<label className={labelClass}>Hipersensibilidad</label>
+																			<input value={hypersensitivity} onChange={(e) => setHypersensitivity(e.target.value)} className={`${inputBase} ${inputDark}`} placeholder="NIEGA" />
+																		</div>
+																		<div>
+																			<label className={labelClass}>Vacunación (General)</label>
+																			<input value={vaccinated} onChange={(e) => setVaccinated(e.target.value)} className={`${inputBase} ${inputDark}`} placeholder="Completa / Incompleta" />
 																		</div>
 																	</div>
 																</div>
@@ -4316,22 +4431,143 @@ export default function EditConsultationForm({ initial, patient, doctor, doctorS
 																{/* Diagnóstico con CIE-11 - Solo si NO es solo colposcopia */}
 																{!shouldOnlyShowColposcopy && (
 																	<div className="border-t border-slate-200 dark:border-slate-700 pt-4">
-																		<label className={labelClass}>Diagnóstico (CIE-11)</label>
-																		<ICD11Search
-																			onSelect={(code) => {
-																				setIcd11Code(code.code);
-																				setIcd11Title(code.title);
-																				setDiagnosis(`${code.code} - ${code.title}`);
-																			}}
-																			selectedCode={icd11Code && icd11Title ? { code: icd11Code, title: icd11Title } : null}
-																			placeholder="Buscar código CIE-11 (ej: diabetes, hipertensión...)"
-																			className="mb-3"
-																		/>
-																		{icd11Code && icd11Title && (
-																			<p className="mt-2 text-xs text-slate-600 dark:text-slate-400">
-																				<strong>Código CIE-11 seleccionado:</strong> {icd11Code} - {icd11Title}
-																			</p>
+																		<div className="flex items-center justify-between mb-2">
+																			<label className={labelClass}>Diagnósticos</label>
+																			<div className="flex bg-slate-100 dark:bg-slate-800 rounded-lg p-1">
+																				<button
+																					type="button"
+																					onClick={() => setDiagnosisInputMode('cie11')}
+																					className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${
+																						diagnosisInputMode === 'cie11'
+																							? 'bg-white dark:bg-slate-700 text-teal-600 dark:text-teal-400 shadow-sm'
+																							: 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300'
+																					}`}
+																				>
+																					Buscador CIE-11
+																				</button>
+																				<button
+																					type="button"
+																					onClick={() => setDiagnosisInputMode('manual')}
+																					className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${
+																						diagnosisInputMode === 'manual'
+																							? 'bg-white dark:bg-slate-700 text-teal-600 dark:text-teal-400 shadow-sm'
+																							: 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300'
+																					}`}
+																				>
+																					Manual
+																				</button>
+																			</div>
+																		</div>
+
+																		{/* Input Area */}
+																		<div className="mb-3">
+																			{diagnosisInputMode === 'cie11' ? (
+																				<ICD11Search
+																					onSelect={(code) => {
+																						const newDiag = `${code.code} - ${code.title}`;
+																						if (!gynDiagnoses.includes(newDiag)) {
+																							setGynDiagnoses([...gynDiagnoses, newDiag]);
+																						}
+																					}}
+																					selectedCode={null}
+																					placeholder="Buscar código CIE-11 para agregar..."
+																					className="w-full"
+																				/>
+																			) : (
+																				<div className="flex gap-2">
+																					<input
+																						value={manualDiagnosisInput}
+																						onChange={(e) => setManualDiagnosisInput(e.target.value)}
+																						onKeyDown={(e) => {
+																							if (e.key === 'Enter') {
+																								e.preventDefault();
+																								if (manualDiagnosisInput.trim()) {
+																									setGynDiagnoses([...gynDiagnoses, manualDiagnosisInput.trim()]);
+																									setManualDiagnosisInput('');
+																								}
+																							}
+																						}}
+																						className={`${inputBase} ${inputDark} flex-1`}
+																						placeholder="Escribir diagnóstico y presionar Enter..."
+																					/>
+																					<button
+																						type="button"
+																						onClick={() => {
+																							if (manualDiagnosisInput.trim()) {
+																								setGynDiagnoses([...gynDiagnoses, manualDiagnosisInput.trim()]);
+																								setManualDiagnosisInput('');
+																							}
+																						}}
+																						className="px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 transition-colors"
+																					>
+																						<Plus size={20} />
+																					</button>
+																				</div>
+																			)}
+																		</div>
+
+																		{/* Lista de Diagnósticos */}
+																		{gynDiagnoses.length > 0 && (
+																			<div className="space-y-2 mb-4">
+																				{gynDiagnoses.map((diag, index) => (
+																					<div key={index} className="flex items-center justify-between p-2 bg-slate-50 dark:bg-slate-800/50 rounded-lg border border-slate-200 dark:border-slate-700 max-w-[50%]">
+																						<span className="text-sm text-slate-700 dark:text-slate-300">{diag}</span>
+																						<button
+																							type="button"
+																							onClick={() => {
+																								const newDiags = [...gynDiagnoses];
+																								newDiags.splice(index, 1);
+																								setGynDiagnoses(newDiags);
+																							}}
+																							className="text-slate-400 hover:text-red-500 transition-colors p-1"
+																						>
+																							<X size={16} />
+																						</button>
+																					</div>
+																				))}
+																			</div>
 																		)}
+																	</div>
+																)}
+
+																{/* Nuevo Bloque: Plan / Tratamiento */}
+																{!shouldOnlyShowColposcopy && (
+																	<div className="border-t border-slate-200 dark:border-slate-700 pt-4">
+																		<h4 className="text-sm font-semibold text-slate-900 dark:text-slate-100 mb-3">Plan / Tratamiento</h4>
+																		<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+																			<div>
+																				<label className={labelClass}>Indicaciones del Plan</label>
+																				<textarea value={planIndications} onChange={(e) => setPlanIndications(e.target.value)} className={`${inputBase} ${inputDark}`} rows={2} placeholder="Indicaciones generales..." />
+																			</div>
+																			<div>
+																				<label className={labelClass}>Indicaciones de Dieta</label>
+																				<textarea value={dietIndications} onChange={(e) => setDietIndications(e.target.value)} className={`${inputBase} ${inputDark}`} rows={2} placeholder="Recomendaciones dietéticas..." />
+																			</div>
+																			<div>
+																				<label className={labelClass}>Jabón Íntimo</label>
+																				<input value={intimateSoap} onChange={(e) => setIntimateSoap(e.target.value)} className={`${inputBase} ${inputDark}`} placeholder="Especificar..." />
+																			</div>
+																			<div>
+																				<label className={labelClass}>Tratamiento Infección</label>
+																				<input value={treatmentInfection} onChange={(e) => setTreatmentInfection(e.target.value)} className={`${inputBase} ${inputDark}`} placeholder="Antibióticos / Antifúngicos..." />
+																			</div>
+																			<div>
+																				<label className={labelClass}>Probióticos</label>
+																				<input value={probiotics} onChange={(e) => setProbiotics(e.target.value)} className={`${inputBase} ${inputDark}`} placeholder="Especificar..." />
+																			</div>
+																			<div>
+																				<label className={labelClass}>Vitaminas</label>
+																				<input value={vitamins} onChange={(e) => setVitamins(e.target.value)} className={`${inputBase} ${inputDark}`} placeholder="Especificar..." />
+																			</div>
+																			<div>
+																				<label className={labelClass}>Tratamiento Anticonceptivo</label>
+																				<input value={contraceptiveTreatment} onChange={(e) => setContraceptiveTreatment(e.target.value)} className={`${inputBase} ${inputDark}`} placeholder="Especificar..." />
+																			</div>
+																			<div>
+																				<label className={labelClass}>Tratamiento para Sangrado</label>
+																				<input value={bleedingTreatment} onChange={(e) => setBleedingTreatment(e.target.value)} className={`${inputBase} ${inputDark}`} placeholder="Especificar..." />
+																			</div>
+																		</div>
 																	</div>
 																)}
 

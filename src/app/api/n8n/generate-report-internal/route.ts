@@ -213,13 +213,14 @@ export async function POST(request: NextRequest) {
 		let patientName = 'Paciente no registrado';
 		let patientId = 'N/A';
 		let patientPhone = 'N/A';
+		let patientEmail = 'N/A';
 		let patientAge = 'N/A';
 		let patientGender = '';
 
 		if (consultation.patient_id) {
 			const { data: patientData } = await supabaseAdmin
 				.from('patient')
-				.select('firstName, lastName, identifier, phone, dob, gender')
+				.select('firstName, lastName, identifier, phone, dob, gender, email')
 				.eq('id', consultation.patient_id)
 				.maybeSingle();
 
@@ -227,13 +228,14 @@ export async function POST(request: NextRequest) {
 				patientName = `${patientData.firstName || ''} ${patientData.lastName || ''}`.trim() || 'Paciente';
 				patientId = patientData.identifier || 'N/A';
 				patientPhone = patientData.phone || 'N/A';
+				patientEmail = patientData.email || 'N/A';
 				patientGender = patientData.gender || '';
 				patientAge = calculateAge(patientData.dob);
 			}
 		} else if (consultation.unregistered_patient_id) {
 			const { data: unregisteredPatient } = await supabaseAdmin
 				.from('unregisteredpatients')
-				.select('first_name, last_name, identification, phone, birth_date, sex')
+				.select('first_name, last_name, identification, phone, birth_date, sex, email')
 				.eq('id', consultation.unregistered_patient_id)
 				.maybeSingle();
 
@@ -241,6 +243,7 @@ export async function POST(request: NextRequest) {
 				patientName = `${unregisteredPatient.first_name || ''} ${unregisteredPatient.last_name || ''}`.trim() || 'Paciente no registrado';
 				patientId = unregisteredPatient.identification || 'N/A';
 				patientPhone = unregisteredPatient.phone || 'N/A';
+				patientEmail = unregisteredPatient.email || 'N/A';
 				patientGender = unregisteredPatient.sex || '';
 				patientAge = calculateAge(unregisteredPatient.birth_date);
 			}
@@ -928,6 +931,8 @@ export async function POST(request: NextRequest) {
 			identificacion: patientId,
 			telefono: patientPhone,
 			phone: patientPhone,
+			email: patientEmail,
+			correo: patientEmail,
 			medico: doctorName.toUpperCase(),
 			doctor: doctorName.toUpperCase(),
 			

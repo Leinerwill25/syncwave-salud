@@ -61,9 +61,8 @@ export default async function Page({ params }: Props) {
 		);
 	}
 
-	// Obtener prescripciones existentes para esta consulta
-	let existingPrescription: any = null;
-	let prescriptionFiles: any[] = [];
+	// Obtener TODAS las prescripciones existentes para esta consulta
+	let prescriptionsList: any[] = [];
 	try {
 		const { data: prescriptions, error: presError } = await supabase
 			.from('prescription')
@@ -87,44 +86,45 @@ export default async function Page({ params }: Props) {
 				)
 			`)
 			.eq('consultation_id', (consultation as any).id)
-			.order('created_at', { ascending: false })
-			.limit(1)
-			.maybeSingle();
+			.eq('consultation_id', (consultation as any).id)
+			.order('created_at', { ascending: false });
 
 		if (!presError && prescriptions) {
-			existingPrescription = prescriptions;
+			prescriptionsList = prescriptions;
 			
-			// Cargar archivos de la prescripción desde prescription_files
-			if (prescriptions.id) {
-				const { data: files, error: filesError } = await supabase
-					.from('prescription_files')
-					.select('id, file_name, path, url, size, content_type')
-					.eq('prescription_id', prescriptions.id);
-				
-				if (!filesError && files && files.length > 0) {
-					// Generar URLs públicas si no existen
-					for (const file of files) {
-						let fileUrl = file.url;
-						if (!fileUrl && file.path) {
-							try {
-								// Intentar con bucket prescriptions (donde están los archivos reales)
-								const { data: urlData } = supabase.storage
-									.from('prescriptions')
-									.getPublicUrl(file.path);
-								fileUrl = urlData?.publicUrl || null;
-							} catch (err) {
-								console.warn('Error generando URL para archivo:', err);
+			// Cargar archivos para CADA prescripción
+			for (const pres of prescriptionsList) {
+				if (pres.id) {
+					const { data: files, error: filesError } = await supabase
+						.from('prescription_files')
+						.select('id, file_name, path, url, size, content_type')
+						.eq('prescription_id', pres.id);
+					
+					if (!filesError && files && files.length > 0) {
+						pres.files = [];
+						// Generar URLs públicas si no existen
+						for (const file of files) {
+							let fileUrl = file.url;
+							if (!fileUrl && file.path) {
+								try {
+									const { data: urlData } = supabase.storage
+										.from('prescriptions')
+										.getPublicUrl(file.path);
+									fileUrl = urlData?.publicUrl || null;
+								} catch (err) {
+									console.warn('Error generando URL para archivo:', err);
+								}
 							}
-						}
-						if (fileUrl) {
-							prescriptionFiles.push({
-								id: file.id,
-								name: file.file_name,
-								url: fileUrl,
-								type: file.content_type,
-								size: file.size,
-								path: file.path,
-							});
+							if (fileUrl) {
+								pres.files.push({
+									id: file.id,
+									name: file.file_name,
+									url: fileUrl,
+									type: file.content_type,
+									size: file.size,
+									path: file.path,
+								});
+							}
 						}
 					}
 				}
@@ -134,10 +134,7 @@ export default async function Page({ params }: Props) {
 		console.warn('Error obteniendo prescripción existente:', err);
 	}
 
-	// Agregar archivos a la prescripción existente
-	if (existingPrescription && prescriptionFiles.length > 0) {
-		existingPrescription.files = prescriptionFiles;
-	}
+
 
 	return (
 		<main className="min-h-screen bg-gradient-to-br from-blue-50 via-cyan-50 to-teal-50 p-8">
@@ -148,7 +145,7 @@ export default async function Page({ params }: Props) {
 					patientId={(consultation as any).patient_id || null} 
 					unregisteredPatientId={(consultation as any).unregistered_patient_id || null}
 					doctorId={(consultation as any).doctor_id}
-					existingPrescription={existingPrescription}
+					prescriptions={prescriptionsList}
 				/>
 			</div>
 		</main>

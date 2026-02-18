@@ -617,6 +617,29 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 
 		const prescriptionUrl = urlData?.signedUrl || `/${prescriptionsBucket}/${prescriptionFileName}`;
 
+		// 🔹 Guardar referencia del archivo en la tabla prescription_files
+		if (prescriptionId && !prescriptionId.startsWith('temp-')) {
+			try {
+				const { error: fileDbError } = await supabaseAdmin.from('prescription_files').insert({
+					prescription_id: prescriptionId,
+					file_name: `Receta ${new Date().toLocaleDateString('es-ES')}.docx`,
+					path: prescriptionFileName,
+					url: prescriptionUrl,
+					size: docBuffer.length,
+					content_type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+					created_at: new Date().toISOString()
+				});
+
+				if (fileDbError) {
+					console.error('[Generate Prescription API] Error guardando referencia de archivo en BD:', fileDbError);
+				} else {
+					console.log('[Generate Prescription API] Referencia de archivo guardada en prescription_files');
+				}
+			} catch (err) {
+				console.error('[Generate Prescription API] Excepción guardando referencia de archivo:', err);
+			}
+		}
+
 		return NextResponse.json({
 			success: true,
 			prescription_url: prescriptionUrl,
