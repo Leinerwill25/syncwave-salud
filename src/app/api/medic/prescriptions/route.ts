@@ -92,7 +92,21 @@ export async function POST(req: Request) {
 
 		if (userError) console.warn('⚠️ No se pudo obtener sesión:', userError.message);
 
-		const doctor_id = user?.id ?? body.doctor_id;
+		let doctor_id = body.doctor_id;
+		
+		// Priorizar mapeo de authId -> appUserId para consistencia con el resto del sistema
+		if (user?.id) {
+			const { data: appUser } = await supabase
+				.from('users')
+				.select('id')
+				.eq('authId', user.id)
+				.maybeSingle();
+			
+			if (appUser) {
+				doctor_id = appUser.id;
+			}
+		}
+
 		if (!doctor_id) return NextResponse.json({ error: 'No se pudo determinar el doctor_id' }, { status: 401 });
 
 		// Crear receta principal

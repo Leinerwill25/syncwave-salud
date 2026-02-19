@@ -7,6 +7,22 @@ import { es } from 'date-fns/locale';
 import { ArrowLeft, FileText, Image as ImageIcon, Pill, ClipboardList, Download, ChevronDown, ChevronUp, Calendar, Stethoscope, User, FileCheck, Activity, AlertCircle, X, Maximize2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
+interface PrescriptionItem {
+	id: string;
+	name: string;
+	dosage: string;
+	instructions: string;
+}
+
+interface Prescription {
+	id: string;
+	consultation_id: string;
+	prescription_url: string | null;
+	recipe_text: string | null;
+	created_at: string;
+	items: PrescriptionItem[];
+}
+
 interface Consultation {
 	id: string;
 	appointment_id: string | null;
@@ -48,6 +64,7 @@ interface Consultation {
 		attachments: string[] | null;
 		createdAt: string;
 	} | null;
+	prescriptions: Prescription[];
 }
 
 interface PatientInfo {
@@ -247,7 +264,7 @@ export default function PatientHistoryPage({ params }: { params: Promise<{ id: s
 function VitalsDisplay({ vitals }: { vitals: any }) {
 	const fieldLabels: Record<string, Record<string, string>> = {
 		general: {
-			bmi: 'Índice de Masa Corporal (BMI)',
+			bmi: 'Índice de Masa Corporal (IMC)',
 			spo2: 'Saturación de Oxígeno (SpO2)',
 			height: 'Estatura (cm)',
 			weight: 'Peso (kg)',
@@ -260,92 +277,116 @@ function VitalsDisplay({ vitals }: { vitals: any }) {
 		},
 		cardiology: {
 			bnp: 'BNP (pg/mL)',
-			edema: 'Edema',
-			ekg_rhythm: 'Ritmo EKG',
+			edema: 'Presencia de Edema',
+			ekg_rhythm: 'Ritmo EKG / ECG',
 			chest_pain_scale: 'Escala de Dolor Torácico',
 		},
 		gynecology: {
 			last_menstrual_period: 'Última Menstruación (LMP)',
 			lmp: 'Última Menstruación (LMP)',
-			gravida: 'Gravidez',
-			para: 'Para',
-			abortus: 'Abortos',
+			gravida: 'Gravidez (G)',
+			para: 'Partos (P)',
+			abortus: 'Abortos (A)',
 			gestational_age: 'Edad Gestacional (semanas)',
-			its: 'ITS',
-			adnexa: 'Anexos',
-			abdomen: 'Abdomen',
-			allergies: 'Alergias',
+			its: 'Infecciones de Transmisión Sexual (ITS)',
+			adnexa: 'Evaluación de Anexos',
+			abdomen: 'Examen de Abdomen',
+			allergies: 'Alergias Conocidas',
 			breast_cap: 'Capacidad Mamaria',
-			breast_size: 'Tamaño del Seno',
-			fundus_sacs: 'Fondos de Saco',
-			tact_cervix: 'Tacto Cervical',
-			dysmenorrhea: 'Dismenorrea',
-			fundus_fluid: 'Líquido en Fondo de Saco',
-			schiller_test: 'Test de Schiller',
+			breast_size: 'Tamaño de los Senos',
+			fundus_sacs: 'Fondos de Saco Vaginales',
+			tact_cervix: 'Tacto Vaginal / Cérvix',
+			dysmenorrhea: 'Dismenorrea (Dolor Menstrual)',
+			fundus_fluid: 'Líquido en Fondo de Saco Duoglas',
+			schiller_test: 'Prueba de Schiller (Lugol)',
 			axillary_fossae: 'Fosas Axilares',
 			breast_symmetry: 'Simetría Mamaria',
-			hinselmann_test: 'Test de Hinselmann',
-			speculum_cervix: 'Cérvix al Espéculo',
+			hinselmann_test: 'Prueba de Hinselmann',
+			speculum_cervix: 'Inspección de Cérvix con Espéculo',
 			breast_secretion: 'Secreción Mamaria',
-			surgical_history: 'Historial Quirúrgico',
-			external_genitals: 'Genitales Externos',
-			menstruation_type: 'Tipo de Menstruación',
-			general_conditions: 'Condiciones Generales',
-			family_history_father: 'Historial Familiar Paterno',
-			family_history_mother: 'Historial Familiar Materno',
-			family_history_breast_cancer: 'Historial Familiar Cáncer de Mama',
-			endometrial_interface_type: 'Tipo de Interfaz Endometrial',
+			surgical_history: 'Antecedentes Quirúrgicos',
+			external_genitals: 'Inspección de Genitales Externos',
+			menstruation_type: 'Características de la Menstruación',
+			general_conditions: 'Estado General de Salud',
+			family_history_father: 'Antecedentes Familiares (Padre)',
+			family_history_mother: 'Antecedentes Familiares (Madre)',
+			family_history_breast_cancer: 'Antecedentes de Cáncer de Mama',
+			endometrial_interface_type: 'Patrón de Interfaz Endometrial',
 			colposcopy_type: 'Tipo de Colposcopia',
-			colposcopy_extension: 'Extensión de Colposcopia',
-			colposcopy_description: 'Descripción de Colposcopia',
-			colposcopy_location: 'Localización de Colposcopia',
+			colposcopy_extension: 'Extensión de la Colposcopia',
+			colposcopy_description: 'Descripción de Hallazgos Colposcópicos',
+			colposcopy_location: 'Localización de Lesiones',
 			colposcopy_acetowhite: 'Epitelio Acetoblanco',
-			colposcopy_acetowhite_details: 'Detalles del Epitelio Acetoblanco',
-			colposcopy_mosaic: 'Mosaico',
-			colposcopy_punctation: 'Punteado',
-			colposcopy_atypical_vessels: 'Vasos Atípicos',
-			colposcopy_invasive_carcinoma: 'Sugestiva de Carcinoma Invasivo',
-			colposcopy_borders: 'Bordes',
-			colposcopy_situation: 'Situación',
-			colposcopy_elevation: 'Elevación',
-			colposcopy_lugol: 'LUGOL (Test Schiller)',
-			colposcopy_biopsy: 'Toma de Biopsia',
-			colposcopy_image: 'Imagen Colposcópica',
-			additional_details: 'Detalles Adicionales',
+			colposcopy_acetowhite_details: 'Detallles de Epitelio Acetoblanco',
+			colposcopy_mosaic: 'Patrón en Mosaico',
+			colposcopy_punctation: 'Patrón Punteado',
+			colposcopy_atypical_vessels: 'Presencia de Vasos Atípicos',
+			colposcopy_invasive_carcinoma: 'Sospecha de Carcinoma Invasivo',
+			colposcopy_borders: 'Características de los Bordes',
+			colposcopy_situation: 'Situación de la Lesión',
+			colposcopy_elevation: 'Elevación de la Superficie',
+			colposcopy_lugol: 'Captación de Lugol',
+			colposcopy_biopsy: 'Realización de Biopsia',
+			colposcopy_image: 'Documentación Fotográfica Colposcópica',
+			colposcopy: 'Detalles de Colposcopia',
+			additional_details: 'Detalles y Observaciones Adicionales',
+			ho: 'Historia (Ho)',
+			diagnoses: 'Diagnósticos',
+			diagnosis: 'Diagnosis',
+			probiotics: 'Probióticos',
+			vaccinated: 'Vacunada',
+			mastopathies: 'Mastopatías',
+			contraceptive: 'Anticonceptivos',
+			intimate_soap: 'Jabón Íntimo',
+			last_cytology: 'Última Citología',
+			current_partner: 'Pareja Actual',
+			sexual_partners: 'Parejas Sexuales',
+			hypersensitivity: 'Hipersensibilidad',
+			plan_indications: 'Plan e Indicaciones',
+			vaginal_discharge: 'Flujo Vaginal',
+			first_pregnancy_age: 'Edad de Primer Embarazo',
+			treatment_infection: 'Tratamiento de Infección',
+			menstruation_pattern: 'Patrón Menstrual',
+			first_sexual_relation: 'Primera Relación Sexual',
+			current_illness_history: 'Historia de la Enfermedad Actual',
+			exclusive_breastfeeding: 'Lactancia Exclusiva',
+			psychobiological_habits: 'Hábitos Psicobiológicos',
+			menarche: 'Menarquia',
+			gardasil: 'Vacuna VPH (Gardasil)',
 		},
 		pulmonology: {
-			pef: 'PEF (L/min)',
-			fev1: 'FEV1 (L)',
-			fvc: 'FVC (L)',
-			spirometry_notes: 'Notas de Espirometría',
+			pef: 'Flujo Espiratorio Máximo (PEF)',
+			fev1: 'Volumen Espiratorio Forzado (FEV1)',
+			fvc: 'Capacidad Vital Forzada (FVC)',
+			spirometry_notes: 'Observaciones de Espirometría',
 		},
 		neurology: {
 			gcs: 'Escala de Coma de Glasgow (GCS)',
-			mental_status: 'Estado Mental',
-			motor_function: 'Función Motora',
-			sensory_function: 'Función Sensorial',
+			mental_status: 'Evaluación del Estado Mental',
+			motor_function: 'Evaluación de Función Motora',
+			sensory_function: 'Evaluación de Función Sensorial',
 		},
 		obstetrics: {
-			gestational_age: 'Edad Gestacional (semanas)',
-			fundal_height: 'Altura del Fondo Uterino (cm)',
-			fetal_heart_rate: 'Frecuencia Cardíaca Fetal (lpm)',
-			amniotic_fluid: 'Líquido Amniótico',
+			gestational_age: 'Edad Gestacional ACTUAL',
+			fundal_height: 'Altura de Fondo Uterino (cm)',
+			fetal_heart_rate: 'Frecuencia Cardíaca Fetal (lpm/FHR)',
+			amniotic_fluid: 'Nivel/Calidad de Líquido Amniótico',
 		},
 		nutrition: {
 			body_fat_percentage: 'Porcentaje de Grasa Corporal (%)',
-			muscle_mass: 'Masa Muscular (kg)',
-			basal_metabolic_rate: 'Tasa Metabólica Basal (kcal)',
+			muscle_mass: 'Masa Muscular Estimada (kg)',
+			basal_metabolic_rate: 'Tasa Metabólica Basal (TMB/BMR)',
 		},
 		dermatology: {
-			lesion_type: 'Tipo de Lesión',
-			lesion_size: 'Tamaño de Lesión (cm)',
-			lesion_location: 'Localización de Lesión',
-			skin_type: 'Tipo de Piel',
+			lesion_type: 'Morfología de la Lesión',
+			lesion_size: 'Dimensiones de la Lesión (cm)',
+			lesion_location: 'Distribución / Localización de Lesión',
+			skin_type: 'Clasificación de Tipo de Piel',
 		},
 		psychiatry: {
-			phq9_score: 'Puntuación PHQ-9',
-			gad7_score: 'Puntuación GAD-7',
-			mental_status_exam: 'Examen del Estado Mental',
+			phq9_score: 'Puntuación Depresión PHQ-9',
+			gad7_score: 'Puntuación Ansiedad GAD-7',
+			mental_status_exam: 'Examen de Estado Mental Detallado',
 		},
 	};
 
@@ -376,12 +417,22 @@ function VitalsDisplay({ vitals }: { vitals: any }) {
 	const formatValue = (value: any): string => {
 		if (value === null || value === undefined || value === '') return '—';
 		if (typeof value === 'boolean') return value ? 'Sí' : 'No';
+		if (typeof value === 'object') {
+			// Si es un objeto, intentar aplanarlo para mostrarlo
+			return Object.entries(value)
+				.filter(([_, v]) => v !== null && v !== undefined && v !== '')
+				.map(([k, v]) => {
+					const label = k.replace(/_/g, ' ').replace(/([A-Z])/g, ' $1').trim();
+					return `${label}: ${formatValue(v)}`;
+				})
+				.join(' | ');
+		}
 		return String(value);
 	};
 
 	const renderField = (section: string, key: string, value: any) => {
 		// Normalizar la clave para buscar (convertir a minúsculas y manejar diferentes formatos)
-		const normalizedKey = key.toLowerCase().trim();
+		const normalizedKey = key.toLowerCase().trim().replace(/\s+/g, '_');
 
 		// Buscar etiqueta exacta primero
 		let label = fieldLabels[section]?.[key];
@@ -389,7 +440,7 @@ function VitalsDisplay({ vitals }: { vitals: any }) {
 		// Si no se encuentra, buscar con la clave normalizada
 		if (!label && fieldLabels[section]) {
 			// Buscar por coincidencia exacta en minúsculas
-			const exactMatch = Object.keys(fieldLabels[section]).find((k) => k.toLowerCase() === normalizedKey);
+			const exactMatch = Object.keys(fieldLabels[section]).find((k) => k.toLowerCase() === normalizedKey || k.toLowerCase().replace(/\s+/g, '_') === normalizedKey);
 			if (exactMatch) {
 				label = fieldLabels[section][exactMatch];
 			}
@@ -423,9 +474,9 @@ function VitalsDisplay({ vitals }: { vitals: any }) {
 		const formattedValue = formatValue(value);
 
 		return (
-			<div key={key} className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 py-2 border-b border-slate-200 last:border-0">
-				<span className="text-sm font-medium text-slate-700">{label}</span>
-				<span className="text-sm text-slate-900 font-semibold">{formattedValue}</span>
+			<div key={key} className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2 py-2 border-b border-slate-200 last:border-0">
+				<span className="text-sm font-medium text-slate-700 min-w-[200px]">{label}</span>
+				<span className="text-sm text-slate-900 font-semibold text-right">{formattedValue}</span>
 			</div>
 		);
 	};
@@ -656,8 +707,79 @@ function ImagesGallery({ images }: { images: Array<{ url: string; label: string;
 	);
 }
 
+// Componente para renderizar recetas de forma simplificada
+function PrescriptionsDisplay({ prescriptions }: { prescriptions: Prescription[] }) {
+	if (prescriptions.length === 0) return null;
+
+	return (
+		<div>
+			<h4 className="font-semibold text-slate-900 mb-3 flex items-center gap-2">
+				<Pill className="w-5 h-5 text-indigo-600" />
+				Recetas Generadas ({prescriptions.length})
+			</h4>
+			<div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+				{prescriptions.map((presc) => {
+					const medsList = presc.items?.map((i) => i.name).join(', ') || 'Medicación variada';
+
+					return (
+						<div key={presc.id} className="bg-slate-50 rounded-xl border border-slate-200 p-4 flex flex-col justify-between hover:border-indigo-300 transition-colors">
+							<div className="mb-3">
+								<div className="flex items-center justify-between mb-1">
+									<span className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+										{format(new Date(presc.created_at), 'dd/MM/yyyy', { locale: es })}
+									</span>
+									<ClipboardList className="w-4 h-4 text-emerald-500" />
+								</div>
+								<p className="text-sm font-semibold text-slate-800 line-clamp-2">
+									{medsList}
+								</p>
+							</div>
+
+							{presc.prescription_url ? (
+								<a
+									href={presc.prescription_url}
+									target="_blank"
+									rel="noopener noreferrer"
+									className="w-full flex items-center justify-center gap-2 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm font-medium transition-colors shadow-sm"
+								>
+									<Download className="w-4 h-4" />
+									Descargar Receta
+								</a>
+							) : (
+								<div className="w-full py-2 bg-slate-200 text-slate-500 rounded-lg text-sm font-medium text-center border border-dashed border-slate-300">
+									Archivo no disponible
+								</div>
+							)}
+						</div>
+					);
+				})}
+			</div>
+		</div>
+	);
+}
+
 function ConsultationCard({ consultation, isExpanded, onToggle, formatDate, formatDateTime }: { consultation: Consultation; isExpanded: boolean; onToggle: () => void; formatDate: (date: string | null) => string; formatDateTime: (date: string | null) => string }) {
 	const consultationDate = consultation.started_at || consultation.created_at;
+
+	const getStatusColor = (status: string) => {
+		switch (status.toUpperCase()) {
+			case 'COMPLETED': case 'COMPLETADA': return 'bg-green-100 text-green-700';
+			case 'PENDING': case 'PENDIENTE': return 'bg-amber-100 text-amber-700';
+			case 'CANCELLED': case 'CANCELADA': return 'bg-red-100 text-red-700';
+			case 'IN_PROGRESS': case 'EN_CURSO': return 'bg-blue-100 text-blue-700';
+			default: return 'bg-slate-100 text-slate-700';
+		}
+	};
+
+	const translateStatus = (status: string) => {
+		switch (status.toUpperCase()) {
+			case 'COMPLETED': return 'Completada';
+			case 'PENDING': return 'Pendiente';
+			case 'CANCELLED': return 'Cancelada';
+			case 'IN_PROGRESS': return 'En Curso';
+			default: return status;
+		}
+	};
 
 	return (
 		<motion.div initial={false} className="border border-slate-200 rounded-xl overflow-hidden hover:shadow-md transition-shadow">
@@ -675,7 +797,13 @@ function ConsultationCard({ consultation, isExpanded, onToggle, formatDate, form
 				<div className="flex items-center gap-4">
 					<div className="text-right">
 						<div className="text-sm font-medium text-slate-700">{formatDateTime(consultationDate)}</div>
-						{consultation.appointment && <div className="text-xs text-slate-500 mt-1">Estado: {consultation.appointment.status}</div>}
+						{consultation.appointment && (
+							<div className="mt-1 flex justify-end">
+								<span className={`text-[10px] uppercase tracking-wider font-bold px-2 py-0.5 rounded-full ${getStatusColor(consultation.appointment.status)}`}>
+									{translateStatus(consultation.appointment.status)}
+								</span>
+							</div>
+						)}
 					</div>
 					{isExpanded ? <ChevronUp className="w-5 h-5 text-slate-500" /> : <ChevronDown className="w-5 h-5 text-slate-500" />}
 				</div>
@@ -800,6 +928,11 @@ function ConsultationCard({ consultation, isExpanded, onToggle, formatDate, form
 
 								return <ImagesGallery images={allImages} />;
 							})()}
+
+							{/* Prescriptions - Renderizado Estructurado */}
+							{consultation.prescriptions && consultation.prescriptions.length > 0 && (
+								<PrescriptionsDisplay prescriptions={consultation.prescriptions} />
+							)}
 
 							{/* Vitals - Renderizado Estructurado */}
 							{consultation.vitals && Object.keys(consultation.vitals).length > 0 && <VitalsDisplay vitals={consultation.vitals} />}

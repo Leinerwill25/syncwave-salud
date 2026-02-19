@@ -3,7 +3,7 @@
 
 import React, { useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
-import { ClipboardList, FileText, X, Calendar, User, Building2, Pill, FlaskConical, Stethoscope, Receipt, ChevronRight, Clock, AlertCircle, CheckCircle2, DollarSign, Check, XCircle, RotateCcw, Loader2 } from 'lucide-react';
+import { ClipboardList, FileText, X, Calendar, User, Building2, Pill, FlaskConical, Stethoscope, Receipt, ChevronRight, Clock, AlertCircle, CheckCircle2, DollarSign, Check, XCircle, RotateCcw, Loader2, Plus } from 'lucide-react';
 
 /* ---------------------- Types ---------------------- */
 
@@ -22,6 +22,7 @@ type Patient = {
 	prescriptionsCount?: number;
 	labResultsCount?: number;
 	billingsCount?: number;
+	billingsTotal?: number;
 	lastConsultationAt?: string | null;
 	lastPrescriptionAt?: string | null;
 	lastLabResultAt?: string | null;
@@ -111,11 +112,12 @@ export type Organization = { id: string; lastSeenAt: string; types: string[] };
 
 export type PatientHistory = {
 	patientId: string;
-	summary: {
+	summary?: {
 		consultationsCount: number;
 		prescriptionsCount: number;
 		labResultsCount: number;
 		billingsCount: number;
+		billingsTotal?: number;
 	};
 	organizations: Organization[];
 	consultations: Consultation[];
@@ -293,12 +295,13 @@ function MetaCard({ title, value, color, icon: Icon }: { title: string; value: s
 
 /* ---------------------- Card renderers por tipo ---------------------- */
 
-function PrescriptionCard({ item }: { item: Prescription }) {
+function PrescriptionCard({ item, onStatusUpdate }: { item: Prescription; onStatusUpdate?: () => void }) {
 	const meds = item.medications ?? item.meds ?? [];
 	const hasMeds = Array.isArray(meds) && meds.length > 0;
 	const status = (item as any).status;
 	const validUntil = (item as any).validUntil;
 	const issuedAt = (item as any).issuedAt ?? item.date ?? item.createdAt;
+	const treatmentPlan = (item as any).treatment_plan;
 
 	return (
 		<div className="group relative bg-gradient-to-br from-white to-green-50/30 border border-green-200/60 rounded-xl p-5 shadow-sm hover:shadow-md transition-all duration-200 hover:border-green-300">
@@ -322,13 +325,15 @@ function PrescriptionCard({ item }: { item: Prescription }) {
 					</div>
 				</div>
 				<div className="flex flex-col items-end gap-2">
-					{item.doctor && (
-						<div className="flex items-center gap-1.5 text-xs text-gray-600 bg-gray-50 px-2.5 py-1 rounded-md">
-							<User className="w-3 h-3" />
-							<span className="font-medium">{item.doctor}</span>
-						</div>
-					)}
-					{status && <div className={`text-xs font-semibold px-2 py-1 rounded-md ${status === 'ACTIVE' ? 'bg-green-100 text-green-700' : status === 'EXPIRED' ? 'bg-red-100 text-red-700' : 'bg-gray-100 text-gray-700'}`}>{status}</div>}
+					<div className="flex gap-2">
+						{item.doctor && (
+							<div className="flex items-center gap-1.5 text-xs text-gray-600 bg-gray-50 px-2.5 py-1 rounded-md border border-gray-100">
+								<User className="w-3 h-3" />
+								<span className="font-medium">{item.doctor}</span>
+							</div>
+						)}
+					</div>
+					{status && <div className={`text-xs font-semibold px-2 py-1 rounded-md ${status === 'ACTIVE' ? 'bg-green-100 text-green-700 border border-green-200' : status === 'EXPIRED' ? 'bg-red-100 text-red-700 border border-red-200' : 'bg-gray-100 text-gray-700 border border-gray-200'}`}>{status}</div>}
 				</div>
 			</div>
 
@@ -380,8 +385,24 @@ function PrescriptionCard({ item }: { item: Prescription }) {
 			)}
 
 			{!hasMeds && (
-				<div className="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
-					<p className="text-xs text-yellow-800">No se encontraron medicamentos en esta receta.</p>
+				<div className="mb-4 p-4 bg-amber-50 border border-amber-200 rounded-xl flex items-start gap-3">
+					<div className="p-1.5 bg-amber-100 rounded-lg">
+						<AlertCircle className="w-4 h-4 text-amber-600" />
+					</div>
+					<div>
+						<p className="text-sm font-medium text-amber-900">Sin medicamentos estructurados</p>
+						<p className="text-xs text-amber-700 mt-0.5">La receta existe pero los medicamentos no han sido extraídos del documento todavía.</p>
+					</div>
+				</div>
+			)}
+
+			{treatmentPlan && (
+				<div className="mb-4 p-4 bg-indigo-50/50 border border-indigo-100 rounded-xl">
+					<div className="flex items-center gap-2 mb-2">
+						<FileText className="w-4 h-4 text-indigo-600" />
+						<span className="text-xs font-bold text-indigo-900 uppercase tracking-wide">Plan de Tratamiento</span>
+					</div>
+					<div className="text-sm text-indigo-900 leading-relaxed font-medium">{treatmentPlan}</div>
 				</div>
 			)}
 
@@ -1013,7 +1034,7 @@ function HistoryModal({ open, onClose, loading, history, activeTab, setActiveTab
 											<MetaCard title="Consultas" value={`${history.summary?.consultationsCount ?? 0}`} color="blue" icon={Stethoscope} />
 											<MetaCard title="Recetas" value={`${history.summary?.prescriptionsCount ?? 0}`} color="green" icon={Pill} />
 											<MetaCard title="Laboratorios" value={`${history.summary?.labResultsCount ?? 0}`} color="yellow" icon={FlaskConical} />
-											<MetaCard title="Facturas" value={`${history.summary?.billingsCount ?? 0}`} color="purple" icon={Receipt} />
+											<MetaCard title="Facturación" value={new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(history.summary?.billingsTotal ?? 0)} color="purple" icon={Receipt} />
 										</div>
 
 										{/* Clínicas visitadas mejorado */}

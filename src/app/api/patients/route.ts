@@ -89,9 +89,14 @@ export async function GET(request: Request) {
 				return NextResponse.json({ error: 'Acceso denegado: sin relación médica previa' }, { status: 403 });
 			}
 
+			console.log('[Patients API HistoryDetail] Fetching history for:', { 
+				historyFor, 
+				isRegistered, 
+				currentAppUserId 
+			});
+
 			// Obtener appointments (citas), recetas y labs
 			// Filtrar TODOS por el doctor en sesión para mostrar solo lo que corresponde al especialista actual
-			// Para pacientes no registrados, también buscamos lab_results por unregistered_patient_id
 			const [appointmentRes, prescRes, labRes, consultationRes] = await Promise.all([
 				isRegistered
 					? supabase
@@ -101,19 +106,20 @@ export async function GET(request: Request) {
 							.eq('doctor_id', currentAppUserId)
 							.order('scheduled_at', { ascending: false })
 					: Promise.resolve({ data: [], error: null }),
-				isRegistered
-					? supabase
-							.from('prescription')
-							.select(
-								`
+				supabase
+					.from('prescription')
+					.select(
+						`
 					id,
 					patient_id,
+					unregistered_patient_id,
 					doctor_id,
 					consultation_id,
 					issued_at,
 					valid_until,
 					status,
 					notes,
+					treatment_plan,
 					created_at,
 					prescription_item (
 						id,
@@ -126,26 +132,18 @@ export async function GET(request: Request) {
 						instructions
 					)
 				`
-							)
-							.eq('patient_id', historyFor)
-							.eq('doctor_id', currentAppUserId)
-							.order('created_at', { ascending: false })
-					: Promise.resolve({ data: [], error: null }),
+					)
+					.or(isRegistered ? `patient_id.eq.${historyFor}` : `unregistered_patient_id.eq.${historyFor}`)
+					.eq('doctor_id', currentAppUserId)
+					.order('created_at', { ascending: false }),
 				// lab_results: si es paciente registrado filtramos por patient_id,
 				// si es no registrado filtramos por unregistered_patient_id
-				isRegistered
-					? supabase
-							.from('lab_result')
-							.select('id,patient_id,unregistered_patient_id,consultation_id,result_type,result,is_critical,reported_at,created_at')
-							.eq('patient_id', historyFor)
-							.order('created_at', { ascending: false })
-					: supabase
-							.from('lab_result')
-							.select('id,patient_id,unregistered_patient_id,consultation_id,result_type,result,is_critical,reported_at,created_at')
-							.eq('unregistered_patient_id', historyFor)
-							.order('created_at', { ascending: false }),
+				supabase
+					.from('lab_result')
+					.select('id,patient_id,unregistered_patient_id,consultation_id,result_type,result,is_critical,reported_at,created_at')
+					.or(isRegistered ? `patient_id.eq.${historyFor}` : `unregistered_patient_id.eq.${historyFor}`)
+					.order('created_at', { ascending: false }),
 				// Buscar consultas tanto por patient_id como por unregistered_patient_id
-				// Incluir appointment_id para detectar duplicados
 				supabase
 					.from('consultation')
 					.select('id,chief_complaint,diagnosis,notes,created_at,patient_id,unregistered_patient_id,doctor_id,organization_id,appointment_id')
@@ -225,35 +223,41 @@ export async function GET(request: Request) {
 					doctorId: p.doctor_id,
 					status: p.status || 'ACTIVE',
 					notes: p.notes || null,
+					treatment_plan: p.treatment_plan || null,
 					medications: medications,
 					meds: medications, // alias para compatibilidad
 				};
 			});
 
-			// Obtener appointment IDs para buscar facturación
+			// Obtener IDs de citas para buscar facturación
 			const appointmentIds = [...new Set([...(appointmentRes.data ?? []).map((a: any) => a.id)])];
 			
-			// Buscar facturación asociada a los appointments
-			let billingMap = new Map<string, any>();
-			if (appointmentIds.length > 0) {
-				const { data: billingData } = await supabase
-					.from('facturacion')
-					.select('id, appointment_id, total, currency, estado_pago, fecha_pago')
-					.in('appointment_id', appointmentIds);
+			// Calcular total facturado por el doctor actual para este paciente
+			let billingsTotal = 0;
+			const billingMap = new Map<string, any>();
 
-				if (billingData) {
-					billingData.forEach((b: any) => {
-						if (b.appointment_id) {
-							billingMap.set(b.appointment_id, {
-								id: b.id,
-								total: b.total,
-								currency: b.currency || 'USD',
-								estadoPago: b.estado_pago,
-								fechaPago: b.fecha_pago ? normalizeDate(b, 'fecha_pago') : null,
-							});
-						}
-					});
-				}
+			const { data: billingData } = await supabase
+				.from('facturacion')
+				.select('id, appointment_id, total, currency, estado_pago, fecha_pago')
+				.or(isRegistered ? `patient_id.eq.${historyFor}` : `unregistered_patient_id.eq.${historyFor}`)
+				.eq('doctor_id', currentAppUserId);
+
+			if (billingData) {
+				billingData.forEach((b: any) => {
+					// Sumar al total general del historial para este doctor
+					billingsTotal += Number(b.total) || 0;
+
+					// Mapear para las citas individuales si coincide el appointment_id
+					if (b.appointment_id) {
+						billingMap.set(b.appointment_id, {
+							id: b.id,
+							total: b.total,
+							currency: b.currency || 'USD',
+							estadoPago: b.estado_pago,
+							fechaPago: b.fecha_pago ? normalizeDate(b, 'fecha_pago') : null,
+						});
+					}
+				});
 			}
 
 			// Crear un mapa de appointments por ID para evitar duplicados
@@ -394,19 +398,50 @@ export async function GET(request: Request) {
 				};
 			});
 
+			// Obtener información de organizaciones visitadas
+			// Recopilar todos los organization_id únicos de appointments y consultas
+			const visitedOrgIds = [...new Set([
+				...(appointmentRes.data ?? []).map((a: any) => a.organization_id).filter(Boolean),
+				...(consultationRes.data ?? []).map((c: any) => c.organization_id).filter(Boolean)
+			])];
+
+			let organizations: any[] = [];
+			if (visitedOrgIds.length > 0) {
+				// Buscar nombres de organizaciones si es necesario (asumiendo que hay una tabla o datos en users)
+				// Por ahora simplificamos a lo que el modal espera: {id, lastSeenAt, types}
+				organizations = visitedOrgIds.map(orgId => {
+					// Encontrar la fecha más reciente de actividad en esta organización
+					const allDates = [
+						...(appointmentRes.data ?? []).filter((a: any) => a.organization_id === orgId).map((a: any) => a.scheduled_at || a.created_at),
+						...(consultationRes.data ?? []).filter((c: any) => c.organization_id === orgId).map((c: any) => c.created_at)
+					].filter(Boolean);
+					
+					const lastSeenAt = allDates.length > 0 
+						? new Date(Math.max(...allDates.map(d => new Date(d).getTime()))).toISOString()
+						: new Date().toISOString();
+
+					return {
+						id: orgId,
+						lastSeenAt,
+						types: ['Consulta Médica'] // Valor por defecto
+					};
+				});
+			}
+
 			const history = {
 				patientId: historyFor,
 				summary: {
 					consultationsCount: allConsultations.length,
-					prescriptionsCount: prescRes.data?.length ?? 0,
-					labResultsCount: filteredLabResults.length,
-					billingsCount: 0, // TODO: agregar si es necesario
+					prescriptionsCount: normalizedPrescriptions.length,
+					labResultsCount: normalizedLabResults.length,
+					billingsCount: billingMap.size,
+					billingsTotal: billingsTotal,
 				},
-				organizations: [], // TODO: agregar si es necesario
+				organizations: organizations,
 				consultations: allConsultations,
 				prescriptions: normalizedPrescriptions,
 				lab_results: normalizedLabResults,
-				facturacion: [], // TODO: agregar si es necesario
+				facturacion: Array.from(billingMap.values()),
 			};
 
 			return NextResponse.json(history);
@@ -529,7 +564,22 @@ export async function GET(request: Request) {
 					const ids = paginatedPatients.filter((p) => !p.isUnregistered).map((p) => p.id);
 					const unregisteredIds = paginatedPatients.filter((p) => p.isUnregistered).map((p) => p.id);
 
-					const [consultRowsRes, prescRowsRes, labRowsRes, unregisteredConsultRowsRes] = await Promise.all([
+					console.log('[Patients API Summary] Fetching metrics for:', { 
+						registeredCount: ids.length, 
+						unregisteredCount: unregisteredIds.length,
+						doctorId: appUserId 
+					});
+
+					const [
+						consultRowsRes, 
+						prescRowsRes, 
+						labRowsRes, 
+						unregisteredConsultRowsRes,
+						unregisteredPrescRowsRes,
+						unregisteredLabRowsRes,
+						billingRowsRes,
+						unregisteredBillingRowsRes
+					] = await Promise.all([
 						ids.length > 0 
 							? supabase.from('consultation').select('id,patient_id,created_at').in('patient_id', ids).eq('doctor_id', appUserId)
 							: Promise.resolve({ data: [], error: null }),
@@ -542,19 +592,54 @@ export async function GET(request: Request) {
 						unregisteredIds.length > 0
 							? supabase.from('consultation').select('id,unregistered_patient_id,created_at').in('unregistered_patient_id', unregisteredIds).eq('doctor_id', appUserId)
 							: Promise.resolve({ data: [], error: null }),
+						unregisteredIds.length > 0
+							? supabase.from('prescription').select('id,unregistered_patient_id,created_at').in('unregistered_patient_id', unregisteredIds).eq('doctor_id', appUserId)
+							: Promise.resolve({ data: [], error: null }),
+						unregisteredIds.length > 0
+							? supabase.from('lab_result').select('id,unregistered_patient_id,consultation_id,created_at').in('unregistered_patient_id', unregisteredIds)
+							: Promise.resolve({ data: [], error: null }),
+						ids.length > 0
+							? supabase.from('facturacion').select('patient_id,total').in('patient_id', ids).eq('doctor_id', appUserId)
+							: Promise.resolve({ data: [], error: null }),
+						unregisteredIds.length > 0
+							? supabase.from('facturacion').select('unregistered_patient_id,total').in('unregistered_patient_id', unregisteredIds).eq('doctor_id', appUserId)
+							: Promise.resolve({ data: [], error: null }),
 					]);
 
-					const consultRows = [...(consultRowsRes.data ?? []), ...(unregisteredConsultRowsRes.data ?? []).map((r: any) => ({ ...r, patient_id: r.unregistered_patient_id }))];
-					const prescRows = prescRowsRes.data ?? [];
+					// Combinar todos los registros (normalizando IDs)
+					const consultRows = [
+						...(consultRowsRes.data ?? []), 
+						...(unregisteredConsultRowsRes.data ?? []).map((r: any) => ({ ...r, patient_id: r.unregistered_patient_id }))
+					];
+					const prescRows = [
+						...(prescRowsRes.data ?? []),
+						...(unregisteredPrescRowsRes.data ?? []).map((r: any) => ({ ...r, patient_id: r.unregistered_patient_id }))
+					];
+					const billingRows = [
+						...(billingRowsRes.data ?? []),
+						...(unregisteredBillingRowsRes.data ?? []).map((r: any) => ({ ...r, patient_id: r.unregistered_patient_id }))
+					];
 					
 					// Filtrar lab_results por consultas del doctor actual
 					const consultationIds = consultRows.map((c: any) => c.id).filter(Boolean);
+					const allLabRows = [
+						...(labRowsRes.data ?? []),
+						...(unregisteredLabRowsRes.data ?? []).map((r: any) => ({ ...r, patient_id: r.unregistered_patient_id }))
+					];
+
 					const filteredLabRows = consultationIds.length > 0
-						? (labRowsRes.data ?? []).filter((lab: any) => 
+						? allLabRows.filter((lab: any) => 
 							lab.consultation_id && consultationIds.includes(lab.consultation_id)
 						)
 						: [];
+					
 					const labRows = filteredLabRows;
+
+					console.log('[Patients API Summary] Rows found:', {
+						consultations: consultRows.length,
+						prescriptions: prescRows.length,
+						labs: labRows.length
+					});
 
 					const map = new Map<string, any>();
 					paginatedPatients.forEach((p) => {
@@ -563,6 +648,8 @@ export async function GET(request: Request) {
 							consultationsCount: 0,
 							prescriptionsCount: 0,
 							labResultsCount: 0,
+							billingsCount: 0,
+							billingsTotal: 0,
 							lastConsultationAt: null,
 							lastPrescriptionAt: null,
 							lastLabResultAt: null,
@@ -600,6 +687,14 @@ export async function GET(request: Request) {
 						m.labResultsCount++;
 						const date = normalizeDate(r, 'created_at');
 						m.lastLabResultAt = updateLast(m.lastLabResultAt, date);
+					});
+
+					billingRows.forEach((r) => {
+						const pid = r.patient_id;
+						const m = map.get(pid);
+						if (!m) return;
+						m.billingsCount++;
+						m.billingsTotal += Number(r.total) || 0;
 					});
 
 					const finalPatients = Array.from(map.values());
@@ -646,8 +741,15 @@ export async function GET(request: Request) {
 		if (includeSummary && patients?.length) {
 			const ids = patients.map((p) => p.id);
 			
+			console.log('[Patients API Summary Registered] Fetching metrics for:', { 
+				patientsCount: ids.length, 
+				doctorId: appUserId,
+				isMedic
+			});
+
 			// Obtener consultas y prescripciones filtradas por doctor
-			const [consultRowsRes, prescRowsRes, labRowsRes] = await Promise.all([
+			// También buscamos por unregistered_patient_id por si acaso (pacientes que se registraron después)
+			const [consultRowsRes, prescRowsRes, labRowsRes, unregisteredConsultRowsRes, unregisteredPrescRowsRes] = await Promise.all([
 				isMedic 
 					? supabase.from('consultation').select('id,patient_id,created_at').in('patient_id', ids).eq('doctor_id', appUserId)
 					: supabase.from('consultation').select('id,patient_id,created_at').in('patient_id', ids),
@@ -655,24 +757,45 @@ export async function GET(request: Request) {
 					? supabase.from('prescription').select('id,patient_id,created_at').in('patient_id', ids).eq('doctor_id', appUserId)
 					: supabase.from('prescription').select('id,patient_id,created_at').in('patient_id', ids),
 				supabase.from('lab_result').select('id,patient_id,consultation_id,created_at').in('patient_id', ids),
+				// Por si tienen registros como unregistered previos
+				isMedic
+					? supabase.from('consultation').select('id,unregistered_patient_id,created_at').in('unregistered_patient_id', ids).eq('doctor_id', appUserId)
+					: Promise.resolve({ data: [], error: null }),
+				isMedic
+					? supabase.from('prescription').select('id,unregistered_patient_id,created_at').in('unregistered_patient_id', ids).eq('doctor_id', appUserId)
+					: Promise.resolve({ data: [], error: null }),
 			]);
+
+			// Combinar resultados (normalizando ids)
+			const consultRows = [
+				...(consultRowsRes.data ?? []),
+				...(unregisteredConsultRowsRes.data ?? []).map((r: any) => ({ ...r, patient_id: r.unregistered_patient_id }))
+			];
+			const prescRows = [
+				...(prescRowsRes.data ?? []),
+				...(unregisteredPrescRowsRes.data ?? []).map((r: any) => ({ ...r, patient_id: r.unregistered_patient_id }))
+			];
 
 			// Para lab_results, filtrar solo los que pertenecen a consultas del doctor actual
 			let filteredLabRows: any[] = [];
-			if (isMedic && consultRowsRes.data) {
-				const consultationIds = consultRowsRes.data.map((c: any) => c.id).filter(Boolean);
+			if (isMedic && consultRows.length > 0) {
+				const consultationIds = consultRows.map((c: any) => c.id).filter(Boolean);
 				if (consultationIds.length > 0) {
 					filteredLabRows = (labRowsRes.data ?? []).filter((lab: any) => 
 						lab.consultation_id && consultationIds.includes(lab.consultation_id)
 					);
 				}
-			} else {
+			} else if (!isMedic) {
 				filteredLabRows = labRowsRes.data ?? [];
 			}
 
-			const consultRows = consultRowsRes.data ?? [];
-			const prescRows = prescRowsRes.data ?? [];
 			const labRows = filteredLabRows;
+
+			console.log('[Patients API Summary Registered] Rows found:', {
+				consultations: consultRows.length,
+				prescriptions: prescRows.length,
+				labs: labRows.length
+			});
 
 			const map = new Map<string, any>();
 			patients.forEach((p) => {

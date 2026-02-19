@@ -21,144 +21,123 @@ export async function GET(req: NextRequest, context: { params: Promise<{ patient
 
 		const supabase = await createSupabaseServerClient();
 
-		// Obtener el unregistered_patient_id del paciente (si existe)
-		const { data: patientData, error: patientDataError } = await supabase.from('patient').select('id, unregistered_patient_id').eq('id', patientId).maybeSingle();
+		// 1. Identificar al paciente (Registrado vs No Registrado)
+		const { data: registeredPatient } = await supabase
+			.from('patient')
+			.select('id, unregistered_patient_id, identifier, organizationId')
+			.eq('id', patientId)
+			.maybeSingle();
 
-		if (patientDataError) {
-			console.error('Error obteniendo datos del paciente:', patientDataError);
-			// Continuar sin unregistered_patient_id si hay error
+		let finalPatientId = null;
+		let finalUnregisteredId = null;
+		let targetIdentifier = null;
+
+		if (registeredPatient) {
+			finalPatientId = registeredPatient.id;
+			finalUnregisteredId = registeredPatient.unregistered_patient_id;
+			targetIdentifier = registeredPatient.identifier;
+		} else {
+			// Podría ser un ID de paciente no registrado
+			const { data: unregisteredPatient } = await supabase
+				.from('unregisteredpatients')
+				.select('id, identification')
+				.eq('id', patientId)
+				.maybeSingle();
+			
+			if (unregisteredPatient) {
+				finalUnregisteredId = unregisteredPatient.id;
+				targetIdentifier = unregisteredPatient.identification;
+			}
 		}
 
-		// Construir query que busque tanto por patient_id como por unregistered_patient_id
-		// Si el paciente tiene unregistered_patient_id vinculado, buscar consultas con ambos IDs
+		if (!finalPatientId && !finalUnregisteredId) {
+			return NextResponse.json({ error: 'Paciente no encontrado' }, { status: 404 });
+		}
+
+		// Fallback: Si es un paciente registrado pero no tiene unregistered_patient_id vinculado,
+		// intentar encontrarlo por cédula (identifier)
+		if (finalPatientId && !finalUnregisteredId && targetIdentifier) {
+			const { data: unregByIndentifier } = await supabase
+				.from('unregisteredpatients')
+				.select('id')
+				.eq('identification', targetIdentifier)
+				.maybeSingle();
+			
+			if (unregByIndentifier) {
+				finalUnregisteredId = unregByIndentifier.id;
+				console.log(`[API Historial] Fallback por cédula: Paciente ${finalPatientId} vinculado a Unregistered ${finalUnregisteredId}`);
+			}
+		}
+
+		// 2. Determinar Nivel de Acceso
+		let hasFullAccess = false;
+
+		// Si es ADMIN, tiene acceso total a su organización
+		if (user.role === 'ADMIN') {
+			hasFullAccess = true;
+		} else if (user.role === 'MEDICO') {
+			// Si es médico, verificar si tiene un MedicalAccessGrant ACTIVO para este paciente
+			// BUSCAMOS POR finalPatientId (el ID registrado)
+			if (finalPatientId) {
+				const { data: grant } = await supabase
+					.from('MedicalAccessGrant')
+					.select('id, expires_at')
+					.eq('patient_id', finalPatientId)
+					.eq('doctor_id', user.userId)
+					.eq('is_active', true)
+					.maybeSingle();
+				
+				if (grant) {
+					const expiresAt = grant.expires_at ? new Date(grant.expires_at).getTime() : null;
+					hasFullAccess = !expiresAt || expiresAt > Date.now();
+					if (hasFullAccess) console.log(`[API Historial] Acceso Completo detectado vía Grant para médico ${user.userId}`);
+				}
+			}
+		}
+
+		// 3. Ejecutar Consultas
 		let consultations: any[] = [];
 		let consultError: any = null;
 
-		if (patientData?.unregistered_patient_id) {
-			// Buscar consultas con patient_id O unregistered_patient_id
-			const { data: consultations1, error: error1 } = await supabase
-				.from('consultation')
-				.select(
-					`
-					id,
-					appointment_id,
-					patient_id,
-					unregistered_patient_id,
-					doctor_id,
-					organization_id,
-					chief_complaint,
-					diagnosis,
-					icd11_code,
-					icd11_title,
-					notes,
-					vitals,
-					started_at,
-					ended_at,
-					created_at,
-					updated_at,
-					medical_record_id,
-					report_url,
-					doctor:doctor_id(id, name, email),
-					appointment:appointment_id(
-						id,
-						status,
-						location,
-						scheduled_at
-					)
+		// Construir filtros de paciente
+		const patientFilters = [];
+		if (finalPatientId) patientFilters.push(`patient_id.eq.${finalPatientId}`);
+		if (finalUnregisteredId) patientFilters.push(`unregistered_patient_id.eq.${finalUnregisteredId}`);
+		const combinedPatientFilter = patientFilters.join(',');
+
+		let query = supabase
+			.from('consultation')
+			.select(
 				`
-				)
-				.eq('patient_id', patientId)
-				.eq('doctor_id', user.userId)
-				.order('started_at', { ascending: false, nullsFirst: false })
-				.order('created_at', { ascending: false });
-
-			const { data: consultations2, error: error2 } = await supabase
-				.from('consultation')
-				.select(
-					`
-					id,
-					appointment_id,
-					patient_id,
-					unregistered_patient_id,
-					doctor_id,
-					organization_id,
-					chief_complaint,
-					diagnosis,
-					icd11_code,
-					icd11_title,
-					notes,
-					vitals,
-					started_at,
-					ended_at,
-					created_at,
-					updated_at,
-					medical_record_id,
-					report_url,
-					doctor:doctor_id(id, name, email),
-					appointment:appointment_id(
-						id,
-						status,
-						location,
-						scheduled_at
-					)
+				id, appointment_id, patient_id, unregistered_patient_id, doctor_id, organization_id,
+				chief_complaint, diagnosis, icd11_code, icd11_title, notes, vitals,
+				started_at, ended_at, created_at, updated_at, medical_record_id, report_url,
+				doctor:doctor_id(id, name, email),
+				appointment:appointment_id(id, status, location, scheduled_at)
 				`
-				)
-				.eq('unregistered_patient_id', patientData.unregistered_patient_id)
-				.eq('doctor_id', user.userId)
-				.order('started_at', { ascending: false, nullsFirst: false })
-				.order('created_at', { ascending: false });
+			)
+			.or(combinedPatientFilter);
 
-			// Combinar resultados y eliminar duplicados
-			const allConsultations = [...(consultations1 || []), ...(consultations2 || [])];
-			const uniqueConsultations = Array.from(new Map(allConsultations.map((c) => [c.id, c])).values());
-			consultations = uniqueConsultations.sort((a, b) => {
-				const dateA = a.started_at ? new Date(a.started_at).getTime() : new Date(a.created_at).getTime();
-				const dateB = b.started_at ? new Date(b.started_at).getTime() : new Date(b.created_at).getTime();
-				return dateB - dateA;
-			});
-
-			consultError = error1 || error2;
-		} else {
-			// Solo buscar por patient_id
-			const result = await supabase
-				.from('consultation')
-				.select(
-					`
-					id,
-					appointment_id,
-					patient_id,
-					unregistered_patient_id,
-					doctor_id,
-					organization_id,
-					chief_complaint,
-					diagnosis,
-					icd11_code,
-					icd11_title,
-					notes,
-					vitals,
-					started_at,
-					ended_at,
-					created_at,
-					updated_at,
-					medical_record_id,
-					report_url,
-					doctor:doctor_id(id, name, email),
-					appointment:appointment_id(
-						id,
-						status,
-						location,
-						scheduled_at
-					)
-				`
-				)
-				.eq('patient_id', patientId)
-				.eq('doctor_id', user.userId)
-				.order('started_at', { ascending: false, nullsFirst: false })
-				.order('created_at', { ascending: false });
-
-			consultations = result.data || [];
-			consultError = result.error;
+		// Aplicar filtrado por organización (siempre)
+		// Si el usuario tiene organizationId, restringir a esa org
+		if (user.organizationId) {
+			query = query.eq('organization_id', user.organizationId);
 		}
+
+		// Aplicar filtrado por doctor si NO TIENE ACCESO COMPLETO
+		if (!hasFullAccess) {
+			query = query.eq('doctor_id', user.userId);
+			console.log(`[API Historial] Aplicando filtro de Médico Estricto para ${user.userId}`);
+		} else {
+			console.log(`[API Historial] Saltando filtro de Médico (Acceso Completo activado)`);
+		}
+
+		const { data, error } = await query
+			.order('started_at', { ascending: false, nullsFirst: false })
+			.order('created_at', { ascending: false });
+
+		consultations = data || [];
+		consultError = error;
 
 		if (consultError) {
 			console.error('Error fetching consultations:', consultError);
@@ -208,11 +187,54 @@ export async function GET(req: NextRequest, context: { params: Promise<{ patient
 			}
 		}
 
-		// Enriquecer consultas con MedicalRecord y Facturacion
+		// Obtener recetas (prescriptions) relacionadas
+		let prescriptionsMap: Record<string, any[]> = {};
+
+		if (consultationIds.length > 0) {
+			const { data: prescriptions, error: prescError } = await supabase
+				.from('prescription')
+				.select(`
+					id, 
+					consultation_id, 
+					prescription_url, 
+					recipe_text, 
+					created_at,
+					prescription_item(id, name, dosage, instructions),
+					prescription_files(id, url, file_name)
+				`)
+				.in('consultation_id', consultationIds);
+
+			if (!prescError && prescriptions) {
+				prescriptions.forEach((presc: any) => {
+					if (presc.consultation_id) {
+						if (!prescriptionsMap[presc.consultation_id]) {
+							prescriptionsMap[presc.consultation_id] = [];
+						}
+						
+						// Map prescription_item to items for frontend compatibility
+						presc.items = presc.prescription_item || [];
+						
+						// Map prescription_files to files
+						presc.files = presc.prescription_files || [];
+						
+						// Si prescription_url está vacío, intentar usar el primero de files
+						if (!presc.prescription_url && presc.files && presc.files.length > 0) {
+							presc.prescription_url = presc.files[0].url;
+						}
+						
+						prescriptionsMap[presc.consultation_id].push(presc);
+					}
+				});
+			}
+		}
+
+		// Enriquecer consultas con MedicalRecord, Facturacion y Prescriptions
 		const enrichedConsultations = consultations?.map((consultation) => {
 			const medicalRecord = consultation.medical_record_id ? medicalRecordsMap[consultation.medical_record_id] || null : null;
 
 			const facturacion = consultation.appointment_id ? facturacionMap[consultation.appointment_id] || null : null;
+			
+			const prescriptions = prescriptionsMap[consultation.id] || [];
 
 			return {
 				...consultation,
@@ -225,6 +247,7 @@ export async function GET(req: NextRequest, context: { params: Promise<{ patient
 					  }
 					: null,
 				facturacion: facturacion,
+				prescriptions: prescriptions,
 			};
 		});
 
