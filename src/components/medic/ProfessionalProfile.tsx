@@ -691,7 +691,7 @@ por favor confirmar con un "Asistiré" o "No Asistiré"`}
 								return (
 									<div key={combo.id || idx} className="bg-white rounded-xl border-2 border-gray-200 hover:border-indigo-300 transition-all duration-200 shadow-lg">
 										{/* Header del combo con nombre y botón eliminar */}
-										<div className="bg-gradient-to-r from-indigo-50 to-purple-50 px-6 py-5 border-b-2 border-gray-200">
+										<div className="bg-gradient-to-r from-indigo-50 to-purple-50 px-4 sm:px-6 py-4 sm:py-5 border-b-2 border-gray-200">
 											<div className="flex items-center justify-between gap-4">
 												<div className="flex-1 min-w-0">
 													<label className="block text-xs font-semibold text-gray-600 mb-2 uppercase tracking-wide">Nombre del Combo</label>
@@ -717,7 +717,7 @@ por favor confirmar con un "Asistiré" o "No Asistiré"`}
 										</div>
 										
 										{/* Contenido principal del combo */}
-										<div className="p-6 space-y-8">
+										<div className="p-4 sm:p-6 space-y-8">
 											{/* Sección 1: Descripción */}
 											<div className="border-b border-gray-200 pb-6">
 												<label className="block text-sm font-bold text-gray-700 mb-3">Descripción del Combo</label>
@@ -779,7 +779,7 @@ por favor confirmar con un "Asistiré" o "No Asistiré"`}
 														</span>
 													)}
 												</div>
-												<div className="border-2 border-dashed border-gray-300 rounded-lg p-5 bg-gray-50 max-h-80 overflow-y-auto">
+												<div className="border-2 border-dashed border-gray-300 rounded-lg p-3 sm:p-5 bg-gray-50 max-h-80 overflow-y-auto">
 													{affiliatedForm.services.length === 0 ? (
 														<div className="text-center py-8">
 															<p className="text-sm text-gray-500 font-medium">Primero debes registrar servicios individuales en la sección "Servicios y Precios".</p>
@@ -835,7 +835,7 @@ por favor confirmar con un "Asistiré" o "No Asistiré"`}
 											
 											{/* Sección 4: Resumen del Combo */}
 											{selectedServices.length > 0 && (
-												<div className="bg-gradient-to-r from-indigo-50 to-purple-50 rounded-lg p-5 border-2 border-indigo-200">
+												<div className="bg-gradient-to-r from-indigo-50 to-purple-50 rounded-lg p-4 sm:p-5 border-2 border-indigo-200">
 													<p className="text-sm font-bold text-indigo-900 mb-3 uppercase tracking-wide">Resumen del Combo</p>
 													<div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
 														<div className="bg-white rounded-lg p-4 border border-gray-200">
@@ -881,7 +881,7 @@ por favor confirmar con un "Asistiré" o "No Asistiré"`}
 					</div>
 
 					{/* Credenciales y validación */}
-					<div className="bg-gray-50 rounded-xl p-6">
+					<div className="bg-gray-50 rounded-xl p-4 sm:p-6">
 						<h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
 							<Award className="w-5 h-5 text-indigo-600" />
 							Credenciales y Validación
@@ -985,7 +985,7 @@ por favor confirmar con un "Asistiré" o "No Asistiré"`}
 					</div>
 
 					{/* Historial Crediticio */}
-					<div className="bg-gray-50 rounded-xl p-6">
+					<div className="bg-gray-50 rounded-xl p-4 sm:p-6">
 						<h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
 							<Award className="w-5 h-5 text-indigo-600" />
 							Historial Crediticio
@@ -1076,7 +1076,7 @@ por favor confirmar con un "Asistiré" o "No Asistiré"`}
 			) : (
 				<>
 					{/* Especialidades del consultorio privado */}
-					<div className="bg-gray-50 rounded-xl p-6">
+					<div className="bg-gray-50 rounded-xl p-4 sm:p-6">
 						<h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
 							<Stethoscope className="w-5 h-5 text-indigo-600" />
 							Especialidades Médicas
@@ -1142,7 +1142,7 @@ por favor confirmar con un "Asistiré" o "No Asistiré"`}
 					</div>
 
 					{/* Servicios del consultorio privado */}
-					<div className="bg-gray-50 rounded-xl p-6">
+					<div className="bg-gray-50 rounded-xl p-4 sm:p-6">
 						<h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
 							<Stethoscope className="w-5 h-5 text-indigo-600" />
 							Servicios y Precios
@@ -1180,7 +1180,7 @@ por favor confirmar con un "Asistiré" o "No Asistiré"`}
 					</div>
 
 					{/* Combos de servicios (consultorio privado) */}
-					<div className="bg-gradient-to-br from-indigo-50 to-purple-50 rounded-xl p-8 mt-6 border border-indigo-100">
+					<div className="bg-gradient-to-br from-indigo-50 to-purple-50 rounded-xl p-4 sm:p-8 mt-6 border border-indigo-100">
 						{/* Header de la sección */}
 						<div className="mb-8">
 							<div className="flex items-center gap-3 mb-3">
@@ -1213,7 +1213,7 @@ por favor confirmar con un "Asistiré" o "No Asistiré"`}
 								return (
 									<div key={combo.id || idx} className="bg-white rounded-xl border-2 border-gray-200 hover:border-indigo-300 transition-all duration-200 shadow-lg">
 										{/* Header del combo con nombre y botón eliminar */}
-										<div className="bg-gradient-to-r from-indigo-50 to-purple-50 px-6 py-5 border-b-2 border-gray-200">
+										<div className="bg-gradient-to-r from-indigo-50 to-purple-50 px-4 sm:px-6 py-4 sm:py-5 border-b-2 border-gray-200">
 											<div className="flex items-center justify-between gap-4">
 												<div className="flex-1 min-w-0">
 													<label className="block text-xs font-semibold text-gray-600 mb-2 uppercase tracking-wide">Nombre del Combo</label>
@@ -1239,7 +1239,7 @@ por favor confirmar con un "Asistiré" o "No Asistiré"`}
 										</div>
 										
 										{/* Contenido principal del combo */}
-										<div className="p-6 space-y-8">
+										<div className="p-4 sm:p-6 space-y-8">
 											{/* Sección 1: Descripción */}
 											<div className="border-b border-gray-200 pb-6">
 												<label className="block text-sm font-bold text-gray-700 mb-3">Descripción del Combo</label>
@@ -1301,7 +1301,7 @@ por favor confirmar con un "Asistiré" o "No Asistiré"`}
 														</span>
 													)}
 												</div>
-												<div className="border-2 border-dashed border-gray-300 rounded-lg p-5 bg-gray-50 max-h-80 overflow-y-auto">
+												<div className="border-2 border-dashed border-gray-300 rounded-lg p-3 sm:p-5 bg-gray-50 max-h-80 overflow-y-auto">
 													{privateForm.services.length === 0 ? (
 														<div className="text-center py-8">
 															<p className="text-sm text-gray-500 font-medium">Primero debes registrar servicios individuales en la sección "Servicios y Precios".</p>
@@ -1357,7 +1357,7 @@ por favor confirmar con un "Asistiré" o "No Asistiré"`}
 											
 											{/* Sección 4: Resumen del Combo */}
 											{selectedServices.length > 0 && (
-												<div className="bg-gradient-to-r from-indigo-50 to-purple-50 rounded-lg p-5 border-2 border-indigo-200">
+												<div className="bg-gradient-to-r from-indigo-50 to-purple-50 rounded-lg p-4 sm:p-5 border-2 border-indigo-200">
 													<p className="text-sm font-bold text-indigo-900 mb-3 uppercase tracking-wide">Resumen del Combo</p>
 													<div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
 														<div className="bg-white rounded-lg p-4 border border-gray-200">
@@ -1403,7 +1403,7 @@ por favor confirmar con un "Asistiré" o "No Asistiré"`}
 					</div>
 
 					{/* Credenciales para consultorio privado */}
-					<div className="bg-gray-50 rounded-xl p-6">
+					<div className="bg-gray-50 rounded-xl p-4 sm:p-6">
 						<h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
 							<Award className="w-5 h-5 text-indigo-600" />
 							Credenciales y Validación
@@ -1507,7 +1507,7 @@ por favor confirmar con un "Asistiré" o "No Asistiré"`}
 					</div>
 
 					{/* Historial Crediticio para consultorio privado */}
-					<div className="bg-gray-50 rounded-xl p-6">
+					<div className="bg-gray-50 rounded-xl p-4 sm:p-6">
 						<h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
 							<Award className="w-5 h-5 text-indigo-600" />
 							Historial Crediticio
@@ -1576,7 +1576,7 @@ por favor confirmar con un "Asistiré" o "No Asistiré"`}
 			)}
 
 			{/* Firma digital */}
-			<div className="bg-gray-50 rounded-xl p-6">
+			<div className="bg-gray-50 rounded-xl p-4 sm:p-6">
 				<h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
 					<FileText className="w-5 h-5 text-indigo-600" />
 					Firma Digital

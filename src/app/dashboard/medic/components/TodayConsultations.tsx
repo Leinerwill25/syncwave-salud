@@ -215,7 +215,7 @@ export default function TodayConsultations() {
       className="bg-white rounded-2xl shadow-lg border border-slate-200 overflow-hidden"
     >
       {/* Header */}
-      <div className="bg-gradient-to-r from-teal-600 to-cyan-600 px-6 py-4">
+      <div className="bg-gradient-to-r from-teal-600 to-cyan-600 px-4 sm:px-6 py-4">
         <div className="flex items-center gap-3">
           <div className="bg-white/20 p-2 rounded-lg backdrop-blur-sm">
             <Stethoscope className="w-5 h-5 text-white" />
@@ -237,7 +237,7 @@ export default function TodayConsultations() {
       </div>
 
       {/* Content */}
-      <div className="p-6">
+      <div className="p-4 sm:p-6">
         {consultations.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-12 text-center">
             <div className="bg-slate-100 rounded-full p-4 mb-4">
@@ -259,7 +259,7 @@ export default function TodayConsultations() {
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: index * 0.05 }}
                 onClick={() => handleConsultationClick(consultation.id)}
-                className="group relative bg-gradient-to-r from-slate-50 to-white hover:from-teal-50 hover:to-cyan-50 border-2 border-slate-200 hover:border-teal-300 rounded-xl p-4 cursor-pointer transition-all duration-300 hover:shadow-md"
+                className="group relative bg-gradient-to-r from-slate-50 to-white hover:from-teal-50 hover:to-cyan-50 border-2 border-slate-200 hover:border-teal-300 rounded-xl p-3 sm:p-4 cursor-pointer transition-all duration-300 hover:shadow-md"
               >
                 {/* Status Badge */}
                 <div className="absolute top-3 right-3">

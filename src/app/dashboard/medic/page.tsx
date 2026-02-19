@@ -92,7 +92,7 @@ export default function MedicDashboardPage() {
 	}, [getCachedSession, setCachedSession]);
 
 	return (
-		<div className="p-4 sm:p-6 md:p-8 bg-gradient-to-br from-blue-50 via-cyan-50 to-teal-50 min-h-screen space-y-6 sm:space-y-8">
+		<div className="p-1 sm:p-6 md:p-8 bg-gradient-to-br from-blue-50 via-cyan-50 to-teal-50 min-h-screen space-y-6 sm:space-y-8">
 			<div>
 				<h1 className="text-2xl sm:text-3xl font-bold text-slate-900">Panel de Control</h1>
 				<p className="text-sm sm:text-base text-slate-600 mt-1">Indicadores clave de rendimiento y agenda diaria</p>

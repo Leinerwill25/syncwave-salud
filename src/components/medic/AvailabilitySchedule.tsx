@@ -370,7 +370,7 @@ export default function AvailabilitySchedule({
 			)}
 
 			{/* CONFIGURACIÓN GENERAL - Tipo de Consulta, Turnos, Capacidad */}
-			<div className="bg-gradient-to-r from-indigo-50 to-purple-50 border-2 border-indigo-200 rounded-xl p-6">
+			<div className="bg-gradient-to-r from-indigo-50 to-purple-50 border-2 border-indigo-200 rounded-xl p-4 sm:p-6">
 				<h3 className="text-xl font-bold text-slate-900 mb-4 flex items-center gap-2">
 					<Users className="w-6 h-6 text-indigo-600" />
 					Configuración General de Atención
@@ -381,7 +381,7 @@ export default function AvailabilitySchedule({
 
 				<div className="space-y-6">
 					{/* Tipo de Consulta */}
-					<div className="bg-white rounded-xl p-5 shadow-sm">
+					<div className="bg-white rounded-xl p-4 sm:p-5 shadow-sm">
 						<h4 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
 							<Clock className="w-5 h-5 text-teal-600" />
 							Tipo de Consulta
@@ -456,7 +456,7 @@ export default function AvailabilitySchedule({
 					)}
 
 					{/* Capacidad Diaria */}
-					<div className="bg-white rounded-xl p-5 shadow-sm">
+					<div className="bg-white rounded-xl p-4 sm:p-5 shadow-sm">
 						<h4 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
 							<Users className="w-5 h-5 text-teal-600" />
 							Capacidad Máxima Diaria
@@ -497,7 +497,7 @@ export default function AvailabilitySchedule({
 
 			{/* Resumen de horarios guardados */}
 			{hasSavedSchedule && (
-				<div className="bg-gradient-to-r from-teal-50 to-cyan-50 border border-teal-200 rounded-xl p-6">
+				<div className="bg-gradient-to-r from-teal-50 to-cyan-50 border border-teal-200 rounded-xl p-4 sm:p-6">
 					<div className="flex items-center gap-3 mb-4">
 						<CheckCircle2 className="w-6 h-6 text-teal-600" />
 						<h3 className="text-lg font-semibold text-slate-900">Horarios Guardados Actualmente</h3>
@@ -534,7 +534,7 @@ export default function AvailabilitySchedule({
 			)}
 
 			{/* Configuración general */}
-			<div className="bg-white border border-blue-100 rounded-xl p-6 shadow-sm">
+			<div className="bg-white border border-blue-100 rounded-xl p-4 sm:p-6 shadow-sm">
 				<h3 className="text-lg font-semibold text-slate-900 mb-4 flex items-center gap-2">
 					<Clock className="w-5 h-5 text-teal-600" />
 					Configuración General
@@ -614,7 +614,7 @@ export default function AvailabilitySchedule({
 			)}
 
 			{/* Horario de atención por día */}
-			<div className="bg-white border border-blue-100 rounded-xl p-6 shadow-sm">
+			<div className="bg-white border border-blue-100 rounded-xl p-4 sm:p-6 shadow-sm">
 				<h3 className="text-lg font-semibold text-slate-900 mb-4 flex items-center gap-2">
 					<Calendar className="w-5 h-5 text-teal-600" />
 					Horario de Atención
@@ -639,7 +639,7 @@ export default function AvailabilitySchedule({
 						return (
 							<div 
 								key={day.value} 
-								className={`bg-white rounded-lg border-2 p-4 transition-colors ${
+								className={`bg-white rounded-lg border-2 p-3 sm:p-4 transition-colors ${
 									savedDaySchedule.enabled 
 										? 'border-teal-200 bg-teal-50/30' 
 										: 'border-blue-200 bg-blue-50/30'
@@ -671,7 +671,7 @@ export default function AvailabilitySchedule({
 								</div>
 
 								{isEnabled && (
-									<div className={`flex items-center gap-3 p-4 rounded-lg border transition-colors ${
+									<div className={`flex flex-col sm:flex-row sm:items-center gap-3 p-3 sm:p-4 rounded-lg border transition-colors ${
 										isSaved
 											? 'bg-teal-50 border-teal-200'
 											: 'bg-blue-50 border-blue-200'
@@ -821,7 +821,7 @@ function OfficeSegmentation({ offices, shiftConfig, consultationType, onChange, 
 	return (
 		<div className="space-y-6">
 			{/* Consultorios */}
-			<div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+			<div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 sm:p-6">
 				<div className="flex items-center justify-between mb-4">
 					<h3 className="text-lg font-bold text-gray-900 flex items-center gap-2">
 						<MapPin className="w-5 h-5 text-orange-600" />
@@ -1004,7 +1004,7 @@ function OfficeEditor({ office, index, shiftConfig, consultationType, onUpdate, 
 			</div>
 
 			{expanded && (
-				<div className="p-6 space-y-6">
+				<div className="p-4 sm:p-6 space-y-6">
 					<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
 						<div>
 							<label className="block text-sm font-medium text-gray-700 mb-2">
@@ -1124,7 +1124,7 @@ function OfficeEditor({ office, index, shiftConfig, consultationType, onUpdate, 
 															</label>
 
 															{schedule.shifts.includes(shift.id) && (
-																<div className="ml-6 mt-2 flex items-center gap-3">
+																<div className="ml-6 mt-2 flex flex-col sm:flex-row sm:items-center gap-3">
 																	<div>
 																		<label className="block text-xs text-gray-600 mb-1">Inicio</label>
 																		<input
