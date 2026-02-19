@@ -147,7 +147,7 @@ export default function PublicNavBar() {
 			icon: Building2,
 			description: 'Administra múltiples especialistas y recursos',
 			color: 'from-blue-500 to-indigo-500',
-			comingSoon: true,
+			comingSoon: false,
 		},
 		{
 			href: '/landing/consultorios',

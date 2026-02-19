@@ -227,7 +227,51 @@ export async function GET(req: Request) {
 		// Obtener profile desde Supabase
 		const { data: profile, error: profileError } = await supabase
 			.from('clinic_profile')
-			.select('*')
+			.select(`
+				id,
+				organization_id,
+				legal_rif,
+				legal_name,
+				trade_name,
+				entity_type,
+				address_fiscal,
+				address_operational,
+				state_province,
+				city_municipality,
+				postal_code,
+				phone_fixed,
+				phone_mobile,
+				contact_email,
+				website,
+				social_facebook,
+				social_instagram,
+				social_linkedin,
+				offices_count,
+				specialties,
+				opening_hours,
+				capacity_per_day,
+				employees_count,
+				director_name,
+				admin_name,
+				director_id_number,
+				sanitary_license,
+				liability_insurance_number,
+				bank_name,
+				bank_account_type,
+				bank_account_number,
+				bank_account_owner,
+				currency,
+				payment_methods,
+				billing_series,
+				tax_regime,
+				billing_address,
+				created_at,
+				updated_at,
+				location,
+				photos,
+				profile_photo,
+				has_cashea
+			`)
 			.eq('organization_id', targetOrgId)
 			.maybeSingle();
 

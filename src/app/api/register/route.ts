@@ -4,6 +4,7 @@ import type { NextRequest } from 'next/server';
 import { randomUUID } from 'crypto';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import bcrypt from 'bcryptjs';
+import { z } from 'zod';
 import { createNotification } from '@/lib/notifications';
 
 const SUPABASE_URL = process.env.SUPABASE_URL ?? process.env.NEXT_PUBLIC_SUPABASE_URL ?? '';
@@ -28,6 +29,71 @@ function addOneMonth(date = new Date()): Date {
 	return d;
 }
 
+/* ---------- Zod Schemas for Validation ---------- */
+const AccountSchema = z.object({
+	email: z.string().email().max(255),
+	fullName: z.string().min(1).max(100),
+	password: z.string().min(8).max(100),
+	role: z.enum(['ADMIN', 'MEDICO', 'ENFERMERA', 'RECEPCION', 'FARMACIA', 'PACIENTE']).optional(),
+});
+
+const OrganizationSchema = z.object({
+	orgName: z.string().min(1).max(150),
+	orgType: z.string().max(50).nullable().optional(),
+	orgAddress: z.string().max(255).nullable().optional(),
+	orgPhone: z.string().max(30).nullable().optional(),
+	specialistCount: z.union([z.number(), z.string() ]).optional().transform((val: unknown) => {
+		const n = Number(val);
+		return isNaN(n) ? 1 : Math.max(1, Math.min(n, 1000));
+	}),
+	sedeCount: z.union([z.number(), z.string()]).optional().transform((val: unknown) => {
+		const n = Number(val);
+		return isNaN(n) ? 1 : Math.max(1, Math.min(n, 100));
+	}),
+});
+
+const PatientSchema = z.object({
+	firstName: z.string().min(1).max(100),
+	lastName: z.string().min(1).max(100),
+	identifier: z.string().max(50).nullable().optional(),
+	dob: z.string().max(20).nullable().optional(),
+	gender: z.string().max(20).nullable().optional(),
+	phone: z.string().max(30).nullable().optional(),
+	address: z.string().max(255).nullable().optional(),
+	organizationId: z.string().uuid().nullable().optional(),
+	bloodType: z.string().max(5).nullable().optional(),
+	hasDisability: z.boolean().nullable().optional(),
+	disability: z.string().max(100).nullable().optional(),
+	allergies: z.string().max(500).nullable().optional(),
+	chronicConditions: z.string().max(500).nullable().optional(),
+	currentMedications: z.string().max(500).nullable().optional(),
+	insuranceProvider: z.string().max(100).nullable().optional(),
+	insuranceNumber: z.string().max(50).nullable().optional(),
+	emergencyContactName: z.string().max(100).nullable().optional(),
+	emergencyContactPhone: z.string().max(30).nullable().optional(),
+	profession: z.string().max(100).nullable().optional(),
+});
+
+const PlanSchema = z.object({
+	selectedPlan: z.string().max(50).optional(),
+	billingPeriod: z.string().max(20).optional(),
+	billingMonths: z.number().int().min(1).max(12).optional(),
+	billingDiscount: z.number().min(0).max(100).optional(),
+	billingTotal: z.number().min(0).optional(),
+	requiresQuote: z.boolean().optional(),
+	sedeCount: z.number().int().min(1).max(100).optional(),
+});
+
+const RegisterSchema = z.object({
+	account: AccountSchema,
+	organization: OrganizationSchema.nullable().optional(),
+	patient: PatientSchema.nullable().optional(),
+	plan: PlanSchema.nullable().optional(),
+	selectedOrganizationId: z.string().uuid().nullable().optional(),
+});
+
+type RegisterBody = z.infer<typeof RegisterSchema>;
+
 /* ---------- Tipos locales ---------- */
 export const USER_ROLES = ['ADMIN', 'MEDICO', 'ENFERMERA', 'RECEPCION', 'FARMACIA', 'PACIENTE'] as const;
 export type UserRoleLocal = (typeof USER_ROLES)[number];
@@ -35,94 +101,7 @@ export type UserRoleLocal = (typeof USER_ROLES)[number];
 const ORG_TYPES = ['CLINICA', 'HOSPITAL', 'CONSULTORIO', 'FARMACIA', 'LABORATORIO'] as const;
 type OrgTypeLocal = (typeof ORG_TYPES)[number];
 
-/* ---------- Tipos del body ---------- */
-type AccountInput = {
-	email: string;
-	fullName: string;
-	password: string;
-	role?: string;
-};
-
-type OrganizationInput = {
-	orgName: string;
-	orgType?: string | null;
-	orgAddress?: string | null;
-	orgPhone?: string | null;
-	specialistCount?: number | string;
-};
-
-type PatientInput = {
-	firstName: string;
-	lastName: string;
-	identifier?: string | null;
-	dob?: string | null;
-	gender?: string | null;
-	phone?: string | null;
-	address?: string | null;
-	organizationId?: string | null;
-	bloodType?: string | null;
-	hasDisability?: boolean | null;
-	disability?: string | null;
-	allergies?: string | null;
-	chronicConditions?: string | null;
-	currentMedications?: string | null;
-	insuranceProvider?: string | null;
-	insuranceNumber?: string | null;
-	emergencyContactName?: string | null;
-	emergencyContactPhone?: string | null;
-	profession?: string | null;
-};
-
-type PlanInput = {
-	selectedPlan?: string;
-	billingPeriod?: string;
-	billingMonths?: number;
-	billingDiscount?: number;
-	billingTotal?: number;
-};
-
-type RegisterBody = {
-	account: AccountInput;
-	organization?: OrganizationInput | null;
-	patient?: PatientInput | null;
-	plan?: PlanInput | null;
-	selectedOrganizationId?: string | null;
-};
-
-/* ---------- Utilidades ---------- */
-function isObject(v: unknown): v is Record<string, unknown> {
-	return typeof v === 'object' && v !== null;
-}
-
-function safeString(v: unknown): string | undefined {
-	return typeof v === 'string' ? v : undefined;
-}
-
-function safeNumber(v: unknown): number | undefined {
-	if (typeof v === 'number') return v;
-	if (typeof v === 'string' && v.trim() !== '' && !Number.isNaN(Number(v))) return Number(v);
-	return undefined;
-}
-
-function parseSupabaseCreateResp(resp: unknown): { id?: string; email?: string } | null {
-	if (!isObject(resp)) return null;
-	const r = resp as Record<string, unknown>;
-	if (isObject(r.data) && isObject(r.data.user)) {
-		const u = r.data.user as Record<string, unknown>;
-		return { id: safeString(u.id), email: safeString(u.email) };
-	}
-	if (isObject(r.user)) {
-		const u = r.user as Record<string, unknown>;
-		return { id: safeString(u.id), email: safeString(u.email) };
-	}
-	if (isObject(r.data) && (typeof r.data.id === 'string' || typeof r.data.email === 'string')) {
-		const d = r.data as Record<string, unknown>;
-		return { id: safeString(d.id), email: safeString(d.email) };
-	}
-	return null;
-}
-
-/* ---------- Tipo local para invites ---------- */
+/* ---------- Handler ---------- */
 type InviteCreateManyLocalInput = {
 	organizationId: string;
 	email: string;
@@ -147,16 +126,22 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 	let supabaseUserId: string | null = null;
 
 	try {
-		const parsed = await req.json().catch(() => null);
-		if (!isObject(parsed) || !isObject(parsed.account)) {
-			return NextResponse.json({ ok: false, message: 'Payload inválido: falta account info' }, { status: 400 });
+		const parsedJson = await req.json().catch(() => null);
+		if (!parsedJson) {
+			return NextResponse.json({ ok: false, message: 'Payload inválido' }, { status: 400 });
 		}
 
-		const body = parsed as RegisterBody;
-		const { account, organization, patient, plan } = body;
-		if (!account.email || !account.fullName || !account.password) {
-			return NextResponse.json({ ok: false, message: 'Payload inválido: falta email/fullName/password' }, { status: 400 });
+		const validation = RegisterSchema.safeParse(parsedJson);
+		if (!validation.success) {
+			return NextResponse.json({ 
+				ok: false, 
+				message: 'Error de validación', 
+				errors: validation.error.errors 
+			}, { status: 400 });
 		}
+
+		const body = validation.data;
+		const { account, organization, patient, plan } = body;
 
 		const roleRaw = account.role ? String(account.role) : 'ADMIN';
 		const role: UserRoleLocal = USER_ROLES.includes(roleRaw as UserRoleLocal) ? (roleRaw as UserRoleLocal) : 'ADMIN';
@@ -416,24 +401,18 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 				
 				// Según Database.sql: Organization tiene campos: name, type, address, contactEmail, phone, specialistCount
 				// Nota: Supabase puede requerir que los nombres de columnas camelCase se usen tal cual están en la BD
-				const orgInsertData: any = {
-					name: organization.orgName,
-					type: orgTypeCast, // USER-DEFINED type según Database.sql
-					address: organization.orgAddress ?? null,
-					contactEmail: account.email,
-					phone: organization.orgPhone ?? null,
-					specialistCount: safeNumber(organization.specialistCount) ?? 0,
-				};
-
-				console.log('[Register API] Intentando crear Organization con datos:', {
-					name: orgInsertData.name,
-					type: orgInsertData.type,
-					contactEmail: orgInsertData.contactEmail,
-				});
-
 				const { data: orgData, error: orgError } = await supabaseAdmin
 					.from('organization')
-					.insert(orgInsertData)
+					.insert({
+						name: organization.orgName,
+						type: orgTypeCast,
+						address: organization.orgAddress ?? null,
+						contactEmail: account.email,
+						phone: organization.orgPhone ?? null,
+						specialistCount: safeNumber(organization.specialistCount) ?? 0,
+						sede_count: safeNumber(plan?.sedeCount ?? organization.sedeCount) ?? 1,
+						is_custom_quote: plan?.requiresQuote ?? false,
+					})
 					.select('id, name')
 					.single();
 
@@ -443,7 +422,6 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 						code: orgError.code,
 						details: orgError.details,
 						hint: orgError.hint,
-						data: orgInsertData,
 					});
 					throw new Error(`Error al crear organización: ${orgError.message} (Código: ${orgError.code})`);
 				}
@@ -726,6 +704,8 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 							months: plan.billingMonths,
 							discount: plan.billingDiscount,
 							total: plan.billingTotal,
+							requiresQuote: plan.requiresQuote,
+							sedeCount: plan.sedeCount,
 						},
 					})
 					.select('id')
@@ -1005,13 +985,16 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 			}
 		}
 		console.error('[Register API] Error completo:', err);
-		const errorMessage = err instanceof Error ? err.message : 'Error interno';
-		const errorDetails = err instanceof Error ? { stack: err.stack, name: err.name } : {};
+const isDev = process.env.NODE_ENV === 'development';
+		const responseMessage = isDev 
+			? (err instanceof Error ? err.message : 'Error interno')
+			: 'Ocurrió un error inesperado al procesar el registro. Por favor, intente nuevamente más tarde.';
+
 		return NextResponse.json(
 			{
 				ok: false,
-				message: errorMessage,
-				...(process.env.NODE_ENV === 'development' && errorDetails),
+				message: responseMessage,
+				...(isDev && err instanceof Error ? { stack: err.stack, name: err.name } : {}),
 			},
 			{ status: 500 }
 		);

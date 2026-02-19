@@ -170,8 +170,15 @@ export async function POST(req: Request) {
 		// << FIX: validar organizationId existe y estrechar el tipo >>
 		const orgId = dbUser.organizationId;
 		if (!orgId) {
-			// Si esperas que TODOS los usuarios tengan org, esto es un 400/403 según tu lógica
 			return NextResponse.json({ error: 'User is not associated with an organization' }, { status: 403 });
+		}
+
+		// Security: Only allow specific roles to create invites
+		const userRole = (dbUser.role || '').toUpperCase();
+		const allowedRoles = ['ADMIN', 'MEDICO', 'RECEPCION', 'RECEPCIONISTA'];
+		if (!allowedRoles.includes(userRole)) {
+			console.warn(`[Invites API] Unauthorized invite attempt by role: ${userRole}`);
+			return NextResponse.json({ error: 'Unauthorized: insufficient privileges to create invites' }, { status: 403 });
 		}
 
 		const body = (await req.json().catch(() => ({}))) as CreateInviteBody;

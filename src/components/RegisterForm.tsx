@@ -12,6 +12,290 @@ type BillingPeriod = 'monthly' | 'quarterly' | 'annual';
 
 type OrgItem = { id: string; name: string; inviteBaseUrl?: string | null; contactEmail?: string | null };
 
+// -------------------------
+// Helper Functions (Outside component for stability and linting)
+// -------------------------
+
+function computeSedesCost(count: number | string) {
+	const numCount = typeof count === 'string' && count.includes('+') ? 11 : typeof count === 'string' && count.includes('-') ? 7 : Number(count);
+	
+	if (numCount <= 1) return 0;
+	const extra = numCount - 1;
+	if (extra <= 3) {
+		return extra * 45; // Sedes 2, 3, 4 → €45 c/u
+	} else {
+		// Sedes 2–4: 3 × €45 = €135
+		// Sedes 5–10: resto × €30
+		return (3 * 45) + ((extra - 3) * 30);
+	}
+}
+
+function computeBilling(
+	unitPrice: number, 
+	period: BillingPeriod, 
+	role: Role, 
+	sedeCount: number | string, 
+	specialistCount: number, 
+	isPatient = false, 
+) {
+	if (role === 'MEDICO') return {
+		type: 'INDIVIDUAL',
+		requiresRedirect: false,
+		totalCharge: unitPrice,
+		billingCycle: period,
+		months: 1,
+		discount: 0,
+		total: unitPrice,
+		label: 'Individual (Medico)'
+	};
+
+	const numericSedeCount = typeof sedeCount === 'string' && sedeCount.includes('+') ? 11 : typeof sedeCount === 'string' && sedeCount.includes('-') ? 7 : Number(sedeCount);
+	
+	if ((specialistCount >= 200 || numericSedeCount >= 11) && !isPatient) {
+		return { 
+			type: 'CUSTOM', 
+			requiresQuote: true,
+			specialistCount,
+			sedeCount: numericSedeCount,
+			totalCharge: 0,
+			billingCycle: period,
+			months: 1,
+			discount: 0,
+			total: 0
+		};
+	}
+
+	if (isPatient) {
+		if (period === 'annual') {
+			const months = 12;
+			const total = unitPrice;
+			const monthlyEquivalent = total / months;
+			return {
+				type: 'CALCULATED',
+				months,
+				discount: 0,
+				total,
+				monthlyEquivalent,
+				label: 'Anual (pago único)',
+				billingCycle: 'annual',
+				totalCharge: total,
+			};
+		}
+		if (period === 'quarterly') {
+			const monthlyEq = unitPrice / 12;
+			const months = 3;
+			const subtotal = monthlyEq * months;
+			const discount = 0.05;
+			const total = subtotal * (1 - discount);
+			return { type: 'CALCULATED', months, discount, total, monthlyEquivalent: monthlyEq, label: 'Trimestral (5% sobre equivalente mensual)', billingCycle: 'quarterly', totalCharge: total };
+		}
+		const months = 1;
+		const monthlyEquivalent = unitPrice / 12;
+		return { type: 'CALCULATED', months, discount: 0, total: monthlyEquivalent, monthlyEquivalent, label: 'Mensual (equivalente del plan anual)', billingCycle: 'monthly', totalCharge: monthlyEquivalent };
+	}
+
+	const baseSubtotal = unitPrice * specialistCount; 
+	const sedesSubtotal = computeSedesCost(sedeCount);
+	const monthlyTotal = baseSubtotal + sedesSubtotal;
+
+	if (period === 'monthly') {
+		return {
+			type: 'CALCULATED',
+			months: 1,
+			discount: 0,
+			total: monthlyTotal,
+			monthlyEquivalent: monthlyTotal,
+			label: 'Mensual (sin descuento)',
+			baseSubtotal,
+			sedesSubtotal,
+			monthlyBeforeDiscount: monthlyTotal,
+			totalCharge: monthlyTotal,
+			billingCycle: 'monthly',
+			savings: 0,
+			vsIndividualSavings: (specialistCount * 70) - monthlyTotal,
+			specialistCount,
+			sedeCount: numericSedeCount,
+			pricePerEsp: unitPrice
+		};
+	}
+
+	if (period === 'quarterly') {
+		const months = 3;
+		const discount = 0.10;
+		const discountedMonthly = monthlyTotal * (1 - discount);
+		const total = discountedMonthly * months;
+		const savings = (monthlyTotal * months) - total;
+
+		return {
+			type: 'CALCULATED',
+			months,
+			discount,
+			total,
+			monthlyEquivalent: total / months,
+			label: 'Trimestral (10% descuento)',
+			baseSubtotal,
+			sedesSubtotal,
+			monthlyBeforeDiscount: monthlyTotal,
+			discountPercent: discount * 100,
+			discountedMonthly,
+			totalCharge: total,
+			cycleDiscount: savings,
+			billingCycle: 'quarterly',
+			savings,
+			vsIndividualSavings: (specialistCount * 70) - discountedMonthly,
+			specialistCount,
+			sedeCount: numericSedeCount,
+			pricePerEsp: unitPrice
+		};
+	}
+
+	if (period === 'annual') {
+		const months = 12;
+		const discount = 0.30;
+		const discountedMonthly = monthlyTotal * (1 - discount);
+		const total = discountedMonthly * months;
+		const savings = (monthlyTotal * months) - total;
+
+		return {
+			type: 'CALCULATED',
+			months,
+			discount,
+			total,
+			monthlyEquivalent: total / months,
+			label: 'Anual (30% descuento)',
+			baseSubtotal,
+			sedesSubtotal,
+			monthlyBeforeDiscount: monthlyTotal,
+			discountPercent: discount * 100,
+			discountedMonthly,
+			totalCharge: total,
+			cycleDiscount: savings,
+			billingCycle: 'annual',
+			savings,
+			vsIndividualSavings: (specialistCount * 70) - discountedMonthly,
+			specialistCount,
+			sedeCount: numericSedeCount,
+			pricePerEsp: unitPrice
+		};
+	}
+
+	return {
+		type: 'CALCULATED',
+		months: 1,
+		discount: 0,
+		total: baseSubtotal,
+		monthlyEquivalent: baseSubtotal,
+		label: 'Mensual',
+		totalCharge: baseSubtotal,
+		billingCycle: 'monthly'
+	};
+}
+
+const BillingBreakdown = ({ billing, recommendedPlanLabel, specialistCount, sedeCount }: { 
+	billing: any; 
+	recommendedPlanLabel: string | undefined; 
+	specialistCount: number; 
+	sedeCount: number | string; 
+}) => {
+	if (!billing) return null;
+	
+	if (billing.type === 'CUSTOM') {
+		const message = `Hola, quiero registrar mi clínica en ASHIRA.
+Total especialistas: ${specialistCount}${specialistCount >= 200 ? '+' : ''}
+Número de sedes: ${sedeCount === '11+' || (typeof sedeCount === 'number' && sedeCount >= 11) ? '11+' : sedeCount}
+Quisiera una cotización personalizada.`;
+
+	  const waUrl = `https://wa.me/584124885623?text=${encodeURIComponent(message)}`;
+
+	  return (
+	    <div className="bg-gradient-to-br from-indigo-50 to-slate-50 border border-indigo-100 rounded-xl p-6 mt-4">
+	      <div className="text-4xl mb-4">🏛️</div>
+	      <h3 className="text-xl font-bold text-slate-800 mb-2">Plan Institucional Personalizado</h3>
+	      <p className="text-slate-600 mb-6">
+	        Tu institución requiere un plan a la medida. 
+	        Nuestro equipo te contacta en menos de 24 horas 
+	        con una cotización específica para tu clínica.
+	      </p>
+	      <div className="flex flex-col sm:flex-row gap-3">
+	        <a href={waUrl} target="_blank" className="flex-1 bg-emerald-600 text-white font-medium py-2.5 px-4 rounded-lg text-center hover:bg-emerald-700 transition flex items-center justify-center gap-2" rel="noreferrer">
+			  <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z"/></svg>
+	          Solicitar cotización
+	        </a>
+	      </div>
+	    </div>
+	  );
+	}
+	
+	if (billing.type === 'INDIVIDUAL') {
+	  return (
+	    <div className="bg-amber-50 border border-amber-200 rounded-xl p-6 mt-4">
+	      <p className="font-semibold text-amber-800 mb-4">¿Eres un médico independiente? 
+	         Tenemos un plan especial diseñado para ti.</p>
+	      <a href="/landing/consultorios" className="bg-amber-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-amber-700 transition block text-center">
+	        Ver planes para consultorios →
+	      </a>
+	    </div>
+	  );
+	}
+
+	return (
+		<div className="bg-slate-50 border border-slate-200 rounded-xl p-4 sm:p-6 mt-6">
+		<div className="inline-block bg-teal-100 text-teal-800 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider mb-4">
+			Plan {billing.plan || recommendedPlanLabel}
+		</div>
+		<div className="space-y-3 text-sm text-slate-700">
+			<div className="flex justify-between items-center">
+			<span>{billing.specialistCount} especialistas × €{billing.pricePerEsp?.toFixed(2)}</span>
+			<span className="font-medium">€{billing.baseSubtotal?.toFixed(2)}/mes</span>
+			</div>
+			
+			{(billing.sedeCount > 1 || (typeof billing.sedeCount === 'string' && billing.sedeCount !== '1')) && (
+			<div className="flex justify-between items-center text-indigo-700 bg-indigo-50 px-2 py-1 -mx-2 rounded">
+				<span>
+				+ {Number(billing.sedeCount) - 1} sede{Number(billing.sedeCount) > 2 ? 's' : ''} adicional{Number(billing.sedeCount) > 2 ? 'es' : ''}
+				</span>
+				<span className="font-medium">+ €{billing.sedesSubtotal?.toFixed(2)}/mes</span>
+			</div>
+			)}
+			
+			<div className="flex justify-between items-center pt-2 border-t border-slate-200 font-semibold text-slate-900">
+			<span>Subtotal mensual</span>
+			<span>€{billing.monthlyBeforeDiscount?.toFixed(2)}/mes</span>
+			</div>
+			
+			{billing.discountPercent > 0 && (
+			<div className="flex justify-between items-center text-emerald-600">
+				<span>Descuento {billing.billingCycle === 'quarterly' ? 'trimestral' : 'anual'} 
+					(−{billing.discountPercent}%)</span>
+				<span className="font-bold">−€{billing.cycleDiscount?.toFixed(0)}</span>
+			</div>
+			)}
+			
+			<div className="flex justify-between items-center pt-3 border-t border-slate-200 text-lg">
+			<span className="font-bold text-slate-800">
+				Total {billing.billingCycle === 'monthly' ? 'mensual' : 
+					billing.billingCycle === 'quarterly' ? 'trimestral' : 'anual'}
+			</span>
+			<strong className="text-teal-700">€{billing.totalCharge?.toFixed(2)}</strong>
+			</div>
+			
+			{billing.billingCycle !== 'monthly' && (
+			<div className="flex justify-end text-xs text-slate-500">
+				<span>Equivale a €{billing.discountedMonthly?.toFixed(2)}/mes</span>
+			</div>
+			)}
+		</div>
+		{billing.vsIndividualSavings > 0 && (
+			<div className="mt-4 bg-emerald-50 border border-emerald-100 rounded-lg p-3 flex gap-2 items-start">
+			<span className="text-emerald-600 mt-0.5">💡</span>
+			<span className="text-xs sm:text-sm text-emerald-800 font-medium">Ahorras €{billing.vsIndividualSavings?.toFixed(0)}/mes 
+					vs pagar €70 por cada médico individualmente</span>
+			</div>
+		)}
+		</div>
+	);
+};
+
 export default function RegisterForm(): React.ReactElement {
 	const router = useRouter();
 
@@ -58,6 +342,10 @@ export default function RegisterForm(): React.ReactElement {
 	const [bloodType, setBloodType] = useState('');
 	const [hasDisability, setHasDisability] = useState(false);
 	const [disability, setDisability] = useState('');
+
+	// NUEVO: Sede Selector
+	const [sedeCount, setSedeCount] = useState<number | string>(1);
+	const [displaySedeCount, setDisplaySedeCount] = useState<string>('1');
 
 	// NUEVO: organizations list + selection
 	const [organizations, setOrganizations] = useState<OrgItem[]>([]);
@@ -118,6 +406,7 @@ export default function RegisterForm(): React.ReactElement {
 			quarterlyPrice: number | null;
 			annualPrice: number | null;
 			description: string | null;
+			pricePerEsp?: number;
 		}>
 	>([]);
 	const [plansLoading, setPlansLoading] = useState(true);
@@ -205,134 +494,31 @@ export default function RegisterForm(): React.ReactElement {
 				annualPrice: firstPlan.annualPrice,
 			};
 		}
-
+	
 		return { slug: 'default', label: 'Plan por defecto', price: 0, quarterlyPrice: null, annualPrice: null };
 	}, [plans, plansLoading, role, patientPlan, specialistCount]);
+	
 
-	/**
-	 * computeBilling:
-	 * - Si isPatient === true: interpretamos `price` como ANNUAL_PRICE.
-	 *   -> annual total = price
-	 *   -> monthlyEquivalent = price / 12
-	 *   -> label indica pago anual.
-	 *
-	 * - Si isPatient === false: interpretamos `price` como monthly base.
-	 *   - Si quarterlyPrice está disponible, lo usamos directamente para quarterly
-	 *   - Si annualPrice está disponible, lo usamos directamente para annual
-	 *   - Si no están disponibles, calculamos con descuentos sobre monthlyPrice
-	 */
-	function computeBilling(price: number, period: BillingPeriod, isPatient = false, quarterlyPrice: number | null = null, annualPrice: number | null = null) {
-		if (isPatient) {
-			// price = annual price
-			if (period === 'annual') {
-				const months = 12;
-				const total = price;
-				const monthlyEquivalent = total / months;
-				return {
-					months,
-					discount: 0,
-					total,
-					monthlyEquivalent,
-					label: 'Anual (pago único)',
-				};
-			}
-			// If user selects monthly/quarterly anyway, we show derived values (rare for patient UI)
-			if (period === 'quarterly') {
-				// treat annual price -> compute monthlyEquivalent, then subtotal for 3 months
-				const monthlyEq = price / 12;
-				const months = 3;
-				const subtotal = monthlyEq * months;
-				const discount = 0.05;
-				const total = subtotal * (1 - discount);
-				return { months, discount, total, monthlyEquivalent: monthlyEq, label: 'Trimestral (5% sobre equivalente mensual)' };
-			}
-			// monthly case derived from annual
-			const months = 1;
-			const monthlyEquivalent = price / 12;
-			return { months, discount: 0, total: monthlyEquivalent, monthlyEquivalent, label: 'Mensual (equivalente del plan anual)' };
+
+
+
+	const billingPreview = useMemo(() => {
+		if (!recommendedPlan) {
+			return { months: 0, discount: 0, total: 0, monthlyEquivalent: 0, label: 'Gratuito' };
 		}
+		return computeBilling(
+			recommendedPlan.price, 
+			billingPeriod, 
+			role, 
+			sedeCount, 
+			specialistCount, 
+			role === 'PACIENTE'
+		);
+	}, [recommendedPlan, billingPeriod, role, sedeCount, specialistCount]);
 
-		// Non-patient (orgs / médicos): usar precios específicos del plan si están disponibles
-		if (period === 'monthly') {
-			return {
-				months: 1,
-				discount: 0,
-				total: price,
-				monthlyEquivalent: price,
-				label: 'Mensual (sin descuento)',
-			};
-		}
+	// BillingBreakdown Component
 
-		if (period === 'quarterly') {
-			const months = 3;
-			// Si hay un precio trimestral específico, usarlo
-			if (quarterlyPrice !== null && quarterlyPrice > 0) {
-				const total = quarterlyPrice;
-				const monthlyEquivalent = total / months;
-				// Calcular descuento real comparado con precio mensual
-				const subtotalSinDescuento = price * months;
-				const discount = subtotalSinDescuento > 0 ? (subtotalSinDescuento - total) / subtotalSinDescuento : 0;
-				return {
-					months,
-					discount,
-					total,
-					monthlyEquivalent,
-					label: 'Trimestral',
-				};
-			}
-			// Fallback: calcular con descuento del 5%
-			const subtotal = price * months;
-			const discount = 0.05;
-			const total = subtotal * (1 - discount);
-			return {
-				months,
-				discount,
-				total,
-				monthlyEquivalent: total / months,
-				label: 'Trimestral (5% descuento)',
-			};
-		}
 
-		// annual
-		if (period === 'annual') {
-			const months = 12;
-			// Si hay un precio anual específico, usarlo
-			if (annualPrice !== null && annualPrice > 0) {
-				const total = annualPrice;
-				const monthlyEquivalent = total / months;
-				// Calcular descuento real comparado con precio mensual
-				const subtotalSinDescuento = price * months;
-				const discount = subtotalSinDescuento > 0 ? (subtotalSinDescuento - total) / subtotalSinDescuento : 0;
-				return {
-					months,
-					discount,
-					total,
-					monthlyEquivalent,
-					label: 'Anual',
-				};
-			}
-			// Fallback: calcular con descuento del 15%
-			const subtotal = price * months;
-			const discount = 0.15;
-			const total = subtotal * (1 - discount);
-			return {
-				months,
-				discount,
-				total,
-				monthlyEquivalent: total / months,
-				label: 'Anual (15% descuento)',
-			};
-		}
-
-		// Default fallback (shouldn't reach here)
-		return {
-			months: 1,
-			discount: 0,
-			total: price,
-			monthlyEquivalent: price,
-			label: 'Mensual',
-		};
-	}
 
 	// Validaciones de pasos
 	const fullNameValid = fullName.trim().length > 2;
@@ -446,7 +632,7 @@ export default function RegisterForm(): React.ReactElement {
 	}, []);
 
 	// Submit final
-	async function handleSubmit(e: React.FormEvent) {
+	const handleSubmit = async (e: React.FormEvent) => {
 		e.preventDefault();
 		setErrorMsg(null);
 		if (!finalValid) {
@@ -454,6 +640,9 @@ export default function RegisterForm(): React.ReactElement {
 			return;
 		}
 		setLoading(true);
+
+		const numericSedeCount = typeof sedeCount === 'string' && sedeCount.includes('+') ? 11 : typeof sedeCount === 'string' && sedeCount.includes('-') ? 7 : Number(sedeCount);
+
 		try {
 			const payload: any = {
 				account: { fullName, email, password, role },
@@ -463,7 +652,14 @@ export default function RegisterForm(): React.ReactElement {
 			if (role !== 'PACIENTE') {
 				// Calculamos el precio final que enviaremos al backend
 				const priceBase = recommendedPlan.price; // monthly price for orgs/medicos
-				const billing = computeBilling(priceBase, billingPeriod, false, recommendedPlan.quarterlyPrice ?? null, recommendedPlan.annualPrice ?? null);
+				const billing = computeBilling(
+					priceBase, 
+					billingPeriod, 
+					role, 
+					sedeCount, 
+					specialistCount, 
+					false
+				);
 
 				payload.plan = {
 					selectedPlan: recommendedPlan.slug,
@@ -471,6 +667,8 @@ export default function RegisterForm(): React.ReactElement {
 					billingMonths: billing.months,
 					billingDiscount: billing.discount,
 					billingTotal: Number(billing.total.toFixed(2)),
+					requiresQuote: (billing as any).requiresQuote,
+					sedeCount: numericSedeCount // Add sedeCount to plan output
 				};
 			}
 
@@ -503,6 +701,7 @@ export default function RegisterForm(): React.ReactElement {
 					orgName,
 					orgType,
 					specialistCount,
+					sedeCount: numericSedeCount, // Add sedeCount
 					orgPhone,
 					orgAddress,
 				};
@@ -555,12 +754,22 @@ export default function RegisterForm(): React.ReactElement {
 				}
 				setSuccessMsg(successMessage);
 
-				// Si es MEDICO o ADMIN (no PACIENTE) y hay datos de organización, redirigir a pago
-				if ((role === 'MEDICO' || role === 'ADMIN') && data?.organizationId && data?.userId && billingPreview) {
-					// Redirigir a página de pago
-					setTimeout(() => {
-						router.push(`/register/payment?organizationId=${data.organizationId}&userId=${data.userId}&amount=${billingPreview.total}`);
-					}, 2000);
+				// Si es MEDICO o ADMIN (no PACIENTE)
+				if ((role === 'MEDICO' || role === 'ADMIN')) {
+					if (data?.requiresQuote) {
+						// Custom Quote Flow
+						localStorage.setItem('pendingQuote_organizationId', data.organizationId);
+						localStorage.setItem('pendingQuote_specialistCount', String(specialistCount));
+						localStorage.setItem('pendingQuote_sedeCount', typeof sedeCount === 'string' ? sedeCount : String(sedeCount));
+						router.push('/register/quote-pending');
+					} else if (data?.organizationId && data?.userId && billingPreview) {
+						// Normal Payment Flow
+						setTimeout(() => {
+							router.push(`/register/payment?organizationId=${data.organizationId}&userId=${data.userId}&amount=${billingPreview.total}`);
+						}, 2000);
+					} else {
+						router.push(data.nextUrl || '/login');
+					}
 				} else {
 					// Redirect normal (backend can return data.nextUrl for checkout)
 					router.push(data.nextUrl || '/login');
@@ -573,9 +782,8 @@ export default function RegisterForm(): React.ReactElement {
 	}
 
 	// Componente de mapa para seleccionar ubicación (cargado dinámicamente para evitar SSR)
-	const LocationMapPicker = dynamic(() => import('@/components/LocationMapPicker'), { ssr: false });
+	const LocationMapPicker = dynamic<any>(() => import('@/components/LocationMapPicker'), { ssr: false });
 
-	// Step indicator component mejorado
 	const StepIndicator = ({ current }: { current: number }) => {
 		const steps = role === 'PACIENTE' ? ['Cuenta', 'Paciente', 'Historia', 'Revisar'] : ['Cuenta', 'Organización', 'Plan', 'Revisar'];
 		return (
@@ -676,15 +884,6 @@ export default function RegisterForm(): React.ReactElement {
 		}
 	}, [pwEval]);
 
-	// Compute billing preview for the recommendedPlan price
-	// Compute billing preview for the recommendedPlan price (solo para no-pacientes)
-	const billingPreview = useMemo(() => {
-		if (role === 'PACIENTE') {
-			// Pacientes no tienen pago, retornar valores vacíos
-			return { months: 0, discount: 0, total: 0, monthlyEquivalent: 0, label: 'Gratuito' };
-		}
-		return computeBilling(recommendedPlan.price, billingPeriod, false, recommendedPlan.quarterlyPrice ?? null, recommendedPlan.annualPrice ?? null);
-	}, [recommendedPlan, billingPeriod, role]);
 
 	return (
 		<form onSubmit={handleSubmit} className="max-w-4xl mx-auto bg-white rounded-2xl sm:rounded-3xl shadow-2xl border border-slate-200 overflow-hidden w-full" aria-labelledby="register-heading">
@@ -858,8 +1057,8 @@ export default function RegisterForm(): React.ReactElement {
 										value={role}
 										onChange={(e) => {
 											const newRole = e.target.value as Role;
-											// Permitir solo MEDICO y PACIENTE (ADMIN está próximamente)
-											if (newRole !== 'MEDICO' && newRole !== 'PACIENTE') {
+											// Permitir MEDICO, PACIENTE y ADMIN
+											if (newRole !== 'MEDICO' && newRole !== 'PACIENTE' && newRole !== 'ADMIN') {
 												return;
 											}
 											setRole(newRole);
@@ -873,8 +1072,8 @@ export default function RegisterForm(): React.ReactElement {
 										onBlur={() => setStep(1)}>
 										<option value="MEDICO">Médico/Especialista Independiente (Consultorio Privado)</option>
 										<option value="PACIENTE">Paciente</option>
-										<option value="ADMIN" disabled>
-											Administrador / Clínica (Próximamente)
+										<option value="ADMIN">
+											Clínica / Centro Médico
 										</option>
 										<option value="FARMACIA" disabled>
 											Farmacia (Próximamente)
@@ -891,7 +1090,7 @@ export default function RegisterForm(): React.ReactElement {
 											<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
 										</svg>
 										<p className="text-xs text-blue-800 leading-relaxed">
-											<strong>Nota:</strong> Actualmente el registro está disponible para <strong>Consultorios Privados</strong> y <strong>Pacientes</strong>. El registro para Clínicas, Farmacias y Laboratorios estará disponible próximamente.
+											<strong>Nota:</strong> Actualmente el registro está disponible para <strong>Consultorios Privados</strong>, <strong>Clínicas</strong> y <strong>Pacientes</strong>. El registro para Farmacias y Laboratorios estará disponible próximamente.
 										</p>
 									</div>
 								</div>
@@ -992,40 +1191,74 @@ export default function RegisterForm(): React.ReactElement {
 									<div className="mt-2 px-4 py-3.5 border-2 border-slate-200 rounded-xl bg-slate-50 text-slate-700 font-medium">Usuario individual — 1 especialista</div>
 								</div>
 							) : (
-								<label className="block group">
-									<span className={labelClass}>
-										<span className="inline-flex items-center gap-2">
-											<svg className="w-4 h-4 text-teal-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-												<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-											</svg>
-											Número de especialistas (aprox.)
+								<>
+									<label className="block group">
+										<span className={labelClass}>
+											<span className="inline-flex items-center gap-2">
+												<svg className="w-4 h-4 text-teal-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+													<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+												</svg>
+												Número de especialistas (aprox.)
+											</span>
 										</span>
-									</span>
-									<input
-										type="number"
-										min={1}
-										value={displaySpecialistCount}
-										onChange={(e) => {
-											const v = e.target.value;
-											setDisplaySpecialistCount(v);
-											if (v !== '') {
-												const n = Number(v);
-												if (!Number.isNaN(n)) setSpecialistCount(Math.max(1, Math.floor(n)));
-											}
-										}}
-										onBlur={() => {
-											if (displaySpecialistCount === '' || Number(displaySpecialistCount) < 1 || Number.isNaN(Number(displaySpecialistCount))) {
-												setSpecialistCount(1);
-												setDisplaySpecialistCount('1');
-											} else {
-												const n = Math.max(1, Math.floor(Number(displaySpecialistCount)));
-												setSpecialistCount(n);
-												setDisplaySpecialistCount(String(n));
-											}
-										}}
-										className={inputClass}
-									/>
-								</label>
+										<input
+											type="number"
+											min={1}
+											value={displaySpecialistCount}
+											onChange={(e) => {
+												const v = e.target.value;
+												setDisplaySpecialistCount(v);
+												if (v !== '') {
+													const n = Number(v);
+													if (!Number.isNaN(n)) setSpecialistCount(Math.max(1, Math.floor(n)));
+												}
+											}}
+											onBlur={() => {
+												if (displaySpecialistCount === '' || Number(displaySpecialistCount) < 1 || Number.isNaN(Number(displaySpecialistCount))) {
+													setSpecialistCount(1);
+													setDisplaySpecialistCount('1');
+												} else {
+													const n = Math.max(1, Math.floor(Number(displaySpecialistCount)));
+													setSpecialistCount(n);
+													setDisplaySpecialistCount(String(n));
+												}
+											}}
+											className={inputClass}
+										/>
+									</label>
+
+									{/* --- Field: Sede Count (New) --- */}
+									{role === 'ADMIN' && (
+										<label className="block group">
+											<span className={labelClass}>
+												<span className="inline-flex items-center gap-2">
+													<svg className="w-4 h-4 text-teal-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" /></svg>
+													Número de sedes o sucursales
+													<span className="ml-1 text-[10px] sm:text-xs font-normal text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full inline-block">
+														¿Dónde operas?
+													</span>
+												</span>
+											</span>
+											<select
+												name="sedeCount"
+												value={sedeCount}
+												onChange={(e) => setSedeCount(e.target.value)}
+												className={selectClass}
+											>
+												<option value={1}>1 sede (ubicación única)</option>
+												<option value={2}>2 sedes</option>
+												<option value={3}>3 sedes</option>
+												<option value={4}>4 sedes</option>
+												<option value="5-10">5 a 10 sedes</option>
+												<option value="11+">11 o más sedes (Institucional)</option>
+											</select>
+											<p className="mt-1.5 text-xs text-indigo-600 flex items-start gap-1.5 bg-indigo-50 p-2 rounded-lg">
+												<span className="text-lg leading-none">💡</span>
+												<span>Ingresa el <strong>TOTAL de especialistas</strong> sumando TODAS tus sedes en el campo de arriba.<br/>Ej: Sede A (60) + Sede B (30) = 90 especialistas.</span>
+											</p>
+										</label>
+									)}
+								</>
 							)}
 
 							<label className="block group">
@@ -1054,8 +1287,48 @@ export default function RegisterForm(): React.ReactElement {
 							</label>
 						</div>
 
-						<div className="mt-4 p-4 rounded-lg bg-emerald-50 border border-emerald-100 text-slate-800">
-							Plan recomendado: <strong>{recommendedPlan.label}</strong> — <strong>€{recommendedPlan.price.toFixed(2)}</strong> / mes
+						<div className="mt-6 p-5 sm:p-6 rounded-xl bg-gradient-to-br from-emerald-50 to-teal-50 border border-emerald-200 shadow-sm animate-in slide-in-from-bottom duration-500">
+							<div className="flex items-center gap-2 mb-4">
+								<div className="w-8 h-8 rounded-lg bg-emerald-600 flex items-center justify-center text-white">
+									<svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+										<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+									</svg>
+								</div>
+								<h4 className="font-bold text-emerald-900">Inversión mensual estimada</h4>
+							</div>
+							
+							<div className="space-y-3">
+								<div className="flex justify-between items-center text-sm text-emerald-800">
+									<span>Plan seleccionado:</span>
+									<span className="font-bold">{recommendedPlan.label}</span>
+								</div>
+								
+								<div className="flex justify-between items-center text-sm">
+									<span className="text-emerald-700">Coste por especialista:</span>
+									<span className="font-semibold text-emerald-900">€{recommendedPlan.price.toFixed(2)}</span>
+								</div>
+								
+								<div className="flex justify-between items-center text-sm pb-3 border-b border-emerald-200/50">
+									<span className="text-emerald-700">Número de profesionales:</span>
+									<span className="font-semibold text-emerald-900">{specialistCount}</span>
+								</div>
+								
+								<div className="flex justify-between items-end pt-1">
+									<div className="text-xs text-emerald-600 italic">
+										{specialistCount} x €{recommendedPlan.price.toFixed(2)}
+									</div>
+									<div className="text-right">
+										<div className="text-[10px] text-emerald-600 uppercase font-bold tracking-wider">Total al mes</div>
+										<div className="text-2xl font-black text-emerald-700">
+											€{(specialistCount * recommendedPlan.price).toFixed(2)}
+										</div>
+									</div>
+								</div>
+							</div>
+							
+							<p className="mt-4 text-[10px] sm:text-xs text-emerald-700/80 leading-relaxed bg-white/50 p-2 rounded-lg border border-emerald-100">
+								* Este es un cálculo base mensual. Podrás elegir pagos trimestrales o anuales con <strong>descuentos de hasta el 30%</strong> en el siguiente paso.
+							</p>
 						</div>
 
 						<div className="flex justify-between gap-3 mt-4">
@@ -1302,7 +1575,7 @@ export default function RegisterForm(): React.ReactElement {
 								<span className={labelClass}>
 									<span className="inline-flex items-center gap-2">
 										<svg className="w-4 h-4 text-teal-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-											<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+											<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
 										</svg>
 										Alergias conocidas
 									</span>
@@ -1485,52 +1758,31 @@ export default function RegisterForm(): React.ReactElement {
 								<option value="annual">Anual — 15% descuento</option>
 							</select>
 
-							<div className="mt-3 p-4 sm:p-5 bg-gradient-to-br from-slate-50 to-teal-50/30 rounded-lg border border-slate-200 shadow-sm">
-								<div className="text-xs sm:text-sm font-semibold text-slate-900 mb-3">Resumen de cobro:</div>
-
-								<div className="space-y-2 mb-4">
-									<div className="text-xs sm:text-sm text-slate-700">
-										<strong className="text-slate-900">{recommendedPlan.label}</strong> — Precio base mensual: <span className="font-semibold">€{recommendedPlan.price.toFixed(2)}</span>
-									</div>
-									<div className="text-xs sm:text-sm text-slate-700">
-										Periodo: <span className="font-semibold">{billingPreview.label}</span> — {billingPreview.months} {billingPreview.months > 1 ? 'meses' : 'mes'}
-									</div>
-									{billingPreview.discount > 0 && (
-										<div className="text-xs sm:text-sm text-emerald-700 font-semibold space-y-1">
-											<div>Descuento aplicado: {(billingPreview.discount * 100).toFixed(0)}%</div>
-											<div className="text-[10px] sm:text-xs text-emerald-600 font-medium italic">✨ Este descuento será únicamente para los primeros 20 consultorios suscritos</div>
+								{(role as string) !== 'PACIENTE' ? (
+									<BillingBreakdown 
+										billing={billingPreview} 
+										recommendedPlanLabel={recommendedPlan?.label} 
+										specialistCount={specialistCount} 
+										sedeCount={sedeCount} 
+									/>
+								) : (
+									<div className="bg-slate-50 border border-slate-200 rounded-xl p-4 sm:p-6 mt-6">
+										<div className="flex justify-between items-center mb-4">
+											<span className="text-sm font-semibold text-slate-500">Plan Seleccionado</span>
+											<span className="text-sm font-bold text-teal-700">{recommendedPlan.label}</span>
 										</div>
-									)}
-								</div>
-
-								<div className="pt-3 border-t border-slate-200 space-y-2">
-									<div className="text-base sm:text-lg font-bold text-emerald-600">Total a pagar: €{billingPreview.total.toFixed(2)}</div>
-									<div className="text-xs sm:text-sm text-slate-700">
-										Equivalente mensual: <span className="font-semibold text-slate-900">€{billingPreview.monthlyEquivalent.toFixed(2)} / mes</span>
+										<p className="text-xs text-slate-400 text-center">Acceso gratuito a la plataforma para pacientes.</p>
 									</div>
-
-									{billingPreview.discount > 0 && (
-										<div className="text-xs sm:text-sm text-teal-700 font-medium space-y-1">
-											<div>
-												💰 Ahorras <span className="font-bold">€{(recommendedPlan.price - billingPreview.monthlyEquivalent).toFixed(2)}</span> al mes con este plan
-											</div>
-											<div className="text-teal-800">
-												💵 Ahorro total en {billingPreview.months} {billingPreview.months > 1 ? 'meses' : 'mes'}: <span className="font-bold">€{((recommendedPlan.price - billingPreview.monthlyEquivalent) * billingPreview.months).toFixed(2)}</span>
-											</div>
-										</div>
-									)}
+								)}
 
 									{role === 'MEDICO' && (
 										<div className="mt-3 pt-3 border-t border-slate-200">
 											<div className="text-xs sm:text-sm text-slate-600 leading-relaxed">
-												<span className="font-semibold text-slate-900">Inversión diaria:</span> Si lo visualizas de forma más detallada, estarías invirtiendo <span className="font-bold text-teal-700">€{(billingPreview.monthlyEquivalent / 20).toFixed(2)}</span> diarios para el uso de nuestro software, <span className="font-semibold text-slate-900">menos que el precio de un café</span>. Una inversión mínima que transforma tu práctica médica y te permite ahorrar hasta 40% del tiempo en cada consulta.
+												<span className="font-semibold text-slate-900">Inversión diaria:</span> Si lo visualizas de forma más detallada, estarías invirtiendo <span className="font-bold text-teal-700">€{(((billingPreview as any).monthlyEquivalent || 0) / 20).toFixed(2)}</span> diarios para el uso de nuestro software, <span className="font-semibold text-slate-900">menos que el precio de un café</span>. Una inversión mínima que transforma tu práctica médica y te permite ahorrar hasta 40% del tiempo en cada consulta.
 											</div>
 										</div>
 									)}
 								</div>
-							</div>
-						</div>
-
 						<div className="mt-2 text-xs sm:text-sm text-slate-600">
 							<p>Precio de referencia. Al continuar irás al checkout para elegir plan mensual, trimestral o anual con descuento.</p>
 						</div>
@@ -1612,15 +1864,12 @@ export default function RegisterForm(): React.ReactElement {
 								<div className="text-xs sm:text-sm text-slate-600">Nombre: {orgName}</div>
 								<div className="text-xs sm:text-sm text-slate-600">Tipo: {orgType}</div>
 								<div className="text-xs sm:text-sm text-slate-600">Especialistas (aprox.): {specialistCount}</div>
-								<div className="text-xs sm:text-sm text-slate-600">
-									Plan recomendado: <strong>{recommendedPlan.label}</strong>
-								</div>
-								<div className="text-xs sm:text-sm text-slate-600">
-									Periodicidad: <strong>{billingPreview.label}</strong>
-								</div>
-								<div className="text-xs sm:text-sm text-slate-600">
-									Total a pagar: <strong>€{billingPreview.total.toFixed(2)}</strong>
-								</div>
+								<BillingBreakdown 
+									billing={billingPreview} 
+									recommendedPlanLabel={recommendedPlan?.label}
+									specialistCount={specialistCount}
+									sedeCount={sedeCount}
+								/>
 							</div>
 						)}
 

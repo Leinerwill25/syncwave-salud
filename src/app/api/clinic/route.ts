@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 
-console.log('Loaded route: /api/clinic');
+console.log('Loaded route: /api/clinic [DEPRECATED - use /api/clinic-profile]');
 
 // --- Supabase server client ---
 const SUPABASE_URL = process.env.SUPABASE_URL ?? process.env.NEXT_PUBLIC_SUPABASE_URL ?? '';

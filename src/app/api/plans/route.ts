@@ -47,8 +47,23 @@ export async function GET(request: Request) {
 		} else if (role === 'PACIENTE') {
 			// Para pacientes, no devolver planes (son gratuitos)
 			filteredPlans = [];
+		} else if (role === 'ADMIN' || role === 'FARMACIA' || role === 'LABORATORIO') {
+			// Para organizaciones, excluimos planes de medico y paciente
+			filteredPlans = filteredPlans.filter(p => !['medico', 'paciente', 'paciente-individual', 'paciente-family', 'paciente-gratis'].includes(p.slug));
+			
+			// Si hay specialistCount, filtramos por rango
+			if (specialistCount) {
+				const count = parseInt(specialistCount, 10);
+				if (!isNaN(count) && count > 0) {
+					filteredPlans = filteredPlans.filter(
+						(plan) =>
+							(plan.minSpecialists === 0 || plan.minSpecialists <= count) &&
+							(plan.maxSpecialists === 0 || plan.maxSpecialists >= count)
+					);
+				}
+			}
 		} else if (role && specialistCount) {
-			// Para organizaciones, filtrar por rango de especialistas
+			// Fallback legacy logic
 			const count = parseInt(specialistCount, 10);
 			filteredPlans = filteredPlans.filter(
 				(plan) =>
