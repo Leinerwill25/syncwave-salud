@@ -200,12 +200,15 @@ export default function EditConsultationForm({ initial, patient, doctor, doctorS
 			ginecologia: 'gynecology',
 			ginecologo: 'gynecology',
 			ginecologa: 'gynecology',
+			mastologia: 'gynecology',
+			mastologo: 'gynecology',
 			// Cardiología
 			cardiologia: 'cardiology',
 			cardiologo: 'cardiology',
 			cardiologa: 'cardiology',
 			// Neumología
 			neumologia: 'pulmonology',
+			neumonologia: 'pulmonology',
 			neumologo: 'pulmonology',
 			neumologa: 'pulmonology',
 			// Neurología
@@ -219,6 +222,7 @@ export default function EditConsultationForm({ initial, patient, doctor, doctorS
 			// Nutrición
 			nutricion: 'nutrition',
 			nutricionista: 'nutrition',
+			'nutricion clinica': 'nutrition',
 			// Dermatología
 			dermatologia: 'dermatology',
 			dermatologo: 'dermatology',
@@ -230,12 +234,16 @@ export default function EditConsultationForm({ initial, patient, doctor, doctorS
 			ortopedia: 'orthopedics',
 			ortopedica: 'orthopedics',
 			ortopedico: 'orthopedics',
+			'traumatologia y ortopedia': 'orthopedics',
+			traumatologia: 'orthopedics',
 			// ORL / Otorrino
 			orl: 'ent',
 			otorrino: 'ent',
 			otorrinolaringologia: 'ent',
 			otorrinolaringologo: 'ent',
 			otorrinolaringologa: 'ent',
+			'otorrinolaringologia (orl)': 'ent',
+			'otorrinolaringologia orl': 'ent',
 			// Endocrinología
 			endocrinologia: 'endocrinology',
 			endocrinologo: 'endocrinology',
