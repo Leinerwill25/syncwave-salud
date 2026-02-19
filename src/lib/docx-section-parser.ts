@@ -40,12 +40,27 @@ export function parseRecipeText(text: string): ParsedRecipe {
     // Find all matches for headers to identify section boundaries
     const segments = normalized.split(/\n+/);
     
+    // Patterns to ignore completely (headers, footers, etc.)
+    const IGNORED_PATTERNS = [
+        /^FECHA:/i,
+        /^RECIPE:?$/i,
+        /^Nombre y apellido:/i,
+        /^C[ée]dula:/i,
+        /^Edad:/i,
+        /^{{.*}}$/ // Ignore standalone template placeholders
+    ];
+    
     let currentField: keyof typeof SECTION_KEYWORDS | null = null;
     let currentContent: string[] = [];
 
     for (const line of segments) {
         const trimmedLine = line.trim();
         if (!trimmedLine) continue;
+
+        // Skip ignored lines
+        if (IGNORED_PATTERNS.some(p => p.test(trimmedLine))) {
+            continue;
+        }
 
         let foundHeader = false;
         for (const [field, patterns] of Object.entries(SECTION_KEYWORDS)) {
