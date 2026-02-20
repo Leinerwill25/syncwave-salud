@@ -1,24 +1,18 @@
+/** @refactored ASHIRA Clinic Dashboard - Settings Page */
 'use client';
 
 import React, { useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
-import { Loader2, UserPlus, CreditCard, Database, CalendarDays, Check, X, Users, Mail, CreditCard as CC } from 'lucide-react';
+import {
+	Loader2, UserPlus, Database, CalendarDays, Check, X, Users, Mail,
+	CreditCard, Settings, TrendingUp, HelpCircle
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { toast } from 'sonner';
 import { createSupabaseBrowserClient } from '@/app/adapters/client';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
-
-/**
- * Revisión final: enfoque en estructura y legibilidad
- * - Más espacio en blanco y ritmo vertical
- * - Jerarquía clara (títulos, subtítulos, contenido)
- * - Alineación consistente y tarjetas con alturas y paddings homogéneos
- * - Componentes reutilizables y semánticos
- *
- * Usa Tailwind para estilos; ajusta variables/colors si tu proyecto tiene tokens de marca.
- */
 
 interface ClinicProfile {
 	id: string;
@@ -39,6 +33,7 @@ interface ClinicProfile {
 
 interface Plan {
 	id: string;
+	slug?: string;
 	name: string;
 	minSpecialists: number;
 	maxSpecialists: number;
@@ -48,103 +43,62 @@ interface Plan {
 	description?: string | null;
 }
 
-/* -------------------------
-   Small presentational components
-   ------------------------- */
+/* --- Presentational Components --- */
 
-function SectionTitle({ title, subtitle }: { title: string; subtitle?: string }) {
+function SectionTitle({ title, subtitle, icon: Icon }: { title: string; subtitle?: string; icon?: React.ComponentType<{ className?: string }> }) {
 	return (
-		<div>
-			<h2 className="text-lg lg:text-xl font-semibold text-slate-900">{title}</h2>
-			{subtitle && <div className="text-sm text-slate-500 mt-1">{subtitle}</div>}
-		</div>
-	);
-}
-
-function KPI({ label, value, hint, icon }: { label: string; value: React.ReactNode; hint?: string; icon?: React.ReactNode }) {
-	return (
-		<div
-			className="
-        flex flex-col justify-between
-        w-full h-full
-        rounded-2xl border border-slate-100 bg-white
-        p-5 shadow-sm hover:shadow-md
-        transition-all duration-200 ease-in-out
-      ">
-			{/* Encabezado con ícono y label */}
-			<div className="flex items-center justify-between mb-3">
-				<div className="flex items-center gap-2">
-					{icon && <div className="flex items-center justify-center w-9 h-9 rounded-lg bg-sky-50 text-sky-700">{icon}</div>}
-					<span className="text-sm font-medium text-slate-500 tracking-wide">{label}</span>
+		<div className="flex items-center gap-3">
+			{Icon && (
+				<div className="flex items-center justify-center w-9 h-9 rounded-lg bg-sky-50" aria-hidden="true">
+					<Icon className="w-5 h-5 text-sky-600" />
 				</div>
+			)}
+			<div>
+				<h2 className="text-xl font-semibold tracking-tight text-slate-900">{title}</h2>
+				{subtitle && <p className="text-sm text-slate-500 mt-0.5">{subtitle}</p>}
 			</div>
-
-			{/* Valor principal */}
-			<div className="text-2xl font-bold text-slate-900 tracking-tight">{value}</div>
-
-			{/* Hint (texto descriptivo) */}
-			{hint && <div className="mt-1 text-xs text-slate-400 font-medium">{hint}</div>}
 		</div>
 	);
 }
 
-function StatCard({ title, value, subtitle }: { title: string; value: React.ReactNode; subtitle?: string }) {
+function KPIBlock({ label, value, hint, icon: Icon }: { label: string; value: React.ReactNode; hint?: string; icon?: React.ComponentType<{ className?: string }> }) {
 	return (
-		<div className="p-4 rounded-xl bg-white ring-1 ring-slate-100 shadow-sm min-h-[110px] flex flex-col justify-between">
-			<div className="text-xs text-slate-400">{title}</div>
-			<div className="mt-2 text-lg font-semibold text-slate-900">{value}</div>
-			{subtitle && <div className="text-sm text-slate-500 mt-3">{subtitle}</div>}
+		<div className="bg-white rounded-2xl border border-slate-100 border-l-4 border-l-sky-500 shadow-sm p-5 flex flex-col gap-3">
+			<div className="flex items-center gap-2">
+				{Icon && (
+					<div className="p-2 rounded-lg bg-sky-50" aria-hidden="true">
+						<Icon className="w-4 h-4 text-sky-600" />
+					</div>
+				)}
+				<span className="text-xs font-medium uppercase tracking-wider text-slate-400">{label}</span>
+			</div>
+			<div className="text-2xl font-bold tracking-tight text-slate-900">{value}</div>
+			{hint && <div className="text-xs text-slate-400">{hint}</div>}
 		</div>
 	);
 }
 
 function PlanDetailCard({ plan }: { plan?: Plan | null }) {
 	return (
-		<div className="p-5 rounded-2xl bg-white shadow-sm ring-1 ring-slate-100 h-full flex flex-col">
+		<div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6 h-full flex flex-col">
 			<div className="flex items-start justify-between gap-4">
 				<div>
-					<div className="text-xs text-slate-400">Detalle — plan actual</div>
-					<div className="text-lg font-semibold text-slate-900 mt-1">{plan?.name ?? 'Gratis'}</div>
+					<p className="text-xs font-medium uppercase tracking-wider text-slate-400">Plan actual</p>
+					<p className="text-lg font-semibold text-slate-900 mt-1">{plan?.name ?? 'Gratis'}</p>
 				</div>
-
 				<div className="text-right">
-					<div className="text-teal-700 font-bold">{plan ? (plan.monthlyPrice > 0 ? `$${plan.monthlyPrice.toFixed(2)}/mes` : 'Gratis') : 'Gratis'}</div>
+					<div className="text-teal-600 font-bold">{plan ? (plan.monthlyPrice > 0 ? `$${plan.monthlyPrice.toFixed(2)}/mes` : 'Gratis') : 'Gratis'}</div>
 					<div className="text-xs text-slate-400 mt-1">{plan ? `${plan.minSpecialists}–${plan.maxSpecialists} especialistas` : 'Limitado'}</div>
 				</div>
 			</div>
-
 			<hr className="my-4 border-slate-100" />
-
-			<ul className="text-sm text-slate-600 space-y-4 mt-auto">
-				<li className="flex items-start gap-3">
-					<span className="mt-1 text-teal-500">
-						<Check className="w-4 h-4" />
-					</span>
-					<div>
-						<div className="font-medium text-slate-800">Acceso al dashboard</div>
-						<div className="text-xs text-slate-500">Panel centralizado con todas las funciones</div>
-					</div>
-				</li>
-
-				<li className="flex items-start gap-3">
-					<span className="mt-1 text-teal-500">
-						<Check className="w-4 h-4" />
-					</span>
-					<div>
-						<div className="font-medium text-slate-800">Export CSV</div>
-						<div className="text-xs text-slate-500">Exporta datos clínicos para auditoría</div>
-					</div>
-				</li>
-
-				<li className="flex items-start gap-3">
-					<span className="mt-1 text-teal-500">
-						<Check className="w-4 h-4" />
-					</span>
-					<div>
-						<div className="font-medium text-slate-800">Soporte por email</div>
-						<div className="text-xs text-slate-500">Respuesta en 24–48 hrs según plan</div>
-					</div>
-				</li>
+			<ul className="text-sm text-slate-600 space-y-3 mt-auto">
+				{['Acceso al dashboard', 'Export CSV', 'Soporte por email'].map((feature) => (
+					<li key={feature} className="flex items-center gap-2.5">
+						<Check className="w-4 h-4 text-teal-500 shrink-0" />
+						<span>{feature}</span>
+					</li>
+				))}
 			</ul>
 		</div>
 	);
@@ -152,34 +106,50 @@ function PlanDetailCard({ plan }: { plan?: Plan | null }) {
 
 function RecommendedCard({ plan, onUpgrade, disabled }: { plan?: Plan | null; onUpgrade: () => void; disabled?: boolean }) {
 	return (
-		<div className="p-5 rounded-2xl bg-gradient-to-br from-sky-50 to-white shadow-md ring-1 ring-slate-100 h-full flex flex-col justify-between">
+		<div className="bg-gradient-to-br from-sky-50 to-white rounded-2xl border border-sky-100 shadow-sm p-6 h-full flex flex-col justify-between">
 			<div>
-				<div className="text-xs text-slate-400">Recomendado</div>
-				<div className="mt-1 text-lg font-semibold text-slate-900">{plan?.name}</div>
-
-				<div className="mt-4 flex items-baseline gap-3">
-					<div className="text-2xl font-extrabold text-teal-700 leading-none">{plan ? `$${plan.monthlyPrice.toFixed(2)}` : '-'}</div>
-					<div className="text-sm text-slate-500">/mes</div>
+				<span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-sky-100 text-xs font-medium text-sky-700 mb-3">
+					<TrendingUp className="w-3 h-3" />
+					Recomendado
+				</span>
+				<p className="text-lg font-semibold text-slate-900">{plan?.name}</p>
+				<div className="mt-3 flex items-baseline gap-2">
+					<span className="text-3xl font-bold text-teal-600">{plan ? `$${plan.monthlyPrice.toFixed(2)}` : '-'}</span>
+					<span className="text-sm text-slate-500">/mes</span>
 				</div>
-
-				<div className="text-xs text-slate-400 mt-1">{plan ? `${plan.minSpecialists}–${plan.maxSpecialists} especialistas` : ''}</div>
-
-				<p className="mt-3 text-sm text-slate-600 leading-relaxed">{plan?.description}</p>
+				<p className="text-xs text-slate-400 mt-1">{plan ? `${plan.minSpecialists}–${plan.maxSpecialists} especialistas` : ''}</p>
+				{plan?.description && <p className="mt-3 text-sm text-slate-600 leading-relaxed">{plan.description}</p>}
 			</div>
-
-			<div className="mt-6">
-				<Button onClick={onUpgrade} disabled={disabled} className="w-full bg-gradient-to-r from-sky-600 to-teal-500 text-white shadow">
+			<div className="mt-5">
+				<Button
+					onClick={onUpgrade}
+					disabled={disabled}
+					className="w-full bg-gradient-to-r from-sky-600 to-teal-500 text-white shadow-sm hover:shadow-md transition-shadow"
+				>
 					Actualizar al recomendado
 				</Button>
-				<div className="mt-2 text-xs text-slate-400">Actualizar te llevará al checkout seguro.</div>
+				<p className="mt-2 text-xs text-slate-400 text-center">Checkout seguro</p>
 			</div>
 		</div>
 	);
 }
 
-/* -------------------------
-   Page component
-   ------------------------- */
+/* --- Custom Tooltip for Charts --- */
+function CustomTooltip({ active, payload, label }: any) {
+	if (!active || !payload?.length) return null;
+	return (
+		<div className="bg-white shadow-lg rounded-xl border border-slate-100 px-4 py-3 text-sm">
+			<p className="font-medium text-slate-900 mb-1">{label}</p>
+			{payload.map((p: any, i: number) => (
+				<p key={i} className="text-slate-500">
+					{p.name}: <span className="font-medium text-slate-800">{p.value}</span>
+				</p>
+			))}
+		</div>
+	);
+}
+
+/* --- Main Page --- */
 
 export default function ClinicSettingsPage(): React.ReactElement {
 	const supabase = createSupabaseBrowserClient();
@@ -189,6 +159,7 @@ export default function ClinicSettingsPage(): React.ReactElement {
 	const [form, setForm] = useState<Partial<ClinicProfile>>({});
 	const [currentPlan, setCurrentPlan] = useState<Plan | null>(null);
 	const [recommendedPlan, setRecommendedPlan] = useState<Plan | null>(null);
+	const [allClinicPlans, setAllClinicPlans] = useState<Plan[]>([]);
 	const [extraInvites, setExtraInvites] = useState<number>(0);
 	const [upgrading, setUpgrading] = useState<boolean>(false);
 	const [showConfirmUpgrade, setShowConfirmUpgrade] = useState<boolean>(false);
@@ -196,13 +167,10 @@ export default function ClinicSettingsPage(): React.ReactElement {
 	useEffect(() => {
 		let unsubscribe: (() => void) | null = null;
 
-		// Intentar obtener la sesión inmediatamente
 		supabase.auth.getSession().then(({ data: { session } }) => {
 			if (session?.access_token) {
-				// Sesión ya disponible — fetch directo
 				fetchClinic();
 			} else {
-				// Sesión aún no restaurada — esperar al evento SIGNED_IN
 				const { data: { subscription } } = supabase.auth.onAuthStateChange((event, sess) => {
 					if ((event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED' || event === 'INITIAL_SESSION') && sess?.access_token) {
 						fetchClinic();
@@ -217,19 +185,58 @@ export default function ClinicSettingsPage(): React.ReactElement {
 		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, []);
 
+	/** Busca el plan de clínica que mejor encaje con la cantidad de especialistas */
+	const findRecommendedPlan = (specialistCount: number, plans: Plan[]): Plan | null => {
+		// Filtrar solo planes de clínica (slug empieza con 'clinic-') y no custom
+		const clinicPlans = plans.filter((p) => p.id !== 'custom' && p.monthlyPrice > 0);
+		if (clinicPlans.length === 0) return null;
+
+		// Encontrar el plan cuyo rango incluya la cantidad de especialistas
+		const exact = clinicPlans.find(
+			(p) => specialistCount >= p.minSpecialists && specialistCount <= p.maxSpecialists
+		);
+		if (exact) return exact;
+
+		// Si no hay match exacto, recomendar el plan con el rango mínimo más cercano
+		const sorted = [...clinicPlans].sort((a, b) => a.minSpecialists - b.minSpecialists);
+		const next = sorted.find((p) => p.minSpecialists > specialistCount);
+		return next ?? sorted[sorted.length - 1];
+	};
+
 	const fetchClinic = async () => {
 		try {
 			setLoading(true);
-			const {
-				data: { session },
-			} = await supabase.auth.getSession();
+			const { data: { session } } = await supabase.auth.getSession();
 			if (!session?.access_token) throw new Error('No se encontró usuario autenticado.');
 
-			const res = await fetch('/api/clinic/profile', {
-				headers: { Authorization: `Bearer ${session.access_token}` },
-			});
-			const data = await res.json();
-			if (!res.ok) throw new Error(data.error || 'Error al cargar la clínica.');
+			// Fetch clínica y planes de la DB en paralelo
+			const [profileRes, plansRes] = await Promise.all([
+				fetch('/api/clinic/profile', {
+					headers: { Authorization: `Bearer ${session.access_token}` },
+				}),
+				supabase
+					.from('plan')
+					.select('id, slug, name, minSpecialists, maxSpecialists, monthlyPrice, quarterlyPrice, annualPrice, description')
+					.like('slug', 'clinic-%')
+					.order('minSpecialists', { ascending: true }),
+			]);
+
+			const data = await profileRes.json();
+			if (!profileRes.ok) throw new Error(data.error || 'Error al cargar la clínica.');
+
+			// Normalizar planes de la DB al tipo Plan
+			const dbPlans: Plan[] = (plansRes.data ?? []).map((p: any) => ({
+				id: p.id,
+				slug: p.slug,
+				name: p.name,
+				minSpecialists: Number(p.minSpecialists),
+				maxSpecialists: Number(p.maxSpecialists),
+				monthlyPrice: Number(p.monthlyPrice),
+				quarterlyPrice: p.quarterlyPrice ? Number(p.quarterlyPrice) : null,
+				annualPrice: p.annualPrice ? Number(p.annualPrice) : null,
+				description: p.description ?? null,
+			}));
+			setAllClinicPlans(dbPlans);
 
 			const normalized: ClinicProfile = {
 				id: data?.clinicProfile?.id ?? data?.organization?.id ?? '',
@@ -247,7 +254,7 @@ export default function ClinicSettingsPage(): React.ReactElement {
 			setClinic(normalized);
 			setForm(normalized);
 			setCurrentPlan(data?.plan ?? null);
-			setRecommendedPlan(calcRecommendedPlan(normalized.specialistCount ?? 0));
+			setRecommendedPlan(findRecommendedPlan(normalized.specialistCount ?? 0, dbPlans));
 		} catch (err: any) {
 			console.error('Error al cargar clínica:', err);
 			toast.error(err?.message ?? 'No se pudo cargar la información.');
@@ -256,58 +263,11 @@ export default function ClinicSettingsPage(): React.ReactElement {
 		}
 	};
 
-	const calcRecommendedPlan = (specialistCount: number): Plan => {
-		if (specialistCount < 10)
-			return {
-				id: 'small',
-				name: 'Pequeña (<10)',
-				minSpecialists: 1,
-				maxSpecialists: 9,
-				monthlyPrice: 29.99,
-				description: 'Ideal para consultorios y clínicas pequeñas. Funcionalidades esenciales y soporte básico.',
-			};
-		if (specialistCount >= 10 && specialistCount <= 20)
-			return {
-				id: '10-20',
-				name: 'Mediana (10–20)',
-				minSpecialists: 10,
-				maxSpecialists: 20,
-				monthlyPrice: 69.99,
-				description: 'Reportes, integraciones básicas y soporte prioritario.',
-			};
-		if (specialistCount >= 21 && specialistCount <= 50)
-			return {
-				id: '21-50',
-				name: 'Intermedia (21–50)',
-				minSpecialists: 21,
-				maxSpecialists: 50,
-				monthlyPrice: 99.99,
-				description: 'Integraciones avanzadas, alertas y SLA mejorado.',
-			};
-		if (specialistCount >= 51 && specialistCount <= 100)
-			return {
-				id: '51-100',
-				name: 'Enterprise (51–100)',
-				minSpecialists: 51,
-				maxSpecialists: 100,
-				monthlyPrice: 149.99,
-				description: 'API, soporte dedicado y acuerdos de nivel de servicio.',
-			};
-		return {
-			id: 'custom',
-			name: 'Sobredimensionado — Contáctanos',
-			minSpecialists: specialistCount,
-			maxSpecialists: specialistCount,
-			monthlyPrice: 0,
-			description: 'Cotización personalizada para grandes operaciones.',
-		};
-	};
-
 	useEffect(() => {
-		if (!clinic) return;
-		setRecommendedPlan(calcRecommendedPlan(clinic.specialistCount ?? 0));
+		if (!clinic || allClinicPlans.length === 0) return;
+		setRecommendedPlan(findRecommendedPlan(clinic.specialistCount ?? 0, allClinicPlans));
 		// eslint-disable-next-line react-hooks/exhaustive-deps
-	}, [clinic?.specialistCount]);
+	}, [clinic?.specialistCount, allClinicPlans]);
 
 	const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
 		const { name, value, type } = e.target;
@@ -320,9 +280,7 @@ export default function ClinicSettingsPage(): React.ReactElement {
 	const handleSave = async () => {
 		try {
 			setLoading(true);
-			const {
-				data: { session },
-			} = await supabase.auth.getSession();
+			const { data: { session } } = await supabase.auth.getSession();
 			if (!session?.access_token) throw new Error('No se encontró usuario autenticado.');
 
 			const res = await fetch('/api/clinic/profile', {
@@ -334,7 +292,7 @@ export default function ClinicSettingsPage(): React.ReactElement {
 			if (!res.ok) throw new Error(data.error || 'Error al guardar los cambios.');
 
 			toast.success('Información actualizada correctamente.');
-			setClinic((prev) => ({ ...(prev ?? {}), ...data }));
+			setClinic((prev) => ({ ...(prev ?? {}) as ClinicProfile, ...data }));
 		} catch (err: any) {
 			console.error('Error al guardar clínica:', err);
 			toast.error(err?.message ?? 'No se pudo guardar la información.');
@@ -357,21 +315,14 @@ export default function ClinicSettingsPage(): React.ReactElement {
 		try {
 			setUpgrading(true);
 			setShowConfirmUpgrade(false);
-
-			const {
-				data: { session },
-			} = await supabase.auth.getSession();
+			const { data: { session } } = await supabase.auth.getSession();
 			if (!session?.access_token) throw new Error('No se encontró usuario autenticado.');
 
 			const res = await fetch('/api/subscribe', {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` },
-				body: JSON.stringify({
-					planSlug: recommendedPlan?.id,
-					billingPeriod: 'monthly',
-				}),
+				body: JSON.stringify({ planId: recommendedPlan?.id, planSlug: recommendedPlan?.slug, billingPeriod: 'monthly' }),
 			});
-
 			const data = await res.json();
 			if (!res.ok) throw new Error(data.error || 'Error al crear suscripción.');
 
@@ -379,8 +330,7 @@ export default function ClinicSettingsPage(): React.ReactElement {
 				window.location.href = data.checkoutUrl;
 				return;
 			}
-
-			toast.success('Proceso de actualización iniciado. Serás redirigido al checkout.');
+			toast.success('Proceso de actualización iniciado.');
 		} catch (err: any) {
 			console.error('Error al iniciar upgrade:', err);
 			toast.error(err?.message ?? 'No se pudo iniciar la actualización.');
@@ -392,317 +342,251 @@ export default function ClinicSettingsPage(): React.ReactElement {
 	if (loading)
 		return (
 			<div className="flex items-center justify-center h-[70vh]">
-				<Loader2 className="w-12 h-12 animate-spin text-sky-600" />
+				<div className="flex flex-col items-center gap-3">
+					<Loader2 className="w-10 h-10 animate-spin text-sky-500" />
+					<p className="text-sm text-slate-400">Cargando configuración…</p>
+				</div>
 			</div>
 		);
 
-	if (!clinic) return <div className="text-center py-12 text-slate-500">No se encontró información de la clínica.</div>;
-
-	/* Layout notes:
-     - Container max-w para mantener la lectura cómoda
-     - Grid principal: contenido principal (2/3) + sidebar (1/3)
-     - Espaciado vertical generoso para evitar agrupamiento
-  */
+	if (!clinic) return (
+		<div className="text-center py-16">
+			<Settings className="w-12 h-12 text-slate-300 mx-auto mb-4" />
+			<p className="text-slate-500">No se encontró información de la clínica.</p>
+		</div>
+	);
 
 	return (
-		<motion.div className="p-8 space-y-8 max-w-7xl mx-auto" initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.32 }}>
+		<motion.div
+			className="space-y-8"
+			initial={{ opacity: 0, y: 6 }}
+			animate={{ opacity: 1, y: 0 }}
+			transition={{ duration: 0.3 }}
+		>
 			{/* Header */}
-			<header className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6">
-				<div className="flex-1 min-w-0">
-					<h1 className="text-3xl lg:text-4xl font-extrabold text-slate-900 tracking-tight">{clinic.legal_name ?? 'Mi Clínica'}</h1>
-					<p className="mt-2 text-sm text-slate-500 max-w-2xl">Panel de administración — configura perfil, suscripción y recursos por especialista.</p>
-
-					<div className="mt-6 grid grid-cols-1 sm:grid-cols-3 gap-4">
-						<KPI label="Especialistas" value={<span className="text-slate-900">{clinic.specialistCount ?? 0}</span>} hint="Activos / permitidos" icon={<Users className="w-4 h-4" />} />
-						<KPI label="Invitaciones" value={<span className="text-slate-900">{clinic.invitesAvailable ?? 0}</span>} hint="Disponibles" icon={<Mail className="w-4 h-4" />} />
-						<KPI label="Almacenamiento" value={<span className="text-slate-900">{clinic.storagePerSpecialistMB ?? 500} MB</span>} hint="Por especialista" icon={<Database className="w-4 h-4" />} />
+			<header className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6 sm:p-8">
+				<div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-5">
+					<div className="flex-1 min-w-0">
+						<SectionTitle
+							title={clinic.legal_name ?? 'Mi Clínica'}
+							subtitle="Panel de administración — configura perfil, suscripción y recursos."
+							icon={Settings}
+						/>
+						<div className="mt-5 grid grid-cols-1 sm:grid-cols-3 gap-4">
+							<KPIBlock label="Especialistas" value={clinic.specialistCount ?? 0} hint="Activos" icon={Users} />
+							<KPIBlock label="Invitaciones" value={clinic.invitesAvailable ?? 0} hint="Disponibles" icon={Mail} />
+							<KPIBlock label="Almacenamiento" value={`${clinic.storagePerSpecialistMB ?? 500} MB`} hint="Por especialista" icon={Database} />
+						</div>
 					</div>
-				</div>
 
-				<div className="w-full lg:w-64 flex-shrink-0">
-					<div className="text-right">
-						<div className="text-xs text-slate-500">Plan actual</div>
-						<div className="text-lg font-semibold text-slate-900">{currentPlan?.name ?? 'Gratis'}</div>
-						<div className="text-xs text-slate-400 mt-1">{clinic.subscriptionEndDate ? `Vence: ${new Date(clinic.subscriptionEndDate).toLocaleDateString()}` : 'Sin suscripción activa'}</div>
+					<div className="shrink-0 bg-slate-50 rounded-xl p-4 text-right border border-slate-100">
+						<p className="text-xs text-slate-400">Plan actual</p>
+						<p className="text-lg font-semibold text-slate-900">{currentPlan?.name ?? 'Gratis'}</p>
+						<p className="text-xs text-slate-400 mt-1">
+							{clinic.subscriptionEndDate ? `Vence: ${new Date(clinic.subscriptionEndDate).toLocaleDateString()}` : 'Sin suscripción activa'}
+						</p>
 					</div>
 				</div>
 			</header>
 
-			{/* Main grid */}
+			{/* Main Grid */}
 			<section className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-				{/* Primary column (2/3) */}
+				{/* Primary column */}
 				<div className="lg:col-span-2 space-y-6">
 					{/* Plan overview */}
-					<Card className="rounded-2xl shadow-lg border border-transparent overflow-hidden">
-						<CardHeader className="flex items-center justify-between bg-gradient-to-r from-sky-50 to-white p-6">
-							<div className="flex items-center gap-4">
-								<CC className="w-6 h-6 text-sky-600" />
-								<CardTitle className="text-lg font-semibold text-slate-900">Estado del plan & recomendaciones</CardTitle>
-							</div>
-							<div className="text-sm text-slate-500">Última actualización: {clinic.updated_at ? new Date(clinic.updated_at).toLocaleString() : '—'}</div>
-						</CardHeader>
-
-						<CardContent className="p-6 space-y-6 bg-white">
-							<div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-								<StatCard title="Tu plan" value={currentPlan?.name ?? 'Gratis / Trial'} subtitle={currentPlan?.description ?? 'Funciones limitadas'} />
-								<StatCard title="Especialistas" value={clinic.specialistCount ?? 0} subtitle="Uso real vs. límite del plan" />
-								<StatCard title="Invitaciones" value={clinic.invitesAvailable ?? 0} subtitle="Invitaciones sin usar" />
-							</div>
-
-							<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+					<div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+						<div className="flex items-center gap-3 p-6 border-b border-slate-100 bg-gradient-to-r from-sky-50 to-white">
+							<CreditCard className="w-5 h-5 text-sky-600" />
+							<h3 className="text-lg font-semibold text-slate-900">Estado del plan</h3>
+						</div>
+						<div className="p-6 space-y-5">
+							<div className="grid grid-cols-1 md:grid-cols-2 gap-5">
 								<PlanDetailCard plan={currentPlan} />
 								<RecommendedCard plan={recommendedPlan} onUpgrade={handleStartUpgrade} disabled={!isFreePlan || upgrading} />
 							</div>
-						</CardContent>
-					</Card>
-
-					{/* Storage & Invitations — versión final: más elegante, corporativa y legible */}
-					<div className="flex flex-col gap-6 w-full">
-						{/* Almacenamiento por especialista */}
-						<Card className="w-full rounded-3xl shadow-lg ring-1 ring-slate-200 overflow-hidden border border-slate-100">
-							{/* Header */}
-							<div className="flex items-start gap-4 p-6 bg-white">
-								<div className="flex items-center justify-center w-14 h-14 rounded-lg bg-sky-50 border border-sky-100">
-									<Database className="w-6 h-6 text-sky-600" />
-								</div>
-
-								<div className="min-w-0">
-									<h4 className="text-base font-semibold text-slate-900 leading-tight">Almacenamiento por especialista</h4>
-									<p className="text-sm text-slate-500 mt-1 max-w-[60ch] leading-relaxed">Espacio reservado por usuario para documentos clínicos y multimedia. Ajusta según el volumen y las necesidades de tu clínica.</p>
-								</div>
-							</div>
-
-							<div className="border-t border-slate-100" />
-
-							{/* Body */}
-							<CardContent className="p-6">
-								<div className="flex flex-col gap-5">
-									<div>
-										<label htmlFor="storagePerSpecialistMB" className="block text-xs font-semibold text-slate-600 mb-2">
-											MB por especialista
-										</label>
-
-										<div className="flex items-center gap-3">
-											<Input id="storagePerSpecialistMB" name="storagePerSpecialistMB" type="number" min={100} step={50} aria-label="MB por especialista" className="w-full h-12 rounded-md border border-slate-200 shadow-sm px-3 placeholder:text-slate-400" placeholder="500" value={String(form.storagePerSpecialistMB ?? 500)} onChange={handleChange} />
-											<div className="inline-flex items-center justify-center px-3 py-2 rounded-md bg-slate-50 border border-slate-100 text-sm font-medium text-slate-700">MB</div>
-										</div>
-
-										<div className="mt-3 text-sm text-slate-500 leading-relaxed max-w-[60ch]">Aumentar el almacenamiento permite conservar más archivos por especialista. Los cambios pueden implicar cargos adicionales.</div>
-
-										<div className="mt-3 text-xs text-slate-400">
-											Recomendado mínimo: <span className="font-medium text-slate-800">500 MB</span>
-										</div>
-									</div>
-
-									{/* Acción principal — botón ancho y prominente */}
-									<div>
-										<Button onClick={handleSave} disabled={loading} className="w-full bg-gradient-to-r from-sky-700 to-teal-600 text-white px-5 py-3 rounded-lg shadow-md hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-sky-200">
-											{loading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Guardar cambios'}
-										</Button>
-									</div>
-								</div>
-							</CardContent>
-						</Card>
-
-						{/* Invitaciones */}
-						<Card className="w-full rounded-3xl shadow-lg ring-1 ring-slate-200 overflow-hidden border border-slate-100">
-							{/* Header */}
-							<div className="flex items-start gap-4 p-6 bg-white">
-								<div className="flex items-center justify-center w-14 h-14 rounded-lg bg-emerald-50 border border-emerald-100">
-									<UserPlus className="w-6 h-6 text-emerald-600" />
-								</div>
-
-								<div className="min-w-0">
-									<h4 className="text-base font-semibold text-slate-900 leading-tight">Invitaciones</h4>
-									<p className="text-sm text-slate-500 mt-1 max-w-[60ch] leading-relaxed">Gestiona y adquiere invitaciones para nuevos especialistas de forma segura. Compra al instante o solicita un paquete a medida.</p>
-								</div>
-							</div>
-
-							<div className="border-t border-slate-100" />
-
-							{/* Body */}
-							<CardContent className="p-6">
-								<div className="flex flex-col gap-5">
-									<div>
-										<label htmlFor="extraInvites" className="block text-xs font-semibold text-slate-600 mb-2">
-											Invitaciones extra
-										</label>
-
-										<div className="flex items-center gap-3">
-											<Input id="extraInvites" name="extraInvites" type="number" min={0} step={1} aria-label="Invitaciones extra" className="w-full h-12 rounded-md border border-slate-200 shadow-sm px-3 placeholder:text-slate-400" placeholder="0" value={String(extraInvites)} onChange={(e) => setExtraInvites(Number(e.target.value || 0))} />
-											<div className="inline-flex items-center justify-center px-3 py-2 rounded-md bg-slate-50 border border-slate-100 text-sm font-medium text-slate-700">x $10</div>
-										</div>
-
-										<div className="mt-3 flex items-center justify-between gap-4">
-											<div className="text-sm text-slate-500">Invitaciones disponibles</div>
-											<div className="text-sm font-semibold text-slate-800">{clinic.invitesAvailable ?? 0}</div>
-										</div>
-
-										<div className="mt-3 text-xs text-slate-400 leading-relaxed max-w-[60ch]">Las invitaciones extra se cobrarán al finalizar el checkout. Si necesitas un volumen mayor o facturación corporativa, contacta soporte.</div>
-									</div>
-
-									{/* Acciones — CTA principal y secundaria clara */}
-									<div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-										<Button onClick={handleSave} disabled={loading} className="w-full bg-gradient-to-r from-sky-700 to-teal-600 text-white px-5 py-3 rounded-lg shadow-md hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-sky-200">
-											{loading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Guardar cambios'}
-										</Button>
-
-										<div className="flex items-center justify-between gap-3">
-											<Button variant="outline" className="w-full px-5 py-3 border rounded-lg">
-												Ver historial
-											</Button>
-										</div>
-									</div>
-								</div>
-							</CardContent>
-						</Card>
+						</div>
 					</div>
 
-					{/* Chart (separado y con padding consistente) */}
+					{/* Storage */}
+					<div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+						<div className="flex items-center gap-3 p-6 border-b border-slate-100">
+							<Database className="w-5 h-5 text-sky-600" />
+							<div>
+								<h4 className="text-base font-semibold text-slate-900">Almacenamiento por especialista</h4>
+								<p className="text-xs text-slate-500 mt-0.5">Espacio reservado para documentos clínicos y multimedia</p>
+							</div>
+						</div>
+						<div className="p-6 space-y-4">
+							<div>
+								<label htmlFor="storagePerSpecialistMB" className="block text-xs font-medium uppercase tracking-wider text-slate-400 mb-2">
+									MB por especialista
+								</label>
+								<div className="flex items-center gap-3">
+									<Input id="storagePerSpecialistMB" name="storagePerSpecialistMB" type="number" min={100} step={50} className="h-11 rounded-xl" placeholder="500" value={String(form.storagePerSpecialistMB ?? 500)} onChange={handleChange} />
+									<span className="px-3 py-2 rounded-lg bg-slate-50 border border-slate-100 text-sm font-medium text-slate-600">MB</span>
+								</div>
+								<p className="text-xs text-slate-400 mt-2">Recomendado mínimo: <strong className="text-slate-700">500 MB</strong></p>
+							</div>
+							<Button onClick={handleSave} disabled={loading} className="w-full bg-gradient-to-r from-sky-600 to-teal-500 text-white hover:shadow-md transition-shadow rounded-xl">
+								{loading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Guardar cambios'}
+							</Button>
+						</div>
+					</div>
+
+					{/* Invitations */}
+					<div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+						<div className="flex items-center gap-3 p-6 border-b border-slate-100">
+							<UserPlus className="w-5 h-5 text-emerald-600" />
+							<div>
+								<h4 className="text-base font-semibold text-slate-900">Invitaciones</h4>
+								<p className="text-xs text-slate-500 mt-0.5">Adquiere invitaciones para nuevos especialistas</p>
+							</div>
+						</div>
+						<div className="p-6 space-y-4">
+							<div>
+								<label htmlFor="extraInvites" className="block text-xs font-medium uppercase tracking-wider text-slate-400 mb-2">
+									Invitaciones extra
+								</label>
+								<div className="flex items-center gap-3">
+									<Input id="extraInvites" name="extraInvites" type="number" min={0} step={1} className="h-11 rounded-xl" placeholder="0" value={String(extraInvites)} onChange={(e) => setExtraInvites(Number(e.target.value || 0))} />
+									<span className="px-3 py-2 rounded-lg bg-slate-50 border border-slate-100 text-sm font-medium text-slate-600">× $10</span>
+								</div>
+								<div className="mt-3 flex items-center justify-between">
+									<span className="text-xs text-slate-500">Disponibles actualmente</span>
+									<span className="text-sm font-semibold text-slate-800">{clinic.invitesAvailable ?? 0}</span>
+								</div>
+							</div>
+							<div className="grid grid-cols-2 gap-3">
+								<Button onClick={handleSave} disabled={loading} className="bg-gradient-to-r from-sky-600 to-teal-500 text-white hover:shadow-md transition-shadow rounded-xl">
+									{loading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Guardar'}
+								</Button>
+								<Button variant="outline" className="rounded-xl">Ver historial</Button>
+							</div>
+						</div>
+					</div>
+
+					{/* Chart */}
 					{clinic.planHistory && clinic.planHistory.length > 0 && (
-						<Card className="rounded-2xl shadow-sm ring-1 ring-slate-200 mt-6 overflow-hidden">
-							<CardHeader className="flex items-center gap-3 p-4 bg-white border-b border-slate-100">
+						<div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+							<div className="flex items-center gap-3 p-5 border-b border-slate-100">
 								<CalendarDays className="w-5 h-5 text-sky-600" />
-								<CardTitle className="text-md font-medium text-slate-900">Historial de especialistas</CardTitle>
-							</CardHeader>
-							<CardContent className="h-56 p-4">
+								<h4 className="text-base font-semibold text-slate-900">Historial de especialistas</h4>
+							</div>
+							<div className="p-5 h-56">
 								<ResponsiveContainer width="100%" height="100%">
 									<BarChart data={clinic.planHistory}>
-										<XAxis dataKey="date" tick={{ fontSize: 12 }} />
-										<YAxis tick={{ fontSize: 12 }} />
-										<Tooltip />
-										<Bar dataKey="specialists" fill="#06b6d4" radius={[6, 6, 0, 0]} />
+										<XAxis dataKey="date" tick={{ fontSize: 11 }} stroke="#94a3b8" />
+										<YAxis tick={{ fontSize: 11 }} stroke="#94a3b8" />
+										<Tooltip content={<CustomTooltip />} />
+										<Bar dataKey="specialists" fill="#0ea5e9" radius={[6, 6, 0, 0]} />
 									</BarChart>
 								</ResponsiveContainer>
-							</CardContent>
-						</Card>
+							</div>
+						</div>
 					)}
 				</div>
 
-				{/* Sidebar (cards seguras contra overflow — mejor legibilidad en anchos estrechos) */}
-				<aside className="space-y-6 w-full">
-					{/* Resumen principal */}
-					<Card className="w-full rounded-3xl shadow-lg border border-slate-100 p-6 bg-white overflow-hidden">
-						<div className="flex items-start gap-4">
-							{/* Avatar / iniciales */}
-							<div className="flex-shrink-0 flex items-center justify-center w-14 h-14 rounded-full bg-sky-50 border border-sky-100 text-sky-700 font-semibold text-lg" aria-hidden="true" title={clinic.legal_name ?? clinic.trade_name ?? 'Mi Clínica'}>
-								{(
-									(clinic.legal_name ?? clinic.trade_name ?? 'MC')
-										.split(' ')
-										.map((s) => s?.[0])
-										.join('')
-										.slice(0, 2) || 'MC'
-								).toUpperCase()}
+				{/* Sidebar */}
+				<aside className="space-y-5">
+					{/* Clinic summary */}
+					<div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6">
+						<div className="flex items-center gap-3 mb-5">
+							<div className="w-12 h-12 rounded-xl bg-sky-50 border border-sky-100 flex items-center justify-center text-sky-600 font-semibold text-sm" aria-hidden="true">
+								{((clinic.legal_name ?? 'MC').split(' ').map(s => s?.[0]).join('').slice(0, 2) || 'MC').toUpperCase()}
 							</div>
-
 							<div className="min-w-0">
-								<div className="text-xs font-medium text-slate-400">Resumen</div>
-
-								{/* Title: permitir quiebre y evitar overflow */}
-								<div className="mt-1 text-base font-semibold text-slate-900 leading-snug break-words max-w-full whitespace-normal">{clinic.legal_name ?? clinic.trade_name ?? 'Mi Clínica'}</div>
-
-								{/* Badges: permitir wrapping en anchos pequeños */}
-								<div className="mt-3 flex flex-wrap items-center gap-2 text-xs">
-									<span className="inline-flex items-center gap-2 px-2 py-1 rounded-lg bg-slate-50 text-slate-700">
-										<span className="text-[10px] text-slate-500">Plan</span>
-										<strong className="text-xs">{currentPlan?.name ?? 'Gratis'}</strong>
-									</span>
-
-									{clinic.subscriptionEndDate && (
-										<span className="text-xs text-slate-400 break-words">
-											Vence: <strong className="text-slate-700">{new Date(clinic.subscriptionEndDate).toLocaleDateString()}</strong>
-										</span>
-									)}
+								<p className="text-xs text-slate-400">Resumen</p>
+								<p className="text-sm font-semibold text-slate-900 truncate">{clinic.legal_name ?? 'Mi Clínica'}</p>
+								<div className="flex items-center gap-2 mt-1">
+									<span className="text-[10px] px-1.5 py-0.5 rounded-md bg-slate-100 text-slate-500">{currentPlan?.name ?? 'Gratis'}</span>
 								</div>
 							</div>
 						</div>
 
-						{/* Stats — cada bloque con padding y texto que se envuelve */}
-						<div className="mt-6 grid grid-cols-1 gap-3">
-							<div className="rounded-lg bg-slate-50 p-3 overflow-hidden">
-								<div className="text-[11px] text-slate-500">Especialistas</div>
-								<div className="mt-1 text-sm font-semibold text-slate-900">{clinic.specialistCount ?? 0}</div>
-								<div className="text-xs text-slate-400 mt-2 break-words">Número de especialistas activos en la organización</div>
-							</div>
-
-							<div className="rounded-lg bg-slate-50 p-3 overflow-hidden">
-								<div className="text-[11px] text-slate-500">Invitaciones</div>
-								<div className="mt-1 text-sm font-semibold text-slate-900">{clinic.invitesAvailable ?? 0}</div>
-								<div className="text-xs text-slate-400 mt-2 break-words">Invitaciones sin usar disponibles para asignar</div>
-							</div>
-
-							<div className="rounded-lg bg-slate-50 p-3 overflow-hidden">
-								<div className="text-[11px] text-slate-500">Almacenamiento / especialista</div>
-								<div className="mt-1 text-sm font-semibold text-slate-900">{clinic.storagePerSpecialistMB ?? 500} MB</div>
-								<div className="text-xs text-slate-400 mt-2 break-words">Espacio reservado por cada especialista</div>
-							</div>
+						<div className="space-y-3">
+							{[
+								{ label: 'Especialistas', value: clinic.specialistCount ?? 0, desc: 'Activos' },
+								{ label: 'Invitaciones', value: clinic.invitesAvailable ?? 0, desc: 'Disponibles' },
+								{ label: 'Almacenamiento', value: `${clinic.storagePerSpecialistMB ?? 500} MB`, desc: 'Por especialista' },
+							].map((item) => (
+								<div key={item.label} className="rounded-xl bg-slate-50 p-3">
+									<p className="text-[10px] font-medium uppercase tracking-wider text-slate-400">{item.label}</p>
+									<p className="text-sm font-semibold text-slate-900 mt-0.5">{item.value}</p>
+									<p className="text-xs text-slate-400 mt-1">{item.desc}</p>
+								</div>
+							))}
 						</div>
 
-						{/* Actions: botones con espacio, no overflow */}
-						<div className="mt-5 grid grid-cols-1 gap-3">
-							<Button onClick={handleSave} disabled={loading} className="w-full bg-gradient-to-r from-sky-700 to-teal-600 text-white px-4 py-3 rounded-lg shadow-sm hover:shadow-md focus:outline-none focus:ring-2 focus:ring-sky-100" aria-label="Guardar cambios">
+						<div className="mt-5 space-y-2">
+							<Button onClick={handleSave} disabled={loading} className="w-full bg-gradient-to-r from-sky-600 to-teal-500 text-white rounded-xl">
 								{loading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Guardar cambios'}
 							</Button>
-
-							<Button variant="ghost" className="w-full border rounded-lg px-4 py-3 text-slate-700 hover:bg-slate-50">
+							<Button variant="ghost" className="w-full rounded-xl text-slate-600 hover:bg-slate-50">
 								Editar perfil
 							</Button>
 						</div>
-					</Card>
+					</div>
 
-					{/* Soporte & Facturación */}
-					<Card className="w-full rounded-3xl shadow-lg border border-slate-100 p-5 bg-white overflow-hidden">
-						<div className="flex items-start gap-4">
-							<div className="w-10 h-10 flex items-center justify-center rounded-lg bg-amber-50 border border-amber-100 text-amber-700 flex-shrink-0">
-								<Mail className="w-5 h-5" />
-							</div>
-
-							<div className="min-w-0">
-								<div className="text-sm font-semibold text-slate-900">Soporte & Facturación</div>
-								<p className="mt-2 text-xs text-slate-500 leading-relaxed break-words">Para cambios avanzados en facturación, planes empresariales o facturación a nombre de la organización.</p>
-							</div>
+					{/* Support */}
+					<div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
+						<div className="flex items-center gap-3 mb-3">
+							<HelpCircle className="w-5 h-5 text-amber-500" />
+							<p className="text-sm font-semibold text-slate-900">Soporte y Facturación</p>
 						</div>
-
-						<div className="mt-5 grid grid-cols-1 gap-3">
-							<Button variant="ghost" className="w-full px-4 py-3 rounded-lg text-slate-700 hover:bg-slate-50" onClick={() => window.open('mailto:ashirasoftware@gmail.com')}>
-								Contactar soporte
-							</Button>
-						</div>
-					</Card>
+						<p className="text-xs text-slate-500 leading-relaxed mb-4">
+							Para cambios avanzados en facturación, planes empresariales o facturación corporativa.
+						</p>
+						<Button
+							variant="ghost"
+							className="w-full rounded-xl text-slate-600 hover:bg-slate-50"
+							onClick={() => window.open('mailto:ashirasoftware@gmail.com')}
+						>
+							Contactar soporte
+						</Button>
+					</div>
 				</aside>
 			</section>
 
 			{/* Confirm Upgrade Modal */}
 			{showConfirmUpgrade && recommendedPlan && (
-				<div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
-					<div role="dialog" aria-modal="true" className="w-full max-w-2xl bg-white rounded-2xl shadow-2xl p-6">
+				<div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm px-4">
+					<motion.div
+						role="dialog"
+						aria-modal="true"
+						className="w-full max-w-lg bg-white rounded-2xl shadow-2xl p-6 border border-slate-100"
+						initial={{ opacity: 0, scale: 0.95 }}
+						animate={{ opacity: 1, scale: 1 }}
+						transition={{ duration: 0.2 }}
+					>
 						<div className="flex items-start justify-between gap-4">
 							<div>
-								<h3 className="text-xl font-semibold text-slate-900">Actualizar al plan recomendado</h3>
+								<h3 className="text-xl font-semibold text-slate-900">Actualizar plan</h3>
 								<p className="mt-2 text-sm text-slate-600">
-									Recomendado para {recommendedPlan.minSpecialists}–{recommendedPlan.maxSpecialists} especialistas: <strong>{recommendedPlan.name}</strong>.
+									Plan <strong>{recommendedPlan.name}</strong> para {recommendedPlan.minSpecialists}–{recommendedPlan.maxSpecialists} especialistas.
 								</p>
 								<p className="mt-1 text-sm text-slate-700">
-									Precio: <strong>${recommendedPlan.monthlyPrice.toFixed(2)}</strong> / mes (facturación mensual).
+									Precio: <strong>${recommendedPlan.monthlyPrice.toFixed(2)}</strong> / mes
 								</p>
 							</div>
-
-							<button onClick={() => setShowConfirmUpgrade(false)} className="p-2 rounded-md hover:bg-slate-100">
-								<X className="w-5 h-5 text-slate-600" />
+							<button
+								onClick={() => setShowConfirmUpgrade(false)}
+								className="p-2 rounded-xl hover:bg-slate-100 transition-colors"
+								aria-label="Cerrar"
+							>
+								<X className="w-5 h-5 text-slate-500" />
 							</button>
 						</div>
 
 						<div className="mt-6 flex gap-3">
-							<Button onClick={handleConfirmUpgrade} disabled={upgrading} className="bg-gradient-to-r from-sky-600 to-teal-500 text-white px-4 py-2">
-								{upgrading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Confirmar y continuar al checkout'}
+							<Button onClick={handleConfirmUpgrade} disabled={upgrading} className="bg-gradient-to-r from-sky-600 to-teal-500 text-white rounded-xl">
+								{upgrading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Confirmar y continuar'}
 							</Button>
-							<Button variant="ghost" onClick={() => setShowConfirmUpgrade(false)} className="px-4 py-2">
+							<Button variant="ghost" onClick={() => setShowConfirmUpgrade(false)} className="rounded-xl">
 								Cancelar
 							</Button>
 						</div>
-
-						<div className="mt-4 text-xs text-slate-400">El proceso abrirá un checkout seguro. No se realizará ningún cargo hasta completar el pago.</div>
-					</div>
+						<p className="mt-3 text-xs text-slate-400">No se realizará ningún cargo hasta completar el pago.</p>
+					</motion.div>
 				</div>
 			)}
 		</motion.div>

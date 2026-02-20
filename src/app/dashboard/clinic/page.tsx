@@ -1,34 +1,30 @@
+/** @refactored ASHIRA Clinic Dashboard - Main Dashboard Page */
 import React from 'react';
 import ClinicStats from '@/components/ClinicStats';
 import SpecialistsTable from '@/components/SpecialistsTable';
 import PatientsList from '@/components/PatientsList';
 import { createSupabaseServerClient } from '@/app/adapters/server';
 import { tryRestoreSessionFromCookies } from '@/lib/auth-guards';
-import { cookies } from 'next/headers';
+import { CalendarDays, MapPin, Phone, Users, Crown, Link2, UserPlus } from 'lucide-react';
+import Link from 'next/link';
 
 /**
  * Obtiene organizationId desde la sesión de Supabase
  */
 export async function getCurrentOrganizationId(supabase: any): Promise<string | null> {
 	try {
-		// DEBUG: Listar cookies
 		const { cookies } = await import('next/headers');
 		const cookieStore = await cookies();
 		const allCookies = cookieStore.getAll();
 		console.log('[Clinic Dashboard] Available cookies:', allCookies.map(c => c.name));
 
-		// 1. Intentar getUser normal
 		let { data: { user }, error: authError } = await supabase.auth.getUser();
 		
-		// 2. Si falla, intentar restaurar sesión desde cookies legacy/custom
 		if (authError || !user) {
 			console.warn('[Clinic Dashboard] getUser failed, trying to restore session from cookies...');
-			
 			const restored = await tryRestoreSessionFromCookies(supabase, cookieStore);
-			
 			if (restored) {
 				console.log('[Clinic Dashboard] Session restored from cookies!');
-				// Reintentar getUser
 				const result = await supabase.auth.getUser();
 				user = result.data.user;
 				authError = result.error;
@@ -44,15 +40,12 @@ export async function getCurrentOrganizationId(supabase: any): Promise<string | 
 
 		console.log('[Clinic Dashboard] User authenticated:', user.id);
 
-		// Usamos tabla "User" y buscamos organizationId por authId
 		const { data, error } = await supabase
 			.from('users')
 			.select('organizationId, role, id')
 			.eq('authId', user.id)
 			.limit(1)
 			.maybeSingle();
-
-
 
 		if (error) {
 			console.warn('[Clinic Dashboard] Supabase error fetching user organizationId:', error);
@@ -77,11 +70,6 @@ export async function getCurrentOrganizationId(supabase: any): Promise<string | 
  */
 async function fetchRecentPatientsForOrgViaSupabase(supabase: any, organizationId: string, take = 8) {
 	try {
-		// 1) Obtener todos los pacientes (esto podría optimizarse si hubiera relación directa, pero mantenemos lógica similar)
-		// NOTA: Idealmente deberíamos filtrar por organización si hubiera relación directa.
-		// Al no haberla directa en el schema inferido, seguimos la lógica de buscar usuarios PACIENTE de la org.
-		
-		// Obtener users con role = 'PACIENTE' y organizationId = organizationId
 		const { data: patientUsers, error: usersErr } = await supabase
 			.from('users')
 			.select('id, email, organizationId, role, patientProfileId')
@@ -97,7 +85,6 @@ async function fetchRecentPatientsForOrgViaSupabase(supabase: any, organizationI
 			return [];
 		}
 
-		// Obtener los IDs de perfil de paciente
 		const patientProfileIds = patientUsers
 			.map((u: { patientProfileId: string | null }) => u.patientProfileId)
 			.filter((id: string | null): id is string => id !== null);
@@ -106,7 +93,6 @@ async function fetchRecentPatientsForOrgViaSupabase(supabase: any, organizationI
 			return [];
 		}
 
-		// Traer los pacientes que coincidan con esos IDs
 		const { data: matchedPatients, error: patientsErr } = await supabase
 			.from('patient')
 			.select('*')
@@ -119,7 +105,6 @@ async function fetchRecentPatientsForOrgViaSupabase(supabase: any, organizationI
 			return [];
 		}
 
-		// Mapear resultados
 		const patientToUserMap = new Map();
 		patientUsers.forEach((u: { patientProfileId: string | null; id: string; email: string | null; organizationId: string | null; role: string }) => {
 			if (u.patientProfileId) patientToUserMap.set(String(u.patientProfileId), u);
@@ -145,24 +130,42 @@ async function fetchRecentPatientsForOrgViaSupabase(supabase: any, organizationI
 	}
 }
 
+function formatDateSpanish(): string {
+	const now = new Date();
+	return now.toLocaleDateString('es-VE', {
+		weekday: 'long',
+		day: 'numeric',
+		month: 'long',
+		year: 'numeric',
+	});
+}
+
+function getGreeting(): string {
+	const hour = new Date().getHours();
+	if (hour < 12) return 'Buenos días';
+	if (hour < 18) return 'Buenas tardes';
+	return 'Buenas noches';
+}
+
 export default async function ClinicDashboardPage() {
 	const supabase = await createSupabaseServerClient();
 	const organizationId = await getCurrentOrganizationId(supabase);
 
 	if (!organizationId) {
 		return (
-			<div className="max-w-6xl mx-auto p-6">
-				<div className="bg-white rounded-2xl p-8 shadow">
-					<h1 className="text-2xl md:text-3xl font-bold text-slate-800">Resumen de la clínica</h1>
-					<p className="mt-3 text-slate-600">
-						No se detectó la organización en la sesión. Asegúrate de que el usuario esté autenticado y que su <code>authId</code> esté guardado en la tabla <code>User.authId</code>.
+			<div className="space-y-6">
+				<div className="bg-white rounded-2xl border border-slate-100 p-8 shadow-sm">
+					<h1 className="text-2xl font-bold text-slate-900">Resumen de la clínica</h1>
+					<p className="mt-3 text-slate-500 leading-relaxed">
+						No se detectó la organización en la sesión. Asegúrate de que el usuario esté
+						autenticado y que su <code className="px-1 py-0.5 bg-slate-100 rounded text-xs">authId</code> esté
+						guardado en la tabla <code className="px-1 py-0.5 bg-slate-100 rounded text-xs">User.authId</code>.
 					</p>
 				</div>
 			</div>
 		);
 	}
 
-	// Ejecutar consultas en paralelo
 	const [
 		orgResponse,
 		specialistsCountResponse,
@@ -180,76 +183,154 @@ export default async function ClinicDashboardPage() {
 	const org = orgResponse.data;
 	const specialistsCount = specialistsCountResponse.count ?? 0;
 	const recentSpecialists = recentSpecialistsResponse.data ?? [];
-	const invites = invitesResponse.data ?? [];
 
 	return (
-		<div className="max-w-7xl mx-auto p-6 space-y-6">
-			<header className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-				<div>
-					<h1 className="text-2xl md:text-3xl font-bold text-slate-900">{org?.name ?? 'Mi Clínica'}</h1>
-					<div className="text-sm text-slate-600 mt-1">{org?.type ?? '—'}</div>
-				</div>
-				<div className="flex items-center gap-6">
-					<div className="text-sm text-slate-700 text-right">
-						<div className="text-xs text-slate-500">Especialistas registrados</div>
-						<div className="text-xl font-semibold text-slate-900">{specialistsCount}</div>
+		<div className="space-y-8">
+			{/* Hero Header */}
+			<header className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6 sm:p-8">
+				<div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-5">
+					<div>
+						<p className="text-sm text-slate-500 mb-1">{getGreeting()}</p>
+						<h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-slate-900">
+							{org?.name ?? 'Mi Clínica'}
+						</h1>
+						<div className="flex items-center gap-2 mt-2 text-sm text-slate-500">
+							<CalendarDays className="w-4 h-4 text-slate-400" />
+							<span className="capitalize">{formatDateSpanish()}</span>
+						</div>
+
+						{/* Chips de estado */}
+						<div className="flex flex-wrap items-center gap-2 mt-4">
+							{org?.type && (
+								<span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-slate-50 text-xs font-medium text-slate-600 border border-slate-100">
+									{org.type}
+								</span>
+							)}
+							<span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-sky-50 text-xs font-medium text-sky-700 border border-sky-100">
+								<Users className="w-3 h-3" />
+								{specialistsCount} especialista{specialistsCount !== 1 ? 's' : ''}
+							</span>
+							{org?.planId && (
+								<span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-50 text-xs font-medium text-emerald-700 border border-emerald-100">
+									<Crown className="w-3 h-3" />
+									Plan: {org.planId}
+								</span>
+							)}
+						</div>
 					</div>
-					<div className="text-sm text-slate-700 text-right">
-						<div className="text-xs text-slate-500">Plan</div>
-						<div className="text-lg font-medium text-slate-800">{org?.planId ?? 'Sin plan'}</div>
+
+					<div className="flex gap-3 shrink-0">
+						<Link
+							href="/dashboard/clinic/specialists/new"
+							className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-sky-600 to-teal-500 text-white text-sm font-medium shadow-sm hover:shadow-md transition-shadow"
+						>
+							<UserPlus className="w-4 h-4" />
+							Invitar especialista
+						</Link>
+						<Link
+							href="/dashboard/clinic/invites"
+							className="hidden sm:inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-slate-200 bg-white text-sm text-slate-700 hover:bg-slate-50 transition-colors"
+						>
+							Ver invitaciones
+						</Link>
 					</div>
 				</div>
 			</header>
 
-			<ClinicStats organization={org} specialistsCount={specialistsCount} recentPatientsCount={recentPatients.length} />
+			{/* Stats */}
+			<ClinicStats
+				organization={org}
+				specialistsCount={specialistsCount}
+				recentPatientsCount={recentPatients.length}
+			/>
 
+			{/* Main Grid: 2/3 + 1/3 */}
 			<section className="grid grid-cols-1 lg:grid-cols-3 gap-6">
 				<div className="lg:col-span-2 space-y-6">
 					<SpecialistsTable users={recentSpecialists} />
-
-					{/* Pasamos clinicOrganizationId para que el componente UI use el mismo filtro (aunque ya se filtró en servidor) */}
 					<PatientsList patients={recentPatients} clinicOrganizationId={organizationId} />
-					{/* <InviteList initialInvites={invites} organizationId={organizationId} totalSlots={org?.specialistCount ?? invites.length} /> */}
 				</div>
 
-				<aside aria-labelledby="org-details-title" className="space-y-6">
-					<div className="relative bg-white/95 border border-slate-200 rounded-2xl p-6 shadow-md max-w-sm">
-						<div className="absolute -top-3 left-6 w-20 h-1 rounded-full bg-gradient-to-r from-sky-600 to-indigo-600 shadow-sm" aria-hidden />
+				{/* Sidebar de detalles */}
+				<aside aria-labelledby="org-details-title" className="space-y-5">
+					{/* Card de detalles de la org */}
+					<div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6">
+						<div className="flex items-center gap-2 mb-4">
+							<div className="w-1.5 h-6 rounded-full bg-gradient-to-b from-sky-500 to-teal-400" aria-hidden="true" />
+							<h3 id="org-details-title" className="text-base font-semibold text-slate-900">
+								Detalles de la clínica
+							</h3>
+						</div>
 
-						<h3 id="org-details-title" className="text-lg font-semibold text-slate-800 mb-1">
-							Detalles
-						</h3>
-						<p className="text-sm text-slate-500 mb-4">Información de contacto y plazas planificadas</p>
-
-						<dl className="grid gap-4 text-sm text-slate-600">
-							<div className="flex flex-col">
-								<dt className="text-xs text-slate-500">Dirección</dt>
-								<dd className="mt-1 font-medium text-slate-800 break-words">{org?.address ?? '—'}</dd>
+						<dl className="space-y-4">
+							<div className="flex items-start gap-3">
+								<MapPin className="w-4 h-4 text-slate-400 mt-0.5 shrink-0" />
+								<div>
+									<dt className="text-xs text-slate-400 font-medium">Dirección</dt>
+									<dd className="text-sm text-slate-700 mt-0.5 break-words">{org?.address ?? '—'}</dd>
+								</div>
 							</div>
 
-							<div className="flex flex-col">
-								<dt className="text-xs text-slate-500">Teléfono</dt>
-								<dd className="mt-1 font-medium text-slate-800">{org?.phone ?? '—'}</dd>
+							<div className="flex items-start gap-3">
+								<Phone className="w-4 h-4 text-slate-400 mt-0.5 shrink-0" />
+								<div>
+									<dt className="text-xs text-slate-400 font-medium">Teléfono</dt>
+									<dd className="text-sm text-slate-700 mt-0.5">{org?.phone ?? '—'}</dd>
+								</div>
 							</div>
 
-							<div className="flex flex-col">
-								<dt className="text-xs text-slate-500">Especialistas planeados</dt>
-								<dd className="mt-1 font-medium text-slate-800">{org?.specialistCount ?? 0}</dd>
+							<div className="flex items-start gap-3">
+								<Users className="w-4 h-4 text-slate-400 mt-0.5 shrink-0" />
+								<div>
+									<dt className="text-xs text-slate-400 font-medium">Capacidad de especialistas</dt>
+									<dd className="text-sm text-slate-700 mt-0.5">{org?.specialistCount ?? 0} máximo</dd>
+								</div>
 							</div>
 
 							{org?.inviteBaseUrl && (
-								<div className="flex flex-col">
-									<dt className="text-xs text-slate-500">Link de invitación</dt>
-									<dd className="mt-1 font-medium text-slate-800 break-words">
-										<a href={org.inviteBaseUrl} target="_blank" rel="noopener noreferrer" className="inline-block truncate max-w-full text-sm hover:underline" title={org.inviteBaseUrl}>
-											{org.inviteBaseUrl}
-										</a>
-									</dd>
+								<div className="flex items-start gap-3">
+									<Link2 className="w-4 h-4 text-slate-400 mt-0.5 shrink-0" />
+									<div className="min-w-0">
+										<dt className="text-xs text-slate-400 font-medium">Link de invitación</dt>
+										<dd className="text-sm text-sky-600 mt-0.5 break-all">
+											<a href={org.inviteBaseUrl} target="_blank" rel="noopener noreferrer" className="hover:underline">
+												{org.inviteBaseUrl}
+											</a>
+										</dd>
+									</div>
 								</div>
 							)}
 						</dl>
+					</div>
 
-						<div className="mt-4 text-xs text-slate-400">Puedes copiar o abrir el enlace desde la configuración.</div>
+					{/* Accesos rápidos */}
+					<div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
+						<h4 className="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-3">
+							Accesos rápidos
+						</h4>
+						<div className="flex flex-col gap-2">
+							<Link
+								href="/dashboard/clinic/settings"
+								className="flex items-center justify-between px-3 py-2.5 rounded-xl hover:bg-slate-50 text-sm text-slate-700 transition-colors group"
+							>
+								<span>Configuración</span>
+								<span className="text-slate-300 group-hover:text-slate-500 transition-colors">→</span>
+							</Link>
+							<Link
+								href="/dashboard/clinic/analytics/kpis"
+								className="flex items-center justify-between px-3 py-2.5 rounded-xl hover:bg-slate-50 text-sm text-slate-700 transition-colors group"
+							>
+								<span>KPIs y Analítica</span>
+								<span className="text-slate-300 group-hover:text-slate-500 transition-colors">→</span>
+							</Link>
+							<Link
+								href="/dashboard/clinic/profile"
+								className="flex items-center justify-between px-3 py-2.5 rounded-xl hover:bg-slate-50 text-sm text-slate-700 transition-colors group"
+							>
+								<span>Perfil de la clínica</span>
+								<span className="text-slate-300 group-hover:text-slate-500 transition-colors">→</span>
+							</Link>
+						</div>
 					</div>
 				</aside>
 			</section>
