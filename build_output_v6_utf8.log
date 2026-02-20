@@ -1,0 +1,57 @@
+﻿
+> my-app@0.1.0 build C:\Users\Dereck\Desktop\Proyectos Grandes\Clinica_Syncwave_MVP\my-app
+> next build
+
+node.exe : [baseline-browser-mapping] The data in this module is over two 
+months old.  To ensure accurate Baseline data, please update: `npm i 
+baseline-browser-mapping@latest -D`
+En C:\Users\Dereck\AppData\Roaming\npm\pnpm.ps1: 24 Carácter: 5
++     & "node$exe"  "$basedir/node_modules/pnpm/bin/pnpm.cjs" $args
++     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: ([baseline-brows...ping@lates 
+   t -D`:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+   Ôû▓ Next.js 16.0.7 (Turbopack)
+   - Environments: .env.local, .env
+
+   Creating an optimized production build ...
+[baseline-browser-mapping] The data in this module is over two months 
+old.  To ensure accurate Baseline data, please update: `npm i 
+baseline-browser-mapping@latest -D`
+
+> Build error occurred
+Error: Turbopack build failed with 1 errors:
+./src/app/api/register/route.ts:7:1
+Module not found: Can't resolve 'zod'
+[0m [90m  5 |[39m [36mimport[39m { createClient[33m,[39m type 
+[33mSupabaseClient[39m } [36mfrom[39m 
+[32m'@supabase/supabase-js'[39m[33m;[39m
+ [90m  6 |[39m [36mimport[39m bcrypt [36mfrom[39m 
+[32m'bcryptjs'[39m[33m;[39m
+[31m[1m>[22m[39m[90m  7 |[39m [36mimport[39m { z } [36mfrom[39m 
+[32m'zod'[39m[33m;[39m
+ [90m    |[39m [31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[
+39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^
+[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m
+[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39
+m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[2
+2m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[
+1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m
+ [90m  8 |[39m [36mimport[39m { createNotification } [36mfrom[39m 
+[32m'@/lib/notifications'[39m[33m;[39m
+ [90m  9 |[39m
+ [90m 10 |[39m [36mconst[39m [33mSUPABASE_URL[39m [33m=[39m 
+process[33m.[39menv[33m.[39m[33mSUPABASE_URL[39m 
+[33m?[39m[33m?[39m 
+process[33m.[39menv[33m.[39m[33mNEXT_PUBLIC_SUPABASE_URL[39m 
+[33m?[39m[33m?[39m [32m''[39m[33m;[39m[0m
+
+
+
+https://nextjs.org/docs/messages/module-not-found
+
+
+    at <unknown> (./src/app/api/register/route.ts:7:1)
+    at <unknown> (https://nextjs.org/docs/messages/module-not-found)
+ÔÇëELIFECYCLEÔÇë Command failed with exit code 1.

@@ -7,13 +7,16 @@ import Link from 'next/link';
 export default function QuotePendingPage() {
   const router = useRouter();
   const [details, setDetails] = useState<{ specialists: string; sedes: string } | null>(null);
+  const [orgId, setOrgId] = useState<string | null>(null);
 
   useEffect(() => {
     const specialists = localStorage.getItem('pendingQuote_specialistCount');
     const sedes = localStorage.getItem('pendingQuote_sedeCount');
+    const orgIdVal = localStorage.getItem('pendingQuote_organizationId');
     if (specialists && sedes) {
       setDetails({ specialists, sedes });
     }
+    setOrgId(orgIdVal);
   }, []);
 
   return (
@@ -73,7 +76,7 @@ export default function QuotePendingPage() {
 
         <div className="bg-slate-50 p-6 border-t border-slate-200 text-center">
           <p className="text-xs text-slate-500">
-            ID de Solicitud de Organización: <span className="font-mono text-slate-700">{localStorage.getItem('pendingQuote_organizationId')?.slice(0, 8) || '---------'}</span>
+            ID de Solicitud de Organización: <span className="font-mono text-slate-700">{orgId?.slice(0, 8) || '---------'}</span>
           </p>
         </div>
       </div>

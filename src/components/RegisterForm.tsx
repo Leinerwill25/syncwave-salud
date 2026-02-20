@@ -1491,11 +1491,11 @@ export default function RegisterForm(): React.ReactElement {
 									lat={locationLat}
 									lng={locationLng}
 									address={address}
-									onLocationSelect={(lat, lng) => {
+									onLocationSelect={(lat: number, lng: number) => {
 										setLocationLat(lat);
 										setLocationLng(lng);
 									}}
-									onAddressChange={(addr) => setAddress(addr)}
+									onAddressChange={(addr: string) => setAddress(addr)}
 									inputClass={inputClass}
 								/>
 							</label>

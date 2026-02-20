@@ -20,8 +20,6 @@ const nextConfig: NextConfig = {
 	// Optimizaciones de rendimiento
 	experimental: {
 		optimizePackageImports: ['lucide-react', '@radix-ui/react-icons', 'framer-motion'],
-		// Optimizar prefetching
-		optimisticClientCache: true,
 	},
 	// Compresión (habilitada por defecto en Next.js 16)
 	compress: true,
@@ -67,6 +65,10 @@ const nextConfig: NextConfig = {
 				],
 			},
 		];
+	},
+	// Configurar el root para Turbopack para evitar problemas de detección de workspace
+	turbopack: {
+		root: 'C:/Users/Dereck/Desktop/Proyectos Grandes/Clinica_Syncwave_MVP/my-app',
 	},
 };
 

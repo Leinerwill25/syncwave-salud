@@ -136,7 +136,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 			return NextResponse.json({ 
 				ok: false, 
 				message: 'Error de validación', 
-				errors: validation.error.errors 
+				errors: validation.error.issues 
 			}, { status: 400 });
 		}
 
@@ -999,4 +999,31 @@ const isDev = process.env.NODE_ENV === 'development';
 			{ status: 500 }
 		);
 	}
+}
+
+function isObject(val: unknown): val is Record<string, unknown> {
+	return val !== null && typeof val === 'object' && !Array.isArray(val);
+}
+
+function safeNumber(val: unknown): number | null {
+	if (val === null || val === undefined) return null;
+	const n = Number(val);
+	return isNaN(n) ? null : n;
+}
+
+function parseSupabaseCreateResp(resp: unknown): { id?: string; email?: string } | null {
+	if (!resp || typeof resp !== 'object') return null;
+	const r = resp as Record<string, unknown>;
+	if (r.data && typeof r.data === 'object' && 'user' in r.data) {
+		const u = (r.data as { user: unknown }).user;
+		if (u && typeof u === 'object') {
+			const user = u as Record<string, unknown>;
+			return { id: typeof user.id === 'string' ? user.id : undefined, email: typeof user.email === 'string' ? user.email : undefined };
+		}
+	}
+	if (r.user && typeof r.user === 'object') {
+		const u = r.user as Record<string, unknown>;
+		return { id: typeof u.id === 'string' ? u.id : undefined, email: typeof u.email === 'string' ? u.email : undefined };
+	}
+	return null;
 }
