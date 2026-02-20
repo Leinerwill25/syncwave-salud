@@ -170,7 +170,7 @@ export default async function ClinicDashboardPage() {
 		recentPatients,
 		invitesResponse
 	] = await Promise.all([
-		supabase.from('organization').select('id, name, type, address, phone, specialistCount, planId, inviteBaseUrl').eq('id', organizationId).single(),
+		supabase.from('organization').select('id, name, type, address, phone, specialistCount, sede_count, planId, inviteBaseUrl').eq('id', organizationId).single(),
 		supabase.from('users').select('*', { count: 'exact', head: true }).eq('organizationId', organizationId).eq('role', 'MEDICO'),
 		supabase.from('users').select('id, email, name, createdAt').eq('organizationId', organizationId).eq('role', 'MEDICO').order('createdAt', { ascending: false }).limit(8),
 		fetchRecentPatientsForOrgViaSupabase(supabase, organizationId, 8),

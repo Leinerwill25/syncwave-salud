@@ -11,10 +11,10 @@ export default function ConditionalMain({ children }: { children: React.ReactNod
 	// Las páginas públicas de consultorios (/c/) tampoco necesitan padding
 	const isDashboard = pathname.startsWith('/dashboard');
 	const isLanding = pathname.startsWith('/landing') || pathname === '/';
-	const isLoginOrRegister = pathname.startsWith('/login') || pathname.startsWith('/register');
+	const isLoginOrRegister = pathname.startsWith('/login') || pathname.startsWith('/register') || pathname.startsWith('/invite');
 	const isPublicConsultorio = pathname.startsWith('/c/');
 	
-	// No agregar padding a dashboards, landing pages, login, register o páginas públicas de consultorios
+	// No agregar padding a dashboards, landing pages, login, register, invites o páginas públicas de consultorios
 	const paddingClass = (isDashboard || isLanding || isLoginOrRegister || isPublicConsultorio) ? '' : 'pt-16';
 	
 	return (

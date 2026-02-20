@@ -34,7 +34,7 @@ const AccountSchema = z.object({
 	email: z.string().email().max(255),
 	fullName: z.string().min(1).max(100),
 	password: z.string().min(8).max(100),
-	role: z.enum(['ADMIN', 'MEDICO', 'ENFERMERA', 'RECEPCION', 'FARMACIA', 'PACIENTE']).optional(),
+	role: z.enum(['ADMIN', 'MEDICO', 'ENFERMERA', 'RECEPCION', 'FARMACIA', 'PACIENTE', 'LABORATORIO']).optional(),
 });
 
 const OrganizationSchema = z.object({
@@ -95,7 +95,7 @@ const RegisterSchema = z.object({
 type RegisterBody = z.infer<typeof RegisterSchema>;
 
 /* ---------- Tipos locales ---------- */
-export const USER_ROLES = ['ADMIN', 'MEDICO', 'ENFERMERA', 'RECEPCION', 'FARMACIA', 'PACIENTE'] as const;
+export const USER_ROLES = ['ADMIN', 'MEDICO', 'ENFERMERA', 'RECEPCION', 'FARMACIA', 'PACIENTE', 'LABORATORIO'] as const;
 export type UserRoleLocal = (typeof USER_ROLES)[number];
 
 const ORG_TYPES = ['CLINICA', 'HOSPITAL', 'CONSULTORIO', 'FARMACIA', 'LABORATORIO'] as const;
@@ -324,7 +324,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 						email: account.email,
 						password: account.password,
 						user_metadata: { fullName: account.fullName, role: role },
-						email_confirm: false, // Cambiar a false para requerir verificación de email
+						email_confirm: true, // Set to true to allow immediate login after registration
 					};
 					const createResp = await supabaseAdmin.auth.admin.createUser(payload as unknown as Record<string, unknown>);
 					const parsedResp = parseSupabaseCreateResp(createResp);
@@ -695,7 +695,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 						patientId: patientRecord?.id ?? null,
 						planId: null,
 						stripeSubscriptionId: null,
-						status: 'TRIALING', // USER-DEFINED type según Database.sql
+						status: plan?.requiresQuote ? 'PENDING_QUOTE' : 'TRIALING', // USER-DEFINED type según Database.sql
 						startDate: now.toISOString(),
 						endDate: addOneMonth(now).toISOString(),
 						planSnapshot: {

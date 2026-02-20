@@ -63,8 +63,8 @@ export default async function InvitePage({ params }: { params: Promise<{ token: 
 	const expired = invite.expiresAt < new Date();
 
 	return (
-		<div className="min-h-[calc(100vh-80px)] flex items-start justify-center bg-slate-50 pt-10 pb-12 px-4">
-			<div className="w-full max-w-2xl mt-8">
+		<div className="min-h-screen flex items-start justify-center bg-slate-50 pt-24 pb-12 px-4 transition-all duration-500">
+			<div className="w-full max-w-2xl">
 				<div className="bg-white border border-slate-100 rounded-2xl shadow-md p-8">
 					<div className="mb-6">
 						<h1 className="text-2xl md:text-3xl font-semibold text-slate-900">

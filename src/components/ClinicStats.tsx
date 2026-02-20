@@ -11,6 +11,7 @@ type Org = {
 	address?: string | null;
 	phone?: string | null;
 	specialistCount?: number | null;
+	sede_count?: number | null;
 	planId?: string | null;
 };
 
@@ -111,8 +112,13 @@ export default function ClinicStats({ organization, specialistsCount, recentPati
 
 					<div className="mt-3 grid grid-cols-2 gap-2">
 						<div className="p-2 rounded-lg bg-slate-50 text-center">
-							<div className="text-xs text-slate-500">Consultorios</div>
+							<div className="text-xs text-slate-500">Especialistas (Capac.)</div>
 							<div className="text-sm font-medium text-slate-800">{organization?.specialistCount ?? '—'}</div>
+						</div>
+
+						<div className="p-2 rounded-lg bg-slate-50 text-center">
+							<div className="text-xs text-slate-500">Sedes</div>
+							<div className="text-sm font-medium text-slate-800">{organization?.sede_count ?? '—'}</div>
 						</div>
 
 						<div className="p-2 rounded-lg bg-slate-50 text-center">

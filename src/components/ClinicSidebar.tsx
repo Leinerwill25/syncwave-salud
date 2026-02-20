@@ -50,9 +50,9 @@ export default function ClinicSidebar() {
 
 	return (
 		// visible en md+ (ajusta breakpoint si prefieres xl)
-		<aside className="hidden md:block w-68" aria-label="Barra lateral del panel de la clínica">
-			<div className="sticky top-[calc(var(--navbar-height,64px)+1.25rem)]" style={{ zIndex: 30 }}>
-				<div className="flex flex-col gap-4 bg-white/70 backdrop-blur-md rounded-2xl p-4 shadow-lg ring-1 ring-slate-100 border border-slate-50">
+		<aside className="hidden md:block w-64 lg:w-68" aria-label="Barra lateral del panel de la clínica">
+			<div className="sticky top-[calc(64px+1.5rem)]" style={{ zIndex: 30 }}>
+				<div className="flex flex-col gap-4 bg-white/90 backdrop-blur-md rounded-2xl p-4 shadow-lg ring-1 ring-slate-200/50 border border-slate-100/50">
 					{/* Brand */}
 					<div className="flex items-center gap-3">
 						<div className="w-12 h-12 rounded-xl bg-linear-to-br from-sky-600 to-indigo-600 flex items-center justify-center text-white font-bold text-lg shadow-md ring-1 ring-white/20">SW</div>
@@ -108,16 +108,19 @@ export default function ClinicSidebar() {
 										<Link
 											href={l.href}
 											aria-current={active ? 'page' : undefined}
-											className={`group flex items-center gap-3 w-full px-3 py-2 rounded-lg transition-colors text-sm font-medium
-                        ${active ? 'bg-linear-to-r from-sky-600 to-indigo-600 text-white shadow-md' : 'text-slate-700 hover:bg-slate-50'}`}>
-											<span className={`flex items-center justify-center w-9 h-9 rounded-md transition ${active ? 'bg-white/10 text-white' : 'bg-slate-100 text-sky-600 group-hover:bg-sky-50'}`} aria-hidden>
+											className={`group flex items-center gap-3 w-full px-3 py-2 rounded-xl transition-all duration-300 text-sm font-medium
+                        hover:scale-[1.02] hover:shadow-sm active:scale-[0.98]
+                        ${active ? 'bg-linear-to-r from-sky-600 to-indigo-600 text-white shadow-md' : 'text-slate-700 hover:bg-white hover:shadow-md'}`}>
+											<span className={`flex items-center justify-center w-9 h-9 rounded-lg transition-all duration-300 ${active ? 'bg-white/10 text-white' : 'bg-slate-100 text-sky-600 group-hover:bg-sky-50'}`} aria-hidden>
 												{IconComp ? <IconComp className={`w-5 h-5 ${active ? 'text-white' : 'text-sky-600'}`} /> : null}
 											</span>
 
 											<span className="flex-1">{l.label}</span>
 
 											{/* subtle active indicator / chevron */}
-											<span className={`text-xs font-medium transition ${active ? 'opacity-100 text-white' : 'opacity-0 group-hover:opacity-60 text-slate-400'}`}>{active ? 'Activo' : ''}</span>
+											<span className={`text-xs font-medium transition-all duration-300 ${active ? 'opacity-100 text-white' : 'opacity-0 group-hover:opacity-60 text-sky-400'}`}>
+												{active ? <ChevronRight className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+											</span>
 										</Link>
 									</li>
 								);
