@@ -194,7 +194,26 @@ export default function ClinicSettingsPage(): React.ReactElement {
 	const [showConfirmUpgrade, setShowConfirmUpgrade] = useState<boolean>(false);
 
 	useEffect(() => {
-		fetchClinic();
+		let unsubscribe: (() => void) | null = null;
+
+		// Intentar obtener la sesión inmediatamente
+		supabase.auth.getSession().then(({ data: { session } }) => {
+			if (session?.access_token) {
+				// Sesión ya disponible — fetch directo
+				fetchClinic();
+			} else {
+				// Sesión aún no restaurada — esperar al evento SIGNED_IN
+				const { data: { subscription } } = supabase.auth.onAuthStateChange((event, sess) => {
+					if ((event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED' || event === 'INITIAL_SESSION') && sess?.access_token) {
+						fetchClinic();
+						subscription.unsubscribe();
+					}
+				});
+				unsubscribe = () => subscription.unsubscribe();
+			}
+		});
+
+		return () => { unsubscribe?.(); };
 		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, []);
 

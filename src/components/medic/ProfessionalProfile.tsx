@@ -570,8 +570,8 @@ export default function ProfessionalProfile({ config, onUpdate }: { config: Medi
 						</div>
 					</div>
 
-					{/* Configuración de WhatsApp para recordatorios */}
-					<div className="bg-gray-50 rounded-xl p-6 mt-6">
+					{/* Configuración de WhatsApp para recordatorios — Solo visible para consultorios privados */}
+					{!config.isAffiliated && <div className="bg-gray-50 rounded-xl p-6 mt-6">
 						<h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
 							<Smartphone className="w-5 h-5 text-emerald-600" />
 							Recordatorios por WhatsApp
@@ -655,7 +655,7 @@ por favor confirmar con un "Asistiré" o "No Asistiré"`}
 								</ul>
 							</div>
 						</div>
-					</div>
+					</div>}
 
 					{/* Combos de servicios (afiliado) */}
 					<div className="bg-gradient-to-br from-indigo-50 to-purple-50 rounded-xl p-8 mt-6 border border-indigo-100">

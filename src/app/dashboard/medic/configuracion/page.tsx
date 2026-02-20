@@ -45,13 +45,6 @@ export default function MedicConfigurationPage() {
 		}
 	};
 
-	const tabs: { id: TabType; label: string; icon: typeof Settings }[] = [
-		{ id: 'profile', label: 'Perfil Profesional', icon: User },
-		{ id: 'availability', label: 'Horarios', icon: Clock },
-		{ id: 'notifications', label: 'Preferencias', icon: Bell },
-		{ id: 'security', label: 'Seguridad', icon: Lock },
-		{ id: 'report', label: 'Informe Genérico', icon: FileText },
-	];
 
 	if (loading) {
 		return (
@@ -96,6 +89,15 @@ export default function MedicConfigurationPage() {
 	if (!config) {
 		return null;
 	}
+
+	const tabs: { id: TabType; label: string; icon: typeof Settings }[] = [
+		{ id: 'profile', label: 'Perfil Profesional', icon: User },
+		{ id: 'availability', label: 'Horarios', icon: Clock },
+		{ id: 'notifications', label: 'Preferencias', icon: Bell },
+		{ id: 'security', label: 'Seguridad', icon: Lock },
+		{ id: 'report', label: config.isAffiliated ? 'Informe Genérico (Solo lectura)' : 'Informe Genérico', icon: FileText },
+	];
+
 
 	return (
 		<div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-purple-50 p-4 sm:p-6">
@@ -228,7 +230,20 @@ export default function MedicConfigurationPage() {
 							/>
 						)}
 						{activeTab === 'report' && (
-							<GenericReportConfig />
+							<>
+								{config.isAffiliated && (
+									<div className="mb-4 p-4 bg-amber-50 border border-amber-200 rounded-xl flex items-start gap-3">
+										<Lock className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
+										<div>
+											<p className="text-sm font-semibold text-amber-800">Informe genérico (solo lectura)</p>
+											<p className="text-xs text-amber-700 mt-1">
+												Estás afiliado a {config.clinicProfile?.name ?? 'una clínica'}. El diseño del informe genérico lo gestiona el director de la clínica. Solo puedes visualizarlo.
+											</p>
+										</div>
+									</div>
+								)}
+								<GenericReportConfig readOnly={config.isAffiliated} />
+							</>
 						)}
 					</div>
 				</div>

@@ -6,7 +6,7 @@ import { toast } from 'sonner';
 import { createSupabaseBrowserClient } from '@/app/adapters/client';
 import { Document, Packer, Paragraph, TextRun, ImageRun, Header, Footer, AlignmentType, WidthType, Table, TableRow, TableCell, BorderStyle } from 'docx';
 
-export default function GenericReportConfig() {
+export default function GenericReportConfig({ readOnly = false }: { readOnly?: boolean }) {
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [config, setConfig] = useState<any>(null);
@@ -392,14 +392,16 @@ export default function GenericReportConfig() {
                             Personaliza la apariencia de tus informes médicos (colores, logo, fuentes).
                         </p>
                     </div>
-                    <button
-                        onClick={handleSave}
-                        disabled={saving}
-                        className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors disabled:opacity-50"
-                    >
-                        {saving ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-                        Guardar Cambios
-                    </button>
+                    {!readOnly && (
+                        <button
+                            onClick={handleSave}
+                            disabled={saving}
+                            className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors disabled:opacity-50"
+                        >
+                            {saving ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                            Guardar Cambios
+                        </button>
+                    )}
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
@@ -411,8 +413,8 @@ export default function GenericReportConfig() {
                             <label className="block text-sm font-medium text-gray-700 mb-2">Logo del Consultorio / Médico</label>
                             <div className="flex items-center gap-4">
                                 <div 
-                                    className="w-24 h-24 border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center bg-gray-50 overflow-hidden relative group cursor-pointer"
-                                    onClick={() => fileInputRef.current?.click()}
+                                    className={`w-24 h-24 border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center bg-gray-50 overflow-hidden relative group ${readOnly ? 'cursor-not-allowed opacity-70' : 'cursor-pointer'}`}
+                                    onClick={() => !readOnly && fileInputRef.current?.click()}
                                 >
                                     {logoPreview ? (
                                         <img src={logoPreview} alt="Logo" className="w-full h-full object-contain" />
@@ -430,10 +432,12 @@ export default function GenericReportConfig() {
                                         className="hidden" 
                                         accept="image/*" 
                                         onChange={handleLogoUpload}
+                                        disabled={readOnly}
                                     />
                                     <button 
-                                        onClick={() => fileInputRef.current?.click()}
-                                        className="text-sm text-indigo-600 font-medium hover:text-indigo-800"
+                                        onClick={() => !readOnly && fileInputRef.current?.click()}
+                                        disabled={readOnly}
+                                        className={`text-sm font-medium ${readOnly ? 'text-gray-400 cursor-not-allowed' : 'text-indigo-600 hover:text-indigo-800'}`}
                                     >
                                         Subir imagen
                                     </button>
@@ -454,7 +458,8 @@ export default function GenericReportConfig() {
                                         name="primary_color"
                                         value={formData.primary_color}
                                         onChange={handleInputChange}
-                                        className="h-10 w-16 p-1 rounded border border-gray-300 cursor-pointer"
+                                        disabled={readOnly}
+                                        className="h-10 w-16 p-1 rounded border border-gray-300 cursor-pointer disabled:cursor-not-allowed disabled:opacity-60"
                                     />
                                     <span className="text-sm font-mono text-gray-500">{formData.primary_color}</span>
                                 </div>
@@ -468,7 +473,8 @@ export default function GenericReportConfig() {
                                         name="secondary_color"
                                         value={formData.secondary_color}
                                         onChange={handleInputChange}
-                                        className="h-10 w-16 p-1 rounded border border-gray-300 cursor-pointer"
+                                        disabled={readOnly}
+                                        className="h-10 w-16 p-1 rounded border border-gray-300 cursor-pointer disabled:cursor-not-allowed disabled:opacity-60"
                                     />
                                     <span className="text-sm font-mono text-gray-500">{formData.secondary_color}</span>
                                 </div>
@@ -485,7 +491,8 @@ export default function GenericReportConfig() {
                                 name="font_family"
                                 value={formData.font_family}
                                 onChange={handleInputChange}
-                                className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                                disabled={readOnly}
+                                className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
                             >
                                 {fonts.map(font => (
                                     <option key={font.value} value={font.value}>{font.label}</option>
@@ -501,8 +508,9 @@ export default function GenericReportConfig() {
                                 name="header_text"
                                 value={formData.header_text}
                                 onChange={handleInputChange}
+                                disabled={readOnly}
                                 placeholder="Ej: Dr. Juan Pérez - Cardiología"
-                                className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                                className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
                             />
                         </div>
 
@@ -512,9 +520,10 @@ export default function GenericReportConfig() {
                                 name="footer_text"
                                 value={formData.footer_text}
                                 onChange={handleInputChange}
+                                disabled={readOnly}
                                 placeholder="Ej: Av. Principal, Consultorio 101. Tel: 555-1234. Email: doctor@email.com"
                                 rows={3}
-                                className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 resize-none"
+                                className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 resize-none disabled:bg-gray-100 disabled:cursor-not-allowed"
                             />
                         </div>
 
@@ -546,9 +555,10 @@ Plan / Tratamiento
                                 name="template_text"
                                 value={formData.template_text}
                                 onChange={handleInputChange}
+                                disabled={readOnly}
                                 placeholder="Escribe tu plantilla aquí..."
                                 rows={10}
-                                className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 font-mono text-sm"
+                                className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 font-mono text-sm disabled:bg-gray-100 disabled:cursor-not-allowed"
                             />
                             <div className="mt-2 p-3 bg-gray-50 rounded-lg border border-gray-200">
                                 <p className="text-xs font-semibold text-gray-600 mb-2">Variables Disponibles:</p>
