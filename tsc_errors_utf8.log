@@ -1,9 +1,0 @@
-﻿src/app/api/register/route.ts(7,19): error TS2307: Cannot find module 'zod' or its corresponding type declarations.
-src/app/api/register/route.ts(307,45): error TS2552: Cannot find name 'isObject'. Did you mean 'Object'?
-src/app/api/register/route.ts(330,25): error TS2304: Cannot find name 'parseSupabaseCreateResp'.
-src/app/api/register/route.ts(412,24): error TS2304: Cannot find name 'safeNumber'.
-src/app/api/register/route.ts(413,19): error TS2304: Cannot find name 'safeNumber'.
-src/app/api/register/route.ts(807,24): error TS2304: Cannot find name 'safeNumber'.
-src/components/RegisterForm.tsx(1494,29): error TS7006: Parameter 'lat' implicitly has an 'any' type.
-src/components/RegisterForm.tsx(1494,34): error TS7006: Parameter 'lng' implicitly has an 'any' type.
-src/components/RegisterForm.tsx(1498,28): error TS7006: Parameter 'addr' implicitly has an 'any' type.

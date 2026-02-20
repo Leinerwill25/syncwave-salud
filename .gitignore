@@ -49,3 +49,16 @@ data/n8n/
 *.sqlite-wal
 *.sqlite-shm
 n8n.sqlite*
+
+# Build output / debug logs (no deben subirse al repo)
+*.log
+/build_*.log
+/tsc_errors*.log
+/build_output*.txt
+/build_check.txt
+/build_final.txt
+/error.txt
+/debug_output.txt
+/filelist.txt
+/src/filelist.txt
+/lint_error.log
