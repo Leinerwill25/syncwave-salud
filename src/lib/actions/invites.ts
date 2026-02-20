@@ -123,7 +123,7 @@ export async function bulkUploadAndSendInvites(organizationId: string, emails: s
     return results;
 }
 
-export async function assignEmailToInvite(inviteId: string, email: string) {
+export async function assignEmailToInvite(inviteId: string, email: string, role?: string) {
     const normalizedEmail = email.trim().toLowerCase();
     if (!/\S+@\S+\.\S+/.test(normalizedEmail)) {
         return { success: false, error: 'Email inválido' };
@@ -160,14 +160,17 @@ export async function assignEmailToInvite(inviteId: string, email: string) {
             return { success: false, error: 'Este correo ya tiene otra invitación asignada en esta organización.' };
         }
 
-        // Actualizar invitación
+        // Actualizar invitación (incluye rol si se proporciona)
+        const updatePayload: Record<string, any> = {
+            email: normalizedEmail,
+            token: generateToken(),
+            expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+        };
+        if (role) updatePayload.role = role;
+
         const { data: updatedInvite, error: updateError } = await supabase
             .from('invite')
-            .update({ 
-                email: normalizedEmail,
-                token: generateToken(), // Regenerar token por seguridad
-                expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()
-            })
+            .update(updatePayload)
             .eq('id', inviteId)
             .select()
             .single();
@@ -200,7 +203,7 @@ export async function assignEmailToInvite(inviteId: string, email: string) {
     }
 }
 
-export async function assignToFirstAvailableInvite(organizationId: string, email: string) {
+export async function assignToFirstAvailableInvite(organizationId: string, email: string, role?: string) {
     const normalizedEmail = email.trim().toLowerCase();
     if (!/\S+@\S+\.\S+/.test(normalizedEmail)) {
         return { success: false, error: 'Email inválido' };
@@ -228,8 +231,8 @@ export async function assignToFirstAvailableInvite(organizationId: string, email
             return { success: false, error: 'No hay cupos disponibles. Por favor contacta a soporte para adquirir más licencias.' };
         }
 
-        // Usar la función existente para asignar y enviar
-        return await assignEmailToInvite(availableInvite.id, normalizedEmail);
+        // Usar la función existente para asignar, enviar y actualizar rol
+        return await assignEmailToInvite(availableInvite.id, normalizedEmail, role);
 
     } catch (error: any) {
         console.error('Error finding available invite:', error);

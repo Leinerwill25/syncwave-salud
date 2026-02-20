@@ -8,7 +8,14 @@ import * as XLSX from 'xlsx';
 /**
  * Tipos
  */
-export type UserRole = 'ADMIN' | 'MEDICO' | 'ENFERMERA' | 'RECEPCION' | 'FARMACIA' | 'PACIENTE';
+export type UserRole = 'ADMIN' | 'MEDICO' | 'ENFERMERA' | 'RECEPCION' | 'ASISTENTE_CITAS' | 'FARMACIA' | 'PACIENTE';
+
+const INVITE_ROLES: { value: UserRole; label: string }[] = [
+	{ value: 'MEDICO', label: 'Médico / Especialista' },
+	{ value: 'ENFERMERA', label: 'Enfermer@' },
+	{ value: 'RECEPCION', label: 'Recepción' },
+	{ value: 'ASISTENTE_CITAS', label: 'Asistente de Citas' },
+];
 
 export type Invite = {
 	id: string;
@@ -66,6 +73,7 @@ export default function InviteListPage({ initialInvites, organizationId }: Props
 	// Estado Modal Manual
 	const [showManualModal, setShowManualModal] = useState(false);
 	const [manualEmail, setManualEmail] = useState('');
+	const [manualRole, setManualRole] = useState<UserRole>('MEDICO');
 	const [isSendingManual, setIsSendingManual] = useState(false);
 
 	// Estado Modal Asignar
@@ -145,13 +153,13 @@ export default function InviteListPage({ initialInvites, organizationId }: Props
 
 		setIsSendingManual(true);
 		try {
-			// Usar la nueva acción que busca un cupo disponible
 			const { assignToFirstAvailableInvite } = await import('@/lib/actions/invites');
-			const result = await assignToFirstAvailableInvite(organizationId, manualEmail);
+			const result = await assignToFirstAvailableInvite(organizationId, manualEmail, manualRole);
 			
 			if (result.success) {
-				toast(`Invitación asignada y enviada a ${manualEmail}`, 'success');
+				toast(`Invitación enviada a ${manualEmail} como ${manualRole}`, 'success');
 				setManualEmail('');
+				setManualRole('MEDICO');
 				setShowManualModal(false);
 				window.location.reload();
 			} else {
@@ -391,8 +399,20 @@ export default function InviteListPage({ initialInvites, organizationId }: Props
 									className="w-full px-4 py-2 rounded-xl border border-slate-200 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all"
 									autoFocus
 								/>
+							</div>
+							<div>
+								<label className="block text-sm font-medium text-slate-700 mb-1">Rol del Usuario</label>
+								<select
+									value={manualRole}
+									onChange={(e) => setManualRole(e.target.value as UserRole)}
+									className="w-full px-4 py-2 rounded-xl border border-slate-200 bg-white focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all text-slate-700"
+								>
+									{INVITE_ROLES.map((r) => (
+										<option key={r.value} value={r.value}>{r.label}</option>
+									))}
+								</select>
 								<p className="text-xs text-slate-500 mt-2">
-									Se enviará un correo con el enlace de registro al especialista.
+									Se enviará un correo con el enlace de registro al colaborador seleccionado.
 								</p>
 							</div>
 							<div className="flex justify-end gap-3 pt-2">
