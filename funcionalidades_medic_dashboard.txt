@@ -1,0 +1,3137 @@
+═══════════════════════════════════════════════════════════════════════════════════
+INFORME FUNCIONAL EXHAUSTIVO: PANEL MÉDICO (DASHBOARD MEDIC)
+ASHIRA SOFTWARE - Sistema de Gestión Clínica MVP
+═══════════════════════════════════════════════════════════════════════════════════
+
+Este documento detalla exhaustivamente TODAS las funcionalidades del Panel Médico,
+incluyendo todos los módulos principales, subpáginas, formularios y acciones.
+El objetivo es proporcionar una base completa para la evaluación e implementación
+de planes de suscripción (Básico, Pro, Enterprise).
+
+═══════════════════════════════════════════════════════════════════════════════════
+ÍNDICE
+═══════════════════════════════════════════════════════════════════════════════════
+1. DASHBOARD PRINCIPAL (HOME)
+2. GESTIÓN DE PACIENTES
+3. CONSULTAS MÉDICAS
+4. CONSULTA SUCESIVA (SEGUIMIENTO CON RESULTADOS DE LABORATORIO)
+5. RECETAS MÉDICAS
+6. AGENDA Y CITAS
+7. ÓRDENES Y RESULTADOS DE LABORATORIO
+8. COMUNICACIÓN (MENSAJES Y CHAT INTERNO)
+9. TAREAS Y RECORDATORIOS
+10. PAGOS Y FACTURACIÓN
+11. REPORTES Y ANALÍTICA
+12. CONFIGURACIÓN Y PERSONALIZACIÓN
+13. PLANTILLAS DE DOCUMENTOS
+14. PANEL DE ROLES DE USUARIO (DASHBOARD ROLE-USER)
+15. PÁGINA PÚBLICA DEL CONSULTORIO (LINK PÚBLICO)
+16. FUNCIONALIDADES COMPLETAS POR ROL INTERNO
+
+═══════════════════════════════════════════════════════════════════════════════════
+1. DASHBOARD PRINCIPAL (/dashboard/medic)
+═══════════════════════════════════════════════════════════════════════════════════
+
+A. VISTA GENERAL
+   - KPIs del Día:
+     • Citas programadas hoy
+     • Consultas realizadas
+     • Pacientes atendidos
+     • Ingresos del día (USD y Bs con conversión)
+   
+   - Alertas y Notificaciones:
+     • Alertas de pagos pendientes
+     • Resultados críticos de laboratorio
+     • Tareas vencidas
+   
+   - Agenda del Día (DayAgenda):
+     • Visualización de bloques de tiempo
+     • Lista de citas programadas con hora
+     • Indicadores de estado (Confirmada, Pendiente, Cancelada)
+   
+   - Accesos Rápidos:
+     • Botón "Nueva Cita"
+     • Botón "Nueva Consulta"
+     • Enlaces a módulos frecuentes
+
+═══════════════════════════════════════════════════════════════════════════════════
+2. GESTIÓN DE PACIENTES
+═══════════════════════════════════════════════════════════════════════════════════
+
+2.1 LISTADO DE PACIENTES (/dashboard/medic/pacientes)
+────────────────────────────────────────────────────────────────────────────
+A. Funcionalidades de Listado:
+   - Vista en cuadrícula (Grid) con tarjetas
+   - Paginación y lazy loading para eficiencia
+   - Búsqueda en tiempo real por:
+     • Nombre
+     • Apellido
+     • Cédula/Identificación
+   
+B. Información en Tarjeta de Paciente:
+   - Datos Visibles:
+     • Iniciales/Avatar
+     • Nombre completo
+     • Cédula
+     • Género
+     • Teléfono
+   
+   - Indicadores (Badges):
+     • Número de consultas
+     • Número de recetas
+     • Número de resultados de laboratorio
+     • Fecha de última consulta
+   
+   - Acciones Rápidas:
+     • "Recetas/Informes": Acceso a historial de prescripciones
+     • "Historial": Ver historial médico completo
+
+2.2 DETALLE DEL PACIENTE (/dashboard/medic/pacientes/[id])
+────────────────────────────────────────────────────────────────────────────
+A. Información del Paciente:
+   - Datos Personales:
+     • ID del paciente
+     • Nombre completo
+     • Fecha de nacimiento
+     • Género
+     • Teléfono
+     • Email (si disponible)
+   
+   - Estadísticas:
+     • Total de consultas
+     • Última visita (fecha y hora)
+     • Diagnósticos frecuentes
+   
+B. Historial Clínico Completo:
+   - Lista Cronológica de Consultas:
+     • Fecha y hora de cada consulta
+     • Médico que atendió
+     • Motivo de consulta
+     • Diagnóstico
+     • Notas clínicas (vista previa)
+     • Enlace a detalle completo
+   
+   - Control de Acceso:
+     • Si el médico tiene "acceso completo": Ve todas las consultas del paciente
+     • Si no: Solo ve sus propias consultas
+   
+C. Acciones Disponibles:
+   - "Nueva Consulta" para este paciente
+   - "Editar Paciente" (si tiene permisos)
+   - "Ver Notas" (pestaña adicional)
+
+2.3 HISTORIAL DETALLADO (/dashboard/medic/pacientes/[id]/historial)
+────────────────────────────────────────────────────────────────────────────
+A. Vista Unificada de Historial:
+   - Consultas:
+     • Motivo y diagnóstico
+     • Signos vitales registrados
+     • Notas del médico
+     • Fecha de atención
+   
+   - Recetas:
+     • Medicamentos prescritos
+     • Dosis y frecuencia
+     • Estado (Activa/Vencida)
+     • Fecha de emisión
+   
+   - Resultados de Laboratorio:
+     • Tipo de examen
+     • Resultados
+     • Rango de referencia
+     • Marcador de criticidad (Normal/Crítico)
+     • Gráficas de tendencia (para valores numéricos)
+   
+   - Facturación:
+     • Montos cobrados
+     • Estado de pago (Pendiente/Pagado)
+     • Método de pago
+
+2.4 PACIENTES FRECUENTES / CARGA MASIVA (/dashboard/medic/pacientes-frecuentes)
+────────────────────────────────────────────────────────────────────────────
+A. Importación desde Archivos:
+   - Formatos Soportados:
+     • Excel (.xlsx)
+     • Word (.docx)
+   
+B. Extracción Inteligente de Datos:
+   - Campos Extraíbles:
+     • Nombre
+     • Apellido
+     • Cédula/Identificación
+     • Teléfono
+     • Email
+     • Fecha de nacimiento
+   
+C. Proceso de Importación:
+   1. Carga del archivo
+   2. Extracción automática de datos
+   3. Tabla de previsualización/edición
+   4. Validación de datos duplicados
+   5. Guardado masivo en base de datos
+   
+D. Guía de Formato:
+   - Descarga de plantilla de ejemplo
+   - Instrucciones de formato
+   - Campos requeridos vs opcionales
+
+═══════════════════════════════════════════════════════════════════════════════════
+3. CONSULTAS MÉDICAS
+═══════════════════════════════════════════════════════════════════════════════════
+
+3.1 LISTADO DE CONSULTAS (/dashboard/medic/consultas)
+────────────────────────────────────────────────────────────────────────────
+A. Vista de Historial:
+   - Ordenamiento cronológico (más reciente primero)
+   - Filtros Avanzados:
+     • Por fecha (rango)
+     • Por paciente (búsqueda)
+     • Por médico
+     • Por estado
+   
+B. Información Visible en Lista:
+   - Paciente (nombre completo)
+   - Médico que atendió
+   - Motivo de consulta (resumen)
+   - Diagnóstico (resumen)
+   - Fecha y hora
+   - Indicador de paciente (Registrado/No Registrado)
+   
+C. Opciones de Exportación:
+   - Exportar a Excel (.xlsx)
+   - Exportar a CSV
+   - Filtros aplicables antes de exportar
+
+3.2 NUEVA CONSULTA (/dashboard/medic/consultas/new)
+────────────────────────────────────────────────────────────────────────────
+A. Selección de Paciente:
+   1. Tipo de Paciente:
+      - Paciente Registrado:
+        • Buscador predictivo en tiempo real
+        • Búsqueda por cédula, nombre o apellido
+        • Autocompletado
+      
+      - Paciente No Registrado (Express):
+        • Formulario completo sin salir de la consulta
+        • Campos disponibles:
+          * Nombre (requerido)
+          * Apellido (requerido)
+          * Cédula/Identificación (opcional)
+          * Teléfono (requerido)
+          * Email (opcional)
+          * Fecha de nacimiento (opcional)
+          * Sexo (M/F/Otro) (opcional)
+          * Dirección (opcional)
+          * Alergias (opcional)
+          * Condiciones crónicas (opcional)
+          * Medicamentos actuales (opcional)
+          * Historial familiar (opcional)
+   
+B. Datos Clínicos de la Consulta:
+   - Campos Principales:
+     • Motivo de consulta / Chief Complaint (requerido)
+     • Diagnóstico (opcional)
+     • Notas de evolución (opcional)
+   
+   - Signos Vitales Generales:
+     • Peso (kg)
+     • Talla (cm) → Cálculo automático de IMC
+     • Temperatura (°C)
+     • Presión Arterial:
+       * Sistólica (mmHg)
+       * Diastólica (mmHg)
+     • Frecuencia Cardíaca (lpm/BPM)
+     • Frecuencia Respiratoria (rpm)
+     • SpO2 (Saturación de Oxígeno) (%)
+     • Glucosa (mg/dL)
+   
+   - Signos Vitales por Especialidad (Opcionales):
+     • Cardiología, Neurología, Pediatría, etc.
+     • Campos específicos según especialidad seleccionada
+   
+C. Servicios y Facturación:
+   - Selección de Servicios:
+     • Lista de servicios del consultorio (desde perfil)
+     • Selección múltiple permitida
+     • Precio por servicio
+     • Moneda configurada
+   
+   - Generación Automática de Facturación:
+     • Subtotal (suma de servicios)
+     • Total (sin IVA en área de salud)
+     • Moneda
+     • Estado inicial: "Pendiente"
+   
+D. Asociación con Cita (si aplica):
+   - Si viene desde una cita (`?appointmentId=...`):
+     • Pre-carga del paciente
+     • Pre-carga del motivo de consulta
+     • Vinculación automática
+
+3.3 DETALLE DE CONSULTA (/dashboard/medic/consultas/[id])
+────────────────────────────────────────────────────────────────────────────
+A. Información Completa:
+   - Header:
+     • Nombre del paciente
+     • Fecha y hora de la consulta
+     • Médico que atendió
+     • ID de la consulta
+     • Indicador: Cita vinculada / Consulta libre
+   
+   - Datos Clínicos:
+     • Motivo de consulta (completo)
+     • Diagnóstico (completo)
+     • Notas clínicas (texto completo con formato)
+   
+   - Signos Vitales:
+     • Visualización por secciones (General, Especialidad)
+     • Formato de tarjetas con etiquetas legibles
+     • Valores booleanos, numéricos y texto
+   
+   - Información del Paciente (Sidebar):
+     • Selector de paciente (cambiar paciente asociado)
+     • Datos rápidos del paciente
+     • Estadísticas de consultas
+   
+B. Alertas Especiales:
+   - Si la cita fue reservada por otro miembro del grupo familiar:
+     • Alerta visual destacada
+     • Información de quién reservó
+   
+   - Si hay pago pendiente:
+     • Botón "Aprobar Asistencia" (si hay factura pendiente)
+   
+C. Acciones Disponibles:
+   - "Editar Consulta" → /dashboard/medic/consultas/[id]/edit
+   - "Registrar Pago" → /dashboard/medic/consultas/[id]/pago
+   - "Ver Historial del Paciente"
+   - "Volver a Consultas"
+
+3.4 EDITAR CONSULTA (/dashboard/medic/consultas/[id]/edit)
+────────────────────────────────────────────────────────────────────────────
+- Formulario similar a "Nueva Consulta"
+- Pre-cargado con datos existentes
+- Permite modificar:
+  • Motivo
+  • Diagnóstico
+  • Notas
+  • Signos vitales
+  • Paciente asociado (si es necesario)
+
+3.5 REGISTRAR PAGO DE CONSULTA (/dashboard/medic/consultas/[id]/pago)
+────────────────────────────────────────────────────────────────────────────
+A. Información de la Consulta:
+   - Paciente
+   - Médico
+   - Motivo
+   - Diagnóstico
+   
+B. Formulario de Facturación:
+   - Si ya existe facturación:
+     • Carga datos existentes
+     • Permite editar
+     • Muestra información de factura existente
+   
+   - Datos de Facturación:
+     • Subtotal (editable)
+     • Impuestos (generalmente 0 en salud)
+     • Total (calculado)
+     • Moneda (seleccionable: USD, EUR, Bs, etc.)
+     • Tipo de cambio (si aplica)
+     • Serie de factura (opcional)
+     • Número de factura (opcional)
+     • Estado de factura (Emitida/Anulada)
+     • Estado de pago (Pendiente/Pagado/Verificando)
+     • Método de pago (Efectivo, Tarjeta, Transferencia, Pago Móvil, etc.)
+     • Fecha de pago (si ya está pagado)
+     • Notas adicionales
+   
+C. Acciones:
+   - Guardar facturación (crear o actualizar)
+   - Regresar a detalle de consulta
+
+3.6 CREAR RECETA DESDE CONSULTA (/dashboard/medic/consultas/[id]/prescription)
+────────────────────────────────────────────────────────────────────────────
+- Formulario de receta pre-asociado a la consulta
+- Igual funcionalidad que módulo de Recetas
+
+═══════════════════════════════════════════════════════════════════════════════════
+4. CONSULTA SUCESIVA (SEGUIMIENTO CON RESULTADOS DE LABORATORIO)
+═══════════════════════════════════════════════════════════════════════════════════
+
+4.1 CONCEPTO Y PROPÓSITO
+────────────────────────────────────────────────────────────────────────────
+La Consulta Sucesiva es un módulo especializado para gestionar el seguimiento de 
+pacientes que regresan con resultados de laboratorio, estudios de imagen o 
+documentación médica relacionada con una consulta previa.
+
+A. Diferencia con Consulta Regular:
+   - Consulta Regular: Primera atención, evaluación inicial
+   - Consulta Sucesiva: Seguimiento específico con resultados de exámenes
+   
+B. Casos de Uso:
+   - Paciente regresa con resultados de laboratorio
+   - Revisión de radiografías o estudios de imagen
+   - Evaluación de respuesta a tratamiento con nuevos exámenes
+   - Seguimiento post-quirúrgico con documentación
+
+4.2 LISTADO DE CONSULTAS SUCESIVAS (/dashboard/medic/consulta-sucesiva)
+────────────────────────────────────────────────────────────────────────────
+A. Vista de Historial:
+   - Lista cronológica de todas las consultas sucesivas
+   - Ordenamiento: Más reciente primero
+   
+B. Información Visible en Tarjetas:
+   - Datos del Paciente:
+     • Nombre completo
+     • Cédula/Identificación
+   
+   - Fecha y Hora de la Consulta Sucesiva
+   
+   - Consulta Original Vinculada:
+     • Motivo de consulta original
+     • Fecha de consulta original
+     • Enlace a consulta original
+   
+   - Diagnóstico Actualizado (si aplica)
+   
+   - Observaciones (vista previa)
+   
+   - Indicadores de Archivos Adjuntos:
+     • Número de imágenes adjuntas
+     • Número de radiografías/estudios
+     • Número de documentos PDF
+   
+C. Búsqueda Avanzada:
+   - Por nombre de paciente
+   - Por diagnóstico
+   - Por observaciones
+   - Por motivo de consulta original
+
+D. Acciones:
+   - Botón "Nueva Consulta Sucesiva"
+   - Ver detalle completo → /dashboard/medic/consulta-sucesiva/[id]
+
+4.3 NUEVA CONSULTA SUCESIVA (/dashboard/medic/consulta-sucesiva/new)
+────────────────────────────────────────────────────────────────────────────
+A. Selección de Consulta Original:
+   - Buscador de consultas previas del paciente
+   - Muestra:
+     • Fecha de consulta
+     • Motivo de consulta
+     • Diagnóstico previo
+   - Vinculación automática al seleccionar
+   
+B. Información del Paciente (Auto-cargada):
+   - Nombre completo
+   - Cédula
+   - Datos de contacto
+   - Historial médico relevante
+   
+C. Resultados de Laboratorio:
+   - Campo JSON estructurado para resultados
+   - Permite ingresar múltiples exámenes
+   - Campos por examen:
+     • Nombre del examen
+     • Valor obtenido
+     • Rango de referencia
+     • Unidad de medida
+     • Marcador de criticidad
+   
+D. Descripción de Resultados:
+   - Campo de texto libre (text area)
+   - Para interpretación médica de los resultados
+   - Explicación de hallazgos relevantes
+   
+E. Observaciones Clínicas:
+   - Evaluación del médico sobre los resultados
+   - Evolución del paciente
+   - Cambios en el cuadro clínico
+   
+F. Archivos Adjuntos (Múltiples Categorías):
+   1. Imágenes Clínicas:
+      • Fotos de lesiones
+      • Imágenes de estudios
+      • Formato: JPG, PNG
+      • Múltiples archivos permitidos
+   
+   2. Radiografías y Estudios de Imagen:
+      • Rayos X
+      • Tomografías
+      • Resonancias magnéticas
+      • Ecografías
+      • Formato: JPG, PNG, DICOM
+      • Múltiples archivos permitidos
+   
+   3. Documentos:
+      • Informes de laboratorio en PDF
+      • Reportes médicos
+      • Consentimientos
+      • Formato: PDF
+      • Múltiples archivos permitidos
+   
+G. Diagnóstico Actualizado:
+   - Campo de texto para diagnóstico revisado
+   - Integración con ICD-11:
+     • Código ICD-11
+     • Título de diagnóstico ICD-11
+   - Permite actualizar diagnóstico basado en nuevos resultados
+   
+H. Notas Adicionales:
+   - Campo de texto libre
+   - Indicaciones para el paciente
+   - Plan de tratamiento actualizado
+   - Próximos pasos
+   
+I. Campos Adicionales Personalizables:
+   - Sistema flexible de campos adicionales (JSON)
+   - Permite agregar información específica según especialidad
+
+4.4 DETALLE DE CONSULTA SUCESIVA (/dashboard/medic/consulta-sucesiva/[id])
+────────────────────────────────────────────────────────────────────────────
+A. Header de Información:
+   - Nombre del paciente
+   - Fecha y hora de la consulta sucesiva
+   - Médico que atendió
+   - ID de la consulta
+   
+B. Sección: Consulta Original:
+   - Enlace a la consulta original
+   - Motivo de consulta original
+   - Diagnóstico original
+   - Fecha de consulta original
+   - Tratamiento indicado previamente
+   
+C. Resultados de Laboratorio:
+   - Tabla estructurada con todos los exámenes
+   - Visualización clara de:
+     • Nombre del examen
+     • Valor obtenido
+     • Rango de referencia
+     • Indicador visual (Normal/Crítico)
+   - Descripción médica de resultados
+   
+D. Observaciones y Evolución:
+   - Texto completo de observaciones clínicas
+   - Evaluación de la evolución del paciente
+   
+E. Galería de Archivos Adjuntos:
+   1. Imágenes:
+      • Vista en miniatura (thumbnails)
+      • Click para ampliar
+      • Lightbox para visualización completa
+      • Opción de descarga
+   
+   2. Radiografías/Estudios:
+      • Vista previa
+      • Herramientas de zoom
+      • Opción de descarga
+   
+   3. Documentos PDF:
+      • Lista de documentos
+      • Visor de PDF integrado
+      • Opción de descarga
+   
+F. Diagnóstico Actualizado:
+   - Diagnóstico revisado
+   - Código ICD-11 (si aplica)
+   - Comparación con diagnóstico original
+   
+G. Notas y Plan de Tratamiento:
+   - Indicaciones actualizadas
+   - Próximos pasos
+   - Seguimiento requerido
+   
+H. Acciones Disponibles:
+   - Editar consulta sucesiva
+   - Crear nueva receta basada en esta consulta
+   - Generar informe médico
+   - Ver historial completo del paciente
+   - Programar nueva cita de seguimiento
+
+4.5 EDITAR CONSULTA SUCESIVA (/dashboard/medic/consulta-sucesiva/[id]/edit)
+────────────────────────────────────────────────────────────────────────────
+- Formulario similar a "Nueva Consulta Sucesiva"
+- Pre-cargado con todos los datos existentes
+- Permite modificar:
+  • Resultados de laboratorio
+  • Descripción de resultados
+  • Observaciones
+  • Diagnóstico actualizado
+  • Notas
+  • Agregar/eliminar archivos adjuntos
+
+4.6 FLUJO DE TRABAJO TÍPICO: CONSULTA SUCESIVA
+────────────────────────────────────────────────────────────────────────────
+1. Paciente acude a consulta inicial
+2. Médico solicita exámenes de laboratorio (Órdenes Médicas)
+3. Paciente realiza los exámenes
+4. Paciente regresa con resultados
+5. Médico crea "Consulta Sucesiva":
+   - Vincula a consulta original
+   - Carga resultados de laboratorio
+   - Adjunta PDFs de laboratorio
+   - Adjunta imágenes/radiografías si aplica
+   - Evalúa resultados
+   - Actualiza diagnóstico si es necesario
+   - Define nuevo plan de tratamiento
+6. Sistema mantiene trazabilidad completa:
+   - Consulta original → Órdenes → Resultados → Consulta Sucesiva
+
+═══════════════════════════════════════════════════════════════════════════════════
+5. RECETAS MÉDICAS
+═══════════════════════════════════════════════════════════════════════════════════
+
+4.1 LISTADO DE RECETAS (/dashboard/medic/recetas)
+────────────────────────────────────────────────────────────────────────────
+A. Vista de Historial:
+   - Lista de recetas emitidas (cronológico)
+   - Información visible:
+     • Paciente (nombre)
+     • Indicador: Registrado / No Registrado
+     • Fecha de emisión
+     • Estado (Activa / Vencida)
+     • Lista de medicamentos (vista previa)
+     • Observaciones (si las hay)
+
+4.2 NUEVA RECETA (Integrada en /dashboard/medic/recetas)
+────────────────────────────────────────────────────────────────────────────
+A. Selección de Paciente:
+   - Dropdown con lista de pacientes (registrados y no registrados)
+   - Indicador visual de tipo de paciente
+   
+B. Medicamentos (Dinámico - Agregar N medicamentos):
+   - Por cada medicamento:
+     • Nombre del medicamento (requerido)
+     • Dosis (ej. "500mg", "10ml") (opcional)
+     • Frecuencia (Generación Automática):
+       * Input: "Cada cuántas horas" (1-24)
+       * Input: "Por cuántos días"
+       * Genera automáticamente texto: "Cada 8 horas por 7 días" o "1 vez al día por 5 días"
+     • Cantidad a despachar (número) (requerido)
+   
+   - Acciones:
+     • Botón "Añadir" medicamento adicional
+     • Botón "Eliminar" medicamento individual
+   
+C. Observaciones Generales:
+   - Campo de texto libre para notas adicionales de la receta
+   - Ejemplos: "Tomar con alimentos", "Controlar presión cada 8h"
+   
+D. Generación de PDF:
+   - Utiliza plantilla Word personalizada (si está configurada)
+   - Sistema de placeholders para datos dinámicos
+
+E. Gestión de Plantillas (NUEVO):
+   - Selección de diseño visual para la receta
+   - Soporte para múltiples plantillas personalizadas (.docx)
+   - Priorización: Plantilla seleccionada > Plantilla por defecto del perfil > Plantilla base
+   - Capacidad de gestionar (subir/eliminar) plantillas directo desde la configuración
+
+F. Modalidad de Edición Flexible (NUEVO):
+   - Opción para alternar entre "Lista de Medicamentos" y "Texto Libre"
+   - Modo Texto Libre:
+     • Editor de texto enriquecido para redacción libre
+     • Ideal para dietas, indicaciones complejas o formatos no estándar
+     • Reemplaza la lista estructurada en el documento final
+     • Beneficio: Mayor versatilidad para diferentes tipos de indicaciones médicas
+
+G. Experiencia de Emisión Optimizada (NUEVO):
+   - Previsualización Web del DOCX:
+     • Visualización fiel del documento antes de generarlo
+     • Controles de Zoom (Acercar/Alejar) para revisar detalles
+     • Desplazamiento (Pan) para navegar por el documento
+     • Muestra datos reales del paciente y médico en tiempo real
+   - Flujo "One-Click":
+     • Botón "Crear Receta" genera y descarga el archivo automáticamente
+     • Mantiene al médico en el formulario (sin redirecciones molestas)
+     • Feedback visual inmediato de éxito
+     • Agiliza la atención de pacientes sucesivos
+
+═══════════════════════════════════════════════════════════════════════════════════
+5. AGENDA Y CITAS
+═══════════════════════════════════════════════════════════════════════════════════
+
+5.1 VISTA DE AGENDA (/dashboard/medic/citas)
+────────────────────────────────────────────────────────────────────────────
+A. Componentes Principales:
+   1. Calendario con Vista Diaria (DayAgenda):
+      - Bloques de tiempo (cada 30 min típicamente)
+      - Visualización de citas programadas en bloques
+      - Código de colores según estado:
+        • Azul: Programada
+        • Verde: Completada
+        • Rojo: Cancelada
+        • Amarillo: En Proceso
+        • Naranja: Reagendada
+   
+   2. Lista de Citas del Día Seleccionado:
+      - Información por cita:
+        • Hora programada
+        • Duración (minutos)
+        • Paciente
+        • Motivo
+        • Estado
+        • Ubicación
+        • Indicador temporal:
+          * "Hoy" (azul)
+          * "Pasada" (gris)
+          * "Mañana" (cian)
+          * "En X días" (índigo)
+          * "Futura" (morado)
+   
+B. Modales y Acciones:
+   - Modal "Nueva Cita" (acceso rápido)
+   - Editar cita existente
+   - Cambiar estado de cita:
+     • Marcar como "Atendida"
+     • Marcar como "Cancelada"
+     • Reagendar
+
+5.2 NUEVA CITA (Modal en /dashboard/medic/citas)
+────────────────────────────────────────────────────────────────────────────
+A. Datos de la Cita:
+   - Fecha y Hora (datetime-local) (requerido)
+   - Duración en minutos (número) (requerido, default: 30)
+   - Ubicación (texto):
+     • Auto-rellenada desde configuración del consultorio
+     • Solo lectura (editable desde Configuración)
+   
+B. Selección de Paciente:
+   - Tipo de Paciente (selector):
+     1. Paciente Registrado:
+        - Buscador con autocompletado
+        - Búsqueda por cédula o nombre
+     
+     2. Paciente No Registrado:
+        - Formulario completo:
+          • Nombre (requerido)
+          • Apellido (requerido)
+          • Cédula/Identificación (opcional)
+          • Teléfono (requerido)
+          • Email (opcional)
+          • Fecha de nacimiento (opcional)
+          • Sexo (opcional)
+          • Dirección (opcional)
+   
+C. Información Adicional de la Cita:
+   - Motivo de la cita (text area) (opcional)
+   - Origen del Cliente (dropdown):
+     • ¿Dónde lo captaste?
+     • Opciones: Redes sociales, Referido, Web, Walk-in, etc.
+     • Útil para análisis de marketing
+   
+D. Servicios y Facturación:
+   - Selección de Servicio (requerido):
+     • Lista de servicios activos del consultorio
+     • Muestra: Nombre, Descripción, Precio, Moneda
+     • Selección obligatoria (mínimo 1)
+   
+   - Facturación Automática:
+     • Subtotal (suma de servicios seleccionados)
+     • Impuestos: 0 (no aplica en salud)
+     • Total = Subtotal
+     • Moneda del servicio
+     • Estado inicial: "Pendiente"
+   
+E. Acciones al Crear:
+   - Guardar cita
+   - Generar facturación asociada
+   - Recarga de página para reflejar cambios
+
+═══════════════════════════════════════════════════════════════════════════════════
+6. ÓRDENES Y RESULTADOS DE LABORATORIO
+═══════════════════════════════════════════════════════════════════════════════════
+
+6.1 LISTADO DE ÓRDENES (/dashboard/medic/ordenes)
+────────────────────────────────────────────────────────────────────────────
+A. Vista de Órdenes:
+   - Lista de solicitudes de exámenes
+   - Información visible:
+     • Paciente (nombre)
+     • Tipo de examen / Estudio solicitado
+     • Estado:
+       * Pendiente (azul)
+       * En Proceso (amarillo)
+       * Completada (verde)
+     • Indicador de criticidad (si es marcado como crítico)
+     • Fecha de solicitud
+   
+B. Filtros:
+   - Todas las órdenes
+   - Solo pendientes
+   - Solo en proceso
+   - Solo completadas
+   
+C. Búsqueda:
+   - Por nombre de paciente
+   - Por cédula
+   - Por tipo de examen
+
+D. Acciones:
+   - Botón "Nueva Orden" → /dashboard/medic/ordenes/new
+   - Ver detalle de orden → /dashboard/medic/ordenes/[id]
+
+6.2 NUEVA ORDEN (/dashboard/medic/ordenes/new)
+────────────────────────────────────────────────────────────────────────────
+A. Regla de Negocio Importante:
+   - Solo se pueden crear órdenes para pacientes con:
+     • Cita activa (del día), O
+     • Consulta activa (en curso)
+   
+B. Formulario:
+   - Selección de Paciente:
+     • Lista de pacientes con citas/consultas activas
+     • Información del contexto (cita o consulta en curso)
+   
+   - Datos de la Orden:
+     • Tipo de examen / Estudio (text input) (requerido)
+     • Notas clínicas / Indicaciones (text area) (opcional)
+     • Marcar como crítico (checkbox) (opcional):
+       * Si se marca, se envía alerta prioritaria
+
+C. Asociación Automática:
+   - Se vincula automáticamente a la cita/consulta activa
+   - Estado inicial: "Pendiente"
+
+6.3 DETALLE DE ORDEN (/dashboard/medic/ordenes/[id])
+────────────────────────────────────────────────────────────────────────────
+- Información completa de la orden
+- Paciente asociado
+- Tipo de examen
+- Notas clínicas
+- Estado actual
+- Archivos adjuntos (si los hay)
+- Resultados (si ya están disponibles)
+
+6.4 RESULTADOS DE LABORATORIO (/dashboard/medic/resultados)
+────────────────────────────────────────────────────────────────────────────
+A. Bandeja de Resultados:
+   - Lista de resultados recibidos
+   - Información visible:
+     • Paciente
+     • Tipo de examen
+     • Fecha de reporte
+     • Resultado (vista previa)
+     • Indicador de criticidad:
+       * Icono de alerta rojo si es crítico
+       * Verde si es normal
+   
+B. Filtros:
+   - Todos los resultados
+   - Solo resultados críticos (alerta)
+   
+C. Búsqueda:
+   - Por paciente
+   - Por tipo de examen
+   
+D. Visualización de Resultados:
+   - Valores numéricos con:
+     • Rango de referencia
+     • Indicador visual (Normal/Crítico)
+     • Gráficas de tendencia (si hay historial)
+   
+   - Archivos adjuntos:
+     • PDFs del laboratorio
+     • Imágenes médicas
+     • Otros documentos
+
+6.5 DETALLE DE RESULTADO (/dashboard/medic/resultados/[id])
+────────────────────────────────────────────────────────────────────────────
+- Resultado completo
+- Valores con rangos de referencia
+- Comentarios del laboratorio
+- Archivos adjuntos
+- Acceso al historial del paciente
+
+═══════════════════════════════════════════════════════════════════════════════════
+7. COMUNICACIÓN
+═══════════════════════════════════════════════════════════════════════════════════
+
+7.1 MENSAJES CON PACIENTES (/dashboard/medic/mensajes)
+────────────────────────────────────────────────────────────────────────────
+A. Bandeja de Entrada:
+   - Lista de conversaciones agrupadas
+   - Información por conversación:
+     • Nombre del paciente o doctor
+     • Último mensaje (previsualización)
+     • Fecha/Hora del último mensaje
+     • Contador de mensajes no leídos
+     • Indicador visual:
+       * Icono de usuario (paciente)
+       * Icono de estetoscopio (médico/colega)
+   
+B. Actualización en Tiempo Real (Supabase Realtime):
+   - Nuevos mensajes aparecen automáticamente
+   - Actualización de contadores sin recargar
+   
+C. Búsqueda:
+   - Por nombre de paciente
+   - Por contenido del mensaje
+
+D. Acciones:
+   - Abrir conversación → /dashboard/medic/mensajes/[id]
+
+7.2 DETALLE DE CONVERSACIÓN (/dashboard/medic/mensajes/[id])
+────────────────────────────────────────────────────────────────────────────
+- Chat completo con el paciente
+- Historial de mensajes
+- Campo de entrada para nuevo mensaje
+- Envío en tiempo real
+- Notificaciones de mensaje enviado/recibido
+
+7.3 MENSAJERÍA INTERNA (CHAT DEL EQUIPO) (/dashboard/medic/mensajeria)
+────────────────────────────────────────────────────────────────────────────
+A. Chat Interno del Consultorio:
+   - Para comunicación entre:
+     • Médico principal
+     • Asistentes de citas
+     • Recepción
+     • Otros roles del consultorio
+   
+B. Funcionalidades:
+   - Lista de usuarios/roles disponibles
+   - Iniciar nueva conversación
+   - Chat en tiempo real (Supabase Realtime)
+   - Notificaciones "Toast" para nuevos mensajes
+   - Estados de lectura (leído/no leído)
+   
+C. Interfaz:
+   - Estilo moderno tipo Slack o Microsoft Teams
+   - Sidebar con lista de conversaciones
+   - Panel principal con mensajes
+   - Campo de entrada con botón de envío
+
+═══════════════════════════════════════════════════════════════════════════════════
+8. TAREAS Y RECORDATORIOS
+═══════════════════════════════════════════════════════════════════════════════════
+
+8.1 LISTADO DE TAREAS (/dashboard/medic/tareas)
+────────────────────────────────────────────────────────────────────────────
+A. Vista de Tareas:
+   - Lista de tareas personales del médico
+   - Información visible:
+     • Título de la tarea
+     • Descripción (vista previa)
+     • Fecha de vencimiento
+     • Estado (Pendiente / Completada)
+     • Paciente asociado (si aplica)
+     • Alerta visual si está vencida (rojo)
+   
+B. Filtros:
+   - Todas las tareas
+   - Solo pendientes
+   - Solo completadas
+   
+C. Búsqueda:
+   - Por título
+   - Por descripción
+   - Por paciente asociado
+   
+D. Acciones Rápidas:
+   - Checkbox para marcar como completada
+   - Botón "Nueva Tarea" → /dashboard/medic/tareas/new
+   - Editar tarea → /dashboard/medic/tareas/[id]
+
+8.2 NUEVA TAREA (/dashboard/medic/tareas/new)
+────────────────────────────────────────────────────────────────────────────
+A. Formulario:
+   - Título de la tarea (requerido)
+   - Descripción detallada (opcional)
+   - Fecha de vencimiento (date) (opcional)
+   - Asociar a paciente (dropdown) (opcional):
+     • Búsqueda de paciente
+     • Vinculación opcional
+   
+B. Estado inicial:
+   - Completada: No (false)
+
+8.3 EDITAR TAREA (/dashboard/medic/tareas/[id])
+────────────────────────────────────────────────────────────────────────────
+- Formulario similar a "Nueva Tarea"
+- Pre-cargado con datos existentes
+- Permite cambiar estado a completada
+
+═══════════════════════════════════════════════════════════════════════════════════
+9. PAGOS Y FACTURACIÓN
+═══════════════════════════════════════════════════════════════════════════════════
+
+9.1 VERIFICAR PAGOS (/dashboard/medic/pagos/verificar)
+────────────────────────────────────────────────────────────────────────────
+A. Propósito:
+   - Revisar pagos que pacientes han "reportado como pagados"
+   - Aprobar o rechazar pagos pendientes de verificación
+
+B. Vista de Pagos Pendientes:
+   - Lista de facturas con estado "pendiente_verificacion"
+   - Información visible por pago:
+     • Número de factura
+     • Fecha de emisión
+     • Paciente (nombre)
+     • Cita asociada (si aplica)
+       * Fecha y hora de la cita
+       * Motivo de la cita
+     • Total (monto y moneda)
+     • Método de pago (Pago Móvil, Transferencia, etc.)
+     • Número de referencia (extraído de notas)
+     • Captura de pantalla del pago (si fue subida):
+       * Vista previa de la imagen
+       * Botón "Ver" para ampliar
+   
+C. Acciones por Pago:
+   1. Aprobar Pago:
+      - Cambia estado a "pagado"
+      - Marca fecha de pago actual
+      - Puede actualizar estado de cita a "Completada"
+   
+   2. Rechazar Pago:
+      - Cambia estado de vuelta a "pendiente"
+      - Notifica al paciente (si hay integración)
+   
+D. Modal de Ampliación:
+   - Ver captura en grande
+   - Botón de descarga de imagen
+
+9.2 CONCEPTOS DE FACTURACIÓN (Integrados en otros módulos)
+────────────────────────────────────────────────────────────────────────────
+A. Estructura de Facturación:
+   - Asociada a:
+     • Cita (appointment_id)
+     • Consulta (consultation_id)
+     • Paciente (patient_id o unregistered_patient_id)
+   
+B. Campos de Factura:
+   - Subtotal (número decimal)
+   - Impuestos (generalmente 0 en salud)
+   - Total (calculado: subtotal + impuestos)
+   - Moneda (USD, EUR, Bs, VES, COP, MXN, ARS)
+   - Tipo de cambio (para monedas no base)
+   - Serie de factura (opcional)
+   - Número de factura (opcional, puede ser auto-generado)
+   
+   - Estados:
+     • Estado de Factura: Emitida / Anulada
+     • Estado de Pago: 
+       * pendiente
+       * pendiente_verificacion (cuando paciente reporta pago)
+       * pagado
+       * rechazado
+   
+   - Método de Pago:
+     • Efectivo
+     • Tarjeta de débito
+     • Tarjeta de crédito
+     • Transferencia bancaria
+     • Pago Móvil (Venezuela)
+     • Cashea (si el consultorio lo tiene)
+     • Otro
+   
+   - Fechas:
+     • Fecha de emisión (automática)
+     • Fecha de pago (cuando se marca como pagado)
+   
+   - Notas:
+     • Campo de texto libre
+     • Puede incluir:
+       * [REFERENCIA] número de referencia bancaria
+       * [CAPTURA] URL de captura de pantalla del pago
+
+═══════════════════════════════════════════════════════════════════════════════════
+10. REPORTES Y ANALÍTICA
+═══════════════════════════════════════════════════════════════════════════════════
+
+10.1 REPORTES (/dashboard/medic/reportes)
+────────────────────────────────────────────────────────────────────────────
+A. Filtro por Fechas:
+   - Selector de rango de fechas
+   - Presets comunes:
+     • Hoy
+     • Esta semana
+     • Este mes
+     • Último trimestre
+     • Año actual
+     • Personalizado
+
+B. KPIs Operativos:
+   - Total de Citas Programadas (en el período)
+   - Total de Consultas Realizadas
+   - Total de Resultados Críticos
+   - Pacientes Atendidos (únicos)
+
+C. Reporte Financiero:
+   1. Ingresos Totales:
+      - Monto en USD (moneda principal)
+      - Monto en Bs (con conversión automática)
+      - Indicador de crecimiento (vs período anterior)
+   
+   2. Desglose Diario:
+      - Tabla con ingresos por día
+      - Gráfico de línea/barras
+   
+   3. Métodos de Pago:
+      - Tabla de frecuencia por método
+      - Gráfico de torta/dona
+      - Montos por método
+
+D. Estadísticas Clínicas:
+   - Diagnósticos Más Comunes (Top 5):
+     • Nombre del diagnóstico
+     • Frecuencia
+     • Porcentaje
+
+E. Gráficos de Tendencia:
+   - Citas por Mes (gráfico de barras)
+   - Consultas por Mes (gráfico de línea)
+   - Comparativa mes a mes
+
+F. Exportación:
+   - Opción de exportar datos a Excel/PDF (si está implementado)
+
+═══════════════════════════════════════════════════════════════════════════════════
+11. CONFIGURACIÓN Y PERSONALIZACIÓN
+═══════════════════════════════════════════════════════════════════════════════════
+
+11.1 CONFIGURACIÓN PRINCIPAL (/dashboard/medic/configuracion)
+────────────────────────────────────────────────────────────────────────────
+A. Estructura en Pestañas:
+   1. Perfil Profesional
+   2. Horarios / Disponibilidad
+   3. Notificaciones / Preferencias
+   4. Seguridad
+   
+B. Alertas de Estado:
+   - Validación de Perfil Completo:
+     • Si falta información, muestra alerta
+   
+   - Estado de Afiliación:
+     • Consultorio Privado
+     • Afiliado a Clínica (nombre de la clínica)
+
+11.2 GESTIÓN DE ROLES (/dashboard/medic/configuracion/roles)
+────────────────────────────────────────────────────────────────────────────
+A. Propósito:
+   - Crear y gestionar roles para el consultorio privado
+   - Asignar permisos granulares por módulo
+   - Administrar usuarios por rol
+
+B. Roles Predefinidos:
+   1. "Asistente De Citas":
+      - Permisos:
+        • Citas: view, create, edit, schedule
+      - Función: Gestión básica de agenda
+   
+   2. "Recepción":
+      - Permisos:
+        • Citas: view, edit (reagendada, cancelada, en proceso)
+        • Consultas: view
+        • Gestión de servicios/montos cobrados
+        • Registro de motivos
+      - Función: Admisión y gestión de pagos
+
+C. Creación de Rol Personalizado:
+   - Nombre del Rol (requerido)
+   - Descripción del Rol (opcional)
+   
+   - Permisos Granulares por Módulo:
+     Módulos disponibles:
+     • Pacientes
+     • Consultas
+     • Citas
+     • Recetas
+     • Órdenes Médicas
+     • Resultados
+     • Mensajes
+     • Tareas
+     • Reportes
+     
+     Acciones asignables por módulo:
+     • view (ver/leer)
+     • create (crear)
+     • edit (editar)
+     • delete (eliminar)
+     • confirm (confirmar asistencia)
+     • schedule (agendar)
+     • cancel (cancelar)
+
+D. Gestión de Usuarios por Rol:
+   1. Agregar Nuevo Usuario:
+      - Nombre (requerido)
+      - Apellido (requerido)
+      - Cédula / Identificación (requerido)
+      - Email (requerido)
+      - Teléfono (requerido)
+      - Contraseña (requerido)
+      - Asignación a Rol
+   
+   2. Usuarios Existentes:
+      - Lista de usuarios del rol
+      - Estado: Activo / Inactivo
+      - Acciones:
+        • Activar usuario (puede iniciar sesión)
+        • Desactivar usuario (no puede iniciar sesión)
+        • Editar información
+        • Eliminar usuario
+   
+   3. Inicio de Sesión de Usuarios de Rol:
+      - Usan su email o cédula + contraseña
+      - Acceso limitado según permisos del rol
+
+11.3 CONFIGURACIÓN DEL CONSULTORIO (/dashboard/medic/configuracion/consultorio)
+────────────────────────────────────────────────────────────────────────────
+A. Acceso:
+   - Solo disponible si `organizationType` = 'CONSULTORIO' (consultorio privado)
+
+B. Información Básica:
+   - Nombre Legal del Consultorio (requerido)
+   - Nombre Comercial (opcional)
+   - Teléfono Fijo (opcional)
+   - Teléfono Móvil (requerido)
+   - Email de Contacto (requerido)
+   - Sitio Web (opcional)
+   
+C. Redes Sociales:
+   - Facebook (URL)
+   - Instagram (handle o URL)
+
+D. Información Legal/Profesional:
+   - Licencia Sanitaria (número) (opcional)
+   - Número de Seguro de Responsabilidad (opcional)
+
+E. Ubicación:
+   1. Dirección Operacional:
+      - Campo de texto libre
+   
+   2. Mapa Interactivo (LeafletMapPicker):
+      - Selector de ubicación en mapa
+      - Captura de Latitud/Longitud
+      - Generación automática de dirección basada en coordenadas
+      - Útil para que pacientes localicen el consultorio
+
+F. Imágenes:
+   1. Galería de Fotos del Consultorio (PhotoUploader):
+      - Subir múltiples fotos
+      - Mínimo 3 fotos requerido para guardar
+      - Mostrar instalaciones, salas de espera, consultorios
+   
+   2. Foto de Perfil del Consultorio:
+      - Imagen principal que representa al consultorio
+      - Selector de imagen de las ya subidas
+      - Se muestra en búsquedas y perfil público
+
+G. Opciones de Pago:
+   - Checkbox: "El consultorio cuenta con Cashea"
+   - Otros métodos (puede expandirse)
+
+11.4 CONFIGURACIÓN DE MONEDA (/dashboard/medic/configuracion/moneda)
+────────────────────────────────────────────────────────────────────────────
+A. Propósito:
+   - Seleccionar moneda principal para cotización
+   - Visualización coherente en todo el sistema
+
+B. Selección de Moneda Preferida:
+   - Opciones disponibles:
+     • USD (Dólar Estadounidense)
+     • EUR (Euro)
+     • Bs / VES (Bolívar Venezolano)
+     • COP (Peso Colombiano)
+     • MXN (Peso Mexicano)
+     • ARS (Peso Argentino)
+
+C. Tasa de Cambio:
+   - Muestra tasa de cambio actual:
+     • De la moneda preferida a Bolívares (Bs)
+     • Fuente: API de tasas (ejemplo: BCV para Venezuela)
+     • Fecha y hora de última actualización
+   
+   - Botón "Actualizar Tasa":
+     • Refresca la tasa desde la API
+
+D. Ejemplo de Conversión:
+   - Muestra cómo se vería un monto de ejemplo en:
+     • Moneda preferida
+     • Su equivalente en Bolívares
+
+E. Impacto Global:
+   - La preferencia afecta:
+     • Precios de servicios
+     • Visualización en citas
+     • Visualización en consultas
+     • Facturación
+     • Reportes financieros
+   
+   - Visualización Dual:
+     • Siempre muestra monto en moneda preferida
+     • Y su conversión a Bolívares (si aplica)
+   
+F. Persistencia:
+   - Se guarda en la base de datos del usuario
+   - También en `localStorage` para acceso rápido
+
+═══════════════════════════════════════════════════════════════════════════════════
+12. PLANTILLAS DE DOCUMENTOS
+═══════════════════════════════════════════════════════════════════════════════════
+
+12.1 PLANTILLA DE INFORME (/dashboard/medic/plantilla-informe)
+────────────────────────────────────────────────────────────────────────────
+A. Funcionalidad:
+   - Cargar plantilla personalizada en Word (.docx)
+   - Para generación de informes médicos personalizados
+
+B. Carga de Plantilla:
+   - Uploader de archivo:
+     • Solo acepta .docx
+     • Validación de tamaño (por ejemplo, máx 5MB)
+   
+   - Gestión de Plantilla:
+     • Descargar plantilla actual
+     • Eliminar plantilla
+     • Reemplazar plantilla
+
+C. Sistema de Placeholders:
+   - Variables dinámicas que se reemplazan automáticamente:
+     • {{paciente}} → Nombre completo del paciente
+     • {{fecha}} → Fecha del informe
+     • {{contenido}} → Contenido principal del informe
+     • {{doctor}} → Nombre del médico
+     • {{consultorio}} → Nombre del consultorio
+     • {{diagnostico}} → Diagnóstico del paciente
+     • {{motivo}} → Motivo de consulta
+     • Y otros según necesidad
+
+D. Editor de Texto Estructurado:
+   - Para redactar el contenido del informe
+   - El texto se inserta en el placeholder {{contenido}}
+
+E. Descarga de Plantilla de Ejemplo:
+   - Botón para descargar una plantilla base pre-diseñada
+
+12.2 PLANTILLA DE RECETA (/dashboard/medic/plantilla-receta)
+────────────────────────────────────────────────────────────────────────────
+A. Funcionalidad:
+   - Cargar plantilla personalizada en Word (.docx)
+   - Para generación de recetas médicas personalizadas
+
+B. Carga de Plantilla:
+   - Similar a Plantilla de Informe
+   - Solo acepta .docx
+   - Gestionar (descargar, eliminar, reemplazar)
+
+C. Sistema de Placeholders para Recetas:
+   - Variables específicas para recetas:
+     • {{paciente}} → Nombre del paciente
+     • {{fecha}} → Fecha de emisión
+     • {{doctor}} → Nombre y firma del médico
+     • {{cedula_doctor}} → Cédula profesional/MPPS
+     • {{recipe}} → Lista de medicamentos con dosis y frecuencia
+     • {{indicaciones}} → Indicaciones generales
+     • {{instrucciones}} → Instrucciones adicionales
+     • {{consultorio}} → Datos del consultorio
+
+D. Soporte para Documentos Multipágina:
+   - Característica Especial:
+     • Puede generar recetas de 2 páginas:
+       * Página 1: Encabezado + Lista de Medicamentos ({{recipe}})
+       * Página 2: Indicaciones Generales Adicionales ({{indicaciones}})
+   
+   - Ejemplo de Uso:
+     • Página 1: Receta formal con sellos
+     • Página 2: Dieta, cuidados, recomendaciones
+
+E. Descarga de Plantilla de Ejemplo:
+   - Plantilla base pre-diseñada para recetas
+
+═══════════════════════════════════════════════════════════════════════════════════
+FUNCIONALIDADES TRANSVERSALES
+═══════════════════════════════════════════════════════════════════════════════════
+
+A. DISTINCIÓN PACIENTE REGISTRADO VS NO REGISTRADO
+────────────────────────────────────────────────────────────────────────────
+- En TODOS los módulos (Consultas, Citas, Recetas, Órdenes):
+  • Soporte para ambos tipos de pacientes
+  • Indicador visual claro:
+    * Verde + "Registrado" → Paciente en sistema
+    * Naranja + "No Registrado" → Paciente express
+  
+- Flujo sin interrupciones:
+  • Si es no registrado, formulario en línea para captura rápida
+  • No requiere salir del módulo actual
+
+B. MULTIMONEDA
+────────────────────────────────────────────────────────────────────────────
+- Sistema completo de conversión:
+  • Moneda base configurable por médico
+  • Tasas de cambio actualizables
+  • Visualización dual en reportes y facturas
+  • Sin impuestos (IVA) en facturación de salud
+
+C. REALTIME (SUPABASE)
+────────────────────────────────────────────────────────────────────────────
+- Actualización automática en tiempo real para:
+  • Mensajes (conversaciones con pacientes)
+  • Chat interno (mensajería del equipo)
+  • Notificaciones de nuevas órdenes/resultados (potencial)
+
+D. CONTROL DE ACCESO Y PERMISOS
+────────────────────────────────────────────────────────────────────────────
+- Acceso al historial del paciente basado en:
+  • Acceso completo: Ve todo el historial del paciente
+  • Acceso limitado: Solo ve sus propias consultas
+  
+- Gestión de roles para consultorio privado:
+  • Roles con permisos granulares
+  • Usuarios activables/desactivables
+  • Login independiente para staff
+
+E. VALIDACIONES Y REGLAS DE NEGOCIO
+────────────────────────────────────────────────────────────────────────────
+- Órdenes Médicas:
+  • Solo para pacientes con cita/consulta activa
+  
+- Facturación:
+  • Vinculación automática a cita/consulta
+  • Validación de montos
+  • Prevención de duplicados por cédula en pacientes no registrados
+  
+- Recetas:
+  • Generación automática de texto de frecuencia
+  • Validación de medicamentos requeridos
+
+F. NAVEGACIÓN Y UX
+────────────────────────────────────────────────────────────────────────────
+- Breadcrumbs y navegación coherente
+- Botones de retorno en todas las vistas de detalle
+- Modales para acciones rápidas
+- Confirmaciones antes de acciones destructivas
+- Mensajes de éxito/error claros
+- Loaders y skeletons durante carga de datos
+
+═══════════════════════════════════════════════════════════════════════════════════
+13. PANEL DE ROLES DE USUARIO (DASHBOARD ROLE-USER)
+═══════════════════════════════════════════════════════════════════════════════════
+
+Este módulo representa el sistema completo de gestión multi-usuario del consultorio. Los
+usuarios de rol son creados por el médico principal desde el módulo de "Gestión de Roles"
+y tienen acceso limitado según sus permisos asignados.
+
+CONCEPTO GENERAL:
+────────────────────────────────────────────────────────────────────────────
+- Los roles son creados por el médico desde /dashboard/medic/configuracion/roles
+- Cada rol tiene permisos granulares por módulo (view, create, edit, delete, etc.)
+- Los usuarios de rol inician sesión con su email/cédula y contraseña asignada
+- Acceden al panel en /dashboard/role-user con funcionalidades limitadas
+- ROLES PREDEFINIDOS:
+  • "Asistente De Citas": Gestión completa de agenda y servicios
+  • "Recepción": Visualización de citas, cambios de estado, gestión de pagos
+
+13.1 DASHBOARD PRINCIPAL (/dashboard/role-user)
+────────────────────────────────────────────────────────────────────────────
+A. Pantalla de Inicio:
+   - Mensaje de bienvenida personalizado con nombre completo del usuario
+   - Indicación del rol asignado (ej. "Rol: Asistente De Citas")
+   
+B. Módulos Disponibles (Tarjetas Visuales):
+   - Lista dinámica según permisos del rol
+   - Cada tarjeta muestra:
+     • Icono del módulo
+     • Nombre del módulo
+     • Badges de permisos: "Ver", "Crear", "Editar"
+     • Enlace directo al módulo
+   
+C. Módulos a los que puede tener acceso:
+   1. Pacientes
+   2. Consultas
+   3. Citas
+   4. Servicios del consultorio
+   5. Recetas
+   6. Órdenes Médicas
+   7. Resultados
+   8. Mensajes
+   9. Tareas
+   10. Reportes
+
+13.2 GESTIÓN DE CITAS PARA ROLES (/dashboard/role-user/citas)
+────────────────────────────────────────────────────────────────────────────
+A. Vista de Agenda:
+   - Calendario DayAgenda compartido (mismo que médico)
+   - Selector de fecha
+   - Visualización de bloques de tiempo ocupados
+   
+B. Lista de Citas del Día:
+   - Información completa por cita:
+     • Paciente
+     • Hora programada
+     • Duración
+     • Motivo
+     • Estado
+     • Ubicación
+     • Indicador temporal (Hoy, Pasada, Futura)
+   
+C. Permisos por Rol:
+   1. ASISTENTE DE CITAS:
+      - Puede VER todas las citas
+      - Puede CREAR nuevas citas (botón "Nueva Cita" visible)
+      - Puede EDITAR citas existentes
+      - Formulario completo de nueva cita (igual que médico)
+   
+   2. RECEPCIÓN:
+      - Puede VER todas las citas
+      - NO puede crear citas nuevas
+      - Puede EDITAR estados de citas:
+        * Marcar como "COMPLETADA"
+        * Marcar como "CANCELADA"
+        * Marcar como "REAGENDADA"
+      - Puede ver y editar servicios asociados
+      - Puede gestionar montos cobrados y métodos de pago
+
+D. Formulario de Nueva Cita (Solo Asistente):
+   - Idéntico al formulario del médico
+   - Selección de paciente (registrado/no registrado)
+   - Fecha/Hora, Duración, Ubicación
+   - Motivo de la cita
+   - Origen del cliente (marketing)
+   - Selección de servicios (requerido)
+   - Generación automática de facturación
+
+13.3 SERVICIOS DEL CONSULTORIO (/dashboard/role-user/servicios)
+────────────────────────────────────────────────────────────────────────────
+A. Propósito:
+   - Gestión centralizada del catálogo de servicios del consultorio
+   - Visible para Recepción y Asistente De Citas (aunque no tengan permiso explícito)
+   
+B. Permisos por Rol:
+   1. ASISTENTE DE CITAS:
+      - Puede VER servicios
+      - Puede CREAR nuevos servicios
+      - Puede EDITAR servicios existentes
+      - Puede ELIMINAR (desactivar) servicios
+      - Puede crear COMBOS de servicios
+   
+   2. RECEPCIÓN:
+      - Solo puede VER servicios
+      - NO puede crear, editar ni eliminar
+      - Vista de solo lectura
+
+C. Gestión de Servicios Individuales:
+   - Campos por servicio:
+     • Nombre del servicio (ej. "Consulta general") (requerido)
+     • Descripción detallada (opcional)
+     • Precio (decimal) (requerido)
+     • Moneda (USD, VES, EUR) (requerido)
+   
+   - Acciones disponibles (solo Asistente):
+     • Agregar nuevo servicio
+     • Editar servicio existente (en línea o formulario separado)
+     • Eliminar servicio (desactivación, no borrado físico)
+
+D. Combos de Servicios (Paquetes):
+   - Propósito: Crear paquetes promocionales agrupando servicios
+   - Ejemplo: "Paquete control prenatal" = Consulta + Ecografía + Laboratorios
+   
+   - Campos por combo:
+     • Nombre del combo (ej. "Paquete prenatal completo") (requerido)
+     • Descripción (opcional)
+     • Precio promocional (menor que suma individual) (requerido)
+     • Moneda (requerido)
+     • Lista de servicios incluidos (checkbox multiple) (requerido, mín. 1)
+   
+   - Visualización:
+     • Tarjeta con nombre y precio
+     • Descripción del combo
+     • Lista de servicios incluidos con detalles
+   
+   - Utilidad:
+     • Los combos se pueden seleccionar al crear citas/consultas
+     • Facilita la venta de paquetes a precio reducido
+     • Mejora la experiencia del paciente
+
+13.4 MÉTODOS DE PAGO (/dashboard/role-user/metodos-pago)
+────────────────────────────────────────────────────────────────────────────
+A. Propósito:
+   - Gestión de métodos de pago personalizados del consultorio
+   - Usado al registrar pagos en citas y consultas
+   
+B. Métodos de Pago Configurables:
+   - Campos por método:
+     • Nombre (ej. "Transferencia Banco X", "Pago Móvil Personal") (requerido)
+     • Descripción (opcional, ej. "Cuenta 0102-xxx-xxx")
+   
+C. Métodos predefinidos comunes:
+   - Efectivo
+   - Tarjeta de Débito
+   - Tarjeta de Crédito
+   - Transferencia bancaria
+   - Pago Móvil (Venezuela)
+   - Zelle
+   - PayPal
+   - Cashea
+
+D. Funcionalidades:
+   - Crear nuevo método de pago
+   - Editar métodos existentes
+   - Eliminar métodos no utilizados
+   - Activar/Desactivar métodos temporalmente
+
+13.5 ESTADÍSTICAS DE CITAS (/dashboard/role-user/estadisticas-citas)
+────────────────────────────────────────────────────────────────────────────
+A. Propósito:
+   - Análisis de efectividad de la gestión de citas
+   - Útil para evaluar desempeño del consultorio y del asistente
+   
+B. Filtros:
+   - Por Año (selector numérico)
+   - Por Mes (dropdown, o "Todos los meses")
+   
+C. Métricas Principales (Tarjetas KPI):
+   1. CITAS EFECTIVAS:
+      - Total de citas marcadas como "COMPLETADA"
+      - Porcentaje del total
+      - Código de color: Verde/Esmeralda
+      
+   2. CITAS REAGENDADAS:
+      - Total de citas marcadas como "REAGENDADA"
+      - Porcentaje del total
+      - Código de color: Naranja
+      
+   3. NO ASISTIERON:
+      - Total de citas marcadas como "CANCELADA" o no confirmadas
+      - Porcentaje del total
+      - Código de color: Rojo
+      
+   4. TOTAL CREADAS:
+      - Suma de todas las citas en el período
+      - Base para calcular porcentajes
+      - Código de color: Azul
+
+D. Listas Detalladas (Dos Columnas):
+   1. Lista de Citas Efectivas:
+      - Nombre del paciente
+      - Fecha y hora programada
+      - Ordenadas cronológicamente
+   
+   2. Lista de Citas Reagendadas:
+      - Nombre del paciente
+      - Fecha y hora ORIGINAL programada
+      - Ordenadas cronológicamente
+   
+E. Utilidad:
+   - Medir tasa de ausentismo
+   - Evaluar necesidad de recordatorios
+   - Optimizar gestión de slots de agenda
+
+13.6 CONFIGURACIÓN DE WHATSAPP (/dashboard/role-user/whatsapp-config)
+────────────────────────────────────────────────────────────────────────────
+A. Propósito:
+   - Configurar integración con WhatsApp para recordatorios de citas
+   - Almacenar número personal del consultorio y plantilla de mensajes
+   
+B. Campos de Configuración:
+   1. Número de WhatsApp Personal:
+      - Formato internacional (ej. "+584121234567")
+      - Número desde el cual se envían recordatorios manualmente
+      - Instrucciones claras sobre formato
+   
+   2. Plantilla de Mensaje:
+      - Campo de texto multilínea
+      - Mensaje base que se usará al enviar recordatorios
+      - Sistema de VARIABLES DINÁMICAS:
+
+C. Variables Disponibles (Placeholders):
+   - {NOMBRE_PACIENTE} → Nombre completo del paciente
+   - {FECHA} → Fecha de la cita (dd/mm/aaaa)
+   - {HORA} → Hora de la cita
+   - {NOMBRE_DOCTORA} → Nombre del médico/a
+   - {CLÍNICA} → Nombre del consultorio
+   - {SERVICIOS} → Lista de servicios programados
+
+D. Plantilla de Ejemplo por Defecto:
+   "Hola {NOMBRE_PACIENTE}, le recordamos su cita el {FECHA} a las {HORA}
+    con la Dra. {NOMBRE_DOCTORA} en {CLÍNICA}.
+    
+    Por los servicios de:
+    {SERVICIOS}
+    
+    Por favor confirmar con un 'Asistiré' o 'No Asistiré'"
+
+E. Vista Previa en Tiempo Real:
+   - Panel lateral que muestra cómo se verá el mensaje
+   - Ejemplo con datos ficticios:
+     * Paciente: "María Pérez"
+     * Fecha: "15/12/2025"
+     * Hora: "10:30 am"
+     * Servicios: "Consulta ginecológica, Ecografía transvaginal"
+   
+F. Permisos:
+   - Solo ASISTENTE DE CITAS puede EDITAR
+   - Otros roles pueden solo VER
+   
+G. Flujo de Uso:
+   1. Asistente configura número y plantilla
+   2. Al crear/ver una cita, hay botón "Enviar Recordatorio por WhatsApp"
+   3. Se abre WhatsApp Web/App con mensaje prellenado
+   4. Asistente solo debe dar "Enviar" desde WhatsApp
+
+13.7 ESTADÍSTICAS DE SERVICIOS (/dashboard/role-user/estadisticas-servicios)
+────────────────────────────────────────────────────────────────────────────
+A. Propósito:
+   - Panel inteligente de análisis de servicios agendados
+   - Optimización de precios y promociones basada en datos
+   - Identificación de patrones de demanda por fecha
+   - Especialmente útil para Recepción y Asistente de Citas
+   
+B. Filtros Avanzados:
+   1. Tipo de Período:
+      - Mensual: Análisis por mes específico
+      - Trimestral: Análisis por trimestre (Q1, Q2, Q3, Q4)
+   
+   2. Selección de Mes:
+      - Dropdown con todos los meses del año
+      - Solo visible si período es "Mensual"
+   
+   3. Selección de Trimestre:
+      - Q1 (Enero-Marzo)
+      - Q2 (Abril-Junio)
+      - Q3 (Julio-Septiembre)
+      - Q4 (Octubre-Diciembre)
+      - Solo visible si período es "Trimestral"
+   
+   4. Año:
+      - Input numérico
+      - Rango: 2020 hasta año actual
+   
+C. Resumen de Asistencia (Banner Principal):
+   - Período Analizado:
+     • Fecha de inicio
+     • Fecha de fin
+     • Etiqueta legible (ej. "Enero 2026", "Q1 2026")
+   
+   - Métricas Generales:
+     • Total de citas programadas
+     • Citas atendidas (COMPLETADA)
+     • Citas no atendidas (CANCELADA, no show)
+     • Tasa de asistencia (porcentaje)
+   
+D. Ranking de Servicios Más Frecuentes:
+   - Solo cuenta citas ATENDIDAS (estado COMPLETADA)
+   - Ordenamiento: De mayor a menor frecuencia
+   - Por cada servicio muestra:
+     • Posición en ranking (1, 2, 3...)
+     • Nombre del servicio
+     • Número de citas atendidas
+     • Ingresos totales generados (suma de precios)
+     • Precio promedio
+     • Moneda
+   
+   - Visualización:
+     • Barra de progreso animada
+     • Ancho proporcional a frecuencia
+     • Gradiente de color teal-cyan
+     • Scroll vertical si hay muchos servicios
+   
+E. Mapa de Calor de Fechas (Servicio Líder):
+   - Propósito: Identificar días/fechas con mayor demanda
+   - Servicio Analizado: El servicio más vendido del período
+   - Muestra:
+     • Fecha específica (día/mes)
+     • Número de citas atendidas en esa fecha
+     • Barra de intensidad con código de colores:
+       * Rojo-Naranja: Alta intensidad (>75%)
+       * Amarillo-Naranja: Media-Alta (50-75%)
+       * Amarillo: Media (25-50%)
+       * Gris: Baja (<25%)
+   
+   - Utilidad Práctica:
+     • Identificar días de mayor demanda
+     • Planificar promociones en días de baja demanda
+     • Optimizar precios según día de la semana
+     • Ajustar disponibilidad de agenda
+   
+F. Permisos por Rol:
+   - ASISTENTE DE CITAS: Acceso completo
+   - RECEPCIÓN: Acceso completo con enfoque en optimización de ventas
+   - Otros roles: Según configuración del médico
+
+13.8 ORIGEN DE CITAS (/dashboard/role-user/origen-citas)
+────────────────────────────────────────────────────────────────────────────
+A. Propósito:
+   - Análisis de marketing: ¿De dónde vienen los pacientes?
+   - Medir efectividad de canales de adquisición
+   - Optimizar inversión en publicidad
+   - Identificar fuentes más rentables
+   
+B. Filtros de Período:
+   - Fecha de Inicio (date picker)
+   - Fecha de Fin (date picker)
+   - Por defecto: Mes actual completo
+   - Botón "Filtrar" para aplicar cambios
+   
+C. Orígenes de Citas Rastreados:
+   1. PÁGINA PÚBLICA:
+      - Citas agendadas desde la página pública del consultorio
+      - Pacientes que reservan online
+      - Color: Azul-Índigo
+   
+   2. ASISTENTE MANUAL:
+      - Citas creadas por el asistente de citas
+      - Reservas telefónicas o presenciales
+      - Color: Teal-Cyan
+   
+   3. DASHBOARD PACIENTE:
+      - Citas agendadas por pacientes registrados desde su dashboard
+      - Auto-servicio de pacientes existentes
+      - Color: Esmeralda-Verde
+   
+   4. DASHBOARD DOCTOR:
+      - Citas creadas directamente por el médico
+      - Casos especiales o urgencias
+      - Color: Ámbar-Naranja
+   
+D. Tarjetas KPI (Métricas Principales):
+   - Por cada origen:
+     • Icono representativo
+     • Nombre del origen
+     • Número total de citas
+     • Porcentaje del total
+     • Descripción breve
+   
+   - Tarjeta TOTAL:
+     • Suma de todas las citas
+     • Período analizado
+     • Color: Gris-Slate
+   
+E. Gráfico de Barras Horizontales:
+   - Distribución visual por origen
+   - Barras animadas con gradientes
+   - Porcentaje y número absoluto
+   - Colores distintivos por origen
+   
+F. Pacientes que Asistieron (Tabla Detallada):
+   - Solo citas con estado COMPLETADA
+   - Columnas:
+     • Nombre del paciente
+     • Cédula/Identificación
+     • Teléfono
+     • Fecha de la cita
+     • Hora
+     • Servicio contratado
+     • Indicador: Registrado / No Registrado
+   
+   - Ordenamiento: Por fecha (más reciente primero)
+   - Scroll vertical para muchos registros
+   
+G. Desgloses Adicionales (3 Paneles):
+   1. Desglose por Fecha:
+      - Citas agrupadas por día
+      - Formato: "15 de enero, 2026"
+      - Número de citas por día
+      - Ordenamiento: Más reciente primero
+   
+   2. Desglose por Servicios:
+      - Servicios más solicitados
+      - Número de citas por servicio
+      - Ordenamiento: Mayor a menor
+   
+   3. Desglose por Hora:
+      - Horarios más populares
+      - Formato: "09:00 AM", "02:30 PM"
+      - Número de citas por franja horaria
+      - Útil para optimizar disponibilidad
+   
+H. Utilidad para Marketing:
+   - Si "Página Pública" es alto → Invertir en SEO/SEM
+   - Si "Asistente Manual" es alto → Mejorar proceso de reserva online
+   - Si "Dashboard Paciente" es alto → Fidelización funciona bien
+   - Identificar canales de bajo rendimiento
+
+13.9 MIS CITAS (/dashboard/role-user/mis-citas)
+────────────────────────────────────────────────────────────────────────────
+A. Propósito:
+   - Historial personal de citas creadas por el usuario de rol
+   - Seguimiento de trabajo del asistente
+   - Auditoría de actividad
+   - Revisión de citas programadas
+   
+B. Filtros:
+   - Año (input numérico):
+     • Rango: 2020 hasta año actual
+     • Por defecto: Año actual
+   
+   - Mes (dropdown):
+     • Opción "Todos los meses"
+     • Enero a Diciembre
+     • Por defecto: Mes actual
+   
+   - Botón "Filtrar" para aplicar
+   
+C. Información por Cita (Tarjetas):
+   - Datos del Paciente:
+     • Avatar/Icono
+     • Nombre completo
+     • Cédula/Identificación (si disponible)
+     • Badge "Paciente no registrado" (si aplica)
+   
+   - Motivo de la Cita:
+     • Texto completo del motivo
+     • Icono de documento
+   
+   - Fecha y Hora:
+     • Fecha completa: "lunes, 15 de enero, 2026"
+     • Hora: "10:30 AM"
+     • Icono de calendario y reloj
+   
+   - Ubicación:
+     • Dirección del consultorio
+     • Icono de ubicación
+   
+   - Origen del Cliente (Referral Source):
+     • Badge con color distintivo
+     • Etiquetas legibles:
+       * Facebook
+       * Instagram
+       * WhatsApp
+       * Boca en Boca (Referido)
+       * Otro
+     • Útil para análisis de marketing
+   
+   - Estado de la Cita:
+     • Badge con código de colores:
+       * CONFIRMADA: Azul
+       * EN ESPERA: Amarillo
+       * COMPLETADA (Finalizada): Verde
+       * CANCELADA: Gris
+       * REAGENDADA: Naranja
+   
+D. Vista de Lista:
+   - Ordenamiento cronológico
+   - Animaciones de entrada (Framer Motion)
+   - Hover effect en tarjetas
+   - Diseño responsive (móvil y desktop)
+   
+E. Mensaje de Estado Vacío:
+   - Si no hay citas en el período:
+     • Icono de calendario grande
+     • Mensaje claro
+     • Sugerencia de cambiar filtros
+   
+F. Utilidad:
+   - Asistente puede revisar su productividad
+   - Identificar patrones de trabajo
+   - Auditoría de citas creadas
+   - Seguimiento de pacientes atendidos
+   - Análisis de fuentes de referencia más efectivas
+
+13.10 REPORTES DE CITAS (/dashboard/role-user/reportes-citas)
+────────────────────────────────────────────────────────────────────────────
+A. Propósito:
+   - Reportes adicionales específicos para análisis de citas
+   - Complementa las estadísticas existentes
+   - Enfoque en métricas operativas
+   
+B. Funcionalidades (según implementación):
+   - Reportes personalizados de citas
+   - Exportación de datos
+   - Análisis de tendencias
+
+13.11 OTROS MÓDULOS PARA ROLES
+────────────────────────────────────────────────────────────────────────────
+A. Reportes (/dashboard/role-user/reportes):
+   - Estadísticas simplificadas
+   - Sin información financiera sensible
+   - Datos operativos según permisos
+
+B. Consultas (/dashboard/role-user/consultas):
+   - Vista limitada de consultas
+   - Sin acceso a diagnósticos sensibles
+
+C. Pacientes (/dashboard/role-user/pacientes):
+   - Listado básico
+   - Sin historial médico completo
+
+D. Recetas, Órdenes, Resultados, Mensajes, Tareas:
+   - Acceso según permisos configurados por el médico
+
+═══════════════════════════════════════════════════════════════════════════════════
+CUADRO COMPARATIVO: PERMISOS POR ROL PREDEFINIDO
+═══════════════════════════════════════════════════════════════════════════════════
+
+┌─────────────────────────┬──────────────────────┬──────────────────────┐
+│ MÓDULO                  │ ASISTENTE DE CITAS   │ RECEPCIÓN            │
+├─────────────────────────┼──────────────────────┼──────────────────────┤
+│ CITAS                   │ Ver, Crear, Editar,  │ Ver, Editar          │
+│                         │ Agendar              │ (solo estados)       │
+├─────────────────────────┼──────────────────────┼──────────────────────┤
+│ SERVICIOS               │ Ver, Crear, Editar,  │ Ver (solo lectura)   │
+│                         │ Eliminar, Combos     │                      │
+├─────────────────────────┼──────────────────────┼──────────────────────┤
+│ MÉTODOS DE PAGO         │ Ver, Crear, Editar,  │ Ver, Usar al cobrar  │
+│                         │ Eliminar             │                      │
+├─────────────────────────┼──────────────────────┼──────────────────────┤
+│ ESTADÍSTICAS            │ Ver completas        │ Ver completas        │
+├─────────────────────────┼──────────────────────┼──────────────────────┤
+│ WHATSAPP CONFIG         │ Ver, Editar          │ Ver (solo lectura)   │
+├─┬────────────────────────┼──────────────────────┼──────────────────────┤
+│ CONSULTAS               │ Ver (limitado)       │ Ver (muy limitado)   │
+├─────────────────────────┼──────────────────────┼──────────────────────┤
+│ PACIENTES               │ Ver, Buscar          │ Ver, Buscar          │
+├─────────────────────────┼──────────────────────┼──────────────────────┤
+│ FACTURACIÓN             │ Ver estados          │ Ver, Editar montos,  │
+│                         │                      │ Registrar pagos      │
+└─────────────────────────┴──────────────────────┴──────────────────────┘
+
+NOTA: Los permisos son completamente personalizables por el médico al
+crear/editar roles desde /dashboard/medic/configuracion/roles.
+
+═══════════════════════════════════════════════════════════════════════════════════
+FLUJO DE TRABAJO TÍPICO: ASISTENTE DE CITAS
+═══════════════════════════════════════════════════════════════════════════════════
+
+1. CONFIGURACIÓN INICIAL (Una vez):
+   ├─ Crear/Editar Servicios del Consultorio
+   ├─ Crear Combos de Servicios (paquetes)
+   ├─ Configurar Métodos de Pago disponibles
+   └─ Configurar WhatsApp (número y plantilla de mensajes)
+
+2. GESTIÓN DIARIA DE CITAS:
+   ├─ Ver agenda del día en calendario
+   ├─ Recibir solicitud de cita (teléfono, web, presencial)
+   ├─ Crear nueva cita:
+   │  ├─ Buscar paciente existente o crear nuevo
+   │  ├─ Seleccionar fecha/hora disponible
+   │  ├─ Asignar servicio o combo
+   │  └─ Guardar (genera factura automática)
+   ├─ Enviar recordatorio por WhatsApp (24h antes)
+   ├─ Confirmar asistencia del paciente
+   └─ Al finalizar el día: Revisar estadísticas
+
+3. COORDINACIÓN CON RECEPCIÓN:
+   ├─ Asistente crea citas → Recepción cobra y confirma
+   ├─ Recepción marca cita como "Completada" al ser atendida
+   └─ Recepción registra pagos y métodos usados
+
+4. ANÁLISIS PERIÓDICO:
+   ├─ Revisar Estadísticas de Citas (mensual)
+   ├─ Evaluar tasa de ausentismo
+   ├─ Ajustar estrategia de recordatorios
+   └─ Proponer nuevos combos de servicios según demanda
+
+═══════════════════════════════════════════════════════════════════════════════════
+15. PÁGINA PÚBLICA DEL CONSULTORIO (LINK PÚBLICO)
+═══════════════════════════════════════════════════════════════════════════════════
+
+La página pública es la vitrina digital del consultorio, accesible a través de un link único
+que permite a pacientes potenciales conocer los servicios, médicos, horarios y agendar citas.
+
+15.1 CONCEPTO Y ACCESO
+────────────────────────────────────────────────────────────────────────────
+A. URL de Acceso:
+   - Formato: /c/[id-del-consultorio]
+   - Ejemplo: https://ashirasoftware.com/c/abc123xyz
+   - Link compartible en redes sociales, tarjetas de presentación, etc.
+   
+B. Propósito:
+   - Presencia digital profesional del consultorio
+   - Captación de nuevos pacientes
+   - Información completa y transparente
+   - Facilitar agendamiento de citas online
+   
+C. Características Técnicas:
+   - Página completamente pública (sin necesidad de login)
+   - Optimizada para SEO (meta tags, Open Graph, Twitter Cards)
+   - Responsive (móvil, tablet, desktop)
+   - Carga rápida con imágenes optimizadas
+   - Accesible 24/7
+
+15.2 SECCIÓN HERO (CABECERA PRINCIPAL)
+────────────────────────────────────────────────────────────────────────────
+A. Fondo Visual Dinámico:
+   - Mosaico de Fotos del Consultorio (si hay fotos cargadas):
+     • Grid de 32 imágenes en patrón de mosaico
+     • Efecto hover con zoom en cada imagen
+     • Click para ampliar en lightbox
+     • Animación sutil de pulsación
+     • Overlay con gradiente teal-cyan-slate
+   
+   - Foto de Perfil (si no hay mosaico):
+     • Imagen principal del consultorio
+     • Patrón geométrico superpuesto
+     • Efecto de profundidad con gradientes
+   
+   - Fondo por Defecto (si no hay imágenes):
+     • Gradiente teal-cyan con patrón de cuadrícula
+     • Icono de edificio médico animado
+   
+B. Información Principal:
+   - Badge: "Consultorio Médico Profesional"
+   - Nombre del Consultorio (trade_name o legal_name)
+   - Especialidades:
+     • Si es 1 especialidad: "Medicina General"
+     • Si son 2: "Cardiología y Pediatría"
+     • Si son 3+: "Cardiología, Pediatría y 2 especialidades más"
+     • Nunca muestra código JSON, solo texto limpio
+   
+C. Información de Contacto Rápido:
+   - Teléfono Móvil (clickeable para llamar)
+   - Email de Contacto (clickeable para enviar email)
+   - Dirección Operacional (con icono de ubicación)
+   - Badge de Cashea:
+     • "Acepta Cashea" (verde-teal) si has_cashea = true
+     • "No acepta Cashea" (gris) si has_cashea = false
+     • "Información no disponible" si has_cashea = null
+   
+D. Botones de Acción Principal (CTA):
+   - "Agendar Cita Ahora" (botón blanco destacado)
+     • Abre modal de agendamiento
+     • Requiere registro previo
+   - "Llamar Ahora" (botón semi-transparente)
+     • Link directo a tel:
+
+15.3 BANNER DE REGISTRO
+────────────────────────────────────────────────────────────────────────────
+A. Ubicación: Inmediatamente después del Hero
+   
+B. Contenido:
+   - Icono de usuarios
+   - Título: "¿Deseas agendar una cita?"
+   - Mensaje: Explica que se requiere registro o contacto directo
+   - Botones:
+     • "Registrarse Ahora" → /register?role=PACIENTE
+     • "Llamar Ahora" → tel: (si hay teléfono)
+   
+C. Diseño:
+   - Gradiente teal-cyan-blue
+   - Texto blanco con alta legibilidad
+   - Responsive (columnas en móvil, fila en desktop)
+
+15.4 SECCIÓN "ACERCA DE NOSOTROS"
+────────────────────────────────────────────────────────────────────────────
+A. Descripción del Consultorio:
+   - Texto introductorio personalizado
+   - Mención de especialidad principal
+   - Compromiso con atención de calidad
+   
+B. Listado de Especialidades:
+   - Título: "Nuestras Especialidades"
+   - Lista completa de especialidades ofrecidas
+   - Formato legible (separadas por comas y "y")
+   - Nunca muestra JSON, solo texto limpio
+   
+C. Información de Cashea (Siempre Visible):
+   - Título: "Aceptación de Cashea"
+   - Badge visual con icono de rayo
+   - Estados:
+     • ✅ Sí, aceptamos Cashea (verde-teal)
+       * Descripción: Pagos seguros y rápidos
+     • ❌ No aceptamos Cashea (gris)
+       * Descripción: Contactar para métodos disponibles
+     • ❓ Dato no disponible (gris)
+       * Descripción: Contactar para información
+   
+D. Diseño:
+   - Fondo degradado slate-50 a blanco
+   - Bordes redondeados (rounded-3xl)
+   - Sombra suave
+   - Iconos con gradientes teal-cyan
+
+15.5 SECCIÓN "NUESTRO EQUIPO MÉDICO"
+────────────────────────────────────────────────────────────────────────────
+A. Listado de Médicos:
+   - Grid responsive (1 columna móvil, 2-3 en desktop)
+   - Por cada médico:
+     • Foto del médico (si disponible)
+     • Avatar con icono de estetoscopio (si no hay foto)
+     • Nombre completo
+     • Especialidad (parseada y limpia, sin JSON)
+     • Email (clickeable)
+   
+B. Tarjetas de Médico:
+   - Fondo blanco con borde
+   - Hover effect (escala y sombra)
+   - Foto circular redondeada
+   - Badge de especialidad (fondo teal-50)
+   
+C. Parsing de Especialidades:
+   - Detecta y limpia JSON arrays
+   - Convierte a texto legible
+   - Maneja múltiples formatos de entrada
+   - Fallback: "Médico" si no hay especialidad
+
+15.6 SECCIÓN CALL-TO-ACTION (INTERMEDIA)
+────────────────────────────────────────────────────────────────────────────
+A. Ubicación: Después de "Acerca de" y antes de "Servicios"
+   
+B. Contenido:
+   - Título: "¿Buscas atención médica especializada?"
+   - Descripción: Beneficios de registrarse
+   - Botones:
+     • "Registrarse Gratis" → /register?role=PACIENTE
+     • "Enviar Email" → mailto: (si hay email)
+   
+C. Diseño:
+   - Gradiente teal-cyan-blue
+   - Elementos decorativos (círculos difuminados)
+   - Texto centrado
+   - Botones destacados
+
+15.7 SECCIÓN "SERVICIOS INDIVIDUALES"
+────────────────────────────────────────────────────────────────────────────
+A. Condición de Visualización:
+   - Solo se muestra si al menos un médico tiene servicios configurados
+   
+B. Listado de Servicios:
+   - Grid responsive (1-3 columnas)
+   - Servicios únicos (sin duplicados por nombre)
+   - Por cada servicio:
+     • Icono de check (teal-cyan)
+     • Nombre del servicio
+     • Descripción (si disponible)
+     • Precio formateado con moneda
+       * USD: $ 50.00
+       * VES: Bs. 1,500.00
+       * EUR: € 45.00
+     • Botón "Agendar Este Servicio"
+   
+C. Tarjetas de Servicio:
+   - Fondo blanco con backdrop blur
+   - Borde que cambia a teal en hover
+   - Gradiente sutil en hover
+   - Precio destacado en gradiente teal-cyan
+   - Separador visual entre descripción y precio
+   
+D. Formato de Precio:
+   - "Consultar precio" si no hay precio definido
+   - Símbolo de moneda + número formateado
+   - 2 decimales siempre
+   - Separador de miles según locale español
+
+15.8 SECCIÓN "COMBOS DE SERVICIOS" (PAQUETES PROMOCIONALES)
+────────────────────────────────────────────────────────────────────────────
+A. Condición de Visualización:
+   - Solo se muestra si hay combos configurados
+   
+B. Listado de Combos:
+   - Grid responsive similar a servicios individuales
+   - Por cada combo:
+     • Icono de paquete
+     • Nombre del combo
+     • Descripción del paquete
+     • Lista de servicios incluidos
+     • Precio promocional (destacado)
+     • Badge "Ahorra X%" (si aplica)
+     • Botón "Agendar Este Paquete"
+   
+C. Diseño Distintivo:
+   - Badge "COMBO" o "PAQUETE"
+   - Color distintivo (púrpura o naranja)
+   - Precio más grande que servicios individuales
+   - Indicador de ahorro vs precio individual
+
+15.9 SECCIÓN "HORARIOS DE ATENCIÓN"
+────────────────────────────────────────────────────────────────────────────
+A. Fuente de Datos:
+   - Extraído de availability de cada médico
+   - Agrupado por horarios comunes
+   
+B. Formato de Visualización:
+   - Días agrupados con mismo horario:
+     • "Lunes a Viernes: 9:00 AM - 5:00 PM"
+     • "Sábados: 9:00 AM - 1:00 PM"
+   - Ordenamiento lógico (Lunes a Domingo)
+   
+C. Diseño:
+   - Icono de reloj
+   - Lista clara y legible
+   - Fondo con degradado sutil
+
+15.10 SECCIÓN "GALERÍA DE FOTOS"
+────────────────────────────────────────────────────────────────────────────
+A. Condición: Solo si hay fotos cargadas
+   
+B. Visualización:
+   - Grid de miniaturas (thumbnails)
+   - Click para ampliar en lightbox
+   - Navegación entre fotos
+   - Botón de descarga
+   
+C. Tipos de Fotos:
+   - Instalaciones del consultorio
+   - Salas de consulta
+   - Equipamiento médico
+   - Fachada del edificio
+
+15.11 SECCIÓN "UBICACIÓN Y CONTACTO"
+────────────────────────────────────────────────────────────────────────────
+A. Información de Contacto Completa:
+   - Dirección Operacional
+   - Dirección Fiscal (si difiere)
+   - Teléfono Móvil
+   - Teléfono Fijo (si disponible)
+   - Email de Contacto
+   - Sitio Web (si disponible)
+   
+B. Redes Sociales:
+   - Facebook (si configurado)
+   - Instagram (si configurado)
+   - LinkedIn (si configurado)
+   - Links clickeables con iconos
+   
+C. Mapa (Si location está configurado):
+   - Integración con Google Maps
+   - Pin en ubicación exacta
+   - Botón "Cómo llegar"
+
+15.12 MODAL DE AGENDAMIENTO DE CITAS
+────────────────────────────────────────────────────────────────────────────
+A. Activación:
+   - Click en "Agendar Cita Ahora" (Hero)
+   - Click en "Agendar Este Servicio" (Servicios)
+   - Click en "Agendar Este Paquete" (Combos)
+   
+B. Flujo de Agendamiento:
+   1. Verificación de Sesión:
+      - Si NO está logueado:
+        • Mensaje: "Debes registrarte para agendar"
+        • Botón: "Ir a Registro"
+        • Botón: "Ya tengo cuenta - Iniciar Sesión"
+      
+      - Si está logueado como PACIENTE:
+        • Formulario de agendamiento completo
+        • Selección de médico
+        • Selección de servicio/combo
+        • Selección de fecha y hora disponible
+        • Confirmación de datos
+   
+   2. Selección de Servicio:
+      - Dropdown con todos los servicios
+      - Precio visible por cada opción
+      - Combos destacados con badge
+   
+   3. Selección de Fecha y Hora:
+      - Calendario interactivo
+      - Solo fechas disponibles clickeables
+      - Horarios disponibles según agenda del médico
+      - Bloques de 30 minutos
+   
+   4. Confirmación:
+      - Resumen de la cita
+      - Datos del paciente
+      - Servicio seleccionado
+      - Fecha y hora
+      - Precio total
+      - Botón "Confirmar Cita"
+   
+C. Diseño del Modal:
+   - Overlay oscuro semi-transparente
+   - Modal centrado responsive
+   - Botón de cerrar (X)
+   - Pasos visuales (wizard)
+   - Validación en tiempo real
+
+15.13 OPTIMIZACIÓN SEO
+────────────────────────────────────────────────────────────────────────────
+A. Meta Tags Generados Automáticamente:
+   - Title: "[Nombre Consultorio] - [Especialidad Principal]"
+   - Description: "Consultorio privado especializado en [Especialidad]. Agenda tu cita..."
+   - Keywords: Especialidades, ubicación, servicios
+   
+B. Open Graph (Facebook/WhatsApp):
+   - og:title
+   - og:description
+   - og:type: website
+   - og:image: profile_photo del consultorio
+   
+C. Twitter Cards:
+   - twitter:card: summary_large_image
+   - twitter:title
+   - twitter:description
+   - twitter:image
+   
+D. Schema.org (Structured Data):
+   - MedicalBusiness
+   - Physician (por cada médico)
+   - Service (por cada servicio)
+   - OpeningHours
+
+15.14 CARACTERÍSTICAS TÉCNICAS AVANZADAS
+────────────────────────────────────────────────────────────────────────────
+A. Rendimiento:
+   - Server-Side Rendering (SSR) con Next.js
+   - Imágenes optimizadas con Next/Image
+   - Lazy loading de secciones
+   - Caché de datos estáticos
+   
+B. Animaciones:
+   - Framer Motion para transiciones suaves
+   - Scroll animations (aparición progresiva)
+   - Hover effects en tarjetas
+   - Loading states elegantes
+   
+C. Accesibilidad:
+   - ARIA labels en todos los elementos interactivos
+   - Navegación por teclado
+   - Contraste de colores WCAG AA
+   - Alt text en todas las imágenes
+   
+D. Seguridad:
+   - Datos públicos sin información sensible
+   - Validación de inputs en modal
+   - Protección contra XSS
+   - Rate limiting en agendamiento
+
+15.15 FLUJO COMPLETO: PACIENTE NUEVO AGENDA CITA
+────────────────────────────────────────────────────────────────────────────
+1. Paciente recibe link del consultorio (ej: por WhatsApp, Facebook)
+2. Abre /c/[id] en navegador
+3. Ve información completa del consultorio:
+   - Especialidades
+   - Médicos
+   - Servicios y precios
+   - Horarios
+   - Fotos
+4. Decide agendar cita
+5. Click en "Agendar Cita Ahora"
+6. Modal indica que debe registrarse
+7. Click en "Ir a Registro"
+8. Completa formulario de registro como PACIENTE
+9. Confirma email (si aplica)
+10. Inicia sesión automáticamente
+11. Regresa a página pública
+12. Click nuevamente en "Agendar Cita"
+13. Ahora puede completar agendamiento:
+    - Selecciona servicio
+    - Selecciona fecha disponible
+    - Selecciona hora disponible
+    - Confirma datos
+14. Cita creada exitosamente
+15. Recibe confirmación por email/WhatsApp
+16. Puede ver su cita en /dashboard/patient
+
+═══════════════════════════════════════════════════════════════════════════════════
+16. FUNCIONALIDADES COMPLETAS POR ROL INTERNO
+═══════════════════════════════════════════════════════════════════════════════════
+
+Esta sección detalla módulo por módulo las funcionalidades específicas disponibles para
+cada rol interno del consultorio: Asistente de Citas y Recepción.
+
+16.1 MÓDULO: SERVICIOS DEL CONSULTORIO (/dashboard/role-user/servicios)
+────────────────────────────────────────────────────────────────────────────
+
+A. ASISTENTE DE CITAS - PERMISOS COMPLETOS:
+   
+   1. Gestión de Servicios Individuales:
+      - Ver listado completo de servicios
+      - Crear nuevo servicio:
+        • Nombre del servicio (ej: "Consulta General")
+        • Descripción detallada
+        • Precio (numérico)
+        • Moneda (USD, VES, EUR)
+        • Validación de campos obligatorios
+      
+      - Editar servicio existente:
+        • Modificar nombre, descripción, precio, moneda
+        • Actualización en tiempo real
+        • Confirmación de cambios
+      
+      - Eliminar servicio:
+        • Confirmación antes de eliminar
+        • Verificación de dependencias (citas asociadas)
+        • Mensaje de éxito/error
+   
+   2. Gestión de Combos de Servicios (Paquetes):
+      - Ver listado de combos existentes
+      - Crear nuevo combo:
+        • Nombre del combo (ej: "Paquete Chequeo Completo")
+        • Descripción del paquete
+        • Precio total del combo
+        • Moneda
+        • Selección de servicios incluidos (multi-select)
+        • Cálculo automático de ahorro vs precio individual
+      
+      - Editar combo existente:
+        • Modificar nombre, descripción, precio
+        • Agregar/quitar servicios incluidos
+        • Recalcular ahorro
+      
+      - Eliminar combo:
+        • Confirmación antes de eliminar
+        • Verificación de uso en citas
+   
+   3. Interfaz de Usuario:
+      - Tabs para alternar entre "Servicios" y "Combos"
+      - Formularios con validación en tiempo real
+      - Mensajes de éxito/error claros
+      - Botones de acción destacados
+      - Vista de lista con tarjetas
+   
+   4. Validaciones:
+      - Nombre no vacío
+      - Precio numérico positivo
+      - Moneda seleccionada
+      - Combo debe tener al menos 1 servicio incluido
+
+B. RECEPCIÓN - SOLO LECTURA:
+   - Ver listado de servicios (sin botones de edición)
+   - Ver listado de combos (sin botones de edición)
+   - Ver precios y descripciones
+   - Usar esta información al cobrar citas
+   - No puede crear, editar ni eliminar
+
+16.2 MÓDULO: CITAS (/dashboard/role-user/citas)
+────────────────────────────────────────────────────────────────────────────
+
+A. ASISTENTE DE CITAS - GESTIÓN COMPLETA:
+   
+   1. Crear Nueva Cita:
+      - Buscar paciente existente o crear nuevo:
+        • Si existe: Autocompletar datos
+        • Si no existe: Formulario de paciente no registrado
+          * Nombre completo
+          * Cédula/Identificación
+          * Teléfono
+          * Email (opcional)
+      
+      - Seleccionar fecha y hora:
+        • Calendario interactivo
+        • Solo fechas futuras disponibles
+        • Horarios según disponibilidad del médico
+        • Bloques de 30 minutos
+        • Indicador de horarios ocupados
+      
+      - Seleccionar servicio o combo:
+        • Dropdown con todos los servicios
+        • Dropdown con todos los combos
+        • Precio visible automáticamente
+      
+      - Motivo de la cita (texto libre)
+      
+      - Origen del cliente (Referral Source):
+        • Facebook
+        • Instagram
+        • WhatsApp
+        • Boca en Boca (Referido)
+        • Página Pública
+        • Otro
+      
+      - Confirmación y guardado:
+        • Genera factura automáticamente
+        • Asigna estado inicial: "CONFIRMADA" o "EN ESPERA"
+        • Notificación al paciente (si tiene email/teléfono)
+   
+   2. Ver y Filtrar Citas:
+      - Vista de calendario (mensual, semanal, diaria)
+      - Vista de lista
+      - Filtros:
+        • Por fecha (rango)
+        • Por paciente (búsqueda)
+        • Por estado (CONFIRMADA, EN ESPERA, COMPLETADA, CANCELADA, REAGENDADA)
+        • Por servicio
+        • Por origen
+   
+   3. Editar Cita Existente:
+      - Cambiar fecha/hora (reagendar)
+      - Cambiar servicio
+      - Modificar motivo
+      - Actualizar datos del paciente
+      - Cambiar estado
+   
+   4. Cancelar Cita:
+      - Cambiar estado a "CANCELADA"
+      - Motivo de cancelación (opcional)
+      - Notificación al paciente
+   
+   5. Reagendar Cita:
+      - Cambiar estado a "REAGENDADA"
+      - Seleccionar nueva fecha/hora
+      - Mantener historial de cambios
+   
+   6. Enviar Recordatorios:
+      - Manual: Botón "Enviar Recordatorio"
+      - Automático: 24h antes (si WhatsApp configurado)
+      - Plantilla personalizable
+
+B. RECEPCIÓN - GESTIÓN DE ESTADOS Y PAGOS:
+   
+   1. Ver Citas del Día:
+      - Vista de lista de citas programadas
+      - Filtros básicos (fecha, paciente)
+      - Información completa de cada cita
+   
+   2. Marcar Cita como Completada:
+      - Cambiar estado a "COMPLETADA"
+      - Registrar hora de llegada
+      - Registrar hora de atención
+      - Confirmar pago recibido
+   
+   3. Registrar Pagos:
+      - Monto pagado
+      - Método de pago utilizado
+      - Referencia de pago (si aplica)
+      - Generar recibo
+   
+   4. Confirmar Asistencia:
+      - Marcar paciente como "Presente"
+      - Notificar al médico
+   
+   5. Limitaciones:
+      - No puede crear nuevas citas
+      - No puede editar datos del paciente
+      - No puede cambiar servicio/precio
+      - Solo puede cambiar estados operativos
+
+16.3 MÓDULO: ESTADÍSTICAS DE CITAS (/dashboard/role-user/estadisticas-citas)
+────────────────────────────────────────────────────────────────────────────
+
+A. AMBOS ROLES - ACCESO COMPLETO:
+   
+   1. KPIs Principales (Tarjetas):
+      - Total de Citas Agendadas (período seleccionado)
+      - Citas Completadas (con porcentaje)
+      - Citas Canceladas (con porcentaje)
+      - Tasa de Asistencia (%)
+      - Tasa de Ausentismo (%)
+   
+   2. Filtros de Período:
+      - Selector de fecha inicio
+      - Selector de fecha fin
+      - Presets: "Hoy", "Esta Semana", "Este Mes", "Este Año"
+      - Botón "Aplicar Filtros"
+   
+   3. Gráficos de Tendencias:
+      - Gráfico de línea: Citas por día
+      - Gráfico de barras: Citas por estado
+      - Gráfico de pastel: Distribución de estados
+   
+   4. Tabla de Detalles:
+      - Citas por servicio (más solicitados)
+      - Citas por médico (si aplica)
+      - Citas por origen (marketing)
+      - Horarios más populares
+   
+   5. Exportación:
+      - Botón "Exportar a Excel"
+      - Botón "Exportar a PDF"
+      - Incluye gráficos y tablas
+
+16.4 MÓDULO: ESTADÍSTICAS DE SERVICIOS (/dashboard/role-user/estadisticas-servicios)
+────────────────────────────────────────────────────────────────────────────
+
+A. AMBOS ROLES - ACCESO COMPLETO:
+   
+   1. KPIs de Servicios:
+      - Total de Servicios Ofrecidos
+      - Servicio Más Solicitado
+      - Servicio Menos Solicitado
+      - Ingresos por Servicio (si tiene permisos financieros)
+   
+   2. Ranking de Servicios:
+      - Top 10 servicios más solicitados
+      - Número de citas por servicio
+      - Porcentaje del total
+      - Tendencia (↑ ↓ →)
+   
+   3. Mapa de Calor de Demanda:
+      - Eje X: Días de la semana (Lun-Dom)
+      - Eje Y: Servicios
+      - Color: Intensidad de demanda
+        • Verde claro: Baja demanda
+        • Verde oscuro: Media demanda
+        • Teal: Alta demanda
+        • Cyan: Muy alta demanda
+      
+      - Utilidad:
+        • Identificar días con mayor demanda por servicio
+        • Optimizar disponibilidad de médicos
+        • Planificar promociones
+        • Ajustar precios según demanda
+   
+   4. Filtros:
+      - Rango de fechas
+      - Servicio específico
+      - Médico (si aplica)
+   
+   5. Análisis de Combos:
+      - Combos más vendidos
+      - Ahorro promedio por combo
+      - Servicios más incluidos en combos
+
+16.5 MÓDULO: ORIGEN DE CITAS (/dashboard/role-user/origen-citas)
+────────────────────────────────────────────────────────────────────────────
+
+A. AMBOS ROLES - ACCESO COMPLETO (ANÁLISIS DE MARKETING):
+   
+   1. KPIs de Origen:
+      - Total de Citas por Origen
+      - Origen Más Efectivo
+      - Tasa de Conversión por Origen
+      - Costo de Adquisición (si configurado)
+   
+   2. Gráfico de Distribución:
+      - Gráfico de pastel: Citas por origen
+        • Página Pública
+        • Asistente Manual
+        • Dashboard Paciente
+        • Facebook
+        • Instagram
+        • WhatsApp
+        • Boca en Boca
+        • Otro
+      
+      - Porcentajes y números absolutos
+      - Colores distintivos por origen
+   
+   3. Tabla de Pacientes que Asistieron:
+      - Solo citas con estado COMPLETADA
+      - Columnas:
+        • Nombre del paciente
+        • Cédula/Identificación
+        • Teléfono
+        • Fecha de la cita
+        • Hora
+        • Servicio contratado
+        • Origen (badge con color)
+        • Indicador: Registrado / No Registrado
+      
+      - Ordenamiento: Por fecha (más reciente primero)
+      - Paginación o scroll infinito
+      - Búsqueda por nombre/cédula
+   
+   4. Desgloses Adicionales (3 Paneles):
+      
+      a) Desglose por Fecha:
+         - Citas agrupadas por día
+         - Formato: "15 de enero, 2026"
+         - Número de citas por día
+         - Origen predominante por día
+         - Ordenamiento: Más reciente primero
+      
+      b) Desglose por Servicios:
+         - Servicios más solicitados
+         - Número de citas por servicio
+         - Origen predominante por servicio
+         - Ordenamiento: Mayor a menor
+      
+      c) Desglose por Hora:
+         - Horarios más populares
+         - Formato: "09:00 AM", "02:30 PM"
+         - Número de citas por franja horaria
+         - Origen predominante por horario
+         - Útil para optimizar disponibilidad
+   
+   5. Análisis de Marketing:
+      - Si "Página Pública" es alto → Invertir en SEO/SEM
+      - Si "Asistente Manual" es alto → Mejorar proceso de reserva online
+      - Si "Dashboard Paciente" es alto → Fidelización funciona bien
+      - Si "Facebook/Instagram" es alto → Continuar campañas sociales
+      - Identificar canales de bajo rendimiento
+      - ROI por canal (si hay datos de inversión)
+   
+   6. Filtros:
+      - Rango de fechas
+      - Origen específico
+      - Servicio
+      - Estado de la cita
+
+16.6 MÓDULO: MIS CITAS (/dashboard/role-user/mis-citas)
+────────────────────────────────────────────────────────────────────────────
+
+A. ASISTENTE DE CITAS - HISTORIAL PERSONAL:
+   
+   1. Propósito:
+      - Historial personal de citas creadas por el asistente
+      - Seguimiento de trabajo individual
+      - Auditoría de actividad
+      - Revisión de citas programadas
+      - Análisis de productividad personal
+   
+   2. Filtros:
+      - Año (input numérico):
+        • Rango: 2020 hasta año actual
+        • Por defecto: Año actual
+      
+      - Mes (dropdown):
+        • Opción "Todos los meses"
+        • Enero a Diciembre
+        • Por defecto: Mes actual
+      
+      - Botón "Filtrar" para aplicar
+   
+   3. Información por Cita (Tarjetas):
+      
+      a) Datos del Paciente:
+         - Avatar/Icono
+         - Nombre completo
+         - Cédula/Identificación (si disponible)
+         - Badge "Paciente no registrado" (si aplica)
+         - Teléfono de contacto
+      
+      b) Motivo de la Cita:
+         - Texto completo del motivo
+         - Icono de documento
+      
+      c) Fecha y Hora:
+         - Fecha completa: "lunes, 15 de enero, 2026"
+         - Hora: "10:30 AM"
+         - Icono de calendario y reloj
+      
+      d) Ubicación:
+         - Dirección del consultorio
+         - Icono de ubicación
+      
+      e) Servicio Contratado:
+         - Nombre del servicio o combo
+         - Precio (si visible)
+         - Badge de tipo (Servicio/Combo)
+      
+      f) Origen del Cliente (Referral Source):
+         - Badge con color distintivo
+         - Etiquetas legibles:
+           * Facebook (azul)
+           * Instagram (gradiente rosa-naranja)
+           * WhatsApp (verde)
+           * Boca en Boca (amarillo)
+           * Página Pública (teal)
+           * Dashboard Paciente (púrpura)
+           * Otro (gris)
+         - Útil para análisis de marketing personal
+      
+      g) Estado de la Cita:
+         - Badge con código de colores:
+           * CONFIRMADA: Azul
+           * EN ESPERA: Amarillo
+           * COMPLETADA (Finalizada): Verde
+           * CANCELADA: Gris
+           * REAGENDADA: Naranja
+      
+      h) Información de Creación:
+         - Fecha de creación de la cita
+         - Hora de creación
+         - "Creada por: [Nombre del Asistente]"
+   
+   4. Vista de Lista:
+      - Ordenamiento cronológico (más reciente primero)
+      - Animaciones de entrada (Framer Motion)
+      - Hover effect en tarjetas
+      - Diseño responsive (móvil y desktop)
+      - Scroll infinito o paginación
+   
+   5. Estadísticas Personales (Panel Superior):
+      - Total de citas creadas (período filtrado)
+      - Citas completadas (%)
+      - Citas canceladas (%)
+      - Origen más efectivo del asistente
+      - Servicio más vendido por el asistente
+   
+   6. Mensaje de Estado Vacío:
+      - Si no hay citas en el período:
+        • Icono de calendario grande
+        • Mensaje: "No has creado citas en este período"
+        • Sugerencia de cambiar filtros
+        • Botón "Crear Nueva Cita"
+   
+   7. Utilidad:
+      - Asistente puede revisar su productividad
+      - Identificar patrones de trabajo
+      - Auditoría de citas creadas
+      - Seguimiento de pacientes atendidos
+      - Análisis de fuentes de referencia más efectivas
+      - Evaluación de desempeño personal
+      - Identificar horarios de mayor actividad
+
+B. RECEPCIÓN - ACCESO LIMITADO:
+   - Puede ver solo citas que ha procesado (marcado como completadas)
+   - Filtros similares
+   - Información limitada (sin datos financieros sensibles)
+
+16.7 MÓDULO: REPORTES DE CITAS (/dashboard/role-user/reportes-citas)
+────────────────────────────────────────────────────────────────────────────
+
+A. AMBOS ROLES - REPORTES ESPECIALIZADOS:
+   
+   1. Tipos de Reportes Disponibles:
+      
+      a) Reporte de Asistencia:
+         - Tasa de asistencia por período
+         - Comparativa mensual
+         - Identificación de patrones de ausentismo
+         - Sugerencias de mejora
+      
+      b) Reporte de Productividad:
+         - Citas creadas vs completadas
+         - Tiempo promedio de atención
+         - Eficiencia del consultorio
+      
+      c) Reporte de Servicios:
+         - Servicios más/menos solicitados
+         - Tendencias de demanda
+         - Análisis de precios
+      
+      d) Reporte de Orígenes:
+         - Efectividad de canales de marketing
+         - ROI por canal (si configurado)
+         - Recomendaciones de inversión
+   
+   2. Generación de Reportes:
+      - Selección de tipo de reporte
+      - Configuración de parámetros:
+        • Rango de fechas
+        • Servicios incluidos
+        • Médicos incluidos (si aplica)
+        • Orígenes incluidos
+      
+      - Previsualización en pantalla
+      - Exportación:
+        • PDF (con gráficos)
+        • Excel (con datos crudos)
+        • CSV (para análisis externo)
+   
+   3. Reportes Programados:
+      - Configurar reportes automáticos
+      - Frecuencia: Diaria, Semanal, Mensual
+      - Envío por email
+      - Almacenamiento en historial
+
+16.8 MÓDULO: PACIENTES (/dashboard/role-user/pacientes)
+────────────────────────────────────────────────────────────────────────────
+
+A. AMBOS ROLES - ACCESO DE LECTURA:
+   
+   1. Listado de Pacientes:
+      - Vista de tabla o tarjetas
+      - Información básica:
+        • Nombre completo
+        • Cédula/Identificación
+        • Teléfono
+        • Email
+        • Fecha de registro
+        • Última cita
+        • Próxima cita (si tiene)
+   
+   2. Búsqueda y Filtros:
+      - Búsqueda por nombre
+      - Búsqueda por cédula
+      - Búsqueda por teléfono
+      - Filtro por estado: Registrado / No Registrado
+      - Filtro por última visita
+   
+   3. Detalle de Paciente:
+      - Información de contacto
+      - Historial de citas (fechas, servicios, estados)
+      - Total gastado (si tiene permisos)
+      - Servicios más utilizados
+      - Origen de captación
+   
+   4. Limitaciones:
+      - No pueden ver historial médico completo
+      - No pueden ver diagnósticos
+      - No pueden ver recetas
+      - No pueden editar datos médicos
+      - Solo información operativa y de contacto
+
+B. ASISTENTE DE CITAS - FUNCIONES ADICIONALES:
+   - Crear paciente no registrado (para agendar cita)
+   - Editar datos de contacto básicos
+   - Agregar notas operativas (no médicas)
+
+16.9 MÓDULO: CONSULTAS (/dashboard/role-user/consultas)
+────────────────────────────────────────────────────────────────────────────
+
+A. AMBOS ROLES - ACCESO MUY LIMITADO:
+   
+   1. Vista de Lista:
+      - Listado de consultas realizadas
+      - Información visible:
+        • Fecha de la consulta
+        • Paciente (nombre)
+        • Médico que atendió
+        • Estado (Completada, Pendiente)
+        • Servicio asociado
+      
+      - Información NO visible:
+        • Diagnóstico
+        • Motivo de consulta
+        • Tratamiento
+        • Recetas
+        • Resultados de laboratorio
+        • Notas médicas
+   
+   2. Propósito:
+      - Verificar que consultas fueron realizadas
+      - Coordinar seguimientos (sin ver detalles médicos)
+      - Programar consultas sucesivas
+   
+   3. Acciones Permitidas:
+      - Ver lista
+      - Filtrar por fecha/paciente
+      - Ver estado
+      - Programar cita de seguimiento
+
+16.10 MÓDULO: MENSAJES (/dashboard/role-user/mensajes)
+────────────────────────────────────────────────────────────────────────────
+
+A. AMBOS ROLES - COMUNICACIÓN INTERNA:
+   
+   1. Chat Interno del Equipo:
+      - Mensajes entre miembros del equipo
+      - Conversaciones grupales
+      - Mensajes directos
+      - Notificaciones en tiempo real
+   
+   2. Funcionalidades:
+      - Enviar mensajes de texto
+      - Adjuntar archivos
+      - Mencionar usuarios (@nombre)
+      - Marcar como importante
+      - Buscar en historial
+   
+   3. Limitaciones:
+      - No pueden ver mensajes médico-paciente
+      - No pueden acceder a conversaciones clínicas
+      - Solo comunicación administrativa
+
+16.11 MÓDULO: TAREAS (/dashboard/role-user/tareas)
+────────────────────────────────────────────────────────────────────────────
+
+A. AMBOS ROLES - GESTIÓN DE TAREAS:
+   
+   1. Crear Tareas:
+      - Título de la tarea
+      - Descripción
+      - Fecha de vencimiento
+      - Prioridad (Alta, Media, Baja)
+      - Asignar a usuario
+      - Categoría (Administrativa, Cita, Seguimiento, Otro)
+   
+   2. Ver Tareas:
+      - Tareas asignadas a mí
+      - Tareas creadas por mí
+      - Tareas del equipo
+      - Filtros:
+        • Por estado (Pendiente, En Progreso, Completada)
+        • Por prioridad
+        • Por fecha
+        • Por categoría
+   
+   3. Gestionar Tareas:
+      - Marcar como completada
+      - Cambiar estado
+      - Agregar comentarios
+      - Adjuntar archivos
+      - Reasignar
+   
+   4. Notificaciones:
+      - Al ser asignado
+      - Al acercarse vencimiento
+      - Al ser completada
+      - Al recibir comentario
+
+16.12 MÓDULO: WHATSAPP CONFIG (/dashboard/role-user/whatsapp-config)
+────────────────────────────────────────────────────────────────────────────
+
+A. ASISTENTE DE CITAS - CONFIGURACIÓN COMPLETA:
+   
+   1. Configuración de Número:
+      - Número de WhatsApp del consultorio
+      - Validación de formato
+      - Verificación de conexión
+   
+   2. Plantillas de Mensajes:
+      
+      a) Recordatorio de Cita (24h antes):
+         - Plantilla personalizable
+         - Variables dinámicas:
+           * {paciente_nombre}
+           * {fecha_cita}
+           * {hora_cita}
+           * {servicio}
+           * {consultorio_nombre}
+           * {consultorio_direccion}
+         - Ejemplo:
+           "Hola {paciente_nombre}, te recordamos tu cita de {servicio} 
+            mañana {fecha_cita} a las {hora_cita} en {consultorio_nombre}. 
+            ¡Te esperamos!"
+      
+      b) Confirmación de Cita:
+         - Enviado al crear la cita
+         - Variables similares
+         - Incluye link a página pública
+      
+      c) Cancelación de Cita:
+         - Enviado al cancelar
+         - Opción de reagendar
+      
+      d) Reagendamiento:
+         - Nueva fecha y hora
+         - Confirmación requerida
+   
+   3. Configuración de Envío:
+      - Activar/Desactivar recordatorios automáticos
+      - Hora de envío (ej: 9:00 AM)
+      - Días de anticipación (por defecto 1 día)
+      - Envío manual vs automático
+   
+   4. Historial de Mensajes:
+      - Mensajes enviados
+      - Estado de entrega
+      - Respuestas recibidas (si aplica)
+      - Errores de envío
+   
+   5. Pruebas:
+      - Botón "Enviar Mensaje de Prueba"
+      - Verificar formato
+      - Verificar variables
+
+B. RECEPCIÓN - SOLO LECTURA:
+   - Ver configuración actual
+   - Ver plantillas
+   - No puede editar
+   - No puede enviar mensajes manuales
+
+═══════════════════════════════════════════════════════════════════════════════════
+═══════════════════════════════════════════════════════════════════════════════════
+XVII. GESTIÓN MULTI-SEDE Y NOTIFICACIONES INTELIGENTES (VALOR AGREGADO)
+═══════════════════════════════════════════════════════════════════════════════════
+
+1. Sistema de Gestión Multi-Sede (Ubicaciones Flexibles):
+   - Funcionamiento: Permite al médico configurar y operar en múltiples consultorios físicos de manera simultánea, cada uno con su propio flujo de trabajo (Turnos vs Orden de Llegada) y horarios específicos.
+   - Valor para el Doctor: Centralización operativa. El médico ya no necesita sistemas separados para diferentes clínicas. Todo su flujo de pacientes, sin importar dónde se encuentre físicamente, converge en un solo tablero de control.
+   - Mejora la Atención: Claridad absoluta para el paciente sobre dónde debe asistir, reduciendo confusiones geográficas y ausentismo.
+
+2. Sugerencia Inteligente de Sede (Smart Office Switching):
+   - Funcionamiento: Un algoritmo de disponibilidad que, al detectar que no hay cupos en el consultorio preferido del paciente, analiza en tiempo real las otras sedes del mismo doctor para el mismo día y ofrece una alternativa inmediata.
+   - Valor para el Doctor: Optimización de la agenda y retención de pacientes. Evita que un paciente se retire por falta de cupo, redirigiéndolo a huecos disponibles en otras sedes que de otro modo quedarían vacíos.
+   - Mejora la Atención: Respuesta inmediata al paciente. En lugar de un "no hay citas", el sistema ofrece una solución proactiva: "El doctor no está en Sede A, pero puede atenderte hoy mismo en Sede B".
+
+3. Sección Estructurada "Nuestras Sedes":
+   - Funcionamiento: Galería informativa premium que detalla la infraestructura, ubicación exacta (mapa virtual) y las reglas de atención de cada consultorio del médico.
+   - Valor para el Doctor: Posicionamiento de marca y profesionalismo. Proyecta una imagen de robustez y conveniencia al mostrar que cuenta con múltiples puntos de atención bien organizados.
+   - Mejora la Atención: Transparencia informativa. El paciente conoce de antemano la logística de llegada, si debe esperar por turno o por orden de llegada, y los horarios exactos de operación.
+
+4. Notificaciones Automáticas vía Resend (Omnicanal):
+   - Funcionamiento: Envío de correos electrónicos transaccionales de alta fiabilidad en hitos críticos: agendamiento inicial, cambios de estado (confirmación/reagendamiento) y recordatorios.
+   - Valor para el Doctor: Automatización total de la secretaría. Reduce la carga administrativa de realizar llamadas o enviar correos manuales. Asegura que el paciente siempre esté informado, lo que disminuye drásticamente el "No-Show" (inasistencia).
+   - Mejora la Atención: Experiencia de usuario "clase ejecutiva". El paciente recibe confirmaciones profesionales en su bandeja de entrada, lo que genera confianza y seguridad en el servicio médico contratado.
+
+5. Soporte para Pacientes No Registrados:
+   - Funcionamiento: Capacidad técnica de capturar datos y enviar todas las comunicaciones anteriores incluso a personas que no desean crear una cuenta en la plataforma, usando solo su email/teléfono.
+   - Valor para el Doctor: Ampliación de la base de datos de captación. Elimina la fricción del registro obligatorio para agendar, permitiendo que cualquier persona(público general) sea un paciente potencial atendido con la misma calidad comunicativa.
+   - Mejora la Atención: Inclusividad y rapidez. Facilita el acceso a la salud para usuarios ocasionales o familiares que agendan por terceros sin complicaciones de perfiles.
+
+
+═══════════════════════════════════════════════════════════════════════════════════
+NOTAS TÉCNICAS ADICIONALES
+═══════════════════════════════════════════════════════════════════════════════════
+
+• Tecnologías: Next.js, React, Supabase, Tailwind CSS, Framer Motion
+• Email Service: Resend API
+• Autenticación: Basada en sesiones con Supabase
+• Base de Datos: PostgreSQL (Supabase)
+• Realtime: Supabase Realtime para mensajes y notificaciones
+• Archivos: Almacenamiento en Supabase Storage
+• Formularios: Validación tanto cliente como servidor
+• Responsive: Diseño completamente adaptable a móviles
+• Accesibilidad: Implementación de ARIA labels y navegación por teclado
+
+═══════════════════════════════════════════════════════════════════════════════════
+FIN DEL INFORME
+═══════════════════════════════════════════════════════════════════════════════════
+Documento generado para: ASHIRA SOFTWARE - Sistema de Gestión Clínica MVP
+Versión: 2.1 - Actualizada con Gestión Multi-Sede y Notificaciones Inteligentes
+Fecha de Actualización: 11 de Febrero de 2026

@@ -1,0 +1,90 @@
+
+# REPORTE INTEGRAL DE COSTOS - CLÍNICA SYNCWAVE
+**Fecha de corte:** 16 de Febrero, 2026
+**Estrategia:** Presupuesto Optimista (Factor de Seguridad x3)
+
+Este documento detalla la inversión completa requerida para mantener, desarrollar y operar el software, incluyendo infraestructura técnica, herramientas de productividad y gastos operativos.
+
+---
+
+## 1. INFRAESTRUCTURA TÉCNICA (El Software en Sí)
+
+### **Vercel** (Hosting y Serverless)
+*   **Función:** Alojamiento del Frontend Next.js y funciones API.
+*   **Costo:** **$20.00 USD** / mes.
+
+### **Supabase** (Backend as a Service)
+*   **Función:** Base de Datos PostgreSQL, Auth y Storage.
+*   **Costo:** **$25.00 USD** / mes.
+
+### **n8n Cloud** (Automatización)
+*   **Función:** Orquestación de flujos de trabajo complejos (Reportes médicos).
+*   **Costo:** **$22.00 USD** / mes.
+
+### **Groq / AI** (Inteligencia Artificial)
+*   **Función:** Transcripción (Whisper) y Generación de Texto (Llama 3).
+*   **Costo Estimado:** **~$10.00 USD** / mes (Uso variable).
+
+### **Resend** (Emails)
+*   **Función:** Notificaciones transaccionales.
+*   **Costo:** **$0.00 USD** (Plan gratuito inicial).
+
+**SUBTOTAL INFRAESTRUCTURA: ~$77.00 USD / mes**
+
+---
+
+## 2. HERRAMIENTAS DE POTENCIACIÓN Y DESARROLLO
+
+### **Cursor AI** (IDE Inteligente)
+*   **Función:** Acelera el desarrollo y mantenimiento del código con IA.
+*   **Costo:** **$20.00 USD** / mes (Plan Pro).
+
+### **Focusee / Gemoo** (Documentación Visual)
+*   **Función:** Creación de videos demo y tutoriales con zoom automático para marketing y soporte.
+*   **Costo:** **~$10.00 USD** / mes (Promedio suscripción mensual).
+
+### **Canva Pro** (Diseño Gráfico)
+*   **Función:** Creación de activos de marketing, posts para redes y presentaciones.
+*   **Costo:** **$15.00 USD** / mes.
+
+### **Figma Professional** (Diseño UI/UX)
+*   **Función:** Prototipado de interfaces y diseño de "Premium Aesthetics".
+*   **Costo:** **$12.00 USD** / mes.
+
+**SUBTOTAL HERRAMIENTAS: ~$57.00 USD / mes**
+
+---
+
+## 3. GASTOS OPERATIVOS FIJOS
+
+### **Publicidad (Ads)**
+*   **Función:** Captación de nuevos consultorios/doctores (Meta Ads / Google Ads).
+*   **Presupuesto:** **$70.00 USD** / mes.
+
+### **Conexión a Internet**
+*   **Función:** Fibra óptica de alta velocidad para operación continua.
+*   **Costo:** **$60.00 USD** / mes.
+
+**SUBTOTAL OPERATIVO: $130.00 USD / mes**
+
+---
+
+## RESUMEN FINANCIERO MENSUAL
+
+| Categoría | Costo Mensual Estimado |
+| :--- | :--- |
+| **1. Infraestructura Técnica** | $77.00 |
+| **2. Herramientas Potenciación** | $57.00 |
+| **3. Gastos Operativos** | $130.00 |
+| **TOTAL BASE** | **$264.00 USD** |
+
+---
+
+## 💰 PRESUPUESTO FINAL RECOMENDADO (Factor x3)
+
+Para garantizar la sostenibilidad, cubrir imprevistos, impuestos y fluctuaciones de uso, aplicamos un multiplicador de seguridad de **x3** al costo base.
+
+### **TOTAL A FACTURAR/PRESUPUESTAR:**
+# **$792.00 USD / MES**
+
+*Este monto asegura operación holgada, permite escalar infraestructura sin miedo a costos sorpresa y cubre todas las herramientas necesarias para la expansión.*

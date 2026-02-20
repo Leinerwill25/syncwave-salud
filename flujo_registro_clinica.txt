@@ -1,0 +1,118 @@
+# FLUJO DE REGISTRO PARA CLÍNICAS (ROL: ADMIN)
+# ASHIRA SOFTWARE - DOCUMENTACIÓN TÉCNICA E INTERACTIVA
+
+Este documento detalla exhaustivamente el flujo de registro para una Institución o Clínica en la plataforma ASHIRA.
+
+---
+
+## 1. FASE DE INTERFAZ DE USUARIO (Frontend)
+Ubicación: `src/components/RegisterForm.tsx`
+
+El formulario es un "Wizard" de pasos progresivos. Para una clínica, el flujo específico es:
+
+### PASO 1: CUENTA (Credenciales)
+El usuario selecciona la opción "Clínica / Centro Médico".
+- **Estado Interno:** `role` se establece en `'ADMIN'`.
+- **Campos:**
+  1. **Nombre Completo:** (del administrador principal). Validación: Mínimo 3 caracteres.
+  2. **Email:** Correo corporativo o del director. Validación: Formato de email estándar.
+  3. **Contraseña:** Mínimo 8 caracteres. Validación cruzada con campo de confirmación.
+     - *Seguridad:* Se evalúa la fortaleza (Mayúsculas, números, caracteres especiales) visualmente.
+
+### PASO 2: ORGANIZACIÓN (Datos Institucionales)
+Al ser rol `ADMIN`, el formulario adapta los campos para capturar datos de la entidad legal.
+- **Estado Interno:** `orgType` se fuerza a `'CLINICA'` (aunque el backend acepta otros tipos si se enviaran).
+- **Campos:**
+  1. **Nombre de la Organización:** Nombre comercial de la clínica. Validación: Mínimo 3 caracteres.
+  2. **Número de Especialistas:** Campo numérico crítico.
+     - *Impacto:* Este número define automáticamente el "Plan Recomendado" en el siguiente paso.
+  3. **Teléfono Institucional:** (Opcional)
+  4. **Dirección Física:** (Opcional)
+
+### PASO 3: PLAN Y FACTURACIÓN (Lógica Financiera)
+El sistema calcula automáticamente la cotización basada en el número de especialistas ingresado.
+- **Lógica de Selección de Plan (`recommendedPlan`):**
+  - Se consulta `/api/plans` o se usa lógica local de fallback.
+  - Reglas de asignación automática (ejemplo):
+    - 2-10 especialistas -> Plan "Starter"
+    - 11-30 especialistas -> Plan "Clínica"
+    - 31-80 especialistas -> Plan "Pro"
+    - 81+ especialistas -> Plan "Enterprise"
+- **Selector de Ciclo de Facturación:**
+  - Mensual (Precio base)
+  - Trimestral (Descuento automático aplicado)
+  - Anual (Descuento mayor aplicado)
+- **Cálculo en Tiempo Real:** La función `computeBilling` genera el total a pagar, mostrando descuentos y subtotales.
+
+### PASO 4: REVISIÓN Y ENVÍO
+Resumen de datos y botón "Crear Cuenta". Al hacer clic, se envía un payload JSON a `/api/register`.
+
+---
+
+## 2. FASE DE SERVIDOR (Backend API)
+Ubicación: `src/app/api/register/route.ts`
+
+El endpoint `POST` ejecuta una secuencia lógica estricta para garantizar la integridad de los datos.
+
+### A. VALIDACIONES INICIALES
+1. Se verifica que el payload contenga `account`, `organization` y `plan`.
+2. Se normaliza el rol a `ADMIN`.
+
+### B. GESTIÓN DE IDENTIDAD (Supabase Auth)
+1. **Verificación de Duplicados:**
+   - Se consulta si el email ya existe en la tabla `users`.
+   - *Regla de Negocio:* Si existe, se verifica compatibilidad de roles (ej: un usuario puede ser PACIENTE y ADMIN a la vez bajo ciertas condiciones, aunque generalmente ADMIN es exclusivo).
+2. **Creación de Auth User:**
+   - Se llama a `supabaseAdmin.auth.admin.createUser`.
+   - **Importante:** Se crea con `email_confirm: false`. El usuario NO puede loguearse inmediatamente.
+   - Se genera un link de verificación (`generateLink`) y se envía un correo personalizado usando la infraestructura de email de ASHIRA (no la de Supabase por defecto).
+
+### C. CREACIÓN DE REGISTROS EN BASE DE DATOS (Transaccional)
+Se crean los registros secuencialmente. Si ocurre un error en un paso intermedio, se ejecuta un **ROLLBACK MANUAL** eliminando los registros creados previamente.
+
+1. **Tabla `organization`:**
+   - Se crea la entidad clínica.
+   - Campos: `name`, `type` ('CLINICA'), `specialistCount`, `contactEmail` (email del admin).
+   - *Resultado:* Se obtiene un `organizationId`.
+
+2. **Tabla `users`:**
+   - Se crea el perfil del administrador.
+   - Campos: `email`, `role` ('ADMIN'), `authId` (del paso B), `organizationId` (vinculación clave).
+   - *Resultado:* El usuario queda intrínsecamente ligado a la clínica creada.
+
+3. **Tabla `subscription`:**
+   - Se crea el registro de facturación inicial.
+   - Estado: `'TRIALING'` (Periodo de prueba o espera de pago).
+   - `planSnapshot`: Se guarda una "foto" del plan, precio y ciclo seleccionado en ese momento (para evitar cambios de precio futuros no autorizados).
+
+---
+
+## 3. FASE POST-REGISTRO Y PAGO
+Ubicación: Retorno al Frontend
+
+Una vez la API responde `200 OK`:
+
+### A. RESPUESTA DE LA API
+Devuelve un JSON con flags clave:
+- `emailVerificationRequired`: `true`
+- `organizationId`: ID de la clínica creada.
+- `userId`: ID del admin creado.
+
+### B. ACCIONES EN EL NAVEGADOR (Client-Side)
+1. **Almacenamiento Local:**
+   - El frontend guarda en `localStorage` los datos críticos de pago pendiente: `pendingPayment_organizationId`, `pendingPayment_amount`, etc.
+2. **Mensaje de Éxito:**
+   - Se notifica al usuario que debe verificar su email.
+3. **Redirección:**
+   - El usuario es enviado a `/login?verify-email=true`.
+
+### C. FLUJO DE ACTIVACIÓN (El paso final)
+1. El usuario va a su bandeja de entrada y hace clic en el enlace de verificación.
+2. Al verificar y loguearse por primera vez:
+   - El sistema detecta (vía localStorage o estado de suscripción) que hay un pago pendiente.
+   - Redirecciona a `/register/payment`.
+3. **Pasarela de Pago:**
+   - El usuario completa el pago de su suscripción seleccionada.
+   - Al confirmarse el pago, el estado de la suscripción cambia de `'TRIALING'` a `'ACTIVE'`.
+4. **Acceso Concedido:**
+   - El admin entra al Dashboard de la Clínica con acceso total.

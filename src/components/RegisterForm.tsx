@@ -443,11 +443,11 @@ export default function RegisterForm(): React.ReactElement {
 	const recommendedPlan = useMemo(() => {
 		if (plansLoading || plans.length === 0) {
 			// Valores por defecto mientras cargan
-			if (role === 'MEDICO') return { slug: 'medico', label: 'Plan Médico — Usuario individual', price: 14.99, quarterlyPrice: null, annualPrice: null };
+			if (role === 'MEDICO') return { slug: 'medico', label: 'Plan Médico — Usuario individual', price: 70.00, quarterlyPrice: 189.00, annualPrice: 588.00 };
 			if (role === 'PACIENTE') {
-				return patientPlan === 'individual' ? { slug: 'paciente-individual', label: 'Paciente — Individual', price: 12.99, quarterlyPrice: null, annualPrice: null } : { slug: 'paciente-family', label: 'Paciente — Plan Familiar', price: 29.99, quarterlyPrice: null, annualPrice: null };
+				return patientPlan === 'individual' ? { slug: 'paciente-individual', label: 'Paciente — Individual', price: 1.08, quarterlyPrice: 3.09, annualPrice: 12.99 } : { slug: 'paciente-family', label: 'Paciente — Plan Familiar', price: 2.50, quarterlyPrice: 7.12, annualPrice: 29.99 };
 			}
-			return { slug: 'small', label: 'Plan Básico', price: 29.99, quarterlyPrice: null, annualPrice: null };
+			return { slug: 'clinic-starter', label: 'Starter (2–10 esp.)', price: 56.00, quarterlyPrice: 151.20, annualPrice: 470.40 };
 		}
 
 		if (role === 'MEDICO') {
@@ -1693,63 +1693,78 @@ export default function RegisterForm(): React.ReactElement {
 
 				{step === 3 && role !== 'PACIENTE' && (
 					<section aria-label="Plan" className="space-y-4">
-						<h3 className="text-base sm:text-lg font-semibold text-slate-700">Plan recomendado</h3>
+						<div className="mb-6">
+							<h3 className="text-xl font-bold text-slate-900 mb-2 flex items-center gap-2">
+								<span className="w-1 h-6 bg-gradient-to-b from-teal-600 to-cyan-600 rounded-full"></span>
+								Selección de Plan
+							</h3>
+							<p className="text-sm text-slate-600 ml-3">Elige la modalidad que mejor se adapte a tu institución. El sistema calcula automáticamente el plan óptimo basado en tu número de especialistas.</p>
+						</div>
+
+						{/* Alerta Informativa */}
+						<div className="bg-blue-50 border border-blue-100 rounded-xl p-4 mb-6 flex gap-3 items-start">
+							<div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0">
+								<svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+									<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+								</svg>
+							</div>
+							<div className="text-sm text-blue-800 leading-relaxed">
+								<p className="font-bold mb-1">Modelo de Facturación Transparente</p>
+								<p>En ASHIRA, el costo se ajusta dinámicamente: mientras más especialistas registres, el precio por cada licencia individual disminuye automáticamente.</p>
+							</div>
+						</div>
 
 						{role === 'MEDICO' ? (
-							<div className="p-3 sm:p-4 rounded-lg border border-emerald-600 bg-white shadow-lg flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-0">
-								<div>
-									<div className="text-xs sm:text-sm font-semibold text-slate-900">Plan Médico — Usuario individual</div>
-									<div className="text-[10px] sm:text-xs text-slate-500">1 usuario — ideal para médicos independientes</div>
+							<div className="p-4 sm:p-6 rounded-2xl border-2 border-emerald-600 bg-white shadow-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+								<div className="flex-1">
+									<div className="inline-flex items-center gap-2 bg-emerald-100 text-emerald-800 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider mb-2">
+										Plan Recomendado
+									</div>
+									<h4 className="text-lg sm:text-xl font-bold text-slate-900">Plan Médico — Usuario individual</h4>
+									<p className="text-sm text-slate-600 mt-1">Acceso total a la plataforma para médicos independientes con consultorio propio.</p>
 								</div>
-								<div className="text-left sm:text-right">
-									<div className="text-xl sm:text-2xl font-extrabold text-emerald-600">€{recommendedPlan.price.toFixed(2)}</div>
-									<div className="text-[10px] sm:text-xs text-slate-400">/ mes</div>
+								<div className="text-left sm:text-right bg-slate-50 p-4 rounded-xl border border-slate-100 min-w-[140px]">
+									<div className="text-2xl sm:text-3xl font-black text-emerald-600">€{recommendedPlan.price.toFixed(2)}</div>
+									<div className="text-xs font-bold text-slate-400 uppercase tracking-tighter">por mes</div>
 								</div>
 							</div>
 						) : (
-							<div className="grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-4 text-slate-700">
+							<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 text-slate-700">
 								{[
-									{ slug: '10-20', label: '10–20 especialistas', price: 69.99, range: '10–20' },
-									{ slug: '21-50', label: '21–50 especialistas', price: 99.99, range: '21–50' },
-									{ slug: '51-100', label: '51–100 especialistas', price: 149.99, range: '51–100' },
+									{ slug: 'clinic-starter', label: 'Starter', range: '2–10 esp.', price: 56.00, desc: 'Consultorios pequeños' },
+									{ slug: 'clinic-medium', label: 'Clínica', range: '11–30 esp.', price: 49.00, desc: 'Centros ambulatorios' },
+									{ slug: 'clinic-pro', label: 'Pro', range: '31–80 esp.', price: 42.00, desc: 'Clínicas medianas' },
+									{ slug: 'clinic-enterprise', label: 'Enterprise', range: '81–200 esp.', price: 35.00, desc: 'Grandes instituciones' },
 								].map((p) => {
 									const recommended = p.slug === recommendedPlan.slug;
 									return (
-										<div key={p.slug} aria-labelledby={`plan-${p.slug}`} tabIndex={0} className={`relative pt-5 sm:pt-6 pb-3 sm:pb-4 px-3 sm:px-4 rounded-xl sm:rounded-2xl border bg-white transition-transform transform hover:-translate-y-0.5 focus:outline-none focus:ring-2 ${recommended ? 'border-emerald-600 shadow-lg ring-emerald-100' : 'border-slate-200 shadow-sm'} min-h-28 sm:min-h-32 flex flex-col justify-between`}>
-											{recommended && <span className="absolute -top-2.5 sm:-top-3 left-1/2 -translate-x-1/2 bg-emerald-600 text-white text-[10px] sm:text-xs font-semibold px-2.5 sm:px-3 py-0.5 rounded-full shadow">Recomendado</span>}
+										<div key={p.slug} className={`relative p-5 rounded-2xl border-2 transition-all duration-300 flex flex-col justify-between ${recommended ? 'border-emerald-500 bg-emerald-50/30 shadow-xl scale-[1.02] ring-4 ring-emerald-50' : 'border-slate-100 bg-white hover:border-slate-300 hover:shadow-md'}`}>
+											{recommended && (
+												<span className="absolute -top-3 left-1/2 -translate-x-1/2 bg-emerald-600 text-white text-[10px] font-bold px-3 py-1 rounded-full shadow-lg z-10 uppercase tracking-widest whitespace-nowrap">
+													Tu Plan Ideal
+												</span>
+											)}
 
-											<div className="flex items-start justify-between gap-2 sm:gap-3">
-												<div className="min-w-0">
-													<div id={`plan-${p.slug}`} className="text-xs sm:text-sm font-semibold text-slate-900 truncate">
-														{p.label}
+											<div className="mb-4">
+												<h4 className={`text-base font-bold ${recommended ? 'text-emerald-900' : 'text-slate-900'}`}>{p.label}</h4>
+												<p className="text-[11px] text-slate-500 font-medium">{p.range}</p>
+												<p className="text-[10px] text-slate-400 mt-1 italic leading-tight">{p.desc}</p>
+											</div>
+
+											<div className="pt-4 border-t border-slate-100">
+												<div className="flex flex-col">
+													<span className="text-xs font-bold text-slate-400 uppercase tracking-tight">Desde</span>
+													<div className="flex items-baseline gap-1">
+														<span className={`text-2xl font-black ${recommended ? 'text-emerald-700' : 'text-slate-800'}`}>€{p.price.toFixed(0)}</span>
+														<span className="text-[10px] font-semibold text-slate-500">/esp</span>
 													</div>
 												</div>
-											</div>
-
-											<hr className="my-2 sm:my-3 border-t border-slate-100" />
-
-											<div className="flex items-center justify-between gap-2 sm:gap-3">
-												<ul className="flex-1 space-y-0.5 sm:space-y-1 text-[10px] sm:text-[12px] text-slate-600">
-													<li className="truncate">• Soporte básico</li>
-													<li className="truncate">• Reportes semanales</li>
-												</ul>
-											</div>
-
-											{recommended && (
-												<div className="mt-2 sm:mt-3 text-[10px] sm:text-[12px] text-slate-600">
-													Recomendado según <span className="font-semibold text-slate-800">{specialistCount}</span> especialistas.
-												</div>
-											)}
-											<div className="text-right flex flex-col items-end">
-												<div className="text-base sm:text-lg md:text-2xl font-extrabold leading-none text-emerald-600">€{p.price.toFixed(2)}</div>
-												<div className="text-[10px] sm:text-[11px] text-slate-400">/ mes</div>
 											</div>
 										</div>
 									);
 								})}
 							</div>
 						)}
-
 						<div className="mt-4">
 							<div className="text-xs sm:text-sm font-medium mb-2">Periodicidad</div>
 							<select value={billingPeriod} onChange={(e) => setBillingPeriod(e.target.value as BillingPeriod)} className={selectClass}>
