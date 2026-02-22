@@ -1,3 +1,14 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { createClient } from '@supabase/supabase-js';
+
+// Usar service role key para evitar RLS
+const SUPABASE_URL = process.env.SUPABASE_URL ?? process.env.NEXT_PUBLIC_SUPABASE_URL ?? '';
+const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY ?? process.env.SUPABASE_KEY ?? '';
+
+const supabaseAdmin = SUPABASE_URL && SUPABASE_SERVICE_ROLE_KEY
+  ? createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, { auth: { persistSession: false } })
+  : null;
+
 async function getPharmacyMedications(admin: any, startDate: string, endDate: string, limit: number) {
   const { data: prescriptions, error: prescError } = await admin
     .from('prescription')
@@ -61,10 +72,10 @@ async function getConsultationDuration(admin: any, startDate: string, endDate: s
     const start = new Date(item.started_at).getTime();
     const end = new Date(item.ended_at).getTime();
     return (end - start) / (1000 * 60);
-  }).filter(d => d > 0 && d < 480);
+  }).filter((d: number) => d > 0 && d < 480);
 
-  const avg = durations.length > 0 ? durations.reduce((sum, d) => sum + d, 0) / durations.length : 0;
-  durations.sort((a, b) => a - b);
+  const avg = durations.length > 0 ? durations.reduce((sum: number, d: number) => sum + d, 0) / durations.length : 0;
+  durations.sort((a: number, b: number) => a - b);
   const median = durations.length > 0 ? durations[Math.floor(durations.length / 2)] : 0;
   return { avg_duration_minutes: Math.round(avg), median_duration_minutes: Math.round(median) };
 }
@@ -222,15 +233,16 @@ async function getActionDistribution(admin: any, startDate: string, endDate: str
 }
 
 
-import { createClient } from '@supabase/supabase-js';
-
-// Usar service role key para evitar RLS
-const SUPABASE_URL = process.env.SUPABASE_URL ?? process.env.NEXT_PUBLIC_SUPABASE_URL ?? '';
-const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY ?? process.env.SUPABASE_KEY ?? '';
-
-const supabaseAdmin = SUPABASE_URL && SUPABASE_SERVICE_ROLE_KEY
-  ? createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, { auth: { persistSession: false } })
-  : null;
+async function getAppointmentStats(admin: any, startDate: string, endDate: string) {
+  const { data: apps, error } = await admin.from('appointment').select('status, scheduled_at').gte('scheduled_at', startDate).lte('scheduled_at', endDate);
+  if (error) throw error;
+  const grouped = (apps || []).reduce((acc: any, item: any) => {
+    const status = item.status || 'unknown';
+    acc[status] = (acc[status] || 0) + 1;
+    return acc;
+  }, {});
+  return grouped;
+}
 
 async function getTopDiagnoses(admin: any, startDate: string, endDate: string) {
   const { data: consultations, error } = await admin
@@ -324,7 +336,7 @@ async function getDiagnosisByRegion(admin: any, startDate: string, endDate: stri
     const patient = item.patient_id ? patientsMap.get(item.patient_id) : null;
     const unregisteredPatient = item.unregistered_patient_id ? unregisteredMap.get(item.unregistered_patient_id) : null;
     const doctor = item.doctor_id ? doctorsMap.get(item.doctor_id) : null;
-    const region = patient?.address || unregisteredPatient?.address || 'Sin región';
+    const region = (patient as any)?.address || (unregisteredPatient as any)?.address || 'Sin región';
     const specialty = (doctor as any)?.medic_profile?.specialty || 'Sin especialidad';
     const month = new Date(item.created_at).toLocaleDateString('es-ES', { year: 'numeric', month: 'short' });
     const key = `${region}-${item.diagnosis}-${specialty}-${month}`;

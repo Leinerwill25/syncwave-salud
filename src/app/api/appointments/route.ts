@@ -39,55 +39,6 @@ async function getAuthenticatedDoctorId(expectedDoctorId: string) {
   return null;
 }
 
-export async function POST(req: NextRequest) {
-  const client = await pool.connect();
-  try {
-    const body = await req.json();
-    let { 
-      patientId, unregisteredPatientId, doctorId, organizationId, scheduledAt, 
-      durationMinutes, reason, location, referralSource, createdByRoleUserId, 
-      createdByDoctorId, selectedService, billing, notes 
-    } = body;
-
-    // Authorization & ID Resolution
-    if (createdByRoleUserId) {
-      const resolved = await getOrganizationAndDoctorForRoleUser(client, createdByRoleUserId);
-      organizationId = resolved.orgId;
-      doctorId = resolved.doctorId;
-      createdByDoctorId = null;
-    } else if (!createdByDoctorId) {
-      createdByDoctorId = await getAuthenticatedDoctorId(doctorId);
-    }
-
-    // Billing data extraction
-    const subtotal = typeof billing?.subtotal === 'number' ? billing.subtotal : parseFloat(billing?.subtotal) || 0;
-    const impuestos = typeof billing?.impuestos === 'number' ? billing.impuestos : parseFloat(billing?.impuestos) || 0;
-    const total = typeof billing?.total === 'number' ? billing.total : parseFloat(billing?.total) || 0;
-    const currency = billing?.currency ?? 'USD';
-    const tipoCambio = await getExchangeRateForCurrency(currency);
-
-		// 🔹 Validaciones básicas
-		const isUUID = (str: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(str);
-
-		if (!patientId && !unregisteredPatientId) {
-			return NextResponse.json({ success: false, error: 'Debe proporcionar patientId o unregisteredPatientId.' }, { status: 400 });
-		}
-
-		if (!doctorId || !isUUID(doctorId)) {
-			return NextResponse.json({ success: false, error: 'doctorId inválido. Debe ser un UUID válido.' }, { status: 400 });
-		}
-
-		if (!organizationId || !isUUID(organizationId)) {
-			return NextResponse.json({ success: false, error: 'organizationId inválido. Debe ser un UUID válido.' }, { status: 400 });
-		}
-
-		if (!scheduledAt) {
-			return NextResponse.json({ success: false, error: 'La fecha de la cita es obligatoria.' }, { status: 400 });
-		}
-
-		try {
-			await client.query('BEGIN');
-
 async function validatePatientEntity(client: any, patientId: string | null, unregisteredPatientId: string | null) {
   if (!patientId && !unregisteredPatientId) throw new Error('Debe proporcionar patientId o unregisteredPatientId.');
 
@@ -105,13 +56,6 @@ async function validatePatientEntity(client: any, patientId: string | null, unre
   
   return { finalPatientId: null, finalUnregisteredPatientId: null };
 }
-
-// ... inside POST ...
-    try {
-      await client.query('BEGIN');
-
-      const { finalPatientId, finalUnregisteredPatientId } = await validatePatientEntity(client, patientId, unregisteredPatientId);
-
 
 async function insertAppointment(client: any, data: any) {
   const { 
@@ -168,7 +112,49 @@ async function notifyPatientOfAppointment(patientId: string, organizationId: str
   }
 }
 
-// ... inside POST ...
+export async function POST(req: NextRequest) {
+  const client = await pool.connect();
+  try {
+    const body = await req.json();
+    let { 
+      patientId, unregisteredPatientId, doctorId, organizationId, scheduledAt, 
+      durationMinutes, reason, location, referralSource, createdByRoleUserId, 
+      createdByDoctorId, selectedService, billing, notes 
+    } = body;
+
+    if (createdByRoleUserId) {
+      const resolved = await getOrganizationAndDoctorForRoleUser(client, createdByRoleUserId);
+      organizationId = resolved.orgId;
+      doctorId = resolved.doctorId;
+      createdByDoctorId = null;
+    } else if (!createdByDoctorId) {
+      createdByDoctorId = await getAuthenticatedDoctorId(doctorId);
+    }
+
+    const subtotal = typeof billing?.subtotal === 'number' ? billing.subtotal : parseFloat(billing?.subtotal) || 0;
+    const impuestos = typeof billing?.impuestos === 'number' ? billing.impuestos : parseFloat(billing?.impuestos) || 0;
+    const total = typeof billing?.total === 'number' ? billing.total : parseFloat(billing?.total) || 0;
+    const currency = billing?.currency ?? 'USD';
+    const tipoCambio = await getExchangeRateForCurrency(currency);
+
+    const isUUID = (str: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(str);
+
+    if (!patientId && !unregisteredPatientId) {
+      return NextResponse.json({ success: false, error: 'Debe proporcionar patientId o unregisteredPatientId.' }, { status: 400 });
+    }
+    if (!doctorId || !isUUID(doctorId)) {
+      return NextResponse.json({ success: false, error: 'doctorId inválido.' }, { status: 400 });
+    }
+    if (!organizationId || !isUUID(organizationId)) {
+      return NextResponse.json({ success: false, error: 'organizationId inválido.' }, { status: 400 });
+    }
+    if (!scheduledAt) {
+      return NextResponse.json({ success: false, error: 'La fecha es obligatoria.' }, { status: 400 });
+    }
+
+    try {
+      await client.query('BEGIN');
+      const { finalPatientId, finalUnregisteredPatientId } = await validatePatientEntity(client, patientId, unregisteredPatientId);
       const appointmentId = await insertAppointment(client, {
         finalPatientId, finalUnregisteredPatientId, doctorId, organizationId, 
         scheduledAt, durationMinutes, reason, location, referralSource, 
@@ -180,33 +166,22 @@ async function notifyPatientOfAppointment(patientId: string, organizationId: str
          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)`,
         [appointmentId, finalPatientId, finalUnregisteredPatientId, doctorId, organizationId, subtotal, impuestos, total, currency, tipoCambio, 'pendiente', 'emitida', new Date().toISOString()]
       );
-
       await client.query('COMMIT');
 
       if (finalPatientId) {
         await notifyPatientOfAppointment(finalPatientId, organizationId, appointmentId, scheduledAt, reason, location, total, currency);
       }
 
-
-			return NextResponse.json({
-				success: true,
-				appointmentId,
-				isUnregisteredPatient: !!finalUnregisteredPatientId,
-				unregisteredPatientId: finalUnregisteredPatientId,
-				patientId: finalPatientId,
-			});
-		} catch (error: any) {
-			await client.query('ROLLBACK');
-			console.error('[DB ERROR]', error);
-			return NextResponse.json({ success: false, error: error.message || 'Error al crear la cita y facturación.' }, { status: 500 });
-		}
-	} catch (error: any) {
-		console.error('[API ERROR]', error);
-		return NextResponse.json({ success: false, error: error.message || 'Error en la solicitud al crear la cita.' }, { status: 400 });
-	} finally {
-		// Solo liberar el cliente una vez, al final
-		if (client) {
-			client.release();
-		}
-	}
+      return NextResponse.json({ success: true, appointmentId, isUnregisteredPatient: !!finalUnregisteredPatientId, unregisteredPatientId: finalUnregisteredPatientId, patientId: finalPatientId });
+    } catch (error: any) {
+      await client.query('ROLLBACK');
+      console.error('[DB ERROR]', error);
+      return NextResponse.json({ success: false, error: error.message || 'Error al crear la cita.' }, { status: 500 });
+    }
+  } catch (error: any) {
+    console.error('[API ERROR]', error);
+    return NextResponse.json({ success: false, error: error.message || 'Error en la solicitud.' }, { status: 400 });
+  } finally {
+    if (client) client.release();
+  }
 }

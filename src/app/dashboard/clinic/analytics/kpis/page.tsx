@@ -69,7 +69,7 @@ export default async function AnalyticsKPIsPage() {
 					title="Especialistas"
 					value={stats.activeSpecialists}
 					icon={Stethoscope}
-					variant="info"
+					variant="default"
 					index={3}
 				/>
 			</div>
