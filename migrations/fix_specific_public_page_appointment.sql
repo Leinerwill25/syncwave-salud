@@ -35,11 +35,15 @@ FROM public.appointment;
 -- Esta es la cita que realmente viene de la página pública
 -- Le quitamos el created_by_doctor_id para que sea identificada como "Página Pública"
 
+WITH target_apt AS (
+    SELECT 'ec38b55d-56b2-4ed3-b399-8c0bdab9a8bd'::uuid as id
+)
 UPDATE public.appointment
 SET 
     created_by_doctor_id = NULL,
     updated_at = NOW()
-WHERE id = 'ec38b55d-56b2-4ed3-b399-8c0bdab9a8bd';
+FROM target_apt
+WHERE public.appointment.id = target_apt.id;
 
 -- Verificar que se actualizó
 DO $$

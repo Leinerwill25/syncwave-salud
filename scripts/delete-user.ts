@@ -75,98 +75,32 @@ async function deleteTable(
   return count;
 }
 
-async function main() {
-  console.log('\n╔══════════════════════════════════════════════════════╗');
-  console.log('║       ELIMINACIÓN DE USUARIO - SYNCWAVE SALUD       ║');
-  console.log('╚══════════════════════════════════════════════════════╝\n');
-  console.log(`  👤 Nombre  : ${TARGET_NAME}`);
-  console.log(`  📧 Email   : ${TARGET_EMAIL}`);
-  console.log(`  🔑 Auth UID: ${TARGET_AUTH_ID}\n`);
+/**
+ * Deletes all sub-entities associated with consultations.
+ */
+async function deleteConsultationSubEntities(consultationIds: string[]): Promise<void> {
+  if (consultationIds.length === 0) return;
+  
+  await deleteTable('lab_result', 'consultation_id', consultationIds, 'por consultation_id');
+  await deleteTable('lab_result_upload', 'consultation_id', consultationIds, 'por consultation_id');
+  await deleteTable('consultation_files', 'consultation_id', consultationIds, 'por consultation_id');
+  await deleteTable('consultation_share_link', 'consultation_id', consultationIds, 'por consultation_id');
+  await deleteTable('consultation_email_queue', 'consultation_id', consultationIds, 'por consultation_id');
+  await deleteTable('consultation_ratings', 'consultation_id', consultationIds, 'por consultation_id');
+  await deleteTable('doctor_private_notes', 'consultation_id', consultationIds, 'por consultation_id');
+  await deleteTable('successive_consultation', 'original_consultation_id', consultationIds, 'por original_consultation_id');
+  await deleteTable('successive_consultations', 'original_consultation_id', consultationIds, 'por original_consultation_id');
+}
 
-  // ── 1. Obtener el registro de users para conocer el userId interno ─────────
-  log('Buscando usuario en tabla users...');
-  const { data: userRows, error: userFetchErr } = await admin
-    .from('users')
-    .select('id, organizationId, patientProfileId, role')
-    .or(`authId.eq.${TARGET_AUTH_ID},email.eq.${TARGET_EMAIL}`);
-
-  if (userFetchErr) { err(`No se pudo obtener el usuario: ${userFetchErr.message}`); process.exit(1); }
-  if (!userRows || userRows.length === 0) { warn('No se encontró ningún registro de usuario en la tabla users.'); }
-
-  const userIds         = userRows?.map(u => u.id) ?? [];
-  const orgIds          = [...new Set(userRows?.map(u => u.organizationId).filter(Boolean) ?? [])] as string[];
-  const patientIds      = [...new Set(userRows?.map(u => u.patientProfileId).filter(Boolean) ?? [])] as string[];
-
-  console.log(`\n  📊 Registros encontrados en users: ${userRows?.length ?? 0}`);
-  userRows?.forEach(u => {
-    console.log(`     • id=${u.id} | role=${u.role} | orgId=${u.organizationId ?? '-'} | patientId=${u.patientProfileId ?? '-'}`);
-  });
-  console.log();
-
-  // ── 2. Obtener IDs de medic_profile y clinic_profile ─────────────────────────
-  let medicProfileIds: string[] = [];
-  if (userIds.length > 0) {
-    const { data: mpData } = await admin.from('medic_profile').select('id').in('doctor_id', userIds);
-    medicProfileIds = mpData?.map(r => r.id) ?? [];
-  }
-
-  let clinicProfileIds: string[] = [];
-  if (orgIds.length > 0) {
-    const { data: cpData } = await admin.from('clinic_profile').select('id').in('organization_id', orgIds);
-    clinicProfileIds = cpData?.map(r => r.id) ?? [];
-  }
-
-  // ── 3. Obtener unregistered patients (vía created_by que apunta a medic_profile.id)
-  let unregisteredPatientIds: string[] = [];
-  if (medicProfileIds.length > 0) {
-    const { data: unregData } = await admin.from('unregisteredpatients').select('id').in('created_by', medicProfileIds);
-    unregisteredPatientIds = unregData?.map(r => r.id) ?? [];
-  }
-
-  // ── 4. Obtener Consultas y Citas ──────────────────────────────────────────
-  let consultationIds: string[] = [];
-  if (userIds.length > 0 || orgIds.length > 0) {
-    const query = admin.from('consultation').select('id');
-    if (userIds.length > 0) query.in('doctor_id', userIds);
-    if (orgIds.length > 0) query.in('organization_id', orgIds);
-    const { data } = await query;
-    consultationIds = data?.map(r => r.id) ?? [];
-  }
-
-  let appointmentIds: string[] = [];
-  if (userIds.length > 0 || orgIds.length > 0) {
-    const query = admin.from('appointment').select('id');
-    if (userIds.length > 0) query.in('doctor_id', userIds);
-    if (orgIds.length > 0) query.in('organization_id', orgIds);
-    const { data } = await query;
-    appointmentIds = data?.map(r => r.id) ?? [];
-  }
-
-  console.log('\n  🗑️  Iniciando eliminación en cascada...\n');
-
-  // ── NIVEL 1: Sub-hijos (Dependencies de consultas/citas) ───────────────────
-  if (consultationIds.length > 0) {
-    await deleteTable('lab_result', 'consultation_id', consultationIds, 'por consultation_id');
-    await deleteTable('lab_result_upload', 'consultation_id', consultationIds, 'por consultation_id');
-    await deleteTable('consultation_files', 'consultation_id', consultationIds, 'por consultation_id');
-    await deleteTable('consultation_share_link', 'consultation_id', consultationIds, 'por consultation_id');
-    await deleteTable('consultation_email_queue', 'consultation_id', consultationIds, 'por consultation_id');
-    await deleteTable('consultation_ratings', 'consultation_id', consultationIds, 'por consultation_id');
-    await deleteTable('doctor_private_notes', 'consultation_id', consultationIds, 'por consultation_id');
-    await deleteTable('successive_consultation', 'original_consultation_id', consultationIds, 'por original_consultation_id');
-    await deleteTable('successive_consultations', 'original_consultation_id', consultationIds, 'por original_consultation_id');
-  }
-
-  if (appointmentIds.length > 0) {
-    await deleteTable('facturacion', 'appointment_id', appointmentIds, 'por appointment_id');
-  }
-
-  // ── NIVEL 2: Prescriptions y sus items ─────────────────────────────────────
-  let prescriptionIds: string[] = [];
-  if (consultationIds.length > 0) {
-    const { data } = await admin.from('prescription').select('id').in('consultation_id', consultationIds);
-    prescriptionIds = data?.map(r => r.id) ?? [];
-  }
+/**
+ * Deletes all entities associated with prescriptions.
+ */
+async function deletePrescriptionEntities(consultationIds: string[]): Promise<void> {
+  if (consultationIds.length === 0) return;
+  
+  const { data } = await admin.from('prescription').select('id').in('consultation_id', consultationIds);
+  const prescriptionIds = data?.map(r => r.id) ?? [];
+  
   if (prescriptionIds.length > 0) {
     await deleteTable('prescription_item', 'prescription_id', prescriptionIds, 'por prescription_id');
     await deleteTable('prescription_files', 'prescription_id', prescriptionIds, 'por prescription_id');
@@ -174,12 +108,12 @@ async function main() {
     await deleteTable('medication_dose', 'prescription_id', prescriptionIds, 'por prescription_id');
     await deleteTable('prescription', 'id', prescriptionIds, 'por id');
   }
+}
 
-  // ── NIVEL 3: Consultas y Citas ─────────────────────────────────────────────
-  if (consultationIds.length > 0) await deleteTable('consultation', 'id', consultationIds, 'consultas');
-  if (appointmentIds.length > 0) await deleteTable('appointment', 'id', appointmentIds, 'citas');
-
-  // ── NIVEL 4: Otros datos del usuario/médico ───────────────────────────────
+/**
+ * Deletes core user data across multiple profile tables.
+ */
+async function deleteCoreUserData(userIds: string[], orgIds: string[], medicProfileIds: string[], clinicProfileIds: string[]): Promise<void> {
   if (userIds.length > 0) {
     await deleteTable('task', 'assigned_to', userIds, 'por assigned_to');
     await deleteTable('task', 'created_by', userIds, 'por created_by');
@@ -190,12 +124,6 @@ async function main() {
     await deleteTable('subscription_payments', 'verified_by', userIds, 'por verified_by');
   }
 
-  // ── NIVEL 5: Unregistered Patients (deben ir antes que medic_profile) ─────
-  if (unregisteredPatientIds.length > 0) {
-    await deleteTable('unregisteredpatients', 'id', unregisteredPatientIds, 'pacientes no registrados');
-  }
-
-  // ── NIVEL 6: Perfiles y Roles ──────────────────────────────────────────────
   if (medicProfileIds.length > 0) await deleteTable('medic_profile', 'id', medicProfileIds, 'medic profile');
   if (clinicProfileIds.length > 0) await deleteTable('clinic_profile', 'id', clinicProfileIds, 'clinic profile');
 
@@ -207,22 +135,75 @@ async function main() {
     await deleteTable('subscription', 'organizationId', orgIds, 'por organizationId');
     await deleteTable('conversation', 'organization_id', orgIds, 'por organization_id');
   }
+}
 
-  // ── NIVEL 7: Core Records (Users y Organization) ──────────────────────────
+async function main() {
+  console.log('\n╔══════════════════════════════════════════════════════╗');
+  console.log('║       ELIMINACIÓN DE USUARIO - SYNCWAVE SALUD       ║');
+  console.log('╚══════════════════════════════════════════════════════╝\n');
+  console.log(`  👤 Nombre  : ${TARGET_NAME}`);
+  console.log(`  📧 Email   : ${TARGET_EMAIL}`);
+  console.log(`  🔑 Auth UID: ${TARGET_AUTH_ID}\n`);
+
+  log('Buscando usuario en tabla users...');
+  const { data: userRows, error: userFetchErr } = await admin
+    .from('users')
+    .select('id, organizationId, patientProfileId, role')
+    .or(`authId.eq.${TARGET_AUTH_ID},email.eq.${TARGET_EMAIL}`);
+
+  if (userFetchErr) { err(`No se pudo obtener el usuario: ${userFetchErr.message}`); process.exit(1); }
+  if (!userRows || userRows.length === 0) { warn('No se encontró ningún registro de usuario en la tabla users.'); }
+
+  const userIds = userRows?.map(u => u.id) ?? [];
+  const orgIds = [...new Set(userRows?.map(u => u.organizationId).filter(Boolean) ?? [])] as string[];
+
+  // Obtener medic_profile bits
+  const { data: mpData } = userIds.length > 0 ? await admin.from('medic_profile').select('id').in('doctor_id', userIds) : { data: [] };
+  const medicProfileIds = mpData?.map(r => r.id) ?? [];
+
+  const { data: cpData } = orgIds.length > 0 ? await admin.from('clinic_profile').select('id').in('organization_id', orgIds) : { data: [] };
+  const clinicProfileIds = cpData?.map(r => r.id) ?? [];
+
+  const { data: unregData } = medicProfileIds.length > 0 ? await admin.from('unregisteredpatients').select('id').in('created_by', medicProfileIds) : { data: [] };
+  const unregisteredPatientIds = unregData?.map(r => r.id) ?? [];
+
+  // Obtener Consultas y Citas
+  let consultationIds: string[] = [];
+  if (userIds.length > 0 || orgIds.length > 0) {
+    const { data } = await admin.from('consultation').select('id').or(`doctor_id.in.(${userIds.join(',')}),organization_id.in.(${orgIds.join(',')})`);
+    consultationIds = data?.map(r => r.id) ?? [];
+  }
+
+  let appointmentIds: string[] = [];
+  if (userIds.length > 0 || orgIds.length > 0) {
+    const { data } = await admin.from('appointment').select('id').or(`doctor_id.in.(${userIds.join(',')}),organization_id.in.(${orgIds.join(',')})`);
+    appointmentIds = data?.map(r => r.id) ?? [];
+  }
+
+  console.log('\n  🗑️  Iniciando eliminación en cascada...\n');
+
+  // Deletion orchestration
+  await deleteConsultationSubEntities(consultationIds);
+  if (appointmentIds.length > 0) await deleteTable('facturacion', 'appointment_id', appointmentIds, 'por appointment_id');
+  await deletePrescriptionEntities(consultationIds);
+  
+  if (consultationIds.length > 0) await deleteTable('consultation', 'id', consultationIds, 'consultas');
+  if (appointmentIds.length > 0) await deleteTable('appointment', 'id', appointmentIds, 'citas');
+
+  if (unregisteredPatientIds.length > 0) await deleteTable('unregisteredpatients', 'id', unregisteredPatientIds, 'pacientes no registrados');
+
+  await deleteCoreUserData(userIds, orgIds, medicProfileIds, clinicProfileIds);
+
   if (userIds.length > 0) await deleteTable('users', 'id', userIds, 'registros en users');
   if (orgIds.length > 0) await deleteTable('organization', 'id', orgIds, 'organizaciones');
 
-  // ── 8. Eliminar de Supabase Auth ───────────────────────────────────────────
+  // Supabase Auth cleanup
   console.log('\n  🔑 Eliminando de Supabase Auth...');
   const { error: authDeleteErr } = await admin.auth.admin.deleteUser(TARGET_AUTH_ID);
-  if (authDeleteErr) {
-    if (authDeleteErr.message.includes('User not found')) {
-      warn(`El usuario ya no existe en Supabase Auth.`);
-    } else {
+  if (authDeleteErr && !authDeleteErr.message.includes('User not found')) {
       err(`Error eliminando de Supabase Auth: ${authDeleteErr.message}`);
-    }
   } else {
-    ok(`Usuario eliminado de Supabase Auth (UID: ${TARGET_AUTH_ID})`);
+      ok(`Usuario eliminado de Supabase Auth (UID: ${TARGET_AUTH_ID})`);
   }
 
   console.log('\n╔══════════════════════════════════════════════════════╗');

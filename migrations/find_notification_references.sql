@@ -6,14 +6,15 @@
 -- ============================================================================
 
 -- Buscar funciones que contengan "Notification" en su código
--- (sin usar pg_get_functiondef en WHERE para evitar errores)
+WITH target AS (SELECT 'Notification'::text as search_term)
 SELECT 
     n.nspname as schema_name,
     p.proname as function_name,
     pg_get_function_arguments(p.oid) as arguments
 FROM pg_proc p
-JOIN pg_namespace n ON p.pronamespace = n.oid
+JOIN pg_namespace n ON p.pronamespace = n.oid, target
 WHERE n.nspname = 'public'
+    AND (p.proname ILIKE '%' || target.search_term || '%')
 ORDER BY p.proname;
 
 -- Buscar triggers en la tabla "user" que puedan estar causando problemas

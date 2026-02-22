@@ -78,13 +78,21 @@ END $$;
 -- ============================================================================
 -- Note: You may need to adjust the trigger timing (BEFORE/AFTER) and events (INSERT/UPDATE)
 -- based on your actual requirements. This is a common pattern:
+-- ============================================================================
+-- STEP 4: Recreate the trigger if it was dropped
+-- ============================================================================
 DO $$
+DECLARE
+    v_status_conf1 TEXT := 'CONFIRMADA';
+    v_status_conf2 TEXT := 'CONFIRMED';
 BEGIN
-    CREATE TRIGGER trigger_appointment_confirmed
-        BEFORE UPDATE ON public.appointment
-        FOR EACH ROW
-        WHEN (NEW.status IN ('CONFIRMADA', 'CONFIRMED') AND (OLD.status IS NULL OR OLD.status NOT IN ('CONFIRMADA', 'CONFIRMED')))
-        EXECUTE FUNCTION public.handle_appointment_confirmed();
+    EXECUTE format('
+        CREATE TRIGGER trigger_appointment_confirmed
+            BEFORE UPDATE ON public.appointment
+            FOR EACH ROW
+            WHEN (NEW.status IN (%L, %L) AND (OLD.status IS NULL OR OLD.status NOT IN (%L, %L)))
+            EXECUTE FUNCTION public.handle_appointment_confirmed();
+    ', v_status_conf1, v_status_conf2, v_status_conf1, v_status_conf2);
     
     RAISE NOTICE '✓ Created trigger_appointment_confirmed trigger';
 EXCEPTION

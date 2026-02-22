@@ -17,6 +17,7 @@ BEGIN;
 -- PASO 1: Reporte de estado ANTES de la actualización
 -- ----------------------------------------------------------------------------
 -- Estado ANTES de la actualización
+WITH target_role AS (SELECT 'Recepción'::text as name)
 SELECT 
     'ANTES' as estado,
     r.id as role_id,
@@ -24,9 +25,9 @@ SELECT
     r.organization_id,
     rp.module,
     rp.permissions as permisos_actuales
-FROM public.consultorio_roles r
+FROM public.consultorio_roles r, target_role
 LEFT JOIN public.consultorio_role_permissions rp ON r.id = rp.role_id AND rp.module = 'citas'
-WHERE r.role_name = 'Recepción'
+WHERE r.role_name = target_role.name
   AND r.is_active = true
 ORDER BY r.organization_id, r.created_at;
 

@@ -9,16 +9,17 @@
 -- PASO 1: Buscar funciones que mencionen "Notification"
 -- ============================================================================
 
+WITH target AS (SELECT 'Notification'::text as name)
 SELECT 
     n.nspname as schema_name,
     p.proname as function_name,
     pg_get_functiondef(p.oid) as function_definition
 FROM pg_proc p
-JOIN pg_namespace n ON p.pronamespace = n.oid
+JOIN pg_namespace n ON p.pronamespace = n.oid, target
 WHERE n.nspname = 'public'
     AND (
-        pg_get_functiondef(p.oid) ILIKE '%"Notification"%'
-        OR pg_get_functiondef(p.oid) ILIKE '%Notification%'
+        pg_get_functiondef(p.oid) ILIKE '%' || quote_ident(target.name) || '%'
+        OR pg_get_functiondef(p.oid) ILIKE '%' || target.name || '%'
     )
     AND pg_get_functiondef(p.oid) NOT ILIKE '%notification%'
 ORDER BY p.proname;

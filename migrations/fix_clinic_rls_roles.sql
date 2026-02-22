@@ -23,65 +23,29 @@ AND (policyname LIKE '%CONSULTORIO%' OR policyname LIKE '%Public%')
 ORDER BY tablename, policyname;
 
 -- ============================================================================
--- 2. Corregir política de organization
+-- 2-5. Corregir políticas con variables
 -- ============================================================================
-DROP POLICY IF EXISTS "Public can read CONSULTORIO organizations" ON public.organization;
-CREATE POLICY "Public can read CONSULTORIO organizations"
-ON public.organization
-FOR SELECT
-TO anon, authenticated
-USING (type = 'CONSULTORIO');
+DO $$
+DECLARE
+    v_roles TEXT[] := ARRAY['anon', 'authenticated'];
+    v_org_type TEXT := 'CONSULTORIO';
+BEGIN
+    -- 2. Organization
+    DROP POLICY IF EXISTS "Public can read CONSULTORIO organizations" ON public.organization;
+    EXECUTE format('CREATE POLICY "Public can read CONSULTORIO organizations" ON public.organization FOR SELECT TO %s USING (type = %L)', array_to_string(v_roles, ','), v_org_type);
 
--- ============================================================================
--- 3. Corregir política de clinic_profile
--- ============================================================================
-DROP POLICY IF EXISTS "Public can read clinic_profile for CONSULTORIO" ON public.clinic_profile;
-CREATE POLICY "Public can read clinic_profile for CONSULTORIO"
-ON public.clinic_profile
-FOR SELECT
-TO anon, authenticated
-USING (
-    EXISTS (
-        SELECT 1 FROM public.organization
-        WHERE organization.id = clinic_profile.organization_id
-        AND organization.type = 'CONSULTORIO'
-    )
-);
+    -- 3. clinic_profile
+    DROP POLICY IF EXISTS "Public can read clinic_profile for CONSULTORIO" ON public.clinic_profile;
+    EXECUTE format('CREATE POLICY "Public can read clinic_profile for CONSULTORIO" ON public.clinic_profile FOR SELECT TO %s USING ( EXISTS ( SELECT 1 FROM public.organization WHERE organization.id = clinic_profile.organization_id AND organization.type = %L ) )', array_to_string(v_roles, ','), v_org_type);
 
--- ============================================================================
--- 4. Corregir política de user
--- ============================================================================
-DROP POLICY IF EXISTS "Public can read MEDICO users from CONSULTORIO" ON public."user";
-CREATE POLICY "Public can read MEDICO users from CONSULTORIO"
-ON public."user"
-FOR SELECT
-TO anon, authenticated
-USING (
-    role = 'MEDICO'
-    AND EXISTS (
-        SELECT 1 FROM public.organization
-        WHERE organization.id = "user"."organizationId"
-        AND organization.type = 'CONSULTORIO'
-    )
-);
+    -- 4. user
+    DROP POLICY IF EXISTS "Public can read MEDICO users from CONSULTORIO" ON public."user";
+    EXECUTE format('CREATE POLICY "Public can read MEDICO users from CONSULTORIO" ON public."user" FOR SELECT TO %s USING ( role = %L AND EXISTS ( SELECT 1 FROM public.organization WHERE organization.id = "user"."organizationId" AND organization.type = %L ) )', array_to_string(v_roles, ','), 'MEDICO', v_org_type);
 
--- ============================================================================
--- 5. Corregir política de medic_profile
--- ============================================================================
-DROP POLICY IF EXISTS "Public can read medic_profile from CONSULTORIO doctors" ON public.medic_profile;
-CREATE POLICY "Public can read medic_profile from CONSULTORIO doctors"
-ON public.medic_profile
-FOR SELECT
-TO anon, authenticated
-USING (
-    EXISTS (
-        SELECT 1 FROM public."user"
-        INNER JOIN public.organization ON organization.id = "user"."organizationId"
-        WHERE "user".id = medic_profile.doctor_id
-        AND "user".role = 'MEDICO'
-        AND organization.type = 'CONSULTORIO'
-    )
-);
+    -- 5. medic_profile
+    DROP POLICY IF EXISTS "Public can read medic_profile from CONSULTORIO doctors" ON public.medic_profile;
+    EXECUTE format('CREATE POLICY "Public can read medic_profile from CONSULTORIO doctors" ON public.medic_profile FOR SELECT TO %s USING ( EXISTS ( SELECT 1 FROM public."user" INNER JOIN public.organization ON organization.id = "user"."organizationId" WHERE "user".id = medic_profile.doctor_id AND "user".role = %L AND organization.type = %L ) )', array_to_string(v_roles, ','), 'MEDICO', v_org_type);
+END $$;
 
 -- ============================================================================
 -- 6. Verificar que las políticas ahora tienen los roles correctos

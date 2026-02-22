@@ -96,51 +96,22 @@ END $$;
 -- Habilitar RLS
 ALTER TABLE IF EXISTS public.notification ENABLE ROW LEVEL SECURITY;
 
--- Eliminar políticas existentes (por si acaso)
-DROP POLICY IF EXISTS "Users can view their notifications" ON public.notification;
-DROP POLICY IF EXISTS "Users can manage their notifications" ON public.notification;
+DO $$
+DECLARE
+    v_table_name TEXT := 'public.notification';
+    v_policy_view TEXT := 'Users can view their notifications';
+    v_policy_manage TEXT := 'Users can manage their notifications';
+    v_check_logic TEXT := '"organizationId" IN (SELECT "organizationId" FROM public."user" WHERE "authId" = auth.uid()::text OR id::text = auth.uid()::text) OR "userId" IN (SELECT id FROM public."user" WHERE "authId" = auth.uid()::text OR id::text = auth.uid()::text)';
+    v_with_check TEXT := '"organizationId" IN (SELECT "organizationId" FROM public."user" WHERE "authId" = auth.uid()::text OR id::text = auth.uid()::text)';
+BEGIN
+    -- Eliminar políticas existentes (por si acaso)
+    EXECUTE format('DROP POLICY IF EXISTS %I ON %s', v_policy_view, v_table_name);
+    EXECUTE format('DROP POLICY IF EXISTS %I ON %s', v_policy_manage, v_table_name);
 
--- Crear políticas correctas
-CREATE POLICY "Users can view their notifications"
-    ON public.notification
-    FOR SELECT
-    USING (
-        "organizationId" IN (
-            SELECT "organizationId" 
-            FROM public."user" 
-            WHERE "authId" = auth.uid()::text OR id::text = auth.uid()::text
-        )
-        OR
-        "userId" IN (
-            SELECT id 
-            FROM public."user" 
-            WHERE "authId" = auth.uid()::text OR id::text = auth.uid()::text
-        )
-    );
-
-CREATE POLICY "Users can manage their notifications"
-    ON public.notification
-    FOR ALL
-    USING (
-        "organizationId" IN (
-            SELECT "organizationId" 
-            FROM public."user" 
-            WHERE "authId" = auth.uid()::text OR id::text = auth.uid()::text
-        )
-        OR
-        "userId" IN (
-            SELECT id 
-            FROM public."user" 
-            WHERE "authId" = auth.uid()::text OR id::text = auth.uid()::text
-        )
-    )
-    WITH CHECK (
-        "organizationId" IN (
-            SELECT "organizationId" 
-            FROM public."user" 
-            WHERE "authId" = auth.uid()::text OR id::text = auth.uid()::text
-        )
-    );
+    -- Crear políticas correctas
+    EXECUTE format('CREATE POLICY %I ON %s FOR SELECT USING ( %s )', v_policy_view, v_table_name, v_check_logic);
+    EXECUTE format('CREATE POLICY %I ON %s FOR ALL USING ( %s ) WITH CHECK ( %s )', v_policy_manage, v_table_name, v_check_logic, v_with_check);
+END $$;
 
 -- ============================================================================
 -- PASO 6: Verificación final

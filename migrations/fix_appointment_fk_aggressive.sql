@@ -89,6 +89,7 @@ DO $$
 DECLARE
     ref_table_name TEXT;
     ref_schema_name TEXT;
+    v_expected_table TEXT := 'user';
 BEGIN
     SELECT 
         ccu.table_schema,
@@ -107,8 +108,8 @@ BEGIN
     
     IF ref_table_name IS NULL THEN
         RAISE EXCEPTION 'Constraint fk_appointment_doctor was not created!';
-    ELSIF ref_table_name != 'user' THEN
-        RAISE EXCEPTION 'Constraint fk_appointment_doctor references wrong table: %.% (expected: public.user)', ref_schema_name, ref_table_name;
+    ELSIF ref_table_name != v_expected_table THEN
+        RAISE EXCEPTION 'Constraint fk_appointment_doctor references wrong table: %.% (expected: public.%)', ref_schema_name, ref_table_name, v_expected_table;
     ELSE
         RAISE NOTICE '✓ Verified: Constraint fk_appointment_doctor correctly references: %.%', ref_schema_name, ref_table_name;
     END IF;

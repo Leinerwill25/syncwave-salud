@@ -81,64 +81,55 @@ async function tryRestoreSessionFromCookies(supabase: any, cookieStore: any): Pr
 	return false;
 }
 
+async function getAuthenticatedAppUser(supabase: any, cookieStore: any) {
+  let accessToken: string | null = null;
+  try {
+    accessToken = cookieStore.get('sb-access-token')?.value ?? null;
+  } catch (err) {
+    console.debug('[Disable 2FA API] Error reading token:', err);
+  }
+
+  let { data: { user } } = accessToken ? await supabase.auth.getUser(accessToken) : await supabase.auth.getUser();
+
+  if (!user) {
+    const restored = await tryRestoreSessionFromCookies(supabase, cookieStore);
+    if (restored) {
+      const after = await supabase.auth.getUser();
+      user = after.data?.user ?? null;
+    }
+  }
+
+  if (!user) return null;
+
+  const { data: appUser } = await supabase
+    .from('users')
+    .select('id')
+    .eq('authId', user.id)
+    .maybeSingle();
+
+  return appUser;
+}
+
 export async function POST(request: Request) {
-	try {
-		const cookieStore = await cookies();
-		const supabase = await createSupabaseServerClient();
+  try {
+    const cookieStore = await cookies();
+    const supabase = await createSupabaseServerClient();
 
-		let accessTokenFromCookie: string | null = null;
-		try {
-			const sbAccessToken = cookieStore.get('sb-access-token');
-			if (sbAccessToken?.value) {
-				accessTokenFromCookie = sbAccessToken.value;
-			}
-		} catch (err) {
-			console.debug('[Disable 2FA API] Error leyendo sb-access-token:', err);
-		}
+    const appUser = await getAuthenticatedAppUser(supabase, cookieStore);
+    if (!appUser) {
+      return NextResponse.json({ error: 'No autenticado o usuario no encontrado' }, { status: 401 });
+    }
 
-		let {
-			data: { user },
-			error: authError,
-		} = accessTokenFromCookie 
-			? await supabase.auth.getUser(accessTokenFromCookie)
-			: await supabase.auth.getUser();
+    // TODO: Actualizar campo 2FA en User table
+    // await supabase.from('users').update({ twoFactorEnabled: false }).eq('id', appUser.id);
 
-		if (authError) {
-			console.error('[Disable 2FA API] Auth error:', authError);
-		}
-
-		if (!user) {
-			const restored = await tryRestoreSessionFromCookies(supabase, cookieStore);
-			if (restored) {
-				const after = await supabase.auth.getUser();
-				user = after.data?.user ?? null;
-			}
-		}
-
-		if (!user) {
-			return NextResponse.json({ error: 'No autenticado' }, { status: 401 });
-		}
-
-		const { data: appUser } = await supabase
-			.from('users')
-			.select('id')
-			.eq('authId', user.id)
-			.maybeSingle();
-
-		if (!appUser) {
-			return NextResponse.json({ error: 'Usuario no encontrado' }, { status: 404 });
-		}
-
-		// TODO: Actualizar campo 2FA en User table
-		// await supabase.from('users').update({ twoFactorEnabled: false }).eq('id', appUser.id);
-
-		return NextResponse.json({ 
-			success: true, 
-			message: 'Autenticación de dos factores deshabilitada correctamente' 
-		});
-	} catch (err: any) {
-		console.error('[Disable 2FA API] Error:', err);
-		return NextResponse.json({ error: 'Error interno', detail: err.message }, { status: 500 });
-	}
+    return NextResponse.json({ 
+      success: true, 
+      message: 'Autenticación de dos factores deshabilitada correctamente' 
+    });
+  } catch (err: any) {
+    console.error('[Disable 2FA API] Error:', err);
+    return NextResponse.json({ error: 'Error interno', detail: err.message }, { status: 500 });
+  }
 }
 

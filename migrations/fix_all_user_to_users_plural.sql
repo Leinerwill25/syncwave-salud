@@ -155,84 +155,39 @@ END $$;
 -- 3. RLS POLICIES (Updating references from "user" to "users")
 -- ============================================================================
 
--- Helper macro to safely drop policies
--- Note: We can't use macros in SQL script easily, so we repeat logic.
-
--- 3.1 POLICIES ON public.users
 ALTER TABLE public.users ENABLE ROW LEVEL SECURITY;
-
-DROP POLICY IF EXISTS "Users can view their own profile" ON public.users;
-CREATE POLICY "Users can view their own profile" ON public.users
-    FOR SELECT USING ("authId" = auth.uid()::text OR id::text = auth.uid()::text);
-
-DROP POLICY IF EXISTS "Users can update their own profile" ON public.users;
-CREATE POLICY "Users can update their own profile" ON public.users
-    FOR UPDATE USING ("authId" = auth.uid()::text OR id::text = auth.uid()::text);
-
--- 3.2 POLICIES ON public.organization
 ALTER TABLE public.organization ENABLE ROW LEVEL SECURITY;
-
-DROP POLICY IF EXISTS "Users can view their own organization" ON public.organization;
-CREATE POLICY "Users can view their own organization" ON public.organization
-    FOR SELECT USING (
-        auth.uid()::text IN (SELECT "authId" FROM public.users WHERE "organizationId" = organization.id)
-        OR
-        auth.uid() IN (SELECT id FROM public.users WHERE "organizationId" = organization.id)
-    );
-
--- 3.3 POLICIES ON public.appointment
 ALTER TABLE public.appointment ENABLE ROW LEVEL SECURITY;
-
-DROP POLICY IF EXISTS "Medics can view appointments in their organization" ON public.appointment;
-CREATE POLICY "Medics can view appointments in their organization" ON public.appointment
-    FOR SELECT USING (
-        "organization_id" IN (SELECT "organizationId" FROM public.users WHERE "authId" = auth.uid()::text OR id::text = auth.uid()::text)
-        OR
-        "doctor_id" IN (SELECT id FROM public.users WHERE "authId" = auth.uid()::text OR id::text = auth.uid()::text)
-    );
-
-DROP POLICY IF EXISTS "Patients can view their appointments" ON public.appointment;
-CREATE POLICY "Patients can view their appointments" ON public.appointment
-    FOR SELECT USING (
-        EXISTS (
-            SELECT 1 FROM public.users u
-            WHERE u."patientProfileId" = appointment."patient_id"
-            AND (u."authId" = auth.uid()::text OR u.id::text = auth.uid()::text)
-        )
-    );
-
--- 3.4 POLICIES ON public.patient
 ALTER TABLE public.patient ENABLE ROW LEVEL SECURITY;
-
-DROP POLICY IF EXISTS "Medics can view patients in their organization" ON public.patient;
-CREATE POLICY "Medics can view patients in their organization" ON public.patient
-    FOR SELECT USING (
-        EXISTS (
-            SELECT 1 FROM public.users u
-            WHERE (u.id::text = auth.uid()::text OR u."authId" = auth.uid()::text)
-            AND u."organizationId" IS NOT NULL
-            AND u."organizationId" IN (
-                SELECT "organizationId" FROM public.users WHERE "patientProfileId" = patient.id
-            )
-        )
-        OR
-        EXISTS (
-            SELECT 1 FROM public.users u
-            WHERE (u.id::text = auth.uid()::text OR u."authId" = auth.uid()::text)
-            AND u."organizationId" IS NOT NULL
-            AND patient.id IN (
-                SELECT "patientProfileId" FROM public.users WHERE "organizationId" = u."organizationId"
-            )
-        )
-    );
-
--- 3.5 POLICIES ON public.notification
 ALTER TABLE public.notification ENABLE ROW LEVEL SECURITY;
 
-DROP POLICY IF EXISTS "Users can view their notifications" ON public.notification;
-CREATE POLICY "Users can view their notifications" ON public.notification
-    FOR SELECT USING (
-        "organizationId" IN (SELECT "organizationId" FROM public.users WHERE "authId" = auth.uid()::text)
-    );
+DO $$
+DECLARE
+    v_auth_uid_check TEXT := '("authId" = auth.uid()::text OR id::text = auth.uid()::text)';
+    v_subquery_auth TEXT := 'SELECT id FROM public.users WHERE "authId" = auth.uid()::text OR id::text = auth.uid()::text';
+    v_subquery_org TEXT := 'SELECT "organizationId" FROM public.users WHERE "authId" = auth.uid()::text OR id::text = auth.uid()::text';
+BEGIN
+    -- 3.1 POLICIES ON public.users
+    DROP POLICY IF EXISTS "Users can view their own profile" ON public.users;
+    EXECUTE format('CREATE POLICY "Users can view their own profile" ON public.users FOR SELECT USING ( %s )', v_auth_uid_check);
+
+    DROP POLICY IF EXISTS "Users can update their own profile" ON public.users;
+    EXECUTE format('CREATE POLICY "Users can update their own profile" ON public.users FOR UPDATE USING ( %s )', v_auth_uid_check);
+
+    -- 3.2 POLICIES ON public.organization
+    DROP POLICY IF EXISTS "Users can view their own organization" ON public.organization;
+    EXECUTE format('CREATE POLICY "Users can view their own organization" ON public.organization FOR SELECT USING ( auth.uid()::text IN (SELECT "authId" FROM public.users WHERE "organizationId" = organization.id) OR auth.uid() IN (%s) )', v_subquery_auth);
+
+    -- 3.3 POLICIES ON public.appointment
+    DROP POLICY IF EXISTS "Medics can view appointments in their organization" ON public.appointment;
+    EXECUTE format('CREATE POLICY "Medics can view appointments in their organization" ON public.appointment FOR SELECT USING ( "organization_id" IN (%s) OR "doctor_id" IN (%s) )', v_subquery_org, v_subquery_auth);
+
+    DROP POLICY IF EXISTS "Patients can view their appointments" ON public.appointment;
+    EXECUTE format('CREATE POLICY "Patients can view their appointments" ON public.appointment FOR SELECT USING ( EXISTS ( SELECT 1 FROM public.users u WHERE u."patientProfileId" = appointment."patient_id" AND (u."authId" = auth.uid()::text OR u.id::text = auth.uid()::text) ) )');
+
+    -- 3.5 POLICIES ON public.notification
+    DROP POLICY IF EXISTS "Users can view their notifications" ON public.notification;
+    EXECUTE format('CREATE POLICY "Users can view their notifications" ON public.notification FOR SELECT USING ( "organizationId" IN (SELECT "organizationId" FROM public.users WHERE "authId" = auth.uid()::text) )');
+END $$;
 
 COMMIT;

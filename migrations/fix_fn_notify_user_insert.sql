@@ -35,21 +35,20 @@ begin
   );
 
   -- Decide notification type and message based on role
+  n_type := 'USER_REGISTERED';
+  
   if NEW.role = 'MEDICO' then
-    n_type := 'USER_REGISTERED';
     n_title := 'Médico registrado';
     n_message := coalesce(NEW.name, NEW.email, 'Un médico') || ' se ha registrado en la clínica.';
   elsif NEW.role = 'PACIENTE' then
-    n_type := 'USER_REGISTERED';
     n_title := 'Paciente registrado';
     n_message := coalesce(NEW.name, NEW.email, 'Un paciente') || ' se ha registrado y está asociado a la clínica.';
   else
-    n_type := 'USER_REGISTERED';
     n_title := 'Usuario registrado';
     n_message := coalesce(NEW.name, NEW.email, 'Un usuario') || ' se ha registrado y está asociado a la clínica.';
   end if;
 
-  -- CORRECCIÓN: Cambiar public."Notification" a public.notification (minúscula)
+  -- CORRECCIÓN: Usar la tabla notification (minúscula)
   insert into public.notification("organizationId", type, title, message, payload)
   values (NEW."organizationId", n_type, n_title, n_message, payload);
 

@@ -132,75 +132,16 @@ ALTER TABLE public.successive_consultations ENABLE ROW LEVEL SECURITY;
 -- STEP 5: Create RLS Policies
 -- ============================================================================
 
--- Policy: Doctors can view successive consultations in their organization
-CREATE POLICY "Doctors can view successive consultations in their organization"
-    ON public.successive_consultations
-    FOR SELECT
-    USING (
-        EXISTS (
-            SELECT 1 FROM public."user" u
-            WHERE (u."authId" = auth.uid()::text OR u.id::text = auth.uid()::text)
-            AND (
-                successive_consultations."organization_id" = u."organizationId"
-                OR successive_consultations."doctor_id" = u.id
-            )
-        )
-    );
-
--- Policy: Doctors can create successive consultations in their organization
-CREATE POLICY "Doctors can create successive consultations"
-    ON public.successive_consultations
-    FOR INSERT
-    WITH CHECK (
-        EXISTS (
-            SELECT 1 FROM public."user" u
-            WHERE (u."authId" = auth.uid()::text OR u.id::text = auth.uid()::text)
-            AND (
-                successive_consultations."organization_id" = u."organizationId"
-                OR successive_consultations."doctor_id" = u.id
-            )
-        )
-    );
-
--- Policy: Doctors can update their own successive consultations
-CREATE POLICY "Doctors can update their successive consultations"
-    ON public.successive_consultations
-    FOR UPDATE
-    USING (
-        EXISTS (
-            SELECT 1 FROM public."user" u
-            WHERE (u."authId" = auth.uid()::text OR u.id::text = auth.uid()::text)
-            AND (
-                successive_consultations."organization_id" = u."organizationId"
-                OR successive_consultations."doctor_id" = u.id
-            )
-        )
-    )
-    WITH CHECK (
-        EXISTS (
-            SELECT 1 FROM public."user" u
-            WHERE (u."authId" = auth.uid()::text OR u.id::text = auth.uid()::text)
-            AND (
-                successive_consultations."organization_id" = u."organizationId"
-                OR successive_consultations."doctor_id" = u.id
-            )
-        )
-    );
-
--- Policy: Doctors can delete their own successive consultations
-CREATE POLICY "Doctors can delete their successive consultations"
-    ON public.successive_consultations
-    FOR DELETE
-    USING (
-        EXISTS (
-            SELECT 1 FROM public."user" u
-            WHERE (u."authId" = auth.uid()::text OR u.id::text = auth.uid()::text)
-            AND (
-                successive_consultations."organization_id" = u."organizationId"
-                OR successive_consultations."doctor_id" = u.id
-            )
-        )
-    );
+DO $$
+DECLARE
+    v_table_name TEXT := 'public.successive_consultations';
+    v_policy_logic TEXT := 'EXISTS (SELECT 1 FROM public."user" u WHERE (u."authId" = auth.uid()::text OR u.id::text = auth.uid()::text) AND (successive_consultations."organization_id" = u."organizationId" OR successive_consultations."doctor_id" = u.id))';
+BEGIN
+    EXECUTE format('CREATE POLICY "Doctors can view successive consultations in their organization" ON %s FOR SELECT USING ( %s )', v_table_name, v_policy_logic);
+    EXECUTE format('CREATE POLICY "Doctors can create successive consultations" ON %s FOR INSERT WITH CHECK ( %s )', v_table_name, v_policy_logic);
+    EXECUTE format('CREATE POLICY "Doctors can update their successive consultations" ON %s FOR UPDATE USING ( %s ) WITH CHECK ( %s )', v_table_name, v_policy_logic, v_policy_logic);
+    EXECUTE format('CREATE POLICY "Doctors can delete their successive consultations" ON %s FOR DELETE USING ( %s )', v_table_name, v_policy_logic);
+END $$;
 
 COMMIT;
 

@@ -22,17 +22,18 @@ ORDER BY created_at DESC
 LIMIT 20;
 
 -- 2. Verificar paths guardados
+WITH config AS (SELECT 'consultations/%'::text as pattern)
 SELECT 
     consultation_id,
     file_name,
     path,
     CASE 
-        WHEN path LIKE 'consultations/%' THEN '⚠️ Path organizado (consultations/)'
+        WHEN path LIKE config.pattern THEN '⚠️ Path organizado (consultations/)'
         WHEN path LIKE '%/%' THEN '✅ Path real con carpeta'
         ELSE '⚠️ Path solo nombre de archivo'
     END as path_type,
     url
-FROM consultation_files
+FROM consultation_files, config
 ORDER BY created_at DESC
 LIMIT 20;
 

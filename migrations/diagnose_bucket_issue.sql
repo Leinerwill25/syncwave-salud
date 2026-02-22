@@ -5,41 +5,42 @@
 -- puede estar siendo rechazado por Supabase Storage
 -- ============================================================
 
+WITH config AS (
+    SELECT 'report-templates'::text as target_bucket
+)
 -- Paso 1: Verificar la configuración del bucket
 SELECT 
-    id,
-    name,
-    public,
-    file_size_limit,
-    file_size_limit / (1024 * 1024) as file_size_limit_mb,
-    allowed_mime_types,
-    created_at,
-    updated_at,
+    b.id,
+    b.name,
+    b.public,
+    b.file_size_limit,
+    b.file_size_limit / (1024 * 1024) as file_size_limit_mb,
+    b.allowed_mime_types,
+    b.created_at,
+    b.updated_at,
     CASE 
-        WHEN file_size_limit IS NULL THEN '⚠️ Límite no configurado (puede usar el límite por defecto del proyecto)'
-        WHEN file_size_limit < 52428800 THEN '❌ Límite menor a 50MB: ' || (file_size_limit / (1024 * 1024))::text || 'MB'
-        WHEN file_size_limit >= 52428800 THEN '✅ Límite adecuado: ' || (file_size_limit / (1024 * 1024))::text || 'MB'
+        WHEN b.file_size_limit IS NULL THEN '⚠️ Límite no configurado (puede usar el límite por defecto del proyecto)'
+        WHEN b.file_size_limit < 52428800 THEN '❌ Límite menor a 50MB: ' || (b.file_size_limit / (1024 * 1024))::text || 'MB'
+        WHEN b.file_size_limit >= 52428800 THEN '✅ Límite adecuado: ' || (b.file_size_limit / (1024 * 1024))::text || 'MB'
         ELSE 'Estado desconocido'
     END as estado
-FROM storage.buckets
-WHERE name = 'report-templates';
+FROM storage.buckets b, config
+WHERE b.name = config.target_bucket;
 
--- Paso 2: Verificar si hay políticas de Storage que puedan estar limitando
--- Nota: Las políticas de Storage en Supabase no se almacenan en una tabla SQL
--- Se gestionan a través de la API o del dashboard. Para verificar las políticas:
--- 1. Ve al dashboard de Supabase: Storage > Buckets > report-templates > Policies
--- 2. Verifica que las políticas permitan INSERT para archivos del tamaño necesario
--- 3. Asegúrate de que no haya políticas que limiten el tamaño de archivo
-
--- La siguiente consulta verifica si hay objetos en el bucket (para ver si las políticas permiten subidas)
+-- Paso 2: Verificar si hay objetos en el bucket
+WITH config AS (
+    SELECT 'report-templates'::text as target_bucket
+)
 SELECT 
     COUNT(*) as total_objects_in_bucket,
     'Las políticas permiten subidas si este número > 0' as nota
-FROM storage.objects
-WHERE bucket_id = (SELECT id FROM storage.buckets WHERE name = 'report-templates');
+FROM storage.objects, config
+WHERE bucket_id = (SELECT id FROM storage.buckets WHERE name = config.target_bucket);
 
 -- Paso 3: Verificar el tamaño de los archivos existentes en el bucket
--- (para ver si hay algún patrón o problema)
+WITH config AS (
+    SELECT 'report-templates'::text as target_bucket
+)
 SELECT 
     name,
     bucket_id,
@@ -52,24 +53,22 @@ SELECT
         THEN ((metadata->>'size')::bigint / (1024 * 1024))::numeric(10,2)
         ELSE NULL
     END as size_mb
-FROM storage.objects
-WHERE bucket_id = (SELECT id FROM storage.buckets WHERE name = 'report-templates')
+FROM storage.objects, config
+WHERE bucket_id = (SELECT id FROM storage.buckets WHERE name = config.target_bucket)
 ORDER BY created_at DESC
 LIMIT 10;
 
--- Paso 4: Verificar si hay algún límite a nivel de proyecto
--- (Nota: Esto puede requerir acceso a la tabla de configuración del proyecto)
--- En Supabase, los límites a nivel de proyecto generalmente se configuran
--- en el dashboard, no en la base de datos directamente
-
 -- Paso 5: Verificar el espacio usado en el bucket
+WITH config AS (
+    SELECT 'report-templates'::text as target_bucket
+)
 SELECT 
     bucket_id,
     COUNT(*) as total_files,
     SUM((metadata->>'size')::bigint) as total_size_bytes,
     SUM((metadata->>'size')::bigint) / (1024 * 1024) as total_size_mb
-FROM storage.objects
-WHERE bucket_id = (SELECT id FROM storage.buckets WHERE name = 'report-templates')
+FROM storage.objects, config
+WHERE bucket_id = (SELECT id FROM storage.buckets WHERE name = config.target_bucket)
 GROUP BY bucket_id;
 
 -- ============================================================

@@ -13,79 +13,58 @@ const pool = new Pool({
 // Cliente Supabase Admin para notificaciones
 const supabaseAdmin = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!, { auth: { persistSession: false } });
 
+async function getOrganizationAndDoctorForRoleUser(client: any, roleUserId: string) {
+  const { rows } = await client.query(`SELECT organization_id FROM public.consultorio_role_users WHERE id = $1`, [roleUserId]);
+  if (rows.length === 0) throw new Error('Role-user no encontrado.');
+  
+  const orgId = rows[0].organization_id;
+  if (!orgId) throw new Error('El role-user no tiene una organización asignada.');
+
+  const doctorQuery = await client.query(`SELECT id FROM public.users WHERE "organizationId" = $1 AND role = 'MEDICO' LIMIT 1`, [orgId]);
+  if (doctorQuery.rows.length === 0) throw new Error('No se encontró un médico asociado a la organización del role-user.');
+  
+  return { orgId, doctorId: doctorQuery.rows[0].id };
+}
+
+async function getAuthenticatedDoctorId(expectedDoctorId: string) {
+  try {
+    const { getAuthenticatedUser } = await import('@/lib/auth-guards');
+    const user = await getAuthenticatedUser();
+    if (user && user.role === 'MEDICO' && user.userId === expectedDoctorId) {
+      return user.userId;
+    }
+  } catch (err) {
+    console.warn('[Appointments API] No se pudo verificar autenticación del doctor:', err);
+  }
+  return null;
+}
+
 export async function POST(req: NextRequest) {
-	const client = await pool.connect();
-	try {
-		// 🔹 Leer cuerpo JSON
-		const body = await req.json();
+  const client = await pool.connect();
+  try {
+    const body = await req.json();
+    let { 
+      patientId, unregisteredPatientId, doctorId, organizationId, scheduledAt, 
+      durationMinutes, reason, location, referralSource, createdByRoleUserId, 
+      createdByDoctorId, selectedService, billing, notes 
+    } = body;
 
-		let { patientId, unregisteredPatientId, doctorId, organizationId, scheduledAt, durationMinutes, reason, location, referralSource, createdByRoleUserId, createdByDoctorId, selectedService, billing, notes } = body;
+    // Authorization & ID Resolution
+    if (createdByRoleUserId) {
+      const resolved = await getOrganizationAndDoctorForRoleUser(client, createdByRoleUserId);
+      organizationId = resolved.orgId;
+      doctorId = resolved.doctorId;
+      createdByDoctorId = null;
+    } else if (!createdByDoctorId) {
+      createdByDoctorId = await getAuthenticatedDoctorId(doctorId);
+    }
 
-		// 🔹 PRIORIDAD: Si la cita fue creada por un role-user (asistente de citas)
-		// NOTA: El asistente puede crear citas para pacientes registrados O no registrados
-		// NO establecer created_by_doctor_id cuando viene de un role-user
-		if (createdByRoleUserId) {
-			// Asegurar que NO se establezca createdByDoctorId cuando viene de role-user
-			createdByDoctorId = null;
-			try {
-				// Obtener el organizationId del role-user
-				const roleUserQuery = await client.query(`SELECT organization_id FROM public.consultorio_role_users WHERE id = $1`, [createdByRoleUserId]);
-
-				if (roleUserQuery.rows.length === 0) {
-					return NextResponse.json({ success: false, error: 'Role-user no encontrado.' }, { status: 404 });
-				}
-
-				const roleUserOrgId = roleUserQuery.rows[0].organization_id;
-				if (!roleUserOrgId) {
-					return NextResponse.json({ success: false, error: 'El role-user no tiene una organización asignada.' }, { status: 400 });
-				}
-
-				// Usar el organizationId del role-user
-				organizationId = roleUserOrgId;
-
-				// Obtener el primer doctor (User con role='MEDICO') asociado a esa organización
-				const doctorQuery = await client.query(`SELECT id FROM public.users WHERE "organizationId" = $1 AND role = 'MEDICO' LIMIT 1`, [roleUserOrgId]);
-
-				if (doctorQuery.rows.length === 0) {
-					return NextResponse.json({ success: false, error: 'No se encontró un médico asociado a la organización del role-user.' }, { status: 404 });
-				}
-
-				// Usar el doctorId encontrado
-				doctorId = doctorQuery.rows[0].id;
-
-				console.log(`[Appointments API] Cita creada por role-user ${createdByRoleUserId} (puede ser para paciente registrado o no registrado), usando organizationId: ${organizationId}, doctorId: ${doctorId}`);
-			} catch (roleUserError: any) {
-				console.error('[Appointments API] Error obteniendo datos del role-user:', roleUserError);
-				return NextResponse.json({ success: false, error: 'Error al obtener información del role-user.' }, { status: 500 });
-			}
-		} else {
-			// 🔹 Si NO viene de role-user, verificar si viene de un doctor autenticado
-			// NOTA: El doctor puede crear citas para pacientes registrados O no registrados
-			// Solo establecer createdByDoctorId si NO hay createdByRoleUserId
-			if (!createdByDoctorId) {
-				try {
-					const { createSupabaseServerClient } = await import('@/app/adapters/server');
-					const { getAuthenticatedUser } = await import('@/lib/auth-guards');
-					const user = await getAuthenticatedUser();
-					if (user && user.role === 'MEDICO' && user.userId === doctorId) {
-						createdByDoctorId = user.userId;
-						console.log(`[Appointments API] Cita creada por doctor ${createdByDoctorId} (puede ser para paciente registrado o no registrado) desde dashboard`);
-					}
-				} catch (err) {
-					// Si falla la autenticación, continuar sin createdByDoctorId
-					console.warn('[Appointments API] No se pudo verificar autenticación del doctor:', err);
-				}
-			}
-		}
-
-		// 🔹 Extraer datos de facturación con valores por defecto
-		const subtotal = typeof billing?.subtotal === 'number' ? billing.subtotal : parseFloat(billing?.subtotal) || 0;
-		const impuestos = typeof billing?.impuestos === 'number' ? billing.impuestos : parseFloat(billing?.impuestos) || 0;
-		const total = typeof billing?.total === 'number' ? billing.total : parseFloat(billing?.total) || 0;
-		const currency = billing?.currency ?? 'USD';
-
-		// Obtener la tasa de cambio de la moneda especificada desde la base de datos rates
-		const tipoCambio = await getExchangeRateForCurrency(currency);
+    // Billing data extraction
+    const subtotal = typeof billing?.subtotal === 'number' ? billing.subtotal : parseFloat(billing?.subtotal) || 0;
+    const impuestos = typeof billing?.impuestos === 'number' ? billing.impuestos : parseFloat(billing?.impuestos) || 0;
+    const total = typeof billing?.total === 'number' ? billing.total : parseFloat(billing?.total) || 0;
+    const currency = billing?.currency ?? 'USD';
+    const tipoCambio = await getExchangeRateForCurrency(currency);
 
 		// 🔹 Validaciones básicas
 		const isUUID = (str: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(str);
@@ -109,183 +88,105 @@ export async function POST(req: NextRequest) {
 		try {
 			await client.query('BEGIN');
 
-			let finalPatientId: string | null = patientId || null;
-			let finalUnregisteredPatientId: string | null = unregisteredPatientId || null;
+async function validatePatientEntity(client: any, patientId: string | null, unregisteredPatientId: string | null) {
+  if (!patientId && !unregisteredPatientId) throw new Error('Debe proporcionar patientId o unregisteredPatientId.');
 
-			// Validar que al menos uno de los dos IDs esté presente
-			if (!finalPatientId && !finalUnregisteredPatientId) {
-				throw new Error('Debe proporcionar patientId o unregisteredPatientId.');
-			}
+  if (unregisteredPatientId) {
+    const { rows } = await client.query(`SELECT id FROM public.unregisteredpatients WHERE id = $1`, [unregisteredPatientId]);
+    if (rows.length === 0) throw new Error('Paciente no registrado no encontrado.');
+    return { finalPatientId: null, finalUnregisteredPatientId: unregisteredPatientId };
+  }
 
-			// Si es un paciente no registrado, validar que existe
-			if (finalUnregisteredPatientId) {
-				if (!isUUID(finalUnregisteredPatientId)) {
-					throw new Error('unregisteredPatientId inválido. Debe ser un UUID válido.');
-				}
+  if (patientId) {
+    const { rows } = await client.query(`SELECT id FROM public."patient" WHERE id = $1`, [patientId]);
+    if (rows.length === 0) throw new Error('Paciente registrado no encontrado.');
+    return { finalPatientId: patientId, finalUnregisteredPatientId: null };
+  }
+  
+  return { finalPatientId: null, finalUnregisteredPatientId: null };
+}
 
-				// Verificar que el paciente no registrado existe
-				const unregisteredCheck = await client.query(`SELECT id FROM public.unregisteredpatients WHERE id = $1`, [finalUnregisteredPatientId]);
+// ... inside POST ...
+    try {
+      await client.query('BEGIN');
 
-				if (unregisteredCheck.rows.length === 0) {
-					throw new Error('Paciente no registrado no encontrado.');
-				}
-			}
+      const { finalPatientId, finalUnregisteredPatientId } = await validatePatientEntity(client, patientId, unregisteredPatientId);
 
-			// Si es un paciente registrado, validar que existe
-			if (finalPatientId) {
-				if (!isUUID(finalPatientId)) {
-					throw new Error('patientId inválido. Debe ser un UUID válido.');
-				}
 
-				// Verificar que el paciente registrado existe
-				const patientCheck = await client.query(`SELECT id FROM public."patient" WHERE id = $1`, [finalPatientId]);
+async function insertAppointment(client: any, data: any) {
+  const { 
+    finalPatientId, finalUnregisteredPatientId, doctorId, organizationId, 
+    scheduledAt, durationMinutes, reason, location, referralSource, 
+    createdByRoleUserId, createdByDoctorId, selectedService, notes 
+  } = data;
 
-				if (patientCheck.rows.length === 0) {
-					throw new Error('Paciente registrado no encontrado.');
-				}
-			}
+  await client.query('SAVEPOINT attempt_insert_with_doctor');
 
-			// 🔹 Insertar cita con unregistered_patient_id (si aplica)
-			// NOTA: La migración debe ejecutarse primero para agregar el campo unregistered_patient_id
-			// Intentar insertar con created_by_doctor_id si existe el campo
-			// Si el campo no existe en la BD, la query fallará y usaremos una versión sin ese campo
-			let appointmentResult;
-			
-			// Usar SAVEPOINT para manejar el intento de inserción con campos nuevos
-			// Si falla, podemos hacer rollback al savepoint y probar el fallback sin abortar la transacción principal
-			await client.query('SAVEPOINT attempt_insert_with_doctor');
+  try {
+    const result = await client.query(
+      `INSERT INTO public.appointment 
+        (patient_id, unregistered_patient_id, doctor_id, organization_id, scheduled_at, duration_minutes, reason, location, referral_source, created_by_role_user_id, created_by_doctor_id, selected_service, notes)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13) RETURNING id`,
+      [finalPatientId, finalUnregisteredPatientId, doctorId, organizationId, scheduledAt, durationMinutes ?? 30, reason || null, location || null, referralSource || null, createdByRoleUserId || null, createdByDoctorId || null, selectedService || null, notes || null]
+    );
+    await client.query('RELEASE SAVEPOINT attempt_insert_with_doctor');
+    return result.rows[0].id;
+  } catch (err: any) {
+    await client.query('ROLLBACK TO SAVEPOINT attempt_insert_with_doctor');
+    if (err.message?.includes('created_by_doctor_id') || err.code === '42703') {
+      const result = await client.query(
+        `INSERT INTO public.appointment 
+          (patient_id, unregistered_patient_id, doctor_id, organization_id, scheduled_at, duration_minutes, reason, location, referral_source, created_by_role_user_id, selected_service, notes)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) RETURNING id`,
+        [finalPatientId, finalUnregisteredPatientId, doctorId, organizationId, scheduledAt, durationMinutes ?? 30, reason || null, location || null, referralSource || null, createdByRoleUserId || null, selectedService || null, notes || null]
+      );
+      return result.rows[0].id;
+    }
+    throw err;
+  }
+}
 
-			try {
-				appointmentResult = await client.query(
-						`
-          INSERT INTO public.appointment
-            (patient_id, unregistered_patient_id, doctor_id, organization_id, scheduled_at, duration_minutes, reason, location, referral_source, created_by_role_user_id, created_by_doctor_id, selected_service, notes)
-          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
-          RETURNING id
-        `,
-						[
-							finalPatientId, // Puede ser NULL si es paciente no registrado
-							finalUnregisteredPatientId, // Puede ser NULL si es paciente registrado
-							doctorId,
-							organizationId,
-							scheduledAt,
-							durationMinutes ?? 30,
-							reason || null,
-							location || null,
-							referralSource || null,
-							createdByRoleUserId || null,
-							createdByDoctorId || null,
-							selectedService || null,
-							notes || null,
-						]
-					);
-				
-                // Si llegamos aquí, el insert funcionó, liberamos el savepoint
-                await client.query('RELEASE SAVEPOINT attempt_insert_with_doctor');
+async function notifyPatientOfAppointment(patientId: string, organizationId: string, appointmentId: string, scheduledAt: string, reason: string | null, location: string | null, total: number, currency: string) {
+  try {
+    const { data: userData } = await supabaseAdmin.from('users').select('id').eq('patientProfileId', patientId).maybeSingle();
+    const patientUserId = userData?.id;
 
-				} catch (insertError: any) {
-                    // Si falló, hacemos rollback al savepoint para restaurar el estado de la transacción
-                    await client.query('ROLLBACK TO SAVEPOINT attempt_insert_with_doctor');
+    if (patientUserId) {
+      const formattedDate = new Date(scheduledAt).toLocaleDateString('es-ES', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+      await createNotification({
+        userId: patientUserId,
+        organizationId: organizationId || null,
+        type: 'APPOINTMENT_CREATED',
+        title: 'Nueva Cita Programada',
+        message: `Se ha programado una cita para el ${formattedDate}. El pago estará disponible una vez que el médico confirme la cita.`,
+        payload: { appointmentId, scheduledAt: formattedDate, reason, location, total, currency },
+        sendEmail: true,
+      });
+    }
+  } catch (err) {
+    console.error('[Appointments API] Notification error:', err);
+  }
+}
 
-					// Si el campo created_by_doctor_id no existe, intentar sin ese campo
-					if (insertError.message?.includes('created_by_doctor_id') || insertError.code === '42703') {
-						console.warn('[Appointments API] Campo created_by_doctor_id no existe, insertando sin ese campo');
-						appointmentResult = await client.query(
-							`
-          INSERT INTO public.appointment
-            (patient_id, unregistered_patient_id, doctor_id, organization_id, scheduled_at, duration_minutes, reason, location, referral_source, created_by_role_user_id, selected_service, notes)
-          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
-          RETURNING id
-        `,
-							[
-								finalPatientId,
-								finalUnregisteredPatientId,
-								doctorId,
-								organizationId,
-								scheduledAt,
-								durationMinutes ?? 30,
-								reason || null,
-								location || null,
-								referralSource || null,
-								createdByRoleUserId || null,
-								selectedService || null,
-								notes || null,
-							]
-						);
-					} else {
-						// Si fue otro error, lo relanzamos para que el catch externo haga ROLLBACK general
-						throw insertError;
-					}
-				}
+// ... inside POST ...
+      const appointmentId = await insertAppointment(client, {
+        finalPatientId, finalUnregisteredPatientId, doctorId, organizationId, 
+        scheduledAt, durationMinutes, reason, location, referralSource, 
+        createdByRoleUserId, createdByDoctorId, selectedService, notes
+      });
 
-			const appointmentId = appointmentResult.rows[0]?.id;
+      await client.query(
+        `INSERT INTO public.facturacion (appointment_id, patient_id, unregistered_patient_id, doctor_id, organization_id, subtotal, impuestos, total, currency, tipo_cambio, estado_pago, estado_factura, fecha_emision)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)`,
+        [appointmentId, finalPatientId, finalUnregisteredPatientId, doctorId, organizationId, subtotal, impuestos, total, currency, tipoCambio, 'pendiente', 'emitida', new Date().toISOString()]
+      );
 
-			if (!appointmentId) {
-				throw new Error('No se generó ID para la cita.');
-			}
+      await client.query('COMMIT');
 
-			// 🔹 Insertar facturación asociada como PENDIENTE DE PAGO
-			// La facturación se crea automáticamente cuando se crea la cita con servicios seleccionados
-			// Incluir unregistered_patient_id si aplica y tipo_cambio
-			await client.query(
-				`
-        INSERT INTO public.facturacion
-          (appointment_id, patient_id, unregistered_patient_id, doctor_id, organization_id, subtotal, impuestos, total, currency, tipo_cambio, estado_pago, estado_factura, fecha_emision)
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
-      `,
-				[appointmentId, finalPatientId, finalUnregisteredPatientId, doctorId, organizationId, subtotal, impuestos, total, currency, tipoCambio, 'pendiente', 'emitida', new Date().toISOString()]
-			);
+      if (finalPatientId) {
+        await notifyPatientOfAppointment(finalPatientId, organizationId, appointmentId, scheduledAt, reason, location, total, currency);
+      }
 
-			await client.query('COMMIT');
-
-			// 🔹 Crear notificación al paciente si es paciente registrado
-			if (finalPatientId) {
-				try {
-					// Obtener información del paciente y su user_id
-					const { data: patientData } = await supabaseAdmin.from('patient').select('firstName, lastName').eq('id', finalPatientId).maybeSingle();
-
-					// Obtener el user_id del paciente
-					const { data: userData } = await supabaseAdmin.from('users').select('id').eq('patientProfileId', finalPatientId).maybeSingle();
-
-					const patientName = patientData ? `${patientData.firstName} ${patientData.lastName}` : 'Paciente';
-					const patientUserId = userData?.id || null;
-
-					if (patientUserId) {
-						const appointmentDate = new Date(scheduledAt);
-						const formattedDate = appointmentDate.toLocaleDateString('es-ES', {
-							weekday: 'long',
-							year: 'numeric',
-							month: 'long',
-							day: 'numeric',
-							hour: '2-digit',
-							minute: '2-digit',
-						});
-
-						await createNotification({
-							userId: patientUserId,
-							organizationId: organizationId || null,
-							type: 'APPOINTMENT_CREATED',
-							title: 'Nueva Cita Programada',
-							message: `Se ha programado una cita para el ${formattedDate}. El pago estará disponible una vez que el médico confirme la cita.`,
-							payload: {
-								appointmentId: appointmentId,
-								appointment_id: appointmentId,
-								scheduledAt: formattedDate,
-								scheduled_at: scheduledAt,
-								reason: reason || null,
-								location: location || null,
-								total: total,
-								currency: currency,
-								appointmentUrl: `${process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_VERCEL_URL ? `https://${process.env.NEXT_PUBLIC_VERCEL_URL}` : 'http://localhost:3000'}/dashboard/patient/pagos`,
-							},
-							sendEmail: true,
-						});
-					}
-				} catch (notifError) {
-					console.error('[Appointments API] Error creando notificación al paciente:', notifError);
-					// No fallar la creación de la cita si la notificación falla
-				}
-			}
 
 			return NextResponse.json({
 				success: true,

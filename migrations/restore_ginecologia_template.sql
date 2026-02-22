@@ -98,20 +98,21 @@ FROM public.medic_profile
 WHERE doctor_id = 'db536d90-2f27-4a81-bdde-05b7b7a3de17';
 
 -- Mostrar detalles de la plantilla de Ginecología restaurada
+WITH target AS (SELECT 'Ginecología'::text as name)
 SELECT 
     doctor_id,
-    'Ginecología' as especialidad,
-    report_templates_by_specialty->'Ginecología'->>'template_name' as nombre_plantilla,
-    report_templates_by_specialty->'Ginecología'->>'template_url' as url_plantilla,
-    report_templates_by_specialty->'Ginecología'->>'font_family' as fuente,
+    target.name as especialidad,
+    report_templates_by_specialty->target.name->>'template_name' as nombre_plantilla,
+    report_templates_by_specialty->target.name->>'template_url' as url_plantilla,
+    report_templates_by_specialty->target.name->>'font_family' as fuente,
     CASE 
-        WHEN report_templates_by_specialty->'Ginecología'->>'template_text' IS NOT NULL 
-        THEN LEFT(report_templates_by_specialty->'Ginecología'->>'template_text', 100) || '...'
+        WHEN report_templates_by_specialty->target.name->>'template_text' IS NOT NULL 
+        THEN LEFT(report_templates_by_specialty->target.name->>'template_text', 100) || '...'
         ELSE 'No tiene plantilla de texto'
     END as preview_texto
-FROM public.medic_profile
+FROM public.medic_profile, target
 WHERE doctor_id = 'db536d90-2f27-4a81-bdde-05b7b7a3de17'
-  AND report_templates_by_specialty ? 'Ginecología';
+  AND report_templates_by_specialty ? target.name;
 
 COMMIT;
 

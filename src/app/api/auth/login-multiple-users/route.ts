@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import bcrypt from 'bcryptjs';
 
 const SUPABASE_URL = process.env.SUPABASE_URL ?? process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -25,457 +25,96 @@ const supabaseAnon = SUPABASE_URL && SUPABASE_ANON_KEY
  * Específicamente para roles RECEPCION y "Asistente De Citas"
  * Intenta autenticar con cualquiera de las contraseñas guardadas
  */
+async function findUsersByEmail(admin: SupabaseClient, email: string) {
+  const tableCandidates = ['users', 'user', 'User', '"users"', '"user"', '"User"'];
+  for (const tableName of tableCandidates) {
+    const { data, error } = await admin.from(tableName).select('id, email, role, authId, passwordHash').eq('email', email);
+    if (!error && data?.length) return data;
+  }
+  return [];
+}
+
+async function verifyUserPasswords(users: any[], password: string) {
+  const recepcionUsers = users.filter(u => {
+    const role = String(u.role || '').toUpperCase();
+    return (role === 'RECEPCION' || role === 'RECEPCIONISTA') && u.passwordHash;
+  });
+
+  for (const user of [...recepcionUsers, ...users.filter(u => u.passwordHash && !recepcionUsers.includes(u))]) {
+    try {
+      if (await bcrypt.compare(password, user.passwordHash)) return user;
+    } catch (err) {
+      console.error(`[Login Multiple Users] Password check error for user ${user.id}:`, err);
+    }
+  }
+  return null;
+}
+
+async function syncAuthAndUsers(admin: SupabaseClient, email: string, password: string, validUser: any, allUsers: any[]) {
+  const { data: authUsers } = await admin.auth.admin.listUsers();
+  let authUser = authUsers?.users?.find((u: any) => u.email?.toLowerCase() === email.toLowerCase());
+
+  if (authUser) {
+    const { error: updateError } = await admin.auth.admin.updateUserById(authUser.id, { password });
+    if (updateError) throw updateError;
+  } else {
+    const { data: newAuth, error: createError } = await admin.auth.admin.createUser({ email, password, email_confirm: true });
+    if (createError) throw createError;
+    authUser = newAuth.user;
+  }
+
+  // Update authId for all relevant users
+  for (const u of allUsers) {
+    if (u.authId === authUser!.id) continue;
+    if (!u.authId || u.id === validUser.id) {
+       await admin.from('users').update({ authId: authUser!.id }).eq('id', u.id);
+       u.authId = authUser!.id;
+    }
+  }
+  return authUser;
+}
+
 export async function POST(req: NextRequest) {
-	try {
-		if (!supabaseAdmin || !supabaseAnon) {
-			console.error('[Login Multiple Users] Error: Credenciales de Supabase no configuradas');
-			return NextResponse.json({ error: 'Error de configuración del servidor' }, { status: 500 });
-		}
+  const admin = supabaseAdmin;
+  const anon = supabaseAnon;
 
-		const body = await req.json();
-		const { email, password } = body;
+  try {
+    if (!admin || !anon) {
+      return NextResponse.json({ error: 'Error de configuración del servidor' }, { status: 500 });
+    }
 
-		if (!email || !password) {
-			return NextResponse.json({ error: 'Email y contraseña son requeridos' }, { status: 400 });
-		}
+    const { email, password } = await req.json();
+    if (!email || !password) return NextResponse.json({ error: 'Email y contraseña son requeridos' }, { status: 400 });
 
-		const emailTrimmed = email.trim();
-		console.log(`[Login Multiple Users] ===== INICIO LOGIN para: ${emailTrimmed} =====`);
+    const emailTrimmed = email.trim();
+    const allUsers = await findUsersByEmail(admin, emailTrimmed);
 
-		// 1. Buscar todos los usuarios con ese email en la tabla User
-		let allUsers: any[] | null = null;
-		let usersError: any = null;
-		const tableCandidates = ['users', 'user', 'User', '"users"', '"user"', '"User"'];
+    if (allUsers.length === 0) {
+      const { data, error } = await anon.auth.signInWithPassword({ email: emailTrimmed, password });
+      if (error || !data?.user) return NextResponse.json({ error: 'Invalid login credentials' }, { status: 401 });
+      return NextResponse.json({ success: true, user: data.user, session: data.session });
+    }
 
-		for (const tableName of tableCandidates) {
-			const { data, error } = await supabaseAdmin
-				.from(tableName)
-				.select('id, email, role, authId, passwordHash')
-				.eq('email', emailTrimmed);
-			
-			if (!error && data && data.length > 0) {
-				allUsers = data;
-				break;
-			}
-			if (error && String(error.code) !== 'PGRST205' && !error.message.includes('Could not find')) {
-				usersError = error;
-			}
-		}
+    const validPasswordUser = await verifyUserPasswords(allUsers, password);
 
-		if (usersError && (!allUsers || allUsers.length === 0)) {
-			console.error('[Login Multiple Users] Error buscando usuarios:', usersError);
-			return NextResponse.json({ error: 'Error al buscar usuarios' }, { status: 500 });
-		}
+    if (validPasswordUser) {
+      await syncAuthAndUsers(admin, emailTrimmed, password, validPasswordUser, allUsers);
+      await new Promise(r => setTimeout(r, 1000));
+      
+      const { data: authData, error } = await createClient(SUPABASE_URL!, SUPABASE_ANON_KEY!, { auth: { persistSession: false } }).auth.signInWithPassword({ email: emailTrimmed, password });
+      
+      if (error || !authData?.user) return NextResponse.json({ error: 'Error al iniciar sesión tras sincronizar' }, { status: 500 });
 
-		console.log(`[Login Multiple Users] Encontrados ${allUsers?.length || 0} usuarios:`, 
-			allUsers?.map(u => ({ id: u.id, role: u.role, hasAuthId: !!u.authId, hasPasswordHash: !!u.passwordHash })));
+      const selectedUser = allUsers.find((u: any) => ['RECEPCION', 'RECEPCIONISTA'].includes(String(u.role || '').toUpperCase())) || validPasswordUser;
+      return NextResponse.json({ success: true, user: authData.user, session: authData.session, dbUser: selectedUser });
+    } else {
+      const { data: authData, error } = await anon.auth.signInWithPassword({ email: emailTrimmed, password });
+      if (error || !authData?.user) return NextResponse.json({ error: 'Invalid login credentials' }, { status: 401 });
+      
+      const selectedUser = allUsers.find((u: any) => u.authId === authData.user.id) || allUsers[0];
+      return NextResponse.json({ success: true, user: authData.user, session: authData.session, dbUser: selectedUser });
+    }
 
-		if (!allUsers || allUsers.length === 0) {
-			console.log('[Login Multiple Users] No se encontraron usuarios, intentando login normal');
-			const { data: authData, error: authError } = await supabaseAnon.auth.signInWithPassword({
-				email: emailTrimmed,
-				password: password,
-			});
-
-			if (authError || !authData?.user) {
-				console.log('[Login Multiple Users] Login normal falló:', authError?.message);
-				return NextResponse.json({ error: 'Invalid login credentials' }, { status: 401 });
-			}
-
-			return NextResponse.json({
-				success: true,
-				user: authData.user,
-				session: authData.session,
-			});
-		}
-
-		// 2. Filtrar usuarios con roles RECEPCION/RECEPCIONISTA/PACIENTE
-		const allowedRoles = ['RECEPCION', 'RECEPCIONISTA', 'PACIENTE'];
-		const relevantUsers = allUsers.filter(u => {
-			const role = String(u.role || '').toUpperCase();
-			return allowedRoles.includes(role);
-		});
-
-		console.log(`[Login Multiple Users] Usuarios relevantes: ${relevantUsers.length}`);
-
-		// 3. PRIMERO verificar passwordHash de usuarios RECEPCION/RECEPCIONISTA (estos tienen passwordHash)
-		// Esto es importante porque si hay un authId con contraseña diferente, el login normal fallará
-		console.log('[Login Multiple Users] Paso 1: Verificando passwordHash PRIMERO (antes de login normal)');
-		
-		let validPasswordUser: any = null;
-		
-		// Priorizar usuarios RECEPCION/RECEPCIONISTA que tienen passwordHash
-		const recepcionUsers = allUsers.filter(u => {
-			const role = String(u.role || '').toUpperCase();
-			return (role === 'RECEPCION' || role === 'RECEPCIONISTA') && u.passwordHash;
-		});
-		
-		// Si hay usuarios RECEPCION, verificar su passwordHash primero
-		if (recepcionUsers.length > 0) {
-			console.log(`[Login Multiple Users] Encontrados ${recepcionUsers.length} usuarios RECEPCION con passwordHash, verificando primero`);
-			
-			for (const user of recepcionUsers) {
-				try {
-					console.log(`[Login Multiple Users] Verificando passwordHash para usuario RECEPCION ${user.id}`);
-					const passwordMatch = await bcrypt.compare(password, user.passwordHash);
-					
-					if (passwordMatch) {
-						console.log(`[Login Multiple Users] ✓ Contraseña válida encontrada en usuario RECEPCION ${user.id}`);
-						validPasswordUser = user;
-						break;
-					} else {
-						console.log(`[Login Multiple Users] ✗ Contraseña NO coincide para usuario RECEPCION ${user.id}`);
-					}
-				} catch (err) {
-					console.error(`[Login Multiple Users] Error comparando passwordHash para usuario ${user.id}:`, err);
-				}
-			}
-		}
-		
-		// Si no encontramos en RECEPCION, verificar otros usuarios
-		if (!validPasswordUser) {
-			console.log('[Login Multiple Users] No se encontró contraseña válida en usuarios RECEPCION, verificando otros usuarios');
-			for (const user of allUsers) {
-				if (user.passwordHash && !recepcionUsers.find(u => u.id === user.id)) {
-					try {
-						console.log(`[Login Multiple Users] Verificando passwordHash para usuario ${user.id} (rol: ${user.role})`);
-						const passwordMatch = await bcrypt.compare(password, user.passwordHash);
-						
-						if (passwordMatch) {
-							console.log(`[Login Multiple Users] ✓ Contraseña válida encontrada en usuario ${user.id} (rol: ${user.role})`);
-							validPasswordUser = user;
-							break;
-						}
-					} catch (err) {
-						console.error(`[Login Multiple Users] Error comparando passwordHash para usuario ${user.id}:`, err);
-					}
-				}
-			}
-		}
-
-		// 4. Si encontramos una contraseña válida en passwordHash, sincronizar con Supabase Auth ANTES de intentar login
-		if (validPasswordUser) {
-			console.log(`[Login Multiple Users] Paso 2: Contraseña válida encontrada en passwordHash, sincronizando con Supabase Auth PRIMERO`);
-
-			// 5. Contraseña válida encontrada, sincronizar con Supabase Auth
-			try {
-			// Buscar usuario en Supabase Auth por email
-			const { data: authUsersList } = await supabaseAdmin.auth.admin.listUsers();
-			const authUser = authUsersList?.users?.find((u: any) => u.email?.toLowerCase() === emailTrimmed.toLowerCase());
-			
-			if (authUser) {
-				console.log(`[Login Multiple Users] Usuario existe en Supabase Auth (ID: ${authUser.id}), actualizando contraseña`);
-				// Usuario existe, actualizar contraseña
-				const { error: updateError } = await supabaseAdmin.auth.admin.updateUserById(authUser.id, {
-					password: password,
-				});
-				
-				if (updateError) {
-					console.error(`[Login Multiple Users] Error actualizando contraseña:`, updateError);
-					return NextResponse.json({ error: 'Error al actualizar contraseña' }, { status: 500 });
-				}
-				
-				console.log(`[Login Multiple Users] ✓ Contraseña actualizada en Supabase Auth`);
-				
-				// PRIMERO: Actualizar el authId del usuario RECEPCION (el que tiene la contraseña válida)
-				// Este es el usuario que se usará para la sesión
-				const recepcionUser = allUsers.find(u => {
-					const role = String(u.role || '').toUpperCase();
-					return (role === 'RECEPCION' || role === 'RECEPCIONISTA') && u.id === validPasswordUser.id;
-				});
-				
-				if (recepcionUser) {
-					console.log(`[Login Multiple Users] Actualizando authId para usuario RECEPCION ${recepcionUser.id} PRIMERO`);
-					
-					// Si el authId ya está en uso por otro usuario, quitarlo primero
-					const { data: existingUserWithAuthId } = await supabaseAdmin
-						.from('users')
-						.select('id, email, role')
-						.eq('authId', authUser.id)
-						.neq('id', recepcionUser.id)
-						.maybeSingle();
-					
-					if (existingUserWithAuthId) {
-						console.log(`[Login Multiple Users] authId ${authUser.id} está en uso por usuario ${existingUserWithAuthId.id} (rol: ${existingUserWithAuthId.role}), removiéndolo primero`);
-						const { error: removeAuthIdError } = await supabaseAdmin
-							.from('users')
-							.update({ authId: null })
-							.eq('id', existingUserWithAuthId.id);
-						
-						if (removeAuthIdError) {
-							console.error(`[Login Multiple Users] Error removiendo authId del usuario ${existingUserWithAuthId.id}:`, removeAuthIdError);
-						} else {
-							console.log(`[Login Multiple Users] ✓ authId removido del usuario ${existingUserWithAuthId.id}`);
-						}
-					}
-					
-					// Actualizar el authId del usuario RECEPCION
-					const { error: updateRecepcionAuthIdError } = await supabaseAdmin
-						.from('users')
-						.update({ authId: authUser.id })
-						.eq('id', recepcionUser.id);
-					
-					if (updateRecepcionAuthIdError) {
-						console.error(`[Login Multiple Users] Error actualizando authId para usuario RECEPCION ${recepcionUser.id}:`, updateRecepcionAuthIdError);
-					} else {
-						console.log(`[Login Multiple Users] ✓ authId actualizado para usuario RECEPCION ${recepcionUser.id}`);
-						// Actualizar el objeto en memoria para que se use en la respuesta
-						recepcionUser.authId = authUser.id;
-					}
-				}
-				
-				// SEGUNDO: Actualizar otros usuarios si no tienen authId (pero no forzar si ya tienen uno diferente)
-				for (const u of allUsers) {
-					// Si el usuario ya tiene el authId correcto, no hacer nada
-					if (u.authId === authUser.id) {
-						console.log(`[Login Multiple Users] Usuario ${u.id} (rol: ${u.role}) ya tiene authId correcto`);
-						continue;
-					}
-					
-					// Si es el usuario RECEPCION, ya lo actualizamos arriba
-					const isRecepcion = String(u.role || '').toUpperCase() === 'RECEPCION' || String(u.role || '').toUpperCase() === 'RECEPCIONISTA';
-					if (isRecepcion && u.id === recepcionUser?.id) {
-						continue; // Ya actualizado
-					}
-					
-					// Solo actualizar si no tiene authId (no forzar actualización si ya tiene uno diferente)
-					if (!u.authId) {
-						// Verificar si el authId ya está en uso
-						const { data: existingUserWithAuthId } = await supabaseAdmin
-							.from('users')
-							.select('id, email, role')
-							.eq('authId', authUser.id)
-							.neq('id', u.id)
-							.maybeSingle();
-						
-						if (existingUserWithAuthId) {
-							console.log(`[Login Multiple Users] Saltando actualización de authId para usuario ${u.id} (rol: ${u.role}) - authId ya en uso`);
-							continue;
-						}
-						
-						const { error: updateAuthIdError } = await supabaseAdmin
-							.from('users')
-							.update({ authId: authUser.id })
-							.eq('id', u.id);
-						
-						if (updateAuthIdError) {
-							console.error(`[Login Multiple Users] Error actualizando authId para usuario ${u.id}:`, updateAuthIdError);
-						} else {
-							console.log(`[Login Multiple Users] ✓ authId actualizado para usuario ${u.id} (rol: ${u.role})`);
-						}
-					} else {
-						console.log(`[Login Multiple Users] Saltando actualización de authId para usuario ${u.id} (rol: ${u.role}) - ya tiene authId diferente`);
-					}
-				}
-				
-				// Esperar un momento para que la actualización se propague
-				await new Promise(resolve => setTimeout(resolve, 1000));
-				
-				// Intentar login con nuevo cliente para evitar caché
-				const freshSupabaseAnon = createClient(SUPABASE_URL!, SUPABASE_ANON_KEY!, { auth: { persistSession: false } });
-				const { data: authData, error: authError } = await freshSupabaseAnon.auth.signInWithPassword({
-					email: emailTrimmed,
-					password: password,
-				});
-
-				if (!authError && authData?.user && authData?.session) {
-					console.log(`[Login Multiple Users] ✓ Login exitoso después de actualizar contraseña`);
-					// Priorizar usuario RECEPCION/RECEPCIONISTA, luego el que tiene passwordHash válido
-					const recepcionUser = allUsers.find(u => {
-						const role = String(u.role || '').toUpperCase();
-						return role === 'RECEPCION' || role === 'RECEPCIONISTA';
-					});
-					const selectedUser = recepcionUser || validPasswordUser || allUsers.find(u => u.authId === authData.user.id) || allUsers[0];
-					
-					console.log(`[Login Multiple Users] Usuario seleccionado para respuesta:`, {
-						id: selectedUser?.id,
-						role: selectedUser?.role,
-						hasAuthId: !!selectedUser?.authId
-					});
-					
-					return NextResponse.json({
-						success: true,
-						user: authData.user,
-						session: authData.session,
-						dbUser: selectedUser,
-					});
-				} else {
-					console.error(`[Login Multiple Users] ✗ Error en login después de actualizar:`, authError?.message);
-					return NextResponse.json({ error: 'Error al iniciar sesión después de actualizar contraseña' }, { status: 500 });
-				}
-			} else {
-				console.log(`[Login Multiple Users] Usuario NO existe en Supabase Auth, creándolo`);
-				// Usuario no existe, crearlo
-				const { data: newAuthUser, error: createError } = await supabaseAdmin.auth.admin.createUser({
-					email: emailTrimmed,
-					password: password,
-					email_confirm: true,
-				});
-
-				if (createError || !newAuthUser?.user) {
-					console.error(`[Login Multiple Users] Error creando usuario en Supabase Auth:`, createError);
-					return NextResponse.json({ error: 'Error al crear usuario' }, { status: 500 });
-				}
-
-				console.log(`[Login Multiple Users] ✓ Usuario creado en Supabase Auth (ID: ${newAuthUser.user.id})`);
-				
-				// PRIMERO: Actualizar el authId del usuario RECEPCION (el que tiene la contraseña válida)
-				const recepcionUser = allUsers.find(u => {
-					const role = String(u.role || '').toUpperCase();
-					return (role === 'RECEPCION' || role === 'RECEPCIONISTA') && u.id === validPasswordUser.id;
-				});
-				
-				if (recepcionUser) {
-					console.log(`[Login Multiple Users] Actualizando authId para usuario RECEPCION ${recepcionUser.id} PRIMERO`);
-					
-					// Si el authId ya está en uso por otro usuario, quitarlo primero
-					const { data: existingUserWithAuthId } = await supabaseAdmin
-						.from('users')
-						.select('id, email, role')
-						.eq('authId', newAuthUser.user.id)
-						.neq('id', recepcionUser.id)
-						.maybeSingle();
-					
-					if (existingUserWithAuthId) {
-						console.log(`[Login Multiple Users] authId ${newAuthUser.user.id} está en uso por usuario ${existingUserWithAuthId.id} (rol: ${existingUserWithAuthId.role}), removiéndolo primero`);
-						const { error: removeAuthIdError } = await supabaseAdmin
-							.from('users')
-							.update({ authId: null })
-							.eq('id', existingUserWithAuthId.id);
-						
-						if (removeAuthIdError) {
-							console.error(`[Login Multiple Users] Error removiendo authId del usuario ${existingUserWithAuthId.id}:`, removeAuthIdError);
-						} else {
-							console.log(`[Login Multiple Users] ✓ authId removido del usuario ${existingUserWithAuthId.id}`);
-						}
-					}
-					
-					// Actualizar el authId del usuario RECEPCION
-					const { error: updateRecepcionAuthIdError } = await supabaseAdmin
-						.from('users')
-						.update({ authId: newAuthUser.user.id })
-						.eq('id', recepcionUser.id);
-					
-					if (updateRecepcionAuthIdError) {
-						console.error(`[Login Multiple Users] Error actualizando authId para usuario RECEPCION ${recepcionUser.id}:`, updateRecepcionAuthIdError);
-					} else {
-						console.log(`[Login Multiple Users] ✓ authId actualizado para usuario RECEPCION ${recepcionUser.id}`);
-						recepcionUser.authId = newAuthUser.user.id;
-					}
-				}
-				
-				// SEGUNDO: Actualizar otros usuarios si no tienen authId
-				for (const u of allUsers) {
-					if (u.authId === newAuthUser.user.id) {
-						continue; // Ya tiene el authId correcto
-					}
-					
-					const isRecepcionUser = String(u.role || '').toUpperCase() === 'RECEPCION' || String(u.role || '').toUpperCase() === 'RECEPCIONISTA';
-					if (isRecepcionUser && u.id === recepcionUser?.id) {
-						continue; // Ya actualizado
-					}
-					
-					// Solo actualizar si no tiene authId
-					if (!u.authId) {
-						const { data: existingUserWithAuthId } = await supabaseAdmin
-							.from('users')
-							.select('id, email, role')
-							.eq('authId', newAuthUser.user.id)
-							.neq('id', u.id)
-							.maybeSingle();
-						
-						if (existingUserWithAuthId) {
-							console.log(`[Login Multiple Users] Saltando actualización de authId para usuario ${u.id} (rol: ${u.role}) - authId ya en uso`);
-							continue;
-						}
-						
-						const { error: updateAuthIdError } = await supabaseAdmin
-							.from('users')
-							.update({ authId: newAuthUser.user.id })
-							.eq('id', u.id);
-						
-						if (updateAuthIdError) {
-							console.error(`[Login Multiple Users] Error actualizando authId para usuario ${u.id}:`, updateAuthIdError);
-						} else {
-							console.log(`[Login Multiple Users] ✓ authId actualizado para usuario ${u.id} (rol: ${u.role})`);
-						}
-					}
-				}
-
-				// Esperar un momento para que el usuario se cree
-				await new Promise(resolve => setTimeout(resolve, 1000));
-				
-				// Intentar login con nuevo cliente
-				const freshSupabaseAnon = createClient(SUPABASE_URL!, SUPABASE_ANON_KEY!, { auth: { persistSession: false } });
-				const { data: authData, error: authError } = await freshSupabaseAnon.auth.signInWithPassword({
-					email: emailTrimmed,
-					password: password,
-				});
-
-				if (!authError && authData?.user && authData?.session) {
-					console.log(`[Login Multiple Users] ✓ Login exitoso después de crear usuario`);
-					// Priorizar usuario RECEPCION/RECEPCIONISTA, luego el que tiene passwordHash válido
-					const recepcionUser = allUsers.find(u => {
-						const role = String(u.role || '').toUpperCase();
-						return role === 'RECEPCION' || role === 'RECEPCIONISTA';
-					});
-					const selectedUser = recepcionUser || validPasswordUser || allUsers.find(u => u.authId === authData.user.id) || allUsers[0];
-					
-					console.log(`[Login Multiple Users] Usuario seleccionado para respuesta:`, {
-						id: selectedUser?.id,
-						role: selectedUser?.role,
-						hasAuthId: !!selectedUser?.authId
-					});
-					
-					return NextResponse.json({
-						success: true,
-						user: authData.user,
-						session: authData.session,
-						dbUser: selectedUser,
-					});
-				} else {
-					console.error(`[Login Multiple Users] ✗ Error en login después de crear:`, authError?.message);
-					return NextResponse.json({ error: 'Error al iniciar sesión después de crear usuario' }, { status: 500 });
-				}
-			}
-			} catch (err) {
-				console.error(`[Login Multiple Users] Error en proceso de sincronización:`, err);
-				return NextResponse.json({ error: 'Error interno al sincronizar usuario' }, { status: 500 });
-			}
-		} else {
-			// 5. Si no encontramos passwordHash válido, intentar login normal
-			console.log('[Login Multiple Users] Paso 2: No se encontró passwordHash válido, intentando login normal');
-			const { data: normalAuthData, error: normalAuthError } = await supabaseAnon.auth.signInWithPassword({
-				email: emailTrimmed,
-				password: password,
-			});
-
-			if (!normalAuthError && normalAuthData?.user && normalAuthData?.session) {
-				console.log('[Login Multiple Users] ✓ Login normal exitoso');
-				// Priorizar usuario RECEPCION/RECEPCIONISTA
-				const recepcionUser = allUsers.find(u => {
-					const role = String(u.role || '').toUpperCase();
-					return role === 'RECEPCION' || role === 'RECEPCIONISTA';
-				});
-				const selectedUser = recepcionUser || allUsers.find(u => u.authId === normalAuthData.user.id) || allUsers[0];
-				
-				console.log(`[Login Multiple Users] Usuario seleccionado para respuesta (login normal):`, {
-					id: selectedUser?.id,
-					role: selectedUser?.role,
-					hasAuthId: !!selectedUser?.authId
-				});
-				
-				return NextResponse.json({
-					success: true,
-					user: normalAuthData.user,
-					session: normalAuthData.session,
-					dbUser: selectedUser,
-				});
-			}
-
-			console.log('[Login Multiple Users] ✗ Login normal también falló:', normalAuthError?.message);
-			return NextResponse.json({ error: 'Invalid login credentials' }, { status: 401 });
-		}
 	} catch (err) {
 		console.error('[Login Multiple Users] Error general:', err);
 		const errorMessage = err instanceof Error ? err.message : 'Error interno';

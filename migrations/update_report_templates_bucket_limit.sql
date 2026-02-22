@@ -8,6 +8,9 @@
 -- ============================================================
 
 -- Paso 1: Verificar el estado actual del bucket
+WITH config AS (
+    SELECT 'report-templates'::text as bucket_name, 52428800::bigint as size_limit
+)
 SELECT 
     id,
     name,
@@ -17,18 +20,22 @@ SELECT
     allowed_mime_types,
     created_at,
     updated_at
-FROM storage.buckets
-WHERE name = 'report-templates';
+FROM storage.buckets, config
+WHERE name = config.bucket_name;
 
 -- ============================================================
 -- Paso 2: Actualizar el límite de tamaño del bucket a 50MB
 -- ============================================================
 -- Nota: Si el bucket no existe, este UPDATE no afectará ninguna fila
+WITH config AS (
+    SELECT 'report-templates'::text as bucket_name, 52428800::bigint as size_limit
+)
 UPDATE storage.buckets
 SET 
-    file_size_limit = 52428800, -- 50MB en bytes
+    file_size_limit = config.size_limit, -- 50MB en bytes
     updated_at = now()
-WHERE name = 'report-templates';
+FROM config
+WHERE name = config.bucket_name;
 
 -- ============================================================
 -- Paso 3: Verificar que se actualizó correctamente

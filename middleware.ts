@@ -36,24 +36,10 @@ function getAllowedRolesForRoute(pathname: string): string[] | null {
 	return null;
 }
 
-export async function middleware(request: NextRequest) {
-	const nonce = Buffer.from(crypto.randomUUID()).toString('base64');
-	const { pathname } = request.nextUrl;
-	const origin = request.headers.get('origin');
-
-	// 1. Manejo de CORS dinámico
-	const isAllowedOrigin = origin && ALLOWED_ORIGINS.includes(origin);
-	
-	let response = NextResponse.next({
-		request: {
-			headers: new Headers(request.headers),
-		},
-	});
-
-	// Inyectar nonce en la request para que pueda ser leído en layouts/pages
-	response.headers.set('x-nonce', nonce);
-
-	// Configurar CSP (Ajustado para permitir OpenStreetMap y evitar bloqueo de scripts de Next.js)
+/**
+ * Aplica cabeceras de seguridad incluyendo CSP
+ */
+function applySecurityHeaders(response: NextResponse, nonce: string) {
 	const cspHeader = `
 		default-src 'self';
 		script-src 'self' 'unsafe-inline' 'unsafe-eval' https://*.supabase.co https://*.google.com https://*.vercel-scripts.com;
@@ -67,61 +53,98 @@ export async function middleware(request: NextRequest) {
 		form-action 'self';
 	`.replace(/\s{2,}/g, ' ').trim();
 
+	response.headers.set('x-nonce', nonce);
 	response.headers.set('Content-Security-Policy', cspHeader);
 	response.headers.set('X-Frame-Options', 'DENY');
 	response.headers.set('X-Content-Type-Options', 'nosniff');
 	response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
 	response.headers.set('Permissions-Policy', 'camera=(self), microphone=(self), geolocation=(self)');
 	response.headers.set('Strict-Transport-Security', 'max-age=31536000; includeSubDomains; preload');
+}
 
-	// Si es una petición de API y el origen es permitido, añadir cabeceras CORS
+/**
+ * Maneja cabeceras CORS
+ */
+function handleCors(request: NextRequest, response: NextResponse): NextResponse | null {
+	const { pathname } = request.nextUrl;
+	const origin = request.headers.get('origin');
+	const isAllowedOrigin = origin && ALLOWED_ORIGINS.includes(origin);
+
 	if (pathname.startsWith('/api/') && isAllowedOrigin) {
 		response.headers.set('Access-Control-Allow-Origin', origin);
 		response.headers.set('Access-Control-Allow-Credentials', 'true');
 		response.headers.set('Access-Control-Allow-Methods', 'GET,DELETE,PATCH,POST,PUT,OPTIONS');
 		response.headers.set('Access-Control-Allow-Headers', 'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version, Authorization');
+		
+		if (request.method === 'OPTIONS') {
+			return new NextResponse(null, { status: 204, headers: response.headers });
+		}
 	}
+	return null;
+}
 
-	// Manejo de preflight (OPTIONS)
-	if (request.method === 'OPTIONS' && pathname.startsWith('/api/') && isAllowedOrigin) {
-		return new NextResponse(null, {
-			status: 204,
-			headers: response.headers,
-		});
+/**
+ * Maneja la lógica de redirección por rol
+ */
+function getRoleRedirectPath(userRole: string, pathname: string): string | null {
+	let redirectPath = '/dashboard';
+	switch (userRole) {
+		case 'ADMIN':
+		case 'CLINICA':
+			redirectPath = '/dashboard/clinic';
+			break;
+		case 'MEDICO':
+			redirectPath = '/dashboard/medic';
+			break;
+		case 'FARMACIA':
+			redirectPath = '/dashboard/pharmacy';
+			break;
+		case 'PACIENTE':
+			redirectPath = '/dashboard/patient';
+			break;
 	}
+	return !pathname.startsWith(redirectPath) ? redirectPath : null;
+}
 
+export async function middleware(request: NextRequest) {
+	const nonce = Buffer.from(crypto.randomUUID()).toString('base64');
+	const { pathname } = request.nextUrl;
+
+	let response = NextResponse.next({
+		request: { headers: new Headers(request.headers) },
+	});
+
+	// 1. Cabeceras de seguridad
+	applySecurityHeaders(response, nonce);
+
+	// 2. CORS
+	const corsResponse = handleCors(request, response);
+	if (corsResponse) return corsResponse;
+
+	// 3. Supabase Client
 	const supabase = createServerClient(
 		process.env.NEXT_PUBLIC_SUPABASE_URL!,
 		process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
 		{
 			cookies: {
-				getAll() {
-					return request.cookies.getAll();
-				},
-				setAll(cookiesToSet) {
+				getAll: () => request.cookies.getAll(),
+				setAll: (cookiesToSet) => {
 					cookiesToSet.forEach(({ name, value, options }) => {
 						request.cookies.set(name, value);
-						response.cookies.set(name, value, {
-							...options,
-							maxAge: 3153600000, // 100 años
-						});
+						response.cookies.set(name, value, { ...options, maxAge: 3153600000 });
 					});
 				},
 			},
 		}
 	);
 
-	// Refrescar sesión si es necesario
-	const { data: { user }, error } = await supabase.auth.getUser();
+	// 4. Autenticación
+	const { data: { user }, error: authError } = await supabase.auth.getUser();
 
-	// Permitir rutas públicas
-	if (isPublicRoute(pathname)) {
-		return response;
-	}
+	if (isPublicRoute(pathname)) return response;
 
-	// Verificar si requiere autenticación
 	if (requiresAuth(pathname)) {
-		if (error || !user) {
+		if (authError || !user) {
 			if (pathname.startsWith('/api')) {
 				return NextResponse.json({ error: 'No autenticado' }, { status: 401 });
 			}
@@ -130,44 +153,17 @@ export async function middleware(request: NextRequest) {
 			return NextResponse.redirect(loginUrl);
 		}
 
-		// 🔹 CORRECCIÓN: Usar tabla 'users' en lugar de 'User'
-		const { data: appUser } = await supabase
-			.from('users')
-			.select('role')
-			.eq('authId', user.id)
-			.maybeSingle();
-
+		// Obtener rol del usuario
+		const { data: appUser } = await supabase.from('users').select('role').eq('authId', user.id).maybeSingle();
 		const userRole = appUser?.role;
 
-		if (!userRole) {
-			const loginUrl = new URL('/login', request.url);
-			return NextResponse.redirect(loginUrl);
-		}
+		if (!userRole) return NextResponse.redirect(new URL('/login', request.url));
 
-		// Verificar rol para rutas de dashboard
+		// Verificar autorización por ruta
 		const allowedRoles = getAllowedRolesForRoute(pathname);
-		if (allowedRoles) {
-			if (!allowedRoles.includes(userRole)) {
-				let redirectPath = '/dashboard';
-				switch (userRole) {
-					case 'ADMIN':
-					case 'CLINICA':
-						redirectPath = '/dashboard/clinic';
-						break;
-					case 'MEDICO':
-						redirectPath = '/dashboard/medic';
-						break;
-					case 'FARMACIA':
-						redirectPath = '/dashboard/pharmacy';
-						break;
-					case 'PACIENTE':
-						redirectPath = '/dashboard/patient';
-						break;
-				}
-				if (!pathname.startsWith(redirectPath)) {
-					return NextResponse.redirect(new URL(redirectPath, request.url));
-				}
-			}
+		if (allowedRoles && !allowedRoles.includes(userRole)) {
+			const redirectPath = getRoleRedirectPath(userRole, pathname);
+			if (redirectPath) return NextResponse.redirect(new URL(redirectPath, request.url));
 		}
 	}
 

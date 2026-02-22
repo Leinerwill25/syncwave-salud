@@ -3,6 +3,7 @@
 -- ============================================================
 
 -- Verificar todas las políticas para el bucket "report-templates"
+WITH target AS (SELECT '%report-templates%'::text as pattern)
 SELECT 
     policyname,
     cmd as operation,
@@ -15,14 +16,14 @@ SELECT
         WHEN with_check IS NOT NULL THEN with_check::text
         ELSE 'Sin WITH CHECK expression'
     END as with_check_expression
-FROM pg_policies
+FROM pg_policies, target
 WHERE schemaname = 'storage' 
   AND tablename = 'objects'
   AND (
-    policyname LIKE '%report-templates%' 
+    policyname LIKE target.pattern 
     OR policyname LIKE '%report_templates%'
-    OR with_check::text LIKE '%report-templates%'
-    OR qual::text LIKE '%report-templates%'
+    OR with_check::text LIKE target.pattern
+    OR qual::text LIKE target.pattern
   )
 ORDER BY policyname, cmd;
 

@@ -28,7 +28,7 @@ function MapClickHandler({ onClick }: { onClick: (lat: number, lng: number) => v
 		},
 	});
 
-	return null;
+	return <></>;
 }
 
 interface LeafletMapPickerProps {

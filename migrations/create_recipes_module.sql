@@ -42,47 +42,26 @@ FOR DELETE
 USING (auth.uid() = doctor_id);
 
 -- 4. Crear bucket de storage (si no existe)
--- Nota: Esto suele requerir permisos de superadmin o hacerse desde el dashboard, 
--- pero incluimos el SQL por si acaso se ejecuta con privilegios suficientes.
-INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
-VALUES (
-    'prescription-templates',
-    'prescription-templates',
-    false, -- Privado
-    52428800, -- 50MB
-    ARRAY['application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'application/msword']
-)
-ON CONFLICT (id) DO NOTHING;
+DO $$
+DECLARE
+    v_bucket_id TEXT := 'prescription-templates';
+BEGIN
+    INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+    VALUES (
+        v_bucket_id,
+        v_bucket_id,
+        false, -- Privado
+        52428800, -- 50MB
+        ARRAY['application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'application/msword']
+    )
+    ON CONFLICT (id) DO NOTHING;
 
--- 5. Políticas de Storage (Storage Policies)
--- Policy SELECT: Permitir al médico leer sus propios archivos
-CREATE POLICY "Doctors can select their own template files"
-ON storage.objects FOR SELECT
-USING (
-    bucket_id = 'prescription-templates' 
-    AND auth.uid()::text = (storage.foldername(name))[1]
-);
+    -- 5. Políticas de Storage (Storage Policies)
+    EXECUTE format('CREATE POLICY "Doctors can select their own template files" ON storage.objects FOR SELECT USING ( bucket_id = %L AND auth.uid()::text = (storage.foldername(name))[1] )', v_bucket_id);
 
--- Policy INSERT: Permitir al médico subir sus propios archivos
-CREATE POLICY "Doctors can upload their own template files"
-ON storage.objects FOR INSERT
-WITH CHECK (
-    bucket_id = 'prescription-templates' 
-    AND auth.uid()::text = (storage.foldername(name))[1]
-);
+    EXECUTE format('CREATE POLICY "Doctors can upload their own template files" ON storage.objects FOR INSERT WITH CHECK ( bucket_id = %L AND auth.uid()::text = (storage.foldername(name))[1] )', v_bucket_id);
 
--- Policy UPDATE: Permitir al médico actualizar sus propios archivos
-CREATE POLICY "Doctors can update their own template files"
-ON storage.objects FOR UPDATE
-USING (
-    bucket_id = 'prescription-templates' 
-    AND auth.uid()::text = (storage.foldername(name))[1]
-);
+    EXECUTE format('CREATE POLICY "Doctors can update their own template files" ON storage.objects FOR UPDATE USING ( bucket_id = %L AND auth.uid()::text = (storage.foldername(name))[1] )', v_bucket_id);
 
--- Policy DELETE: Permitir al médico eliminar sus propios archivos
-CREATE POLICY "Doctors can delete their own template files"
-ON storage.objects FOR DELETE
-USING (
-    bucket_id = 'prescription-templates' 
-    AND auth.uid()::text = (storage.foldername(name))[1]
-);
+    EXECUTE format('CREATE POLICY "Doctors can delete their own template files" ON storage.objects FOR DELETE USING ( bucket_id = %L AND auth.uid()::text = (storage.foldername(name))[1] )', v_bucket_id);
+END $$;

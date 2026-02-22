@@ -52,60 +52,34 @@ DROP POLICY IF EXISTS "report-templates-delete-policy" ON storage.objects;
 -- Primero eliminamos las políticas si existen, luego las creamos
 -- Esto evita errores si las políticas ya existen
 
--- Eliminar políticas existentes
-DROP POLICY IF EXISTS "report-templates-insert-policy" ON storage.objects;
-DROP POLICY IF EXISTS "report-templates-select-policy" ON storage.objects;
-DROP POLICY IF EXISTS "report-templates-update-policy" ON storage.objects;
-DROP POLICY IF EXISTS "report-templates-delete-policy" ON storage.objects;
+DO $$
+DECLARE
+    v_bucket_id TEXT := 'report-templates';
+    v_role_auth TEXT := 'authenticated';
+    v_role_service TEXT := 'service_role';
+BEGIN
+    -- Eliminar políticas existentes
+    DROP POLICY IF EXISTS "report-templates-insert-policy" ON storage.objects;
+    DROP POLICY IF EXISTS "report-templates-select-policy" ON storage.objects;
+    DROP POLICY IF EXISTS "report-templates-update-policy" ON storage.objects;
+    DROP POLICY IF EXISTS "report-templates-delete-policy" ON storage.objects;
 
--- ============================================================
--- Paso 5: Crear políticas RLS que permitan operaciones en el bucket
--- ============================================================
--- Estas políticas permiten que usuarios autenticados y el service role
--- puedan subir, leer, actualizar y eliminar archivos en el bucket
+    -- ============================================================
+    -- Paso 5: Crear políticas RLS que permitan operaciones en el bucket
+    -- ============================================================
 
--- Política para INSERT (subir archivos)
--- Permite a usuarios autenticados y service role subir archivos
-CREATE POLICY "report-templates-insert-policy"
-ON storage.objects
-FOR INSERT
-TO authenticated, service_role
-WITH CHECK (
-    bucket_id = 'report-templates'
-);
+    -- Política para INSERT (subir archivos)
+    EXECUTE format('CREATE POLICY "report-templates-insert-policy" ON storage.objects FOR INSERT TO %I, %I WITH CHECK ( bucket_id = %L )', v_role_auth, v_role_service, v_bucket_id);
 
--- Política para SELECT (leer/descargar archivos)
--- Permite a usuarios autenticados y service role leer archivos
-CREATE POLICY "report-templates-select-policy"
-ON storage.objects
-FOR SELECT
-TO authenticated, service_role
-USING (
-    bucket_id = 'report-templates'
-);
+    -- Política para SELECT (leer/descargar archivos)
+    EXECUTE format('CREATE POLICY "report-templates-select-policy" ON storage.objects FOR SELECT TO %I, %I USING ( bucket_id = %L )', v_role_auth, v_role_service, v_bucket_id);
 
--- Política para UPDATE (actualizar archivos)
--- Permite a usuarios autenticados y service role actualizar archivos
-CREATE POLICY "report-templates-update-policy"
-ON storage.objects
-FOR UPDATE
-TO authenticated, service_role
-USING (
-    bucket_id = 'report-templates'
-)
-WITH CHECK (
-    bucket_id = 'report-templates'
-);
+    -- Política para UPDATE (actualizar archivos)
+    EXECUTE format('CREATE POLICY "report-templates-update-policy" ON storage.objects FOR UPDATE TO %I, %I USING ( bucket_id = %L ) WITH CHECK ( bucket_id = %L )', v_role_auth, v_role_service, v_bucket_id, v_bucket_id);
 
--- Política para DELETE (eliminar archivos)
--- Permite a usuarios autenticados y service role eliminar archivos
-CREATE POLICY "report-templates-delete-policy"
-ON storage.objects
-FOR DELETE
-TO authenticated, service_role
-USING (
-    bucket_id = 'report-templates'
-);
+    -- Política para DELETE (eliminar archivos)
+    EXECUTE format('CREATE POLICY "report-templates-delete-policy" ON storage.objects FOR DELETE TO %I, %I USING ( bucket_id = %L )', v_role_auth, v_role_service, v_bucket_id);
+END $$;
 
 -- ============================================================
 -- Paso 6: Verificar que las políticas se crearon correctamente

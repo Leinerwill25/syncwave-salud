@@ -15,56 +15,28 @@
 -- Habilitar RLS
 ALTER TABLE IF EXISTS public.notification ENABLE ROW LEVEL SECURITY;
 
--- Eliminar TODAS las políticas existentes de notification (por si acaso)
--- Usar nombres específicos en lugar de consultar pg_policies para evitar errores
-DROP POLICY IF EXISTS "Users can view their notifications" ON public.notification;
-DROP POLICY IF EXISTS "Users can manage their notifications" ON public.notification;
-DROP POLICY IF EXISTS "Users can view notifications in their organization" ON public.notification;
-DROP POLICY IF EXISTS "Users can insert notifications" ON public.notification;
-DROP POLICY IF EXISTS "Users can update their notifications" ON public.notification;
-DROP POLICY IF EXISTS "Users can delete their notifications" ON public.notification;
+DO $$
+DECLARE
+    v_table_name TEXT := 'public.notification';
+    v_policy_view TEXT := 'Users can view their notifications';
+    v_policy_manage TEXT := 'Users can manage their notifications';
+    v_logic TEXT := '"organizationId" IN (SELECT "organizationId" FROM public."user" WHERE "authId" = auth.uid()::text OR id::text = auth.uid()::text) OR "userId" IN (SELECT id FROM public."user" WHERE "authId" = auth.uid()::text OR id::text = auth.uid()::text)';
+    v_check TEXT := '"organizationId" IN (SELECT "organizationId" FROM public."user" WHERE "authId" = auth.uid()::text OR id::text = auth.uid()::text)';
+BEGIN
+    -- Eliminar políticas existentes
+    EXECUTE format('DROP POLICY IF EXISTS %I ON %s', v_policy_view, v_table_name);
+    EXECUTE format('DROP POLICY IF EXISTS %I ON %s', v_policy_manage, v_table_name);
+    
+    -- Otros nombres que podrían existir según el script original
+    DROP POLICY IF EXISTS "Users can view notifications in their organization" ON public.notification;
+    DROP POLICY IF EXISTS "Users can insert notifications" ON public.notification;
+    DROP POLICY IF EXISTS "Users can update their notifications" ON public.notification;
+    DROP POLICY IF EXISTS "Users can delete their notifications" ON public.notification;
 
--- Crear políticas correctas
-CREATE POLICY "Users can view their notifications"
-    ON public.notification
-    FOR SELECT
-    USING (
-        "organizationId" IN (
-            SELECT "organizationId" 
-            FROM public."user" 
-            WHERE "authId" = auth.uid()::text OR id::text = auth.uid()::text
-        )
-        OR
-        "userId" IN (
-            SELECT id 
-            FROM public."user" 
-            WHERE "authId" = auth.uid()::text OR id::text = auth.uid()::text
-        )
-    );
-
-CREATE POLICY "Users can manage their notifications"
-    ON public.notification
-    FOR ALL
-    USING (
-        "organizationId" IN (
-            SELECT "organizationId" 
-            FROM public."user" 
-            WHERE "authId" = auth.uid()::text OR id::text = auth.uid()::text
-        )
-        OR
-        "userId" IN (
-            SELECT id 
-            FROM public."user" 
-            WHERE "authId" = auth.uid()::text OR id::text = auth.uid()::text
-        )
-    )
-    WITH CHECK (
-        "organizationId" IN (
-            SELECT "organizationId" 
-            FROM public."user" 
-            WHERE "authId" = auth.uid()::text OR id::text = auth.uid()::text
-        )
-    );
+    -- Crear políticas correctas
+    EXECUTE format('CREATE POLICY %I ON %s FOR SELECT USING ( %s )', v_policy_view, v_table_name, v_logic);
+    EXECUTE format('CREATE POLICY %I ON %s FOR ALL USING ( %s ) WITH CHECK ( %s )', v_policy_manage, v_table_name, v_logic, v_check);
+END $$;
 
 -- ============================================================================
 -- PASO 2: Verificar funciones que mencionen "Notification"

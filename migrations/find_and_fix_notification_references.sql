@@ -6,6 +6,7 @@
 -- ============================================================================
 
 -- 1. Buscar políticas que mencionen "Notification" en su definición
+WITH target AS (SELECT 'Notification'::text as name)
 SELECT 
     schemaname,
     tablename,
@@ -15,12 +16,12 @@ SELECT
     cmd,
     qual,
     with_check
-FROM pg_policies
+FROM pg_policies, target
 WHERE schemaname = 'public'
     AND (
-        qual::text ILIKE '%Notification%' 
-        OR with_check::text ILIKE '%Notification%'
-        OR tablename = 'Notification'
+        qual::text ILIKE '%' || target.name || '%' 
+        OR with_check::text ILIKE '%' || target.name || '%'
+        OR tablename = target.name
     )
 ORDER BY tablename, policyname;
 

@@ -39,11 +39,7 @@ CREATE TABLE IF NOT EXISTS public.medic_profile (
 
   -- Configuración de WhatsApp para recordatorios
   whatsapp_number text,
-  whatsapp_message_template text DEFAULT 'Hola {NOMBRE_PACIENTE}, le recordamos su cita el {FECHA} a las {HORA} con el Dr/a {NOMBRE_DOCTORA} en {CLÍNICA}. Por los servicios de:
-
-{SERVICIOS}
-
-por favor confirmar con un "Asistiré" o "No Asistiré"',
+  whatsapp_message_template text DEFAULT 'Hola {NOMBRE_PACIENTE}, le recordamos su cita el {FECHA} a las {HORA} con el Dr/a {NOMBRE_DOCTORA} en {CLÍNICA}. Por los servicios de:' || CHR(10) || CHR(10) || '{SERVICIOS}' || CHR(10) || CHR(10) || 'por favor confirmar con un "Asistiré" o "No Asistiré"',
   
   -- Seguridad
   two_factor_enabled boolean DEFAULT false,

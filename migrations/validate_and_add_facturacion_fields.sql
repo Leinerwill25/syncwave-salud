@@ -6,18 +6,22 @@
 -- 1. VALIDAR Y AGREGAR unregistered_patient_id
 -- ============================================
 DO $$ 
+DECLARE
+    v_schema TEXT := 'public';
+    v_table TEXT := 'facturacion';
+    v_column TEXT := 'unregistered_patient_id';
 BEGIN
     -- Agregar unregistered_patient_id si no existe
     IF NOT EXISTS (
         SELECT 1 FROM information_schema.columns 
-        WHERE table_schema = 'public' 
-        AND table_name = 'facturacion' 
-        AND column_name = 'unregistered_patient_id'
+        WHERE table_schema = v_schema 
+        AND table_name = v_table 
+        AND column_name = v_column
     ) THEN
-        ALTER TABLE public.facturacion ADD COLUMN unregistered_patient_id UUID;
-        RAISE NOTICE 'Campo unregistered_patient_id agregado a facturacion';
+        EXECUTE format('ALTER TABLE %I.%I ADD COLUMN %I UUID', v_schema, v_table, v_column);
+        RAISE NOTICE 'Campo % agregado a %', v_column, v_table;
     ELSE
-        RAISE NOTICE 'Campo unregistered_patient_id ya existe en facturacion';
+        RAISE NOTICE 'Campo % ya existe en %', v_column, v_table;
     END IF;
 END $$;
 

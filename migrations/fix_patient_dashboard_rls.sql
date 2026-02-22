@@ -589,18 +589,19 @@ ALTER TABLE IF EXISTS public.conversation ENABLE ROW LEVEL SECURITY;
 
 DO $$
 DECLARE
-    policy_count INTEGER;
+    v_policy_count INTEGER;
+    v_expected_min INTEGER := 4;
 BEGIN
     -- Verificar políticas en patient
-    SELECT COUNT(*) INTO policy_count
+    SELECT COUNT(*) INTO v_policy_count
     FROM pg_policies
     WHERE schemaname = 'public' AND tablename = 'patient';
     
-    IF policy_count < 4 THEN
-        RAISE WARNING 'Esperábamos al menos 4 políticas en patient, encontramos %', policy_count;
+    IF v_policy_count < v_expected_min THEN
+        RAISE WARNING 'Esperábamos al menos % políticas en patient, encontramos %', v_expected_min, v_policy_count;
     END IF;
     
     RAISE NOTICE 'Políticas RLS configuradas correctamente para pacientes';
-    RAISE NOTICE 'Políticas en patient: %', policy_count;
+    RAISE NOTICE 'Políticas en patient: %', v_policy_count;
 END $$;
 

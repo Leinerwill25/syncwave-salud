@@ -83,47 +83,14 @@ COMMENT ON COLUMN public.successive_consultation.additional_fields IS 'Campos ad
 -- Habilitar RLS (Row Level Security)
 ALTER TABLE public.successive_consultation ENABLE ROW LEVEL SECURITY;
 
--- Política RLS: Los doctores pueden ver sus propias consultas sucesivas
-CREATE POLICY "Doctors can view their successive consultations"
-  ON public.successive_consultation
-  FOR SELECT
-  USING (
-    doctor_id IN (
-      SELECT id FROM public."user" 
-      WHERE "authId" = auth.uid()::text OR id::text = auth.uid()::text
-    )
-  );
-
--- Política RLS: Los doctores pueden crear consultas sucesivas
-CREATE POLICY "Doctors can create successive consultations"
-  ON public.successive_consultation
-  FOR INSERT
-  WITH CHECK (
-    doctor_id IN (
-      SELECT id FROM public."user" 
-      WHERE "authId" = auth.uid()::text OR id::text = auth.uid()::text
-    )
-  );
-
--- Política RLS: Los doctores pueden actualizar sus consultas sucesivas
-CREATE POLICY "Doctors can update their successive consultations"
-  ON public.successive_consultation
-  FOR UPDATE
-  USING (
-    doctor_id IN (
-      SELECT id FROM public."user" 
-      WHERE "authId" = auth.uid()::text OR id::text = auth.uid()::text
-    )
-  );
-
--- Política RLS: Los doctores pueden eliminar sus consultas sucesivas
-CREATE POLICY "Doctors can delete their successive consultations"
-  ON public.successive_consultation
-  FOR DELETE
-  USING (
-    doctor_id IN (
-      SELECT id FROM public."user" 
-      WHERE "authId" = auth.uid()::text OR id::text = auth.uid()::text
-    )
-  );
+DO $$
+DECLARE
+    v_table_name TEXT := 'public.successive_consultation';
+    v_policy_check TEXT := 'doctor_id IN (SELECT id FROM public."user" WHERE "authId" = auth.uid()::text OR id::text = auth.uid()::text)';
+BEGIN
+    EXECUTE format('CREATE POLICY "Doctors can view their successive consultations" ON %s FOR SELECT USING ( %s )', v_table_name, v_policy_check);
+    EXECUTE format('CREATE POLICY "Doctors can create successive consultations" ON %s FOR INSERT WITH CHECK ( %s )', v_table_name, v_policy_check);
+    EXECUTE format('CREATE POLICY "Doctors can update their successive consultations" ON %s FOR UPDATE USING ( %s )', v_table_name, v_policy_check);
+    EXECUTE format('CREATE POLICY "Doctors can delete their successive consultations" ON %s FOR DELETE USING ( %s )', v_table_name, v_policy_check);
+END $$;
 
