@@ -29,13 +29,14 @@ CREATE TABLE public.appointment (
   created_by_role_user_id uuid,
   created_by_doctor_id uuid,
   office_id text,
+  notes text,
   CONSTRAINT appointment_pkey PRIMARY KEY (id),
-  CONSTRAINT fk_appointment_doctor FOREIGN KEY (doctor_id) REFERENCES public.users(id),
   CONSTRAINT appointment_created_by_role_user_fkey FOREIGN KEY (created_by_role_user_id) REFERENCES public.consultorio_role_users(id),
   CONSTRAINT appointment_created_by_doctor_id_fkey FOREIGN KEY (created_by_doctor_id) REFERENCES public.users(id),
   CONSTRAINT fk_appointment_patient FOREIGN KEY (patient_id) REFERENCES public.patient(id),
   CONSTRAINT fk_appointment_org FOREIGN KEY (organization_id) REFERENCES public.organization(id),
-  CONSTRAINT fk_appointment_unregistered_patient FOREIGN KEY (unregistered_patient_id) REFERENCES public.unregisteredpatients(id)
+  CONSTRAINT fk_appointment_unregistered_patient FOREIGN KEY (unregistered_patient_id) REFERENCES public.unregisteredpatients(id),
+  CONSTRAINT fk_appointment_doctor FOREIGN KEY (doctor_id) REFERENCES public.users(id)
 );
 CREATE TABLE public.audit_log (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
@@ -122,10 +123,10 @@ CREATE TABLE public.consultation (
   icd11_title text,
   CONSTRAINT consultation_pkey PRIMARY KEY (id),
   CONSTRAINT fk_consultation_patient FOREIGN KEY (patient_id) REFERENCES public.patient(id),
-  CONSTRAINT fk_consultation_doctor FOREIGN KEY (doctor_id) REFERENCES public.users(id),
   CONSTRAINT fk_consultation_appointment FOREIGN KEY (appointment_id) REFERENCES public.appointment(id),
   CONSTRAINT fk_consultation_medrec FOREIGN KEY (medical_record_id) REFERENCES public.medicalrecord(id),
-  CONSTRAINT consultation_unregistered_patient_id_fkey FOREIGN KEY (unregistered_patient_id) REFERENCES public.unregisteredpatients(id)
+  CONSTRAINT consultation_unregistered_patient_id_fkey FOREIGN KEY (unregistered_patient_id) REFERENCES public.unregisteredpatients(id),
+  CONSTRAINT fk_consultation_doctor FOREIGN KEY (doctor_id) REFERENCES public.users(id)
 );
 CREATE TABLE public.consultation_email_queue (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
@@ -479,6 +480,24 @@ por favor confirmar con un "Asistiré" o "No Asistiré"'::text,
   CONSTRAINT medic_profile_pkey PRIMARY KEY (id),
   CONSTRAINT fk_medic_profile_doctor FOREIGN KEY (doctor_id) REFERENCES public.users(id)
 );
+CREATE TABLE public.medical_report_templates (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  user_id uuid,
+  organization_id uuid,
+  name text NOT NULL DEFAULT 'Informe Genérico'::text,
+  logo_url text,
+  header_text text,
+  footer_text text,
+  primary_color text DEFAULT '#0F172A'::text,
+  secondary_color text DEFAULT '#3B82F6'::text,
+  font_family text DEFAULT 'Arial'::text,
+  created_at timestamp with time zone DEFAULT now(),
+  updated_at timestamp with time zone DEFAULT now(),
+  template_text text,
+  CONSTRAINT medical_report_templates_pkey PRIMARY KEY (id),
+  CONSTRAINT medical_report_templates_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id),
+  CONSTRAINT medical_report_templates_organization_id_fkey FOREIGN KEY (organization_id) REFERENCES public.organization(id)
+);
 CREATE TABLE public.medicalaccessgrant (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
   patient_id uuid NOT NULL,
@@ -567,6 +586,8 @@ CREATE TABLE public.organization (
   createdAt timestamp with time zone NOT NULL DEFAULT now(),
   updatedAt timestamp with time zone NOT NULL DEFAULT now(),
   inviteBaseUrl character varying,
+  sede_count integer NOT NULL DEFAULT 1,
+  is_custom_quote boolean NOT NULL DEFAULT false,
   CONSTRAINT organization_pkey PRIMARY KEY (id),
   CONSTRAINT fk_organization_plan FOREIGN KEY (planId) REFERENCES public.plan(id)
 );
@@ -669,11 +690,13 @@ CREATE TABLE public.prescription (
   created_at timestamp with time zone NOT NULL DEFAULT now(),
   unregistered_patient_id uuid,
   prescription_url text,
+  recipe_text text,
+  treatment_plan text,
   CONSTRAINT prescription_pkey PRIMARY KEY (id),
   CONSTRAINT fk_prescription_patient FOREIGN KEY (patient_id) REFERENCES public.patient(id),
-  CONSTRAINT fk_prescription_doctor FOREIGN KEY (doctor_id) REFERENCES public.users(id),
   CONSTRAINT fk_prescription_consultation FOREIGN KEY (consultation_id) REFERENCES public.consultation(id),
-  CONSTRAINT fk_prescription_unregistered_patient FOREIGN KEY (unregistered_patient_id) REFERENCES public.unregisteredpatients(id)
+  CONSTRAINT fk_prescription_unregistered_patient FOREIGN KEY (unregistered_patient_id) REFERENCES public.unregisteredpatients(id),
+  CONSTRAINT fk_prescription_doctor FOREIGN KEY (doctor_id) REFERENCES public.users(id)
 );
 CREATE TABLE public.prescription_dispense (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
@@ -716,6 +739,19 @@ CREATE TABLE public.prescription_item (
   CONSTRAINT prescription_item_pkey PRIMARY KEY (id),
   CONSTRAINT fk_prescriptionitem_prescription FOREIGN KEY (prescription_id) REFERENCES public.prescription(id),
   CONSTRAINT fk_prescriptionitem_med FOREIGN KEY (medication_id) REFERENCES public.medication(id)
+);
+CREATE TABLE public.prescription_templates (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  doctor_id uuid NOT NULL,
+  organization_id uuid,
+  name text NOT NULL,
+  description text,
+  file_path text NOT NULL,
+  file_url text,
+  created_at timestamp with time zone DEFAULT now(),
+  updated_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT prescription_templates_pkey PRIMARY KEY (id),
+  CONSTRAINT prescription_templates_doctor_id_fkey FOREIGN KEY (doctor_id) REFERENCES auth.users(id)
 );
 CREATE TABLE public.private_messages (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
@@ -911,23 +947,6 @@ CREATE TABLE public.unregisteredpatients (
   CONSTRAINT unregisteredpatients_created_by_fkey FOREIGN KEY (created_by) REFERENCES public.medic_profile(id),
   CONSTRAINT unregisteredpatients_migrated_to_patient_id_fkey FOREIGN KEY (migrated_to_patient_id) REFERENCES public.patient(id)
 );
-CREATE TABLE public.users (
-  id uuid NOT NULL DEFAULT gen_random_uuid(),
-  email text NOT NULL,
-  name text,
-  passwordHash text,
-  role USER-DEFINED NOT NULL,
-  organizationId uuid,
-  createdAt timestamp with time zone NOT NULL DEFAULT now(),
-  updatedAt timestamp with time zone NOT NULL DEFAULT now(),
-  patientProfileId uuid UNIQUE,
-  authId text,
-  used boolean NOT NULL DEFAULT true,
-  currency_preference character varying DEFAULT 'USD'::character varying,
-  CONSTRAINT user_pkey PRIMARY KEY (id),
-  CONSTRAINT fk_user_organization FOREIGN KEY (organizationId) REFERENCES public.organization(id),
-  CONSTRAINT fk_user_patientprofile FOREIGN KEY (patientProfileId) REFERENCES public.patient(id)
-);
 CREATE TABLE public.user_sessions (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
   user_id uuid NOT NULL,
@@ -944,4 +963,21 @@ CREATE TABLE public.user_sessions (
   pages_visited ARRAY,
   created_at timestamp with time zone NOT NULL DEFAULT now(),
   CONSTRAINT user_sessions_pkey PRIMARY KEY (id)
+);
+CREATE TABLE public.users (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  email text NOT NULL,
+  name text,
+  passwordHash text,
+  role USER-DEFINED NOT NULL,
+  organizationId uuid,
+  createdAt timestamp with time zone NOT NULL DEFAULT now(),
+  updatedAt timestamp with time zone NOT NULL DEFAULT now(),
+  patientProfileId uuid UNIQUE,
+  authId text,
+  used boolean NOT NULL DEFAULT true,
+  currency_preference character varying DEFAULT 'USD'::character varying,
+  CONSTRAINT users_pkey PRIMARY KEY (id),
+  CONSTRAINT fk_user_organization FOREIGN KEY (organizationId) REFERENCES public.organization(id),
+  CONSTRAINT fk_user_patientprofile FOREIGN KEY (patientProfileId) REFERENCES public.patient(id)
 );
