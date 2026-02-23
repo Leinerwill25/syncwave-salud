@@ -25,10 +25,11 @@ function getDateRange(period: Period) {
  * Obtiene estadísticas generales de la clínica para un periodo dado.
  */
 export async function getClinicGeneralStats(organizationId: string, period: Period = 'month') {
-  const { start, end } = getDateRange(period);
-  const supabase = await createSupabaseServerClient();
-
   try {
+    const { start, end } = getDateRange(period);
+    const supabase = await createSupabaseServerClient();
+    if (!supabase) throw new Error('No supabase client');
+
     // 1. Total Consultations
     const { count: totalConsultations, error: consultationsError } = await supabase
       .from('consultation')
@@ -39,12 +40,7 @@ export async function getClinicGeneralStats(organizationId: string, period: Peri
 
     if (consultationsError) console.error('Error fetching consultations count:', consultationsError);
 
-    // 2. Total Patients (approximate via consultations or direct relation if exists)
-    // Since we don't have a direct "Patient belongs to Organization" easily queryable without join,
-    // we can count patients who had consultations in this period.
-    // Or if we want all patients ever, we query Patient table if linked.
-    // Based on previous Prisma code: consultations: { some: { organizationId... } }
-    // We'll query distinct patient_id from consultations in this period.
+    // 2. Total Patients
     const { data: distinctPatients, error: patientsError } = await supabase
       .from('consultation')
       .select('patient_id')
@@ -73,18 +69,17 @@ export async function getClinicGeneralStats(organizationId: string, period: Peri
       .select('*', { count: 'exact', head: true })
       .eq('organizationId', organizationId)
       .eq('role', 'MEDICO');
-      // .eq('status', 'ACTIVE'); // Uncomment if status exists
 
     if (specialistsError) console.error('Error fetching specialists count:', specialistsError);
 
     return {
       totalConsultations: totalConsultations || 0,
-      totalPatients,
-      totalIncome,
+      totalPatients: totalPatients || 0,
+      totalIncome: totalIncome || 0,
       activeSpecialists: activeSpecialists || 0
     };
   } catch (error) {
-    console.error('Error fetching clinic stats:', error);
+    console.error('[Analytics Action] getClinicGeneralStats fatal error:', error);
     return {
       totalConsultations: 0,
       totalPatients: 0,
@@ -160,10 +155,11 @@ export async function getSpecialistsPerformance(organizationId: string, period: 
  * Obtiene datos para gráficas de ingresos y consultas.
  */
 export async function getFinancialReports(organizationId: string, period: Period = 'year') {
-    const { start, end } = getDateRange(period);
-    const supabase = await createSupabaseServerClient();
-    
     try {
+        const { start, end } = getDateRange(period);
+        const supabase = await createSupabaseServerClient();
+        if (!supabase) return [];
+        
         const { data: invoices, error } = await supabase
             .from('facturacion')
             .select('fecha_emision, total')
@@ -174,17 +170,23 @@ export async function getFinancialReports(organizationId: string, period: Period
 
         if (error) throw error;
 
-        // Agrupar por mes
+        // Agrupar por mes de forma segura
         const grouped = (invoices || []).reduce((acc: Record<string, number>, curr: any) => {
-            const date = new Date(curr.fecha_emision);
-            const month = format(date, 'MMM', { locale: es });
-            acc[month] = (acc[month] || 0) + (Number(curr.total) || 0);
+            if (!curr.fecha_emision) return acc;
+            try {
+                const date = new Date(curr.fecha_emision);
+                if (isNaN(date.getTime())) return acc;
+                const month = format(date, 'MMM', { locale: es });
+                acc[month] = (acc[month] || 0) + (Number(curr.total) || 0);
+            } catch (err) {
+                console.error('[Analytics] Error parsing date in financial reports:', curr.fecha_emision);
+            }
             return acc;
         }, {} as Record<string, number>);
 
         return Object.entries(grouped).map(([name, value]) => ({ name, value }));
     } catch (error) {
-        console.error('Error fetching financial reports:', error);
+        console.error('[Analytics Action] getFinancialReports fatal error:', error);
         return [];
     }
 }
@@ -193,8 +195,10 @@ export async function getFinancialReports(organizationId: string, period: Period
  * Obtiene estadísticas de diagnósticos.
  */
 export async function getDiagnosesStats(organizationId: string) {
-    const supabase = await createSupabaseServerClient();
     try {
+        const supabase = await createSupabaseServerClient();
+        if (!supabase) return [];
+        
         const { data: consultations, error } = await supabase
             .from('consultation')
             .select('diagnosis')
@@ -205,7 +209,9 @@ export async function getDiagnosesStats(organizationId: string) {
         if (error) throw error;
 
         const diagnosisCounts = (consultations || []).reduce((acc: Record<string, number>, curr: any) => {
-            const diag = curr.diagnosis?.trim();
+            if (!curr.diagnosis) return acc;
+            // Asegurar que sea string antes de trim
+            const diag = String(curr.diagnosis).trim();
             if (diag) {
                 acc[diag] = (acc[diag] || 0) + 1;
             }
@@ -218,7 +224,7 @@ export async function getDiagnosesStats(organizationId: string) {
             .map(([name, value]) => ({ name, value }));
 
     } catch (error) {
-        console.error('Error fetching diagnoses stats:', error);
+        console.error('[Analytics Action] getDiagnosesStats fatal error:', error);
         return [];
     }
 }
