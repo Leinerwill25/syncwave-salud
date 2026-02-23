@@ -5,7 +5,7 @@ import { apiRequireRole } from '@/lib/auth-guards';
 // GET: Obtener la configuración del informe genérico
 export async function GET(request: Request) {
     try {
-        const authResult = await apiRequireRole(['MEDICO', 'ADMIN']);
+        const authResult = await apiRequireRole(['MEDICO', 'ADMIN', 'RECEPCION']);
         if (authResult.response) return authResult.response;
 
         const user = authResult.user;
@@ -36,8 +36,8 @@ export async function GET(request: Request) {
                 if (orgConfig) return NextResponse.json(orgConfig);
             }
         } 
-        // Si es admin, solo su configuración de organización
-        else if (user.role === 'ADMIN' && user.organizationId) {
+        // Si es admin o recepción (asistente), buscar configuración de organización
+        else if ((user.role === 'ADMIN' || user.role === 'RECEPCION') && user.organizationId) {
             const { data: orgConfig, error: orgError } = await supabase
                 .from('medical_report_templates')
                 .select('*')
@@ -46,7 +46,7 @@ export async function GET(request: Request) {
 
             if (orgError) {
                 console.error('[Generic Report API] Error obteniendo config org:', orgError);
-                return NextResponse.json({ error: 'Error al cargar configuración' }, { status: 500 });
+                return NextResponse.json({ error: 'Error al cargar configuración', details: orgError.message }, { status: 500 });
             }
 
             return NextResponse.json(orgConfig || {});
@@ -63,7 +63,8 @@ export async function GET(request: Request) {
 // POST: Guardar o actualizar la configuración
 export async function POST(request: NextRequest) {
     try {
-        const authResult = await apiRequireRole(['MEDICO', 'ADMIN']);
+        // Permitir RECEPCION para que asistentes puedan configurar la clínica
+        const authResult = await apiRequireRole(['MEDICO', 'ADMIN', 'RECEPCION']);
         if (authResult.response) return authResult.response;
 
         const user = authResult.user;
@@ -85,20 +86,33 @@ export async function POST(request: NextRequest) {
             template_text 
         } = body;
 
-        // Determinar filtro de búsqueda (user_id para médico, organization_id para admin)
-        const filterField = user.role === 'ADMIN' ? 'organization_id' : 'user_id';
-        const filterValue = user.role === 'ADMIN' ? user.organizationId : user.userId;
+        // Determinar filtro de búsqueda
+        const isOrgMode = (user.role === 'ADMIN' || user.role === 'RECEPCION') && !!user.organizationId;
+        const filterField = isOrgMode ? 'organization_id' : 'user_id';
+        const filterValue = isOrgMode ? user.organizationId : user.userId;
+
+        console.log('[Generic Report API] POST Attempt:', { 
+            role: user.role, 
+            isOrgMode, 
+            filterField, 
+            filterValue
+        });
 
         if (!filterValue) {
             return NextResponse.json({ error: 'Identificador no encontrado' }, { status: 400 });
         }
 
         // Verificar si ya existe config
-        const { data: existing } = await supabase
+        const { data: existing, error: checkError } = await supabase
             .from('medical_report_templates')
             .select('id')
             .eq(filterField, filterValue)
             .maybeSingle();
+
+        if (checkError) {
+            console.error('[Generic Report API] Error check existente:', checkError);
+            return NextResponse.json({ error: 'Error al verificar configuración', details: checkError.message }, { status: 500 });
+        }
 
         let result;
         let error;
@@ -117,7 +131,7 @@ export async function POST(request: NextRequest) {
                     template_text,
                     updated_at: new Date().toISOString()
                 })
-                .eq(filterField, filterValue)
+                .eq('id', existing.id)
                 .select()
                 .single();
             result = data;
@@ -128,7 +142,7 @@ export async function POST(request: NextRequest) {
                 .from('medical_report_templates')
                 .insert({
                     [filterField]: filterValue,
-                    name: user.role === 'ADMIN' ? 'Configuración de Clínica' : 'Informe Personalizado',
+                    name: isOrgMode ? 'Configuración de Clínica' : 'Informe Personalizado',
                     logo_url,
                     primary_color,
                     secondary_color,
@@ -145,13 +159,17 @@ export async function POST(request: NextRequest) {
 
         if (error) {
             console.error('[Generic Report API] Error guardando:', error);
-            return NextResponse.json({ error: 'Error al guardar configuración' }, { status: 500 });
+            return NextResponse.json({ 
+                error: 'Error al guardar configuración', 
+                details: error.message,
+                code: error.code 
+            }, { status: 500 });
         }
 
         return NextResponse.json(result);
 
-    } catch (err) {
+    } catch (err: any) {
         console.error('[Generic Report API] Error:', err);
-        return NextResponse.json({ error: 'Error interno' }, { status: 500 });
+        return NextResponse.json({ error: 'Error interno: ' + err.message }, { status: 500 });
     }
 }

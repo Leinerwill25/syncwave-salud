@@ -2,8 +2,9 @@
 
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, DollarSign, FileText, Edit2, Trash2, Save, AlertCircle, Loader2 } from 'lucide-react';
+import { X, DollarSign, FileText, Edit2, Trash2, Save, AlertCircle, Loader2, PlusCircle } from 'lucide-react';
 import CurrencyDisplay from '@/components/CurrencyDisplay';
+import AddServiceModal from '@/app/dashboard/components/AddServiceModal';
 
 interface Props {
 	isOpen: boolean;
@@ -40,6 +41,7 @@ export default function ReceptionAppointmentModal({ isOpen, onClose, appointment
 	const [deleteReason, setDeleteReason] = useState('');
 	const [error, setError] = useState<string | null>(null);
 	const [success, setSuccess] = useState<string | null>(null);
+    const [isAddServiceModalOpen, setIsAddServiceModalOpen] = useState(false);
 
 	useEffect(() => {
 		if (isOpen && appointment?.id) {
@@ -95,18 +97,38 @@ export default function ReceptionAppointmentModal({ isOpen, onClose, appointment
 				const factData = await factRes.json();
 				if (factData.items && factData.items.length > 0) {
 					const fact = factData.items[0];
-					// Extraer servicios desde selected_service de la cita o desde facturación
+					// Extraer servicios desde selected_service de la cita (que es la fuente de verdad)
 					const services: Service[] = [];
 
-					// Si hay selected_service en la cita, agregarlo
 					if (appt.selected_service) {
-						const selectedService = typeof appt.selected_service === 'string' ? JSON.parse(appt.selected_service) : appt.selected_service;
-						services.push({
-							name: selectedService.name || 'Servicio',
-							description: selectedService.description,
-							price: parseFloat(selectedService.price || '0'),
-							currency: selectedService.currency || 'USD',
-						});
+						let rawServices = appt.selected_service;
+						if (typeof rawServices === 'string') {
+							try {
+								rawServices = JSON.parse(rawServices);
+							} catch {
+								rawServices = [{ name: rawServices }];
+							}
+						}
+
+						if (Array.isArray(rawServices)) {
+							rawServices.forEach((s: any) => {
+								services.push({
+									id: s.id,
+									name: s.name || 'Servicio',
+									description: s.description,
+									price: parseFloat(s.price || '0'),
+									currency: s.currency || 'USD',
+								});
+							});
+						} else if (rawServices && typeof rawServices === 'object') {
+							services.push({
+								id: rawServices.id,
+								name: rawServices.name || 'Servicio',
+								description: rawServices.description,
+								price: parseFloat(rawServices.price || '0'),
+								currency: rawServices.currency || 'USD',
+							});
+						}
 					}
 
 					setFacturacion({
@@ -123,13 +145,34 @@ export default function ReceptionAppointmentModal({ isOpen, onClose, appointment
 					// Si no hay facturación, crear servicios desde selected_service
 					const services: Service[] = [];
 					if (appt.selected_service) {
-						const selectedService = typeof appt.selected_service === 'string' ? JSON.parse(appt.selected_service) : appt.selected_service;
-						services.push({
-							name: selectedService.name || 'Servicio',
-							description: selectedService.description,
-							price: parseFloat(selectedService.price || '0'),
-							currency: selectedService.currency || 'USD',
-						});
+						let rawServices = appt.selected_service;
+						if (typeof rawServices === 'string') {
+							try {
+								rawServices = JSON.parse(rawServices);
+							} catch {
+								rawServices = [{ name: rawServices }];
+							}
+						}
+
+						if (Array.isArray(rawServices)) {
+							rawServices.forEach((s: any) => {
+								services.push({
+									id: s.id,
+									name: s.name || 'Servicio',
+									description: s.description,
+									price: parseFloat(s.price || '0'),
+									currency: s.currency || 'USD',
+								});
+							});
+						} else if (rawServices && typeof rawServices === 'object') {
+							services.push({
+								id: rawServices.id,
+								name: rawServices.name || 'Servicio',
+								description: rawServices.description,
+								price: parseFloat(rawServices.price || '0'),
+								currency: rawServices.currency || 'USD',
+							});
+						}
 					}
 					setFacturacion({
 						id: '',
@@ -212,6 +255,26 @@ export default function ReceptionAppointmentModal({ isOpen, onClose, appointment
 			const remainingServices = facturacion.servicios?.filter((_, idx) => idx !== serviceIndex) || [];
 			const newTotal = remainingServices.reduce((sum, s) => sum + s.price, 0);
 
+            // 1. Actualizar la CITA primero (selected_service)
+            const apptUpdateRes = await fetch(`/api/role-users/appointments/${appointment.id}`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+                body: JSON.stringify({
+                    selected_service: remainingServices,
+                    billing: {
+                        ...appointment.billing,
+                        subtotal: newTotal,
+                        total: newTotal
+                    }
+                })
+            });
+
+            if (!apptUpdateRes.ok) {
+                throw new Error('Error al actualizar los servicios de la cita');
+            }
+
+			// 2. Actualizar FACTURACIÓN si existe
 			if (facturacion.id) {
 				const res = await fetch(`/api/facturacion/${facturacion.id}`, {
 					method: 'PUT',
@@ -226,14 +289,14 @@ export default function ReceptionAppointmentModal({ isOpen, onClose, appointment
 
 				if (!res.ok) {
 					const data = await res.json();
-					throw new Error(data.error || 'Error al eliminar el servicio');
+					throw new Error(data.error || 'Error al actualizar la facturación');
 				}
-
-				setSuccess('Servicio eliminado correctamente');
-				setDeleteReason('');
-				setDeletingServiceId(null);
-				await loadFacturacionData();
 			}
+
+			setSuccess('Servicio eliminado correctamente');
+			setDeleteReason('');
+			setDeletingServiceId(null);
+			await loadAppointmentAndFacturacion();
 		} catch (err: any) {
 			setError(err.message || 'Error al eliminar el servicio');
 		} finally {
@@ -302,9 +365,18 @@ export default function ReceptionAppointmentModal({ isOpen, onClose, appointment
 								<>
 									{/* Servicios */}
 									<div>
-										<h3 className="font-semibold text-slate-900 mb-4 flex items-center gap-2">
-											<FileText className="w-5 h-5" />
-											Servicios Cobrados
+										<h3 className="font-semibold text-slate-900 mb-4 flex items-center justify-between">
+                                            <div className="flex items-center gap-2">
+											    <FileText className="w-5 h-5" />
+											    Servicios Cobrados
+                                            </div>
+                                            <button 
+                                                onClick={() => setIsAddServiceModalOpen(true)}
+                                                className="text-teal-600 hover:text-teal-800 flex items-center gap-1.5 text-sm font-medium hover:bg-teal-50 px-3 py-1.5 rounded-lg transition-all"
+                                            >
+                                                <PlusCircle className="w-4 h-4" />
+                                                Agregar Servicio
+                                            </button>
 										</h3>
 										{facturacion?.servicios && facturacion.servicios.length > 0 ? (
 											<div className="space-y-3">
@@ -418,6 +490,20 @@ export default function ReceptionAppointmentModal({ isOpen, onClose, appointment
 					</motion.div>
 				</motion.div>
 			)}
+
+            {/* Modal para agregar servicios desde Recepción */}
+            {isOpen && appointment && (
+                <AddServiceModal
+                    isOpen={isAddServiceModalOpen}
+                    onClose={() => setIsAddServiceModalOpen(false)}
+                    appointment={appointment}
+                    organizationId={organizationId}
+                    onSuccess={async () => {
+                        setSuccess('Servicio agregado correctamente');
+                        await loadAppointmentAndFacturacion();
+                    }}
+                />
+            )}
 		</AnimatePresence>
 	);
 }

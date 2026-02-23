@@ -602,7 +602,7 @@ export default function AppointmentListForRoleUser({ selectedDate, roleName, can
 								{isReception && (
 									<p className="text-xs text-blue-600 mt-2 flex items-center gap-1 ml-6">
 										<FileText className="w-3 h-3" />
-										<span>Haz clic para ver servicios y gestionar pagos</span>
+										<span>Haz clic en la tarjeta para gestionar pagos</span>
 									</p>
 								)}
 
