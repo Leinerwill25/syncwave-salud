@@ -1,0 +1,23 @@
+﻿
+> my-app@0.1.0 build C:\Users\Dereck\Desktop\Proyectos Grandes\Clinica_Syncwave_MVP\my-app
+> next build "Line:"
+
+node.exe : Invalid project directory 
+provided, no such directory: 
+C:\Users\Dereck\Desktop\Proyectos 
+Grandes\Clinica_Syncwave_MVP\my-app\Line:
+En 
+C:\Users\Dereck\AppData\Roaming\npm\pnpm.ps1: 
+24 Carácter: 5
++     & "node$exe"  
+"$basedir/node_modules/pnpm/bin/pnpm.cjs" 
+$args
++     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpec    
+ified: (Invalid project...VP\my-a    
+pp\Line::String) [], RemoteExcept    ion
+    + FullyQualifiedErrorId : NativeC    
+ommandError
+ 
+ÔÇëELIFECYCLEÔÇë Command failed with exit code 1.

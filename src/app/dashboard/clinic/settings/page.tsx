@@ -5,10 +5,11 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import {
 	Loader2, UserPlus, Database, CalendarDays, Check, X, Users, Mail,
-	CreditCard, Settings, TrendingUp, HelpCircle
+	CreditCard, Settings, TrendingUp, HelpCircle, FileText
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import GenericReportConfig from '@/components/medic/GenericReportConfig';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { toast } from 'sonner';
 import { createSupabaseBrowserClient } from '@/app/adapters/client';
@@ -485,6 +486,20 @@ export default function ClinicSettingsPage(): React.ReactElement {
 							<Button onClick={handleSave} disabled={loading} className="w-full bg-gradient-to-r from-sky-600 to-teal-500 text-white hover:shadow-md transition-shadow rounded-xl mt-2">
 								{loading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Actualizar Perfil'}
 							</Button>
+						</div>
+					</div>
+
+					{/* Configuración de Informe */}
+					<div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+						<div className="flex items-center gap-3 p-6 border-b border-slate-100 bg-gradient-to-r from-indigo-50 to-white">
+							<FileText className="w-5 h-5 text-indigo-600" />
+							<div>
+								<h4 className="text-base font-semibold text-slate-900">Personalización de Informes</h4>
+								<p className="text-xs text-slate-500 mt-0.5">Define el estilo visual y plantilla base para todos tus especialistas</p>
+							</div>
+						</div>
+						<div className="p-6">
+							<GenericReportConfig clinicName={clinic.legal_name || ''} />
 						</div>
 					</div>
 

@@ -1,0 +1,13 @@
+﻿
+> my-app@0.1.0 build C:\Users\Dereck\Desktop\Proyectos Grandes\Clinica_Syncwave_MVP\my-app
+> next build
+
+Ôû▓ Next.js 16.1.6 (Turbopack)
+- Environments: .env.local, .env
+- Experiments (use with caution):
+  ┬À optimizePackageImports
+
+  Creating an optimized production build ...
+Ô£ô Compiled successfully in 45s
+  Running TypeScript ...
+ÔÇëELIFECYCLEÔÇë Command failed with exit code 1.

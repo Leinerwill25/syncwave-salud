@@ -97,12 +97,31 @@ export async function POST(request: NextRequest) {
 			);
 		}
 
+		// Obtener organización del médico para fallback
+		const { data: doctorUser } = await supabaseAdmin
+			.from('users')
+			.select('organizationId')
+			.eq('id', doctorId)
+			.maybeSingle();
+
+		const orgId = doctorUser?.organizationId;
+
 		// Obtener configuración de informe genérico (nueva tabla)
-		const { data: genericConfig } = await supabaseAdmin
+		// Intentar primero personal del médico, luego de su organización
+		let { data: genericConfig } = await supabaseAdmin
 			.from('medical_report_templates')
 			.select('template_text, logo_url, header_text, footer_text, primary_color, secondary_color, font_family')
 			.eq('user_id', doctorId)
 			.maybeSingle();
+
+		if (!genericConfig && orgId) {
+			const { data: orgConfig } = await supabaseAdmin
+				.from('medical_report_templates')
+				.select('template_text, logo_url, header_text, footer_text, primary_color, secondary_color, font_family')
+				.eq('organization_id', orgId)
+				.maybeSingle();
+			genericConfig = orgConfig;
+		}
 
 		// Mapeo de reportType a nombres de especialidades en español
 		const REPORT_TYPE_TO_SPECIALTY: Record<string, string[]> = {

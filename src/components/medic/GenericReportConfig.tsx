@@ -6,7 +6,13 @@ import { toast } from 'sonner';
 import { createSupabaseBrowserClient } from '@/app/adapters/client';
 import { Document, Packer, Paragraph, TextRun, ImageRun, Header, Footer, AlignmentType, WidthType, Table, TableRow, TableCell, BorderStyle } from 'docx';
 
-export default function GenericReportConfig({ readOnly = false }: { readOnly?: boolean }) {
+export default function GenericReportConfig({ 
+    readOnly = false,
+    clinicName
+}: { 
+    readOnly?: boolean;
+    clinicName?: string;
+}) {
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [config, setConfig] = useState<any>(null);
@@ -381,6 +387,18 @@ export default function GenericReportConfig({ readOnly = false }: { readOnly?: b
 
     return (
         <div className="space-y-6">
+            {clinicName && (
+                <div className="bg-amber-50 border border-amber-200 p-4 rounded-xl flex items-start gap-3 shadow-sm">
+                    <LayoutTemplate className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+                    <div className="text-sm">
+                        <p className="font-semibold text-amber-900">Modo de Configuración de Clínica</p>
+                        <p className="text-amber-800">
+                            Estás editando la plantilla base para <strong>{clinicName}</strong>. 
+                            Esta configuración se aplicará a todos los médicos que no tengan una configuración personalizada.
+                        </p>
+                    </div>
+                </div>
+            )}
             <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
                 <div className="flex items-center justify-between mb-6">
                     <div>

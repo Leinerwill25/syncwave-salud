@@ -909,11 +909,21 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 		}
 
         // Obtener configuración de informe genérico (nueva tabla)
-        const { data: genericConfig } = await supabase
+        // Intentar primero personal del médico, luego de su organización
+        let { data: genericConfig } = await supabase
             .from('medical_report_templates')
             .select('template_text')
             .eq('user_id', doctorId)
             .maybeSingle();
+
+        if (!genericConfig && user.organizationId) {
+            const { data: orgConfig } = await supabase
+                .from('medical_report_templates')
+                .select('template_text')
+                .eq('organization_id', user.organizationId)
+                .maybeSingle();
+            genericConfig = orgConfig;
+        }
 
 		// Si es obstetricia, buscar plantilla específica
 		let templateText: string | null = null;

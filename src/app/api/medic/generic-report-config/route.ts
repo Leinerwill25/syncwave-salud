@@ -2,10 +2,10 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createSupabaseServerClient } from '@/app/adapters/server';
 import { apiRequireRole } from '@/lib/auth-guards';
 
-// GET: Obtener la configuración del informe genérico del médico
+// GET: Obtener la configuración del informe genérico
 export async function GET(request: Request) {
     try {
-        const authResult = await apiRequireRole(['MEDICO']);
+        const authResult = await apiRequireRole(['MEDICO', 'ADMIN']);
         if (authResult.response) return authResult.response;
 
         const user = authResult.user;
@@ -13,23 +13,46 @@ export async function GET(request: Request) {
             return NextResponse.json({ error: 'No autenticado' }, { status: 401 });
         }
 
-        const doctorId = user.userId;
         const supabase = await createSupabaseServerClient();
+        
+        // Si es médico, intentar primero su configuración personal, luego la de su organización
+        if (user.role === 'MEDICO') {
+            const { data: personalConfig, error: personalError } = await supabase
+                .from('medical_report_templates')
+                .select('*')
+                .eq('user_id', user.userId)
+                .maybeSingle();
 
-        // Buscar configuración existente por user_id
-        const { data: config, error } = await supabase
-            .from('medical_report_templates')
-            .select('*')
-            .eq('user_id', doctorId)
-            .maybeSingle();
+            if (personalConfig) return NextResponse.json(personalConfig);
+            
+            // Fallback a organización
+            if (user.organizationId) {
+                const { data: orgConfig } = await supabase
+                    .from('medical_report_templates')
+                    .select('*')
+                    .eq('organization_id', user.organizationId)
+                    .maybeSingle();
+                
+                if (orgConfig) return NextResponse.json(orgConfig);
+            }
+        } 
+        // Si es admin, solo su configuración de organización
+        else if (user.role === 'ADMIN' && user.organizationId) {
+            const { data: orgConfig, error: orgError } = await supabase
+                .from('medical_report_templates')
+                .select('*')
+                .eq('organization_id', user.organizationId)
+                .maybeSingle();
 
-        if (error) {
-            console.error('[Generic Report API] Error obteniendo config:', error);
-            return NextResponse.json({ error: 'Error al cargar configuración' }, { status: 500 });
+            if (orgError) {
+                console.error('[Generic Report API] Error obteniendo config org:', orgError);
+                return NextResponse.json({ error: 'Error al cargar configuración' }, { status: 500 });
+            }
+
+            return NextResponse.json(orgConfig || {});
         }
 
-        // Si no existe, devolver null o objeto vacío (el frontend manejará esto)
-        return NextResponse.json(config || {});
+        return NextResponse.json({});
 
     } catch (err) {
         console.error('[Generic Report API] Error:', err);
@@ -40,7 +63,7 @@ export async function GET(request: Request) {
 // POST: Guardar o actualizar la configuración
 export async function POST(request: NextRequest) {
     try {
-        const authResult = await apiRequireRole(['MEDICO']);
+        const authResult = await apiRequireRole(['MEDICO', 'ADMIN']);
         if (authResult.response) return authResult.response;
 
         const user = authResult.user;
@@ -48,7 +71,6 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: 'No autenticado' }, { status: 401 });
         }
 
-        const doctorId = user.userId;
         const supabase = await createSupabaseServerClient();
         const body = await request.json();
 
@@ -63,11 +85,19 @@ export async function POST(request: NextRequest) {
             template_text 
         } = body;
 
-        // Verificar si ya existe config para este usuario
+        // Determinar filtro de búsqueda (user_id para médico, organization_id para admin)
+        const filterField = user.role === 'ADMIN' ? 'organization_id' : 'user_id';
+        const filterValue = user.role === 'ADMIN' ? user.organizationId : user.userId;
+
+        if (!filterValue) {
+            return NextResponse.json({ error: 'Identificador no encontrado' }, { status: 400 });
+        }
+
+        // Verificar si ya existe config
         const { data: existing } = await supabase
             .from('medical_report_templates')
             .select('id')
-            .eq('user_id', doctorId)
+            .eq(filterField, filterValue)
             .maybeSingle();
 
         let result;
@@ -87,7 +117,7 @@ export async function POST(request: NextRequest) {
                     template_text,
                     updated_at: new Date().toISOString()
                 })
-                .eq('user_id', doctorId)
+                .eq(filterField, filterValue)
                 .select()
                 .single();
             result = data;
@@ -97,8 +127,8 @@ export async function POST(request: NextRequest) {
             const { data, error: insertError } = await supabase
                 .from('medical_report_templates')
                 .insert({
-                    user_id: doctorId,
-                    name: 'Informe Personalizado',
+                    [filterField]: filterValue,
+                    name: user.role === 'ADMIN' ? 'Configuración de Clínica' : 'Informe Personalizado',
                     logo_url,
                     primary_color,
                     secondary_color,
