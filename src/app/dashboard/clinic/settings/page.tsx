@@ -164,40 +164,16 @@ export default function ClinicSettingsPage(): React.ReactElement {
 	const [upgrading, setUpgrading] = useState<boolean>(false);
 	const [showConfirmUpgrade, setShowConfirmUpgrade] = useState<boolean>(false);
 
-	useEffect(() => {
-		let unsubscribe: (() => void) | null = null;
-
-		supabase.auth.getSession().then(({ data: { session } }) => {
-			if (session?.access_token) {
-				fetchClinic();
-			} else {
-				const { data: { subscription } } = supabase.auth.onAuthStateChange((event, sess) => {
-					if ((event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED' || event === 'INITIAL_SESSION') && sess?.access_token) {
-						fetchClinic();
-						subscription.unsubscribe();
-					}
-				});
-				unsubscribe = () => subscription.unsubscribe();
-			}
-		});
-
-		return () => { unsubscribe?.(); };
-		// eslint-disable-next-line react-hooks/exhaustive-deps
-	}, []);
-
 	/** Busca el plan de clínica que mejor encaje con la cantidad de especialistas */
 	const findRecommendedPlan = (specialistCount: number, plans: Plan[]): Plan | null => {
-		// Filtrar solo planes de clínica (slug empieza con 'clinic-') y no custom
 		const clinicPlans = plans.filter((p) => p.id !== 'custom' && p.monthlyPrice > 0);
 		if (clinicPlans.length === 0) return null;
 
-		// Encontrar el plan cuyo rango incluya la cantidad de especialistas
 		const exact = clinicPlans.find(
 			(p) => specialistCount >= p.minSpecialists && specialistCount <= p.maxSpecialists
 		);
 		if (exact) return exact;
 
-		// Si no hay match exacto, recomendar el plan con el rango mínimo más cercano
 		const sorted = [...clinicPlans].sort((a, b) => a.minSpecialists - b.minSpecialists);
 		const next = sorted.find((p) => p.minSpecialists > specialistCount);
 		return next ?? sorted[sorted.length - 1];
@@ -206,13 +182,24 @@ export default function ClinicSettingsPage(): React.ReactElement {
 	const fetchClinic = async () => {
 		try {
 			setLoading(true);
-			const { data: { session } } = await supabase.auth.getSession();
-			if (!session?.access_token) throw new Error('No se encontró usuario autenticado.');
+			const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+			
+			if (sessionError) throw sessionError;
+			if (!session?.access_token) {
+				console.warn('[Settings] No session found, retrying...');
+				await new Promise(r => setTimeout(r, 800));
+				const retry = await supabase.auth.getSession();
+				if (!retry.data.session?.access_token) throw new Error('No se encontró usuario autenticado.');
+			}
+			
+			const token = session?.access_token || (await supabase.auth.getSession()).data.session?.access_token;
 
-			// Fetch clínica y planes de la DB en paralelo
 			const [profileRes, plansRes] = await Promise.all([
 				fetch('/api/clinic/profile', {
-					headers: { Authorization: `Bearer ${session.access_token}` },
+					headers: { Authorization: `Bearer ${token}` },
+				}).catch(e => {
+					console.error('Fetch error:', e);
+					return { ok: false, json: () => Promise.resolve({ error: 'Error de red.' }) } as Response;
 				}),
 				supabase
 					.from('plan')
@@ -221,14 +208,15 @@ export default function ClinicSettingsPage(): React.ReactElement {
 					.order('minSpecialists', { ascending: true }),
 			]);
 
-			const data = await profileRes.json();
-			if (!profileRes.ok) throw new Error(data.error || 'Error al cargar la clínica.');
+			if (!profileRes.ok) {
+				const errorData = await profileRes.json();
+				throw new Error(errorData.error || 'Error al cargar perfil.');
+			}
 
-			// Normalizar planes de la DB al tipo Plan
+			const data = await profileRes.json();
+
 			const dbPlans: Plan[] = (plansRes.data ?? []).map((p: any) => ({
-				id: p.id,
-				slug: p.slug,
-				name: p.name,
+				id: p.id, slug: p.slug, name: p.name,
 				minSpecialists: Number(p.minSpecialists),
 				maxSpecialists: Number(p.maxSpecialists),
 				monthlyPrice: Number(p.monthlyPrice),
@@ -240,8 +228,11 @@ export default function ClinicSettingsPage(): React.ReactElement {
 
 			const normalized: ClinicProfile = {
 				id: data?.clinicProfile?.id ?? data?.organization?.id ?? '',
-				legal_name: data?.organization?.name ?? null,
+				legal_name: data?.organization?.name ?? data?.clinicProfile?.legal_name ?? null,
 				specialistCount: data?.specialistCount ?? data?.organization?.specialistCount ?? 0,
+				specialties: Array.isArray(data?.clinicProfile?.specialties) 
+					? data.clinicProfile.specialties 
+					: (typeof data?.clinicProfile?.specialties === 'string' ? JSON.parse(data.clinicProfile.specialties) : []),
 				storagePerSpecialistMB: data?.storagePerSpecialistMB ?? 500,
 				invitesAvailable: data?.invitesAvailable ?? 0,
 				subscriptionEndDate: data?.subscription?.endDate ?? null,
@@ -264,6 +255,11 @@ export default function ClinicSettingsPage(): React.ReactElement {
 	};
 
 	useEffect(() => {
+		fetchClinic();
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, []);
+
+	useEffect(() => {
 		if (!clinic || allClinicPlans.length === 0) return;
 		setRecommendedPlan(findRecommendedPlan(clinic.specialistCount ?? 0, allClinicPlans));
 		// eslint-disable-next-line react-hooks/exhaustive-deps
@@ -284,7 +280,7 @@ export default function ClinicSettingsPage(): React.ReactElement {
 			if (!session?.access_token) throw new Error('No se encontró usuario autenticado.');
 
 			const res = await fetch('/api/clinic/profile', {
-				method: 'PATCH',
+				method: 'PUT',
 				headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` },
 				body: JSON.stringify({ ...form, extraInvites }),
 			});
@@ -407,7 +403,7 @@ export default function ClinicSettingsPage(): React.ReactElement {
 						</div>
 					</div>
 
-					{/* Storage */}
+					{/* Almacenamiento */}
 					<div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
 						<div className="flex items-center gap-3 p-6 border-b border-slate-100">
 							<Database className="w-5 h-5 text-sky-600" />
@@ -427,8 +423,67 @@ export default function ClinicSettingsPage(): React.ReactElement {
 								</div>
 								<p className="text-xs text-slate-400 mt-2">Recomendado mínimo: <strong className="text-slate-700">500 MB</strong></p>
 							</div>
-							<Button onClick={handleSave} disabled={loading} className="w-full bg-gradient-to-r from-sky-600 to-teal-500 text-white hover:shadow-md transition-shadow rounded-xl">
-								{loading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Guardar cambios'}
+						</div>
+					</div>
+
+					{/* Especialidades */}
+					<div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+						<div className="flex items-center gap-3 p-6 border-b border-slate-100">
+							<TrendingUp className="w-5 h-5 text-indigo-600" />
+							<div>
+								<h4 className="text-base font-semibold text-slate-900">Especialidades de la Clínica</h4>
+								<p className="text-xs text-slate-500 mt-0.5">Define las áreas médicas que atiende tu centro</p>
+							</div>
+						</div>
+						<div className="p-6 space-y-4">
+							<div className="flex flex-wrap gap-2 min-h-[40px] p-3 rounded-xl bg-slate-50 border border-slate-100">
+								{(form.specialties ?? []).map((s, idx) => (
+									<span key={idx} className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white border border-slate-200 text-sm font-medium text-slate-700 shadow-sm">
+										{s}
+										<button 
+											onClick={() => setForm(prev => ({ ...prev, specialties: (prev.specialties ?? []).filter((_, i) => i !== idx) }))}
+											className="hover:text-red-500 transition-colors"
+										>
+											<X className="w-3 h-3" />
+										</button>
+									</span>
+								))}
+								{(!form.specialties || form.specialties.length === 0) && (
+									<p className="text-sm text-slate-400 italic">No hay especialidades registradas</p>
+								)}
+							</div>
+							<div className="flex gap-2">
+								<Input 
+									placeholder="Ej: Pediatría, Cardiología..." 
+									className="h-11 rounded-xl"
+									onKeyDown={(e) => {
+										if (e.key === 'Enter') {
+											const val = (e.target as HTMLInputElement).value.trim();
+											if (val) {
+												setForm(prev => ({ ...prev, specialties: [...(prev.specialties ?? []), val] }));
+												(e.target as HTMLInputElement).value = '';
+											}
+										}
+									}}
+								/>
+								<Button 
+									variant="outline" 
+									className="h-11 rounded-xl px-4"
+									onClick={(e) => {
+										const input = e.currentTarget.previousElementSibling as HTMLInputElement;
+										const val = input.value.trim();
+										if (val) {
+											setForm(prev => ({ ...prev, specialties: [...(prev.specialties ?? []), val] }));
+											input.value = '';
+										}
+									}}
+								>
+									Añadir
+								</Button>
+							</div>
+							<p className="text-[10px] text-slate-400">Presiona Enter o el botón para añadir a la lista.</p>
+							<Button onClick={handleSave} disabled={loading} className="w-full bg-gradient-to-r from-sky-600 to-teal-500 text-white hover:shadow-md transition-shadow rounded-xl mt-2">
+								{loading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Actualizar Perfil'}
 							</Button>
 						</div>
 					</div>

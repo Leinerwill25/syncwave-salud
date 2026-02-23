@@ -93,74 +93,55 @@ export async function getAuthenticatedUser(): Promise<AuthenticatedUser | null> 
 			return null;
 		}
 
-		// Obtener usuario de la app - usar nombres robustos
-		const tableCandidates = ['users', 'user', '"users"', '"user"', '"User"', 'User'];
+		// Obtener usuario de la app - usar nombres robustos (priorizar 'users' que es el estándar actual)
+		const tableCandidates = ['users', 'user'];
 		let appUser: any = null;
-		let lastError: any = null;
 		let usedTableName: string | null = null;
 
-		// Verificar sesión antes de consultar - CRÍTICO para que RLS funcione
-		const { data: sessionCheck } = await supabase.auth.getSession();
-		
-		// Si no hay sesión activa, intentar restaurar antes de consultar
-		if (!sessionCheck?.session) {
-			console.warn('[Auth Guard] No hay sesión activa antes de consultar, intentando restaurar...');
-			await tryRestoreSessionFromCookies(supabase as unknown as SupabaseClient, cookieStore);
-		}
-
 		// Verificar que tenemos una sesión activa antes de consultar (necesaria para RLS)
-		const { data: finalSessionCheck } = await supabase.auth.getSession();
-		if (!finalSessionCheck?.session) {
-			console.error('[Auth Guard] CRITICAL: No hay sesión activa. Las políticas RLS requerirán auth.uid() que será NULL.');
-			console.error('[Auth Guard] Esto causará que la consulta sea bloqueada por RLS.');
+		const { data: sessionInfo } = await supabase.auth.getSession();
+		const finalUser = user || sessionInfo?.session?.user;
+
+		if (!finalUser) {
+			console.warn('[Auth Guard] No se pudo obtener el usuario de Auth después de restaurar');
+			return null;
 		}
 
 		for (const tableName of tableCandidates) {
 			try {
 				const { data, error } = await supabase
-					.from(tableName === 'User' ? 'user' : tableName)
+					.from(tableName)
 					.select('id, email, role, organizationId, patientProfileId')
-					.eq('authId', user.id)
+					.eq('authId', finalUser.id)
 					.maybeSingle();
 
-				if (error) {
-					lastError = error;
-					// Si es error de tabla no encontrada, probar siguiente candidato
-					if (String(error?.code) === 'PGRST205' || String(error?.message).includes('Could not find the table')) {
-						continue;
-					}
-					// Si es error de permisos RLS, el usuario existe pero no podemos verlo sin sesión
-					// En este punto, no podemos hacer mucho más
-					continue;
-				}
-
-				if (data) {
+				if (!error && data) {
 					appUser = data;
 					usedTableName = tableName;
 					break;
+				}
+				
+				// Si no hay datos por authId, intentar por email como respaldo rápido
+				if (!data && finalUser.email) {
+					const { data: byEmail } = await supabase
+						.from(tableName)
+						.select('id, email, role, organizationId, patientProfileId')
+						.eq('email', finalUser.email)
+						.maybeSingle();
+					
+					if (byEmail) {
+						appUser = byEmail;
+						usedTableName = tableName;
+						break;
+					}
 				}
 			} catch (err: any) {
 				continue;
 			}
 		}
 
-		// Fallback: buscar por email si no se encontró por authId (esto ayuda si el authId está desincronizado)
 		if (!appUser) {
-			for (const tableName of ['users', 'user']) {
-				try {
-					const { data } = await supabase.from(tableName).select('id, email, role, organizationId, patientProfileId, authId').eq('email', user.email).maybeSingle();
-					if (data) {
-						appUser = data;
-						// Si encontramos por email pero el authId era diferente o nulo, podríamos actualizarlo,
-						// pero aquí solo lo usamos para autenticar
-						break;
-					}
-				} catch { continue; }
-			}
-		}
-
-		if (!appUser) {
-			console.warn('[Auth Guard] Usuario no encontrado en BD para authId:', user.id, 'email:', user.email);
+			console.warn('[Auth Guard] Usuario no encontrado en BD para authId:', finalUser.id);
 			return null;
 		}
 

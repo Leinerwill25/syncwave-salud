@@ -570,8 +570,8 @@ const Pricing = () => {
                         {
                             name: "Plan Profesional",
                             desc: "Ideal para enfermeros independientes.",
-                            price: billingCycle === 'annual' ? 0 : 0, 
-                            isFree: true,
+                            price: billingCycle === 'annual' ? 45 : 65, 
+                            isFree: false,
                             badge: "Por tiempo limitado",
                             features: [
                                 "Hasta 30 pacientes activos/mes",
@@ -582,7 +582,7 @@ const Pricing = () => {
                                 "Historial propio e interoperable",
                                 "Soporte técnico estrella"
                             ],
-                            cta: "Crear mi cuenta gratis",
+                            cta: "Empezar Plan Profesional",
                             popular: false
                         },
                         {
@@ -622,7 +622,11 @@ const Pricing = () => {
                                     <span className="text-5xl font-extrabold text-slate-900 tracking-tighter">{plan.isFree ? 'FREE' : `€${plan.price}`}</span>
                                     {!plan.isFree && <span className="text-slate-400 font-bold text-sm">/especialista/mes</span>}
                                 </div>
-                                {plan.isFree && <div className="text-xs font-bold text-purple-600 mt-2 uppercase tracking-widest">{plan.badge}</div>}
+                                {plan.badge && !plan.popular && (
+                                    <div className="text-xs font-bold text-purple-600 mt-2 uppercase tracking-widest">
+                                        {plan.badge}
+                                    </div>
+                                )}
                             </div>
                             <ul className="space-y-4 mb-10 overflow-hidden">
                                 {plan.features.map((f, index) => (
