@@ -22,7 +22,8 @@ import {
     Linkedin,
     Plus,
     Trash2,
-    Eye
+    Eye,
+    CalendarDays
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -530,57 +531,143 @@ export default function ClinicProfileComponent() {
                                             <InputField label="Nº de Empleados" name="employeesCount" type="number" value={form.employeesCount} onChange={v => updateField('employeesCount', v)} />
                                         </div>
 
-                                        <div className="bg-slate-50/50 border border-slate-100 p-8 rounded-[2rem] space-y-6">
-                                            <div className="flex items-center justify-between">
-                                                <div>
-                                                    <h3 className="font-bold text-slate-800 text-lg">Catálogo de Especialidades</h3>
-                                                    <p className="text-sm text-slate-500">Agregue todas las ramas médicas disponibles en su sede.</p>
+                                        <div className="space-y-10">
+                                            <div className="space-y-6">
+                                                <div className="flex items-center justify-between">
+                                                    <div>
+                                                        <h3 className="text-lg font-bold text-slate-800">Catálogo de Especialidades</h3>
+                                                        <p className="text-sm text-slate-500">Gestione las ramas médicas que ofrece su institución.</p>
+                                                    </div>
+                                                    <button 
+                                                        type="button"
+                                                        onClick={() => updateField('specialties', [...form.specialties, ''])}
+                                                        className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 transition-all shadow-sm hover:shadow-indigo-100 font-semibold text-sm"
+                                                    >
+                                                        <Plus size={18} />
+                                                        Añadir Especialidad
+                                                    </button>
                                                 </div>
-                                                <button 
-                                                    type="button" 
-                                                    onClick={() => updateField('specialties', [...form.specialties, ''])}
-                                                    className="p-2.5 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-200"
-                                                >
-                                                    <Plus size={20} />
-                                                </button>
+
+                                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                                    {form.specialties.map((spec, idx) => (
+                                                        <div key={idx} className="relative group animate-in slide-in-from-bottom-2 duration-300">
+                                                            <div className="flex items-center gap-2 bg-white border border-slate-200 rounded-2xl p-1.5 focus-within:border-indigo-400 focus-within:ring-4 focus-within:ring-indigo-50 transition-all shadow-sm">
+                                                                <div className="w-10 h-10 rounded-xl bg-slate-50 flex items-center justify-center text-slate-400 group-focus-within:bg-indigo-50 group-focus-within:text-indigo-600 transition-colors">
+                                                                    <Building2 size={18} />
+                                                                </div>
+                                                                <input 
+                                                                    value={spec} 
+                                                                    onChange={e => {
+                                                                        const nArr = [...form.specialties];
+                                                                        nArr[idx] = e.target.value;
+                                                                        updateField('specialties', nArr);
+                                                                    }}
+                                                                    placeholder="Ej: Cardiología"
+                                                                    className="flex-1 bg-transparent border-none outline-none font-semibold text-slate-700 placeholder:text-slate-400 text-sm"
+                                                                />
+                                                                <button 
+                                                                    type="button" 
+                                                                    onClick={() => {
+                                                                        const nArr = form.specialties.filter((_, i) => i !== idx);
+                                                                        updateField('specialties', nArr.length ? nArr : ['']);
+                                                                    }}
+                                                                    className="w-8 h-8 flex items-center justify-center text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"
+                                                                >
+                                                                    <Trash2 size={16} />
+                                                                </button>
+                                                            </div>
+                                                        </div>
+                                                    ))}
+                                                </div>
                                             </div>
 
-                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                                {form.specialties.map((spec, idx) => (
-                                                    <div key={idx} className="flex gap-2 group animate-in zoom-in-95 duration-200">
-                                                        <input 
-                                                            value={spec} 
-                                                            onChange={e => {
-                                                                const nArr = [...form.specialties];
-                                                                nArr[idx] = e.target.value;
-                                                                updateField('specialties', nArr);
-                                                            }}
-                                                            placeholder="Escriba la especialidad..."
-                                                            className="flex-1 bg-white border border-slate-200 rounded-xl px-4 py-2.5 outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-50 font-medium transition-all"
-                                                        />
-                                                        <button 
-                                                            type="button" 
-                                                            onClick={() => {
-                                                                const nArr = form.specialties.filter((_, i) => i !== idx);
-                                                                updateField('specialties', nArr.length ? nArr : ['']);
-                                                            }}
-                                                            className="p-2.5 bg-red-50 text-red-400 rounded-xl hover:bg-red-500 hover:text-white transition-all border border-red-100"
-                                                        >
-                                                            <Trash2 size={18} />
-                                                        </button>
+                                            {/* HORARIOS DE ATENCIÓN ESTRUCTURADOS */}
+                                            <div className="space-y-6 pt-10 border-t border-slate-100">
+                                                <div className="flex items-center justify-between">
+                                                    <div>
+                                                        <h3 className="text-lg font-bold text-slate-800">Horarios de Atención</h3>
+                                                        <p className="text-sm text-slate-500">Defina las ventanas de operación diarias.</p>
                                                     </div>
-                                                ))}
+                                                    <button 
+                                                        type="button"
+                                                        onClick={() => {
+                                                            const current = safeParseArrayField(form.openingHours);
+                                                            const newHours = [...current, { days: '', hours: '' }];
+                                                            updateField('openingHours', JSON.stringify(newHours));
+                                                        }}
+                                                        className="inline-flex items-center gap-2 px-4 py-2 bg-slate-100 text-slate-600 rounded-xl hover:bg-slate-200 transition-all font-semibold text-sm"
+                                                    >
+                                                        <Plus size={18} />
+                                                        Nuevo Bloque
+                                                    </button>
+                                                </div>
+
+                                                <div className="space-y-4">
+                                                    {safeParseArrayField(form.openingHours).map((item: any, idx: number) => {
+                                                        const schedule = typeof item === 'object' ? item : { days: item, hours: '' };
+                                                        return (
+                                                            <div key={idx} className="flex flex-col md:flex-row gap-4 items-end bg-slate-50/50 p-6 rounded-[2rem] border border-slate-100 animate-in fade-in duration-300">
+                                                                <div className="flex-1 w-full space-y-1.5">
+                                                                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Días de Atención</label>
+                                                                    <div className="relative">
+                                                                        <div className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">
+                                                                            <CalendarDays size={18} />
+                                                                        </div>
+                                                                        <input 
+                                                                            value={schedule.days || ''} 
+                                                                            placeholder="Ej: Lunes a Viernes"
+                                                                            onChange={e => {
+                                                                                const current = safeParseArrayField(form.openingHours);
+                                                                                current[idx] = { ...schedule, days: e.target.value };
+                                                                                updateField('openingHours', JSON.stringify(current));
+                                                                            }}
+                                                                            className="w-full bg-white border border-slate-200 rounded-xl pl-10 pr-4 py-2.5 font-semibold text-slate-700 outline-none focus:border-indigo-400 shadow-sm"
+                                                                        />
+                                                                    </div>
+                                                                </div>
+                                                                <div className="flex-1 w-full space-y-1.5">
+                                                                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Bloque Horario</label>
+                                                                    <div className="relative">
+                                                                        <div className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">
+                                                                            <Clock size={18} />
+                                                                        </div>
+                                                                        <input 
+                                                                            value={schedule.hours || ''} 
+                                                                            placeholder="Ej: 08:00 AM - 05:00 PM"
+                                                                            onChange={e => {
+                                                                                const current = safeParseArrayField(form.openingHours);
+                                                                                current[idx] = { ...schedule, hours: e.target.value };
+                                                                                updateField('openingHours', JSON.stringify(current));
+                                                                            }}
+                                                                            className="w-full bg-white border border-slate-200 rounded-xl pl-10 pr-4 py-2.5 font-semibold text-slate-700 outline-none focus:border-indigo-400 shadow-sm"
+                                                                        />
+                                                                    </div>
+                                                                </div>
+                                                                <button 
+                                                                    type="button" 
+                                                                    onClick={() => {
+                                                                        const current = safeParseArrayField(form.openingHours).filter((_, i) => i !== idx);
+                                                                        updateField('openingHours', JSON.stringify(current));
+                                                                    }}
+                                                                    className="h-11 w-11 flex items-center justify-center bg-white border border-slate-200 text-slate-300 hover:text-red-500 hover:border-red-100 rounded-xl transition-all shadow-sm mb-0.5"
+                                                                >
+                                                                    <Trash2 size={18} />
+                                                                </button>
+                                                            </div>
+                                                        );
+                                                    })}
+                                                    {safeParseArrayField(form.openingHours).length === 0 && (
+                                                        <div className="p-12 border-2 border-dashed border-slate-100 rounded-[2.5rem] flex flex-col items-center justify-center text-center">
+                                                            <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center text-slate-300 mb-4">
+                                                                <Clock size={32} />
+                                                            </div>
+                                                            <h4 className="font-bold text-slate-800">Sin horarios definidos</h4>
+                                                            <p className="text-sm text-slate-500 max-w-[240px] mt-1">Defina el horario de atención central de la clínica.</p>
+                                                        </div>
+                                                    )}
+                                                </div>
                                             </div>
                                         </div>
-
-                                        <InputField 
-                                            label="Horarios de Atención" 
-                                            name="openingHours" 
-                                            value={form.openingHours} 
-                                            onChange={v => updateField('openingHours', v)} 
-                                            placeholder="Ej: Lun-Vie 08:00 - 20:00"
-                                            icon={Clock}
-                                        />
                                     </div>
                                 )}
 
@@ -767,15 +854,38 @@ function PreviewPanel({ form }: { form: ClinicForm }) {
                     <div className="space-y-6">
                         <PreviewItem icon={Phone} label="Contacto Directo" value={form.phone || form.whatsapp} />
                         <PreviewItem icon={Globe} label="Plataforma Digital" value={form.email} subValue={form.website} />
-                        <PreviewItem icon={UserCircle2} label="Gobernanza" value={form.directorName} subValue={`Director Médico`} />
+                        
+                        <div className="p-6 bg-slate-50 rounded-[2.5rem] border border-slate-100 space-y-4">
+                            <h4 className="text-[10px] font-bold text-indigo-600 uppercase tracking-widest flex items-center gap-2">
+                                <Clock size={12} /> Horarios de Atención
+                            </h4>
+                            <div className="space-y-3">
+                                {safeParseArrayField(form.openingHours).map((item: any, idx: number) => {
+                                    const schedule = typeof item === 'object' ? item : { days: item, hours: '' };
+                                    return (
+                                        <div key={idx} className="flex justify-between items-center gap-4">
+                                            <span className="text-[11px] font-bold text-slate-500 uppercase tracking-tight truncate max-w-[100px]">{schedule.days || 'Sin días'}</span>
+                                            <div className="h-px flex-1 bg-slate-200/50 dashed"></div>
+                                            <span className="text-xs font-black text-slate-700 whitespace-nowrap">{schedule.hours || 'N/A'}</span>
+                                        </div>
+                                    );
+                                })}
+                                {safeParseArrayField(form.openingHours).length === 0 && (
+                                    <p className="text-[11px] text-slate-400 italic">No se han definido horarios de operación.</p>
+                                )}
+                            </div>
+                        </div>
                     </div>
                     <div className="space-y-6">
-                         <div className="p-6 bg-slate-50 rounded-[2rem] border border-slate-100">
+                         <div className="p-6 bg-slate-50/50 rounded-[2.5rem] border border-slate-100">
                             <h4 className="text-[10px] font-bold text-indigo-600 uppercase tracking-widest mb-4">Servicios Médicos</h4>
                             <div className="flex flex-wrap gap-2">
-                                {form.specialties.filter(Boolean).slice(0,6).map((s, i) => (
-                                    <span key={i} className="px-3 py-1.5 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-600 shadow-sm">{s}</span>
+                                {form.specialties.filter(Boolean).map((s, i) => (
+                                    <span key={i} className="px-3 py-1.5 bg-white border border-slate-200 rounded-xl text-[10px] font-black text-slate-600 shadow-sm uppercase tracking-tight">{s}</span>
                                 ))}
+                                {form.specialties.filter(Boolean).length === 0 && (
+                                    <p className="text-[11px] text-slate-400 italic">Especialidades no registradas.</p>
+                                )}
                             </div>
                          </div>
                          <PreviewItem icon={CreditCard} label="Liquidez & Cobro" value={form.bankName} subValue={form.paymentMethods.join(' • ')} />
