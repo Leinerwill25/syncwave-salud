@@ -4,7 +4,7 @@
 // Server Component: verifica autenticación y tipo enfermera.
 // ═══════════════════════════════════════════════════════════
 import { redirect } from 'next/navigation';
-import { getCurrentNurseProfileSSR } from '@/lib/auth/nurse-redirect';
+import { getCurrentNurseProfileSSR } from '@/lib/auth/nurse-auth-server';
 import { NurseProvider } from '@/context/NurseContext';
 import { NurseSidebar } from '@/components/nurse/layout/NurseSidebar';
 import { NurseTopBar } from '@/components/nurse/layout/NurseTopBar';
