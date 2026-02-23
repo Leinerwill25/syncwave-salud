@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import type { MARRecord, MARStatus } from '@/types/nurse.types';
 import { getMARRecords, updateMARStatus } from '@/lib/supabase/nurse.service';
+import { useNurseState, useNurseActions } from '@/context/NurseContext';
 import { Pill, Clock, CheckCircle2, XCircle, AlertCircle, Loader2, Info } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
@@ -14,6 +15,8 @@ interface Props {
 }
 
 export function PatientMARTab({ queueId }: Props) {
+  const { isOnline } = useNurseState();
+  const { addToSyncQueue } = useNurseActions();
   const [records, setRecords] = useState<MARRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [processingId, setProcessingId] = useState<string | null>(null);
@@ -38,6 +41,13 @@ export function PatientMARTab({ queueId }: Props) {
   const handleUpdateStatus = async (marId: string, status: MARStatus, notes?: string, omissionReason?: string) => {
     setProcessingId(marId);
     try {
+      if (!isOnline) {
+        await addToSyncQueue('mar', { mar_id: marId, status, notes, omissionReason });
+        // Optimistic update for UI feel (wait for actual sync for database permanence)
+        setRecords(prev => prev.map(r => r.mar_id === marId ? { ...r, status, notes: notes || r.notes, omission_reason: omissionReason || r.omission_reason } : r));
+        return;
+      }
+
       const { error } = await updateMARStatus(marId, status, notes, omissionReason);
       if (error) throw new Error(error);
       

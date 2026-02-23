@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import type { NurseProcedure, ProcedureStatus } from '@/types/nurse.types';
 import { getProcedures, updateProcedureStatus } from '@/lib/supabase/nurse.service';
+import { useNurseState, useNurseActions } from '@/context/NurseContext';
 import { Droplet, Clock, CheckCircle2, Play, AlertCircle, Loader2, Clipboard, Box } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
@@ -14,6 +15,8 @@ interface Props {
 }
 
 export function PatientProceduresTab({ queueId }: Props) {
+  const { isOnline } = useNurseState();
+  const { addToSyncQueue } = useNurseActions();
   const [procedures, setProcedures] = useState<NurseProcedure[]>([]);
   const [loading, setLoading] = useState(true);
   const [processingId, setProcessingId] = useState<string | null>(null);
@@ -45,6 +48,13 @@ export function PatientProceduresTab({ queueId }: Props) {
 
     setProcessingId(procId);
     try {
+      if (!isOnline) {
+        await addToSyncQueue('procedure', { procedure_id: procId, status, outcome });
+        // Optimistic update
+        setProcedures(prev => prev.map(p => p.procedure_id === procId ? { ...p, status, outcome: outcome || p.outcome } : p));
+        return;
+      }
+
       const { error } = await updateProcedureStatus(procId, status, outcome);
       if (error) throw new Error(error);
       

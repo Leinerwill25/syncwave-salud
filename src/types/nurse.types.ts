@@ -547,6 +547,8 @@ export interface NurseContextState {
   };
   isOnline: boolean;
   isLoading: boolean;
+  pendingSyncCount: number;
+  isSyncing: boolean;
 }
 
 export interface NurseContextActions {
@@ -556,6 +558,8 @@ export interface NurseContextActions {
   startShift: () => void;
   endShift: () => void;
   addAlert: (alert: Omit<NurseAlert, 'id' | 'createdAt' | 'dismissed'>) => void;
+  addToSyncQueue: (type: 'vital_signs' | 'mar' | 'procedure' | 'note', payload: any) => Promise<void>;
+  triggerSync: () => Promise<void>;
 }
 
 // ─── Datos de registro ─────────────────────────────────────

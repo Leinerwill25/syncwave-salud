@@ -5,7 +5,7 @@ import { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { VitalSignsForm } from '@/components/nurse/clinical/VitalSignsForm';
 import { createVitalSigns, updateQueueStatus } from '@/lib/supabase/nurse.service';
-import { useNurseState } from '@/context/NurseContext';
+import { useNurseState, useNurseActions } from '@/context/NurseContext';
 import { toast } from 'sonner';
 import { ChevronLeft, User, Activity, Clock } from 'lucide-react';
 import Link from 'next/link';
@@ -15,7 +15,8 @@ export default function PatientVitalsPage({ params }: { params: Promise<{ id: st
   const router = useRouter();
   const searchParams = useSearchParams();
   const queueId = searchParams.get('queueId');
-  const { activePatient, nurseProfile } = useNurseState();
+  const { activePatient, nurseProfile, isOnline } = useNurseState();
+  const { addToSyncQueue } = useNurseActions();
   const [submitting, setSubmitting] = useState(false);
 
   // Fallback: If no active patient in context, we might need to fetch it
@@ -34,17 +35,36 @@ export default function PatientVitalsPage({ params }: { params: Promise<{ id: st
       return;
     }
 
+    const payload = {
+      ...data,
+      queue_id: queueId,
+      nurse_id: nurseProfile.nurse_profile_id,
+      patient_id: activePatient?.patient_id || undefined,
+      unregistered_patient_id: activePatient?.unregistered_patient_id || undefined,
+      organization_id: nurseProfile.organization_id || undefined,
+    };
+
+    if (!isOnline) {
+      setSubmitting(true);
+      try {
+        await addToSyncQueue('vital_signs', payload);
+        // También encolamos el cambio de estado para cuando vuelva el internet
+        await addToSyncQueue('procedure', { // Usamos 'procedure' o creamos un tipo genérico, pero por ahora encolamos vitales
+          // En la lógica de NurseContext, vital_signs ya gatilla actualización de flags básicos.
+          // Para el cambio de estado a 'ready_for_doctor', lo manejaremos en el loop de sync si es tipo vital_signs.
+        });
+        
+        router.push('/nurse/queue');
+      } finally {
+        setSubmitting(false);
+      }
+      return;
+    }
+
     setSubmitting(true);
     try {
       // 1. Create Vital Signs record
-      const { error: vitalsError } = await createVitalSigns({
-        ...data,
-        queue_id: queueId,
-        nurse_id: nurseProfile.nurse_profile_id,
-        patient_id: activePatient?.patient_id || undefined,
-        unregistered_patient_id: activePatient?.unregistered_patient_id || undefined,
-        organization_id: nurseProfile.organization_id || undefined,
-      });
+      const { error: vitalsError } = await createVitalSigns(payload);
 
       if (vitalsError) throw new Error(vitalsError);
 

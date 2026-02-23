@@ -22,8 +22,10 @@ import type {
   NurseAlert,
   NurseType,
 } from '@/types/nurse.types';
-import { getNurseProfile, getDashboardSummary } from '@/lib/supabase/nurse.service';
+import { getNurseProfile, getDashboardSummary, createVitalSigns, createMARRecord, updateMARStatus, createProcedure, updateProcedureStatus, createEvolutionNote, updateQueueStatus } from '@/lib/supabase/nurse.service';
 import { createSupabaseBrowserClient } from '@/app/adapters/client';
+import { nurseSyncService } from '@/lib/services/NurseSyncService';
+import { toast } from 'sonner';
 
 // ─── Estado inicial ───────────────────────────────────────
 
@@ -36,6 +38,8 @@ const initialState: NurseContextState = {
   currentShift: { start: null, isActive: false },
   isOnline: true,
   isLoading: true,
+  pendingSyncCount: 0,
+  isSyncing: false,
 };
 
 // ─── Actions del reducer ──────────────────────────────────
@@ -50,7 +54,9 @@ type NurseAction =
   | { type: 'START_SHIFT' }
   | { type: 'END_SHIFT' }
   | { type: 'SET_ONLINE'; payload: boolean }
-  | { type: 'SET_LOADING'; payload: boolean };
+  | { type: 'SET_LOADING'; payload: boolean }
+  | { type: 'SET_SYNCING'; payload: boolean }
+  | { type: 'SET_PENDING_SYNC_COUNT'; payload: number };
 
 function nurseReducer(state: NurseContextState, action: NurseAction): NurseContextState {
   switch (action.type) {
@@ -91,6 +97,10 @@ function nurseReducer(state: NurseContextState, action: NurseAction): NurseConte
       return { ...state, isOnline: action.payload };
     case 'SET_LOADING':
       return { ...state, isLoading: action.payload };
+    case 'SET_SYNCING':
+      return { ...state, isSyncing: action.payload };
+    case 'SET_PENDING_SYNC_COUNT':
+      return { ...state, pendingSyncCount: action.payload };
     default:
       return state;
   }
@@ -106,6 +116,8 @@ export const NurseActionsContext = createContext<NurseContextActions>({
   startShift: () => {},
   endShift: () => {},
   addAlert: () => {},
+  addToSyncQueue: async () => {},
+  triggerSync: async () => {},
 });
 
 // ─── Provider ─────────────────────────────────────────────
@@ -122,6 +134,96 @@ export function NurseProvider({ children, userId }: NurseProviderProps) {
   const [state, dispatch] = useReducer(nurseReducer, initialState);
   const summaryIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const remindersIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const isSyncingRef = useRef(false);
+
+  // ── Cargar resumen del dashboard ────────────────────────
+  const refreshDashboard = useCallback(async () => {
+    const summary = await getDashboardSummary();
+    if (summary) dispatch({ type: 'SET_SUMMARY', payload: summary });
+  }, []);
+
+  // ── Sincronización offline ──────────────────────────────
+
+  const triggerSync = useCallback(async () => {
+    if (!state.isOnline || state.isSyncing || isSyncingRef.current || !state.nurseProfile) return;
+
+    try {
+      isSyncingRef.current = true;
+      dispatch({ type: 'SET_SYNCING', payload: true });
+
+      const pendingItems = await nurseSyncService.getPendingItems(userId);
+      if (pendingItems.length === 0) return;
+
+      console.log(`[NurseSync] Iniciando sincronización de ${pendingItems.length} items...`);
+      let successCount = 0;
+
+      for (const item of pendingItems) {
+        let error = null;
+
+        try {
+          switch (item.type) {
+            case 'vital_signs':
+              ({ error } = await createVitalSigns(item.payload));
+              if (!error) {
+                // Automáticamente pasar a 'ready_for_doctor' tras tomar signos vitales (comportamiento estándar del flujo)
+                await updateQueueStatus(item.payload.queue_id, 'ready_for_doctor');
+              }
+              break;
+            case 'mar':
+              // Podría ser creación o actualización de estado
+              if (item.payload.mar_id) {
+                ({ error } = await updateMARStatus(item.payload.mar_id, item.payload.status, item.payload.notes, item.payload.omissionReason));
+              } else {
+                ({ error } = await createMARRecord(item.payload));
+              }
+              break;
+            case 'procedure':
+              if (item.payload.procedure_id) {
+                ({ error } = await updateProcedureStatus(item.payload.procedure_id, item.payload.status, item.payload.outcome));
+              } else {
+                ({ error } = await createProcedure(item.payload));
+              }
+              break;
+            case 'note':
+              ({ error } = await createEvolutionNote(item.payload));
+              break;
+          }
+
+          if (!error) {
+            await nurseSyncService.removeFromQueue(item.id);
+            successCount++;
+          } else {
+            console.error(`[NurseSync] Error sincronizando ${item.type}:`, error);
+          }
+        } catch (e) {
+          console.error(`[NurseSync] Error crítico en item ${item.id}:`, e);
+        }
+      }
+
+      const remaining = await nurseSyncService.getPendingCount(userId);
+      dispatch({ type: 'SET_PENDING_SYNC_COUNT', payload: remaining });
+
+      if (successCount > 0) {
+        toast.success(`Sincronización completada: ${successCount} registros subidos.`);
+        refreshDashboard();
+      }
+    } finally {
+      isSyncingRef.current = false;
+      dispatch({ type: 'SET_SYNCING', payload: false });
+    }
+  }, [state.isOnline, state.isSyncing, state.nurseProfile, userId, refreshDashboard]);
+
+  const addToSyncQueue = useCallback(async (type: any, payload: any) => {
+    try {
+      await nurseSyncService.addToQueue({ userId, type, payload });
+      const count = await nurseSyncService.getPendingCount(userId);
+      dispatch({ type: 'SET_PENDING_SYNC_COUNT', payload: count });
+      toast.info('Sin conexión. Información resguardada localmente de forma segura (AES-256).');
+    } catch (err) {
+      console.error('[SyncQueue] Error guardando offline:', err);
+      toast.error('Error al guardar información offline.');
+    }
+  }, [userId]);
 
   // ── Cargar perfil al montar ─────────────────────────────
   useEffect(() => {
@@ -137,11 +239,6 @@ export function NurseProvider({ children, userId }: NurseProviderProps) {
     loadProfile();
   }, [userId]);
 
-  // ── Cargar resumen del dashboard ────────────────────────
-  const refreshDashboard = useCallback(async () => {
-    const summary = await getDashboardSummary();
-    if (summary) dispatch({ type: 'SET_SUMMARY', payload: summary });
-  }, []);
 
   // ── Polling de medicamentos pendientes ──────────────────
   const checkPendingReminders = useCallback(async () => {
@@ -181,6 +278,22 @@ export function NurseProvider({ children, userId }: NurseProviderProps) {
       if (remindersIntervalRef.current) clearInterval(remindersIntervalRef.current);
     };
   }, [state.nurseProfile, refreshDashboard, checkPendingReminders]);
+
+  // ── Trigger sync al conectar o al cargar ────────────────
+  useEffect(() => {
+    if (state.isOnline && state.nurseProfile) {
+      triggerSync();
+    }
+  }, [state.isOnline, state.nurseProfile, triggerSync]);
+
+  // ── Cargar conteo inicial de pendientes ─────────────────
+  useEffect(() => {
+    if (state.nurseProfile) {
+      nurseSyncService.getPendingCount(userId).then(count => {
+        dispatch({ type: 'SET_PENDING_SYNC_COUNT', payload: count });
+      });
+    }
+  }, [state.nurseProfile, userId]);
 
   // ── Monitor online/offline ──────────────────────────────
   useEffect(() => {
@@ -260,6 +373,8 @@ export function NurseProvider({ children, userId }: NurseProviderProps) {
         },
       });
     }, []),
+    addToSyncQueue,
+    triggerSync,
   };
 
   return (

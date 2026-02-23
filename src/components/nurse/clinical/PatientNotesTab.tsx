@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import type { NursingEvolutionNote } from '@/types/nurse.types';
 import { getEvolutionNotes, createEvolutionNote } from '@/lib/supabase/nurse.service';
-import { useNurseState } from '@/context/NurseContext';
+import { useNurseState, useNurseActions } from '@/context/NurseContext';
 import { FileText, Send, Clock, User, MessageSquare, Loader2, Sparkles } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
@@ -15,7 +15,8 @@ interface Props {
 }
 
 export function PatientNotesTab({ queueId }: Props) {
-  const { nurseProfile, activePatient } = useNurseState();
+  const { nurseProfile, activePatient, isOnline } = useNurseState();
+  const { addToSyncQueue } = useNurseActions();
   const [notes, setNotes] = useState<NursingEvolutionNote[]>([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -43,16 +44,33 @@ export function PatientNotesTab({ queueId }: Props) {
     e.preventDefault();
     if (!content.trim() || !nurseProfile) return;
 
+    const payload = {
+      queue_id: queueId,
+      nurse_id: nurseProfile.nurse_profile_id,
+      patient_id: activePatient?.patient_id || undefined,
+      unregistered_patient_id: activePatient?.unregistered_patient_id || undefined,
+      content: content.trim(),
+      evolution_type: evolutionType
+    };
+
     setSubmitting(true);
     try {
-      const { data, error } = await createEvolutionNote({
-        queue_id: queueId,
-        nurse_id: nurseProfile.nurse_profile_id,
-        patient_id: activePatient?.patient_id || undefined,
-        unregistered_patient_id: activePatient?.unregistered_patient_id || undefined,
-        content: content.trim(),
-        evolution_type: evolutionType
-      });
+      if (!isOnline) {
+        await addToSyncQueue('note', payload);
+        // Optimistic update for history
+        const tempId = `temp-${Date.now()}`;
+        setNotes(prev => [{
+          note_id: tempId,
+          ...payload,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+          created_by: nurseProfile.nurse_profile_id
+        } as NursingEvolutionNote, ...prev]);
+        setContent('');
+        return;
+      }
+
+      const { data, error } = await createEvolutionNote(payload);
 
       if (error) throw new Error(error);
       
