@@ -23,7 +23,12 @@ import {
     Plus,
     Trash2,
     Eye,
-    CalendarDays
+    CalendarDays,
+    Wallet,
+    Banknote,
+    SmartphoneNfc,
+    RotateCw,
+    WalletCards
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -695,88 +700,153 @@ export default function ClinicProfileComponent() {
 
                                 {/* TAB: BILLING */}
                                 {activeTab === 'billing' && (
-                                    <div className="space-y-10">
+                                    <div className="space-y-12">
                                         <SectionHeader 
-                                            title="Facturación & Cobros" 
-                                            subtitle="Métodos de pago aceptados y datos para liquidación."
-                                            icon={CreditCard}
+                                            title="Configuración de Cobros" 
+                                            subtitle="Gestione sus métodos de pago y datos de liquidación institucional."
+                                            icon={WalletCards}
                                         />
 
-                                        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                                            {/* Bank Side */}
-                                            <div className="md:col-span-2 space-y-6">
-                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                                    <InputField label="Entidad Bancaria" name="bankName" value={form.bankName} onChange={v => updateField('bankName', v)} icon={Building2} />
-                                                    <div className="space-y-1.5">
-                                                        <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider ml-1">Tipo de Cuenta</label>
-                                                        <select 
-                                                            value={form.accountType} 
-                                                            onChange={e => updateField('accountType', e.target.value)}
-                                                            className="w-full bg-white border border-slate-200 rounded-xl py-3 px-4 focus:border-indigo-400 focus:ring-4 focus:ring-indigo-50 outline-none text-slate-700 font-medium transition-all"
-                                                        >
-                                                            <option>Corriente</option>
-                                                            <option>Ahorro</option>
-                                                            <option>Custodia</option>
-                                                            <option>Internacional</option>
-                                                        </select>
-                                                    </div>
-                                                </div>
-                                                <InputField label="Número de Cuenta (20 dígitos)" name="accountNumber" value={form.accountNumber} onChange={v => updateField('accountNumber', v)} placeholder="0102 0000 00 0000000000" />
-                                                <InputField label="Titular de la Cuenta" name="accountOwner" value={form.accountOwner} onChange={v => updateField('accountOwner', v)} />
-                                            </div>
-
-                                            {/* Config Side */}
-                                            <div className="bg-slate-50 p-6 rounded-[2rem] space-y-6">
-                                                <div className="space-y-1.5">
-                                                    <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider ml-1">Moneda Operativa</label>
-                                                    <div className="grid grid-cols-3 gap-2">
-                                                        {['VES', 'USD', 'EUR'].map(cur => (
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
+                                            {/* Moneda y Métodos Selector */}
+                                            <div className="space-y-10">
+                                                <div className="space-y-4">
+                                                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Moneda de Liquidación</label>
+                                                    <div className="grid grid-cols-3 gap-3">
+                                                        {[
+                                                            { id: 'VES', label: 'Bolívares', symbol: 'Bs.' },
+                                                            { id: 'USD', label: 'Dólares', symbol: '$' },
+                                                            { id: 'EUR', label: 'Euros', symbol: '€' }
+                                                        ].map(cur => (
                                                             <button 
-                                                                key={cur} 
+                                                                key={cur.id} 
                                                                 type="button" 
-                                                                onClick={() => updateField('currency', cur)}
+                                                                onClick={() => updateField('currency', cur.id)}
                                                                 className={cx(
-                                                                    "py-2 px-1 rounded-xl font-bold text-sm transition-all border",
-                                                                    form.currency === cur ? "bg-indigo-600 text-white border-indigo-600 shadow-md" : "bg-white text-slate-500 border-slate-200 hover:border-indigo-300"
+                                                                    "relative group flex flex-col items-center gap-1 p-4 rounded-[1.5rem] border-2 transition-all",
+                                                                    form.currency === cur.id 
+                                                                        ? "bg-indigo-600 border-indigo-600 text-white shadow-xl shadow-indigo-100 scale-[1.02]" 
+                                                                        : "bg-white border-slate-100 text-slate-600 hover:border-indigo-200"
                                                                 )}
                                                             >
-                                                                {cur}
+                                                                <span className="text-xs font-black uppercase tracking-widest">{cur.id}</span>
+                                                                <span className={cx("text-xl font-black", form.currency === cur.id ? "text-indigo-100" : "text-slate-300")}>{cur.symbol}</span>
+                                                                {form.currency === cur.id && (
+                                                                    <div className="absolute -top-2 -right-2 w-6 h-6 bg-white text-indigo-600 rounded-full flex items-center justify-center shadow-lg border border-indigo-50">
+                                                                        <CheckCircle2 size={14} />
+                                                                    </div>
+                                                                )}
                                                             </button>
                                                         ))}
                                                     </div>
                                                 </div>
 
-                                                <div className="space-y-3">
-                                                    <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider ml-1">Métodos de Cobro</label>
-                                                    <div className="grid grid-cols-1 gap-2">
-                                                        {['Transferencia', 'Tarjeta / POS', 'Efectivo', 'Pago Móvil'].map(method => {
-                                                            const active = form.paymentMethods.includes(method);
+                                                <div className="space-y-4">
+                                                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Métodos Disponibles</label>
+                                                    <div className="grid grid-cols-2 gap-3">
+                                                        {[
+                                                            { id: 'Transferencia', icon: RotateCw },
+                                                            { id: 'Tarjeta / POS', icon: CreditCard },
+                                                            { id: 'Efectivo', icon: Banknote },
+                                                            { id: 'Pago Móvil', icon: SmartphoneNfc }
+                                                        ].map(method => {
+                                                            const isSelected = form.paymentMethods.includes(method.id);
                                                             return (
                                                                 <button
-                                                                    key={method}
+                                                                    key={method.id}
                                                                     type="button"
                                                                     onClick={() => {
-                                                                        const nArr = active 
-                                                                            ? form.paymentMethods.filter(m => m !== method)
-                                                                            : [...form.paymentMethods, method];
-                                                                        updateField('paymentMethods', nArr);
+                                                                        const current = [...form.paymentMethods];
+                                                                        const next = isSelected 
+                                                                            ? current.filter(m => m !== method.id)
+                                                                            : [...current, method.id];
+                                                                        updateField('paymentMethods', next);
                                                                     }}
                                                                     className={cx(
-                                                                        "flex items-center justify-between px-4 py-3 rounded-xl border transition-all text-sm font-semibold",
-                                                                        active ? "bg-indigo-50 border-indigo-200 text-indigo-700" : "bg-white border-slate-100 text-slate-500 hover:bg-slate-50"
+                                                                        "flex items-center gap-3 p-4 rounded-2xl border-2 transition-all text-left",
+                                                                        isSelected 
+                                                                            ? "bg-white border-indigo-500 shadow-lg shadow-indigo-50 ring-1 ring-indigo-50" 
+                                                                            : "bg-slate-50/50 border-transparent text-slate-400 hover:bg-white hover:border-slate-200"
                                                                     )}
                                                                 >
-                                                                    {method}
-                                                                    {active && <CheckCircle2 size={16} />}
+                                                                    <div className={cx(
+                                                                        "w-10 h-10 rounded-xl flex items-center justify-center transition-colors",
+                                                                        isSelected ? "bg-indigo-50 text-indigo-600" : "bg-white text-slate-300 shadow-sm"
+                                                                    )}>
+                                                                        <method.icon size={20} />
+                                                                    </div>
+                                                                    <span className={cx("text-xs font-bold", isSelected ? "text-slate-800" : "text-slate-400")}>{method.id}</span>
                                                                 </button>
                                                             );
                                                         })}
                                                     </div>
                                                 </div>
                                             </div>
+
+                                            {/* Bank Data Side */}
+                                            <div className="bg-slate-50/50 rounded-[2.5rem] border border-slate-100 p-8 space-y-8">
+                                                <div className="space-y-6">
+                                                    <div className="flex items-center gap-4 mb-2">
+                                                        <div className="w-10 h-10 rounded-2xl bg-white flex items-center justify-center text-indigo-600 shadow-sm border border-slate-100">
+                                                            <Building2 size={20} />
+                                                        </div>
+                                                        <div>
+                                                            <h4 className="text-sm font-bold text-slate-800">Datos Bancarios</h4>
+                                                            <p className="text-[10px] text-slate-400 font-medium uppercase tracking-wider">Depósito de Fondos</p>
+                                                        </div>
+                                                    </div>
+
+                                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                                        <div className="sm:col-span-2">
+                                                            <InputField label="Nombre del Banco" name="bankName" value={form.bankName} onChange={v => updateField('bankName', v)} placeholder="Ej: Banco Mercantil" icon={Building2} />
+                                                        </div>
+                                                        <div className="space-y-1.5">
+                                                            <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Tipo Cuenta</label>
+                                                            <select 
+                                                                value={form.accountType} 
+                                                                onChange={e => updateField('accountType', e.target.value)}
+                                                                className="w-full bg-white border border-slate-200 rounded-xl py-3 px-4 focus:border-indigo-400 outline-none text-xs font-bold text-slate-700 shadow-sm transition-all"
+                                                            >
+                                                                <option>Corriente</option>
+                                                                <option>Ahorro</option>
+                                                                <option>Custodia</option>
+                                                                <option>Internacional</option>
+                                                            </select>
+                                                        </div>
+                                                        <div className="sm:col-span-1">
+                                                             <InputField label="Titular" name="accountOwner" value={form.accountOwner} onChange={v => updateField('accountOwner', v)} placeholder="Ej: Clínica Centro C.A." />
+                                                        </div>
+                                                        <div className="sm:col-span-2">
+                                                            <div className="space-y-1.5">
+                                                                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Número de Cuenta (20 Dígitos)</label>
+                                                                <div className="relative">
+                                                                    <input 
+                                                                        type="text"
+                                                                        maxLength={20}
+                                                                        value={form.accountNumber}
+                                                                        onChange={e => updateField('accountNumber', e.target.value)}
+                                                                        placeholder="0000 0000 00 0000000000"
+                                                                        className="w-full bg-white border border-slate-200 rounded-2xl px-5 py-4 font-mono text-sm tracking-[0.2em] text-slate-600 placeholder:text-slate-200 outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-50 transition-all shadow-inner"
+                                                                    />
+                                                                    <div className="absolute right-4 top-1/2 -translate-y-1/2 text-[10px] font-black text-slate-300">
+                                                                        {form.accountNumber?.length || 0}/20
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+
+                                                <div className="p-4 bg-white/50 rounded-2xl border border-indigo-50/50 flex gap-3">
+                                                    <AlertCircle className="text-indigo-400 shrink-0" size={16} />
+                                                    <p className="text-[10px] text-slate-500 leading-relaxed font-medium italic">
+                                                        Asegúrese que los datos coincidan exactamente con la información de su RIF para evitar retrasos en las liquidaciones.
+                                                    </p>
+                                                </div>
+                                            </div>
                                         </div>
 
-                                        <div className="pt-6 border-t border-slate-100 grid grid-cols-1 md:grid-cols-2 gap-8">
+                                        <div className="pt-8 border-t border-slate-100 grid grid-cols-1 md:grid-cols-2 gap-8">
                                             <InputField label="Serie de Facturación" name="billingSeries" value={form.billingSeries} onChange={v => updateField('billingSeries', v)} placeholder="Ej: CLIN-2026" />
                                             <InputField label="Régimen Fiscal / Contribuyente" name="taxRegime" value={form.taxRegime} onChange={v => updateField('taxRegime', v)} placeholder="Contribuyente Especial" />
                                             <div className="md:col-span-2">
@@ -785,6 +855,7 @@ export default function ClinicProfileComponent() {
                                         </div>
                                     </div>
                                 )}
+
                             </div>
                         ) : (
                             <PreviewPanel form={form} />
