@@ -76,21 +76,21 @@ function cx(...c: Array<string | false | null | undefined>) {
 	return c.filter(Boolean).join(' ');
 }
 
-function safeParseArrayField(v: any): string[] {
+function safeParseArrayField(v: any): any[] {
 	if (v == null) return [];
-	if (Array.isArray(v)) return v.map(String);
+	if (Array.isArray(v)) return v;
 	if (typeof v === 'string') {
 		const t = v.trim();
 		if (!t) return [];
 		try {
 			const parsed = JSON.parse(t);
-			if (Array.isArray(parsed)) return parsed.map(String);
+			if (Array.isArray(parsed)) return parsed;
 		} catch {
 			return t.split(',').map((s) => s.trim()).filter(Boolean);
 		}
 	}
 	try {
-		return [String(v)];
+		return [v];
 	} catch {
 		return [];
 	}
@@ -201,8 +201,8 @@ export default function ClinicProfileComponent() {
 					social_instagram: p.socialInstagram ?? p.social_instagram ?? '',
 					social_linkedin: p.socialLinkedin ?? p.social_linkedin ?? '',
 					officesCount: Number(p.officesCount) || 0,
-					specialties: safeParseArrayField(p.specialties).length ? safeParseArrayField(p.specialties) : [''],
-					openingHours: (typeof p.openingHours === 'string' ? p.openingHours : JSON.stringify(p.openingHours ?? '') || '') as string,
+					specialties: safeParseArrayField(p.specialties).length ? safeParseArrayField(p.specialties).map(String) : [''],
+					openingHours: (typeof p.openingHours === 'string' ? p.openingHours : JSON.stringify(p.openingHours ?? [])),
 					capacityPerDay: p.capacityPerDay == null ? null : Number(p.capacityPerDay),
 					employeesCount: p.employeesCount == null ? null : Number(p.employeesCount),
 					directorName: p.directorName ?? '',
