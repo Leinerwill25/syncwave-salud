@@ -141,13 +141,51 @@ export async function middleware(request: NextRequest) {
 		}
 	);
 
-	// 4. Autenticación
-	const { data: { user }, error: authError } = await supabase.auth.getUser();
+	// 4. Autenticación Robusta
+	let { data: { user }, error: authError } = await supabase.auth.getUser();
+
+	// Si falla getUser, intentar restaurar desde cookies manuales (manejo de sb-access-token, etc.)
+	if (!user) {
+		const allCookies = request.cookies.getAll();
+		const sessionCookies = allCookies.filter(c => 
+			c.name === 'sb-access-token' || 
+			c.name === 'sb:token' || 
+			c.name === 'supabase-auth-token' ||
+			c.name.includes('auth-token')
+		);
+
+		for (const cookie of sessionCookies) {
+			try {
+				let at: string | null = null;
+				let rt: string | null = null;
+				
+				try {
+					const parsed = JSON.parse(cookie.value);
+					at = parsed?.access_token || parsed?.currentSession?.access_token;
+					rt = parsed?.refresh_token || parsed?.currentSession?.refresh_token;
+				} catch {
+					if (cookie.name === 'sb-access-token') at = cookie.value;
+					if (cookie.name === 'sb-refresh-token') rt = cookie.value;
+				}
+
+				if (at && rt) {
+					const { data: restoredData } = await supabase.auth.setSession({ access_token: at, refresh_token: rt });
+					if (restoredData?.user) {
+						user = restoredData.user;
+						break;
+					}
+				}
+			} catch (e) {
+				console.error('[Middleware] Fallback session error:', e);
+			}
+		}
+	}
 
 	if (isPublicRoute(pathname)) return response;
 
 	if (requiresAuth(pathname)) {
 		if (authError || !user) {
+			console.log(`[Middleware] Auth detectada nula para ${pathname}. Redirecting to login.`);
 			if (pathname.startsWith('/api')) {
 				return NextResponse.json({ error: 'No autenticado' }, { status: 401 });
 			}

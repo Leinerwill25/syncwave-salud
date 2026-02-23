@@ -25,18 +25,32 @@ const deleteCookieOpts = {
 	expires: new Date(0),
 };
 
-export async function POST() {
+export async function POST(req: Request) {
 	try {
 		const cookiesToDelete: string[] = [];
 
-		// Crear headers Set-Cookie para eliminar cada cookie
-		SESSION_COOKIES.forEach((cookieName) => {
-			cookiesToDelete.push(serialize(cookieName, '', deleteCookieOpts));
+		// 1. Obtener cookies enviadas en la petición para identificar nombres dinámicos
+		const cookieHeader = req.headers.get('cookie') || '';
+		const currentCookies = cookieHeader.split(';').map(c => c.trim().split('=')[0]);
+
+		// 2. Identificar cookies que deben ser eliminadas
+		const toClear = new Set([...SESSION_COOKIES]);
+		currentCookies.forEach(name => {
+			if (name.includes('supabase') || name.startsWith('sb-') || name.includes('auth-token')) {
+				toClear.add(name);
+			}
 		});
 
-		const res = NextResponse.json({ ok: true, message: 'Sesión limpiada' }, { status: 200 });
+		// 3. Crear headers Set-Cookie para eliminar cada cookie detectada
+		toClear.forEach((cookieName) => {
+			if (cookieName) {
+				cookiesToDelete.push(serialize(cookieName, '', deleteCookieOpts));
+			}
+		});
+
+		const res = NextResponse.json({ ok: true, message: 'Sesión limpiada totalmente' }, { status: 200 });
 		
-		// Agregar todos los headers Set-Cookie para eliminar las cookies
+		// 4. Agregar todos los headers Set-Cookie
 		cookiesToDelete.forEach((cookie) => {
 			res.headers.append('Set-Cookie', cookie);
 		});
