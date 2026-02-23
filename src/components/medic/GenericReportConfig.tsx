@@ -599,7 +599,7 @@ Plan / Tratamiento
                     </div>
 
                     {/* Right Column: Preview */}
-                    <div className="bg-gray-50 rounded-xl p-6 border border-gray-200">
+                    <div className="md:sticky md:top-8 h-fit bg-gray-50 rounded-xl p-6 border border-gray-200">
                         <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-4 text-center">Vista Previa Aproximada</h3>
                         
                         {/* A4 Document Simulation */}

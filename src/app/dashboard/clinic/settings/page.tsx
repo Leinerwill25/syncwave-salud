@@ -5,7 +5,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import {
 	Loader2, UserPlus, Database, CalendarDays, Check, X, Users, Mail,
-	CreditCard, Settings, TrendingUp, HelpCircle, FileText
+	CreditCard, Settings, TrendingUp, HelpCircle, FileText, Maximize2, ArrowLeft
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -164,6 +164,7 @@ export default function ClinicSettingsPage(): React.ReactElement {
 	const [extraInvites, setExtraInvites] = useState<number>(0);
 	const [upgrading, setUpgrading] = useState<boolean>(false);
 	const [showConfirmUpgrade, setShowConfirmUpgrade] = useState<boolean>(false);
+	const [isReportExpanded, setIsReportExpanded] = useState<boolean>(false);
 
 	/** Busca el plan de clínica que mejor encaje con la cantidad de especialistas */
 	const findRecommendedPlan = (specialistCount: number, plans: Plan[]): Plan | null => {
@@ -497,6 +498,15 @@ export default function ClinicSettingsPage(): React.ReactElement {
 								<h4 className="text-base font-semibold text-slate-900">Personalización de Informes</h4>
 								<p className="text-xs text-slate-500 mt-0.5">Define el estilo visual y plantilla base para todos tus especialistas</p>
 							</div>
+							<Button 
+								variant="ghost" 
+								size="sm" 
+								onClick={() => setIsReportExpanded(true)}
+								className="ml-auto flex items-center gap-2 text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50 rounded-xl"
+							>
+								<Maximize2 size={16} />
+								<span className="hidden sm:inline">Vista Expandida</span>
+							</Button>
 						</div>
 						<div className="p-6">
 							<GenericReportConfig clinicName={clinic.legal_name || ''} />
@@ -658,6 +668,43 @@ export default function ClinicSettingsPage(): React.ReactElement {
 						<p className="mt-3 text-xs text-slate-400">No se realizará ningún cargo hasta completar el pago.</p>
 					</motion.div>
 				</div>
+			)}
+
+			{/* Expanded Report Config Overlay */}
+			{isReportExpanded && (
+				<motion.div 
+					initial={{ opacity: 0 }}
+					animate={{ opacity: 1 }}
+					exit={{ opacity: 0 }}
+					className="fixed inset-0 z-[60] bg-slate-50/95 backdrop-blur-md overflow-y-auto"
+				>
+					<div className="max-w-6xl mx-auto px-4 py-8 lg:py-12">
+						<div className="flex items-center justify-between mb-8">
+							<Button 
+								variant="outline" 
+								onClick={() => setIsReportExpanded(false)}
+								className="flex items-center gap-2 rounded-2xl bg-white shadow-sm border-slate-200"
+							>
+								<ArrowLeft size={18} />
+								Volver a Ajustes
+							</Button>
+							<div className="text-right">
+								<h2 className="text-2xl font-bold text-slate-900">Editor de Plantilla Médica</h2>
+								<p className="text-sm text-slate-500">Configuración global de la institución</p>
+							</div>
+						</div>
+						
+						<div className="bg-white rounded-[2.5rem] shadow-2xl shadow-indigo-100 border border-indigo-50 overflow-hidden">
+							<div className="p-2 sm:p-4 lg:p-8">
+								<GenericReportConfig clinicName={clinic.legal_name || ''} />
+							</div>
+						</div>
+						
+						<div className="mt-10 text-center text-slate-400 text-xs">
+							<p>Los cambios realizados aquí afectan a todos los informes institucionales.</p>
+						</div>
+					</div>
+				</motion.div>
 			)}
 		</motion.div>
 	);
