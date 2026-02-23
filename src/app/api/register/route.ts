@@ -34,7 +34,7 @@ const AccountSchema = z.object({
 	email: z.string().email().max(255),
 	fullName: z.string().min(1).max(100),
 	password: z.string().min(8).max(100),
-	role: z.enum(['ADMIN', 'MEDICO', 'ENFERMERA', 'RECEPCION', 'FARMACIA', 'PACIENTE', 'LABORATORIO']).optional(),
+	role: z.enum(['ADMIN', 'MEDICO', 'ENFERMERA', 'ENFERMERO', 'RECEPCION', 'FARMACIA', 'PACIENTE', 'LABORATORIO']).optional(),
 });
 
 const OrganizationSchema = z.object({
@@ -50,6 +50,7 @@ const OrganizationSchema = z.object({
 		const n = Number(val);
 		return isNaN(n) ? 1 : Math.max(1, Math.min(n, 100));
 	}),
+	licenseNumber: z.string().max(50).nullable().optional(),
 });
 
 const PatientSchema = z.object({
@@ -95,7 +96,7 @@ const RegisterSchema = z.object({
 type RegisterBody = z.infer<typeof RegisterSchema>;
 
 /* ---------- Tipos locales ---------- */
-export const USER_ROLES = ['ADMIN', 'MEDICO', 'ENFERMERA', 'RECEPCION', 'FARMACIA', 'PACIENTE', 'LABORATORIO'] as const;
+export const USER_ROLES = ['ADMIN', 'MEDICO', 'ENFERMERA', 'ENFERMERO', 'RECEPCION', 'FARMACIA', 'PACIENTE', 'LABORATORIO'] as const;
 export type UserRoleLocal = (typeof USER_ROLES)[number];
 
 const ORG_TYPES = ['CLINICA', 'HOSPITAL', 'CONSULTORIO', 'FARMACIA', 'LABORATORIO'] as const;
@@ -226,6 +227,21 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
     const usrRec = await createUsr(admin, account, role, orgRec?.id, patRec?.id, finalAuthId);
     created.push({ type: 'users', id: usrRec.id });
+
+    // ─── NUEVO: Crear perfil de enfermería si aplica ───
+    if (role === 'ENFERMERO' || role === 'ENFERMERA') {
+      const { error: nurseErr } = await admin.from('nurse_profiles').insert({
+        user_id: finalAuthId,
+        nurse_type: 'independent', // Los registrados directamente son independientes
+        license_number: organization?.licenseNumber || `LICENSE-${randomUUID().substring(0, 8)}`,
+        status: 'active',
+        organization_id: orgRec?.id ?? null
+      });
+      if (nurseErr) {
+        console.error('[Register API] Error creating nurse profile:', nurseErr);
+        // No bloqueamos el registro principal si falla el perfil, pero logueamos
+      }
+    }
 
 
     // 4. Post-creation (Migration)

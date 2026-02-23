@@ -6,7 +6,7 @@ import dynamic from 'next/dynamic';
 import 'leaflet/dist/leaflet.css';
 
 type OrgType = 'CLINICA' | 'HOSPITAL' | 'CONSULTORIO' | 'FARMACIA' | 'LABORATORIO';
-type Role = 'ADMIN' | 'MEDICO' | 'FARMACIA' | 'PACIENTE' | 'LABORATORIO';
+type Role = 'ADMIN' | 'MEDICO' | 'FARMACIA' | 'PACIENTE' | 'LABORATORIO' | 'ENFERMERO';
 type PatientPlan = 'individual' | 'family';
 type BillingPeriod = 'monthly' | 'quarterly' | 'annual';
 
@@ -342,6 +342,7 @@ export default function RegisterForm(): React.ReactElement {
 	const [bloodType, setBloodType] = useState('');
 	const [hasDisability, setHasDisability] = useState(false);
 	const [disability, setDisability] = useState('');
+	const [licenseNumber, setLicenseNumber] = useState('');
 
 	// NUEVO: Sede Selector
 	const [sedeCount, setSedeCount] = useState<number | string>(1);
@@ -373,6 +374,11 @@ export default function RegisterForm(): React.ReactElement {
 		} else if (role === 'ADMIN') {
 			// Si es ADMIN (Clínica), sugerimos CLINICA por defecto
 			setOrgType('CLINICA');
+		} else if (role === 'ENFERMERO') {
+			// Si es ENFERMERO, forzamos el tipo a CONSULTORIO (independiente)
+			setOrgType('CONSULTORIO');
+			setSpecialistCount(1);
+			setDisplaySpecialistCount('1');
 		}
 		// si cambia a otro role, no forzamos nada (el usuario puede editar el número)
 		// además, al cambiar role reiniciamos plan/billing a valores por defecto razonables
@@ -447,6 +453,7 @@ export default function RegisterForm(): React.ReactElement {
 			if (role === 'PACIENTE') {
 				return patientPlan === 'individual' ? { slug: 'paciente-individual', label: 'Paciente — Individual', price: 1.08, quarterlyPrice: 3.09, annualPrice: 12.99 } : { slug: 'paciente-family', label: 'Paciente — Plan Familiar', price: 2.50, quarterlyPrice: 7.12, annualPrice: 29.99 };
 			}
+			if (role === 'ENFERMERO') return { slug: 'enfermero-independiente', label: 'Enfermería Independiente', price: 45.00, quarterlyPrice: 121.50, annualPrice: 378.00 };
 			return { slug: 'clinic-starter', label: 'Starter (2–10 esp.)', price: 56.00, quarterlyPrice: 151.20, annualPrice: 470.40 };
 		}
 
@@ -460,6 +467,19 @@ export default function RegisterForm(): React.ReactElement {
 					price: medicoPlan.monthlyPrice,
 					quarterlyPrice: medicoPlan.quarterlyPrice,
 					annualPrice: medicoPlan.annualPrice,
+				};
+			}
+		}
+
+		if (role === 'ENFERMERO') {
+			const nursePlan = plans.find((p) => p.slug === 'enfermero-independiente');
+			if (nursePlan) {
+				return {
+					slug: nursePlan.slug,
+					label: nursePlan.name,
+					price: nursePlan.monthlyPrice,
+					quarterlyPrice: nursePlan.quarterlyPrice,
+					annualPrice: nursePlan.annualPrice,
 				};
 			}
 		}
@@ -527,7 +547,7 @@ export default function RegisterForm(): React.ReactElement {
 	const passwordsMatch = confirmPassword.length > 0 && confirmPassword === password;
 	const step1Valid = fullNameValid && emailValid && passwordValid && passwordsMatch;
 	// para orgs normales requerimos orgName y specialistCount >=1; para MEDICO requerimos orgName (puede ser su consultorio) pero no specialistCount
-	const step2OrgValid = orgName.trim().length > 2 && (role === 'MEDICO' ? true : specialistCount >= 1);
+	const step2OrgValid = orgName.trim().length > 2 && (role === 'PACIENTE' ? true : (role === 'MEDICO' || role === 'ENFERMERO') ? true : specialistCount >= 1) && (role === 'ENFERMERO' ? licenseNumber.trim().length > 3 : true);
 	const step2PatientValid = firstName.trim().length > 1 && lastName.trim().length > 1 && identifier.trim().length > 3;
 	const finalValid = role === 'PACIENTE' ? step1Valid && step2PatientValid : step1Valid && step2OrgValid;
 
@@ -704,6 +724,7 @@ export default function RegisterForm(): React.ReactElement {
 					sedeCount: numericSedeCount, // Add sedeCount
 					orgPhone,
 					orgAddress,
+					licenseNumber: role === 'ENFERMERO' ? licenseNumber : undefined,
 				};
 			}
 
@@ -1057,8 +1078,9 @@ export default function RegisterForm(): React.ReactElement {
 										value={role}
 										onChange={(e) => {
 											const newRole = e.target.value as Role;
-											// Permitir MEDICO, PACIENTE y ADMIN
-											if (newRole !== 'MEDICO' && newRole !== 'PACIENTE' && newRole !== 'ADMIN') {
+											// Permitir MEDICO, PACIENTE, ADMIN y ENFERMERO
+											const allowedRoles: Role[] = ['MEDICO', 'PACIENTE', 'ADMIN', 'ENFERMERO'];
+											if (!allowedRoles.includes(newRole)) {
 												return;
 											}
 											setRole(newRole);
@@ -1072,6 +1094,7 @@ export default function RegisterForm(): React.ReactElement {
 										onBlur={() => setStep(1)}>
 										<option value="MEDICO">Médico/Especialista Independiente (Consultorio Privado)</option>
 										<option value="PACIENTE">Paciente</option>
+										<option value="ENFERMERO">Enfermero/a Independiente</option>
 										<option value="ADMIN">
 											Clínica / Centro Médico
 										</option>
@@ -1177,8 +1200,8 @@ export default function RegisterForm(): React.ReactElement {
 								</select>
 							</label>
 
-							{/* Si es MEDICO no pedimos número de especialistas (es 1 por defecto); para otros roles sí */}
-							{role === 'MEDICO' ? (
+							{/* Si es MEDICO o ENFERMERO no pedimos número de especialistas (es 1 por defecto); para otros roles sí */}
+							{(role === 'MEDICO' || role === 'ENFERMERO') ? (
 								<div className="md:col-span-1">
 									<span className={labelClass}>
 										<span className="inline-flex items-center gap-2">
@@ -1188,7 +1211,22 @@ export default function RegisterForm(): React.ReactElement {
 											Especialistas
 										</span>
 									</span>
-									<div className="mt-2 px-4 py-3.5 border-2 border-slate-200 rounded-xl bg-slate-50 text-slate-700 font-medium">Usuario individual — 1 especialista</div>
+									<div className="mt-2 px-4 py-3.5 border-2 border-slate-200 rounded-xl bg-slate-50 text-slate-700 font-medium">{role === 'ENFERMERO' ? 'Enfermero Independiente' : 'Usuario individual — 1 especialista'}</div>
+									{role === 'ENFERMERO' && (
+										<div className="mt-4">
+											<label className="block group">
+												<span className={labelClass}>
+													<span className="inline-flex items-center gap-2">
+														<svg className="w-4 h-4 text-teal-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+															<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+														</svg>
+														Número de Licencia / Matricula
+													</span>
+												</span>
+												<input value={licenseNumber} onChange={(e) => setLicenseNumber(e.target.value)} className={inputClass} placeholder="Ej: MPPS-12345" required />
+											</label>
+										</div>
+									)}
 								</div>
 							) : (
 								<>

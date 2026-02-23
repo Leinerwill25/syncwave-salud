@@ -5,6 +5,7 @@ import React, { useState } from 'react';
 import { createClient } from '@supabase/supabase-js';
 import { useRouter } from 'next/navigation';
 import { FiMail, FiEye, FiEyeOff, FiShield, FiBriefcase, FiCheckCircle, FiLogIn, FiRefreshCw } from 'react-icons/fi';
+import { getNurseRedirectPath } from '@/lib/auth/nurse-redirect';
 
 // Función para obtener el cliente de Supabase de forma segura
 function getSupabaseClient() {
@@ -399,6 +400,13 @@ export default function LoginFormAdvanced(): React.ReactElement {
 				(roleToUse === 'MEDICO' || roleToUse === 'ADMIN')) {
 				// NO limpiar localStorage aquí - la página de pago lo limpiará después de cargar correctamente
 				window.location.href = `/register/payment?organizationId=${pendingPaymentOrgId}&userId=${pendingPaymentUserId}&amount=${pendingPaymentAmount}`;
+				return;
+			}
+
+			// ─── NUEVO: Verificación de Rol de Enfermería ───
+			const nurseRedirect = await getNurseRedirectPath(user.id);
+			if (nurseRedirect.isNurse && nurseRedirect.redirectPath) {
+				window.location.href = nurseRedirect.redirectPath;
 				return;
 			}
 

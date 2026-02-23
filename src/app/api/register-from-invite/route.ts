@@ -105,6 +105,21 @@ export async function POST(request: Request) {
 			return NextResponse.json({ ok: false, message: 'Error al crear usuario en la base de datos' }, { status: 500 });
 		}
 
+		// ─── NUEVO: Crear perfil de enfermería si el rol es enfermería ───
+		const roleUpper = (invite.role || '').toUpperCase();
+		if (roleUpper === 'ENFERMERA' || roleUpper === 'ENFERMERO') {
+			const { error: nurseErr } = await supabaseAdmin.from('nurse_profiles').insert({
+				user_id: authId,
+				nurse_type: 'affiliated',
+				license_number: `PENDING-${authId.substring(0, 8)}`, // Se actualizará después
+				organization_id: invite.organizationId,
+				status: 'active'
+			});
+			if (nurseErr) {
+				console.error('register-from-invite: error creando nurse_profile', nurseErr);
+			}
+		}
+
 		// Marcar invite como usado
 		const { error: updateInviteError } = await supabaseAdmin
 			.from('invite')
