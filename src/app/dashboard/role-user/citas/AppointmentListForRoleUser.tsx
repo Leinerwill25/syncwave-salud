@@ -138,6 +138,56 @@ export default function AppointmentListForRoleUser({ selectedDate, roleName, can
 		setIsRescheduleModalOpen(true);
 	};
 
+	const handleRemoveService = async (appt: any, serviceIndex: number) => {
+		if (!confirm('¿Estás seguro de que deseas eliminar este servicio de la cita?')) return;
+
+		try {
+			setLoadingId(appt.id);
+			
+			// Normalizar servicios a array
+			let currentServices: any[] = [];
+			if (Array.isArray(appt.selected_service)) {
+				currentServices = [...appt.selected_service];
+			} else if (typeof appt.selected_service === 'string') {
+				try {
+					const parsed = JSON.parse(appt.selected_service);
+					currentServices = Array.isArray(parsed) ? [...parsed] : [parsed];
+				} catch {
+					currentServices = [{ name: appt.selected_service }];
+				}
+			} else if (appt.selected_service) {
+				currentServices = [appt.selected_service];
+			}
+
+			// Filtrar el servicio eliminado
+			const updatedServices = currentServices.filter((_, idx) => idx !== serviceIndex);
+			
+			// Recalcular montos
+			const newTotal = updatedServices.reduce((sum, s) => sum + (Number(s.price) || 0), 0);
+			
+			const updatedBilling = {
+				...appt.billing,
+				subtotal: newTotal,
+				total: newTotal,
+				currency: updatedServices[0]?.currency || appt.billing?.currency || 'USD'
+			};
+
+			// Actualizar cita
+			await updateAppointment(appt.id, {
+				selected_service: updatedServices,
+				billing: updatedBilling
+			});
+
+			// Forzar actualización de la caché local si es necesario
+			mutate();
+		} catch (err) {
+			console.error('❌ Error al eliminar servicio:', err);
+			alert('No se pudo eliminar el servicio correctamente.');
+		} finally {
+			setLoadingId(null);
+		}
+	};
+
 	const getDaysUntilAppointment = (appt: any): number | null => {
 		const scheduled = appt.scheduled_at ? new Date(appt.scheduled_at) : null;
 		if (!scheduled || Number.isNaN(scheduled.getTime())) return null;
@@ -417,28 +467,40 @@ export default function AppointmentListForRoleUser({ selectedDate, roleName, can
                                         {/* Manejar array de servicios (nuevo formato) */}
                                         {Array.isArray(appt.selected_service) ? (
                                             <div className="space-y-2">
-                                                {appt.selected_service.map((item: any, idx: number) => (
-                                                    <div key={idx} className="border-b border-teal-100 last:border-0 pb-1 last:pb-0">
-                                                        <div className="text-sm font-medium text-teal-800">{item.name}</div>
-                                                        {item.description && <p className="text-xs text-teal-700 mt-0.5">{item.description}</p>}
-                                                        {item.price !== undefined && (
-                                                            <div className="text-xs text-teal-600 font-semibold">
-                                                                <CurrencyDisplay 
-                                                                    amount={Number(item.price)} 
-                                                                    currency={item.currency || 'USD'} 
-                                                                    showBoth={true}
-                                                                    size="xs"
-                                                                    className="gap-1 items-start"
-                                                                />
-                                                            </div>
-                                                        )}
-                                                        {/* Si es un combo */}
-                                                        {item.type === 'combo' && item.serviceIds && (
-                                                             <div className="mt-1">
-                                                                <p className="text-[10px] font-semibold text-teal-900 opacity-80">Incluye:</p>
-                                                                {/* Aquí solo tenemos serviceIds, no nombres, a menos que el backend los popule. 
-                                                                    Por ahora mostramos 'Combo' indicator */}
-                                                             </div>
+                                                {(appt.selected_service as any[]).map((item: any, idx: number) => (
+                                                    <div key={idx} className="border-b border-teal-100 last:border-0 pb-1 last:pb-0 flex justify-between items-start gap-2">
+                                                        <div className="flex-1">
+                                                            <div className="text-sm font-medium text-teal-800">{item.name}</div>
+                                                            {item.description && <p className="text-xs text-teal-700 mt-0.5">{item.description}</p>}
+                                                            {item.price !== undefined && (
+                                                                <div className="text-xs text-teal-600 font-semibold">
+                                                                    <CurrencyDisplay 
+                                                                        amount={Number(item.price)} 
+                                                                        currency={item.currency || 'USD'} 
+                                                                        showBoth={true}
+                                                                        size="xs"
+                                                                        className="gap-1 items-start"
+                                                                    />
+                                                                </div>
+                                                            )}
+                                                            {/* Si es un combo */}
+                                                            {item.type === 'combo' && item.serviceIds && (
+                                                                <div className="mt-1">
+                                                                    <p className="text-[10px] font-semibold text-teal-900 opacity-80">Incluye:</p>
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                        {canEdit && (
+                                                            <button 
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                    handleRemoveService(appt, idx);
+                                                                }}
+                                                                className="text-red-400 hover:text-red-600 p-1 rounded-full hover:bg-red-50 transition-colors mt-0.5"
+                                                                title="Eliminar este servicio"
+                                                            >
+                                                                <Trash2 className="w-3.5 h-3.5" />
+                                                            </button>
                                                         )}
                                                     </div>
                                                 ))}
@@ -446,34 +508,62 @@ export default function AppointmentListForRoleUser({ selectedDate, roleName, can
                                         ) : (
                                             /* Manejar diferentes formatos legacy (objeto único o string) */
                                             typeof appt.selected_service === 'string' ? (
-                                                <div className="text-sm font-medium text-teal-800">{appt.selected_service}</div>
+                                                <div className="flex justify-between items-start gap-2">
+                                                    <div className="text-sm font-medium text-teal-800">{appt.selected_service}</div>
+                                                    {canEdit && (
+                                                        <button 
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                handleRemoveService(appt, 0);
+                                                            }}
+                                                            className="text-red-400 hover:text-red-600 p-1 rounded-full hover:bg-red-50 transition-colors mt-0.5"
+                                                            title="Eliminar este servicio"
+                                                        >
+                                                            <Trash2 className="w-3.5 h-3.5" />
+                                                        </button>
+                                                    )}
+                                                </div>
                                             ) : appt.selected_service.name ? (
-                                                <>
-                                                    <div className="text-sm font-medium text-teal-800">{appt.selected_service.name}</div>
-                                                    {appt.selected_service.description && <p className="text-xs text-teal-700 mt-1">{appt.selected_service.description}</p>}
-                                                    {appt.selected_service.price && (
-                                                        <div className="text-xs text-teal-600 mt-1 font-semibold">
-                                                            <CurrencyDisplay 
-                                                                amount={Number(appt.selected_service.price)} 
-                                                                currency={appt.selected_service.currency || 'USD'} 
-                                                                showBoth={true}
-                                                                size="xs"
-                                                                className="gap-1 items-start"
-                                                            />
-                                                        </div>
+                                                <div className="flex justify-between items-start gap-2">
+                                                    <div className="flex-1">
+                                                        <div className="text-sm font-medium text-teal-800">{appt.selected_service.name}</div>
+                                                        {appt.selected_service.description && <p className="text-xs text-teal-700 mt-1">{appt.selected_service.description}</p>}
+                                                        {appt.selected_service.price && (
+                                                            <div className="text-xs text-teal-600 mt-1 font-semibold">
+                                                                <CurrencyDisplay 
+                                                                    amount={Number(appt.selected_service.price)} 
+                                                                    currency={appt.selected_service.currency || 'USD'} 
+                                                                    showBoth={true}
+                                                                    size="xs"
+                                                                    className="gap-1 items-start"
+                                                                />
+                                                            </div>
+                                                        )}
+                                                        {/* Si hay múltiples servicios incluidos (Legacy Combo structure) */}
+                                                        {('services_included' in (appt.selected_service as any) && (appt.selected_service as any).services_included && Array.isArray((appt.selected_service as any).services_included) && (appt.selected_service as any).services_included.length > 0) && (
+                                                            <div className="mt-2 space-y-1">
+                                                                <p className="text-xs font-semibold text-teal-900">Servicios incluidos:</p>
+                                                                {(appt.selected_service as any).services_included.map((service: any, idx: number) => (
+                                                                    <div key={idx} className="text-xs text-teal-700 pl-2">
+                                                                        • {service?.name || service}
+                                                                    </div>
+                                                                ))}
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                    {canEdit && (
+                                                        <button 
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                handleRemoveService(appt, 0);
+                                                            }}
+                                                            className="text-red-400 hover:text-red-600 p-1 rounded-full hover:bg-red-50 transition-colors mt-0.5"
+                                                            title="Eliminar este servicio"
+                                                        >
+                                                            <Trash2 className="w-3.5 h-3.5" />
+                                                        </button>
                                                     )}
-                                                    {/* Si hay múltiples servicios incluidos (Legacy Combo structure) */}
-                                                    {('services_included' in appt.selected_service && appt.selected_service.services_included && Array.isArray((appt.selected_service as any).services_included) && (appt.selected_service as any).services_included.length > 0) && (
-                                                        <div className="mt-2 space-y-1">
-                                                            <p className="text-xs font-semibold text-teal-900">Servicios incluidos:</p>
-                                                            {(appt.selected_service as any).services_included.map((service: any, idx: number) => (
-                                                                <div key={idx} className="text-xs text-teal-700 pl-2">
-                                                                    • {service?.name || service}
-                                                                </div>
-                                                            ))}
-                                                        </div>
-                                                    )}
-                                                </>
+                                                </div>
                                             ) : (
                                                 <div className="text-sm font-medium text-teal-800">Servicio no especificado</div>
                                             )
