@@ -93,10 +93,11 @@ export async function getClinicGeneralStats(organizationId: string, period: Peri
  * Obtiene el rendimiento de los especialistas.
  */
 export async function getSpecialistsPerformance(organizationId: string, period: Period = 'month') {
-  const { start, end } = getDateRange(period);
-  const supabase = await createSupabaseServerClient();
-
   try {
+    const { start, end } = getDateRange(period);
+    const supabase = await createSupabaseServerClient();
+    if (!supabase) return [];
+
     // Get specialists
     const { data: specialists, error: specialistsError } = await supabase
       .from('users')
@@ -105,48 +106,58 @@ export async function getSpecialistsPerformance(organizationId: string, period: 
       .eq('role', 'MEDICO');
 
     if (specialistsError || !specialists) {
-      console.error('Error fetching specialists:', specialistsError);
+      console.error('[Analytics Action] Error fetching specialists:', specialistsError);
       return [];
     }
 
-    // For each specialist, get metrics (this might be N+1, but acceptable for small number of specialists)
-    // Optimization: Could use RPC or complex join, but parallel promises is fine for now.
     const performanceData = await Promise.all(specialists.map(async (s) => {
-      // Consultations count & unique patients
-      const { data: consultations } = await supabase
-        .from('consultation')
-        .select('patient_id')
-        .eq('doctor_id', s.id)
-        .gte('created_at', start.toISOString())
-        .lte('created_at', end.toISOString());
+      try {
+        // Consultations count & unique patients
+        const { data: consultations } = await supabase
+          .from('consultation')
+          .select('patient_id')
+          .eq('doctor_id', s.id)
+          .gte('created_at', start.toISOString())
+          .lte('created_at', end.toISOString());
 
-      const consultationCount = consultations?.length || 0;
-      const uniquePatients = consultations ? new Set(consultations.map(c => c.patient_id)).size : 0;
+        const consultationCount = consultations?.length || 0;
+        const uniquePatients = consultations ? new Set(consultations.map(c => c.patient_id)).size : 0;
 
-      // Income
-      const { data: invoices } = await supabase
-        .from('facturacion')
-        .select('total')
-        .eq('doctor_id', s.id) // Assuming doctor_id exists in facturacion based on previous code context
-        .gte('fecha_emision', start.toISOString())
-        .lte('fecha_emision', end.toISOString())
-        .eq('estado_pago', 'pagada');
+        // Income
+        const { data: invoices } = await supabase
+          .from('facturacion')
+          .select('total')
+          .eq('doctor_id', s.id)
+          .gte('fecha_emision', start.toISOString())
+          .lte('fecha_emision', end.toISOString())
+          .eq('estado_pago', 'pagada');
 
-      const income = invoices?.reduce((acc, curr) => acc + (Number(curr.total) || 0), 0) || 0;
+        const income = invoices?.reduce((acc, curr) => acc + (Number(curr.total) || 0), 0) || 0;
 
-      return {
-        id: s.id,
-        name: s.name || 'Sin nombre',
-        email: s.email,
-        consultations: consultationCount,
-        patients: uniquePatients,
-        income
-      };
+        return {
+          id: s.id,
+          name: s.name || 'Sin nombre',
+          email: s.email,
+          consultations: consultationCount,
+          patients: uniquePatients,
+          income
+        };
+      } catch (err) {
+        console.error(`[Analytics Action] Error for specialist ${s.id}:`, err);
+        return {
+          id: s.id,
+          name: s.name || 'Sin nombre',
+          email: s.email,
+          consultations: 0,
+          patients: 0,
+          income: 0
+        };
+      }
     }));
 
     return performanceData;
   } catch (error) {
-    console.error('Error fetching specialists performance:', error);
+    console.error('[Analytics Action] getSpecialistsPerformance fatal error:', error);
     return [];
   }
 }
@@ -233,10 +244,11 @@ export async function getDiagnosesStats(organizationId: string) {
  * Comparativa Citas vs Consultas
  */
 export async function getAppointmentVsConsultationStats(organizationId: string, period: Period = 'month') {
-    const { start, end } = getDateRange(period);
-    const supabase = await createSupabaseServerClient();
-
     try {
+        const { start, end } = getDateRange(period);
+        const supabase = await createSupabaseServerClient();
+        if (!supabase) return [];
+
         const [appointmentsRes, consultationsRes] = await Promise.all([
             supabase
                 .from('appointment')
@@ -257,8 +269,11 @@ export async function getAppointmentVsConsultationStats(organizationId: string, 
             { name: 'Consultas Realizadas', value: consultationsRes.count || 0 }
         ];
     } catch (error) {
-        console.error('Error fetching comparison stats:', error);
-        return [];
+        console.error('[Analytics Action] getAppointmentVsConsultationStats fatal error:', error);
+        return [
+            { name: 'Citas Agendadas', value: 0 },
+            { name: 'Consultas Realizadas', value: 0 }
+        ];
     }
 }
 
@@ -337,11 +352,10 @@ export async function getConsultationBreakdown(organizationId: string) {
  * Estadísticas de seguimiento
  */
 export async function getFollowUpStats(organizationId: string) {
-    const supabase = await createSupabaseServerClient();
     try {
-        // Pacientes con > 1 consulta
-        // Supabase no tiene groupBy fácil en cliente JS sin RPC, así que lo hacemos en JS
-        // Traemos todas las consultas (id, patient_id)
+        const supabase = await createSupabaseServerClient();
+        if (!supabase) throw new Error('No supabase client');
+        
         const { data: consultations, error } = await supabase
             .from('consultation')
             .select('id, patient_id')
@@ -366,6 +380,7 @@ export async function getFollowUpStats(organizationId: string) {
             totalPatients
         };
     } catch (error) {
+        console.error('[Analytics Action] getFollowUpStats fatal error:', error);
         return { retentionRate: 0, returningPatients: 0, totalPatients: 0 };
     }
 }

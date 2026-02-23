@@ -6,15 +6,18 @@ import { KPICard } from '@/components/analytics/KPICard';
 import { AnalyticsChart } from '@/components/analytics/AnalyticsChart';
 import { Activity, Users, DollarSign, Stethoscope, TrendingUp, PieChart } from 'lucide-react';
 
+export const dynamic = 'force-dynamic';
+
 export default async function AnalyticsKPIsPage() {
 	try {
 		const organizationId = await getCurrentOrganizationId();
 
 		if (!organizationId) {
 			return (
-				<div className="flex flex-col items-center justify-center py-16">
+				<div className="flex flex-col items-center justify-center py-16 text-center">
 					<div className="p-4 rounded-2xl bg-slate-50 mb-4"><Activity className="w-8 h-8 text-slate-300" /></div>
-					<p className="text-slate-500 text-sm">No se pudo identificar la organización.</p>
+					<p className="text-slate-500 text-sm font-medium">No se pudo identificar la organización.</p>
+					<p className="text-slate-400 text-xs mt-1">Verifique su sesión e intente nuevamente.</p>
 				</div>
 			);
 		}
@@ -102,9 +105,21 @@ export default async function AnalyticsKPIsPage() {
 	} catch (error) {
 		console.error('[KPI Page] Critical crash:', error);
 		return (
-			<div className="p-8 bg-white rounded-2xl border border-rose-100 shadow-sm text-center">
-				<h2 className="text-lg font-bold text-rose-600 mb-2">Error cargando analítica</h2>
-				<p className="text-slate-500 text-sm">Ocurrió un error inesperado al procesar los datos. Por favor, intente más tarde.</p>
+			<div className="p-12 bg-white rounded-2xl border border-rose-100 shadow-sm text-center">
+				<div className="w-16 h-16 bg-rose-50 rounded-full flex items-center justify-center mx-auto mb-4">
+					<Activity className="w-8 h-8 text-rose-500" />
+				</div>
+				<h2 className="text-xl font-bold text-slate-900 mb-2">Error cargando analítica</h2>
+				<p className="text-slate-500 text-sm max-w-sm mx-auto">
+					Ocurrió un error inesperado al procesar los datos en el servidor. 
+					Esto puede deberse a un problema de conexión temporal.
+				</p>
+				<button 
+					onClick={() => window.location.reload()} 
+					className="mt-6 px-6 py-2 bg-slate-900 text-white rounded-lg text-sm font-medium hover:bg-slate-800 transition-colors"
+				>
+					Reintentar
+				</button>
 			</div>
 		);
 	}

@@ -6,6 +6,8 @@ import { AnalyticsChart } from '@/components/analytics/AnalyticsChart';
 import { FileText, Filter } from 'lucide-react';
 import Link from 'next/link';
 
+export const dynamic = 'force-dynamic';
+
 export default async function AnalyticsReportsPage({ searchParams }: { searchParams: Promise<{ period?: string }> }) {
   try {
     const organizationId = await getCurrentOrganizationId();

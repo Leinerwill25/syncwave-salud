@@ -5,6 +5,8 @@ import { getConsultationBreakdown } from '@/lib/actions/analytics';
 import { AnalyticsChart } from '@/components/analytics/AnalyticsChart';
 import { Activity } from 'lucide-react';
 
+export const dynamic = 'force-dynamic';
+
 export default async function AnalyticsConsultationsPage() {
 	try {
 		const organizationId = await getCurrentOrganizationId();
