@@ -188,7 +188,7 @@ function SidebarContent({ pathname }: { pathname: string }) {
 			{/* Quick action */}
 			<div className="pt-3 border-t border-slate-100">
 				<Link
-					href="/dashboard/clinic/specialists/new"
+					href="/dashboard/clinic/invites"
 					className="flex items-center gap-2 w-full px-3 py-2.5 rounded-xl bg-gradient-to-r from-sky-600 to-teal-500 text-white text-sm font-medium shadow-sm hover:shadow-md transition-shadow"
 				>
 					<UserPlus className="w-4 h-4" aria-hidden="true" />
@@ -199,7 +199,7 @@ function SidebarContent({ pathname }: { pathname: string }) {
 			{/* Footer */}
 			<div className="pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-400 px-1">
 				<span>Soporte</span>
-				<Link href="/help" className="text-sky-500 hover:text-sky-600 transition-colors inline-flex items-center gap-1">
+				<Link href="/dashboard/clinic/settings" className="text-sky-500 hover:text-sky-600 transition-colors inline-flex items-center gap-1">
 					<HelpCircle className="w-3 h-3" />
 					Ayuda
 				</Link>

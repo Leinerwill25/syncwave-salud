@@ -221,7 +221,7 @@ export default async function ClinicDashboardPage() {
 
 					<div className="flex gap-3 shrink-0">
 						<Link
-							href="/dashboard/clinic/specialists/new"
+							href="/dashboard/clinic/invites"
 							className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-sky-600 to-teal-500 text-white text-sm font-medium shadow-sm hover:shadow-md transition-shadow"
 						>
 							<UserPlus className="w-4 h-4" />

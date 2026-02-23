@@ -17,7 +17,10 @@ const ROUTE_ROLE_MAP: Record<string, string[]> = {
 const ALLOWED_ORIGINS = ['https://ashira.click', 'https://app.ashira.click', 'http://localhost:3000'];
 
 function isPublicRoute(pathname: string): boolean {
-	return PUBLIC_ROUTES.some((route) => pathname === route || pathname.startsWith(route));
+	return PUBLIC_ROUTES.some((route) => {
+		if (route === '/') return pathname === '/';
+		return pathname === route || pathname.startsWith(route + '/');
+	});
 }
 
 function requiresAuth(pathname: string): boolean {
