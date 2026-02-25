@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { createSupabaseServerClient } from '@/app/adapters/server';
 import { getRoleUserSessionFromServer } from '@/lib/role-user-auth';
+import { createClient } from '@supabase/supabase-js';
 
 // GET: Obtener lista de pacientes registrados y no registrados asociados a la organización
 export async function GET(request: NextRequest) {
@@ -12,7 +13,19 @@ export async function GET(request: NextRequest) {
 			return NextResponse.json({ error: 'No autenticado. Debe iniciar sesión como usuario de rol.' }, { status: 401 });
 		}
 
-		const supabase = await createSupabaseServerClient();
+		// Usar service role para evitar problemas de RLS al acceder a datos de pacientes
+		const SUPABASE_URL = process.env.SUPABASE_URL ?? process.env.NEXT_PUBLIC_SUPABASE_URL ?? '';
+		const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY ?? '';
+
+		if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
+			console.error('[Role Users Patients] Variables de entorno de Supabase no configuradas');
+			return NextResponse.json({ error: 'Error de configuración del servidor' }, { status: 500 });
+		}
+
+		// Crear cliente con service role para evitar RLS
+		const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
+			auth: { persistSession: false },
+		});
 
 		// 1. Obtener citas de la organización
 		const { data: appointments, error: appointmentsError } = await supabase
@@ -26,13 +39,11 @@ export async function GET(request: NextRequest) {
 			return NextResponse.json({ error: 'Error al obtener citas' }, { status: 500 });
 		}
 
-		// 2. Obtener consultas realizadas
+		// 2. Obtener consultas realizadas (todas las vinculadas a la organización)
 		const { data: consultations, error: consultationsError } = await supabase
 			.from('consultation')
-			.select('patient_id, appointment_id, scheduled_at, consultation_date, status')
-			.eq('organization_id', session.organizationId)
-			.in('status', ['COMPLETED', 'ATTENDED'])
-			.order('consultation_date', { ascending: false });
+			.select('patient_id, unregistered_patient_id, appointment_id, started_at, status')
+			.eq('organization_id', session.organizationId);
 
 		if (consultationsError) {
 			console.error('[Role Users Patients] Error obteniendo consultas:', consultationsError);
@@ -42,21 +53,19 @@ export async function GET(request: NextRequest) {
 		const patientIds = new Set<string>();
 		const unregisteredPatientIds = new Set<string>();
 
-		appointments?.forEach((apt) => {
-			if (apt.patient_id) patientIds.add(apt.patient_id);
-			if (apt.unregistered_patient_id) unregisteredPatientIds.add(apt.unregistered_patient_id);
+		appointments?.forEach((apt: any) => {
+			if (apt.patient_id) patientIds.add(apt.patient_id as string);
+			if (apt.unregistered_patient_id) unregisteredPatientIds.add(apt.unregistered_patient_id as string);
 		});
-		consultations?.forEach((cons) => {
-			if (cons.patient_id) patientIds.add(cons.patient_id);
-            // Si hay consultas vinculadas a citas que tienen unregistered_patient_id
-            if (cons.appointment_id) {
-                const apt = appointments?.find(a => a.id === cons.appointment_id);
-                if (apt?.unregistered_patient_id) unregisteredPatientIds.add(apt.unregistered_patient_id);
-            }
+		consultations?.forEach((cons: any) => {
+			if (cons.patient_id) patientIds.add(cons.patient_id as string);
+			if (cons.unregistered_patient_id) unregisteredPatientIds.add(cons.unregistered_patient_id as string);
 		});
 
 		// 4. Obtener información de pacientes REGISTRADOS
 		let registeredPatientsArr: any[] = [];
+		
+		// 4a. Obtener pacientes que tienen citas o consultas
 		if (patientIds.size > 0) {
 			const { data: pData, error: pError } = await supabase
 				.from('patient')
@@ -66,6 +75,22 @@ export async function GET(request: NextRequest) {
 			if (!pError && pData) {
 				registeredPatientsArr = pData;
 			}
+		}
+
+		// 4b. Obtener pacientes vinculados directamente a la organización vía tabla users que son pacientes
+		// (Esto captura pacientes registrados por personal administrativo que aún no tienen citas)
+		const { data: directPatients, error: directError } = await supabase
+			.from('users')
+			.select('patient:patientProfileId(id, firstName, lastName, identifier, phone)')
+			.eq('organizationId', session.organizationId)
+			.eq('role', 'PACIENTE');
+
+		if (!directError && directPatients) {
+			directPatients.forEach((u: any) => {
+				if (u.patient && !registeredPatientsArr.some(p => p.id === u.patient.id)) {
+					registeredPatientsArr.push(u.patient);
+				}
+			});
 		}
 
 		// 5. Obtener información de pacientes NO REGISTRADOS
@@ -100,9 +125,9 @@ export async function GET(request: NextRequest) {
 		const allPatients: any[] = [];
 
 		// Procesar Registrados
-		registeredPatientsArr.forEach(p => {
-			const patientApts = appointments?.filter(a => a.patient_id === p.id) || [];
-			const patientCons = consultations?.filter(c => c.patient_id === p.id) || [];
+		registeredPatientsArr.forEach((p: any) => {
+			const patientApts = (appointments as any[])?.filter(a => a.patient_id === p.id) || [];
+			const patientCons = (consultations as any[])?.filter(c => c.patient_id === p.id) || [];
 			
 			allPatients.push({
 				patient: {
@@ -113,7 +138,7 @@ export async function GET(request: NextRequest) {
 					phone: p.phone,
 					isUnregistered: false
 				},
-				scheduledAppointments: patientApts.map(a => ({
+				scheduledAppointments: patientApts.map((a: any) => ({
 					id: a.id,
 					scheduled_at: a.scheduled_at,
 					status: a.status,
@@ -121,17 +146,17 @@ export async function GET(request: NextRequest) {
 					location: a.location
 				})),
 				attendedCount: patientCons.length,
-				consultationDates: patientCons.map(c => c.consultation_date || c.scheduled_at).sort((a, b) => new Date(b).getTime() - new Date(a).getTime())
+				consultationDates: patientCons.map((c: any) => c.started_at).sort((a: any, b: any) => new Date(b).getTime() - new Date(a).getTime())
 			});
 		});
 
 		// Procesar No Registrados
-		unregisteredPatientsArr.forEach(p => {
-			const patientApts = appointments?.filter(a => a.unregistered_patient_id === p.id) || [];
+		unregisteredPatientsArr.forEach((p: any) => {
+			const patientApts = (appointments as any[])?.filter(a => a.unregistered_patient_id === p.id) || [];
 			// Para consultas, usualmente están ligadas a la cita
-			const aptIds = new Set(patientApts.map(a => a.id));
-			const patientCons = consultations?.filter(c => aptIds.has(c.appointment_id)) || [];
-
+			const aptIds = new Set(patientApts.map((a: any) => a.id));
+			const patientCons = (consultations as any[])?.filter(c => aptIds.has(c.appointment_id)) || [];
+ 
 			allPatients.push({
 				patient: {
 					id: p.id,
@@ -142,7 +167,7 @@ export async function GET(request: NextRequest) {
 					isUnregistered: true,
 					createdBy: p.created_by ? creatorsMap[p.created_by] : null
 				},
-				scheduledAppointments: patientApts.map(a => ({
+				scheduledAppointments: patientApts.map((a: any) => ({
 					id: a.id,
 					scheduled_at: a.scheduled_at,
 					status: a.status,
@@ -150,7 +175,7 @@ export async function GET(request: NextRequest) {
 					location: a.location
 				})),
 				attendedCount: patientCons.length,
-				consultationDates: patientCons.map(c => c.consultation_date || c.scheduled_at).sort((a, b) => new Date(b).getTime() - new Date(a).getTime())
+				consultationDates: patientCons.map((c: any) => c.started_at).sort((a: any, b: any) => new Date(b).getTime() - new Date(a).getTime())
 			});
 		});
 

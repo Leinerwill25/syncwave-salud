@@ -218,9 +218,17 @@ export async function GET(req: NextRequest) {
 			(consultations || []).map((c: any) => c.appointment_id).filter(Boolean)
 		);
 
-		// Filtrar citas que asistieron (tienen consulta o estado COMPLETADA)
-		const attendedAppointments = (appointments || []).filter((apt: any) => {
+		// Filtrar citas que asistieron (tienen consulta o estado COMPLETADA) para estadísticas rápidas y desgloses
+		const effectiveAppointmentsList = (appointments || []).filter((apt: any) => {
 			return appointmentIdsWithConsultation.has(apt.id) || apt.status === 'COMPLETADA';
+		});
+
+		const rescheduledAppointmentsList = (appointments || []).filter((apt: any) => {
+			return apt.status === 'REAGENDADA';
+		});
+
+		const noShowAppointmentsList = (appointments || []).filter((apt: any) => {
+			return apt.status === 'NO ASISTIÓ' || apt.status === 'NO_ASISTIO';
 		});
 
 		// Función para parsear selected_service
@@ -245,7 +253,7 @@ export async function GET(req: NextRequest) {
 
 		// Desglose por fecha
 		const breakdownByDate: Record<string, number> = {};
-		attendedAppointments.forEach((apt: any) => {
+		effectiveAppointmentsList.forEach((apt: any) => {
 			if (apt.scheduled_at) {
 				const date = new Date(apt.scheduled_at).toISOString().split('T')[0];
 				breakdownByDate[date] = (breakdownByDate[date] || 0) + 1;
@@ -254,14 +262,14 @@ export async function GET(req: NextRequest) {
 
 		// Desglose por servicio
 		const breakdownByService: Record<string, number> = {};
-		attendedAppointments.forEach((apt: any) => {
+		effectiveAppointmentsList.forEach((apt: any) => {
 			const serviceName = parseService(apt.selected_service);
 			breakdownByService[serviceName] = (breakdownByService[serviceName] || 0) + 1;
 		});
 
 		// Desglose por hora
 		const breakdownByHour: Record<string, number> = {};
-		attendedAppointments.forEach((apt: any) => {
+		effectiveAppointmentsList.forEach((apt: any) => {
 			if (apt.scheduled_at) {
 				const date = new Date(apt.scheduled_at);
 				const hour = String(date.getHours()).padStart(2, '0') + ':00';
@@ -270,7 +278,7 @@ export async function GET(req: NextRequest) {
 		});
 
 		// Lista de pacientes que asistieron con información completa
-		const patientsAttended = attendedAppointments.map((apt: any) => {
+		const patientsAttended = effectiveAppointmentsList.map((apt: any) => {
 			const patient = apt.patient || apt.unregistered_patient;
 			const firstName = patient?.firstName || patient?.first_name || '';
 			const lastName = patient?.lastName || patient?.last_name || '';
@@ -278,7 +286,7 @@ export async function GET(req: NextRequest) {
 			const phone = patient?.phone || null;
 			const patientName = firstName && lastName ? `${firstName} ${lastName}` : firstName || lastName || 'N/A';
 			const isUnregistered = !!apt.unregistered_patient;
-
+ 
 			return {
 				id: apt.id,
 				patientName,
@@ -298,7 +306,23 @@ export async function GET(req: NextRequest) {
 			return new Date(b.scheduledAt).getTime() - new Date(a.scheduledAt).getTime();
 		});
 
+		// Función para normalizar citas para el frontend
+		const normalizeApt = (apt: any) => {
+			const patient = apt.patient || apt.unregistered_patient;
+			const firstName = patient?.firstName || patient?.first_name || '';
+			const lastName = patient?.lastName || patient?.last_name || '';
+			const patientName = firstName && lastName ? `${firstName} ${lastName}` : firstName || lastName || 'N/A';
+			
+			return {
+				id: apt.id,
+				patient: patientName,
+				scheduled_at: apt.scheduled_at,
+				status: apt.status
+			};
+		};
+
 		return NextResponse.json({
+			// Campos originales para compatibilidad
 			publicPage,
 			manualAssistant,
 			patientDashboard,
@@ -306,11 +330,21 @@ export async function GET(req: NextRequest) {
 			total,
 			startDate: defaultStartDate,
 			endDate: defaultEndDate,
-			attendedCount: attendedAppointments.length,
+			attendedCount: effectiveAppointmentsList.length,
 			patientsAttended,
 			breakdownByDate,
 			breakdownByService,
 			breakdownByHour,
+			
+			// Campos esperados por dashboard/role-user/estadisticas-citas/page.tsx
+			stats: {
+				effectiveCount: effectiveAppointmentsList.length,
+				rescheduledCount: rescheduledAppointmentsList.length,
+				noShowCount: noShowAppointmentsList.length,
+				totalCreated: total
+			},
+			effectiveAppointments: effectiveAppointmentsList.map(normalizeApt),
+			rescheduledAppointments: rescheduledAppointmentsList.map(normalizeApt)
 		});
 	} catch (err: any) {
 		console.error('[Role User Appointments Statistics API] Error:', err);

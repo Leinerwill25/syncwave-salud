@@ -18,8 +18,10 @@ export async function GET(req: NextRequest) {
 			return NextResponse.json({ error: 'Mes y año son requeridos (formato: YYYY-MM)' }, { status: 400 });
 		}
 
+		// Calcular el primer y último día del mes correctamente
 		const startDate = `${year}-${month}-01`;
-		const endDate = `${year}-${month}-31`;
+		const lastDay = new Date(Number(year), Number(month), 0).getDate();
+		const endDate = `${year}-${month}-${String(lastDay).padStart(2, '0')}`;
 
 		// Obtener todas las citas del mes para este asistente
 		const { data: appointments, error } = await supabase

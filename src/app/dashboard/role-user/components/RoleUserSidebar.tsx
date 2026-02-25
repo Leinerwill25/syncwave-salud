@@ -27,11 +27,11 @@ const ALL_MODULES: LinkItem[] = [
 		icon: LayoutDashboard,
 	},
 	{
+		href: '/dashboard/role-user/pacientes',
 		label: 'Pacientes',
 		icon: User,
 		module: 'pacientes',
 		requiredPermission: 'view',
-		submenu: [{ href: '/dashboard/role-user/pacientes', label: 'Listado de pacientes', module: 'pacientes', requiredPermission: 'view' }],
 	},
 	{
 		label: 'Consultas',
@@ -210,8 +210,8 @@ export default function RoleUserSidebar() {
 			return false;
 		}
 
-		// Link especial: Servicios del consultorio → solo Recepción o Asistente De Citas
-		if (link.href === '/dashboard/role-user/servicios') {
+		// Link especial: Servicios del consultorio ó Pacientes → solo Recepción o Asistente De Citas
+		if (link.href === '/dashboard/role-user/servicios' || link.href === '/dashboard/role-user/pacientes') {
 			if (
 				!roleNameEquals(session.roleName, 'Recepción') &&
 				!roleNameEquals(session.roleName, 'Asistente De Citas')
