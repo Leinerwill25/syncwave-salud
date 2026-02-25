@@ -158,6 +158,14 @@ export default function PublicNavBar() {
 			comingSoon: false,
 		},
 		{
+			href: '/landing/enfermeros',
+			label: 'Enfermería',
+			icon: HeartPulse,
+			description: 'Gestión de personal de enfermería y turnos',
+			color: 'from-rose-500 to-pink-500',
+			comingSoon: false,
+		},
+		{
 			href: '/landing/farmacias',
 			label: 'Farmacias',
 			icon: Pill,
