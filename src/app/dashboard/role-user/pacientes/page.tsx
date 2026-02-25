@@ -261,10 +261,12 @@ export default function RoleUserPatientsPage() {
 								</div>
 								<button
 									onClick={() => handleEditClick(item.patient)}
-									className="p-2 text-slate-400 hover:text-teal-600 hover:bg-teal-50 rounded-lg transition-all"
+									className="flex items-center gap-2 px-3 py-2 bg-teal-50 text-teal-600 hover:bg-teal-600 hover:text-white rounded-lg transition-all text-xs sm:text-sm font-semibold border border-teal-200 shadow-sm whitespace-nowrap"
 									title="Editar información"
 								>
-									<Edit2 className="w-5 h-5" />
+									<Edit2 className="w-4 h-4" />
+									<span className="hidden xs:inline">Editar Datos</span>
+									<span className="xs:hidden">Editar</span>
 								</button>
 							</div>
 
