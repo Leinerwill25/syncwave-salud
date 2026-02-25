@@ -8,14 +8,17 @@ const supabaseAdmin = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, proces
     auth: { persistSession: false }
 });
 
-export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+export async function GET(
+	req: Request,
+	context: { params: Promise<{ id: string }> }
+) {
 	try {
 		const session = await getRoleUserSessionFromServer();
 		if (!session) {
 			return NextResponse.json({ error: 'No autenticado' }, { status: 401 });
 		}
 
-		const { id } = await params;
+		const { id } = await context.params;
         const supabase = supabaseAdmin;
 
 		// Obtener la cita con todas sus relaciones
@@ -93,22 +96,17 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
 	}
 }
 
-export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+export async function PATCH(
+	req: Request,
+	context: { params: Promise<{ id: string }> }
+) {
 	try {
-        console.log('[Role User Appointment PATCH] Starting...');
-        
-        if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
-            console.error('[Role User Appointment PATCH] CRITICAL: SUPABASE_SERVICE_ROLE_KEY is missing');
-            return NextResponse.json({ error: 'Configuration error: Missing Service Role Key' }, { status: 500 });
-        }
-
 		const session = await getRoleUserSessionFromServer();
 		if (!session) {
-            console.warn('[Role User Appointment PATCH] No session found');
 			return NextResponse.json({ error: 'No autenticado' }, { status: 401 });
 		}
 
-		const { id } = await params;
+		const { id } = await context.params;
 		const body = await req.json();
         const supabase = supabaseAdmin;
 

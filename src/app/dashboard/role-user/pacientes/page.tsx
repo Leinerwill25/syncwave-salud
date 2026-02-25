@@ -1,8 +1,8 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { motion } from 'framer-motion';
-import { User, Calendar, Clock, CheckCircle2, XCircle, Search, Loader2 } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { User, Calendar, Clock, CheckCircle2, XCircle, Search, Loader2, Edit2, X, Save, AlertCircle, Phone, FileText } from 'lucide-react';
 import { getRoleUserSession } from '@/lib/role-user-auth-client';
 import { useRouter } from 'next/navigation';
 import type { RoleUserSession } from '@/lib/role-user-auth-client';
@@ -14,6 +14,8 @@ type Patient = {
 	identifier?: string | null;
 	phone?: string | null;
 	email?: string | null;
+	isUnregistered?: boolean;
+	createdBy?: string | null;
 };
 
 type Appointment = {
@@ -38,6 +40,12 @@ export default function RoleUserPatientsPage() {
 	const [patients, setPatients] = useState<PatientAppointments[]>([]);
 	const [loading, setLoading] = useState(true);
 	const [searchQuery, setSearchQuery] = useState('');
+	
+	// Estado para edición
+	const [editingPatient, setEditingPatient] = useState<Patient | null>(null);
+	const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+	const [updateLoading, setUpdateLoading] = useState(false);
+	const [updateError, setUpdateError] = useState<string | null>(null);
 
 	useEffect(() => {
 		loadSession();
@@ -82,6 +90,46 @@ export default function RoleUserPatientsPage() {
 			console.error('[Role User Patients] Error:', err);
 		} finally {
 			setLoading(false);
+		}
+	};
+
+	const handleEditClick = (patient: Patient) => {
+		setEditingPatient({ ...patient });
+		setIsEditModalOpen(true);
+		setUpdateError(null);
+	};
+
+	const handleUpdatePatient = async () => {
+		if (!editingPatient) return;
+
+		setUpdateLoading(true);
+		setUpdateError(null);
+
+		try {
+			const res = await fetch(`/api/role-users/patients/${editingPatient.id}`, {
+				method: 'PATCH',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({
+					firstName: editingPatient.firstName,
+					lastName: editingPatient.lastName,
+					identifier: editingPatient.identifier,
+					phone: editingPatient.phone,
+					isUnregistered: editingPatient.isUnregistered
+				}),
+			});
+
+			if (!res.ok) {
+				const errorData = await res.json();
+				throw new Error(errorData.error || 'Error al actualizar paciente');
+			}
+
+			setIsEditModalOpen(false);
+			setEditingPatient(null);
+			loadPatients(); // Recargar lista
+		} catch (err: any) {
+			setUpdateError(err.message);
+		} finally {
+			setUpdateLoading(false);
 		}
 	};
 
@@ -152,8 +200,8 @@ export default function RoleUserPatientsPage() {
 		<div className="w-full min-w-0 px-2 sm:px-0">
 			{/* Header */}
 			<motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="mb-4 sm:mb-6">
-				<h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-slate-900 break-words">Listado de Pacientes</h1>
-				<p className="text-xs sm:text-sm md:text-base text-slate-600 mt-1 break-words">Visualiza información básica de pacientes y sus citas programadas</p>
+				<h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-slate-900 break-words">Gestión de Pacientes</h1>
+				<p className="text-xs sm:text-sm md:text-base text-slate-600 mt-1 break-words">Visualiza y edita la información de pacientes asociados a tu organización</p>
 			</motion.div>
 
 			{/* Search Bar */}
@@ -193,14 +241,31 @@ export default function RoleUserPatientsPage() {
 									{item.patient.lastName?.[0]?.toUpperCase()}
 								</div>
 								<div className="flex-1 min-w-0">
-									<h3 className="text-base sm:text-lg font-semibold text-slate-900 break-words">
-										{item.patient.firstName} {item.patient.lastName}
-									</h3>
+									<div className="flex items-center gap-2 flex-wrap">
+										<h3 className="text-base sm:text-lg font-semibold text-slate-900 break-words">
+											{item.patient.firstName} {item.patient.lastName}
+										</h3>
+										{item.patient.isUnregistered && (
+											<span className="px-2 py-0.5 bg-orange-100 text-orange-700 text-[10px] font-bold rounded-full uppercase">
+												No registrado
+											</span>
+										)}
+									</div>
 									<div className="flex flex-col sm:flex-row sm:flex-wrap gap-1 sm:gap-4 mt-1 text-xs sm:text-sm text-slate-600">
 										{item.patient.identifier && <span className="break-words">C.I.: {item.patient.identifier}</span>}
 										{item.patient.phone && <span className="break-words">Tel: {item.patient.phone}</span>}
+										{item.patient.createdBy && (
+											<span className="text-teal-600 font-medium">Registrado por: {item.patient.createdBy}</span>
+										)}
 									</div>
 								</div>
+								<button
+									onClick={() => handleEditClick(item.patient)}
+									className="p-2 text-slate-400 hover:text-teal-600 hover:bg-teal-50 rounded-lg transition-all"
+									title="Editar información"
+								>
+									<Edit2 className="w-5 h-5" />
+								</button>
 							</div>
 
 							{/* Statistics */}
@@ -264,6 +329,120 @@ export default function RoleUserPatientsPage() {
 					))}
 				</div>
 			)}
+			
+			{/* Edit Patient Modal */}
+			<AnimatePresence>
+				{isEditModalOpen && editingPatient && (
+					<motion.div
+						initial={{ opacity: 0 }}
+						animate={{ opacity: 1 }}
+						exit={{ opacity: 0 }}
+						className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 backdrop-blur-sm"
+						onClick={(e) => { if (e.target === e.currentTarget) setIsEditModalOpen(false); }}
+					>
+						<motion.div
+							initial={{ scale: 0.9, opacity: 0 }}
+							animate={{ scale: 1, opacity: 1 }}
+							exit={{ scale: 0.9, opacity: 0 }}
+							className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden"
+						>
+							<div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50">
+								<h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+									<Edit2 className="w-5 h-5 text-teal-600" />
+									Editar Paciente
+								</h2>
+								<button onClick={() => setIsEditModalOpen(false)} className="text-slate-400 hover:text-slate-600 transition-colors">
+									<X className="w-6 h-6" />
+								</button>
+							</div>
+							
+							<div className="p-6 space-y-4">
+								{updateError && (
+									<div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl flex items-start gap-2 text-sm">
+										<AlertCircle className="w-5 h-5 flex-shrink-0" />
+										<p>{updateError}</p>
+									</div>
+								)}
+								
+								<div className="grid grid-cols-2 gap-4">
+									<div className="space-y-1.5">
+										<label className="text-xs font-semibold text-slate-700 uppercase ml-1">Nombre</label>
+										<input
+											type="text"
+											value={editingPatient.firstName}
+											onChange={(e) => setEditingPatient({ ...editingPatient, firstName: e.target.value })}
+											className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-teal-500 transition-all text-sm"
+											placeholder="Nombres"
+										/>
+									</div>
+									<div className="space-y-1.5">
+										<label className="text-xs font-semibold text-slate-700 uppercase ml-1">Apellido</label>
+										<input
+											type="text"
+											value={editingPatient.lastName || ''}
+											onChange={(e) => setEditingPatient({ ...editingPatient, lastName: e.target.value })}
+											className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-teal-500 transition-all text-sm"
+											placeholder="Apellidos"
+										/>
+									</div>
+								</div>
+								
+								<div className="space-y-1.5">
+									<label className="text-xs font-semibold text-slate-700 uppercase ml-1">Cédula de Identidad</label>
+									<div className="relative">
+										<FileText className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+										<input
+											type="text"
+											value={editingPatient.identifier || ''}
+											onChange={(e) => setEditingPatient({ ...editingPatient, identifier: e.target.value })}
+											className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-teal-500 transition-all text-sm"
+											placeholder="Ej: V-12345678"
+										/>
+									</div>
+								</div>
+								
+								<div className="space-y-1.5">
+									<label className="text-xs font-semibold text-slate-700 uppercase ml-1">Teléfono de Contacto</label>
+									<div className="relative">
+										<Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+										<input
+											type="text"
+											value={editingPatient.phone || ''}
+											onChange={(e) => setEditingPatient({ ...editingPatient, phone: e.target.value })}
+											className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-teal-500 transition-all text-sm"
+											placeholder="Ej: 0412-1234567"
+										/>
+									</div>
+								</div>
+								
+								<div className="pt-4 flex gap-3">
+									<button
+										onClick={handleUpdatePatient}
+										disabled={updateLoading}
+										className="flex-1 bg-teal-600 hover:bg-teal-700 text-white font-bold py-3 rounded-xl transition-all shadow-lg shadow-teal-100 flex items-center justify-center gap-2 disabled:opacity-50"
+									>
+										{updateLoading ? (
+											<Loader2 className="w-5 h-5 animate-spin" />
+										) : (
+											<>
+												<Save className="w-5 h-5" />
+												Guardar Cambios
+											</>
+										)}
+									</button>
+									<button
+										disabled={updateLoading}
+										onClick={() => setIsEditModalOpen(false)}
+										className="px-6 py-3 bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold rounded-xl transition-all"
+									>
+										Cancelar
+									</button>
+								</div>
+							</div>
+						</motion.div>
+					</motion.div>
+				)}
+			</AnimatePresence>
 		</div>
 	);
 }

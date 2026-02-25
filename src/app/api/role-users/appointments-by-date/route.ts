@@ -56,7 +56,8 @@ export async function GET(req: NextRequest) {
 			patient:patient_id(firstName, lastName, identifier, phone, dob),
 			unregistered_patient:unregistered_patient_id(first_name, last_name, identification, phone, email),
 			doctor:doctor_id(id, name),
-			created_by_role_user_id`;
+			created_by_role_user_id,
+			billing:facturacion(id, subtotal, impuestos, total, currency)`;
 
 		let query = supabase.from('appointment').select(selectFields).eq('organization_id', session.organizationId).gte('scheduled_at', startIso).lte('scheduled_at', endIso).order('scheduled_at', { ascending: true });
 
@@ -79,7 +80,8 @@ export async function GET(req: NextRequest) {
 				selected_service,
 				patient:patient_id(firstName, lastName, identifier, phone, dob),
 				unregistered_patient:unregistered_patient_id(first_name, last_name, identification, phone, email),
-				doctor:doctor_id(id, name)`;
+				doctor:doctor_id(id, name),
+				billing:facturacion(id, subtotal, impuestos, total, currency)`;
 
 			query = supabase.from('appointment').select(selectFields).eq('organization_id', session.organizationId).gte('scheduled_at', startIso).lte('scheduled_at', endIso).order('scheduled_at', { ascending: true });
 
@@ -221,6 +223,7 @@ export async function GET(req: NextRequest) {
 				selected_service: selectedService,
 				referral_source: apt.referral_source || null,
 				doctorName: orgDoctorName,
+				billing: Array.isArray(apt.billing) ? apt.billing[0] : apt.billing,
 			};
 		});
 

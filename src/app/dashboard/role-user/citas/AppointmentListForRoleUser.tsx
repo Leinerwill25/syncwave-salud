@@ -441,31 +441,32 @@ export default function AppointmentListForRoleUser({ selectedDate, roleName, can
 									</div>
 								</div>
 
-								{/* Servicio solicitado */}
-								{appt.selected_service && (
-									<div className="bg-teal-50 border border-teal-200 rounded-lg p-2 sm:p-3 ml-6 mb-2">
-										<div className="flex items-center justify-between mb-1">
-                                            <div className="flex items-center gap-2">
-                                                <CreditCard className="w-4 h-4 text-teal-600 shrink-0" />
-                                                <span className="text-xs font-semibold text-teal-900">Servicios:</span>
-                                            </div>
-                                            {canEdit && (
-                                                <button 
-                                                    onClick={(e) => {
-                                                        e.stopPropagation();
-                                                        setSelectedAppointmentForService(appt);
-                                                        setIsAddServiceModalOpen(true);
-                                                    }}
-                                                    className="text-teal-600 hover:text-teal-800 hover:bg-teal-100 p-1 rounded-full transition-colors"
-                                                    title="Agregar servicio extra"
-                                                >
-                                                    <PlusCircle className="w-4 h-4" />
-                                                </button>
-                                            )}
-                                        </div>
-                                        
-                                        {/* Manejar array de servicios (nuevo formato) */}
-                                        {Array.isArray(appt.selected_service) ? (
+								{/* Sección de Servicios */}
+								<div className="bg-teal-50 border border-teal-200 rounded-lg p-2 sm:p-3 ml-6 mb-2">
+									<div className="flex items-center justify-between mb-1">
+										<div className="flex items-center gap-2">
+											<CreditCard className="w-4 h-4 text-teal-600 shrink-0" />
+											<span className="text-xs font-semibold text-teal-900">Servicios:</span>
+										</div>
+										{canEdit && (
+											<button 
+												onClick={(e) => {
+													e.stopPropagation();
+													setSelectedAppointmentForService(appt);
+													setIsAddServiceModalOpen(true);
+												}}
+												className="text-teal-600 hover:text-teal-800 hover:bg-teal-100 p-1 rounded-full transition-colors"
+												title="Agregar servicio"
+											>
+												<PlusCircle className="w-4 h-4" />
+											</button>
+										)}
+									</div>
+									
+									{appt.selected_service ? (
+										<>
+											{/* Manejar array de servicios (nuevo formato) */}
+											{Array.isArray(appt.selected_service) ? (
                                             <div className="space-y-2">
                                                 {(appt.selected_service as any[]).map((item: any, idx: number) => (
                                                     <div key={idx} className="border-b border-teal-100 last:border-0 pb-1 last:pb-0 flex justify-between items-start gap-2">
@@ -566,10 +567,15 @@ export default function AppointmentListForRoleUser({ selectedDate, roleName, can
                                                 </div>
                                             ) : (
                                                 <div className="text-sm font-medium text-teal-800">Servicio no especificado</div>
-                                            )
-                                        )}
+											)
+										)}
+										</>
+								) : (
+									<div className="text-xs text-teal-600 italic py-1">
+										Sin servicios seleccionados
 									</div>
 								)}
+								</div>
 
 								{/* Motivo de la cita */}
 								{appt.reason && (
