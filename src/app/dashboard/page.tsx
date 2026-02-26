@@ -76,6 +76,10 @@ export default function DashboardRedirectPage() {
 								router.replace('/login');
 							}
 							break;
+						case 'ENFERMERO':
+						case 'ENFERMERA':
+							router.replace('/nurse/dashboard');
+							break;
 						default:
 							router.replace('/login');
 							break;
