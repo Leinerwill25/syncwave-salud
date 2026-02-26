@@ -48,7 +48,11 @@ export default function DashboardRedirectPage() {
 				}
 
 				// Obtener el rol del usuario desde la base de datos
-				const res = await fetch(`/api/auth/profile?authId=${encodeURIComponent(session.user.id)}`);
+				const res = await fetch(`/api/auth/profile?authId=${encodeURIComponent(session.user.id)}`, {
+					headers: {
+						'Authorization': `Bearer ${session.access_token}`
+					}
+				});
 				if (res.ok) {
 					const data = await res.json();
 					const role = data?.data?.role;
