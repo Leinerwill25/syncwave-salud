@@ -1,5 +1,5 @@
 'use client';
-// src/app/nurse/dashboard/page.tsx
+// src/app/dashboard/nurse/page.tsx
 import { useEffect, useState } from 'react';
 import { getDashboardSummary, getDailyQueue } from '@/lib/supabase/nurse.service';
 import type { DashboardSummaryResponse, NurseDailyDashboard } from '@/types/nurse.types';
@@ -81,7 +81,7 @@ export default function NurseDashboardPage() {
               <span className="text-xs font-normal text-gray-500">(Primeros 5)</span>
             </h2>
             <Link 
-              href="/nurse/queue"
+              href="/dashboard/nurse/queue"
               className="text-sm font-semibold text-teal-600 hover:text-teal-700 flex items-center gap-1 group transition-colors"
             >
               Ver toda la cola
@@ -140,7 +140,7 @@ export default function NurseDashboardPage() {
                 <div>
                   <p className="text-sm font-bold text-red-900 dark:text-red-400">{summary.pending_vitals} Signos Pendientes</p>
                   <p className="text-xs text-red-700 dark:text-red-500 mt-0.5">Pacientes esperando triaje para avanzar.</p>
-                  <Link href="/nurse/queue" className="text-xs font-bold text-red-600 mt-2 inline-block hover:underline">Ir a Triaje</Link>
+                  <Link href="/dashboard/nurse/queue" className="text-xs font-bold text-red-600 mt-2 inline-block hover:underline">Ir a Triaje</Link>
                 </div>
               </div>
             ) : null}

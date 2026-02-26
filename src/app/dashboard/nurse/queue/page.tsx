@@ -1,11 +1,11 @@
 'use client';
-// src/app/nurse/queue/page.tsx
+// src/app/dashboard/nurse/queue/page.tsx
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { QueueTable } from '@/components/nurse/clinical/QueueTable';
 import { getDailyQueue } from '@/lib/supabase/nurse.service';
 import type { NurseDailyDashboard } from '@/types/nurse.types';
-import { useNurseActions } from '@/hooks/nurse/useNurseContext';
+import { useNurseActions } from '@/hooks/dashboard/nurse/useNurseContext';
 import { Loader2, RefreshCw, Users } from 'lucide-react';
 
 export default function NurseQueuePage() {
@@ -28,9 +28,9 @@ export default function NurseQueuePage() {
   const handleAction = (action: 'vitals' | 'details', patient: NurseDailyDashboard) => {
     setActivePatient(patient);
     if (action === 'vitals') {
-      router.push(`/nurse/patient/${patient.patient_id || patient.unregistered_patient_id}/vitals?queueId=${patient.queue_id}`);
+      router.push(`/dashboard/nurse/patient/${patient.patient_id || patient.unregistered_patient_id}/vitals?queueId=${patient.queue_id}`);
     } else {
-      router.push(`/nurse/patient/${patient.patient_id || patient.unregistered_patient_id}?queueId=${patient.queue_id}`);
+      router.push(`/dashboard/nurse/patient/${patient.patient_id || patient.unregistered_patient_id}?queueId=${patient.queue_id}`);
     }
   };
 

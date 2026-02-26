@@ -1,7 +1,6 @@
-// src/app/nurse/layout.tsx
+// src/app/dashboard/nurse/independent/layout.tsx
 // ═══════════════════════════════════════════════════════════
-// ASHIRA — Layout raíz del Panel de Enfermería (Afiliada)
-// Server Component: verifica autenticación y tipo enfermera.
+// ASHIRA — Layout del Panel de Enfermería Independiente
 // ═══════════════════════════════════════════════════════════
 import { redirect } from 'next/navigation';
 import { getCurrentNurseProfileSSR } from '@/lib/auth/nurse-auth-server';
@@ -12,36 +11,31 @@ import { NurseAlertPanel } from '@/components/nurse/layout/NurseAlertPanel';
 import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
-  title: 'Panel de Enfermería — ASHIRA',
-  description: 'Panel de gestión clínica para enfermeras ASHIRA Software',
+  title: 'Panel Independiente — ASHIRA',
+  description: 'Panel de enfermería independiente ASHIRA Software',
 };
 
 import { NurseGlobalReminders } from '@/components/nurse/NurseGlobalReminders';
 
-export default async function NurseLayout({
+export default async function NurseIndependentLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  // ── Guard SSR ──────────────────────────────────────────
   const nurseSession = await getCurrentNurseProfileSSR();
 
   if (!nurseSession) {
-    redirect('/login?redirect=/nurse/dashboard');
+    redirect('/login?redirect=/dashboard/nurse/independent');
   }
 
-  // Las enfermeras independientes tienen su propio layout
-  if (nurseSession.nurseType === 'independent') {
-    redirect('/nurse/independent/dashboard');
+  if (nurseSession.nurseType !== 'independent') {
+    redirect('/dashboard/nurse');
   }
 
   return (
     <NurseProvider userId={nurseSession.nurseProfileId}>
       <div className="flex h-screen bg-gray-50 dark:bg-gray-950 overflow-hidden">
-        {/* Sidebar */}
-        <NurseSidebar nurseType="affiliated" />
-
-        {/* Main content */}
+        <NurseSidebar nurseType="independent" />
         <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
           <NurseTopBar />
           <main className="flex-1 overflow-y-auto p-6 relative">
@@ -49,8 +43,6 @@ export default async function NurseLayout({
             <NurseGlobalReminders />
           </main>
         </div>
-
-        {/* Alert panel (collapsible right panel) */}
         <NurseAlertPanel />
       </div>
     </NurseProvider>

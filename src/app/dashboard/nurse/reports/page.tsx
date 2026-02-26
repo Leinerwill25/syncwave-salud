@@ -1,5 +1,5 @@
 'use client';
-// src/app/nurse/reports/page.tsx
+// src/app/dashboard/nurse/reports/page.tsx
 import { useState, useEffect, useCallback } from 'react';
 import { useNurseState } from '@/context/NurseContext';
 import { getShiftReports } from '@/lib/supabase/nurse.service';
@@ -94,7 +94,7 @@ export default function ReportsPage() {
         </div>
 
         <Link 
-          href="/nurse/reports/new"
+          href="/dashboard/nurse/reports/new"
           className="bg-teal-600 hover:bg-teal-700 text-white font-black px-6 py-3 rounded-2xl flex items-center justify-center gap-2 transition-all shadow-xl shadow-teal-500/20"
         >
           <Plus className="w-5 h-5" />

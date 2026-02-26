@@ -36,19 +36,19 @@ interface NavItem {
 function getNavItems(nurseType: NurseType): NavItem[] {
   if (nurseType === 'affiliated') {
     return [
-      { label: 'Dashboard',         href: '/nurse/dashboard',     icon: LayoutDashboard },
-      { label: 'Lista de Pacientes',href: '/nurse/queue',         icon: Users },
-      { label: 'Observación',       href: '/nurse/observation',   icon: BedDouble },
-      { label: 'Inventario',        href: '/nurse/inventory',     icon: Package },
-      { label: 'Reporte de Turno',  href: '/nurse/reports',      icon: FileText },
-      { label: 'Mi Perfil',         href: '/nurse/settings',     icon: Settings },
+      { label: 'Dashboard',         href: '/dashboard/nurse',     icon: LayoutDashboard },
+      { label: 'Lista de Pacientes',href: '/dashboard/nurse/queue',         icon: Users },
+      { label: 'Observación',       href: '/dashboard/nurse/observation',   icon: BedDouble },
+      { label: 'Inventario',        href: '/dashboard/nurse/inventory',     icon: Package },
+      { label: 'Reporte de Turno',  href: '/dashboard/nurse/reports',      icon: FileText },
+      { label: 'Mi Perfil',         href: '/dashboard/nurse/settings',     icon: Settings },
     ];
   }
   return [
-    { label: 'Dashboard',     href: '/nurse/independent/dashboard',  icon: LayoutDashboard },
-    { label: 'Mis Pacientes', href: '/nurse/independent/patients',   icon: Users },
-    { label: 'Mis Reportes',  href: '/nurse/independent/reports',    icon: FileText },
-    { label: 'Mi Perfil',     href: '/nurse/independent/settings',   icon: Settings },
+    { label: 'Dashboard',     href: '/dashboard/nurse/independent/dashboard',  icon: LayoutDashboard },
+    { label: 'Mis Pacientes', href: '/dashboard/nurse/independent/patients',   icon: Users },
+    { label: 'Mis Reportes',  href: '/dashboard/nurse/independent/reports',    icon: FileText },
+    { label: 'Mi Perfil',     href: '/dashboard/nurse/independent/settings',   icon: Settings },
   ];
 }
 

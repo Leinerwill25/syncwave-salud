@@ -11,7 +11,7 @@ const ROUTE_ROLE_MAP: Record<string, string[]> = {
 	'/dashboard/medic': ['MEDICO'],
 	'/dashboard/pharmacy': ['FARMACIA'],
 	'/dashboard/patient': ['PACIENTE'],
-	'/nurse': ['ENFERMERO', 'ENFERMERA', 'ADMIN'],
+	'/dashboard/nurse': ['ENFERMERO', 'ENFERMERA', 'ADMIN'],
 };
 
 // Orígenes permitidos para CORS
@@ -27,6 +27,7 @@ function isPublicRoute(pathname: string): boolean {
 function requiresAuth(pathname: string): boolean {
 	if (isPublicRoute(pathname)) return false;
 	if (pathname.startsWith('/dashboard')) return true;
+	if (pathname.startsWith('/nurse')) return true;
 	if (pathname.startsWith('/api') && !pathname.startsWith('/api/auth')) return true;
 	return false;
 }
@@ -108,7 +109,7 @@ function getRoleRedirectPath(userRole: string, pathname: string): string | null 
 			break;
 		case 'ENFERMERO':
 		case 'ENFERMERA':
-			redirectPath = '/nurse/dashboard';
+			redirectPath = '/dashboard/nurse';
 			break;
 	}
 	// Si ya estamos en una ruta que empieza con el redirectPath deseado, no redirigir

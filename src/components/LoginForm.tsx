@@ -96,7 +96,7 @@ export default function LoginFormAdvanced(): React.ReactElement {
 				return '/dashboard/patient';
 			case 'ENFERMERO':
 			case 'ENFERMERA':
-				return '/nurse/dashboard';
+				return '/dashboard/nurse';
 			default:
 				return '/dashboard';
 		}

@@ -1,4 +1,4 @@
-// src/app/nurse/independent/dashboard/page.tsx
+// src/app/dashboard/nurse/independent/page.tsx
 export default function NurseIndependentDashboardPage() {
   return (
     <div className="flex flex-col gap-4">
