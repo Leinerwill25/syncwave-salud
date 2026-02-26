@@ -32,12 +32,25 @@ export async function sendNotificationEmail(
 
 	switch (type) {
 		case 'INVITE':
-			subject = `Invitación a ${data.organizationName || 'la organización'}`;
-			html = templates.getInviteEmailTemplate({
-				inviteUrl: data.inviteUrl as string,
-				organizationName: data.organizationName as string,
-				role: data.role as string,
-			});
+			{
+				const roleLabels: Record<string, string> = {
+					'ADMIN': 'Administrador',
+					'MEDICO': 'Médico',
+					'ENFERMERA': 'Enfermera',
+					'ENFERMERO': 'Enfermero',
+					'RECEPCION': 'Recepción',
+					'FARMACIA': 'Farmacia',
+					'PACIENTE': 'Paciente',
+					'LABORATORIO': 'Laboratorio'
+				};
+				const roleName = data.role ? (roleLabels[String(data.role).toUpperCase()] || data.role) : 'Especialista';
+				subject = `Invitación: Nuevo rol de ${roleName} en ${data.organizationName || 'la organización'}`;
+				html = templates.getInviteEmailTemplate({
+					inviteUrl: data.inviteUrl as string,
+					organizationName: data.organizationName as string,
+					role: data.role as string,
+				});
+			}
 			break;
 
 		case 'APPOINTMENT_REQUEST':

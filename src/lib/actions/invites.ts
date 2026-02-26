@@ -11,7 +11,7 @@ function generateToken() {
     return randomBytes(32).toString('hex');
 }
 
-export async function bulkUploadAndSendInvites(organizationId: string, emails: string[]) {
+export async function bulkUploadAndSendInvites(organizationId: string, emails: string[], role: string = 'MEDICO') {
     const results = {
         success: 0,
         failed: 0,
@@ -66,7 +66,7 @@ export async function bulkUploadAndSendInvites(organizationId: string, emails: s
                         email: normalizedEmail,
                         organizationId,
                         token: generateToken(),
-                        role: 'MEDICO', // Por defecto MEDICO para especialistas
+                        role: role, // Usar el rol proporcionado (por defecto MEDICO)
                         expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(), // 7 días
                     })
                     .select()

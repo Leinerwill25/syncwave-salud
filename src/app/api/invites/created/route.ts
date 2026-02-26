@@ -12,8 +12,8 @@ type Body = {
 	organizationId?: string;
 };
 
-type UserRole = 'ADMIN' | 'MEDICO' | 'ENFERMERA' | 'RECEPCION' | 'FARMACIA' | 'PACIENTE';
-const VALID_ROLES: UserRole[] = ['ADMIN', 'MEDICO', 'ENFERMERA', 'RECEPCION', 'FARMACIA', 'PACIENTE'];
+type UserRole = 'ADMIN' | 'MEDICO' | 'ENFERMERA' | 'ENFERMERO' | 'RECEPCION' | 'FARMACIA' | 'PACIENTE';
+const VALID_ROLES: UserRole[] = ['ADMIN', 'MEDICO', 'ENFERMERA', 'ENFERMERO', 'RECEPCION', 'FARMACIA', 'PACIENTE'];
 const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const DEFAULT_EXPIRES_DAYS = 30;
 

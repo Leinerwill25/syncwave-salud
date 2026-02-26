@@ -180,6 +180,20 @@ export function getInviteEmailTemplate(data: {
 }): string {
 	const orgName = data.organizationName || 'nuestra organización';
 	
+	// Mapeo de roles a nombres amigables
+	const roleLabels: Record<string, string> = {
+		'ADMIN': 'Administrador',
+		'MEDICO': 'Médico / Especialista',
+		'ENFERMERA': 'Enfermera',
+		'ENFERMERO': 'Enfermero',
+		'RECEPCION': 'Recepción / Asistente',
+		'FARMACIA': 'Farmacéutico',
+		'PACIENTE': 'Paciente',
+		'LABORATORIO': 'Especialista de Laboratorio'
+	};
+
+	const roleLabel = data.role ? (roleLabels[data.role.toUpperCase()] || data.role) : 'Especialista';
+	
 	const content = `
 		<h2 style="font-size: 24px; font-weight: 700; margin-bottom: 24px; text-align: center;">Invitación Profesional</h2>
 		
@@ -196,7 +210,7 @@ export function getInviteEmailTemplate(data: {
 			</div>
 			<div class="info-item">
 				<span class="info-label">Rol Asignado</span>
-				<span class="info-value">${data.role || 'Especialista'}</span>
+				<span class="info-value">${roleLabel}</span>
 			</div>
 		</div>
 
