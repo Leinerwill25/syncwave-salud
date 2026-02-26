@@ -74,7 +74,7 @@ export function ShiftReportForm() {
 
       toast.success('Reporte guardado correctamente');
       endShift(); // Finalizar el turno en el contexto
-      router.push('/nurse/reports');
+      router.push('/dashboard/nurse/reports');
     } catch (error: any) {
       toast.error(`Error: ${error.message}`);
     } finally {

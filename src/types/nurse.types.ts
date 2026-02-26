@@ -659,3 +659,44 @@ export const SPECIALIZATIONS = [
 ] as const;
 
 export type Specialization = (typeof SPECIALIZATIONS)[number];
+
+// ─── Farmacia e Inventario ─────────────────────────────────
+
+export interface Medication {
+  id: string;
+  name: string;
+  generic_name: string | null;
+  form: string | null;
+  strength: string | null;
+  route: string | null;
+  manufacturer: string | null;
+  barcode: string | null;
+  is_active: boolean;
+  requires_prescription: boolean;
+  controlled_substance: boolean;
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface PharmacyInventory {
+  id: string;
+  organization_id: string;
+  medication_id: string;
+  lot: string | null;
+  expiry_date: string | null; // Date (YYYY-MM-DD)
+  quantity: number;
+  unit_cost: number | null;
+  created_at: string;
+  updated_at: string;
+  medication?: Medication; // Para joins
+}
+
+export interface CreatePharmacyInventoryDto {
+  organization_id: string;
+  medication_id: string;
+  lot?: string | null;
+  expiry_date?: string | null;
+  quantity: number;
+  unit_cost?: number | null;
+}

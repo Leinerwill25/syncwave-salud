@@ -148,45 +148,9 @@ export async function middleware(request: NextRequest) {
 		}
 	);
 
-	// 4. Autenticación Robusta
-	// Intentar obtener token desde header o cookies
-	const authHeader = request.headers.get('authorization') || request.headers.get('Authorization');
-	let token: string | null = null;
-	if (authHeader?.startsWith('Bearer ')) {
-		token = authHeader.split(' ')[1];
-	}
-
-	if (!token) {
-		const allCookies = request.cookies.getAll();
-		for (const cookie of allCookies) {
-			const value = cookie.value;
-			if (!value) continue;
-			if (cookie.name.includes('access-token')) {
-				token = value;
-				break;
-			}
-			try {
-				const parsed = JSON.parse(value);
-				const extracted = parsed?.access_token || parsed?.currentSession?.access_token || parsed?.session?.access_token;
-				if (extracted) {
-					token = extracted;
-					break;
-				}
-			} catch { /* ignore */ }
-		}
-	}
-
-	let user: any = null;
-	if (token) {
-		const { data: { user: userData }, error } = await supabase.auth.getUser(token);
-		if (!error && userData) user = userData;
-	}
-
-	// Fallback a getUser/getSession estándar
-	if (!user) {
-		const { data: { user: userData } } = await supabase.auth.getUser();
-		user = userData;
-	}
+	// 4. Autenticación Robusta usando el SDK
+	// El SDK se encarga de leer las cookies automágicamente
+	const { data: { user }, error: authError } = await supabase.auth.getUser();
 
 	if (isPublicRoute(pathname)) return response;
 
@@ -200,14 +164,29 @@ export async function middleware(request: NextRequest) {
 			return NextResponse.redirect(loginUrl);
 		}
 
-		// Obtener rol del usuario
-		const { data: appUser } = await supabase.from('users').select('role').eq('authId', user.id).maybeSingle();
-		const userRole = appUser?.role;
+		// Obtener rol del usuario. Manejar caso de múltiples perfiles (ej. MEDICO + PACIENTE)
+		const { data: appUsers, error: userError } = await supabase.from('users').select('role').eq('authId', user.id);
+		let userRole: string | undefined;
+		
+		if (!userError && appUsers && appUsers.length > 0) {
+			const metaRole = user.user_metadata?.role;
+			if (metaRole) {
+				userRole = appUsers.find(u => u.role === metaRole)?.role || appUsers[0].role;
+			} else {
+				userRole = appUsers.find(u => u.role !== 'PACIENTE')?.role || appUsers[0].role;
+			}
+		}
+
+		// Fallback: Si no está en la tabla "users", buscar en metadata (muy común en registros nuevos/migrados)
+		if (!userRole && user.user_metadata?.role) {
+			userRole = user.user_metadata.role;
+		}
 
 		if (!userRole) {
 			if (pathname.startsWith('/api')) {
 				return NextResponse.json({ error: 'Usuario sin rol asignado' }, { status: 403 });
 			}
+			console.warn('[Middleware] No role found for user:', user.id);
 			return NextResponse.redirect(new URL('/login', request.url));
 		}
 

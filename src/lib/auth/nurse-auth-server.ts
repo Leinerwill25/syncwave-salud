@@ -23,20 +23,48 @@ export async function getCurrentNurseProfileSSR(): Promise<{
 
     if (authError || !user) return null;
 
-    const { data, error } = await supabase
+    const { data: profile, error: profileError } = await supabase
       .from('nurse_profiles')
       .select('nurse_profile_id, nurse_type, organization_id, status')
       .eq('user_id', user.id)
       .eq('status', 'active')
       .maybeSingle();
 
-    if (error || !data) return null;
+    if (profile) {
+      return {
+        nurseProfileId: profile.nurse_profile_id as string,
+        nurseType: profile.nurse_type as NurseType,
+        organizationId: (profile.organization_id as string | null) ?? null,
+      };
+    }
 
-    return {
-      nurseProfileId: data.nurse_profile_id as string,
-      nurseType: data.nurse_type as NurseType,
-      organizationId: (data.organization_id as string | null) ?? null,
-    };
+    // Fallback: Si no tiene nurse_profile pero el rol en "users" es de enfermería,
+    // permitimos el acceso con datos básicos (esto sucede para usuarios antiguos).
+    const { data: usr } = await supabase
+      .from('users')
+      .select('id, role, organizationId')
+      .eq('authId', user.id)
+      .maybeSingle();
+
+    if (usr && (usr.role === 'ENFERMERO' || usr.role === 'ENFERMERA')) {
+      return {
+        nurseProfileId: user.id, // Fallback ID si falta el perfil real
+        nurseType: 'independent' as NurseType, // Asumimos independiente si no tiene perfil
+        organizationId: usr.organizationId || null,
+      };
+    }
+
+    // Fallback 2: Si no está en tablas, check metadata (muy común en registros directos/migrados)
+    const metaRole = user.user_metadata?.role;
+    if (metaRole === 'ENFERMERO' || metaRole === 'ENFERMERA') {
+      return {
+        nurseProfileId: user.id,
+        nurseType: 'independent' as NurseType,
+        organizationId: null, // No sabemos organización desde metadata sola
+      };
+    }
+
+    return null;
   } catch (err) {
     console.error('[getCurrentNurseProfileSSR]', err);
     return null;

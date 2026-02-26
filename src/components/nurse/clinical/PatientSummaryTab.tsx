@@ -1,9 +1,9 @@
 'use client';
 // src/components/nurse/clinical/PatientSummaryTab.tsx
-import { useEffect, useState } from 'react';
-import { getPatientFullOrigin } from '@/lib/supabase/nurse.service';
+import { useEffect, useState, useCallback } from 'react';
+import { getPatientFullOrigin, createOriginRecord, addPriorTreatment } from '@/lib/supabase/nurse.service';
 import type { PatientFullOriginResponse, NurseDailyDashboard } from '@/types/nurse.types';
-import { ORIGIN_TYPE_LABELS, REFERRAL_REASON_LABELS } from '@/schemas/nurse/origin.schema';
+import { ORIGIN_TYPE_LABELS, REFERRAL_REASON_LABELS, type OriginRecordFormData, type PriorTreatmentFormData } from '@/schemas/nurse/origin.schema';
 import { 
   History, 
   MapPin, 
@@ -13,35 +13,88 @@ import {
   FileCheck, 
   Loader2,
   Stethoscope,
-  Building
+  Building,
+  Plus,
+  Edit2
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { PatientOriginForm } from './PatientOriginForm';
+import { PriorTreatmentForm } from './PriorTreatmentForm';
+import { useNurseState } from '@/context/NurseContext';
+import { toast } from 'sonner';
 
 interface Props {
   patient: NurseDailyDashboard;
 }
 
 export function PatientSummaryTab({ patient }: Props) {
+  const { nurseProfile } = useNurseState();
   const [originData, setOriginData] = useState<PatientFullOriginResponse | null>(null);
   const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  
+  const [showOriginModal, setShowOriginModal] = useState(false);
+  const [showTreatmentModal, setShowTreatmentModal] = useState(false);
 
-  useEffect(() => {
-    async function loadOrigin() {
-      setLoading(true);
-      const res = await getPatientFullOrigin({
-        patientId: patient.patient_id || undefined,
-        unregisteredPatientId: patient.unregistered_patient_id || undefined,
-        queueId: patient.queue_id
-      });
-      setOriginData(res);
-      setLoading(false);
-    }
-    loadOrigin();
+  const loadOrigin = useCallback(async () => {
+    setLoading(true);
+    const res = await getPatientFullOrigin({
+      patientId: patient.patient_id || undefined,
+      unregisteredPatientId: patient.unregistered_patient_id || undefined,
+      queueId: patient.queue_id
+    });
+    setOriginData(res);
+    setLoading(false);
   }, [patient]);
 
-  if (loading) {
+  useEffect(() => {
+    loadOrigin();
+  }, [loadOrigin]);
+
+  const handleOriginSubmit = async (data: OriginRecordFormData) => {
+    if (!nurseProfile) return;
+    setSaving(true);
+    const { error } = await createOriginRecord({
+      ...data,
+      patient_id: patient.patient_id || undefined,
+      unregistered_patient_id: patient.unregistered_patient_id || undefined,
+      queue_id: patient.queue_id,
+      registered_by_nurse_id: nurseProfile.nurse_profile_id
+    });
+
+    if (!error) {
+      toast.success('Información de origen guardada');
+      setShowOriginModal(false);
+      loadOrigin();
+    } else {
+      toast.error('Error al guardar origen');
+    }
+    setSaving(false);
+  };
+
+  const handleTreatmentSubmit = async (data: PriorTreatmentFormData) => {
+    setSaving(true);
+    const { error } = await addPriorTreatment({
+      ...data,
+      patient_id: patient.patient_id || undefined,
+      unregistered_patient_id: patient.unregistered_patient_id || undefined,
+      origin_record_id: originData?.origin?.origin_id
+    });
+
+    if (!error) {
+      toast.success('Tratamiento agregado');
+      setShowTreatmentModal(false);
+      loadOrigin();
+    } else {
+      toast.error('Error al agregar tratamiento');
+    }
+    setSaving(false);
+  };
+
+  if (loading && !originData) {
     return (
       <div className="flex flex-col items-center justify-center py-20">
         <Loader2 className="w-8 h-8 text-teal-600 animate-spin mb-3" />
@@ -66,7 +119,6 @@ export function PatientSummaryTab({ patient }: Props) {
           </p>
         </div>
         
-        {/* Rapid Access Info */}
         <div className="grid grid-cols-2 gap-3 pt-4">
           <div className="p-3 bg-white dark:bg-gray-800/40 rounded-xl border border-gray-100 dark:border-gray-700">
             <p className="text-[10px] uppercase font-bold text-gray-400 mb-1">Alergias</p>
@@ -86,12 +138,32 @@ export function PatientSummaryTab({ patient }: Props) {
       </section>
 
       {/* Origin Section */}
-      <section className="bg-white dark:bg-gray-900 rounded-3xl border border-gray-100 dark:border-gray-800 p-6 md:p-8 space-y-4">
-        <div className="flex items-center gap-3 mb-2">
-          <div className="p-2 bg-teal-50 dark:bg-teal-900/20 rounded-xl">
-            <MapPin className="w-5 h-5 text-teal-600" />
+      <section className="bg-white dark:bg-gray-900 rounded-3xl border border-gray-100 dark:border-gray-800 p-6 md:p-8 space-y-4 relative overflow-hidden">
+        <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-teal-50 dark:bg-teal-900/20 rounded-xl">
+              <MapPin className="w-5 h-5 text-teal-600" />
+            </div>
+            <h2 className="text-lg font-bold text-gray-900 dark:text-white">Origen del Paciente</h2>
           </div>
-          <h2 className="text-lg font-bold text-gray-900 dark:text-white">Origen del Paciente</h2>
+          
+          <Dialog open={showOriginModal} onOpenChange={setShowOriginModal}>
+            <DialogTrigger asChild>
+              <button className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full transition-colors text-teal-600">
+                {originData?.origin ? <Edit2 className="w-4 h-4" /> : <Plus className="w-5 h-5" />}
+              </button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-2xl">
+              <DialogHeader>
+                <DialogTitle>{originData?.origin ? 'Actualizar Origen' : 'Registrar Procedencia'}</DialogTitle>
+              </DialogHeader>
+              <PatientOriginForm 
+                initialData={(originData?.origin || {}) as any} 
+                onSubmit={handleOriginSubmit} 
+                isLoading={saving} 
+              />
+            </DialogContent>
+          </Dialog>
         </div>
 
         {originData?.origin ? (
@@ -153,11 +225,28 @@ export function PatientSummaryTab({ patient }: Props) {
             </div>
             <h2 className="text-lg font-bold text-gray-900 dark:text-white">Tratamientos Previos y Activos</h2>
           </div>
-          {originData && originData.active_treatments_count > 0 && (
-            <span className="px-3 py-1 bg-emerald-100 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400 text-xs font-bold rounded-full">
-              {originData.active_treatments_count} Activos
-            </span>
-          )}
+          
+          <div className="flex items-center gap-3">
+            {originData && originData.active_treatments_count > 0 && (
+              <span className="hidden sm:inline-block px-3 py-1 bg-emerald-100 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400 text-xs font-bold rounded-full">
+                {originData.active_treatments_count} Activos
+              </span>
+            )}
+            
+            <Dialog open={showTreatmentModal} onOpenChange={setShowTreatmentModal}>
+              <DialogTrigger asChild>
+                <button className="flex items-center gap-2 px-4 py-2 bg-purple-50 hover:bg-purple-100 dark:bg-purple-900/20 dark:hover:bg-purple-900/40 text-purple-700 dark:text-purple-400 rounded-xl text-sm font-bold transition-all">
+                  <Plus className="w-4 h-4" /> Agregar Medicamento
+                </button>
+              </DialogTrigger>
+              <DialogContent className="sm:max-w-xl">
+                <DialogHeader>
+                  <DialogTitle>Registrar Tratamiento Previo</DialogTitle>
+                </DialogHeader>
+                <PriorTreatmentForm onSubmit={handleTreatmentSubmit} isLoading={saving} />
+              </DialogContent>
+            </Dialog>
+          </div>
         </div>
 
         {originData?.treatments && originData.treatments.length > 0 ? (
@@ -230,3 +319,4 @@ export function PatientSummaryTab({ patient }: Props) {
     </div>
   );
 }
+

@@ -1,85 +1,52 @@
-// src/app/api/auth/set-session/route.ts
 import { NextResponse } from 'next/server';
-import { serialize } from 'cookie';
-
-type Body = {
-	access_token?: string;
-	refresh_token?: string;
-	expires_in?: number; // segundos
-	session?: any;
-	rememberMe?: boolean; // Si es true, extender duración de cookies
-};
-
-// Opciones genéricas para cookies
-const cookieOpts = (maxAge?: number) => ({
-	httpOnly: true,
-	secure: process.env.NODE_ENV === 'production', // false en localhost
-	sameSite: 'lax' as const,
-	path: '/',
-	maxAge,
-});
-
-// Crea payload que Supabase SSR espera en la cookie sb:token
-function makeSbTokenPayload(access_token: string, refresh_token: string | null, expiresAtSeconds: number) {
-	return JSON.stringify({
-		currentSession: {
-			access_token,
-			expires_at: expiresAtSeconds,
-			refresh_token: refresh_token ?? null,
-			provider_token: null,
-		},
-		persistSession: true,
-	});
-}
+import { createServerClient } from '@supabase/ssr';
+import { cookies } from 'next/headers';
 
 export async function POST(req: Request) {
 	try {
-		const body = (await req.json()) as Body;
-		const { access_token, refresh_token, expires_in, session, rememberMe } = body;
+		const body = await req.json();
+		const { access_token, refresh_token } = body;
 
 		if (!access_token) {
 			return NextResponse.json({ ok: false, message: 'access_token missing' }, { status: 400 });
 		}
 
-		// Si "recuérdame" está activo, extender la duración de las cookies
-		// Por defecto: 1 hora, con "recuérdame": 30 días
-		const defaultMaxAge = 60 * 60; // 1 hora
-		const rememberMeMaxAge = 60 * 60 * 24 * 30; // 30 días
-		
-		const maxAge = rememberMe 
-			? rememberMeMaxAge 
-			: (typeof expires_in === 'number' && expires_in > 0 ? Math.floor(expires_in) : defaultMaxAge);
-		
-		const expiresAtSeconds = Math.floor(Date.now() / 1000) + maxAge;
+		const response = NextResponse.json({ ok: true }, { status: 200 });
+		const cookieStore = await cookies();
 
-		const cookiesToSet: string[] = [];
+		const supabase = createServerClient(
+			process.env.NEXT_PUBLIC_SUPABASE_URL!,
+			process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+			{
+				cookies: {
+					getAll() {
+						return cookieStore.getAll();
+					},
+					setAll(cookiesToSet) {
+						cookiesToSet.forEach(({ name, value, options }) =>
+							response.cookies.set(name, value, options)
+						);
+					},
+				},
+			}
+		);
 
-		// Cookie simple de access token
-		cookiesToSet.push(serialize('sb-access-token', access_token, cookieOpts(maxAge)));
+		// Esto establece las cookies correctamente en la respuesta usando el SDK
+		await supabase.auth.setSession({
+			access_token,
+			refresh_token: refresh_token || '',
+		});
 
-		// Cookie de refresh token - siempre 30 días si existe
-		if (refresh_token) {
-			cookiesToSet.push(serialize('sb-refresh-token', refresh_token, cookieOpts(60 * 60 * 24 * 30))); // 30 días
-		}
+		// También establecemos una cookie simple para nuestros guards manuales que buscan 'sb-access-token'
+		response.cookies.set('sb-access-token', access_token, {
+			path: '/',
+			httpOnly: true,
+			secure: process.env.NODE_ENV === 'production',
+			sameSite: 'lax',
+			maxAge: 60 * 60 * 24 * 7, // 7 días
+		});
 
-		// Cookie sb:token que Supabase SSR utiliza
-		const sbTokenPayload = makeSbTokenPayload(access_token, refresh_token ?? null, expiresAtSeconds);
-		cookiesToSet.push(serialize('sb:token', sbTokenPayload, cookieOpts(maxAge)));
-
-		// Cookie alternativa para compatibilidad
-		cookiesToSet.push(serialize('supabase-auth-token', sbTokenPayload, cookieOpts(maxAge)));
-
-		// Cookie opcional con la sesión completa (solo si la envían)
-		if (session) {
-			const s = typeof session === 'string' ? session : JSON.stringify(session);
-			cookiesToSet.push(serialize('sb-session', s, cookieOpts(maxAge)));
-		}
-
-		// Enviar todas las cookies en la respuesta
-		const res = NextResponse.json({ ok: true }, { status: 200 });
-		cookiesToSet.forEach((c) => res.headers.append('Set-Cookie', c));
-
-		return res;
+		return response;
 	} catch (err: any) {
 		console.error('[Auth] set-session error', err);
 		return NextResponse.json({ ok: false, message: err?.message ?? 'Unknown error' }, { status: 500 });

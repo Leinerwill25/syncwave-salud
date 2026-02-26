@@ -55,7 +55,7 @@ export default function DashboardGuard({ children, allowedRoles }: DashboardGuar
 							break;
 						case 'ENFERMERO':
 						case 'ENFERMERA':
-							redirectPath = '/nurse/dashboard';
+							redirectPath = '/dashboard/nurse';
 							break;
 					}
 					router.push(redirectPath);

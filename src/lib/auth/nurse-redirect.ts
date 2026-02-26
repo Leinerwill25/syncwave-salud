@@ -46,7 +46,7 @@ export async function getNurseRedirectPath(
     const redirectPath =
       nurseType === 'affiliated'
         ? '/dashboard/nurse'
-        : '/dashboard/nurse/independent/dashboard';
+        : '/dashboard/nurse/independent';
 
     return {
       isNurse: true,

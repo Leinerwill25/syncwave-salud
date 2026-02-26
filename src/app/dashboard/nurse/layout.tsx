@@ -30,9 +30,14 @@ export default async function NurseLayout({
     redirect('/login?redirect=/dashboard/nurse');
   }
 
-  // Las enfermeras independientes tienen su propio layout
+  // Si es independiente, solo pasamos el children y el Provider.
+  // El layout de /independent se encargará de su propia UI (Sidebar/TopBar).
   if (nurseSession.nurseType === 'independent') {
-    redirect('/dashboard/nurse/independent');
+    return (
+      <NurseProvider userId={nurseSession.nurseProfileId}>
+        {children}
+      </NurseProvider>
+    );
   }
 
   return (

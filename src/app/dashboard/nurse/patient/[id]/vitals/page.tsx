@@ -1,5 +1,5 @@
 'use client';
-// src/app/nurse/patient/[id]/vitals/page.tsx
+// src/app/dashboard/nurse/patient/[id]/vitals/page.tsx
 import * as React from 'react';
 import { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -54,7 +54,7 @@ export default function PatientVitalsPage({ params }: { params: Promise<{ id: st
           // Para el cambio de estado a 'ready_for_doctor', lo manejaremos en el loop de sync si es tipo vital_signs.
         });
         
-        router.push('/nurse/queue');
+        router.push('/dashboard/nurse/queue');
       } finally {
         setSubmitting(false);
       }
@@ -73,7 +73,7 @@ export default function PatientVitalsPage({ params }: { params: Promise<{ id: st
       if (statusError) throw new Error(statusError);
 
       toast.success('Signos vitales guardados. Paciente listo para médico.');
-      router.push('/nurse/queue');
+      router.push('/dashboard/nurse/queue');
     } catch (err: any) {
       console.error(err);
       toast.error(`Error al guardar: ${err.message}`);
@@ -88,7 +88,7 @@ export default function PatientVitalsPage({ params }: { params: Promise<{ id: st
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="flex items-center gap-4">
           <Link 
-            href="/nurse/queue"
+            href="/dashboard/nurse/queue"
             className="p-2 rounded-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:bg-gray-50 flex items-center justify-center transition-colors"
           >
             <ChevronLeft className="w-5 h-5 text-gray-600 dark:text-gray-300" />

@@ -19,16 +19,16 @@ import { cn } from '@/lib/utils';
 import { useNurseState, useNurseActions } from '@/hooks/nurse/useNurseContext';
 
 const ROUTE_TITLES: Record<string, string> = {
-  '/nurse/dashboard':            'Dashboard',
-  '/nurse/queue':                'Lista de Pacientes',
-  '/nurse/observation':          'Pacientes en Observación',
-  '/nurse/inventory':            'Inventario',
-  '/nurse/reports':              'Reporte de Turno',
-  '/nurse/settings':             'Mi Perfil',
-  '/nurse/independent/dashboard':'Dashboard',
-  '/nurse/independent/patients': 'Mis Pacientes',
-  '/nurse/independent/reports':  'Mis Reportes',
-  '/nurse/independent/settings': 'Mi Perfil',
+  '/dashboard/nurse':            'Dashboard',
+  '/dashboard/nurse/queue':      'Lista de Pacientes',
+  '/dashboard/nurse/observation':'Pacientes en Observación',
+  '/dashboard/nurse/inventory':  'Inventario',
+  '/dashboard/nurse/reports':    'Reporte de Turno',
+  '/dashboard/nurse/settings':   'Mi Perfil',
+  '/dashboard/nurse/independent':'Dashboard',
+  '/dashboard/nurse/independent/patients': 'Mis Pacientes',
+  '/dashboard/nurse/independent/reports':  'Mis Reportes',
+  '/dashboard/nurse/independent/settings': 'Mi Perfil',
 };
 
 function getRouteTitle(pathname: string): string {

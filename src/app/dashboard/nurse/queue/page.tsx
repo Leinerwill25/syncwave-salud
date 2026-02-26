@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { QueueTable } from '@/components/nurse/clinical/QueueTable';
 import { getDailyQueue } from '@/lib/supabase/nurse.service';
 import type { NurseDailyDashboard } from '@/types/nurse.types';
-import { useNurseActions } from '@/hooks/dashboard/nurse/useNurseContext';
+import { useNurseActions } from '@/context/NurseContext';
 import { Loader2, RefreshCw, Users } from 'lucide-react';
 
 export default function NurseQueuePage() {

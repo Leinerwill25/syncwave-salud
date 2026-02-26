@@ -256,7 +256,7 @@ export function NurseProvider({ children, userId }: NurseProviderProps) {
           title: 'Medicación Pendiente',
           message: `${med.medication_name} — ${med.dose} (${med.route})`,
           queueId: med.queue_id,
-          action: { label: 'Administrar', href: `/nurse/patient/${med.queue_id}/medications` },
+          action: { label: 'Administrar', href: `/dashboard/nurse/patient/${med.queue_id}/mar` },
           createdAt: new Date(),
           dismissed: false,
         }
@@ -333,7 +333,7 @@ export function NurseProvider({ children, userId }: NurseProviderProps) {
                 title: 'Nuevo Medicamento',
                 message: `${record.medication_name as string} — ${record.dose as string} (${record.route as string})`,
                 queueId: record.queue_id as string,
-                action: { label: 'Ver MAR', href: `/nurse/patient/${record.queue_id}/medications` },
+                action: { label: 'Ver MAR', href: `/dashboard/nurse/patient/${record.queue_id}/mar` },
                 createdAt: new Date(),
                 dismissed: false,
               },

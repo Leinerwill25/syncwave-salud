@@ -94,30 +94,49 @@ export async function getAuthenticatedUser(): Promise<AuthenticatedUser | null> 
 			const { data, error } = await supabase
 				.from(tableName)
 				.select('id, email, role, organizationId, patientProfileId')
-				.eq('authId', user.id)
-				.maybeSingle();
+				.eq('authId', user.id);
 
-			if (!error && data) {
-				appUser = data;
+			if (!error && data && data.length > 0) {
+				// Múltiples perfiles: priorizar el rol en metadata, o excluir PACIENTE si hay otro
+				const metaRole = user.user_metadata?.role;
+				if (metaRole) {
+					appUser = data.find((u: any) => u.role === metaRole) || data[0];
+				} else {
+					appUser = data.find((u: any) => u.role !== 'PACIENTE') || data[0];
+				}
 				break;
 			}
 			
 			if (user.email) {
-				const { data: byEmail } = await supabase
+				const { data: byEmail, error: byEmailError } = await supabase
 					.from(tableName)
 					.select('id, email, role, organizationId, patientProfileId')
-					.eq('email', user.email)
-					.maybeSingle();
+					.eq('email', user.email);
 				
-				if (byEmail) {
-					appUser = byEmail;
+				if (!byEmailError && byEmail && byEmail.length > 0) {
+					const metaRole = user.user_metadata?.role;
+					if (metaRole) {
+						appUser = byEmail.find((u: any) => u.role === metaRole) || byEmail[0];
+					} else {
+						appUser = byEmail.find((u: any) => u.role !== 'PACIENTE') || byEmail[0];
+					}
 					break;
 				}
 			}
 		}
 
 		if (!appUser) {
-			console.warn('[Auth Guard] Usuario no encontrado en BD para authId:', user.id);
+			const metaRole = user.user_metadata?.role;
+			if (metaRole) {
+				return {
+					authId: user.id,
+					userId: user.id, // Fallback userId to authId
+					email: user.email || '',
+					role: metaRole as UserRole,
+					organizationId: user.user_metadata?.organizationId || null,
+				};
+			}
+			console.warn('[Auth Guard] Usuario no encontrado en BD ni metadata para authId:', user.id);
 			return null;
 		}
 
@@ -282,7 +301,7 @@ export const ROUTE_ROLE_MAP: Record<string, UserRole[]> = {
 	'/dashboard/medic': ['MEDICO'],
 	'/dashboard/pharmacy': ['FARMACIA'],
 	'/dashboard/patient': ['PACIENTE'],
-	'/nurse': ['ENFERMERA', 'ENFERMERO'],
+	'/dashboard/nurse': ['ENFERMERO', 'ENFERMERA'],
 };
 
 /**

@@ -355,6 +355,12 @@ export async function updateMARStatus(
   omissionReason?: string
 ): Promise<{ error: string | null }> {
   const supabase = getClient();
+  const { data: { user } } = await supabase.auth.getUser();
+
+  if (!user) {
+    return { error: 'No autorizado' };
+  }
+
   const updates: Record<string, unknown> = {
     status,
     updated_at: new Date().toISOString(),
@@ -370,6 +376,42 @@ export async function updateMARStatus(
     .from('nurse_mar_records')
     .update(updates)
     .eq('mar_id', marId);
+
+  if (!error) {
+    // Registrar auditoría obligatoria para MAR
+    try {
+      const { data: profile } = await supabase
+        .from('nurse_profiles')
+        .select('organization_id')
+        .eq('user_id', user.id)
+        .maybeSingle();
+
+      enum ActionMap {
+        administered = 'ADMINISTRAR_MEDICAMENTO',
+        omitted = 'OMITIR_MEDICAMENTO',
+        refused = 'PACIENTE_RECHAZA_MEDICAMENTO',
+        held = 'RETENER_MEDICAMENTO',
+        not_available = 'MEDICAMENTO_NO_DISPONIBLE',
+        pending = 'RESTABLECER_ESTADO_PENDIENTE'
+      }
+
+      await supabase.from('audit_log').insert({
+        user_id: user.id,
+        user_name: user?.user_metadata?.full_name || 'Enfermero',
+        user_role: 'NURSE',
+        organization_id: profile?.organization_id,
+        action_type: ActionMap[status as keyof typeof ActionMap] || 'MAR_STATUS_UPDATE',
+        entity_type: 'MAR_RECORD',
+        entity_id: marId,
+        description: `Se actualizó el estado a ${status}${notes ? '. Notas: ' + notes : ''}${omissionReason ? '. Razón de omisión: ' + omissionReason : ''}`,
+        metadata: { status, notes, omissionReason, updated_at: updates.updated_at }
+      });
+    } catch (auditError) {
+      console.error('[updateMARStatus] audit_log error:', auditError);
+      // No bloqueamos el flujo principal por error de auditoría "silencioso", 
+      // pero en entornos estrictos se debería revertir.
+    }
+  }
 
   return { error: error?.message ?? null };
 }
@@ -746,4 +788,76 @@ export async function verifyOrganizationCode(
     organization: data as { id: string; name: string; address: string | null },
     error: null,
   };
+}
+
+// ─── Inventario y Farmacia ─────────────────────────────────
+
+export async function getPharmacyInventory(organizationId: string) {
+  const supabase = getClient();
+  const { data, error } = await supabase
+    .from('pharmacy_inventory')
+    .select(`
+      *,
+      medication (*)
+    `)
+    .eq('organization_id', organizationId);
+
+  if (error) {
+    console.error('[getPharmacyInventory] error:', error);
+    return [];
+  }
+  return data;
+}
+
+export async function updatePharmacyInventory(id: string, updates: Partial<{ quantity: number; unit_cost: number | null; lot: string | null; expiry_date: string | null }>) {
+  const supabase = getClient();
+  const { data, error } = await supabase
+    .from('pharmacy_inventory')
+    .update(updates)
+    .eq('id', id)
+    .select()
+    .single();
+
+  if (error) {
+    console.error('[updatePharmacyInventory] error:', error);
+    return { data: null, error: error.message };
+  }
+  return { data, error: null };
+}
+
+export async function createPharmacyInventory(dto: {
+  organization_id: string;
+  medication_id: string;
+  lot?: string | null;
+  expiry_date?: string | null;
+  quantity: number;
+  unit_cost?: number | null;
+}) {
+  const supabase = getClient();
+  const { data, error } = await supabase
+    .from('pharmacy_inventory')
+    .insert(dto)
+    .select()
+    .single();
+
+  if (error) {
+    console.error('[createPharmacyInventory] error:', error);
+    return { data: null, error: error.message };
+  }
+  return { data, error: null };
+}
+
+export async function getMedicationList() {
+  const supabase = getClient();
+  const { data, error } = await supabase
+    .from('medication')
+    .select('*')
+    .eq('is_active', true)
+    .order('name');
+
+  if (error) {
+    console.error('[getMedicationList] error:', error);
+    return [];
+  }
+  return data;
 }

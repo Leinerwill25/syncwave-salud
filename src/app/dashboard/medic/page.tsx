@@ -135,7 +135,7 @@ export default function MedicDashboardPage() {
 					onClick={() => setIsModalOpen(true)} 
 					disabled={loadingSession || !userId || !organizationId}
 				>
-					{loadingSession ? 'Cargando sesiÃ³n...' : 'Nueva Cita'}
+					{loadingSession ? 'Cargando sesión...' : 'Nueva Cita'}
 				</Button>
 			</div>
 

@@ -1,5 +1,5 @@
 'use client';
-// src/app/nurse/patient/[id]/layout.tsx
+// src/app/dashboard/nurse/patient/[id]/layout.tsx
 import { ReactNode, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
@@ -83,7 +83,7 @@ export default function PatientDetailsLayout({ children, params }: Props) {
       <div className="bg-white dark:bg-gray-900 rounded-3xl border border-gray-100 dark:border-gray-800 shadow-sm overflow-hidden">
         <div className="p-4 md:p-6 flex flex-col md:flex-row items-start md:items-center gap-6">
           <Link 
-            href="/nurse/queue"
+            href="/dashboard/nurse/queue"
             className="p-2.5 rounded-xl bg-gray-50 dark:bg-gray-800 border border-gray-100 dark:border-gray-700 hover:bg-gray-100 transition-colors hidden md:block"
           >
             <ChevronLeft className="w-5 h-5 text-gray-500" />

@@ -45,7 +45,7 @@ function getNavItems(nurseType: NurseType): NavItem[] {
     ];
   }
   return [
-    { label: 'Dashboard',     href: '/dashboard/nurse/independent/dashboard',  icon: LayoutDashboard },
+    { label: 'Dashboard',     href: '/dashboard/nurse/independent',  icon: LayoutDashboard },
     { label: 'Mis Pacientes', href: '/dashboard/nurse/independent/patients',   icon: Users },
     { label: 'Mis Reportes',  href: '/dashboard/nurse/independent/reports',    icon: FileText },
     { label: 'Mi Perfil',     href: '/dashboard/nurse/independent/settings',   icon: Settings },

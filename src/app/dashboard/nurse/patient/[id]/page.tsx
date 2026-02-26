@@ -1,5 +1,5 @@
 'use client';
-// src/app/nurse/patient/[id]/page.tsx
+// src/app/dashboard/nurse/patient/[id]/page.tsx
 import { useNurseState } from '@/context/NurseContext';
 import { PatientSummaryTab } from '@/components/nurse/clinical/PatientSummaryTab';
 import { Loader2, AlertCircle, User } from 'lucide-react';

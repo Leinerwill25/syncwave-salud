@@ -1,5 +1,5 @@
 'use client';
-// src/app/nurse/patient/[id]/notes/page.tsx
+// src/app/dashboard/nurse/patient/[id]/notes/page.tsx
 import { useSearchParams } from 'next/navigation';
 import { PatientNotesTab } from '@/components/nurse/clinical/PatientNotesTab';
 import { useNurseState } from '@/context/NurseContext';

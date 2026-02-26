@@ -21,8 +21,15 @@ export default function DashboardRedirectPage() {
 					if (roleUserRes.ok) {
 						const roleUserData = await roleUserRes.json();
 						if (roleUserData.authenticated && roleUserData.user) {
-							// Es un usuario de rol, redirigir al dashboard de usuarios de rol
-							router.replace('/dashboard/role-user');
+							const roleName = roleUserData.user.role?.name?.toUpperCase();
+							
+							// Si es enfermería, ir al dashboard de enfermería sin importar que sea usuario de rol
+							if (roleName === 'ENFERMERO' || roleName === 'ENFERMERA') {
+								router.replace('/dashboard/nurse');
+							} else {
+								// Otros roles (Asistentes, Recepción, etc.) van al panel de role-user
+								router.replace('/dashboard/role-user');
+							}
 							return;
 						}
 					}

@@ -53,7 +53,7 @@ export function NurseRegisterSummary({ data, onBack }: Props) {
       }
 
       toast.success('¡Cuenta creada! Revisa tu correo para verificar tu dirección.');
-      router.push('/nurse/independent/dashboard');
+      router.push('/dashboard/nurse/independent');
     } catch (err) {
       toast.error('Error inesperado. Inténtalo de nuevo.');
     } finally {
