@@ -99,15 +99,21 @@ export default function LoginFormAdvanced(): React.ReactElement {
 		}
 	}
 
-	async function fetchRoleFromServer(authId: string): Promise<Role | null> {
+	async function fetchRoleFromServer(authId: string, accessToken?: string): Promise<Role | null> {
 		try {
 			// Add timeout to prevent hanging
 			const controller = new AbortController();
 			const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
 			
+			const headers: Record<string, string> = {};
+			if (accessToken) {
+				headers['Authorization'] = `Bearer ${accessToken}`;
+			}
+
 			const resp = await fetch(`/api/auth/profile?authId=${encodeURIComponent(authId)}`, {
 				signal: controller.signal,
 				credentials: 'include',
+				headers
 			});
 			clearTimeout(timeoutId);
 			
@@ -284,18 +290,21 @@ export default function LoginFormAdvanced(): React.ReactElement {
 				localStorage.removeItem('userEmail');
 			}
 
-			// Ejecutar llamadas en paralelo para mayor velocidad
+			// Ejecutar llamadas en SECUENCIA para evitar condiciones de carrera
 			const isRoleUser = (user.user_metadata as any)?.isRoleUser === true;
 			
-			// Hacer ambas llamadas en paralelo con timeout individual
-			const results = await Promise.allSettled([
-				access_token ? postSessionToServer({ access_token, refresh_token, expires_in, session }, rememberMe) : Promise.resolve(true),
-				user.id ? fetchRoleFromServer(user.id) : Promise.resolve(null),
-			]);
-			
-			// Extract values from settled promises, defaulting to safe values on failure
-			const sessionResult = results[0].status === 'fulfilled' ? results[0].value : false;
-			const roleFromServer: Role | null = results[1].status === 'fulfilled' ? (results[1].value as Role | null) : null;
+			// 1. PRIMERO: Establecer la sesión en el servidor y esperar a que termine
+			let sessionResult = false;
+			if (access_token) {
+				console.log('[LoginForm] Estableciendo sesión en el servidor...');
+				sessionResult = await postSessionToServer({ access_token, refresh_token, expires_in, session }, rememberMe);
+			} else {
+				sessionResult = true; // Fallback para casos raros
+			}
+
+			// 2. SEGUNDO: Una vez establecida la sesión, obtener el rol (pasando el token explícitamente)
+			console.log('[LoginForm] Obteniendo rol del servidor...');
+			const roleFromServer: Role | null = user.id ? await fetchRoleFromServer(user.id, access_token) : null;
 
 			// Precargar datos de sesión en background (no bloquea la redirección)
 			if (access_token && sessionResult) {
