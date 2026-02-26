@@ -894,8 +894,13 @@ export default function ConsultoriosLandingPage() {
                             >
                                 <div className="p-8 flex-1 flex flex-col">
                                     <div className="flex items-center gap-4 mb-6">
-                                        <div className="w-16 h-16 rounded-full bg-teal-100 flex items-center justify-center text-teal-700 font-bold text-2xl border-2 border-teal-50">
-                                            LU
+                                        <div className="w-16 h-16 rounded-full overflow-hidden border-2 border-teal-50 shadow-md relative">
+                                            <Image 
+                                                src="/consultorios/dralisangela/lisangela.jpeg" 
+                                                alt="Dra. Lisangela Utrera" 
+                                                fill 
+                                                className="object-cover"
+                                            />
                                         </div>
                                         <div>
                                             <div className="flex text-amber-500 mb-1">
