@@ -864,16 +864,16 @@ export default function ConsultoriosLandingPage() {
                                         className="object-contain grayscale invert"
                                     />
                                 </div>
-                                <div className="relative h-80 w-full">
+                                <div className="relative h-[450px] w-full">
                                     <Image 
                                         src="/consultorios/dracarwin/IMG_5189.JPG" 
                                         alt="Dra. Carwin Silva" 
                                         fill 
-                                        className="object-cover object-center"
+                                        className="object-cover object-[center_15%]"
                                     />
-                                    <div className="absolute inset-0 bg-gradient-to-t from-slate-900 via-slate-900/20 to-transparent" />
+                                    <div className="absolute inset-0 bg-gradient-to-t from-slate-900 via-slate-900/30 to-transparent" />
                                 </div>
-                                <div className="p-8 pt-2 flex-1 flex flex-col justify-between">
+                                <div className="p-8 pt-2 flex-1 flex flex-col justify-between min-h-[220px]">
                                     <blockquote className="text-xl font-medium text-slate-200 leading-relaxed mb-6">
                                         "Veo un potencial inmenso en ASHIRA. Es la herramienta que los médicos hemos estado esperando para modernizar nuestra gestión diaria sin complicaciones."
                                     </blockquote>
@@ -890,31 +890,24 @@ export default function ConsultoriosLandingPage() {
                                 whileInView={{ opacity: 1, y: 0 }}
                                 viewport={{ once: true }}
                                 transition={{ delay: 0.2 }}
-                                className="relative bg-white border border-slate-100 rounded-3xl overflow-hidden shadow-xl flex flex-col"
+                                className="relative bg-slate-900 rounded-3xl overflow-hidden shadow-2xl flex flex-col"
                             >
-                                <div className="p-8 flex-1 flex flex-col">
-                                    <div className="flex items-center gap-4 mb-6">
-                                        <div className="w-16 h-16 rounded-full overflow-hidden border-2 border-teal-50 shadow-md relative">
-                                            <Image 
-                                                src="/consultorios/dralisangela/lisangela.jpeg" 
-                                                alt="Dra. Lisangela Utrera" 
-                                                fill 
-                                                className="object-cover"
-                                            />
-                                        </div>
-                                        <div>
-                                            <div className="flex text-amber-500 mb-1">
-                                                {[1,2,3,4,5].map(s => <Star key={s} className="w-4 h-4 fill-current" />)}
-                                            </div>
-                                            <span className="text-slate-400 text-xs font-bold uppercase tracking-wider">Verificado</span>
-                                        </div>
-                                    </div>
-                                    <blockquote className="text-lg text-slate-600 leading-relaxed mb-8 flex-1">
-                                        "Lo que más valoro es que <span className="text-slate-900 font-bold bg-teal-50 px-1">respeta mi plantilla de Word de siempre</span>, a diferencia de otros softwares genéricos. Además, grabar la consulta me ahorra muchísimo tiempo."
+                                <div className="relative h-[450px] w-full">
+                                    <Image 
+                                        src="/consultorios/dralisangela/lisangela.jpeg" 
+                                        alt="Dra. Lisangela Utrera" 
+                                        fill 
+                                        className="object-cover object-[center_15%]"
+                                    />
+                                    <div className="absolute inset-0 bg-gradient-to-t from-slate-900 via-slate-900/30 to-transparent" />
+                                </div>
+                                <div className="p-8 pt-2 flex-1 flex flex-col justify-between min-h-[220px]">
+                                    <blockquote className="text-xl font-medium text-slate-200 leading-relaxed mb-6">
+                                        "Lo que más valoro es que <span className="text-teal-400 font-bold bg-teal-400/10 px-1 rounded">respeta mi plantilla de Word de siempre</span>, a diferencia de otros softwares genéricos. Además, grabar la consulta me ahorra muchísimo tiempo."
                                     </blockquote>
-                                    <div className="border-t border-slate-100 pt-6">
-                                        <cite className="not-italic font-bold text-lg text-slate-900 block">Dra. Lisangela Utrera</cite>
-                                        <span className="text-slate-500 text-sm">Ginecóloga y Obstetra</span>
+                                    <div>
+                                        <cite className="not-italic font-bold text-lg text-white block">Dra. Lisangela Utrera</cite>
+                                        <span className="text-teal-400 text-sm font-medium">Ginecóloga y Obstetra</span>
                                     </div>
                                 </div>
                             </motion.div>
