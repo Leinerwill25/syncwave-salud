@@ -5,12 +5,13 @@ import { createServerClient } from '@supabase/ssr';
 // Rutas públicas que no requieren autenticación
 const PUBLIC_ROUTES = ['/login', '/register', '/reset-password', '/api/auth', '/api/plans', '/api/register', '/api/organizations', '/api/public', '/'];
 
-// Mapeo de rutas a roles permitidos
+// 9. Mapeo de rutas a roles permitidos
 const ROUTE_ROLE_MAP: Record<string, string[]> = {
 	'/dashboard/clinic': ['ADMIN', 'CLINICA'],
 	'/dashboard/medic': ['MEDICO'],
 	'/dashboard/pharmacy': ['FARMACIA'],
 	'/dashboard/patient': ['PACIENTE'],
+	'/nurse': ['ENFERMERO', 'ENFERMERA', 'ADMIN'],
 };
 
 // Orígenes permitidos para CORS
@@ -105,7 +106,12 @@ function getRoleRedirectPath(userRole: string, pathname: string): string | null 
 		case 'PACIENTE':
 			redirectPath = '/dashboard/patient';
 			break;
+		case 'ENFERMERO':
+		case 'ENFERMERA':
+			redirectPath = '/nurse/dashboard';
+			break;
 	}
+	// Si ya estamos en una ruta que empieza con el redirectPath deseado, no redirigir
 	return !pathname.startsWith(redirectPath) ? redirectPath : null;
 }
 
@@ -142,50 +148,49 @@ export async function middleware(request: NextRequest) {
 	);
 
 	// 4. Autenticación Robusta
-	let { data: { user }, error: authError } = await supabase.auth.getUser();
+	// Intentar obtener token desde header o cookies
+	const authHeader = request.headers.get('authorization') || request.headers.get('Authorization');
+	let token: string | null = null;
+	if (authHeader?.startsWith('Bearer ')) {
+		token = authHeader.split(' ')[1];
+	}
 
-	// Si falla getUser, intentar restaurar desde cookies manuales (manejo de sb-access-token, etc.)
-	if (!user) {
+	if (!token) {
 		const allCookies = request.cookies.getAll();
-		const sessionCookies = allCookies.filter(c => 
-			c.name === 'sb-access-token' || 
-			c.name === 'sb:token' || 
-			c.name === 'supabase-auth-token' ||
-			c.name.includes('auth-token')
-		);
-
-		for (const cookie of sessionCookies) {
-			try {
-				let at: string | null = null;
-				let rt: string | null = null;
-				
-				try {
-					const parsed = JSON.parse(cookie.value);
-					at = parsed?.access_token || parsed?.currentSession?.access_token;
-					rt = parsed?.refresh_token || parsed?.currentSession?.refresh_token;
-				} catch {
-					if (cookie.name === 'sb-access-token') at = cookie.value;
-					if (cookie.name === 'sb-refresh-token') rt = cookie.value;
-				}
-
-				if (at && rt) {
-					const { data: restoredData } = await supabase.auth.setSession({ access_token: at, refresh_token: rt });
-					if (restoredData?.user) {
-						user = restoredData.user;
-						break;
-					}
-				}
-			} catch (e) {
-				console.error('[Middleware] Fallback session error:', e);
+		for (const cookie of allCookies) {
+			const value = cookie.value;
+			if (!value) continue;
+			if (cookie.name.includes('access-token')) {
+				token = value;
+				break;
 			}
+			try {
+				const parsed = JSON.parse(value);
+				const extracted = parsed?.access_token || parsed?.currentSession?.access_token || parsed?.session?.access_token;
+				if (extracted) {
+					token = extracted;
+					break;
+				}
+			} catch { /* ignore */ }
 		}
+	}
+
+	let user: any = null;
+	if (token) {
+		const { data: { user: userData }, error } = await supabase.auth.getUser(token);
+		if (!error && userData) user = userData;
+	}
+
+	// Fallback a getUser/getSession estándar
+	if (!user) {
+		const { data: { user: userData } } = await supabase.auth.getUser();
+		user = userData;
 	}
 
 	if (isPublicRoute(pathname)) return response;
 
 	if (requiresAuth(pathname)) {
-		if (authError || !user) {
-			console.log(`[Middleware] Auth detectada nula para ${pathname}. Redirecting to login.`);
+		if (!user) {
 			if (pathname.startsWith('/api')) {
 				return NextResponse.json({ error: 'No autenticado' }, { status: 401 });
 			}
@@ -198,7 +203,12 @@ export async function middleware(request: NextRequest) {
 		const { data: appUser } = await supabase.from('users').select('role').eq('authId', user.id).maybeSingle();
 		const userRole = appUser?.role;
 
-		if (!userRole) return NextResponse.redirect(new URL('/login', request.url));
+		if (!userRole) {
+			if (pathname.startsWith('/api')) {
+				return NextResponse.json({ error: 'Usuario sin rol asignado' }, { status: 403 });
+			}
+			return NextResponse.redirect(new URL('/login', request.url));
+		}
 
 		// Verificar autorización por ruta
 		const allowedRoles = getAllowedRolesForRoute(pathname);

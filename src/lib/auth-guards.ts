@@ -1,7 +1,7 @@
 // lib/auth-guards.ts
 // Guards de autenticación y autorización para proteger rutas y APIs
 
-import { cookies } from 'next/headers';
+import { cookies, headers } from 'next/headers';
 import { createSupabaseServerClient } from '@/app/adapters/server';
 import { NextResponse } from 'next/server';
 
@@ -23,125 +23,101 @@ export interface AuthenticatedUser {
 export async function getAuthenticatedUser(): Promise<AuthenticatedUser | null> {
 	try {
 		const cookieStore = await cookies();
+		const headerStore = await headers();
 		let supabase = await createSupabaseServerClient();
 		
-		// Fix defensivo: asegurar que supabase no sea una promesa pendiente (por si acaso)
-		if (supabase && typeof (supabase as any).then === 'function') {
-			supabase = await (supabase as any);
+		// 1. Intentar obtener token desde el header Authorization (más confiable para fetch)
+		const authHeader = headerStore.get('authorization') || headerStore.get('Authorization');
+		let token: string | null = null;
+		if (authHeader?.startsWith('Bearer ')) {
+			token = authHeader.split(' ')[1];
 		}
 
-		if (!supabase || !supabase.auth) {
-			console.error('[Auth Guard] CRITICAL: Supabase client is invalid or missing auth!', { 
-				type: typeof supabase, 
-				hasAuth: !!supabase?.auth,
-				keys: supabase ? Object.keys(supabase) : [] 
-			});
-			// Intentar recuperar creando un cliente básico si falla el adapter (fallback de emergencia)
-			// Esto ayuda si el problema es cookies() o algo en el adapter
-			if (!supabase?.auth) {
-				const { createClient } = await import('@supabase/supabase-js');
-				supabase = createClient(
-					process.env.NEXT_PUBLIC_SUPABASE_URL!,
-					process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-				) as any;
+		// 2. Si no hay header, buscar en cookies de forma exhaustiva
+		if (!token) {
+			const allCookies = cookieStore.getAll();
+			for (const cookie of allCookies) {
+				const value = cookie.value;
+				if (!value) continue;
+
+				// Caso A: Cookie de token directo (sb-access-token)
+				if (cookie.name.includes('access-token')) {
+					token = value;
+					break;
+				}
+
+				// Caso B: Objeto JSON (supabase-auth-token, sb:token, etc.)
+				try {
+					const parsed = JSON.parse(value);
+					const extracted = parsed?.access_token || parsed?.currentSession?.access_token || parsed?.session?.access_token;
+					if (extracted) {
+						token = extracted;
+						break;
+					}
+				} catch {
+					// No es JSON, ignorar
+				}
 			}
 		}
 
-		// Intentar obtener sesión primero
-
-		let { data: sessionData, error: sessionError } = await supabase.auth.getSession();
-
-		// Si no hay sesión, intentar restaurar desde cookies
-		if (!sessionData?.session) {
-			const restored = await tryRestoreSessionFromCookies(supabase as unknown as SupabaseClient, cookieStore);
-			if (restored) {
-				const after = await supabase.auth.getSession();
-				sessionData = after.data ?? after;
-				sessionError = after.error ?? sessionError;
-			}
-		}
-
-		// Obtener usuario de la sesión o intentar getUser()
-		let user = sessionData?.session?.user || null;
-
-		// Si no hay usuario en la sesión, intentar getUser()
-		if (!user) {
-			const { data: { user: userData }, error: authError } = await supabase.auth.getUser();
-			if (!authError && userData) {
+		// 3. Validar el token con Supabase
+		let user: any = null;
+		if (token) {
+			const { data: { user: userData }, error } = await supabase.auth.getUser(token);
+			if (!error && userData) {
 				user = userData;
 			}
 		}
 
-		// Si aún no hay usuario, intentar restaurar desde cookies nuevamente y luego getUser()
+		// 4. Fallback: getSession estándar si no hay token explícito o falló getUser(token)
 		if (!user) {
-			const restored = await tryRestoreSessionFromCookies(supabase as unknown as SupabaseClient, cookieStore);
-			if (restored) {
-				// Intentar getSession después de restaurar
-				const afterSession = await supabase.auth.getSession();
-				if (afterSession.data?.session?.user) {
-					user = afterSession.data.session.user;
-				} else {
-					// Si aún no hay usuario, intentar getUser()
-					const afterUser = await supabase.auth.getUser();
-					user = afterUser.data?.user ?? null;
-				}
-			}
+			const { data: { session } } = await supabase.auth.getSession();
+			user = session?.user || null;
+		}
+
+		// 5. Último intento: getUser() sin argumentos (por si el adapter tiene su propio estado)
+		if (!user) {
+			const { data: { user: userData } } = await supabase.auth.getUser();
+			user = userData;
 		}
 
 		if (!user) {
-			console.warn('[Auth Guard] No se pudo obtener usuario autenticado después de todos los intentos');
+			console.warn('[Auth Guard] No se pudo obtener usuario autenticado');
 			return null;
 		}
 
-		// Obtener usuario de la app - usar nombres robustos (priorizar 'users' que es el estándar actual)
+		// 6. Buscar el usuario en la base de datos de la aplicación
 		const tableCandidates = ['users', 'user'];
 		let appUser: any = null;
-		let usedTableName: string | null = null;
-
-		// Verificar que tenemos una sesión activa antes de consultar (necesaria para RLS)
-		const { data: sessionInfo } = await supabase.auth.getSession();
-		const finalUser = user || sessionInfo?.session?.user;
-
-		if (!finalUser) {
-			console.warn('[Auth Guard] No se pudo obtener el usuario de Auth después de restaurar');
-			return null;
-		}
 
 		for (const tableName of tableCandidates) {
-			try {
-				const { data, error } = await supabase
+			const { data, error } = await supabase
+				.from(tableName)
+				.select('id, email, role, organizationId, patientProfileId')
+				.eq('authId', user.id)
+				.maybeSingle();
+
+			if (!error && data) {
+				appUser = data;
+				break;
+			}
+			
+			if (user.email) {
+				const { data: byEmail } = await supabase
 					.from(tableName)
 					.select('id, email, role, organizationId, patientProfileId')
-					.eq('authId', finalUser.id)
+					.eq('email', user.email)
 					.maybeSingle();
-
-				if (!error && data) {
-					appUser = data;
-					usedTableName = tableName;
+				
+				if (byEmail) {
+					appUser = byEmail;
 					break;
 				}
-				
-				// Si no hay datos por authId, intentar por email como respaldo rápido
-				if (!data && finalUser.email) {
-					const { data: byEmail } = await supabase
-						.from(tableName)
-						.select('id, email, role, organizationId, patientProfileId')
-						.eq('email', finalUser.email)
-						.maybeSingle();
-					
-					if (byEmail) {
-						appUser = byEmail;
-						usedTableName = tableName;
-						break;
-					}
-				}
-			} catch (err: any) {
-				continue;
 			}
 		}
 
 		if (!appUser) {
-			console.warn('[Auth Guard] Usuario no encontrado en BD para authId:', finalUser.id);
+			console.warn('[Auth Guard] Usuario no encontrado en BD para authId:', user.id);
 			return null;
 		}
 
@@ -154,9 +130,7 @@ export async function getAuthenticatedUser(): Promise<AuthenticatedUser | null> 
 			patientProfileId: appUser.patientProfileId,
 		};
 	} catch (err) {
-		const errorMessage = err instanceof Error ? err.message : 'Error desconocido';
-		console.error('[Auth Guard] Error:', errorMessage, err);
-		// Retornar null solo en errores fatales
+		console.error('[Auth Guard] Error catastrófico:', err);
 		return null;
 	}
 }
