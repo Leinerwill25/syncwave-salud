@@ -3,7 +3,7 @@ import { type NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
 
 // Rutas públicas que no requieren autenticación
-const PUBLIC_ROUTES = ['/login', '/register', '/reset-password', '/api/auth', '/api/plans', '/api/register', '/api/public', '/'];
+const PUBLIC_ROUTES = ['/login', '/register', '/reset-password', '/api/auth', '/api/plans', '/api/register', '/api/organizations', '/api/public', '/'];
 
 // Mapeo de rutas a roles permitidos
 const ROUTE_ROLE_MAP: Record<string, string[]> = {
