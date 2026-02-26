@@ -44,12 +44,15 @@ export async function GET(request: Request) {
 		if (role === 'MEDICO') {
 			// Para médicos, buscar plan con slug 'medico' específicamente
 			filteredPlans = filteredPlans.filter((plan) => plan.slug === 'medico');
+		} else if (role === 'ENFERMERO') {
+			// Para enfermeros, buscar plan con slug 'enfermero-independiente' específicamente
+			filteredPlans = filteredPlans.filter((plan) => plan.slug === 'enfermero-independiente');
 		} else if (role === 'PACIENTE') {
 			// Para pacientes, no devolver planes (son gratuitos)
 			filteredPlans = [];
 		} else if (role === 'ADMIN' || role === 'FARMACIA' || role === 'LABORATORIO') {
-			// Para organizaciones, excluimos planes de medico y paciente
-			filteredPlans = filteredPlans.filter(p => !['medico', 'paciente', 'paciente-individual', 'paciente-family', 'paciente-gratis'].includes(p.slug));
+			// Para organizaciones, excluimos planes de medico, enfermero y paciente
+			filteredPlans = filteredPlans.filter(p => !['medico', 'enfermero-independiente', 'paciente', 'paciente-individual', 'paciente-family', 'paciente-gratis'].includes(p.slug));
 			
 			// Si hay specialistCount, filtramos por rango
 			if (specialistCount) {

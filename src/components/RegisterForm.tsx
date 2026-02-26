@@ -482,6 +482,8 @@ export default function RegisterForm(): React.ReactElement {
 					annualPrice: nursePlan.annualPrice,
 				};
 			}
+			// Fallback if not found in DB
+			return { slug: 'enfermero-independiente', label: 'Enfermería Independiente', price: 65.00, quarterlyPrice: 175.50, annualPrice: 546.00 };
 		}
 
 		if (role === 'PACIENTE') {
@@ -546,8 +548,8 @@ export default function RegisterForm(): React.ReactElement {
 	const passwordValid = password.length >= 8;
 	const passwordsMatch = confirmPassword.length > 0 && confirmPassword === password;
 	const step1Valid = fullNameValid && emailValid && passwordValid && passwordsMatch;
-	// para orgs normales requerimos orgName y specialistCount >=1; para MEDICO requerimos orgName (puede ser su consultorio) pero no specialistCount
-	const step2OrgValid = orgName.trim().length > 2 && (role === 'PACIENTE' ? true : (role === 'MEDICO' || role === 'ENFERMERO') ? true : specialistCount >= 1) && (role === 'ENFERMERO' ? licenseNumber.trim().length > 3 : true);
+	// para orgs normales requerimos orgName y specialistCount >=1; para MEDICO requerimos orgName pero no specialistCount; para ENFERMERO requerimos licenseNumber pero no orgName ni specialistCount
+	const step2OrgValid = role === 'PACIENTE' ? true : role === 'ENFERMERO' ? licenseNumber.trim().length > 3 : (orgName.trim().length > 2 && (role === 'MEDICO' ? true : specialistCount >= 1));
 	const step2PatientValid = firstName.trim().length > 1 && lastName.trim().length > 1 && identifier.trim().length > 3;
 	const finalValid = role === 'PACIENTE' ? step1Valid && step2PatientValid : step1Valid && step2OrgValid;
 
@@ -718,7 +720,7 @@ export default function RegisterForm(): React.ReactElement {
 				};
 			} else {
 				payload.organization = {
-					orgName,
+					orgName: role === 'ENFERMERO' && !orgName ? `Atención Independiente - ${fullName}` : orgName,
 					orgType,
 					specialistCount,
 					sedeCount: numericSedeCount, // Add sedeCount
@@ -1164,41 +1166,45 @@ export default function RegisterForm(): React.ReactElement {
 							</h3>
 							<p className="text-sm text-slate-600 ml-3">Datos de tu consultorio u organización médica</p>
 						</div>
-						<div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-							<label className="block group">
-								<span className={labelClass}>
-									<span className="inline-flex items-center gap-2">
-										<svg className="w-4 h-4 text-teal-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-											<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-										</svg>
-										Nombre de la organización / consultorio
-									</span>
-								</span>
-								<input value={orgName} onChange={(e) => setOrgName(e.target.value)} className={inputClass} placeholder="Ej: Clínica Santa Rosa (o tu consultorio)" required />
-							</label>
+						<div className={`grid grid-cols-1 ${role === 'ENFERMERO' ? '' : 'md:grid-cols-2'} gap-6`}>
+							{role !== 'ENFERMERO' && (
+								<>
+									<label className="block group">
+										<span className={labelClass}>
+											<span className="inline-flex items-center gap-2">
+												<svg className="w-4 h-4 text-teal-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+													<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+												</svg>
+												Nombre de la organización / consultorio
+											</span>
+										</span>
+										<input value={orgName} onChange={(e) => setOrgName(e.target.value)} className={inputClass} placeholder="Ej: Clínica Santa Rosa (o tu consultorio)" required />
+									</label>
 
-							<label className="block group">
-								<span className={labelClass}>
-									<span className="inline-flex items-center gap-2">
-										<svg className="w-4 h-4 text-teal-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-											<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-										</svg>
-										Tipo de organización
-									</span>
-								</span>
-								{/* Si role === 'MEDICO' este select queda deshabilitado y orgType ya estará forzado a 'CONSULTORIO' */}
-								<select value={orgType} onChange={(e) => setOrgType(e.target.value as OrgType)} className={selectClass} disabled={role === 'MEDICO'}>
-									<option value="CONSULTORIO">Consultorio Privado</option>
-									<option value="HOSPITAL">Hospital</option>
-									<option value="CLINICA">Clínica</option>
-									<option value="FARMACIA" disabled>
-										Farmacia (Próximamente)
-									</option>
-									<option value="LABORATORIO" disabled>
-										Laboratorio (Próximamente)
-									</option>
-								</select>
-							</label>
+									<label className="block group">
+										<span className={labelClass}>
+											<span className="inline-flex items-center gap-2">
+												<svg className="w-4 h-4 text-teal-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+													<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+												</svg>
+												Tipo de organización
+											</span>
+										</span>
+										{/* Si role === 'MEDICO' este select queda deshabilitado y orgType ya estará forzado a 'CONSULTORIO' */}
+										<select value={orgType} onChange={(e) => setOrgType(e.target.value as OrgType)} className={selectClass} disabled={role === 'MEDICO'}>
+											<option value="CONSULTORIO">Consultorio Privado</option>
+											<option value="HOSPITAL">Hospital</option>
+											<option value="CLINICA">Clínica</option>
+											<option value="FARMACIA" disabled>
+												Farmacia (Próximamente)
+											</option>
+											<option value="LABORATORIO" disabled>
+												Laboratorio (Próximamente)
+											</option>
+										</select>
+									</label>
+								</>
+							)}
 
 							{/* Si es MEDICO o ENFERMERO no pedimos número de especialistas (es 1 por defecto); para otros roles sí */}
 							{(role === 'MEDICO' || role === 'ENFERMERO') ? (
@@ -1311,7 +1317,7 @@ export default function RegisterForm(): React.ReactElement {
 								<input value={orgPhone} onChange={(e) => setOrgPhone(e.target.value)} className={inputClass} placeholder="+58 412 0000000" />
 							</label>
 
-							<label className="md:col-span-2 block group">
+							<label className={`${role === 'ENFERMERO' ? '' : 'md:col-span-2'} block group`}>
 								<span className={labelClass}>
 									<span className="inline-flex items-center gap-2">
 										<svg className="w-4 h-4 text-teal-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1752,14 +1758,20 @@ export default function RegisterForm(): React.ReactElement {
 							</div>
 						</div>
 
-						{role === 'MEDICO' ? (
+						{role === 'MEDICO' || role === 'ENFERMERO' ? (
 							<div className="p-4 sm:p-6 rounded-2xl border-2 border-emerald-600 bg-white shadow-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
 								<div className="flex-1">
 									<div className="inline-flex items-center gap-2 bg-emerald-100 text-emerald-800 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider mb-2">
 										Plan Recomendado
 									</div>
-									<h4 className="text-lg sm:text-xl font-bold text-slate-900">Plan Médico — Usuario individual</h4>
-									<p className="text-sm text-slate-600 mt-1">Acceso total a la plataforma para médicos independientes con consultorio propio.</p>
+									<h4 className="text-lg sm:text-xl font-bold text-slate-900">
+										{role === 'MEDICO' ? 'Plan Médico — Usuario individual' : 'Plan Enfermería Independiente'}
+									</h4>
+									<p className="text-sm text-slate-600 mt-1">
+										{role === 'MEDICO' 
+											? 'Acceso total a la plataforma para médicos independientes con consultorio propio.' 
+											: 'Plan diseñado exclusivamente para profesionales de enfermería en el ejercicio independiente.'}
+									</p>
 								</div>
 								<div className="text-left sm:text-right bg-slate-50 p-4 rounded-xl border border-slate-100 min-w-[140px]">
 									<div className="text-2xl sm:text-3xl font-black text-emerald-600">€{recommendedPlan.price.toFixed(2)}</div>

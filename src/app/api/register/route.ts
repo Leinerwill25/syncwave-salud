@@ -235,6 +235,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
         nurse_type: 'independent', // Los registrados directamente son independientes
         license_number: organization?.licenseNumber || `LICENSE-${randomUUID().substring(0, 8)}`,
         status: 'active',
+        can_attend_independently: true,
         organization_id: orgRec?.id ?? null
       });
       if (nurseErr) {
