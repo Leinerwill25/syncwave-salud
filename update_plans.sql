@@ -40,9 +40,15 @@ INSERT INTO "public"."plan" (
     '2.92',    -- Trimestral: $1.08 x 3 x 0.90 = $2.92 (Ahorro 10%)
     '9.07',    -- Anual: $1.08 x 12 x 0.70 = $9.07 (Ahorro 30%)
     'Portal individual para llevar el control total de tu salud.
-▸ Mensual ($1.08/mes): Historial Médico Completo (HCE), agenda de citas online, acceso a recetas y resultados de laboratorio. Respaldo mensual en la nube con privacidad estricta.
+▸ Mensual ($1.08/mes): Historial Médico Completo, agenda de citas online, acceso a recetas y resultados de laboratorio. Respaldo mensual en la nube.
 ▸ Trimestral ($2.92 — Ahorro 10%): Todo lo anterior + Soporte Prioritario.
-▸ Anual ($9.07 — Ahorro 30%): Todo lo anterior + Auditoría Anual de Datos.',
+▸ Anual ($9.07 — Ahorro 30%): Todo lo anterior + Auditoría Anual de Datos.
+
+Funcionalidades de Paciente incluidas:
+- Visualización de Historial Médico (Conclusiones de la consulta).
+- Agenda interactiva de Citas Online y reprogramación.
+- Acceso inmediato a descarga de recetas (PDF) e indicaciones pasadas.
+- Integración para subir o revisar resultados de laboratorio e imágenes médicas.',
     '2025-11-07 15:20:17.724421+00',
     '2026-02-27 00:00:00.000000+00'
 ),
@@ -56,9 +62,13 @@ INSERT INTO "public"."plan" (
     '6.75',    -- Trimestral: $2.50 x 3 x 0.90 = $6.75 (Ahorro 10%)
     '21.00',   -- Anual: $2.50 x 12 x 0.70 = $21.00 (Ahorro 30%)
     'Administra la salud de hasta 5 miembros de tu familia desde un solo perfil (Administrador Maestro).
-▸ Mensual ($2.50/mes): Historial individual por miembro, agenda de citas, acceso a recetas y resultados de laboratorio de cada integrante.
+▸ Mensual ($2.50/mes): Historial individual por miembro, agenda, recetas y resultados.
 ▸ Trimestral ($6.75 — Ahorro 10%): Todo lo anterior + Soporte Prioritario.
-▸ Anual ($21.00 — Ahorro 30%): Todo lo anterior + Auditoría Anual de Datos.',
+▸ Anual ($21.00 — Ahorro 30%): Todo lo anterior + Auditoría Anual de Datos.
+
+Funcionalidades del Plan Familiar:
+- Perfil Maestro con control sobre 5 historiales clínicos distintos.
+- Gestión consolidada de múltiples agendas familiares y visualización de diagnósticos separados.',
     '2025-11-07 15:20:17.724421+00',
     '2026-02-27 00:00:00.000000+00'
 ),
@@ -76,9 +86,17 @@ INSERT INTO "public"."plan" (
     '54.00',   -- Trimestral: $20 x 3 x 0.90 = $54.00 (Ahorro 10%)
     '168.00',  -- Anual: $20 x 12 x 0.70 = $168.00 (Ahorro 30%, ahorras $72/año)
     'Sistema clínico para profesionales de enfermería en ejercicio independiente o domiciliario.
-▸ Mensual ($20/mes): Notas de Enfermería Digitales estructuradas, Control de Signos Vitales en gráficas (peso, tensión, glucosa, SpO2 y específicos por especialidad), MAR (Control de administración de medicamentos), Gestión de Turnos y Tareas, Comunicación Directa (Chat) con médico tratante.
+▸ Mensual ($20/mes): Funcionalidades operativas core.
 ▸ Trimestral ($54 — Ahorro 10%): Todo lo anterior + Migración de Datos Gratis y Soporte VIP.
-▸ Anual ($168 — Ahorro 30%, ahorras $72 al año): Todo lo anterior + Configuración Asistida (Zoom), Capacitación y Prioridad en nuevas funciones.',
+▸ Anual ($168 — Ahorro 30%): Todo lo anterior + Configuración Asistida y Prioridad en funciones.
+
+Funcionalidades de Enfermería incluidas:
+- Notas de Enfermería Digitales estructuradas y control clínico offline.
+- Signos Vitales interactivos con gráficas (peso, tensión, glicemia, SpO2).
+- Cuidado Domiciliario: Formularios de Procedencia y Tratamientos previos.
+- MAR (Medication Administration Record) en línea de tiempo/Kardex para control de medicamentos.
+- Reportes PDF de Fin de Turno automatizados. Dashboard de guardias y tareas.
+- Módulo Híbrido "Mis Pacientes" (incluye toma y registro rápido de pacientes no registrados).',
     '2026-02-26 02:54:51.097803+00',
     '2026-02-27 00:00:00.000000+00'
 ),
@@ -96,10 +114,15 @@ INSERT INTO "public"."plan" (
     '49',       -- Mensual: $49
     '132.30',   -- Trimestral: $49 x 3 x 0.90 = $132.30 (Ahorro 10%)
     '411.60',   -- Anual: $49 x 12 x 0.70 = $411.60 (Ahorro 30%, ahorras $176.40/año)
-    'Optimizado para el especialista que gestiona su propia marca y delega tareas operativas a su equipo (hasta 2 usuarios de staff: Asistente y Recepción).
-▸ Mensual ($49/mes): Historia Clínica Digital (HCE) 24/7, Agenda con Recordatorios Automáticos por WhatsApp (reduce ausentismo), Receta Electrónica en PDF/DOCX con plantillas personalizables, Consulta Sucesiva para pacientes con estudios previos, Facturación Básica en múltiples monedas (USD/Bs). Roles incluidos: Asistente (Recepción, Pago, Triaje) y Recepción (Flujo y Caja Chica).
-▸ Trimestral ($132.30 — Ahorro 10%): Todo lo anterior + Migración de Datos Gratis y Soporte Prioritario VIP.
-▸ Anual ($411.60 — Ahorro 30%, ahorras $176.40 al año): Todo lo anterior + Configuración Asistida (Zoom), Capacitación a Personal, Auditoría Anual de Datos y Prioridad en nuevas funciones.',
+    'Optimizado para el especialista que gestiona su propia marca y delega tareas operativas (hasta 2 usuarios de staff).
+▸ Mensual ($49/mes): Uso total de HCE, Agenda y Finanzas.
+▸ Trimestral ($132.30 — Ahorro 10%): Todo lo mensual + Migración Gratis y Soporte VIP.
+▸ Anual ($411.60 — Ahorro 30%): Todo lo trimestral + Configuración (Zoom), Capacitación y Auditoría.
+
+Módulos y Roles Permitidos:
+- ROL MÉDICO ESPECIALISTA: Creación y consulta HCE, registro SOAP, recetas electrónicas PDF/DOCX personalizadas, consulta sucesiva optimizada, órdenes de laboratorio, facturación multi-moneda básica, estadísticas financieras.
+- ROL ASISTENTE DE CITAS: Agendamiento total y control de flujos de sala. Triaje clínico inicial (signos vitales básicos o síntomas). Restricción estricta de modificación de HCE o emisión de récipes.
+- ROL RECEPCIÓN (FLUJO Y PAGO): Control de llegadas, verificación y registro de pagos, "Caja Chica". Generación de facturas simples. Oclusión total del historial clínico (Cero acceso a HCE por seguridad/HIPAA).',
     '2025-11-07 15:20:17.724421+00',
     '2026-02-27 00:00:00.000000+00'
 ),
@@ -122,10 +145,16 @@ INSERT INTO "public"."plan" (
     '20',      -- $20/mes por especialista invitado
     '54.00',   -- Trimestral por especialista: $20 x 3 x 0.90 (Ahorro 10%)
     '168.00',  -- Anual por especialista: $20 x 12 x 0.70 (Ahorro 30%)
-    'Para consultorios grupales y centros pequeños. Precio: $130/mes (acceso administrador) + $20/mes por especialista invitado.
-▸ Mensual ($130 base + $20/esp.): Gestión Multi-Sede centralizada, Panel de Roles (Administrador, Médicos, Recepcionista, Facturación), Sugerencia Inteligente de Sede, Verificación de Pagos.
-▸ Trimestral (10% dto. sobre tarifa/esp.): Todo lo anterior + Soporte Prioritario VIP y Migración de Datos Gratis.
-▸ Anual (30% dto. sobre tarifa/esp.): Todo lo anterior + Configuración Asistida (Zoom), Capacitación a Personal y Auditoría Anual de Datos.',
+    'Para consultorios grupales y centros pequeños. Precio: $130/mes (acceso admin) + $20/mes por especialista invitado.
+▸ Mensual: Multi-Sede centralizada, Verificación de Pagos, roles múltiples.
+▸ Trimestral (10% dto./esp): Todo lo anterior + Soporte Prioritario VIP.
+▸ Anual (30% dto./esp): Todo lo anterior + Configuración (Zoom), Capacitación.
+
+Funcionalidades de Clínica integradas:
+- ROL ADMINISTRADOR MAESTRO: Gestión multi-sede simultánea, panel de especialistas invitados, Sugerencia Inteligente de Sede, Inventario e insumos por sede, Verificación y auditoría central de pagos contra fraudes. Asignación granular de permisos a todos.
+- ROL MÉDICO INVITADO: Solo visualiza pacientes asignados a él en las sedes donde labora, control propio de HCE y agenda individual.
+- ROL FACTURACIÓN / GERENCIA: Back-office financiero, panel completo de transacciones, cuentas por cobrar, estados bancarios y reportes de rentabilidad bruta de turnos. Sin capacidades clínicas.
+- ROLES DE STAFF INCLUIDOS: Asistente de Citas y Recepción de Pagos (flujo estricto sin violar privacidad de pacientes).',
     '2025-11-07 15:20:17.724421+00',
     '2026-02-27 00:00:00.000000+00'
 ),
@@ -140,10 +169,17 @@ INSERT INTO "public"."plan" (
     '18',      -- $18/mes por especialista invitado
     '48.60',   -- Trimestral: $18 x 3 x 0.90 (Ahorro 10%)
     '151.20',  -- Anual: $18 x 12 x 0.70 (Ahorro 30%)
-    'Para centros ambulatorios y de diagnóstico. Precio: $130/mes (acceso administrador) + $18/mes por especialista invitado.
-▸ Mensual ($130 base + $18/esp.): Gestión Multi-Sede centralizada, Panel de Roles (Administrador, Médicos, Recepcionista, Facturación), Sugerencia Inteligente de Sede, Analytics Empresarial.
-▸ Trimestral (10% dto. sobre tarifa/esp.): Todo lo anterior + Soporte Prioritario VIP y Migración de Datos Gratis.
-▸ Anual (30% dto. sobre tarifa/esp.): Todo lo anterior + Configuración Asistida (Zoom), Capacitación a Personal y Auditoría Anual de Datos.',
+    'Para centros ambulatorios y de diagnóstico. Precio: $130/mes (acceso admin) + $18/mes por especialista invitado.
+▸ Mensual: Multi-Sede centralizada, Verificación de Pagos, roles múltiples.
+▸ Trimestral (10% dto./esp): Todo lo anterior + Soporte Prioritario VIP.
+▸ Anual (30% dto./esp): Todo lo anterior + Configuración (Zoom), Capacitación.
+
+Funcionalidades de Clínica integradas:
+- ROL ADMINISTRADOR MAESTRO: Gestión multi-sede simultánea, panel de especialistas invitados, Sugerencia Inteligente de Sede, Inventario e insumos por sede, Analytics Empresarial, Auditoría central de pagos contra fraudes y asigación granular.
+- ROL MÉDICO INVITADO: Visualiza pacientes asignados, control propio de su HCE y agenda individual.
+- ROL FACTURACIÓN / GERENCIA: Funciones de Back-office, panel de transacciones, cuentas por cobrar y reportes de rentabilidad bruta (Sin capacidades clínicas).
+- ROL ENFERMERÍA CLÍNICA: Integrado para salas (Signos Vitales y control).
+- ROLES DE STAFF INCLUIDOS: Asistente Clásico y Recepción Logística.',
     '2025-11-07 15:20:17.724421+00',
     '2026-02-27 00:00:00.000000+00'
 ),
@@ -158,10 +194,14 @@ INSERT INTO "public"."plan" (
     '16',      -- $16/mes por especialista invitado
     '43.20',   -- Trimestral: $16 x 3 x 0.90 (Ahorro 10%)
     '134.40',  -- Anual: $16 x 12 x 0.70 (Ahorro 30%)
-    'Para clínicas medianas con urgencias y múltiples especialidades. Precio: $130/mes (acceso administrador) + $16/mes por especialista invitado.
-▸ Mensual ($130 base + $16/esp.): Gestión Multi-Sede centralizada, Panel de Roles (Administrador, Médicos, Recepcionista, Facturación), Sugerencia Inteligente de Sede, Analytics Empresarial.
-▸ Trimestral (10% dto. sobre tarifa/esp.): Todo lo anterior + Soporte Prioritario VIP y Migración de Datos Gratis.
-▸ Anual (30% dto. sobre tarifa/esp.): Todo lo anterior + Configuración Asistida (Zoom), Capacitación a Personal y Auditoría Anual de Datos.',
+    'Para clínicas medianas con urgencias y especialidades. Precio: $130/mes (acceso admin) + $16/mes por especialista invitado.
+▸ Trimestral (10% dto./esp) y Anual (30% dto./esp) disponibles.
+
+Funcionalidades Nivel Pro:
+- Mapa de Camas y Observación: Integración directa al panel de enfermería clínico para seguimiento de internos. Alertas en tiempo real.
+- ROL ADMINISTRADOR MAESTRO: Multi-Sede, Sugerencia Inteligente, Analytics Empresarial, Auditoría integral.
+- ROL FACTURACIÓN / GERENCIA: Cierre de caja complejo multisucursal, estadísticas de rentabilidad, cuentas por cobrar. 
+- Todos los roles de línea incluidos: Médicos Invitados, Enfermeros de piso, Asistentes de triaje y Recepcionistas de pago (100% oclusión de HCE a recepcionistas).',
     '2025-11-07 15:20:17.724421+00',
     '2026-02-27 00:00:00.000000+00'
 ),
@@ -176,10 +216,14 @@ INSERT INTO "public"."plan" (
     '14',      -- $14/mes por especialista invitado
     '37.80',   -- Trimestral: $14 x 3 x 0.90 (Ahorro 10%)
     '117.60',  -- Anual: $14 x 12 x 0.70 (Ahorro 30%)
-    'Para grandes clínicas privadas con múltiples sedes y alta carga operativa. Precio: $130/mes (acceso administrador) + $14/mes por especialista invitado.
-▸ Mensual ($130 base + $14/esp.): Gestión Multi-Sede centralizada, Panel de Roles (Administrador, Médicos, Recepcionista, Facturación), Sugerencia Inteligente de Sede, Analytics Empresarial avanzado.
-▸ Trimestral (10% dto. sobre tarifa/esp.): Todo lo anterior + Soporte Prioritario VIP y Migración de Datos Gratis.
-▸ Anual (30% dto. sobre tarifa/esp.): Todo lo anterior + Configuración Asistida (Zoom), Capacitación a Personal y Auditoría Anual de Datos.',
+    'Para grandes clínicas privadas con múltiples sedes y alta carga operativa. Precio: $130/mes (acceso admin) + $14/mes por especialista invitado.
+▸ Trimestral (10% dto./esp) y Anual (30% dto./esp) disponibles.
+
+Funcionalidades Nivel Enterprise:
+- Operaciones a Gran Escala: Gestión de hasta 200 especialistas con delegación jerárquica ilimitada. Analytics Empresarial avanzado.
+- Mapa de Camas y Observación interactivo con notificaciones Push para el cuerpo médico.
+- Roles Clínicos Seguros: Administrador (Maestro general), Gerencia Financiera, Médicos (Dueños de su HC asignada), Enfermería de piso (Reportes MAR), Asistentes y Recepción (Verificación aislada de pagos sin tocar historial clínico de pacientes).
+- Auditoría Anual de Datos y Soporte Dedicado.',
     '2025-11-07 15:20:17.724421+00',
     '2026-02-27 00:00:00.000000+00'
 ),
