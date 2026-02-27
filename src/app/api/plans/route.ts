@@ -83,9 +83,9 @@ export async function GET(request: Request) {
 				name: plan.name,
 				minSpecialists: plan.minSpecialists,
 				maxSpecialists: plan.maxSpecialists,
-				monthlyPrice: plan.monthlyPrice * 0.30,
-				quarterlyPrice: plan.quarterlyPrice ? plan.quarterlyPrice * 0.30 : null,
-				annualPrice: plan.annualPrice ? plan.annualPrice * 0.30 : null,
+				monthlyPrice: plan.monthlyPrice,
+				quarterlyPrice: plan.quarterlyPrice ? plan.quarterlyPrice : null,
+				annualPrice: plan.annualPrice ? plan.annualPrice : null,
 				description: plan.description,
 			})),
 		});

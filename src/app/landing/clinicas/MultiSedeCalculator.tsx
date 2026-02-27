@@ -16,11 +16,11 @@ export function MultiSedeCalculator() {
 
     // --- Logic ---
     const getBasePlan = (count: number) => {
-        if (count <= 1) return { name: "Individual", price: 21.00, tier: "Consultorios" }; // Edge case
-        if (count <= 10) return { name: "Starter", price: 16.80, tier: "Grupos Pequeños" };
-        if (count <= 30) return { name: "Clínica", price: 14.70, tier: "Centros Medianos" };
-        if (count <= 80) return { name: "Pro", price: 12.60, tier: "Clínicas Tipo B" };
-        if (count <= 200) return { name: "Enterprise", price: 10.50, tier: "Grandes Inst." };
+        if (count <= 1) return { name: "Individual", price: 70.00, tier: "Consultorios" }; // Edge case
+        if (count <= 10) return { name: "Starter", price: 56.00, tier: "Grupos Pequeños" };
+        if (count <= 30) return { name: "Clínica", price: 49.00, tier: "Centros Medianos" };
+        if (count <= 80) return { name: "Pro", price: 42.00, tier: "Clínicas Tipo B" };
+        if (count <= 200) return { name: "Enterprise", price: 35.00, tier: "Grandes Inst." };
         return { name: "Personalizado", price: 0, tier: "Corporativo" };
     };
 
