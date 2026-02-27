@@ -108,7 +108,7 @@ INSERT INTO "public"."plan" (
 ) VALUES 
 ('6640ea96-e022-42da-9ccd-1ccc90bedc88', 'paciente-individual', 'Paciente — Individual', '0', '0', '1.08', '3.09', '12.99', 'Portal individual con acceso al Historial Médico Completo (HCE) y agenda de citas online, garantizando disponibilidad y privacidad estricta. Respaldo mensual de data en la nube.', '2025-11-07 15:20:17.724421+00', '2025-11-07 15:20:17.724421+00'), 
 ('156c1221-576b-46de-90be-ab3022fbdecc', 'paciente-family', 'Paciente — Plan Familiar (hasta 5)', '0', '5', '2.5', '7.12', '29.99', 'Administra y supervisa unívocamente (Administrador Maestro) un perfil con capacidad de agregar y manejar la salud y las citas médicas de hasta 5 miembros de un núcleo familiar.', '2025-11-07 15:20:17.724421+00', '2025-11-07 15:20:17.724421+00'),
-('paciente-gratis-UUID-REMPLAZABLE', 'paciente-gratis', 'Plan Gratuito', '0', '0', '0', '0', '0', 'Plan individual para llevar el control de tu salud. Acceso gratuito a tu historial médico, citas, recetas y resultados de laboratorio desde cualquier dispositivo.', '2025-11-07 15:20:17.724421+00', '2025-11-07 15:20:17.724421+00')
+('f9a7b9c1-1e2a-43d2-8a90-123456789abc', 'paciente-gratis', 'Plan Gratuito', '0', '0', '0', '0', '0', 'Plan individual para llevar el control de tu salud. Acceso gratuito a tu historial médico, citas, recetas y resultados de laboratorio desde cualquier dispositivo.', '2025-11-07 15:20:17.724421+00', '2025-11-07 15:20:17.724421+00')
 ON CONFLICT ("slug") DO UPDATE SET 
     "description" = EXCLUDED."description",
     "monthlyPrice" = EXCLUDED."monthlyPrice",
