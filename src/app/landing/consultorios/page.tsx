@@ -963,7 +963,7 @@ export default function ConsultoriosLandingPage() {
                             {[
                                 { 
                                     name: "Mensual", 
-                                    price: "70", 
+                                    price: "21", 
                                     period: "/mes", 
                                     desc: "Facturado mensualmente", 
                                     feats: [
@@ -983,9 +983,9 @@ export default function ConsultoriosLandingPage() {
                                 },
                                 { 
                                     name: "Trimestral", 
-                                    price: "63", 
+                                    price: "18.90", 
                                     period: "/mes", 
-                                    desc: "Ahorra 10% (Pago único de €189)", 
+                                    desc: "Ahorra 10% (Pago único de €56.70)", 
                                     popular: true,
                                     feats: [
                                         "Historia Clínica Ilimitada",
@@ -1005,13 +1005,13 @@ export default function ConsultoriosLandingPage() {
                                 },
                                 { 
                                     name: "Anual", 
-                                    price: "49", 
+                                    price: "14.70", 
                                     period: "/mes", 
                                     desc: "Ahorra 30% (Mejor Inversión)", 
                                     bestValue: true,
                                     feats: [
                                         "TODO lo del plan Trimestral",
-                                        "Ahorras €252 al año",
+                                        "Ahorras €75.60 al año",
                                         "Configuración Asistida (Zoom)",
                                         "Capacitación a Personal",
                                         "Auditoría Anual de Datos",

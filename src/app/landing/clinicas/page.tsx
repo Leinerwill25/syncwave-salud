@@ -609,10 +609,10 @@ export default function ClinicasLandingPage() {
 
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 lg:items-end">
                             {[
-                                { name: "Starter", tier: "Grupos Pequeños", range: "2–10 Especialistas", price: 56, limit: "1.500", highlight: false },
-                                { name: "Clínica", tier: "Centros Medianos", range: "11–30 Especialistas", price: 49, limit: "5.000", highlight: true },
-                                { name: "Pro", tier: "Clínicas Tipo B", range: "31–80 Especialistas", price: 42, limit: "15.000", highlight: false },
-                                { name: "Enterprise", tier: "Grandes Inst.", range: "81–200 Especialistas", price: 35, limit: "40.000", highlight: false },
+                                { name: "Starter", tier: "Grupos Pequeños", range: "2–10 Especialistas", price: 16.80, limit: "1.500", highlight: false },
+                                { name: "Clínica", tier: "Centros Medianos", range: "11–30 Especialistas", price: 14.70, limit: "5.000", highlight: true },
+                                { name: "Pro", tier: "Clínicas Tipo B", range: "31–80 Especialistas", price: 12.60, limit: "15.000", highlight: false },
+                                { name: "Enterprise", tier: "Grandes Inst.", range: "81–200 Especialistas", price: 10.50, limit: "40.000", highlight: false },
                             ].map((plan, i) => {
                                 const basePrice = plan.price;
                                 const discount = billingCycle === 'quarterly' ? 0.9 : billingCycle === 'annual' ? 0.7 : 1;
@@ -702,12 +702,12 @@ export default function ClinicasLandingPage() {
                                             </tr>
                                             <tr>
                                                 <td className="px-6 py-4 font-bold text-slate-900">2ª – 4ª Sede</td>
-                                                <td className="px-6 py-4 font-medium">+€45 <span className="text-slate-400 text-xs text-normal">/sede/mes</span></td>
+                                                <td className="px-6 py-4 font-medium">+€13.50 <span className="text-slate-400 text-xs text-normal">/sede/mes</span></td>
                                                 <td className="px-6 py-4 text-slate-600">Agenda, staff y caja propia</td>
                                             </tr>
                                             <tr>
                                                 <td className="px-6 py-4 font-bold text-slate-900">5ª – 10ª Sede</td>
-                                                <td className="px-6 py-4 font-medium">+€30 <span className="text-slate-400 text-xs text-normal">/sede/mes</span></td>
+                                                <td className="px-6 py-4 font-medium">+€9 <span className="text-slate-400 text-xs text-normal">/sede/mes</span></td>
                                                 <td className="px-6 py-4 text-slate-600">Todo lo anterior + descuento volumen</td>
                                             </tr>
                                             <tr>
@@ -820,7 +820,7 @@ export default function ClinicasLandingPage() {
                             {[
                                 { q: "¿Se mezcla la información de mis pacientes entre médicos?", a: "No. El sistema tiene 'silos' de privacidad por defecto. Un médico solo ve sus pacientes, a menos que el director o el paciente autoricen una interconsulta compartida." },
                                 { q: "¿Qué pasa si se va el internet en la clínica?", a: "ASHIRA es ligera y funciona con datos móviles básicos. Además, los datos se guardan en tiempo real, así que nunca pierdes información si se corta la conexión." },
-                                { q: "¿Cómo se calcula el precio si mi clínica tiene varias sedes?", a: "El plan base se determina por el total de especialistas en todas tus sedes sumadas. Por ejemplo: si tienes 60 especialistas en Sede A y 30 en Sede B, el total es 90 → Plan Enterprise. Luego, la primera sede es gratis y cada sede adicional tiene un costo fijo mensual (€45 para sedes 2–4, €30 para sedes 5–10). Usa nuestra calculadora arriba para ver tu precio exacto." },
+                                { q: "¿Cómo se calcula el precio si mi clínica tiene varias sedes?", a: "El plan base se determina por el total de especialistas en todas tus sedes sumadas. Por ejemplo: si tienes 60 especialistas en Sede A y 30 en Sede B, el total es 90 → Plan Enterprise. Luego, la primera sede es gratis y cada sede adicional tiene un costo fijo mensual (€13.50 para sedes 2–4, €9 para sedes 5–10). Usa nuestra calculadora arriba para ver tu precio exacto." },
                                 { q: "¿Cada sede puede tener su propia agenda, precios y personal?", a: "Sí, completamente. Cada sede se configura de forma independiente: horarios, modalidad de atención (turnos o llegada), métodos de pago, staff asignado y página pública propia. Todo se gestiona desde un único panel central para el director médico." },
                                 { q: "¿Qué pasa si en una sede no hay cupo para un paciente?", a: "ASHIRA activa automáticamente el Smart Switching: si un paciente intenta agendar en una sede sin disponibilidad, el sistema detecta cupo en otra sede del mismo especialista ese mismo día y le ofrece el cambio con un solo clic." },
                                 { q: "¿Puedo tener múltiples sedes?", a: "Sí, es nativo. Puedes asignar médicos y horarios específicos a cada sede (Ej: Dr. Pérez está Lunes en Sede A y Martes en Sede B)." },

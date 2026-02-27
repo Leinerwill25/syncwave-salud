@@ -16,11 +16,11 @@ export function MultiSedeCalculator() {
 
     // --- Logic ---
     const getBasePlan = (count: number) => {
-        if (count <= 1) return { name: "Individual", price: 70, tier: "Consultorios" }; // Edge case
-        if (count <= 10) return { name: "Starter", price: 56, tier: "Grupos Pequeños" };
-        if (count <= 30) return { name: "Clínica", price: 49, tier: "Centros Medianos" };
-        if (count <= 80) return { name: "Pro", price: 42, tier: "Clínicas Tipo B" };
-        if (count <= 200) return { name: "Enterprise", price: 35, tier: "Grandes Inst." };
+        if (count <= 1) return { name: "Individual", price: 21.00, tier: "Consultorios" }; // Edge case
+        if (count <= 10) return { name: "Starter", price: 16.80, tier: "Grupos Pequeños" };
+        if (count <= 30) return { name: "Clínica", price: 14.70, tier: "Centros Medianos" };
+        if (count <= 80) return { name: "Pro", price: 12.60, tier: "Clínicas Tipo B" };
+        if (count <= 200) return { name: "Enterprise", price: 10.50, tier: "Grandes Inst." };
         return { name: "Personalizado", price: 0, tier: "Corporativo" };
     };
 
@@ -59,8 +59,8 @@ export function MultiSedeCalculator() {
         const totalMonthly_NoDiscount = baseCost + branchCost;
         const totalMonthly_WithDiscount = totalMonthly_NoDiscount * discountMultiplier;
 
-        // Savings Reference (Generic Competitor/Individual ~70/doc)
-        const individualCost = specialists * 70; // Reference price
+        // Savings Reference (Generic Competitor/Individual ~21/doc)
+        const individualCost = specialists * 21; // Reference price
         const monthlySavings = Math.max(0, individualCost - totalMonthly_WithDiscount);
 
         return {
