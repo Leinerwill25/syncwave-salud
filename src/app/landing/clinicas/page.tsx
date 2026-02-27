@@ -609,10 +609,10 @@ export default function ClinicasLandingPage() {
 
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 lg:items-end">
                             {[
-                                { name: "Starter", tier: "Grupos Pequeños", range: "2–10 Especialistas", price: 56, limit: "1.500", highlight: false },
-                                { name: "Clínica", tier: "Centros Medianos", range: "11–30 Especialistas", price: 49, limit: "5.000", highlight: true },
-                                { name: "Pro", tier: "Clínicas Tipo B", range: "31–80 Especialistas", price: 42, limit: "15.000", highlight: false },
-                                { name: "Enterprise", tier: "Grandes Inst.", range: "81–200 Especialistas", price: 35, limit: "40.000", highlight: false },
+                                { name: "Starter", tier: "Grupos Pequeños", range: "2–10 Especialistas", price: 20, limit: "1.500", highlight: false },
+                                { name: "Clínica", tier: "Centros Medianos", range: "11–30 Especialistas", price: 18, limit: "5.000", highlight: true },
+                                { name: "Pro", tier: "Clínicas Tipo B", range: "31–80 Especialistas", price: 16, limit: "15.000", highlight: false },
+                                { name: "Enterprise", tier: "Grandes Inst.", range: "81–200 Especialistas", price: 14, limit: "40.000", highlight: false },
                             ].map((plan, i) => {
                                 const basePrice = plan.price;
                                 const discount = billingCycle === 'quarterly' ? 0.9 : billingCycle === 'annual' ? 0.7 : 1;
@@ -638,9 +638,10 @@ export default function ClinicasLandingPage() {
                                         <div className="mb-6">
                                             <div className="flex items-end gap-1">
                                                 <span className="text-3xl font-bold text-slate-900">€{finalPrice}</span>
-                                                <span className="text-xs text-slate-500 mb-1">/especialista/mes</span>
+                                                <span className="text-xs text-slate-500 mb-1">/esp./mes</span>
                                             </div>
                                             <div className="text-xs text-purple-600 mt-1 font-medium">{plan.range}</div>
+                                            <div className="text-[10px] text-slate-400 mt-1">* + $130 Acceso Administrativo Base</div>
                                         </div>
                                         <div className="space-y-3 mb-6 flex-1">
                                             <div className="flex items-center gap-2 text-xs text-slate-500">

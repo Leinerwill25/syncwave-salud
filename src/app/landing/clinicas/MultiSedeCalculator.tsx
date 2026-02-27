@@ -16,20 +16,23 @@ export function MultiSedeCalculator() {
 
     // --- Logic ---
     const getBasePlan = (count: number) => {
-        if (count <= 1) return { name: "Individual", price: 70.00, tier: "Consultorios" }; // Edge case
-        if (count <= 10) return { name: "Starter", price: 56.00, tier: "Grupos Pequeños" };
-        if (count <= 30) return { name: "Clínica", price: 49.00, tier: "Centros Medianos" };
-        if (count <= 80) return { name: "Pro", price: 42.00, tier: "Clínicas Tipo B" };
-        if (count <= 200) return { name: "Enterprise", price: 35.00, tier: "Grandes Inst." };
+        if (count <= 1) return { name: "Individual", price: 49.00, tier: "Consultorios" }; // Edge case
+        if (count <= 10) return { name: "Starter", price: 20.00, tier: "Grupos Pequeños" };
+        if (count <= 30) return { name: "Clínica", price: 18.00, tier: "Centros Medianos" };
+        if (count <= 80) return { name: "Pro", price: 16.00, tier: "Clínicas Tipo B" };
+        if (count <= 200) return { name: "Enterprise", price: 14.00, tier: "Grandes Inst." };
         return { name: "Personalizado", price: 0, tier: "Corporativo" };
     };
 
     const calculateTotal = () => {
         const plan = getBasePlan(specialists);
         
-        // Base Cost
-        let baseCost = specialists * plan.price;
-        if (plan.name === "Personalizado") baseCost = 0; // Handled separately
+        // Base Admin Cost
+        const adminBaseCost = specialists > 1 && plan.name !== "Personalizado" ? 130 : 0;
+
+        // Specialist Cost
+        let specialistCost = specialists * plan.price;
+        if (plan.name === "Personalizado") specialistCost = 0; // Handled separately
 
         // Branch Cost
         let branchCost = 0;
@@ -51,21 +54,23 @@ export function MultiSedeCalculator() {
             chargeableBranches = tier1Branches + tier2Branches;
         }
 
-        // Cycle Discount
+        // Cycle Discount applies ONLY to the specialist fee according to pricing rules
         let discountMultiplier = 1;
         if (billingCycle === 'quarterly') discountMultiplier = 0.9;
         if (billingCycle === 'annual') discountMultiplier = 0.7;
 
-        const totalMonthly_NoDiscount = baseCost + branchCost;
-        const totalMonthly_WithDiscount = totalMonthly_NoDiscount * discountMultiplier;
+        let discountedSpecialistCost = specialistCost * discountMultiplier;
 
-        // Savings Reference (Generic Competitor/Individual ~21/doc)
-        const individualCost = specialists * 21; // Reference price
+        const totalMonthly_NoDiscount = adminBaseCost + specialistCost + branchCost;
+        const totalMonthly_WithDiscount = adminBaseCost + discountedSpecialistCost + (branchCost * discountMultiplier);
+
+        // Savings Reference
+        const individualCost = specialists * 49; // Reference price
         const monthlySavings = Math.max(0, individualCost - totalMonthly_WithDiscount);
 
         return {
             basePlan: plan,
-            baseCostMonthly: baseCost,
+            baseCostMonthly: adminBaseCost + specialistCost,
             branchCostMonthly: branchCost,
             totalMonthly: totalMonthly_WithDiscount,
             totalPeriod: totalMonthly_WithDiscount * (billingCycle === 'monthly' ? 1 : billingCycle === 'quarterly' ? 3 : 12),

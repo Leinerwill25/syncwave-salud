@@ -570,7 +570,7 @@ const Pricing = () => {
                         {
                             name: "Plan Profesional",
                             desc: "Ideal para enfermeros independientes.",
-                            price: billingCycle === 'annual' ? 45.50 : 65.00, 
+                            price: billingCycle === 'annual' ? 14 : 20, 
                             isFree: false,
                             badge: "Por tiempo limitado",
                             features: [
@@ -588,7 +588,7 @@ const Pricing = () => {
                         {
                             name: "Plan Clínico",
                             desc: "Para instituciones y equipos coordinados.",
-                            price: billingCycle === 'annual' ? 39.20 : 56.00,
+                            price: billingCycle === 'annual' ? "130 + 14" : "130 + 20",
                             isFree: false,
                             badge: "Más Popular",
                             features: [

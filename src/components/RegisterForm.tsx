@@ -449,12 +449,12 @@ export default function RegisterForm(): React.ReactElement {
 	const recommendedPlan = useMemo(() => {
 		if (plansLoading || plans.length === 0) {
 			// Valores por defecto mientras cargan (CON 70% DE DESCUENTO APLICADO)
-			if (role === 'MEDICO') return { slug: 'medico', label: 'Plan Médico — Usuario individual', price: 70.00, quarterlyPrice: 189.00, annualPrice: 588.00 };
+			if (role === 'MEDICO') return { slug: 'medico', label: 'Plan Médico — Usuario individual', price: 49.00, quarterlyPrice: 132.30, annualPrice: 411.60 };
 			if (role === 'PACIENTE') {
-				return patientPlan === 'individual' ? { slug: 'paciente-individual', label: 'Paciente — Individual', price: 1.08, quarterlyPrice: 3.09, annualPrice: 12.99 } : { slug: 'paciente-family', label: 'Paciente — Plan Familiar', price: 2.50, quarterlyPrice: 7.12, annualPrice: 29.99 };
+				return patientPlan === 'individual' ? { slug: 'paciente-individual', label: 'Paciente — Individual', price: 1.08, quarterlyPrice: 2.92, annualPrice: 9.07 } : { slug: 'paciente-family', label: 'Paciente — Plan Familiar', price: 2.50, quarterlyPrice: 6.75, annualPrice: 21.00 };
 			}
-			if (role === 'ENFERMERO') return { slug: 'enfermero-independiente', label: 'Enfermería Independiente', price: 65.00, quarterlyPrice: 175.50, annualPrice: 546.00 };
-			return { slug: 'clinic-starter', label: 'Starter (2–10 esp.)', price: 56.00, quarterlyPrice: 151.20, annualPrice: 470.40 };
+			if (role === 'ENFERMERO') return { slug: 'enfermero-independiente', label: 'Enfermería Independiente', price: 20.00, quarterlyPrice: 54.00, annualPrice: 168.00 };
+			return { slug: 'clinic-starter', label: 'Starter (2–10 esp.)', price: 150.00, quarterlyPrice: 405.00, annualPrice: 1260.00 }; // Fallback assuming admin $130 + $20 (1 esp)
 		}
 
 		if (role === 'MEDICO') {
@@ -483,7 +483,7 @@ export default function RegisterForm(): React.ReactElement {
 				};
 			}
 			// Fallback if not found in DB
-			return { slug: 'enfermero-independiente', label: 'Enfermería Independiente', price: 65.00, quarterlyPrice: 175.50, annualPrice: 546.00 };
+			return { slug: 'enfermero-independiente', label: 'Enfermería Independiente', price: 20.00, quarterlyPrice: 54.00, annualPrice: 168.00 };
 		}
 
 		if (role === 'PACIENTE') {
@@ -1781,10 +1781,10 @@ export default function RegisterForm(): React.ReactElement {
 						) : (
 							<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 text-slate-700">
 								{[
-									{ slug: 'clinic-starter', label: 'Starter', range: '2–10 esp.', price: 56, desc: 'Consultorios pequeños' },
-									{ slug: 'clinic-medium', label: 'Clínica', range: '11–30 esp.', price: 49, desc: 'Centros ambulatorios' },
-									{ slug: 'clinic-pro', label: 'Pro', range: '31–80 esp.', price: 42, desc: 'Clínicas medianas' },
-									{ slug: 'clinic-enterprise', label: 'Enterprise', range: '81–200 esp.', price: 35, desc: 'Grandes instituciones' },
+									{ slug: 'clinic-starter', label: 'Starter', range: '2–10 esp.', price: 150, desc: 'Consultorios pequeños' },
+									{ slug: 'clinic-medium', label: 'Clínica', range: '11–30 esp.', price: 148, desc: 'Centros ambulatorios' },
+									{ slug: 'clinic-pro', label: 'Pro', range: '31–80 esp.', price: 146, desc: 'Clínicas medianas' },
+									{ slug: 'clinic-enterprise', label: 'Enterprise', range: '81–200 esp.', price: 144, desc: 'Grandes instituciones' },
 								].map((p) => {
 									const recommended = p.slug === recommendedPlan.slug;
 									return (
