@@ -43,9 +43,15 @@ EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 DO $$ BEGIN
   CREATE TYPE queue_status_enum AS ENUM (
     'waiting', 'in_triage', 'ready_for_doctor',
-    'in_consultation', 'in_observation', 'discharged', 'absent'
+    'in_consultation', 'in_observation', 'discharged', 'absent', 'in_progress'
   );
-EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+EXCEPTION WHEN duplicate_object THEN 
+  -- Intentar añadir el valor si ya existe el tipo
+  BEGIN
+    ALTER TYPE queue_status_enum ADD VALUE IF NOT EXISTS 'in_progress';
+  EXCEPTION WHEN others THEN NULL;
+  END;
+END $$;
 
 DO $$ BEGIN
   CREATE TYPE triage_level_enum AS ENUM (
@@ -538,6 +544,7 @@ CREATE OR REPLACE TRIGGER trg_coap_upd
 CREATE OR REPLACE FUNCTION auth_nurse_profile_id()
 RETURNS UUID
 LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public AS $$
+  -- SECURITY DEFINER para asegurar que pueda leer nurse_profiles incluso si RLS es estricto
   SELECT nurse_profile_id FROM nurse_profiles
   WHERE user_id = auth.uid() AND status = 'active'
   LIMIT 1;
@@ -564,7 +571,7 @@ $$;
 -- ──────────────────────────────────────────────
 ALTER TABLE nurse_profiles ENABLE ROW LEVEL SECURITY;
 
--- SELECT: enfermera ve su propio perfil; afiliada ve compañeras de su org
+DROP POLICY IF EXISTS np_select ON nurse_profiles;
 CREATE POLICY np_select ON nurse_profiles FOR SELECT
   USING (
     user_id = auth.uid()
@@ -581,11 +588,11 @@ CREATE POLICY np_select ON nurse_profiles FOR SELECT
     )
   );
 
--- INSERT: solo si el usuario es el propietario del perfil
+DROP POLICY IF EXISTS np_insert ON nurse_profiles;
 CREATE POLICY np_insert ON nurse_profiles FOR INSERT
   WITH CHECK (auth.uid() = user_id AND auth.uid() = created_by);
 
--- UPDATE: propio perfil o admin de la org
+DROP POLICY IF EXISTS np_update ON nurse_profiles;
 CREATE POLICY np_update ON nurse_profiles FOR UPDATE
   USING (
     user_id = auth.uid()
@@ -598,7 +605,7 @@ CREATE POLICY np_update ON nurse_profiles FOR UPDATE
   )
   WITH CHECK (updated_by = auth.uid());
 
--- DELETE: prohibido — usar status = 'inactive'
+DROP POLICY IF EXISTS np_no_delete ON nurse_profiles;
 CREATE POLICY np_no_delete ON nurse_profiles FOR DELETE USING (FALSE);
 
 -- ──────────────────────────────────────────────
@@ -606,9 +613,7 @@ CREATE POLICY np_no_delete ON nurse_profiles FOR DELETE USING (FALSE);
 -- ──────────────────────────────────────────────
 ALTER TABLE patients_daily_queue ENABLE ROW LEVEL SECURITY;
 
--- SELECT:
--- Afiliada: ve la cola de su organización del día
--- Independiente: ve solo las colas donde es la enfermera asignada
+DROP POLICY IF EXISTS pdq_select ON patients_daily_queue;
 CREATE POLICY pdq_select ON patients_daily_queue FOR SELECT
   USING (
     deleted_at IS NULL
@@ -634,7 +639,7 @@ CREATE POLICY pdq_select ON patients_daily_queue FOR SELECT
     )
   );
 
--- INSERT: enfermera activa puede crear registros en cola
+DROP POLICY IF EXISTS pdq_insert ON patients_daily_queue;
 CREATE POLICY pdq_insert ON patients_daily_queue FOR INSERT
   WITH CHECK (
     auth_nurse_profile_id() IS NOT NULL
@@ -647,7 +652,7 @@ CREATE POLICY pdq_insert ON patients_daily_queue FOR INSERT
     )
   );
 
--- UPDATE: enfermera asignada o de la misma org (afiliada)
+DROP POLICY IF EXISTS pdq_update ON patients_daily_queue;
 CREATE POLICY pdq_update ON patients_daily_queue FOR UPDATE
   USING (
     assigned_nurse_id = auth_nurse_profile_id()
@@ -661,7 +666,7 @@ CREATE POLICY pdq_update ON patients_daily_queue FOR UPDATE
   )
   WITH CHECK (updated_by = auth.uid() AND deleted_at IS NULL);
 
--- DELETE: prohibido — usar soft delete (deleted_at)
+DROP POLICY IF EXISTS pdq_no_delete ON patients_daily_queue;
 CREATE POLICY pdq_no_delete ON patients_daily_queue FOR DELETE USING (FALSE);
 
 -- ──────────────────────────────────────────────
@@ -669,7 +674,7 @@ CREATE POLICY pdq_no_delete ON patients_daily_queue FOR DELETE USING (FALSE);
 -- ──────────────────────────────────────────────
 ALTER TABLE patient_origin_records ENABLE ROW LEVEL SECURITY;
 
--- SELECT: enfermera que registró O que tiene al paciente en su cola hoy
+DROP POLICY IF EXISTS por_select ON patient_origin_records;
 CREATE POLICY por_select ON patient_origin_records FOR SELECT
   USING (
     registered_by_nurse_id = auth_nurse_profile_id()
@@ -688,7 +693,7 @@ CREATE POLICY por_select ON patient_origin_records FOR SELECT
     )
   );
 
--- INSERT: enfermera activa, referenciando su propio auth.uid
+DROP POLICY IF EXISTS por_insert ON patient_origin_records;
 CREATE POLICY por_insert ON patient_origin_records FOR INSERT
   WITH CHECK (
     auth_nurse_profile_id() IS NOT NULL
@@ -696,8 +701,9 @@ CREATE POLICY por_insert ON patient_origin_records FOR INSERT
     AND created_by = auth.uid()
   );
 
--- UPDATE y DELETE: prohibidos — registros históricos inmutables
+DROP POLICY IF EXISTS por_no_update ON patient_origin_records;
 CREATE POLICY por_no_update ON patient_origin_records FOR UPDATE USING (FALSE);
+DROP POLICY IF EXISTS por_no_delete ON patient_origin_records;
 CREATE POLICY por_no_delete ON patient_origin_records FOR DELETE USING (FALSE);
 
 -- ──────────────────────────────────────────────
@@ -705,7 +711,7 @@ CREATE POLICY por_no_delete ON patient_origin_records FOR DELETE USING (FALSE);
 -- ──────────────────────────────────────────────
 ALTER TABLE patient_prior_treatments ENABLE ROW LEVEL SECURITY;
 
--- SELECT: enfermera que tiene el paciente en su cola hoy
+DROP POLICY IF EXISTS ppt_select ON patient_prior_treatments;
 CREATE POLICY ppt_select ON patient_prior_treatments FOR SELECT
   USING (
     auth_nurse_profile_id() IS NOT NULL
@@ -727,14 +733,14 @@ CREATE POLICY ppt_select ON patient_prior_treatments FOR SELECT
     )
   );
 
--- INSERT: enfermera activa
+DROP POLICY IF EXISTS ppt_insert ON patient_prior_treatments;
 CREATE POLICY ppt_insert ON patient_prior_treatments FOR INSERT
   WITH CHECK (
     auth_nurse_profile_id() IS NOT NULL
     AND created_by = auth.uid()
   );
 
--- UPDATE: solo quien lo creó o admin/médico (para cambiar estado)
+DROP POLICY IF EXISTS ppt_update ON patient_prior_treatments;
 CREATE POLICY ppt_update ON patient_prior_treatments FOR UPDATE
   USING (
     created_by = auth.uid()
@@ -745,7 +751,7 @@ CREATE POLICY ppt_update ON patient_prior_treatments FOR UPDATE
   )
   WITH CHECK (updated_by = auth.uid());
 
--- DELETE: prohibido
+DROP POLICY IF EXISTS ppt_no_delete ON patient_prior_treatments;
 CREATE POLICY ppt_no_delete ON patient_prior_treatments FOR DELETE USING (FALSE);
 
 -- ──────────────────────────────────────────────
@@ -753,6 +759,7 @@ CREATE POLICY ppt_no_delete ON patient_prior_treatments FOR DELETE USING (FALSE)
 -- ──────────────────────────────────────────────
 ALTER TABLE nurse_vital_signs ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS nvs_select ON nurse_vital_signs;
 CREATE POLICY nvs_select ON nurse_vital_signs FOR SELECT
   USING (
     nurse_id = auth_nurse_profile_id()
@@ -763,6 +770,7 @@ CREATE POLICY nvs_select ON nurse_vital_signs FOR SELECT
     )
   );
 
+DROP POLICY IF EXISTS nvs_insert ON nurse_vital_signs;
 CREATE POLICY nvs_insert ON nurse_vital_signs FOR INSERT
   WITH CHECK (
     auth_nurse_profile_id() IS NOT NULL
@@ -770,8 +778,9 @@ CREATE POLICY nvs_insert ON nurse_vital_signs FOR INSERT
     AND created_by = auth.uid()
   );
 
--- UPDATE: prohibido — los signos vitales son inmutables tras registro clínico
+DROP POLICY IF EXISTS nvs_no_update ON nurse_vital_signs;
 CREATE POLICY nvs_no_update ON nurse_vital_signs FOR UPDATE USING (FALSE);
+DROP POLICY IF EXISTS nvs_no_delete ON nurse_vital_signs;
 CREATE POLICY nvs_no_delete ON nurse_vital_signs FOR DELETE USING (FALSE);
 
 -- ──────────────────────────────────────────────
@@ -779,6 +788,7 @@ CREATE POLICY nvs_no_delete ON nurse_vital_signs FOR DELETE USING (FALSE);
 -- ──────────────────────────────────────────────
 ALTER TABLE nurse_mar_records ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS mar_select ON nurse_mar_records;
 CREATE POLICY mar_select ON nurse_mar_records FOR SELECT
   USING (
     nurse_id = auth_nurse_profile_id()
@@ -789,16 +799,16 @@ CREATE POLICY mar_select ON nurse_mar_records FOR SELECT
     )
   );
 
+DROP POLICY IF EXISTS mar_insert ON nurse_mar_records;
 CREATE POLICY mar_insert ON nurse_mar_records FOR INSERT
   WITH CHECK (
     auth_nurse_profile_id() IS NOT NULL
     AND nurse_id = auth_nurse_profile_id()
     AND created_by = auth.uid()
-    -- No permite insertar si el estado ya es 'administered' (previene doble registro)
     AND status = 'pending'
   );
 
--- UPDATE: solo la enfermera que lo creó puede cambiar estado; no puede retroceder a 'pending' si ya administrado
+DROP POLICY IF EXISTS mar_update ON nurse_mar_records;
 CREATE POLICY mar_update ON nurse_mar_records FOR UPDATE
   USING (
     nurse_id = auth_nurse_profile_id()
@@ -809,7 +819,7 @@ CREATE POLICY mar_update ON nurse_mar_records FOR UPDATE
   )
   WITH CHECK (updated_by = auth.uid());
 
--- DELETE: prohibido — MAR es registro clínico oficial
+DROP POLICY IF EXISTS mar_no_delete ON nurse_mar_records;
 CREATE POLICY mar_no_delete ON nurse_mar_records FOR DELETE USING (FALSE);
 
 -- ──────────────────────────────────────────────
@@ -817,6 +827,7 @@ CREATE POLICY mar_no_delete ON nurse_mar_records FOR DELETE USING (FALSE);
 -- ──────────────────────────────────────────────
 ALTER TABLE nurse_procedures ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS proc_select ON nurse_procedures;
 CREATE POLICY proc_select ON nurse_procedures FOR SELECT
   USING (
     nurse_id = auth_nurse_profile_id()
@@ -827,6 +838,7 @@ CREATE POLICY proc_select ON nurse_procedures FOR SELECT
     )
   );
 
+DROP POLICY IF EXISTS proc_insert ON nurse_procedures;
 CREATE POLICY proc_insert ON nurse_procedures FOR INSERT
   WITH CHECK (
     auth_nurse_profile_id() IS NOT NULL
@@ -834,6 +846,7 @@ CREATE POLICY proc_insert ON nurse_procedures FOR INSERT
     AND created_by = auth.uid()
   );
 
+DROP POLICY IF EXISTS proc_update ON nurse_procedures;
 CREATE POLICY proc_update ON nurse_procedures FOR UPDATE
   USING (
     nurse_id = auth_nurse_profile_id()
@@ -844,6 +857,7 @@ CREATE POLICY proc_update ON nurse_procedures FOR UPDATE
   )
   WITH CHECK (updated_by = auth.uid());
 
+DROP POLICY IF EXISTS proc_no_delete ON nurse_procedures;
 CREATE POLICY proc_no_delete ON nurse_procedures FOR DELETE USING (FALSE);
 
 -- ──────────────────────────────────────────────
@@ -851,6 +865,7 @@ CREATE POLICY proc_no_delete ON nurse_procedures FOR DELETE USING (FALSE);
 -- ──────────────────────────────────────────────
 ALTER TABLE nurse_shift_reports ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS nsr_select ON nurse_shift_reports;
 CREATE POLICY nsr_select ON nurse_shift_reports FOR SELECT
   USING (
     nurse_id = auth_nurse_profile_id()
@@ -861,26 +876,27 @@ CREATE POLICY nsr_select ON nurse_shift_reports FOR SELECT
     )
   );
 
+DROP POLICY IF EXISTS nsr_insert ON nurse_shift_reports;
 CREATE POLICY nsr_insert ON nurse_shift_reports FOR INSERT
   WITH CHECK (
     auth_nurse_profile_id() IS NOT NULL
     AND nurse_id = auth_nurse_profile_id()
     AND created_by = auth.uid()
-    -- Afiliada solo puede crear shift_report; independiente solo independent_care_report
     AND (
       (auth_nurse_type() = 'affiliated' AND report_type = 'shift_report')
       OR (auth_nurse_type() = 'independent' AND report_type = 'independent_care_report')
     )
   );
 
+DROP POLICY IF EXISTS nsr_update ON nurse_shift_reports;
 CREATE POLICY nsr_update ON nurse_shift_reports FOR UPDATE
   USING (
     nurse_id = auth_nurse_profile_id()
-    -- No permite editar reportes ya firmados
     AND signed_at IS NULL
   )
   WITH CHECK (updated_by = auth.uid());
 
+DROP POLICY IF EXISTS nsr_no_delete ON nurse_shift_reports;
 CREATE POLICY nsr_no_delete ON nurse_shift_reports FOR DELETE USING (FALSE);
 
 -- ──────────────────────────────────────────────
@@ -888,7 +904,7 @@ CREATE POLICY nsr_no_delete ON nurse_shift_reports FOR DELETE USING (FALSE);
 -- ──────────────────────────────────────────────
 ALTER TABLE cross_org_access_permissions ENABLE ROW LEVEL SECURITY;
 
--- SELECT: admin de la org o enfermera afiliada de esa org (lectura)
+DROP POLICY IF EXISTS coap_select ON cross_org_access_permissions;
 CREATE POLICY coap_select ON cross_org_access_permissions FOR SELECT
   USING (
     (auth_nurse_type() = 'affiliated' AND organization_id = auth_nurse_org_id())
@@ -900,7 +916,7 @@ CREATE POLICY coap_select ON cross_org_access_permissions FOR SELECT
     )
   );
 
--- INSERT/UPDATE/DELETE: solo admins de la organización
+DROP POLICY IF EXISTS coap_admin_insert ON cross_org_access_permissions;
 CREATE POLICY coap_admin_insert ON cross_org_access_permissions FOR INSERT
   WITH CHECK (
     EXISTS (
@@ -912,6 +928,7 @@ CREATE POLICY coap_admin_insert ON cross_org_access_permissions FOR INSERT
     AND created_by = auth.uid()
   );
 
+DROP POLICY IF EXISTS coap_admin_update ON cross_org_access_permissions;
 CREATE POLICY coap_admin_update ON cross_org_access_permissions FOR UPDATE
   USING (
     EXISTS (
@@ -923,6 +940,7 @@ CREATE POLICY coap_admin_update ON cross_org_access_permissions FOR UPDATE
   )
   WITH CHECK (updated_by = auth.uid());
 
+DROP POLICY IF EXISTS coap_no_delete ON cross_org_access_permissions;
 CREATE POLICY coap_no_delete ON cross_org_access_permissions FOR DELETE USING (FALSE);
 
 -- ══════════════════════════════════════════════════════════════
@@ -930,11 +948,13 @@ CREATE POLICY coap_no_delete ON cross_org_access_permissions FOR DELETE USING (F
 -- ══════════════════════════════════════════════════════════════
 
 -- Vista: perfil completo de enfermería
-CREATE OR REPLACE VIEW nurse_full_profile
-WITH (security_invoker = true)
+DROP VIEW IF EXISTS nurse_full_profile CASCADE;
+CREATE VIEW nurse_full_profile
+WITH (security_invoker = false) -- Explicit Definir
 AS
 SELECT
   np.nurse_profile_id,
+  np.user_id, -- REQUERIDO: Para filtrado
   np.nurse_type,
   np.license_number,
   np.license_verified,
@@ -959,14 +979,17 @@ LEFT JOIN organization o ON o.id = np.organization_id;
 COMMENT ON VIEW nurse_full_profile IS
   'Vista desnormalizada del perfil de enfermería. Hereda RLS de nurse_profiles.';
 
--- Vista: dashboard diario de enfermería
-CREATE OR REPLACE VIEW nurse_daily_dashboard
-WITH (security_invoker = true)
+-- SECURITY DEFINER para evitar que joins con auth.users o tablas restringidas bloqueen la vista
+DROP VIEW IF EXISTS nurse_daily_dashboard CASCADE;
+CREATE VIEW nurse_daily_dashboard
+WITH (security_invoker = false)
 AS
 SELECT
   q.queue_id,
   q.queue_date,
   q.arrival_time,
+  q.created_at, -- REQUERIDO: Para ordenamiento
+  q.updated_at,
   q.status,
   q.triage_level,
   q.queue_number,

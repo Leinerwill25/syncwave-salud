@@ -1225,7 +1225,7 @@ CREATE TABLE public.unregisteredpatients (
   vital_glucose numeric,
   profession text,
   CONSTRAINT unregisteredpatients_pkey PRIMARY KEY (id),
-  CONSTRAINT unregisteredpatients_created_by_fkey FOREIGN KEY (created_by) REFERENCES public.medic_profile(id),
+  CONSTRAINT unregisteredpatients_created_by_fkey FOREIGN KEY (created_by) REFERENCES auth.users(id),
   CONSTRAINT unregisteredpatients_migrated_to_patient_id_fkey FOREIGN KEY (migrated_to_patient_id) REFERENCES public.patient(id)
 );
 CREATE TABLE public.user_sessions (

@@ -7,6 +7,7 @@ import type { NurseType } from '@/types/nurse.types';
  */
 export async function getCurrentNurseProfileSSR(): Promise<{
   nurseProfileId: string;
+  userId: string;
   nurseType: NurseType;
   organizationId: string | null;
 } | null> {
@@ -33,6 +34,7 @@ export async function getCurrentNurseProfileSSR(): Promise<{
     if (profile) {
       return {
         nurseProfileId: profile.nurse_profile_id as string,
+        userId: user.id,
         nurseType: profile.nurse_type as NurseType,
         organizationId: (profile.organization_id as string | null) ?? null,
       };
@@ -49,6 +51,7 @@ export async function getCurrentNurseProfileSSR(): Promise<{
     if (usr && (usr.role === 'ENFERMERO' || usr.role === 'ENFERMERA')) {
       return {
         nurseProfileId: user.id, // Fallback ID si falta el perfil real
+        userId: user.id,
         nurseType: 'independent' as NurseType, // Asumimos independiente si no tiene perfil
         organizationId: usr.organizationId || null,
       };
@@ -59,6 +62,7 @@ export async function getCurrentNurseProfileSSR(): Promise<{
     if (metaRole === 'ENFERMERO' || metaRole === 'ENFERMERA') {
       return {
         nurseProfileId: user.id,
+        userId: user.id,
         nurseType: 'independent' as NurseType,
         organizationId: null, // No sabemos organización desde metadata sola
       };

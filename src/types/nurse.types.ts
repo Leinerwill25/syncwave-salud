@@ -70,6 +70,10 @@ export interface IndependentScope {
   prescription_reading?: boolean;
   can_share_records?: boolean;
   visible_in_network?: boolean;
+  iv_administration?: boolean;
+  wound_care?: boolean;
+  pediatric?: boolean;
+  elderly?: boolean;
 }
 
 export interface NurseProfile {

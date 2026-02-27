@@ -21,25 +21,30 @@ import type {
   DashboardSummaryResponse,
   NurseAlert,
   NurseType,
+  MARRecord,
 } from '@/types/nurse.types';
-import { getNurseProfile, getDashboardSummary, createVitalSigns, createMARRecord, updateMARStatus, createProcedure, updateProcedureStatus, createEvolutionNote, updateQueueStatus } from '@/lib/supabase/nurse.service';
+import { getNurseProfile, getNurseProfileByAuthId, getDashboardSummary, createVitalSigns, createMARRecord, updateMARStatus, createProcedure, updateProcedureStatus, createEvolutionNote, updateQueueStatus, getPendingMedications, getPendingMedicationsIndependent, getInventoryAlerts } from '@/lib/supabase/nurse.service';
 import { createSupabaseBrowserClient } from '@/app/adapters/client';
 import { nurseSyncService } from '@/lib/services/NurseSyncService';
 import { toast } from 'sonner';
 
 // ─── Estado inicial ───────────────────────────────────────
 
+// Omitimos currentShift del initialState para inicializarlo dinámicamente en el reducer/efecto si hay persistencia
 const initialState: NurseContextState = {
   nurseProfile: null,
   nurseType: null,
   activePatient: null,
   todaySummary: null,
   alerts: [],
-  currentShift: { start: null, isActive: false },
+  currentShift: {
+    start: null,
+    isActive: false,
+  },
   isOnline: true,
   isLoading: true,
-  pendingSyncCount: 0,
   isSyncing: false,
+  pendingSyncCount: 0,
 };
 
 // ─── Actions del reducer ──────────────────────────────────
@@ -56,7 +61,8 @@ type NurseAction =
   | { type: 'SET_ONLINE'; payload: boolean }
   | { type: 'SET_LOADING'; payload: boolean }
   | { type: 'SET_SYNCING'; payload: boolean }
-  | { type: 'SET_PENDING_SYNC_COUNT'; payload: number };
+  | { type: 'SET_PENDING_SYNC_COUNT'; payload: number }
+  | { type: 'LOAD_PERSISTED_SHIFT'; payload: { start: Date | null, isActive: boolean } };
 
 function nurseReducer(state: NurseContextState, action: NurseAction): NurseContextState {
   switch (action.type) {
@@ -93,6 +99,8 @@ function nurseReducer(state: NurseContextState, action: NurseAction): NurseConte
       };
     case 'END_SHIFT':
       return { ...state, currentShift: { start: null, isActive: false } };
+    case 'LOAD_PERSISTED_SHIFT':
+      return { ...state, currentShift: action.payload };
     case 'SET_ONLINE':
       return { ...state, isOnline: action.payload };
     case 'SET_LOADING':
@@ -124,11 +132,11 @@ export const NurseActionsContext = createContext<NurseContextActions>({
 
 interface NurseProviderProps {
   children: ReactNode;
-  /** nurse_profile_id del usuario autenticado (del layout SSR) */
+  /** UID de Supabase Auth del usuario (del layout SSR) */
   userId: string;
 }
 
-import { getPendingMedications } from '@/lib/supabase/nurse.service';
+
 
 export function NurseProvider({ children, userId }: NurseProviderProps) {
   const [state, dispatch] = useReducer(nurseReducer, initialState);
@@ -229,25 +237,65 @@ export function NurseProvider({ children, userId }: NurseProviderProps) {
   useEffect(() => {
     async function loadProfile() {
       dispatch({ type: 'SET_LOADING', payload: true });
-      const profile = await getNurseProfile(userId);
-      if (profile) {
-        dispatch({ type: 'SET_PROFILE', payload: profile });
-      } else {
+      try {
+        const profile = await getNurseProfile(userId);
+        if (profile) {
+          dispatch({ type: 'SET_PROFILE', payload: profile });
+        } else {
+          console.warn(`[NurseProvider] getNurseProfile falló para ${userId}. Intentando fallback a perfil básico.`);
+          const basicProfile = await getNurseProfileByAuthId(userId);
+          if (basicProfile) {
+            // Transformar perfil básico a NurseFullProfile (parcial)
+            dispatch({ 
+              type: 'SET_PROFILE', 
+              payload: { 
+                ...basicProfile, 
+                user_id: userId, // CRUCIAL: Mantener el ID de auth vinculado
+                full_name: 'Enfermera (Perfil Parcial)',
+                email: '' 
+              } as any 
+            });
+          } else {
+            console.error(`[NurseProvider] Error crítico: No se encontró perfil para ID ${userId}`);
+            dispatch({ type: 'SET_LOADING', payload: false });
+          }
+        }
+      } catch (err) {
+        console.error('[NurseProvider] Error en inicialización:', err);
         dispatch({ type: 'SET_LOADING', payload: false });
       }
     }
     loadProfile();
   }, [userId]);
 
+  // ── Cargar turno persistido ─────────────────────────────
+  useEffect(() => {
+    if (!userId) return;
+    try {
+      const persistedStart = localStorage.getItem(`ashira_nurse_shift_${userId}`);
+      if (persistedStart) {
+        dispatch({
+          type: 'LOAD_PERSISTED_SHIFT',
+          payload: { start: new Date(persistedStart), isActive: true }
+        } as any);
+      }
+    } catch (e) {
+      console.warn('Error leyendo localStorage para el turno:', e);
+    }
+  }, [userId]);
 
-  // ── Polling de medicamentos pendientes ──────────────────
+
+  // ── Polling de medicamentos y alertas administrativas ──
   const checkPendingReminders = useCallback(async () => {
-    if (!state.nurseProfile?.organization_id) return;
+    if (!state.nurseProfile) return;
+    const { nurse_profile_id, organization_id, license_expiry } = state.nurseProfile;
     
-    const pendingMedications = await getPendingMedications(state.nurseProfile.organization_id);
+    // 1. Medicamentos pendientes (según tipo de enfermero)
+    const pendingMedications = organization_id 
+      ? await getPendingMedications(organization_id)
+      : await getPendingMedicationsIndependent(nurse_profile_id);
     
-    pendingMedications.forEach(med => {
-      // Solo agregar si no existe ya una alerta activa para este MAR
+    pendingMedications.forEach((med: MARRecord) => {
       dispatch({
         type: 'ADD_ALERT',
         payload: {
@@ -262,7 +310,57 @@ export function NurseProvider({ children, userId }: NurseProviderProps) {
         }
       });
     });
-  }, [state.nurseProfile?.organization_id]);
+
+    // 2. Alertas de Inventario (solo si hay organización)
+    if (organization_id) {
+      const inventoryAlerts = await getInventoryAlerts(organization_id);
+      inventoryAlerts.forEach((item: any) => {
+        dispatch({
+          type: 'ADD_ALERT',
+          payload: {
+            id: `inv-${item.id}`,
+            type: 'warning',
+            title: 'Insumo Bajo',
+            message: `${item.medication?.name || 'Insumo'} — Solo quedan ${item.quantity} unidades.`,
+            createdAt: new Date(),
+            dismissed: false,
+          }
+        });
+      });
+    }
+
+    // 3. Alerta de Licencia Profesional
+    if (license_expiry) {
+      const expiryDate = new Date(license_expiry);
+      const diffDays = Math.ceil((expiryDate.getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24));
+      
+      if (diffDays <= 30 && diffDays > 0) {
+        dispatch({
+          type: 'ADD_ALERT',
+          payload: {
+            id: 'license-expiry-warning',
+            type: 'warning',
+            title: 'Licencia Próxima a Vencer',
+            message: `Tu licencia expira en ${diffDays} días (${expiryDate.toLocaleDateString()}).`,
+            createdAt: new Date(),
+            dismissed: false,
+          }
+        });
+      } else if (diffDays <= 0) {
+        dispatch({
+          type: 'ADD_ALERT',
+          payload: {
+            id: 'license-expired-alert',
+            type: 'critical',
+            title: 'Licencia Vencida',
+            message: `Tu licencia profesional ha expirado. Favor actualizar para evitar bloqueos.`,
+            createdAt: new Date(),
+            dismissed: false,
+          }
+        });
+      }
+    }
+  }, [state.nurseProfile]);
 
   useEffect(() => {
     if (!state.nurseProfile) return;
@@ -360,8 +458,18 @@ export function NurseProvider({ children, userId }: NurseProviderProps) {
       (id) => dispatch({ type: 'DISMISS_ALERT', payload: id }),
       []
     ),
-    startShift: useCallback(() => dispatch({ type: 'START_SHIFT' }), []),
-    endShift: useCallback(() => dispatch({ type: 'END_SHIFT' }), []),
+    startShift: useCallback(() => {
+      try {
+        localStorage.setItem(`ashira_nurse_shift_${userId}`, new Date().toISOString());
+      } catch (e) { console.warn('No se pudo guardar en localStorage', e); }
+      dispatch({ type: 'START_SHIFT' });
+    }, [userId]),
+    endShift: useCallback(() => {
+      try {
+        localStorage.removeItem(`ashira_nurse_shift_${userId}`);
+      } catch (e) { console.warn('No se pudo limpiar localStorage', e); }
+      dispatch({ type: 'END_SHIFT' });
+    }, [userId]),
     addAlert: useCallback((alert) => {
       dispatch({
         type: 'ADD_ALERT',

@@ -33,18 +33,8 @@ export default async function NurseIndependentLayout({
   }
 
   return (
-    <NurseProvider userId={nurseSession.nurseProfileId}>
-      <div className="flex h-screen bg-gray-50 dark:bg-gray-950 overflow-hidden">
-        <NurseSidebar nurseType="independent" />
-        <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
-          <NurseTopBar />
-          <main className="flex-1 overflow-y-auto p-6 relative">
-            {children}
-            <NurseGlobalReminders />
-          </main>
-        </div>
-        <NurseAlertPanel />
-      </div>
+    <NurseProvider userId={nurseSession.userId}>
+      {children}
     </NurseProvider>
   );
 }

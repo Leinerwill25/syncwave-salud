@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import * as React from 'react';
 import { useNurseState, useNurseActions } from '@/context/NurseContext';
-import { getDailyQueue } from '@/lib/supabase/nurse.service';
+import { getDailyQueue, ensurePatientInQueue } from '@/lib/supabase/nurse.service';
 import { 
   ChevronLeft, 
   User, 
@@ -31,41 +31,90 @@ export default function PatientDetailsLayout({ children, params }: Props) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const queueId = searchParams.get('queueId');
-  const { activePatient } = useNurseState();
+  const { activePatient, nurseProfile } = useNurseState();
   const { setActivePatient } = useNurseActions();
   const [loading, setLoading] = useState(!activePatient);
 
   useEffect(() => {
     async function recoverPatient() {
-      if (!activePatient && queueId) {
+      // Si ya tenemos el paciente activo y coincide con el ID de la URL, no hacemos nada
+      const currentId = activePatient?.patient_id || activePatient?.unregistered_patient_id;
+      if (activePatient && currentId === id) {
+        setLoading(false);
+        return;
+      }
+
+      if (queueId) {
         setLoading(true);
-        const queue = await getDailyQueue();
-        const found = queue.find(q => q.queue_id === queueId);
-        if (found) {
-          setActivePatient(found);
-        } else {
-          toast.error('No se pudo encontrar la información del paciente en la cola.');
+        try {
+          const queue = await getDailyQueue();
+          const found = queue.find(q => q.queue_id === queueId);
+          if (found) {
+            setActivePatient(found);
+          } else {
+            console.warn('[PatientDetailsLayout] queueId no encontrado en la cola de hoy');
+            toast.error('Sesión no encontrada en la cola diaria.');
+          }
+        } catch (err) {
+          console.error('[PatientDetailsLayout] Error recuperando por queueId:', err);
+        } finally {
+          setLoading(false);
         }
-        setLoading(false);
-      } else if (!activePatient && !queueId) {
-        // Handle cases where we don't have a queueId?
-        // For now, satisfy with a basic loader or message
-        setLoading(false);
+      } else if (id && nurseProfile) {
+        // Recuperación para pacientes de búsqueda global (Cuidados Independientes)
+        // CRÍTICO: Usar nurse_profile_id para la FK de patients_daily_queue, Y user_id para auditoría
+        const profId = nurseProfile.nurse_profile_id;
+        const userId = nurseProfile.user_id;
+
+        if (!profId || !userId) {
+          console.error('[PatientDetailsLayout] Error: El perfil del enfermero está incompleto', { profId, userId });
+          setLoading(false);
+          return;
+        }
+
+        const isUnreg = searchParams.get('isUnreg') === 'true';
+        setLoading(true);
+        try {
+          console.log('[PatientDetailsLayout] Asegurando sesión para patientId:', id, 'isUnreg:', isUnreg);
+          const entry = await ensurePatientInQueue(id, isUnreg, profId, userId, nurseProfile.organization_id);
+          if (entry) {
+            setActivePatient(entry);
+          } else {
+            toast.error('No se pudo abrir una sesión de atención para este paciente.');
+          }
+        } catch (err) {
+          console.error('[PatientDetailsLayout] Error en ensurePatientInQueue:', err);
+          toast.error('Error de base de datos al recuperar paciente.');
+        } finally {
+          setLoading(false);
+        }
+      } else {
+        // Si no hay queueId ni nurseProfile disponible tras un tiempo, dejamos de cargar para no bloquear la UI
+        // El useEffect se disparará de nuevo cuando nurseProfile esté listo
+        if (nurseProfile === null) {
+          setLoading(false);
+        } else if (id && !nurseProfile && !queueId) {
+          // Si tenemos ID pero el perfil aún no carga, esperamos. 
+          // Pero si ya pasó mucho tiempo (o si queremos ser robustos), podríamos poner un timeout.
+          // Por ahora, asumimos que NurseContext eventualmente proveerá nurseProfile.
+        } else if (!id) {
+          setLoading(false);
+        }
       }
     }
     recoverPatient();
-  }, [activePatient, queueId]);
+  }, [activePatient, queueId, id, nurseProfile, searchParams, setActivePatient]);
 
   const patientName = activePatient 
     ? `${activePatient.patient_first_name || activePatient.unreg_first_name} ${activePatient.patient_last_name || activePatient.unreg_last_name}`
     : 'Cargando...';
 
   const tabs = [
-    { id: 'summary', label: 'Resumen', icon: ClipboardList, href: `/nurse/patient/${id}${queueId ? `?queueId=${queueId}` : ''}` },
-    { id: 'vitals', label: 'Signos Vitales', icon: Activity, href: `/nurse/patient/${id}/vitals${queueId ? `?queueId=${queueId}` : ''}` },
-    { id: 'mar', label: 'Medicamentos (MAR)', icon: Pill, href: `/nurse/patient/${id}/mar${queueId ? `?queueId=${queueId}` : ''}` },
-    { id: 'procedures', label: 'Procedimientos', icon: Droplet, href: `/nurse/patient/${id}/procedures${queueId ? `?queueId=${queueId}` : ''}` },
-    { id: 'notes', label: 'Evolución / Notas', icon: FileText, href: `/nurse/patient/${id}/notes${queueId ? `?queueId=${queueId}` : ''}` },
+    { id: 'summary', label: 'Resumen', icon: ClipboardList, href: `/dashboard/nurse/patient/${id}${queueId ? `?queueId=${queueId}` : ''}` },
+    { id: 'vitals', label: 'Signos Vitales', icon: Activity, href: `/dashboard/nurse/patient/${id}/vitals${queueId ? `?queueId=${queueId}` : ''}` },
+    { id: 'mar', label: 'Medicamentos (MAR)', icon: Pill, href: `/dashboard/nurse/patient/${id}/mar${queueId ? `?queueId=${queueId}` : ''}` },
+    { id: 'procedures', label: 'Procedimientos', icon: Droplet, href: `/dashboard/nurse/patient/${id}/procedures${queueId ? `?queueId=${queueId}` : ''}` },
+    { id: 'notes', label: 'Evolución / Notas', icon: FileText, href: `/dashboard/nurse/patient/${id}/notes${queueId ? `?queueId=${queueId}` : ''}` },
   ];
 
   if (loading) {

@@ -30,21 +30,12 @@ export default async function NurseLayout({
     redirect('/login?redirect=/dashboard/nurse');
   }
 
-  // Si es independiente, solo pasamos el children y el Provider.
-  // El layout de /independent se encargará de su propia UI (Sidebar/TopBar).
-  if (nurseSession.nurseType === 'independent') {
-    return (
-      <NurseProvider userId={nurseSession.nurseProfileId}>
-        {children}
-      </NurseProvider>
-    );
-  }
-
+  // Shell principal para todos los enfermeros (Afiliados e Independientes)
   return (
-    <NurseProvider userId={nurseSession.nurseProfileId}>
+    <NurseProvider userId={nurseSession.userId}>
       <div className="flex h-screen bg-gray-50 dark:bg-gray-950 overflow-hidden">
-        {/* Sidebar */}
-        <NurseSidebar nurseType="affiliated" />
+        {/* Sidebar adaptativo */}
+        <NurseSidebar nurseType={nurseSession.nurseType} />
 
         {/* Main content */}
         <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
@@ -54,8 +45,6 @@ export default async function NurseLayout({
             <NurseGlobalReminders />
           </main>
         </div>
-
-        {/* Alert panel (collapsible right panel) */}
         <NurseAlertPanel />
       </div>
     </NurseProvider>

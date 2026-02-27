@@ -146,7 +146,7 @@ export function NurseSidebar({ nurseType }: NurseSidebarProps) {
         {!collapsed && (
           <div className="min-w-0">
             <p className="text-sm font-semibold text-gray-900 dark:text-white truncate">
-              {nurseProfile?.full_name ?? 'Cargando...'}
+              {nurseProfile?.full_name || nurseProfile?.email || 'Enfermera Independiente'}
             </p>
             <span className={cn('inline-block text-[10px] font-medium px-2 py-0.5 rounded-full mt-0.5', badgeClass)}>
               {nurseType === 'affiliated'

@@ -9,6 +9,7 @@ import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { toast } from 'sonner';
+import { MedicationKardex } from './MedicationKardex';
 
 interface Props {
   queueId: string;
@@ -20,6 +21,7 @@ export function PatientMARTab({ queueId }: Props) {
   const [records, setRecords] = useState<MARRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [processingId, setProcessingId] = useState<string | null>(null);
+  const [viewMode, setViewMode] = useState<'list' | 'kardex'>('list');
 
   const loadRecords = useCallback(async () => {
     setLoading(true);
@@ -91,12 +93,36 @@ export function PatientMARTab({ queueId }: Props) {
           <Pill className="w-5 h-5 text-teal-600" />
           Registro de Administración (MAR)
         </h3>
-        <button 
-          onClick={loadRecords}
-          className="text-xs font-bold text-teal-600 hover:text-teal-700 transition-colors"
-        >
-          Actualizar
-        </button>
+        
+        <div className="flex items-center gap-4">
+          <div className="bg-gray-100 dark:bg-gray-800 p-1 rounded-xl flex items-center">
+            <button
+              onClick={() => setViewMode('list')}
+              className={cn(
+                "px-3 py-1.5 rounded-lg text-xs font-bold transition-all",
+                viewMode === 'list' ? "bg-white dark:bg-gray-700 text-teal-600 shadow-sm" : "text-gray-500 hover:text-gray-700"
+              )}
+            >
+              Lista
+            </button>
+            <button
+              onClick={() => setViewMode('kardex')}
+              className={cn(
+                "px-3 py-1.5 rounded-lg text-xs font-bold transition-all",
+                viewMode === 'kardex' ? "bg-white dark:bg-gray-700 text-teal-600 shadow-sm" : "text-gray-500 hover:text-gray-700"
+              )}
+            >
+              Kardex
+            </button>
+          </div>
+          
+          <button 
+            onClick={loadRecords}
+            className="text-xs font-bold text-teal-600 hover:text-teal-700 transition-colors"
+          >
+            Actualizar
+          </button>
+        </div>
       </div>
 
       {records.length === 0 ? (
@@ -106,6 +132,10 @@ export function PatientMARTab({ queueId }: Props) {
           </div>
           <h4 className="text-gray-900 dark:text-white font-bold mb-1">No hay medicamentos programados</h4>
           <p className="text-sm text-gray-500 max-w-xs">Este paciente no tiene indicaciones de medicamentos registradas para esta visita.</p>
+        </div>
+      ) : viewMode === 'kardex' ? (
+        <div className="bg-white dark:bg-gray-950 p-6 md:p-8 rounded-[2.5rem] border border-gray-100 dark:border-gray-800 shadow-sm">
+          <MedicationKardex records={records} />
         </div>
       ) : (
         <div className="grid gap-4">

@@ -47,12 +47,6 @@ export default function DashboardRedirectPage() {
 
 				// Verificar si el usuario tiene el flag isRoleUser en metadata
 				const isRoleUser = session.user.user_metadata?.isRoleUser === true;
-				
-				// Si es usuario de rol pero no tiene sesión de rol activa, redirigir al login de rol
-				if (isRoleUser) {
-					router.replace('/login/role-user');
-					return;
-				}
 
 				// Obtener el rol del usuario desde la base de datos
 				const res = await fetch(`/api/auth/profile?authId=${encodeURIComponent(session.user.id)}`, {
@@ -60,6 +54,7 @@ export default function DashboardRedirectPage() {
 						'Authorization': `Bearer ${session.access_token}`
 					}
 				});
+
 				if (res.ok) {
 					const data = await res.json();
 					const role = data?.data?.role;
@@ -79,25 +74,33 @@ export default function DashboardRedirectPage() {
 							router.replace('/dashboard/patient');
 							break;
 						case 'RECEPCION':
-							// Si es RECEPCION, verificar si es usuario de rol
-							if (isRoleUser) {
+						case 'ENFERMERO':
+						case 'ENFERMERA':
+							// Si es ENFERMERO/A siempre va a /dashboard/nurse
+							if (role === 'ENFERMERO' || role === 'ENFERMERA') {
+								router.replace('/dashboard/nurse');
+							} else if (isRoleUser) {
+								// Otros roles de "Role User" que no son enfermería van al login específico
 								router.replace('/login/role-user');
 							} else {
-								// RECEPCION que no es usuario de rol, no tiene dashboard específico
 								router.replace('/login');
 							}
 							break;
-						case 'ENFERMERO':
-						case 'ENFERMERA':
-							router.replace('/dashboard/nurse');
-							break;
 						default:
-							router.replace('/login');
+							if (isRoleUser) {
+								router.replace('/login/role-user');
+							} else {
+								router.replace('/login');
+							}
 							break;
 					}
 				} else {
-					// Si no se puede obtener el perfil, redirigir al login
-					router.replace('/login');
+					// Si no se puede obtener el perfil y es usuario de rol, intentar el login de rol
+					if (isRoleUser) {
+						router.replace('/login/role-user');
+					} else {
+						router.replace('/login');
+					}
 				}
 			} catch (err) {
 				console.error('Error determinando redirección:', err);

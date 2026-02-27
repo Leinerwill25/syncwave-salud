@@ -22,7 +22,7 @@ import { es } from 'date-fns/locale';
 import Link from 'next/link';
 import { toast } from 'sonner';
 
-import { generateShiftReportDoc } from '@/lib/utils/nurse-report-generator';
+// Deprecated: import { generateShiftReportDoc } from '@/lib/utils/nurse-report-generator';
 
 export default function ReportsPage() {
   const { nurseProfile } = useNurseState();
@@ -51,14 +51,17 @@ export default function ReportsPage() {
   const handleDownload = async (report: ShiftReport) => {
     setIsDownloading(report.report_id);
     try {
-      const blob = await generateShiftReportDoc(report);
+      const response = await fetch(`/api/nurse/shift-report?date=${report.report_date}`);
+      if (!response.ok) throw new Error('Error al generar el PDF en el servidor');
+
+      const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `Reporte_${report.report_type}_${report.report_date}.docx`;
+      a.download = `Reporte_${report.report_type}_${report.report_date}.pdf`;
       a.click();
       window.URL.revokeObjectURL(url);
-      toast.success('Documento generado exitosamente');
+      toast.success('Reporte PDF descargado exitosamente');
     } catch (error) {
       console.error(error);
       toast.error('Error al generar el documento');
