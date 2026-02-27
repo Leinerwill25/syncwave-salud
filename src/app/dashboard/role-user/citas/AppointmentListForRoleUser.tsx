@@ -23,9 +23,7 @@ import {
 import CurrencyDisplay from '@/components/CurrencyDisplay';
 import { useAppointmentsForRoleUser } from '@/app/hooks/useAppointmentsForRoleUser';
 import ReceptionAppointmentModal from './ReceptionAppointmentModal';
-import RescheduleModal from './RescheduleModal';
-import AddServiceModal from '@/app/dashboard/components/AddServiceModal';
-import { PlusCircle } from 'lucide-react';
+import EditAppointmentModal from './EditAppointmentModal';
 
 interface Props {
 	selectedDate: Date;
@@ -40,12 +38,8 @@ export default function AppointmentListForRoleUser({ selectedDate, roleName, can
 	const [loadingId, setLoadingId] = useState<string | null>(null);
 	const [selectedAppointment, setSelectedAppointment] = useState<any>(null);
 	const [isModalOpen, setIsModalOpen] = useState(false);
-	const [rescheduleAppointment, setRescheduleAppointment] = useState<{ id: string; scheduled_at: string; patient: string } | null>(null);
-	const [isRescheduleModalOpen, setIsRescheduleModalOpen] = useState(false);
-	
-    // Estado para agregar servicios
-    const [selectedAppointmentForService, setSelectedAppointmentForService] = useState<any>(null);
-    const [isAddServiceModalOpen, setIsAddServiceModalOpen] = useState(false);
+	const [selectedAppointmentForEdit, setSelectedAppointmentForEdit] = useState<any>(null);
+	const [isEditModalOpen, setIsEditModalOpen] = useState(false);
 
     const [whatsappConfig, setWhatsappConfig] = useState<{
 		whatsappNumber: string | null;
@@ -116,76 +110,22 @@ export default function AppointmentListForRoleUser({ selectedDate, roleName, can
 		}
 	};
 
-	const handleReschedule = async (appointmentId: string, newDate: string) => {
+	const handleEditUpdate = async (appointmentId: string, updates: any) => {
 		try {
-			// Actualizar la cita con la nueva fecha y cambiar el estado a REAGENDADA
-			await updateAppointment(appointmentId, {
-				status: 'REAGENDADA',
-				scheduled_at: newDate,
-			});
-		} catch (err) {
-			console.error('❌ Error al reagendar:', err);
-			throw new Error('No se pudo reagendar la cita.');
-		}
-	};
-
-	const handleRescheduleClick = (appt: any) => {
-		setRescheduleAppointment({
-			id: appt.id,
-			scheduled_at: appt.scheduled_at || new Date().toISOString(),
-			patient: appt.patient,
-		});
-		setIsRescheduleModalOpen(true);
-	};
-
-	const handleRemoveService = async (appt: any, serviceIndex: number) => {
-		if (!confirm('¿Estás seguro de que deseas eliminar este servicio de la cita?')) return;
-
-		try {
-			setLoadingId(appt.id);
-			
-			// Normalizar servicios a array
-			let currentServices: any[] = [];
-			if (Array.isArray(appt.selected_service)) {
-				currentServices = [...appt.selected_service];
-			} else if (typeof appt.selected_service === 'string') {
-				try {
-					const parsed = JSON.parse(appt.selected_service);
-					currentServices = Array.isArray(parsed) ? [...parsed] : [parsed];
-				} catch {
-					currentServices = [{ name: appt.selected_service }];
-				}
-			} else if (appt.selected_service) {
-				currentServices = [appt.selected_service];
-			}
-
-			// Filtrar el servicio eliminado
-			const updatedServices = currentServices.filter((_, idx) => idx !== serviceIndex);
-			
-			// Recalcular montos
-			const newTotal = updatedServices.reduce((sum, s) => sum + (Number(s.price) || 0), 0);
-			
-			const updatedBilling = {
-				...appt.billing,
-				subtotal: newTotal,
-				total: newTotal,
-				currency: updatedServices[0]?.currency || appt.billing?.currency || 'USD'
-			};
-
-			// Actualizar cita
-			await updateAppointment(appt.id, {
-				selected_service: updatedServices,
-				billing: updatedBilling
-			});
-
-			// Forzar actualización de la caché local si es necesario
+			setLoadingId(appointmentId);
+			await updateAppointment(appointmentId, updates);
 			mutate();
 		} catch (err) {
-			console.error('❌ Error al eliminar servicio:', err);
-			alert('No se pudo eliminar el servicio correctamente.');
+			console.error('❌ Error al actualizar la cita:', err);
+			throw new Error('No se pudo actualizar la cita.');
 		} finally {
 			setLoadingId(null);
 		}
+	};
+
+	const handleEditClick = (appt: any) => {
+		setSelectedAppointmentForEdit(appt);
+		setIsEditModalOpen(true);
 	};
 
 	const getDaysUntilAppointment = (appt: any): number | null => {
@@ -448,19 +388,7 @@ export default function AppointmentListForRoleUser({ selectedDate, roleName, can
 											<CreditCard className="w-4 h-4 text-teal-600 shrink-0" />
 											<span className="text-xs font-semibold text-teal-900">Servicios:</span>
 										</div>
-										{canEdit && (
-											<button 
-												onClick={(e) => {
-													e.stopPropagation();
-													setSelectedAppointmentForService(appt);
-													setIsAddServiceModalOpen(true);
-												}}
-												className="text-teal-600 hover:text-teal-800 hover:bg-teal-100 p-1 rounded-full transition-colors"
-												title="Agregar servicio"
-											>
-												<PlusCircle className="w-4 h-4" />
-											</button>
-										)}
+
 									</div>
 									
 									{appt.selected_service ? (
@@ -491,18 +419,7 @@ export default function AppointmentListForRoleUser({ selectedDate, roleName, can
                                                                 </div>
                                                             )}
                                                         </div>
-                                                        {canEdit && (
-                                                            <button 
-                                                                onClick={(e) => {
-                                                                    e.stopPropagation();
-                                                                    handleRemoveService(appt, idx);
-                                                                }}
-                                                                className="text-red-400 hover:text-red-600 p-1 rounded-full hover:bg-red-50 transition-colors mt-0.5"
-                                                                title="Eliminar este servicio"
-                                                            >
-                                                                <Trash2 className="w-3.5 h-3.5" />
-                                                            </button>
-                                                        )}
+
                                                     </div>
                                                 ))}
                                             </div>
@@ -511,18 +428,7 @@ export default function AppointmentListForRoleUser({ selectedDate, roleName, can
                                             typeof appt.selected_service === 'string' ? (
                                                 <div className="flex justify-between items-start gap-2">
                                                     <div className="text-sm font-medium text-teal-800">{appt.selected_service}</div>
-                                                    {canEdit && (
-                                                        <button 
-                                                            onClick={(e) => {
-                                                                e.stopPropagation();
-                                                                handleRemoveService(appt, 0);
-                                                            }}
-                                                            className="text-red-400 hover:text-red-600 p-1 rounded-full hover:bg-red-50 transition-colors mt-0.5"
-                                                            title="Eliminar este servicio"
-                                                        >
-                                                            <Trash2 className="w-3.5 h-3.5" />
-                                                        </button>
-                                                    )}
+
                                                 </div>
                                             ) : appt.selected_service.name ? (
                                                 <div className="flex justify-between items-start gap-2">
@@ -552,18 +458,7 @@ export default function AppointmentListForRoleUser({ selectedDate, roleName, can
                                                             </div>
                                                         )}
                                                     </div>
-                                                    {canEdit && (
-                                                        <button 
-                                                            onClick={(e) => {
-                                                                e.stopPropagation();
-                                                                handleRemoveService(appt, 0);
-                                                            }}
-                                                            className="text-red-400 hover:text-red-600 p-1 rounded-full hover:bg-red-50 transition-colors mt-0.5"
-                                                            title="Eliminar este servicio"
-                                                        >
-                                                            <Trash2 className="w-3.5 h-3.5" />
-                                                        </button>
-                                                    )}
+
                                                 </div>
                                             ) : (
                                                 <div className="text-sm font-medium text-teal-800">Servicio no especificado</div>
@@ -642,16 +537,16 @@ export default function AppointmentListForRoleUser({ selectedDate, roleName, can
 									</button>
 								)}
 
-								{/* Botón de reagendar */}
+								{/* Botón de Editar Cita */}
 								{canEdit && appt.status !== 'COMPLETADA' && appt.status !== 'CANCELADA' && (
 									<button
 										onClick={(e) => {
 											e.stopPropagation();
-											handleRescheduleClick(appt);
+											handleEditClick(appt);
 										}}
-										className="flex items-center justify-center gap-2 px-3 py-1.5 text-xs font-semibold text-white bg-gradient-to-r from-orange-500 to-amber-600 rounded-lg hover:from-orange-600 hover:to-amber-700 transition-all shadow-sm hover:shadow-md">
-										<CalendarClock className="w-3.5 h-3.5" />
-										Reagendar
+										className="flex items-center justify-center gap-2 px-3 py-1.5 text-xs font-semibold text-white bg-gradient-to-r from-teal-500 to-teal-600 rounded-lg hover:from-teal-600 hover:to-teal-700 transition-all shadow-sm hover:shadow-md">
+										<Edit2 className="w-3.5 h-3.5" />
+										Editar Cita
 									</button>
 								)}
 
@@ -706,32 +601,17 @@ export default function AppointmentListForRoleUser({ selectedDate, roleName, can
 				/>
 			)}
 
-			{/* Modal para reagendar citas */}
-			<RescheduleModal
-				isOpen={isRescheduleModalOpen}
+			{/* Modal unificado para editar la cita (reagendar + servicios) */}
+			<EditAppointmentModal
+				isOpen={isEditModalOpen}
 				onClose={() => {
-					setIsRescheduleModalOpen(false);
-					setRescheduleAppointment(null);
+					setIsEditModalOpen(false);
+					setSelectedAppointmentForEdit(null);
 				}}
-				appointment={rescheduleAppointment}
-				onReschedule={handleReschedule}
+				appointment={selectedAppointmentForEdit}
+				onUpdate={handleEditUpdate}
+				organizationId={organizationId}
 			/>
-
-            {/* Modal para agregar servicios */}
-            {selectedAppointmentForService && (
-                <AddServiceModal
-                    isOpen={isAddServiceModalOpen}
-                    onClose={() => {
-                        setIsAddServiceModalOpen(false);
-                        setSelectedAppointmentForService(null);
-                    }}
-                    appointment={selectedAppointmentForService}
-                    organizationId={organizationId}
-                    onSuccess={() => {
-                         mutate();
-                    }}
-                />
-            )}
 		</>
 	);
 }

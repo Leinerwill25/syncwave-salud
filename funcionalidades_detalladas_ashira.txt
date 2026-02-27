@@ -1,0 +1,157 @@
+================================================================================
+REPORTE DETALLADO DE FUNCIONALIDADES - ASHIRA SOFTWARE CLÍNICO
+Versión: 2.1 | Fecha: Febrero 2026
+================================================================================
+
+Este documento detalla exhaustivamente las funcionalidades disponibles en la plataforma 
+ASHIRA, segmentadas por tipo de perfil principal (dueños de cuenta) y los subroles 
+operativos que pueden ser asignados a miembros del equipo (staff).
+
+--------------------------------------------------------------------------------
+1. PERFILES PRINCIPALES (TITULARES DE CUENTA)
+--------------------------------------------------------------------------------
+
+A. MÉDICO ESPECIALISTA (CONSULTORIO PRIVADO)
+El perfil Médico es el núcleo de la plataforma clínica. Está diseñado para el médico 
+independiente que gestiona su propio consultorio y puede delegar tareas operativas a 
+su staff.
+
+Módulo Clínico (Historia Clínica Electrónica - HCE):
+- Creación y consulta de Historias Clínicas Electrónicas (HCE) 24/7.
+- Registro estructurado de evolución de pacientes (SOAP u otros formatos clínicos).
+- Emisión de Recetas Electrónicas personalizables en formatos PDF/DOCX, listas para imprimir o enviar.
+- Consulta Sucesiva: Funcionalidad optimizada para pacientes con estudios o tratamientos previos.
+- Carga y visualización de imágenes (Rayos X, resultados escaneados) directamente en el perfil del paciente.
+- Emisión de órdenes de laboratorio e imagenología.
+
+Módulo de Gestión y Agenda:
+- Agenda interactiva con vistas diarias, semanales y mensuales.
+- Citas online: Los pacientes pueden agendar directamente a través del portal o enlace (Linktree propio).
+- Recordatorios automáticos por WhatsApp y correo electrónico para reducir el ausentismo escolar.
+- Gestión de sala de espera en tiempo real.
+
+Módulo Financiero y Administrativo:
+- Facturación básica multi-moneda (Soporte principal para USD y Bolívares - Bs).
+- Dashboard de estadísticas clínicas y financieras (Pacientes vistos, ingresos, etc.).
+- Configuración de catálogos de precios para consultas y procedimientos.
+- Capacidad de invitar hasta 2 usuarios de staff (por ej. un asistente y un recepcionista) en su plan base.
+
+--------------------------------------------------------------------------------
+
+B. ORGANIZACIÓN / CLÍNICA (ADMINISTRADOR MAESTRO)
+Diseñado para centros médicos, policlínicas y agrupaciones grandes. Incluye todo lo 
+del perfil Médico, más capas de gestión empresarial.
+
+Gestión Avanzada y Multi-Sede:
+- Gestión centralizada de múltiples sedes físicas bajo una misma organización.
+- Sugerencia Inteligente de Sede para optimizar el flujo de pacientes según disponibilidad y cercanía.
+- Inventario e insumos por sede (control básico de stock).
+- Gestión de Camas y Observación: Mapa de internación básica para clínicas tipo B y superiores.
+- Alertas en tiempo real para pacientes en áreas de observación.
+
+Gestión de Equipo Médico y Roles:
+- Suscripción escalonada ($130 base + tarifa por especialista invitado).
+- Panel Administrativo Maestro con control total sobre todos los especialistas e invitados.
+- Capacidad de agregar Médicos Invitados (quienes tienen cuentas restringidas a la clínica).
+- Asignación de permisos granulares a múltiples miembros de staff.
+
+Auditoría y Análisis:
+- Analytics Empresarial Avanzado: Reportes de rendimiento por sede o por especialista.
+- Verificación centralizada de pagos para evitar fraudes en recepción.
+- Auditoría de acciones de usuarios (quién hizo qué y cuándo).
+
+--------------------------------------------------------------------------------
+
+C. ENFERMERO (INDEPENDIENTE Y/O CLÍNICO)
+Perfil especializado introducido recientemente, enfocado en el cuidado del paciente, 
+procedimientos en sala y hospitalización domiciliaria.
+
+Gestión Clínica Práctica:
+- Notas de Enfermería Digitales altamente estructuradas.
+- Control de Signos Vitales interactivo con gráficas evolutivas (peso, tensión arterial, glicemia capilar, SpO2, etc.).
+- MAR (Medication Administration Record): Línea de tiempo/Kardex para control de administración de medicamentos.
+- Formularios de Procedencia del paciente y Tratamientos previos.
+
+Herramientas de Turno:
+- Reportes PDF de Fin de Turno automatizados con los eventos relevantes de la guardia.
+- Panel de Tareas y control de pendientes intra-guardia.
+- Compatibilidad con Modo Offline para registro sin conexión y sincronización posterior.
+- Temporizador y persistencia del turno activo.
+
+Gestión de Casos:
+- Dashboard de KPIs propios de enfermería (Atenciones hoy, Pacientes activos).
+- Módulo "Mis Pacientes": Listado híbrido que incluye pacientes del sistema y la creación rápida de pacientes temporales/no registrados.
+- Integración comunicacional ("Chat" o notas compartidas) directo con el médico tratante.
+
+--------------------------------------------------------------------------------
+
+D. PACIENTE
+Perfil gratuito enfocado en la transparencia y portabilidad de su propia salud.
+
+- Portal individual gratuito / Modo "Plan Familiar" (hasta 5 miembros desde un perfil maestro).
+- Visualización de Historial Médico (Conclusiones del médico, resúmenes).
+- Agenda de Citas Online y reprogramación.
+- Acceso directo a descarga de recetas (PDF) e indicaciones pasadas.
+- Integración para subir o revisar resultados de laboratorio e imágenes.
+
+================================================================================
+2. SUB-ROLES OPERATIVOS (STAFF DE CLÍNICA O CONSULTORIO)
+================================================================================
+
+El dueño de la cuenta (Médico o Administrador de Clínica) puede invitar a personal de 
+apoyo asignándoles roles estrictos que limitan a qué pueden acceder en el sistema.
+
+A. ROL: ASISTENTE DE CITAS / ASISTENTE CLÍNICO
+Este rol es la mano derecha clínica del especialista antes de que el paciente entre al 
+consultorio.
+
+Funcionalidades Permitidas:
+- Agenda total: Puede crear, modificar, cancelar y reprogramar citas para el médico.
+- Confirmación activa de lista de pacientes del día.
+- Triaje Clínico: Autorizado para ingresar signos vitales iniciales básicos (peso, talla, presión arterial breve, síntomas o motivo de consulta).
+- Control de flujo de pacientes hacia los consultorios físicos (marcar "En Sala", "Llamar paciente").
+
+Restricciones Clínicas:
+- Típicamente NO tiene permiso para emitir récipes médicos ni modificar diagnósticos de la HCE.
+- Acceso limitado (solo lectura de ciertas partes) al historial médico sensible, dependiendo de la configuración de privacidad del admin.
+
+--------------------------------------------------------------------------------
+
+B. ROL: RECEPCIONISTA (FLUJO Y PAGO)
+Un rol enfocado estrictamente en la logística física del lugar, el ingreso de la 
+persona al recinto y el manejo financiero de primera línea.
+
+Funcionalidades Permitidas:
+- Status de Sala de Espera: Marcar llegada de pacientes, controlar tiempos de espera en lobby.
+- Citas Express / Citas de Emergencia de mostrador.
+- Verificación de Pagos: Registro de transferencias, Zelle, efectivo, punto de venta y comprobantes de depósitos físicos o digitales inmediatos.
+- Manejo de "Caja Chica" operativa de la recepción de turno.
+- Generación de facturas simples para el paciente sobre la consulta recién cobrada.
+
+Restricciones Críticas:
+- Cero acceso a la Historia Clínica Electrónica. Oclusión total de diagnósticos y recetas para proteger la confidencialidad médica (HIPAA compliance equivalente local).
+- No realiza triaje.
+
+--------------------------------------------------------------------------------
+
+C. ROL: FACTURACIÓN / GERENCIA ADMINISTRATIVA (Más común en Clínicas)
+Rol de back-office dedicado a las finanzas del centro y relaciones con seguros/pacientes 
+y la contabilidad.
+
+Funcionalidades Permitidas:
+- Aprobación y arqueo de múltiples recepcionistas en múltiples sedes.
+- Panel completo de transacciones, estados de cuentas por cobrar, y deudas pendientes.
+- Configuración de listas de precios, descuentos y promociones.
+- Generación de reportes de rentabilidad bruta y pagos parciales por especialistas.
+
+Restricciones:
+- Sin acceso a historiales clínicos de pacientes.
+- Usualmente sin permiso de editar la estructura del inventario médico (salvo en temas de costo unitario).
+
+--------------------------------------------------------------------------------
+RESUMEN DE ARQUITECTURA DE SEGURIDAD
+El sistema ASHIRA garantiza que mediante Row-Level Security (RLS) en base de datos, 
+un Recepcionista no pueda manipular datos de enfermería, y un Asistente no pueda 
+modificar la configuración principal del recinto. Todo se audita silenciosamente, 
+creando un entorno clínico, legal e inviolable.
+================================================================================
