@@ -361,14 +361,14 @@ export default async function EditConsultationPage({ params }: Props) {
 	const startedAt = consultation.started_at ? new Date(consultation.started_at) : consultation.created_at ? new Date(consultation.created_at) : null;
 
 	return (
-		<main className="min-h-screen bg-slate-50 dark:bg-slate-900">
+		<main className="min-h-screen bg-slate-50 ">
 			<div className="max-w-7xl mx-auto">
 				{/* Header Section - Professional Design */}
-				<header className="bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 sticky top-0 z-20 shadow-sm">
+				<header className="bg-white  border-b border-slate-200  sticky top-0 z-20 shadow-sm">
 					<div className="px-6 py-4">
 						{/* Breadcrumb */}
 						<nav className="mb-4">
-							<Link href="/dashboard/medic/consultas" className="inline-flex items-center gap-2 text-sm font-medium text-slate-600 dark:text-slate-400 hover:text-teal-600 dark:hover:text-teal-400 transition-colors">
+							<Link href="/dashboard/medic/consultas" className="inline-flex items-center gap-2 text-sm font-medium text-slate-600  hover:text-teal-600  transition-colors">
 								<ArrowLeft size={16} />
 								Volver a Consultas
 							</Link>
@@ -377,33 +377,33 @@ export default async function EditConsultationPage({ params }: Props) {
 						{/* Title and Info */}
 						<div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
 							<div className="flex-1">
-								<h1 className="text-2xl lg:text-3xl font-bold text-slate-900 dark:text-slate-100 flex items-center gap-3 mb-2">
+								<h1 className="text-2xl lg:text-3xl font-bold text-slate-900  flex items-center gap-3 mb-2">
 									<div className="w-10 h-10 rounded-lg bg-gradient-to-br from-teal-500 to-cyan-500 flex items-center justify-center">
 										<FileText size={20} className="text-white" />
 									</div>
 									Editar Consulta Médica
 								</h1>
-								<p className="text-sm text-slate-600 dark:text-slate-400 ml-13">Modifica la información clínica, signos vitales y genera informes médicos</p>
+								<p className="text-sm text-slate-600  ml-13">Modifica la información clínica, signos vitales y genera informes médicos</p>
 							</div>
 
 							{/* Quick Info Cards */}
 							<div className="flex flex-wrap items-center gap-3">
 								{startedAt && (
-									<div className="flex items-center gap-2 px-4 py-2 rounded-lg bg-slate-100 dark:bg-slate-700 border border-slate-200 dark:border-slate-600">
-										<Clock size={16} className="text-slate-600 dark:text-slate-400" />
+									<div className="flex items-center gap-2 px-4 py-2 rounded-lg bg-slate-100  border border-slate-200 ">
+										<Clock size={16} className="text-slate-600 " />
 										<div className="flex flex-col">
-											<span className="text-xs text-slate-500 dark:text-slate-400 font-medium">Fecha Consulta</span>
-											<span className="text-sm font-semibold text-slate-900 dark:text-slate-100">{format(startedAt, 'dd MMM yyyy • HH:mm')}</span>
+											<span className="text-xs text-slate-500  font-medium">Fecha Consulta</span>
+											<span className="text-sm font-semibold text-slate-900 ">{format(startedAt, 'dd MMM yyyy • HH:mm')}</span>
 										</div>
 									</div>
 								)}
 
 								{consultation.created_at && (
-									<div className="flex items-center gap-2 px-4 py-2 rounded-lg bg-slate-100 dark:bg-slate-700 border border-slate-200 dark:border-slate-600">
-										<Clock size={16} className="text-slate-600 dark:text-slate-400" />
+									<div className="flex items-center gap-2 px-4 py-2 rounded-lg bg-slate-100  border border-slate-200 ">
+										<Clock size={16} className="text-slate-600 " />
 										<div className="flex flex-col">
-											<span className="text-xs text-slate-500 dark:text-slate-400 font-medium">Creada</span>
-											<span className="text-sm font-semibold text-slate-900 dark:text-slate-100">{format(new Date(consultation.created_at), 'dd/MM/yyyy HH:mm')}</span>
+											<span className="text-xs text-slate-500  font-medium">Creada</span>
+											<span className="text-sm font-semibold text-slate-900 ">{format(new Date(consultation.created_at), 'dd/MM/yyyy HH:mm')}</span>
 										</div>
 									</div>
 								)}
@@ -412,22 +412,22 @@ export default async function EditConsultationPage({ params }: Props) {
 					</div>
 
 					{/* Patient & Doctor Info Bar */}
-					<div className="px-6 py-4 bg-slate-50 dark:bg-slate-800/50 border-t border-slate-200 dark:border-slate-700">
+					<div className="px-6 py-4 bg-slate-50  border-t border-slate-200 ">
 						<div className="flex flex-wrap items-center gap-4">
 							{/* Patient Card */}
 							{patient && (
-								<div className={`flex items-center gap-3 px-4 py-2.5 rounded-lg border shadow-sm transition-all hover:shadow-md ${isUnregistered ? 'bg-orange-50 dark:bg-orange-900/20 border-orange-200 dark:border-orange-800' : 'bg-teal-50 dark:bg-teal-900/20 border-teal-200 dark:border-teal-800'}`}>
-									<div className={`w-10 h-10 rounded-lg flex items-center justify-center font-bold text-base shadow-sm ${isUnregistered ? 'bg-orange-200 dark:bg-orange-800 text-orange-800 dark:text-orange-200' : 'bg-teal-200 dark:bg-teal-800 text-teal-800 dark:text-teal-200'}`}>{initials(patient.firstName, patient.lastName)}</div>
+								<div className={`flex items-center gap-3 px-4 py-2.5 rounded-lg border shadow-sm transition-all hover:shadow-md ${isUnregistered ? 'bg-orange-50  border-orange-200 ' : 'bg-teal-50  border-teal-200 '}`}>
+									<div className={`w-10 h-10 rounded-lg flex items-center justify-center font-bold text-base shadow-sm ${isUnregistered ? 'bg-orange-200  text-orange-800 ' : 'bg-teal-200  text-teal-800 '}`}>{initials(patient.firstName, patient.lastName)}</div>
 									<div className="flex flex-col min-w-0">
 										<div className="flex items-center gap-2">
-											<span className="font-semibold text-slate-900 dark:text-slate-100 truncate text-sm">
+											<span className="font-semibold text-slate-900  truncate text-sm">
 												{patient.firstName} {patient.lastName}
 											</span>
-											{isUnregistered && <span className="text-xs px-2 py-0.5 rounded-full bg-orange-100 dark:bg-orange-800 text-orange-700 dark:text-orange-200 font-medium shrink-0">No Registrado</span>}
+											{isUnregistered && <span className="text-xs px-2 py-0.5 rounded-full bg-orange-100  text-orange-700  font-medium shrink-0">No Registrado</span>}
 										</div>
 										<div className="flex items-center gap-2 mt-0.5">
-											<span className="text-xs text-slate-600 dark:text-slate-400">Paciente</span>
-											{patient.identifier && <span className="text-xs text-slate-500 dark:text-slate-500">• {patient.identifier}</span>}
+											<span className="text-xs text-slate-600 ">Paciente</span>
+											{patient.identifier && <span className="text-xs text-slate-500 ">• {patient.identifier}</span>}
 										</div>
 									</div>
 								</div>
@@ -435,8 +435,8 @@ export default async function EditConsultationPage({ params }: Props) {
 
 							{/* Doctor Card */}
 							{doctor && (
-								<div className="flex items-center gap-3 px-4 py-2.5 rounded-lg border border-indigo-200 dark:border-indigo-800 bg-indigo-50 dark:bg-indigo-900/20 shadow-sm transition-all hover:shadow-md">
-									<div className="w-10 h-10 rounded-lg flex items-center justify-center bg-indigo-200 dark:bg-indigo-800 text-indigo-800 dark:text-indigo-200 font-bold text-base shadow-sm">
+								<div className="flex items-center gap-3 px-4 py-2.5 rounded-lg border border-indigo-200  bg-indigo-50  shadow-sm transition-all hover:shadow-md">
+									<div className="w-10 h-10 rounded-lg flex items-center justify-center bg-indigo-200  text-indigo-800  font-bold text-base shadow-sm">
 										{doctor.name
 											? doctor.name
 													.split(' ')
@@ -447,16 +447,16 @@ export default async function EditConsultationPage({ params }: Props) {
 											: 'DR'}
 									</div>
 									<div className="flex flex-col min-w-0">
-										<span className="font-semibold text-slate-900 dark:text-slate-100 truncate text-sm">{doctor.name ?? '—'}</span>
-										<span className="text-xs text-slate-600 dark:text-slate-400">Médico Asignado</span>
+										<span className="font-semibold text-slate-900  truncate text-sm">{doctor.name ?? '—'}</span>
+										<span className="text-xs text-slate-600 ">Médico Asignado</span>
 									</div>
 								</div>
 							)}
 
 							{/* Consultation ID */}
-							<div className="ml-auto flex items-center gap-2 px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800">
-								<span className="text-xs text-slate-500 dark:text-slate-400 font-medium">ID:</span>
-								<span className="text-xs font-mono text-slate-700 dark:text-slate-300">{consultation.id.slice(0, 8)}...</span>
+							<div className="ml-auto flex items-center gap-2 px-3 py-2 rounded-lg border border-slate-200  bg-white ">
+								<span className="text-xs text-slate-500  font-medium">ID:</span>
+								<span className="text-xs font-mono text-slate-700 ">{consultation.id.slice(0, 8)}...</span>
 							</div>
 						</div>
 					</div>

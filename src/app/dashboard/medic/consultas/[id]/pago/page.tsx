@@ -10,7 +10,7 @@ export default async function Page({ params }: Props) {
 
 	if (!id) {
 		return (
-			<main className="min-h-screen p-8 bg-slate-50 dark:bg-[#041027]">
+			<main className="min-h-screen p-8 bg-slate-50 #041027]">
 				<div className="max-w-4xl mx-auto">
 					<div className="rounded-2xl bg-white p-6 shadow border">
 						<p className="text-rose-600 font-semibold">No se proporcionó el ID de la consulta.</p>
@@ -26,7 +26,7 @@ export default async function Page({ params }: Props) {
 	const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 	if (!uuidRegex.test(id)) {
 		return (
-			<main className="min-h-screen p-8 bg-slate-50 dark:bg-[#041027]">
+			<main className="min-h-screen p-8 bg-slate-50 #041027]">
 				<div className="max-w-4xl mx-auto">
 					<div className="rounded-2xl bg-white p-6 shadow border">
 						<p className="text-rose-600 font-semibold">
@@ -51,7 +51,7 @@ export default async function Page({ params }: Props) {
 
 	if (error || !consultation) {
 		return (
-			<main className="min-h-screen p-8 bg-slate-50 dark:bg-[#041027]">
+			<main className="min-h-screen p-8 bg-slate-50 #041027]">
 				<div className="max-w-4xl mx-auto">
 					<div className="rounded-2xl bg-white p-6 shadow border">
 						<p className="text-rose-600 font-semibold">No se encontró la consulta o hubo un error: {error?.message ?? 'Consulta no encontrada'}</p>
@@ -78,16 +78,16 @@ export default async function Page({ params }: Props) {
 	}
 
 	return (
-		<main className="min-h-screen bg-linear-to-b from-slate-50 to-white dark:from-[#031225] dark:to-[#021018] p-8">
+		<main className="min-h-screen bg-linear-to-b from-slate-50 to-white #031225] #021018] p-8">
 			<div className="max-w-4xl mx-auto">
 				{/* Mostrar información si ya existe facturación */}
 				{existingFacturacion && (
-					<div className="mb-6 rounded-2xl bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 p-4">
-						<h3 className="text-sm font-semibold text-blue-800 dark:text-blue-200 mb-2">Facturación existente encontrada</h3>
-						<p className="text-sm text-blue-700 dark:text-blue-300">
+					<div className="mb-6 rounded-2xl bg-blue-50  border border-blue-200  p-4">
+						<h3 className="text-sm font-semibold text-blue-800  mb-2">Facturación existente encontrada</h3>
+						<p className="text-sm text-blue-700 ">
 							Ya existe una facturación para esta consulta. Puedes editar los datos o cambiar el estado del pago. Número de factura: <span className="font-mono">{existingFacturacion.numero_factura || 'N/A'}</span>, Estado actual: <span className="font-semibold">{existingFacturacion.estado_pago}</span>, Total: <span className="font-semibold">{existingFacturacion.total}</span>
 						</p>
-						<p className="text-xs text-blue-600 dark:text-blue-400 mt-2">Los datos existentes han sido cargados en el formulario. Puedes editarlos y guardar los cambios.</p>
+						<p className="text-xs text-blue-600  mt-2">Los datos existentes han sido cargados en el formulario. Puedes editarlos y guardar los cambios.</p>
 					</div>
 				)}
 

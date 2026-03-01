@@ -59,16 +59,16 @@ export function NurseTopBar() {
   const today = format(new Date(), "EEEE d 'de' MMMM", { locale: es });
 
   return (
-    <header className="flex-shrink-0 h-14 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 flex items-center gap-4 px-6 z-10">
+    <header className="flex-shrink-0 h-14 bg-white  border-b border-gray-200  flex items-center gap-4 px-6 z-10">
       {/* Route title */}
       <div className="flex-1 min-w-0">
-        <h1 className="text-base font-semibold text-gray-900 dark:text-white truncate">
+        <h1 className="text-base font-semibold text-gray-900  truncate">
           {title}
         </h1>
         {activePatient && (
-          <p className="text-xs text-gray-500 dark:text-gray-400 truncate mt-0.5">
+          <p className="text-xs text-gray-500  truncate mt-0.5">
             Paciente activo:&nbsp;
-            <span className="font-medium text-teal-600 dark:text-teal-400">
+            <span className="font-medium text-teal-600 ">
               {/* Show patient name from queue entry */}
               Cola #{activePatient.queue_number ?? '—'}
             </span>
@@ -79,7 +79,7 @@ export function NurseTopBar() {
       {/* Date selector */}
       <button
         onClick={() => setShowDatePicker(!showDatePicker)}
-        className="hidden sm:flex items-center gap-1.5 text-xs text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors"
+        className="hidden sm:flex items-center gap-1.5 text-xs text-gray-600  hover:text-gray-900  transition-colors"
       >
         <Calendar className="w-3.5 h-3.5" />
         <span className="capitalize">{today}</span>
@@ -90,7 +90,7 @@ export function NurseTopBar() {
       {currentShift.isActive ? (
         <button
           onClick={endShift}
-          className="flex items-center gap-1.5 text-xs font-medium text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/30 border border-red-200 dark:border-red-800 rounded-lg px-3 py-1.5 transition-colors"
+          className="flex items-center gap-1.5 text-xs font-medium text-red-600  bg-red-50  hover:bg-red-100  border border-red-200  rounded-lg px-3 py-1.5 transition-colors"
         >
           <Square className="w-3 h-3 fill-current" />
           Finalizar turno
@@ -98,7 +98,7 @@ export function NurseTopBar() {
       ) : (
         <button
           onClick={startShift}
-          className="flex items-center gap-1.5 text-xs font-medium text-teal-600 dark:text-teal-400 bg-teal-50 dark:bg-teal-900/20 hover:bg-teal-100 dark:hover:bg-teal-900/30 border border-teal-200 dark:border-teal-800 rounded-lg px-3 py-1.5 transition-colors"
+          className="flex items-center gap-1.5 text-xs font-medium text-teal-600  bg-teal-50  hover:bg-teal-100  border border-teal-200  rounded-lg px-3 py-1.5 transition-colors"
         >
           <Play className="w-3 h-3 fill-current" />
           Iniciar turno
@@ -107,10 +107,10 @@ export function NurseTopBar() {
 
       {/* Alert bell */}
       <button
-        className="relative flex items-center justify-center w-8 h-8 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+        className="relative flex items-center justify-center w-8 h-8 rounded-lg hover:bg-gray-100  transition-colors"
         aria-label={`${unreadAlerts} alertas`}
       >
-        <Bell className={cn('w-4.5 h-4.5', criticalAlerts > 0 ? 'text-red-500 animate-pulse' : 'text-gray-500 dark:text-gray-400')} />
+        <Bell className={cn('w-4.5 h-4.5', criticalAlerts > 0 ? 'text-red-500 animate-pulse' : 'text-gray-500 ')} />
         {unreadAlerts > 0 && (
           <span className={cn(
             'absolute -top-0.5 -right-0.5 flex items-center justify-center w-4.5 h-4.5 rounded-full text-[10px] font-bold text-white',

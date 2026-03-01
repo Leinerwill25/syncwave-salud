@@ -428,14 +428,14 @@ export default function AudioRecorderButton({
 
 			{/* Mensajes de error y éxito */}
 			{error && (
-				<div className="flex items-center gap-2 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg text-red-700 dark:text-red-400 text-sm">
+				<div className="flex items-center gap-2 p-3 bg-red-50  border border-red-200  rounded-lg text-red-700  text-sm">
 					<AlertCircle size={16} />
 					<span>{error}</span>
 				</div>
 			)}
 
 			{success && (
-				<div className="flex items-center gap-2 p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg text-green-700 dark:text-green-400 text-sm">
+				<div className="flex items-center gap-2 p-3 bg-green-50  border border-green-200  rounded-lg text-green-700  text-sm">
 					<Check size={16} />
 					<span>{success}</span>
 				</div>

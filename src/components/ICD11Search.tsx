@@ -113,7 +113,7 @@ export default function ICD11Search({ onSelect, selectedCode, placeholder = 'Bus
 						}
 					}}
 					placeholder={placeholder}
-					className="w-full pl-10 pr-10 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent"
+					className="w-full pl-10 pr-10 py-2 border border-slate-300  rounded-lg bg-white  text-slate-900  focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent"
 				/>
 				{loading && (
 					<div className="absolute inset-y-0 right-0 pr-3 flex items-center">
@@ -124,7 +124,7 @@ export default function ICD11Search({ onSelect, selectedCode, placeholder = 'Bus
 					<button
 						type="button"
 						onClick={handleClear}
-						className="absolute inset-y-0 right-0 pr-3 flex items-center hover:text-slate-600 dark:hover:text-slate-300"
+						className="absolute inset-y-0 right-0 pr-3 flex items-center hover:text-slate-600 "
 					>
 						<X className="h-5 w-5 text-slate-400" />
 					</button>
@@ -133,22 +133,22 @@ export default function ICD11Search({ onSelect, selectedCode, placeholder = 'Bus
 
 			{/* Código seleccionado */}
 			{selectedCode && selectedCode.code && !query && (
-				<div className="mt-2 p-3 bg-teal-50 dark:bg-teal-900/20 border border-teal-200 dark:border-teal-800 rounded-lg">
+				<div className="mt-2 p-3 bg-teal-50  border border-teal-200  rounded-lg">
 					<div className="flex items-start justify-between">
 						<div className="flex-1">
 							<div className="flex items-center gap-2">
-								<span className="font-mono font-semibold text-teal-700 dark:text-teal-300">{selectedCode.code}</span>
-								<Check className="h-4 w-4 text-teal-600 dark:text-teal-400" />
+								<span className="font-mono font-semibold text-teal-700 ">{selectedCode.code}</span>
+								<Check className="h-4 w-4 text-teal-600 " />
 							</div>
-							<p className="text-sm text-slate-700 dark:text-slate-300 mt-1">{selectedCode.title}</p>
+							<p className="text-sm text-slate-700  mt-1">{selectedCode.title}</p>
 							{selectedCode.description && (
-								<p className="text-xs text-slate-600 dark:text-slate-400 mt-1">{selectedCode.description}</p>
+								<p className="text-xs text-slate-600  mt-1">{selectedCode.description}</p>
 							)}
 						</div>
 						<button
 							type="button"
 							onClick={handleClear}
-							className="ml-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
+							className="ml-2 text-slate-400 hover:text-slate-600 "
 						>
 							<X className="h-4 w-4" />
 						</button>
@@ -158,25 +158,25 @@ export default function ICD11Search({ onSelect, selectedCode, placeholder = 'Bus
 
 			{/* Resultados de búsqueda */}
 			{showResults && results.length > 0 && (
-				<div className="absolute z-50 w-full mt-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg shadow-lg max-h-96 overflow-y-auto">
+				<div className="absolute z-50 w-full mt-1 bg-white  border border-slate-200  rounded-lg shadow-lg max-h-96 overflow-y-auto">
 					{results.map((result, index) => (
 						<button
 							key={`${result.code}-${index}`}
 							type="button"
 							onClick={() => handleSelect(result)}
-							className="w-full px-4 py-3 text-left hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors border-b border-slate-100 dark:border-slate-700 last:border-b-0"
+							className="w-full px-4 py-3 text-left hover:bg-slate-50  transition-colors border-b border-slate-100  last:border-b-0"
 						>
 							<div className="flex items-start justify-between">
 								<div className="flex-1">
 									<div className="flex items-center gap-2">
-										<span className="font-mono font-semibold text-teal-600 dark:text-teal-400">{result.code}</span>
+										<span className="font-mono font-semibold text-teal-600 ">{result.code}</span>
 										{selectedCode?.code === result.code && (
-											<Check className="h-4 w-4 text-teal-600 dark:text-teal-400" />
+											<Check className="h-4 w-4 text-teal-600 " />
 										)}
 									</div>
-									<p className="text-sm text-slate-900 dark:text-slate-100 mt-1">{result.title}</p>
+									<p className="text-sm text-slate-900  mt-1">{result.title}</p>
 									{result.description && (
-										<p className="text-xs text-slate-600 dark:text-slate-400 mt-1 line-clamp-2">{result.description}</p>
+										<p className="text-xs text-slate-600  mt-1 line-clamp-2">{result.description}</p>
 									)}
 								</div>
 							</div>
@@ -187,15 +187,15 @@ export default function ICD11Search({ onSelect, selectedCode, placeholder = 'Bus
 
 			{/* Mensaje de error */}
 			{error && (
-				<div className="mt-2 p-2 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
-					<p className="text-sm text-red-700 dark:text-red-300">{error}</p>
+				<div className="mt-2 p-2 bg-red-50  border border-red-200  rounded-lg">
+					<p className="text-sm text-red-700 ">{error}</p>
 				</div>
 			)}
 
 			{/* Mensaje cuando no hay resultados */}
 			{showResults && !loading && query.length >= 2 && results.length === 0 && !error && (
-				<div className="absolute z-50 w-full mt-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg shadow-lg p-4">
-					<p className="text-sm text-slate-500 dark:text-slate-400 text-center">No se encontraron resultados</p>
+				<div className="absolute z-50 w-full mt-1 bg-white  border border-slate-200  rounded-lg shadow-lg p-4">
+					<p className="text-sm text-slate-500  text-center">No se encontraron resultados</p>
 				</div>
 			)}
 		</div>

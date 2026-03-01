@@ -118,7 +118,7 @@ export default function NurseInventoryPage() {
 
   if (!profile?.organization_id) {
     return (
-      <div className="flex items-center justify-center p-12 bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800">
+      <div className="flex items-center justify-center p-12 bg-white  rounded-xl border border-gray-200 ">
         <p className="text-gray-500">No perteneces a ninguna organización</p>
       </div>
     );
@@ -128,8 +128,8 @@ export default function NurseInventoryPage() {
     <div className="space-y-6 max-w-7xl mx-auto pb-12">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Inventario (Farmacia / Suministros)</h1>
-          <p className="text-sm text-gray-500 dark:text-gray-400">
+          <h1 className="text-2xl font-bold text-gray-900 ">Inventario (Farmacia / Suministros)</h1>
+          <p className="text-sm text-gray-500 ">
             Control de insumos y consumibles de enfermería
           </p>
         </div>
@@ -144,15 +144,15 @@ export default function NurseInventoryPage() {
       </div>
 
       {isAdding && (
-        <div className="bg-white dark:bg-gray-900 border border-teal-200 dark:border-teal-900/30 rounded-xl p-6 shadow-sm">
-          <h2 className="text-lg font-medium text-gray-900 dark:text-white mb-4">Registrar Nuevo Ingreso</h2>
+        <div className="bg-white  border border-teal-200  rounded-xl p-6 shadow-sm">
+          <h2 className="text-lg font-medium text-gray-900  mb-4">Registrar Nuevo Ingreso</h2>
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <div className="md:col-span-2">
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Medicamento/Insumo</label>
+              <label className="block text-sm font-medium text-gray-700  mb-1">Medicamento/Insumo</label>
               <select
                 value={selectedMedId}
                 onChange={(e) => setSelectedMedId(e.target.value)}
-                className="w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-2 text-sm focus:ring-2 focus:ring-teal-500 outline-none"
+                className="w-full rounded-lg border border-gray-300  bg-white  px-3 py-2 text-sm focus:ring-2 focus:ring-teal-500 outline-none"
               >
                 <option value="">-- Seleccionar --</option>
                 {medications.map(med => (
@@ -162,35 +162,35 @@ export default function NurseInventoryPage() {
             </div>
             
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Cantidad Inicial</label>
+              <label className="block text-sm font-medium text-gray-700  mb-1">Cantidad Inicial</label>
               <input
                 type="number"
                 min="1"
                 value={newQuantity}
                 onChange={(e) => setNewQuantity(e.target.value)}
-                className="w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-2 text-sm focus:ring-2 focus:ring-teal-500 outline-none"
+                className="w-full rounded-lg border border-gray-300  bg-white  px-3 py-2 text-sm focus:ring-2 focus:ring-teal-500 outline-none"
                 placeholder="Ej. 50"
               />
             </div>
             
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Lote (Opcional)</label>
+              <label className="block text-sm font-medium text-gray-700  mb-1">Lote (Opcional)</label>
               <input
                 type="text"
                 value={newLot}
                 onChange={(e) => setNewLot(e.target.value)}
-                className="w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-2 text-sm focus:ring-2 focus:ring-teal-500 outline-none"
+                className="w-full rounded-lg border border-gray-300  bg-white  px-3 py-2 text-sm focus:ring-2 focus:ring-teal-500 outline-none"
                 placeholder="Lote"
               />
             </div>
             
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Vencimiento (Opcional)</label>
+              <label className="block text-sm font-medium text-gray-700  mb-1">Vencimiento (Opcional)</label>
               <input
                 type="date"
                 value={newExpiry}
                 onChange={(e) => setNewExpiry(e.target.value)}
-                className="w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-2 text-sm focus:ring-2 focus:ring-teal-500 outline-none"
+                className="w-full rounded-lg border border-gray-300  bg-white  px-3 py-2 text-sm focus:ring-2 focus:ring-teal-500 outline-none"
               />
             </div>
             
@@ -215,14 +215,14 @@ export default function NurseInventoryPage() {
           placeholder="Buscar insumo o medicamento..."
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
-          className="w-full pl-10 pr-4 py-2 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent transition-all text-sm"
+          className="w-full pl-10 pr-4 py-2 bg-white  border border-gray-200  rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent transition-all text-sm"
         />
       </div>
 
-      <div className="bg-white dark:bg-gray-900 shadow-sm border border-gray-200 dark:border-gray-800 rounded-xl overflow-hidden">
+      <div className="bg-white  shadow-sm border border-gray-200  rounded-xl overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-sm text-left">
-            <thead className="bg-gray-50 dark:bg-gray-800/50 text-gray-600 dark:text-gray-400 text-xs uppercase font-semibold">
+            <thead className="bg-gray-50  text-gray-600  text-xs uppercase font-semibold">
               <tr>
                 <th className="px-6 py-4">Insumo</th>
                 <th className="px-6 py-4">Generico / Forma</th>
@@ -232,7 +232,7 @@ export default function NurseInventoryPage() {
                 <th className="px-6 py-4 text-right">Acciones</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
+            <tbody className="divide-y divide-gray-100 ">
               {isLoading ? (
                 <tr>
                   <td colSpan={6} className="px-6 py-8 text-center text-gray-500">Cargando inventario...</td>
@@ -247,31 +247,31 @@ export default function NurseInventoryPage() {
                 filteredInventory.map((item) => {
                   const isLowStock = item.quantity <= 10; // Threshold arbritrario
                   return (
-                    <tr key={item.id} className="hover:bg-gray-50/50 dark:hover:bg-gray-800/50 transition-colors">
-                      <td className="px-6 py-4 font-medium text-gray-900 dark:text-gray-100">
+                    <tr key={item.id} className="hover:bg-gray-50/50  transition-colors">
+                      <td className="px-6 py-4 font-medium text-gray-900 ">
                         {item.medication?.name || 'Insumo desconocido'}
                       </td>
-                      <td className="px-6 py-4 text-gray-600 dark:text-gray-400">
+                      <td className="px-6 py-4 text-gray-600 ">
                         {item.medication?.generic_name}
                         {item.medication?.form && <span className="block text-xs text-gray-500">{item.medication.form}</span>}
                       </td>
-                      <td className="px-6 py-4 text-gray-600 dark:text-gray-400">
+                      <td className="px-6 py-4 text-gray-600 ">
                         {item.lot || '-'}
                       </td>
-                      <td className="px-6 py-4 text-gray-600 dark:text-gray-400">
+                      <td className="px-6 py-4 text-gray-600 ">
                         {item.expiry_date ? new Date(item.expiry_date).toLocaleDateString() : '-'}
                       </td>
                       <td className="px-6 py-4">
                         {editingId === item.id ? (
                           <input 
                             type="number" 
-                            className="w-20 px-2 py-1 border rounded text-sm text-gray-900 dark:text-white bg-white dark:bg-gray-800 dark:border-gray-700" 
+                            className="w-20 px-2 py-1 border rounded text-sm text-gray-900  bg-white  " 
                             value={editQuantity}
                             onChange={(e) => setEditQuantity(e.target.value)}
                             min="0"
                           />
                         ) : (
-                          <div className={`flex items-center gap-1.5 font-medium ${isLowStock ? 'text-orange-600 dark:text-orange-400' : 'text-gray-900 dark:text-gray-100'}`}>
+                          <div className={`flex items-center gap-1.5 font-medium ${isLowStock ? 'text-orange-600 ' : 'text-gray-900 '}`}>
                             {item.quantity}
                             {isLowStock && <AlertTriangle className="w-4 h-4" />}
                           </div>

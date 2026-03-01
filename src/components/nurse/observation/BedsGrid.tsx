@@ -28,23 +28,23 @@ export function BedsGrid({ patients, totalBeds = 12 }: BedsGridProps) {
         <div 
           key={bed.id}
           className={cn(
-            "group relative bg-white dark:bg-gray-900 border rounded-[2rem] p-6 transition-all",
+            "group relative bg-white  border rounded-[2rem] p-6 transition-all",
             bed.patient 
-              ? "border-teal-100 dark:border-teal-900/30 shadow-lg shadow-teal-500/5 hover:border-teal-200" 
-              : "border-gray-100 dark:border-gray-800 border-dashed hover:border-gray-200"
+              ? "border-teal-100  shadow-lg shadow-teal-500/5 hover:border-teal-200" 
+              : "border-gray-100  border-dashed hover:border-gray-200"
           )}
         >
           {/* Bed Number Badge */}
           <div className={cn(
             "absolute -top-3 left-6 px-4 py-1 rounded-full text-[10px] font-black uppercase tracking-widest shadow-sm",
-            bed.patient ? "bg-teal-600 text-white" : "bg-gray-100 dark:bg-gray-800 text-gray-500"
+            bed.patient ? "bg-teal-600 text-white" : "bg-gray-100  text-gray-500"
           )}>
             {bed.name}
           </div>
 
           {!bed.patient ? (
             <div className="flex flex-col items-center justify-center py-8 space-y-3 opacity-40 group-hover:opacity-60 transition-opacity">
-              <div className="w-12 h-12 rounded-full bg-gray-50 dark:bg-gray-800 flex items-center justify-center">
+              <div className="w-12 h-12 rounded-full bg-gray-50  flex items-center justify-center">
                 <MoreHorizontal className="w-6 h-6 text-gray-300" />
               </div>
               <p className="text-xs font-bold text-gray-400">DESOCUPADA</p>
@@ -60,7 +60,7 @@ export function BedsGrid({ patients, totalBeds = 12 }: BedsGridProps) {
                   <User className="w-6 h-6" />
                 </div>
                 <div className="min-w-0">
-                  <h4 className="font-black text-gray-900 dark:text-white truncate">
+                  <h4 className="font-black text-gray-900  truncate">
                     {bed.patient.patient_first_name || bed.patient.unreg_first_name}
                   </h4>
                   <p className="text-[10px] font-bold text-gray-400 uppercase">
@@ -80,7 +80,7 @@ export function BedsGrid({ patients, totalBeds = 12 }: BedsGridProps) {
                   <Activity className="w-3 h-3" />
                   {bed.patient.triage_level || 'Sin Triaje'}
                 </span>
-                <span className="px-3 py-1.5 bg-gray-50 dark:bg-gray-800 rounded-xl text-[10px] font-black text-gray-400 flex items-center gap-1.5">
+                <span className="px-3 py-1.5 bg-gray-50  rounded-xl text-[10px] font-black text-gray-400 flex items-center gap-1.5">
                   <Clock className="w-3 h-3" />
                   {new Date(bed.patient.arrival_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                 </span>
@@ -88,7 +88,7 @@ export function BedsGrid({ patients, totalBeds = 12 }: BedsGridProps) {
 
               {/* Patient Complaint */}
               {bed.patient.chief_complaint && (
-                <div className="bg-gray-50 dark:bg-gray-800 p-3 rounded-2xl border border-gray-100 dark:border-gray-800 mt-2">
+                <div className="bg-gray-50  p-3 rounded-2xl border border-gray-100  mt-2">
                   <p className="text-[10px] text-gray-500 line-clamp-2 italic">
                     "{bed.patient.chief_complaint}"
                   </p>
@@ -98,7 +98,7 @@ export function BedsGrid({ patients, totalBeds = 12 }: BedsGridProps) {
               {/* Action */}
               <Link 
                 href={`/dashboard/nurse/patient/${bed.patient.queue_id}`}
-                className="block w-full text-center py-2.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:border-teal-500 hover:text-teal-600 rounded-2xl text-xs font-black transition-all group-hover:shadow-lg group-hover:shadow-teal-500/10"
+                className="block w-full text-center py-2.5 bg-white  border border-gray-200  hover:border-teal-500 hover:text-teal-600 rounded-2xl text-xs font-black transition-all group-hover:shadow-lg group-hover:shadow-teal-500/10"
               >
                 Atender Paciente
               </Link>

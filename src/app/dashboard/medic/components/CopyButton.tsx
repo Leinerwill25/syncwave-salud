@@ -17,7 +17,7 @@ export default function CopyButton({ value, label = 'Copiar' }: { value: string;
 	}
 
 	return (
-		<button type="button" onClick={handleCopy} title={copied ? 'Copiado' : label} className="inline-flex items-center gap-2 px-2 py-1 rounded-md text-xs font-medium border bg-white/60 hover:bg-white dark:bg-transparent transition" aria-live="polite">
+		<button type="button" onClick={handleCopy} title={copied ? 'Copiado' : label} className="inline-flex items-center gap-2 px-2 py-1 rounded-md text-xs font-medium border bg-white/60 hover:bg-white  transition" aria-live="polite">
 			{copied ? <Check size={14} className="text-emerald-600" /> : <Copy size={14} />}
 			<span>{copied ? 'Copiado' : 'Copiar'}</span>
 		</button>

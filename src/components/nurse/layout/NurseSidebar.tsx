@@ -93,20 +93,20 @@ export function NurseSidebar({ nurseType }: NurseSidebarProps) {
 
   const badgeClass =
     nurseType === 'affiliated'
-      ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200'
-      : 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-200';
+      ? 'bg-blue-100 text-blue-800  '
+      : 'bg-emerald-100 text-emerald-800  ';
 
   return (
     <aside
       className={cn(
-        'relative flex flex-col h-full bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-800 transition-all duration-300 ease-in-out z-20',
+        'relative flex flex-col h-full bg-white  border-r border-gray-200  transition-all duration-300 ease-in-out z-20',
         collapsed ? 'w-16' : 'w-64'
       )}
     >
       {/* Collapse toggle */}
       <button
         onClick={() => setCollapsed(!collapsed)}
-        className="absolute -right-3 top-6 z-30 flex items-center justify-center w-6 h-6 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-full shadow-sm hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+        className="absolute -right-3 top-6 z-30 flex items-center justify-center w-6 h-6 bg-white  border border-gray-200  rounded-full shadow-sm hover:bg-gray-50  transition-colors"
         aria-label={collapsed ? 'Expandir sidebar' : 'Colapsar sidebar'}
       >
         {collapsed ? (
@@ -117,20 +117,20 @@ export function NurseSidebar({ nurseType }: NurseSidebarProps) {
       </button>
 
       {/* Header — Logo */}
-      <div className={cn('flex items-center gap-3 px-4 py-4 border-b border-gray-200 dark:border-gray-800', collapsed && 'justify-center px-2')}>
+      <div className={cn('flex items-center gap-3 px-4 py-4 border-b border-gray-200 ', collapsed && 'justify-center px-2')}>
         <div className="flex-shrink-0 w-8 h-8 bg-gradient-to-br from-teal-500 to-cyan-600 rounded-lg flex items-center justify-center">
           <Activity className="w-4 h-4 text-white" />
         </div>
         {!collapsed && (
           <div>
-            <p className="text-sm font-bold text-gray-900 dark:text-white">ASHIRA</p>
-            <p className="text-[10px] text-gray-500 dark:text-gray-400 uppercase tracking-wider">Enfermería</p>
+            <p className="text-sm font-bold text-gray-900 ">ASHIRA</p>
+            <p className="text-[10px] text-gray-500  uppercase tracking-wider">Enfermería</p>
           </div>
         )}
       </div>
 
       {/* Nurse profile */}
-      <div className={cn('flex items-center gap-3 px-4 py-4 border-b border-gray-200 dark:border-gray-800', collapsed && 'justify-center px-2')}>
+      <div className={cn('flex items-center gap-3 px-4 py-4 border-b border-gray-200 ', collapsed && 'justify-center px-2')}>
         <div className="flex-shrink-0 w-9 h-9 bg-gradient-to-br from-teal-400 to-cyan-500 rounded-full flex items-center justify-center shadow">
           {nurseProfile?.avatar_url ? (
             // eslint-disable-next-line @next/next/no-img-element
@@ -145,7 +145,7 @@ export function NurseSidebar({ nurseType }: NurseSidebarProps) {
         </div>
         {!collapsed && (
           <div className="min-w-0">
-            <p className="text-sm font-semibold text-gray-900 dark:text-white truncate">
+            <p className="text-sm font-semibold text-gray-900  truncate">
               {nurseProfile?.full_name || nurseProfile?.email || 'Enfermera Independiente'}
             </p>
             <span className={cn('inline-block text-[10px] font-medium px-2 py-0.5 rounded-full mt-0.5', badgeClass)}>
@@ -159,11 +159,11 @@ export function NurseSidebar({ nurseType }: NurseSidebarProps) {
 
       {/* Shift indicator */}
       {!collapsed && currentShift.isActive && (
-        <div className="mx-3 mt-2 mb-1 flex items-center gap-2 bg-teal-50 dark:bg-teal-900/30 border border-teal-200 dark:border-teal-800 rounded-lg px-3 py-2">
-          <Clock className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400 flex-shrink-0 animate-pulse" />
+        <div className="mx-3 mt-2 mb-1 flex items-center gap-2 bg-teal-50  border border-teal-200  rounded-lg px-3 py-2">
+          <Clock className="w-3.5 h-3.5 text-teal-600  flex-shrink-0 animate-pulse" />
           <div>
-            <p className="text-[10px] text-teal-600 dark:text-teal-400 font-medium">Turno activo</p>
-            <p className="text-xs font-mono text-teal-700 dark:text-teal-300">{shiftTimer}</p>
+            <p className="text-[10px] text-teal-600  font-medium">Turno activo</p>
+            <p className="text-xs font-mono text-teal-700 ">{shiftTimer}</p>
           </div>
         </div>
       )}
@@ -180,8 +180,8 @@ export function NurseSidebar({ nurseType }: NurseSidebarProps) {
               className={cn(
                 'flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-150',
                 isActive
-                  ? 'bg-teal-50 dark:bg-teal-900/40 text-teal-700 dark:text-teal-300'
-                  : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-white',
+                  ? 'bg-teal-50  text-teal-700 '
+                  : 'text-gray-600  hover:bg-gray-100  hover:text-gray-900 ',
                 collapsed && 'justify-center px-0'
               )}
               title={collapsed ? item.label : undefined}
@@ -189,7 +189,7 @@ export function NurseSidebar({ nurseType }: NurseSidebarProps) {
               <Icon
                 className={cn(
                   'w-4.5 h-4.5 flex-shrink-0',
-                  isActive ? 'text-teal-600 dark:text-teal-400' : 'text-gray-400'
+                  isActive ? 'text-teal-600 ' : 'text-gray-400'
                 )}
               />
               {!collapsed && <span className="truncate">{item.label}</span>}
@@ -204,14 +204,14 @@ export function NurseSidebar({ nurseType }: NurseSidebarProps) {
       </nav>
 
       {/* Footer — online indicator */}
-      <div className={cn('px-4 py-3 border-t border-gray-200 dark:border-gray-800 flex items-center gap-2', collapsed && 'justify-center px-2')}>
+      <div className={cn('px-4 py-3 border-t border-gray-200  flex items-center gap-2', collapsed && 'justify-center px-2')}>
         {isOnline ? (
           <Wifi className="w-3.5 h-3.5 text-emerald-500" />
         ) : (
           <WifiOff className="w-3.5 h-3.5 text-red-500 animate-pulse" />
         )}
         {!collapsed && (
-          <span className={cn('text-xs', isOnline ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-500')}>
+          <span className={cn('text-xs', isOnline ? 'text-emerald-600 ' : 'text-red-500')}>
             {isOnline ? 'En línea' : 'Sin conexión'}
           </span>
         )}

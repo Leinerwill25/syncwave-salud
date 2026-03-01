@@ -34,7 +34,7 @@ export function KpiCard({ title, value, description, decimals = 2, compact = fal
 		<Card className={`w-full ${className}`} role="region" aria-label={`${title} KPI`}>
 			{/* Header pequeño: solo título */}
 			<CardHeader className="px-3 pt-3 pb-1">
-				<CardTitle className="text-xs font-medium tracking-wide text-slate-600 dark:text-slate-300">{title}</CardTitle>
+				<CardTitle className="text-xs font-medium tracking-wide text-slate-600 ">{title}</CardTitle>
 			</CardHeader>
 
 			{/* Content: número centrado vertical y horizontalmente */}
@@ -44,7 +44,7 @@ export function KpiCard({ title, value, description, decimals = 2, compact = fal
 						<span className="block text-lg sm:text-2xl md:text-3xl lg:text-4xl">{formattedValue}</span>
 					</div>
 
-					{description && <p className="mt-1 text-[12px] sm:text-sm text-slate-500 dark:text-slate-300 max-w-[16rem]">{description}</p>}
+					{description && <p className="mt-1 text-[12px] sm:text-sm text-slate-500  max-w-[16rem]">{description}</p>}
 				</div>
 			</CardContent>
 		</Card>

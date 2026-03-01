@@ -234,39 +234,39 @@ export default function PaymentForm({ consultationId, appointmentId, patientId, 
 	return (
 		<div className="space-y-6">
 			{/* Header card */}
-			<div className="rounded-2xl bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-950/20 dark:to-indigo-950/20 border border-blue-100 dark:border-blue-900/50 p-6 shadow-sm">
+			<div className="rounded-2xl bg-gradient-to-br from-blue-50 to-indigo-50   border border-blue-100  p-6 shadow-sm">
 				<div className="flex items-start justify-between gap-4">
 					<div className="flex-1">
-						<h2 className="text-2xl md:text-3xl font-bold text-slate-900 dark:text-slate-100 flex items-center gap-3 mb-2">
+						<h2 className="text-2xl md:text-3xl font-bold text-slate-900  flex items-center gap-3 mb-2">
 							<div className="p-2 bg-blue-600 rounded-lg text-white">
 								<DollarSign size={28} />
 							</div>
 							{isEditing ? 'Editar Pago de Consulta' : 'Registrar Pago de Consulta'}
 						</h2>
-						<p className="text-sm md:text-base text-slate-600 dark:text-slate-300 ml-14">
+						<p className="text-sm md:text-base text-slate-600  ml-14">
 							{isEditing ? 'Edita los datos del pago o cambia el estado del pago.' : 'Registra el pago realizado por el paciente para esta consulta.'}
 						</p>
 					</div>
-					<div className="text-right bg-white/60 dark:bg-slate-800/60 rounded-lg px-4 py-2 border border-blue-200 dark:border-blue-800">
-						<div className="text-xs text-slate-500 dark:text-slate-400 mb-1">Consulta ID</div>
-						<div className="font-mono font-semibold text-slate-800 dark:text-slate-100 text-sm">{consultationId.slice(0, 8)}...</div>
+					<div className="text-right bg-white/60  rounded-lg px-4 py-2 border border-blue-200 ">
+						<div className="text-xs text-slate-500  mb-1">Consulta ID</div>
+						<div className="font-mono font-semibold text-slate-800  text-sm">{consultationId.slice(0, 8)}...</div>
 					</div>
 				</div>
 			</div>
 
 			<form onSubmit={handleSubmit} className="space-y-6">
 				{/* Información de facturación */}
-				<div className="rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-6 shadow-sm">
-					<div className="flex items-center gap-3 mb-6 pb-4 border-b border-slate-200 dark:border-slate-700">
-						<div className="p-2 bg-indigo-100 dark:bg-indigo-900/30 rounded-lg">
-							<Receipt className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
+				<div className="rounded-2xl bg-white  border border-slate-200  p-6 shadow-sm">
+					<div className="flex items-center gap-3 mb-6 pb-4 border-b border-slate-200 ">
+						<div className="p-2 bg-indigo-100  rounded-lg">
+							<Receipt className="w-5 h-5 text-indigo-600 " />
 						</div>
-						<h3 className="text-xl font-bold text-slate-900 dark:text-slate-100">Información de Facturación</h3>
+						<h3 className="text-xl font-bold text-slate-900 ">Información de Facturación</h3>
 					</div>
 
 					<div className="grid grid-cols-1 md:grid-cols-2 gap-6">
 						<div className="md:col-span-2">
-							<label className="block text-sm font-semibold text-slate-700 dark:text-slate-200 mb-2">
+							<label className="block text-sm font-semibold text-slate-700  mb-2">
 								Subtotal <span className="text-red-500">*</span>
 							</label>
 							<div className="relative">
@@ -276,7 +276,7 @@ export default function PaymentForm({ consultationId, appointmentId, patientId, 
 									min="0"
 									value={subtotal}
 									onChange={(e) => setSubtotal(e.target.value)}
-									className="w-full px-4 py-3 rounded-lg border-2 border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 text-lg font-semibold focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 dark:focus:ring-indigo-900 transition-all"
+									className="w-full px-4 py-3 rounded-lg border-2 border-slate-200  bg-white  text-slate-900  text-lg font-semibold focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200  transition-all"
 									placeholder="0.00"
 									required
 								/>
@@ -290,7 +290,7 @@ export default function PaymentForm({ consultationId, appointmentId, patientId, 
 						</div>
 
 						<div>
-							<label className="block text-sm font-semibold text-slate-700 dark:text-slate-200 mb-2">
+							<label className="block text-sm font-semibold text-slate-700  mb-2">
 								IGTF (3%) <span className="text-xs font-normal text-slate-500">
 									{metodoPago === 'efectivo' ? 'Aplicado (Efectivo)' : 'No aplica'}
 								</span>
@@ -301,7 +301,7 @@ export default function PaymentForm({ consultationId, appointmentId, patientId, 
 									step="0.01"
 									value={igtf}
 									readOnly
-									className="w-full px-4 py-3 rounded-lg border-2 border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 text-slate-900 dark:text-slate-100 text-lg font-semibold"
+									className="w-full px-4 py-3 rounded-lg border-2 border-slate-200  bg-slate-50  text-slate-900  text-lg font-semibold"
 								/>
 								<div className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 font-medium">{currency}</div>
 							</div>
@@ -313,7 +313,7 @@ export default function PaymentForm({ consultationId, appointmentId, patientId, 
 						</div>
 
 						<div className="md:col-span-2">
-							<label className="block text-sm font-semibold text-slate-700 dark:text-slate-200 mb-2">
+							<label className="block text-sm font-semibold text-slate-700  mb-2">
 								Total <span className="text-red-500">*</span>
 							</label>
 							<div className="relative">
@@ -322,14 +322,14 @@ export default function PaymentForm({ consultationId, appointmentId, patientId, 
 									step="0.01"
 									value={total}
 									readOnly
-									className="w-full px-4 py-3 rounded-lg border-2 border-indigo-500 dark:border-indigo-600 bg-indigo-50 dark:bg-indigo-950/30 text-indigo-900 dark:text-indigo-100 text-xl font-bold"
+									className="w-full px-4 py-3 rounded-lg border-2 border-indigo-500  bg-indigo-50  text-indigo-900  text-xl font-bold"
 								/>
-								<div className="absolute right-4 top-1/2 -translate-y-1/2 text-indigo-600 dark:text-indigo-400 font-bold">{currency}</div>
+								<div className="absolute right-4 top-1/2 -translate-y-1/2 text-indigo-600  font-bold">{currency}</div>
 							</div>
 							{totalNum > 0 && (
-								<div className="mt-3 p-4 bg-gradient-to-r from-indigo-50 to-blue-50 dark:from-indigo-950/20 dark:to-blue-950/20 rounded-lg border border-indigo-200 dark:border-indigo-900">
+								<div className="mt-3 p-4 bg-gradient-to-r from-indigo-50 to-blue-50   rounded-lg border border-indigo-200 ">
 									<div className="flex items-center gap-2 mb-2">
-										<span className="text-sm font-semibold text-slate-700 dark:text-slate-300">Total en ambas monedas:</span>
+										<span className="text-sm font-semibold text-slate-700 ">Total en ambas monedas:</span>
 									</div>
 									<CurrencyDisplay amount={totalNum} currency={currency as 'USD' | 'EUR'} showBoth={true} size="lg" />
 								</div>
@@ -337,34 +337,34 @@ export default function PaymentForm({ consultationId, appointmentId, patientId, 
 						</div>
 
 						<div>
-							<label className="block text-sm font-semibold text-slate-700 dark:text-slate-200 mb-2">Moneda</label>
+							<label className="block text-sm font-semibold text-slate-700  mb-2">Moneda</label>
 							<select
 								value={currency}
 								onChange={(e) => setCurrency(e.target.value)}
-								className="w-full px-4 py-3 rounded-lg border-2 border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 dark:focus:ring-indigo-900 transition-all">
+								className="w-full px-4 py-3 rounded-lg border-2 border-slate-200  bg-white  text-slate-900  focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200  transition-all">
 								<option value="USD">USD - Dólar Estadounidense</option>
 								<option value="EUR">EUR - Euro</option>
 							</select>
 						</div>
 
 						<div>
-							<label className="block text-sm font-semibold text-slate-700 dark:text-slate-200 mb-2">Serie de Factura</label>
+							<label className="block text-sm font-semibold text-slate-700  mb-2">Serie de Factura</label>
 							<input
 								type="text"
 								value={billingSeries}
 								onChange={(e) => setBillingSeries(e.target.value)}
-								className="w-full px-4 py-3 rounded-lg border-2 border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 dark:focus:ring-indigo-900 transition-all"
+								className="w-full px-4 py-3 rounded-lg border-2 border-slate-200  bg-white  text-slate-900  focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200  transition-all"
 								placeholder="A, B, C, etc."
 							/>
 						</div>
 
 						<div>
-							<label className="block text-sm font-semibold text-slate-700 dark:text-slate-200 mb-2">Número de Factura</label>
+							<label className="block text-sm font-semibold text-slate-700  mb-2">Número de Factura</label>
 							<input
 								type="text"
 								value={numeroFactura}
 								onChange={(e) => setNumeroFactura(e.target.value)}
-								className="w-full px-4 py-3 rounded-lg border-2 border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 dark:focus:ring-indigo-900 transition-all"
+								className="w-full px-4 py-3 rounded-lg border-2 border-slate-200  bg-white  text-slate-900  focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200  transition-all"
 								placeholder="000001"
 							/>
 							<p className="text-xs text-slate-500 mt-1">Debe ser único</p>
@@ -373,23 +373,23 @@ export default function PaymentForm({ consultationId, appointmentId, patientId, 
 				</div>
 
 				{/* Información de pago */}
-				<div className="rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-6 shadow-sm">
-					<div className="flex items-center gap-3 mb-6 pb-4 border-b border-slate-200 dark:border-slate-700">
-						<div className="p-2 bg-green-100 dark:bg-green-900/30 rounded-lg">
-							<CreditCard className="w-5 h-5 text-green-600 dark:text-green-400" />
+				<div className="rounded-2xl bg-white  border border-slate-200  p-6 shadow-sm">
+					<div className="flex items-center gap-3 mb-6 pb-4 border-b border-slate-200 ">
+						<div className="p-2 bg-green-100  rounded-lg">
+							<CreditCard className="w-5 h-5 text-green-600 " />
 						</div>
-						<h3 className="text-xl font-bold text-slate-900 dark:text-slate-100">Información de Pago</h3>
+						<h3 className="text-xl font-bold text-slate-900 ">Información de Pago</h3>
 					</div>
 
 					<div className="grid grid-cols-1 md:grid-cols-2 gap-6">
 						<div>
-							<label className="block text-sm font-semibold text-slate-700 dark:text-slate-200 mb-2">
+							<label className="block text-sm font-semibold text-slate-700  mb-2">
 								Método de Pago <span className="text-red-500">*</span>
 							</label>
 							<select
 								value={metodoPago}
 								onChange={(e) => setMetodoPago(e.target.value)}
-								className="w-full px-4 py-3 rounded-lg border-2 border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 dark:focus:ring-indigo-900 transition-all"
+								className="w-full px-4 py-3 rounded-lg border-2 border-slate-200  bg-white  text-slate-900  focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200  transition-all"
 								required>
 								<option value="">Seleccione un método</option>
 								<option value="efectivo">Efectivo</option>
@@ -401,16 +401,16 @@ export default function PaymentForm({ consultationId, appointmentId, patientId, 
 								<option value="otro">Otro</option>
 							</select>
 							{metodoPago === 'efectivo' && (
-								<p className="text-xs text-amber-600 dark:text-amber-400 mt-1">⚠️ Se aplicará IGTF del 3% por ser pago en efectivo (divisa)</p>
+								<p className="text-xs text-amber-600  mt-1">⚠️ Se aplicará IGTF del 3% por ser pago en efectivo (divisa)</p>
 							)}
 						</div>
 
 						<div>
-							<label className="block text-sm font-semibold text-slate-700 dark:text-slate-200 mb-2">Estado de Factura</label>
+							<label className="block text-sm font-semibold text-slate-700  mb-2">Estado de Factura</label>
 							<select
 								value={estadoFactura}
 								onChange={(e) => setEstadoFactura(e.target.value)}
-								className="w-full px-4 py-3 rounded-lg border-2 border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 dark:focus:ring-indigo-900 transition-all">
+								className="w-full px-4 py-3 rounded-lg border-2 border-slate-200  bg-white  text-slate-900  focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200  transition-all">
 								<option value="emitida">Emitida</option>
 								<option value="cancelada">Cancelada</option>
 								<option value="anulada">Anulada</option>
@@ -418,11 +418,11 @@ export default function PaymentForm({ consultationId, appointmentId, patientId, 
 						</div>
 
 						<div>
-							<label className="block text-sm font-semibold text-slate-700 dark:text-slate-200 mb-2">Estado de Pago</label>
+							<label className="block text-sm font-semibold text-slate-700  mb-2">Estado de Pago</label>
 							<select
 								value={estadoPago}
 								onChange={(e) => setEstadoPago(e.target.value)}
-								className="w-full px-4 py-3 rounded-lg border-2 border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 dark:focus:ring-indigo-900 transition-all">
+								className="w-full px-4 py-3 rounded-lg border-2 border-slate-200  bg-white  text-slate-900  focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200  transition-all">
 								<option value="pendiente">Pendiente</option>
 								<option value="pendiente_verificacion">Pendiente Verificación</option>
 								<option value="pagada">Pagada</option>
@@ -434,7 +434,7 @@ export default function PaymentForm({ consultationId, appointmentId, patientId, 
 
 						{(estadoPago === 'pagada' || estadoPago === 'pagado' || fechaPago) && (
 							<div>
-								<label className="block text-sm font-semibold text-slate-700 dark:text-slate-200 mb-2 flex items-center gap-2">
+								<label className="block text-sm font-semibold text-slate-700  mb-2 flex items-center gap-2">
 									<Calendar className="w-4 h-4" />
 									Fecha de Pago
 								</label>
@@ -442,7 +442,7 @@ export default function PaymentForm({ consultationId, appointmentId, patientId, 
 									type="date"
 									value={fechaPago}
 									onChange={(e) => setFechaPago(e.target.value)}
-									className="w-full px-4 py-3 rounded-lg border-2 border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 dark:focus:ring-indigo-900 transition-all"
+									className="w-full px-4 py-3 rounded-lg border-2 border-slate-200  bg-white  text-slate-900  focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200  transition-all"
 								/>
 							</div>
 						)}
@@ -451,31 +451,31 @@ export default function PaymentForm({ consultationId, appointmentId, patientId, 
 
 				{/* Referencia y Captura de Pago */}
 				{(metodoPago === 'PAGO_MOVIL' || numeroReferencia || capturaUrl) && (
-					<div className="rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-6 shadow-sm">
-						<div className="flex items-center gap-3 mb-6 pb-4 border-b border-slate-200 dark:border-slate-700">
-							<div className="p-2 bg-purple-100 dark:bg-purple-900/30 rounded-lg">
-								<ImageIcon className="w-5 h-5 text-purple-600 dark:text-purple-400" />
+					<div className="rounded-2xl bg-white  border border-slate-200  p-6 shadow-sm">
+						<div className="flex items-center gap-3 mb-6 pb-4 border-b border-slate-200 ">
+							<div className="p-2 bg-purple-100  rounded-lg">
+								<ImageIcon className="w-5 h-5 text-purple-600 " />
 							</div>
-							<h3 className="text-xl font-bold text-slate-900 dark:text-slate-100">Referencia y Comprobante de Pago</h3>
+							<h3 className="text-xl font-bold text-slate-900 ">Referencia y Comprobante de Pago</h3>
 						</div>
 
 						<div className="grid grid-cols-1 md:grid-cols-2 gap-6">
 							<div>
-								<label className="block text-sm font-semibold text-slate-700 dark:text-slate-200 mb-2">
+								<label className="block text-sm font-semibold text-slate-700  mb-2">
 									Número de Referencia
 								</label>
 								<input
 									type="text"
 									value={numeroReferencia}
 									onChange={(e) => setNumeroReferencia(e.target.value)}
-									className="w-full px-4 py-3 rounded-lg border-2 border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 dark:focus:ring-indigo-900 transition-all font-mono"
+									className="w-full px-4 py-3 rounded-lg border-2 border-slate-200  bg-white  text-slate-900  focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200  transition-all font-mono"
 									placeholder="021321312"
 								/>
 								<p className="text-xs text-slate-500 mt-1">Número de referencia del pago móvil</p>
 							</div>
 
 							<div>
-								<label className="block text-sm font-semibold text-slate-700 dark:text-slate-200 mb-2">
+								<label className="block text-sm font-semibold text-slate-700  mb-2">
 									Captura de Pantalla
 								</label>
 								{capturaUrl ? (
@@ -484,7 +484,7 @@ export default function PaymentForm({ consultationId, appointmentId, patientId, 
 											<img
 												src={capturaUrl}
 												alt="Captura de pago"
-												className="w-full h-32 object-cover rounded-lg border-2 border-slate-200 dark:border-slate-700 cursor-pointer hover:opacity-90 transition-opacity"
+												className="w-full h-32 object-cover rounded-lg border-2 border-slate-200  cursor-pointer hover:opacity-90 transition-opacity"
 												onClick={() => setShowImageModal(true)}
 											/>
 											<button
@@ -500,8 +500,8 @@ export default function PaymentForm({ consultationId, appointmentId, patientId, 
 										<p className="text-xs text-slate-500 mt-1">Haz clic en la imagen para ver en tamaño completo</p>
 									</div>
 								) : (
-									<div className="w-full h-32 border-2 border-dashed border-slate-300 dark:border-slate-600 rounded-lg flex items-center justify-center bg-slate-50 dark:bg-slate-800/50">
-										<p className="text-sm text-slate-500 dark:text-slate-400">No hay captura disponible</p>
+									<div className="w-full h-32 border-2 border-dashed border-slate-300  rounded-lg flex items-center justify-center bg-slate-50 ">
+										<p className="text-sm text-slate-500 ">No hay captura disponible</p>
 									</div>
 								)}
 							</div>
@@ -510,8 +510,8 @@ export default function PaymentForm({ consultationId, appointmentId, patientId, 
 				)}
 
 				{/* Notas */}
-				<div className="rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-6 shadow-sm">
-					<label className="block text-sm font-semibold text-slate-700 dark:text-slate-200 mb-2 flex items-center gap-2">
+				<div className="rounded-2xl bg-white  border border-slate-200  p-6 shadow-sm">
+					<label className="block text-sm font-semibold text-slate-700  mb-2 flex items-center gap-2">
 						<FileText className="w-4 h-4" />
 						Notas Adicionales (opcional)
 					</label>
@@ -519,7 +519,7 @@ export default function PaymentForm({ consultationId, appointmentId, patientId, 
 						value={notas}
 						onChange={(e) => setNotas(e.target.value)}
 						rows={4}
-						className="w-full px-4 py-3 rounded-lg border-2 border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 dark:focus:ring-indigo-900 transition-all resize-none"
+						className="w-full px-4 py-3 rounded-lg border-2 border-slate-200  bg-white  text-slate-900  focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200  transition-all resize-none"
 						placeholder="Notas adicionales sobre el pago (sin incluir referencia ni captura)..."
 					/>
 					<p className="text-xs text-slate-500 mt-1">Las notas no incluyen la referencia ni la captura de pantalla (se guardan por separado)</p>
@@ -527,26 +527,26 @@ export default function PaymentForm({ consultationId, appointmentId, patientId, 
 
 				{/* Messages */}
 				{error && (
-					<div className="rounded-lg bg-red-50 dark:bg-red-900/20 border-2 border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 p-4 text-sm font-medium">
+					<div className="rounded-lg bg-red-50  border-2 border-red-200  text-red-700  p-4 text-sm font-medium">
 						{error}
 					</div>
 				)}
 				{success && (
-					<div className="rounded-lg bg-green-50 dark:bg-green-900/20 border-2 border-green-200 dark:border-green-800 text-green-700 dark:text-green-400 p-4 text-sm font-medium">
+					<div className="rounded-lg bg-green-50  border-2 border-green-200  text-green-700  p-4 text-sm font-medium">
 						{success}
 					</div>
 				)}
 
 				{/* Actions */}
-				<div className="flex items-center justify-between gap-4 pt-4 border-t border-slate-200 dark:border-slate-700">
+				<div className="flex items-center justify-between gap-4 pt-4 border-t border-slate-200 ">
 					<button
 						type="button"
 						onClick={() => router.back()}
-						className="px-6 py-3 rounded-lg border-2 border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 font-semibold hover:bg-slate-50 dark:hover:bg-slate-700 transition-all">
+						className="px-6 py-3 rounded-lg border-2 border-slate-200  bg-white  text-slate-700  font-semibold hover:bg-slate-50  transition-all">
 						Cancelar
 					</button>
 
-					<div className="text-xs text-slate-500 dark:text-slate-400 text-center">
+					<div className="text-xs text-slate-500  text-center">
 						{isEditing ? 'Los cambios se guardarán en la base de datos' : 'El registro se guardará en la base de datos'}
 					</div>
 

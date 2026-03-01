@@ -41,18 +41,18 @@ export function MedicationKardex({ records }: MedicationKardexProps) {
               </div>
 
               {/* Content Card */}
-              <div className="w-[calc(100%-4rem)] md:w-[calc(50%-2.5rem)] bg-white dark:bg-gray-900 p-4 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm transition-all hover:shadow-md">
+              <div className="w-[calc(100%-4rem)] md:w-[calc(50%-2.5rem)] bg-white  p-4 rounded-2xl border border-gray-100  shadow-sm transition-all hover:shadow-md">
                 <div className="flex items-center justify-between space-x-2 mb-1">
-                  <div className="font-black text-gray-900 dark:text-white truncate">
+                  <div className="font-black text-gray-900  truncate">
                     {record.medication_name}
                   </div>
-                  <time className="font-mono text-xs font-bold text-teal-600 dark:text-teal-400 whitespace-nowrap">
+                  <time className="font-mono text-xs font-bold text-teal-600  whitespace-nowrap">
                     {format(scheduledTime, 'HH:mm')}
                   </time>
                 </div>
 
-                <div className="text-xs text-gray-500 dark:text-gray-400 flex flex-wrap gap-2 mb-3">
-                  <span className="bg-gray-50 dark:bg-gray-800 px-1.5 py-0.5 rounded font-bold uppercase transition-colors group-hover:bg-teal-50 dark:group-hover:bg-teal-900/10 group-hover:text-teal-600">
+                <div className="text-xs text-gray-500  flex flex-wrap gap-2 mb-3">
+                  <span className="bg-gray-50  px-1.5 py-0.5 rounded font-bold uppercase transition-colors group-hover:bg-teal-50  group-hover:text-teal-600">
                     {record.dose}
                   </span>
                   <span>•</span>
@@ -80,7 +80,7 @@ export function MedicationKardex({ records }: MedicationKardexProps) {
                 </div>
 
                 {record.omission_reason && (
-                  <p className="mt-2 text-xs text-red-500 italic bg-red-50 dark:bg-red-900/10 p-2 rounded-lg border border-red-100 dark:border-red-900/20">
+                  <p className="mt-2 text-xs text-red-500 italic bg-red-50  p-2 rounded-lg border border-red-100 ">
                     Razón: {record.omission_reason}
                   </p>
                 )}

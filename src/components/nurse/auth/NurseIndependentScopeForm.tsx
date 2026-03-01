@@ -28,18 +28,18 @@ function ScopeOption({ icon: Icon, title, description, checked, onChange }: Scop
       className={cn(
         'w-full flex items-start gap-4 p-4 rounded-xl border-2 text-left transition-all duration-150',
         checked
-          ? 'border-teal-500 bg-teal-50 dark:bg-teal-900/20'
-          : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:border-teal-300'
+          ? 'border-teal-500 bg-teal-50 '
+          : 'border-gray-200  bg-white  hover:border-teal-300'
       )}
     >
-      <div className={cn('flex-shrink-0 w-10 h-10 rounded-lg flex items-center justify-center', checked ? 'bg-teal-100 dark:bg-teal-900' : 'bg-gray-100 dark:bg-gray-700')}>
-        <Icon className={cn('w-5 h-5', checked ? 'text-teal-600 dark:text-teal-400' : 'text-gray-400')} />
+      <div className={cn('flex-shrink-0 w-10 h-10 rounded-lg flex items-center justify-center', checked ? 'bg-teal-100 ' : 'bg-gray-100 ')}>
+        <Icon className={cn('w-5 h-5', checked ? 'text-teal-600 ' : 'text-gray-400')} />
       </div>
       <div className="flex-1 min-w-0">
-        <p className={cn('text-sm font-semibold', checked ? 'text-teal-700 dark:text-teal-300' : 'text-gray-900 dark:text-white')}>{title}</p>
-        <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 leading-snug">{description}</p>
+        <p className={cn('text-sm font-semibold', checked ? 'text-teal-700 ' : 'text-gray-900 ')}>{title}</p>
+        <p className="text-xs text-gray-500  mt-0.5 leading-snug">{description}</p>
       </div>
-      <div className={cn('flex-shrink-0 w-5 h-5 rounded-full border-2 flex items-center justify-center mt-0.5', checked ? 'border-teal-500 bg-teal-500' : 'border-gray-300 dark:border-gray-600')}>
+      <div className={cn('flex-shrink-0 w-5 h-5 rounded-full border-2 flex items-center justify-center mt-0.5', checked ? 'border-teal-500 bg-teal-500' : 'border-gray-300 ')}>
         {checked && <div className="w-2 h-2 rounded-full bg-white" />}
       </div>
     </button>
@@ -58,7 +58,7 @@ export function NurseIndependentScopeForm({ defaultValues, onSubmit, onBack }: P
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-      <p className="text-sm text-gray-600 dark:text-gray-400 pb-2">
+      <p className="text-sm text-gray-600  pb-2">
         Configura cómo quieres operar como enfermera independiente en la red ASHIRA.
         Puedes modificar esto en cualquier momento desde tu perfil.
       </p>
@@ -89,7 +89,7 @@ export function NurseIndependentScopeForm({ defaultValues, onSubmit, onBack }: P
         <button
           type="button"
           onClick={onBack}
-          className="flex items-center gap-2 border border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-300 font-medium rounded-lg px-5 py-2.5 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors text-sm"
+          className="flex items-center gap-2 border border-gray-300  text-gray-700  font-medium rounded-lg px-5 py-2.5 hover:bg-gray-50  transition-colors text-sm"
         >
           <ChevronLeft className="w-4 h-4" /> Atrás
         </button>

@@ -97,7 +97,7 @@ export function NursePersonalDataForm({ defaultValues, onSubmit }: Props) {
 function Field({ label, error, children }: { label: string; error?: string; children: React.ReactNode }) {
   return (
     <div>
-      <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1.5">{label}</label>
+      <label className="block text-xs font-semibold text-gray-700  mb-1.5">{label}</label>
       {children}
       {error && <p className="text-xs text-red-500 mt-1">{error}</p>}
     </div>
@@ -106,9 +106,9 @@ function Field({ label, error, children }: { label: string; error?: string; chil
 
 function inputCls(hasError: boolean) {
   return cn(
-    'w-full rounded-lg border px-3 py-2.5 text-sm text-gray-900 dark:text-white bg-white dark:bg-gray-800 outline-none transition-colors',
+    'w-full rounded-lg border px-3 py-2.5 text-sm text-gray-900  bg-white  outline-none transition-colors',
     hasError
       ? 'border-red-400 focus:border-red-500 focus:ring-2 focus:ring-red-100'
-      : 'border-gray-300 dark:border-gray-700 focus:border-teal-500 focus:ring-2 focus:ring-teal-100 dark:focus:ring-teal-900'
+      : 'border-gray-300  focus:border-teal-500 focus:ring-2 focus:ring-teal-100 '
   );
 }

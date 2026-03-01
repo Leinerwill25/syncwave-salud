@@ -14,9 +14,9 @@ export default function PatientNotesPage({ params }: { params: Promise<{ id: str
 
   if (!queueId) {
     return (
-      <div className="flex flex-col items-center justify-center py-20 bg-white dark:bg-gray-900 rounded-3xl border border-gray-100 dark:border-gray-800">
+      <div className="flex flex-col items-center justify-center py-20 bg-white  rounded-3xl border border-gray-100 ">
         <AlertCircle className="w-12 h-12 text-amber-500 mb-4" />
-        <h3 className="text-lg font-bold text-gray-900 dark:text-white">ID de Cola Faltante</h3>
+        <h3 className="text-lg font-bold text-gray-900 ">ID de Cola Faltante</h3>
         <p className="text-gray-500 text-sm">No se puede cargar la evolución sin una referencia de atención válida.</p>
       </div>
     );

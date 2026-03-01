@@ -13,7 +13,7 @@ export default async function PatientHistory({ params }: Props) {
 	const { id } = await params;
 
 	const PageShell = ({ children }: { children: React.ReactNode }) => (
-		<main className="min-h-screen bg-gradient-to-b from-slate-50 to-white dark:from-[#071422] dark:to-[#021018] py-10 px-6">
+		<main className="min-h-screen bg-gradient-to-b from-slate-50 to-white #071422] #021018] py-10 px-6">
 			<div className="max-w-6xl mx-auto">{children}</div>
 		</main>
 	);
@@ -21,9 +21,9 @@ export default async function PatientHistory({ params }: Props) {
 	const ErrorBox = ({ title, message }: { title?: string; message: string }) => (
 		<PageShell>
 			<div className="max-w-3xl mx-auto">
-				<div className="rounded-2xl bg-white dark:bg-[#042634] border border-slate-200 dark:border-slate-800 shadow-md p-6">
+				<div className="rounded-2xl bg-white #042634] border border-slate-200  shadow-md p-6">
 					{title && <h3 className="text-rose-600 font-semibold mb-2">{title}</h3>}
-					<p className="text-slate-700 dark:text-slate-200">{message}</p>
+					<p className="text-slate-700 ">{message}</p>
 					<div className="mt-4">
 						<Link href="/dashboard/medic/consultas" className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-slate-900 text-white hover:opacity-95 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-400">
 							<ArrowLeft size={16} /> Volver a consultas
@@ -109,7 +109,7 @@ export default async function PatientHistory({ params }: Props) {
 				<PageShell>
 					<div className="space-y-6">
 						{/* Header */}
-						<div className="rounded-2xl overflow-hidden shadow-lg border border-slate-100 dark:border-slate-800">
+						<div className="rounded-2xl overflow-hidden shadow-lg border border-slate-100 ">
 							<div className="bg-gradient-to-r from-[#0ea5e9] to-[#6366f1] p-6">
 								<div className="flex items-center justify-between gap-4">
 									<div className="text-white">
@@ -130,9 +130,9 @@ export default async function PatientHistory({ params }: Props) {
 						{/* Ficha paciente + error de consultas */}
 						<div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
 							<div className="lg:col-span-2">
-								<div className="rounded-2xl bg-white dark:bg-[#04202b] border p-5 shadow-sm">
-									<h3 className="text-lg font-semibold text-slate-800 dark:text-slate-100 mb-3">Información</h3>
-									<div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm text-slate-700 dark:text-slate-200">
+								<div className="rounded-2xl bg-white #04202b] border p-5 shadow-sm">
+									<h3 className="text-lg font-semibold text-slate-800  mb-3">Información</h3>
+									<div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm text-slate-700 ">
 										<div>
 											<span className="text-xs text-slate-500">ID</span>
 											<div className="font-mono break-all">{patient.id}</div>
@@ -166,16 +166,16 @@ export default async function PatientHistory({ params }: Props) {
 							</div>
 
 							<aside className="space-y-4">
-								<div className="rounded-2xl bg-white dark:bg-[#042434] border p-4 shadow-sm">
+								<div className="rounded-2xl bg-white #042434] border p-4 shadow-sm">
 									<div className="flex items-center gap-3">
-										<div className="w-12 h-12 rounded-full bg-teal-50 dark:bg-teal-700 text-teal-700 dark:text-white flex items-center justify-center font-semibold">{patient.firstName?.[0] ?? 'P'}</div>
+										<div className="w-12 h-12 rounded-full bg-teal-50  text-teal-700  flex items-center justify-center font-semibold">{patient.firstName?.[0] ?? 'P'}</div>
 										<div>
 											<div className="text-xs text-slate-500">Paciente</div>
 											<div className="font-medium">{`${patient.firstName} ${patient.lastName}`}</div>
 										</div>
 									</div>
 
-									<div className="mt-4 text-sm text-slate-700 dark:text-slate-200">
+									<div className="mt-4 text-sm text-slate-700 ">
 										<div>
 											<span className="text-xs text-slate-500">Consultas</span>
 											<div className="font-medium">{totalConsults}</div>
@@ -205,7 +205,7 @@ export default async function PatientHistory({ params }: Props) {
 				/>
 				<div className="space-y-6">
 					{/* Header */}
-					<div className="rounded-2xl overflow-hidden shadow-lg border border-slate-100 dark:border-slate-800">
+					<div className="rounded-2xl overflow-hidden shadow-lg border border-slate-100 ">
 						<div className="bg-gradient-to-r from-[#0ea5e9] to-[#6366f1] p-6">
 							<div className="flex items-start justify-between gap-4">
 								<div className="text-white">
@@ -228,9 +228,9 @@ export default async function PatientHistory({ params }: Props) {
 					<div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
 						{/* Consultas (principal) */}
 						<section className="lg:col-span-2 space-y-4">
-							<div className="rounded-2xl bg-white dark:bg-[#04202b] border p-5 shadow-sm">
+							<div className="rounded-2xl bg-white #04202b] border p-5 shadow-sm">
 								<div className="flex items-center justify-between">
-									<h3 className="text-lg font-semibold text-slate-800 dark:text-slate-100 flex items-center gap-2">
+									<h3 className="text-lg font-semibold text-slate-800  flex items-center gap-2">
 										<FileText size={18} /> Consultas <span className="text-sm text-slate-500 ml-2">({totalConsults})</span>
 									</h3>
 
@@ -242,7 +242,7 @@ export default async function PatientHistory({ params }: Props) {
 									</div>
 								</div>
 
-								<div className="mt-4 divide-y divide-slate-100 dark:divide-slate-800">
+								<div className="mt-4 divide-y divide-slate-100 ">
 									{consultationsArray.length === 0 && (
 										<div className="py-12 text-center">
 											<div className="text-sm text-slate-500">No hay consultas registradas para este paciente.</div>
@@ -263,10 +263,10 @@ export default async function PatientHistory({ params }: Props) {
 										const doctor = Array.isArray(consultation.doctor) ? consultation.doctor[0] : consultation.doctor;
 										const when = consultation.started_at ? new Date(consultation.started_at) : consultation.created_at ? new Date(consultation.created_at) : null;
 										return (
-											<Link key={consultation.id} href={`/dashboard/medic/consultas/${consultation.id}`} className="block hover:bg-slate-50 dark:hover:bg-[#031e26] p-4 flex items-start justify-between gap-4" aria-label={`Ver consulta ${consultation.id}`}>
+											<Link key={consultation.id} href={`/dashboard/medic/consultas/${consultation.id}`} className="block hover:bg-slate-50 #031e26] p-4 flex items-start justify-between gap-4" aria-label={`Ver consulta ${consultation.id}`}>
 												<div className="min-w-0">
 													<div className="text-sm text-slate-500">{doctor?.name ? `Dr(a). ${doctor.name}` : 'Médico —'}</div>
-													<div className="text-base font-medium text-slate-800 dark:text-slate-100 truncate">{consultation.chief_complaint || consultation.diagnosis || 'Consulta sin título'}</div>
+													<div className="text-base font-medium text-slate-800  truncate">{consultation.chief_complaint || consultation.diagnosis || 'Consulta sin título'}</div>
 													<div className="text-xs text-slate-500 mt-1 truncate">{consultation.diagnosis ?? ''}</div>
 												</div>
 
@@ -281,17 +281,17 @@ export default async function PatientHistory({ params }: Props) {
 							</div>
 
 							{/* Nota / recomendaciones */}
-							<div className="rounded-2xl bg-white dark:bg-[#04202b] border p-4 shadow-sm">
-								<h4 className="text-sm font-semibold text-slate-700 dark:text-slate-100 mb-2">Recomendaciones</h4>
-								<p className="text-sm text-slate-600 dark:text-slate-300">Mantén la información del paciente actualizada. Usa la sección de notas para detalles clínicos relevantes y evita compartir datos sensibles fuera de la plataforma.</p>
+							<div className="rounded-2xl bg-white #04202b] border p-4 shadow-sm">
+								<h4 className="text-sm font-semibold text-slate-700  mb-2">Recomendaciones</h4>
+								<p className="text-sm text-slate-600 ">Mantén la información del paciente actualizada. Usa la sección de notas para detalles clínicos relevantes y evita compartir datos sensibles fuera de la plataforma.</p>
 							</div>
 						</section>
 
 						{/* Ficha rápida paciente (aside) */}
 						<aside className="space-y-4">
-							<div className="rounded-2xl bg-white dark:bg-[#042434] border p-4 shadow-sm">
+							<div className="rounded-2xl bg-white #042434] border p-4 shadow-sm">
 								<div className="flex items-center gap-3">
-									<div className="w-12 h-12 rounded-full bg-teal-50 dark:bg-teal-700 text-teal-700 dark:text-white flex items-center justify-center font-semibold text-lg">{patient.firstName?.[0] ?? 'P'}</div>
+									<div className="w-12 h-12 rounded-full bg-teal-50  text-teal-700  flex items-center justify-center font-semibold text-lg">{patient.firstName?.[0] ?? 'P'}</div>
 
 									<div>
 										<div className="text-xs text-slate-500">Paciente</div>
@@ -299,7 +299,7 @@ export default async function PatientHistory({ params }: Props) {
 									</div>
 								</div>
 
-								<div className="mt-4 text-sm text-slate-700 dark:text-slate-200 space-y-3">
+								<div className="mt-4 text-sm text-slate-700  space-y-3">
 									<div>
 										<div className="text-xs text-slate-500">ID</div>
 										<div className="font-mono break-all text-sm">{patient.id}</div>

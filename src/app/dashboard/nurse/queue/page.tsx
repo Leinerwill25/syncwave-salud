@@ -39,11 +39,11 @@ export default function NurseQueuePage() {
       {/* Page Title */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
+          <h1 className="text-2xl font-bold text-gray-900  flex items-center gap-2">
             <Users className="w-6 h-6 text-teal-600" />
             Cola de Pacientes Hoy
           </h1>
-          <p className="text-sm text-gray-500 dark:text-gray-400">
+          <p className="text-sm text-gray-500 ">
             Gestiona la atención primaria y triaje de los pacientes del centro.
           </p>
         </div>
@@ -51,7 +51,7 @@ export default function NurseQueuePage() {
         <button
           onClick={loadQueue}
           disabled={loading}
-          className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-teal-600 dark:text-teal-400 bg-teal-50 dark:bg-teal-900/20 rounded-lg hover:bg-teal-100 dark:hover:bg-teal-900/40 transition-colors disabled:opacity-50"
+          className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-teal-600  bg-teal-50  rounded-lg hover:bg-teal-100  transition-colors disabled:opacity-50"
         >
           {loading ? (
             <Loader2 className="w-4 h-4 animate-spin" />
@@ -63,9 +63,9 @@ export default function NurseQueuePage() {
       </div>
 
       {loading ? (
-        <div className="flex flex-col items-center justify-center h-64 bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800">
+        <div className="flex flex-col items-center justify-center h-64 bg-white  rounded-xl border border-gray-200 ">
           <Loader2 className="w-8 h-8 text-teal-600 animate-spin mb-4" />
-          <p className="text-sm text-gray-500 dark:text-gray-400 animate-pulse">Cargando pacientes de hoy...</p>
+          <p className="text-sm text-gray-500  animate-pulse">Cargando pacientes de hoy...</p>
         </div>
       ) : (
         <QueueTable data={data} onAction={handleAction} />

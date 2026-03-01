@@ -44,13 +44,13 @@ export function OrganizationCodeVerifier({ prefilledOrg, onVerified }: Props) {
 
   if (prefilledOrg) {
     return (
-      <div className="flex items-start gap-3 p-4 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 rounded-xl">
-        <CheckCircle className="w-5 h-5 text-emerald-600 dark:text-emerald-400 flex-shrink-0 mt-0.5" />
+      <div className="flex items-start gap-3 p-4 bg-emerald-50  border border-emerald-200  rounded-xl">
+        <CheckCircle className="w-5 h-5 text-emerald-600  flex-shrink-0 mt-0.5" />
         <div>
-          <p className="text-sm font-semibold text-emerald-700 dark:text-emerald-300">Organización verificada</p>
-          <p className="text-sm text-emerald-800 dark:text-emerald-200 font-bold">{prefilledOrg.name}</p>
+          <p className="text-sm font-semibold text-emerald-700 ">Organización verificada</p>
+          <p className="text-sm text-emerald-800  font-bold">{prefilledOrg.name}</p>
           {prefilledOrg.address && (
-            <p className="text-xs text-emerald-600 dark:text-emerald-400 mt-0.5">{prefilledOrg.address}</p>
+            <p className="text-xs text-emerald-600  mt-0.5">{prefilledOrg.address}</p>
           )}
         </div>
       </div>
@@ -65,10 +65,10 @@ export function OrganizationCodeVerifier({ prefilledOrg, onVerified }: Props) {
             {...register('organization_code')}
             placeholder="Ingresa el código de la organización"
             className={cn(
-              'w-full rounded-lg border px-3 py-2.5 text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white outline-none transition-colors uppercase',
+              'w-full rounded-lg border px-3 py-2.5 text-sm bg-white  text-gray-900  outline-none transition-colors uppercase',
               errors.organization_code
                 ? 'border-red-400'
-                : 'border-gray-300 dark:border-gray-700 focus:border-teal-500 focus:ring-2 focus:ring-teal-100 dark:focus:ring-teal-900'
+                : 'border-gray-300  focus:border-teal-500 focus:ring-2 focus:ring-teal-100 '
             )}
           />
           {errors.organization_code && (
@@ -86,13 +86,13 @@ export function OrganizationCodeVerifier({ prefilledOrg, onVerified }: Props) {
       </form>
 
       {result && (
-        <div className="flex items-start gap-3 p-4 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 rounded-xl animate-in fade-in duration-300">
-          <CheckCircle className="w-5 h-5 text-emerald-600 dark:text-emerald-400 flex-shrink-0 mt-0.5" />
+        <div className="flex items-start gap-3 p-4 bg-emerald-50  border border-emerald-200  rounded-xl animate-in fade-in duration-300">
+          <CheckCircle className="w-5 h-5 text-emerald-600  flex-shrink-0 mt-0.5" />
           <div>
-            <p className="text-sm font-semibold text-emerald-700 dark:text-emerald-300">Organización encontrada</p>
-            <p className="text-base text-gray-900 dark:text-white font-bold mt-0.5">{result.name}</p>
-            {result.address && <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{result.address}</p>}
-            <p className="text-xs text-emerald-600 dark:text-emerald-400 mt-2 font-medium">
+            <p className="text-sm font-semibold text-emerald-700 ">Organización encontrada</p>
+            <p className="text-base text-gray-900  font-bold mt-0.5">{result.name}</p>
+            {result.address && <p className="text-xs text-gray-500  mt-0.5">{result.address}</p>}
+            <p className="text-xs text-emerald-600  mt-2 font-medium">
               ¿Es esta tu organización? Si es correcta, continúa al siguiente paso.
             </p>
           </div>
@@ -100,11 +100,11 @@ export function OrganizationCodeVerifier({ prefilledOrg, onVerified }: Props) {
       )}
 
       {notFound && (
-        <div className="flex items-start gap-3 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl">
+        <div className="flex items-start gap-3 p-4 bg-red-50  border border-red-200  rounded-xl">
           <XCircle className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" />
           <div>
-            <p className="text-sm font-semibold text-red-700 dark:text-red-300">Organización no encontrada</p>
-            <p className="text-xs text-red-600 dark:text-red-400 mt-0.5">
+            <p className="text-sm font-semibold text-red-700 ">Organización no encontrada</p>
+            <p className="text-xs text-red-600  mt-0.5">
               Verifica el código con el administrador de tu clínica e inténtalo de nuevo.
             </p>
           </div>
@@ -112,9 +112,9 @@ export function OrganizationCodeVerifier({ prefilledOrg, onVerified }: Props) {
       )}
 
       {!result && !notFound && (
-        <div className="flex items-center gap-3 p-3 bg-blue-50 dark:bg-blue-900/10 border border-blue-200 dark:border-blue-900 rounded-lg">
+        <div className="flex items-center gap-3 p-3 bg-blue-50  border border-blue-200  rounded-lg">
           <Building2 className="w-4 h-4 text-blue-500 flex-shrink-0" />
-          <p className="text-xs text-blue-700 dark:text-blue-300">
+          <p className="text-xs text-blue-700 ">
             El código de organización te lo proporcionará el administrador de tu clínica.
           </p>
         </div>

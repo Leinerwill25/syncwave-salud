@@ -55,23 +55,23 @@ export function VitalSignsForm({ initialData, onSubmit, isLoading }: Props) {
   };
 
   const getLabelClass = (vital: keyof typeof VITAL_ALERT_RANGES, value?: number) => {
-    if (value === undefined || value === null) return 'text-gray-700 dark:text-gray-300';
+    if (value === undefined || value === null) return 'text-gray-700 ';
     const level = getVitalAlertLevel(vital, value);
-    if (level === 'critical') return 'text-red-600 dark:text-red-400 font-bold';
-    if (level === 'warning') return 'text-amber-600 dark:text-amber-400 font-bold';
-    return 'text-gray-700 dark:text-gray-300';
+    if (level === 'critical') return 'text-red-600  font-bold';
+    if (level === 'warning') return 'text-amber-600  font-bold';
+    return 'text-gray-700 ';
   };
 
   const getInputClass = (vital: keyof typeof VITAL_ALERT_RANGES, value?: number, error?: any) => {
-    const base = "w-full rounded-xl border px-4 py-3 text-lg font-semibold bg-white dark:bg-gray-800 outline-none transition-all";
-    if (error) return cn(base, "border-red-500 ring-red-100 focus:ring-4 dark:ring-red-900/20");
-    if (value === undefined || value === null) return cn(base, "border-gray-200 dark:border-gray-700 focus:border-teal-500 focus:ring-4 focus:ring-teal-100 dark:focus:ring-teal-900/20");
+    const base = "w-full rounded-xl border px-4 py-3 text-lg font-semibold bg-white  outline-none transition-all";
+    if (error) return cn(base, "border-red-500 ring-red-100 focus:ring-4 ");
+    if (value === undefined || value === null) return cn(base, "border-gray-200  focus:border-teal-500 focus:ring-4 focus:ring-teal-100 ");
     
     const level = getVitalAlertLevel(vital, value);
-    if (level === 'critical') return cn(base, "border-red-500 bg-red-50 dark:bg-red-900/10 text-red-700 focus:ring-4 focus:ring-red-100 dark:focus:ring-red-900/20");
-    if (level === 'warning') return cn(base, "border-amber-400 bg-amber-50 dark:bg-amber-900/10 text-amber-700 focus:ring-4 focus:ring-amber-100 dark:focus:ring-amber-900/20");
+    if (level === 'critical') return cn(base, "border-red-500 bg-red-50  text-red-700 focus:ring-4 focus:ring-red-100 ");
+    if (level === 'warning') return cn(base, "border-amber-400 bg-amber-50  text-amber-700 focus:ring-4 focus:ring-amber-100 ");
     
-    return cn(base, "border-green-500 bg-green-50 dark:bg-green-900/10 text-green-700 focus:ring-4 focus:ring-green-100 dark:focus:ring-green-900/20 border-gray-200 dark:border-gray-700 focus:border-teal-500");
+    return cn(base, "border-green-500 bg-green-50  text-green-700 focus:ring-4 focus:ring-green-100  border-gray-200  focus:border-teal-500");
   };
 
   return (
@@ -80,10 +80,10 @@ export function VitalSignsForm({ initialData, onSubmit, isLoading }: Props) {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         
         {/* Blood Pressure */}
-        <div className="space-y-3 bg-gray-50/50 dark:bg-gray-800/20 p-4 rounded-2xl border border-gray-100 dark:border-gray-800">
+        <div className="space-y-3 bg-gray-50/50  p-4 rounded-2xl border border-gray-100 ">
           <div className="flex items-center gap-2 mb-1">
             <Heart className="w-5 h-5 text-red-500" />
-            <h3 className="font-bold text-gray-900 dark:text-white">Presión Arterial</h3>
+            <h3 className="font-bold text-gray-900 ">Presión Arterial</h3>
           </div>
           <div className="flex items-center gap-3">
             <div className="flex-1">
@@ -113,9 +113,9 @@ export function VitalSignsForm({ initialData, onSubmit, isLoading }: Props) {
 
         {/* Heart & Resp Rate */}
         <div className="space-y-6">
-          <div className="p-4 bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm">
+          <div className="p-4 bg-white  rounded-2xl border border-gray-100  shadow-sm">
             <label className="flex items-center justify-between mb-2">
-              <span className="flex items-center gap-2 text-sm font-bold text-gray-900 dark:text-white">
+              <span className="flex items-center gap-2 text-sm font-bold text-gray-900 ">
                 <Activity className="w-4 h-4 text-emerald-500" /> Frec. Cardíaca
               </span>
               <span className="text-[10px] font-bold text-gray-400">LPM</span>
@@ -129,9 +129,9 @@ export function VitalSignsForm({ initialData, onSubmit, isLoading }: Props) {
             {errors.heart_rate && <p className="text-xs text-red-500 mt-1">{errors.heart_rate.message}</p>}
           </div>
 
-          <div className="p-4 bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm">
+          <div className="p-4 bg-white  rounded-2xl border border-gray-100  shadow-sm">
             <label className="flex items-center justify-between mb-2">
-              <span className="flex items-center gap-2 text-sm font-bold text-gray-900 dark:text-white">
+              <span className="flex items-center gap-2 text-sm font-bold text-gray-900 ">
                 <Wind className="w-4 h-4 text-blue-400" /> Frec. Respiratoria
               </span>
               <span className="text-[10px] font-bold text-gray-400">RPM</span>
@@ -148,9 +148,9 @@ export function VitalSignsForm({ initialData, onSubmit, isLoading }: Props) {
 
         {/* Temp & Spo2 */}
         <div className="space-y-6">
-          <div className="p-4 bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm">
+          <div className="p-4 bg-white  rounded-2xl border border-gray-100  shadow-sm">
             <label className="flex items-center justify-between mb-2">
-              <span className="flex items-center gap-2 text-sm font-bold text-gray-900 dark:text-white">
+              <span className="flex items-center gap-2 text-sm font-bold text-gray-900 ">
                 <Thermometer className="w-4 h-4 text-orange-500" /> Temperatura
               </span>
               <span className="text-[10px] font-bold text-gray-400">°C</span>
@@ -165,9 +165,9 @@ export function VitalSignsForm({ initialData, onSubmit, isLoading }: Props) {
             {errors.temperature_celsius && <p className="text-xs text-red-500 mt-1">{errors.temperature_celsius.message}</p>}
           </div>
 
-          <div className="p-4 bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm">
+          <div className="p-4 bg-white  rounded-2xl border border-gray-100  shadow-sm">
             <label className="flex items-center justify-between mb-2">
-              <span className="flex items-center gap-2 text-sm font-bold text-gray-900 dark:text-white">
+              <span className="flex items-center gap-2 text-sm font-bold text-gray-900 ">
                 <Droplet className="w-4 h-4 text-blue-600" /> Saturación O2 (SpO2)
               </span>
               <span className="text-[10px] font-bold text-gray-400">%</span>
@@ -185,9 +185,9 @@ export function VitalSignsForm({ initialData, onSubmit, isLoading }: Props) {
 
       {/* Anthropometry & Glucose */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          <div className="p-4 bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm relative overflow-hidden group">
+          <div className="p-4 bg-white  rounded-2xl border border-gray-100  shadow-sm relative overflow-hidden group">
             <label className="flex items-center justify-between mb-2">
-              <span className="flex items-center gap-2 text-sm font-bold text-gray-900 dark:text-white">
+              <span className="flex items-center gap-2 text-sm font-bold text-gray-900 ">
                 <Weight className="w-4 h-4 text-gray-500" /> Peso
               </span>
               <span className="text-[10px] font-bold text-gray-400">KG</span>
@@ -196,14 +196,14 @@ export function VitalSignsForm({ initialData, onSubmit, isLoading }: Props) {
               type="number" 
               step="0.1"
               {...register('weight_kg', { valueAsNumber: true })}
-              className="w-full border-b-2 border-gray-100 dark:border-gray-800 py-2 text-xl font-black bg-transparent outline-none focus:border-teal-500 transition-colors"
+              className="w-full border-b-2 border-gray-100  py-2 text-xl font-black bg-transparent outline-none focus:border-teal-500 transition-colors"
               placeholder="70.0"
             />
           </div>
 
-          <div className="p-4 bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm">
+          <div className="p-4 bg-white  rounded-2xl border border-gray-100  shadow-sm">
             <label className="flex items-center justify-between mb-2">
-              <span className="flex items-center gap-2 text-sm font-bold text-gray-900 dark:text-white">
+              <span className="flex items-center gap-2 text-sm font-bold text-gray-900 ">
                 <Ruler className="w-4 h-4 text-gray-500" /> Talla
               </span>
               <span className="text-[10px] font-bold text-gray-400">CM</span>
@@ -211,20 +211,20 @@ export function VitalSignsForm({ initialData, onSubmit, isLoading }: Props) {
             <input 
               type="number" 
               {...register('height_cm', { valueAsNumber: true })}
-              className="w-full border-b-2 border-gray-100 dark:border-gray-800 py-2 text-xl font-black bg-transparent outline-none focus:border-teal-500 transition-colors"
+              className="w-full border-b-2 border-gray-100  py-2 text-xl font-black bg-transparent outline-none focus:border-teal-500 transition-colors"
               placeholder="170"
             />
           </div>
 
-          <div className="p-4 bg-teal-50 dark:bg-teal-900/10 rounded-2xl border border-teal-100 dark:border-teal-900/30 flex flex-col justify-center">
-            <p className="text-[10px] font-bold text-teal-600 dark:text-teal-400 uppercase tracking-widest mb-1 text-center">Índice Masa Corp.</p>
-            <p className="text-3xl font-black text-teal-900 dark:text-teal-200 text-center">{bmi || '—'}</p>
+          <div className="p-4 bg-teal-50  rounded-2xl border border-teal-100  flex flex-col justify-center">
+            <p className="text-[10px] font-bold text-teal-600  uppercase tracking-widest mb-1 text-center">Índice Masa Corp.</p>
+            <p className="text-3xl font-black text-teal-900  text-center">{bmi || '—'}</p>
             <p className="text-[10px] text-teal-600/60 text-center mt-1">IMC Automático</p>
           </div>
 
-          <div className="p-4 bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm border-l-4 border-l-blue-400">
+          <div className="p-4 bg-white  rounded-2xl border border-gray-100  shadow-sm border-l-4 border-l-blue-400">
             <label className="flex items-center justify-between mb-2">
-              <span className="flex items-center gap-2 text-sm font-bold text-gray-900 dark:text-white">
+              <span className="flex items-center gap-2 text-sm font-bold text-gray-900 ">
                 Glucometría
               </span>
               <span className="text-[10px] font-bold text-gray-400">MG/DL</span>
@@ -240,7 +240,7 @@ export function VitalSignsForm({ initialData, onSubmit, isLoading }: Props) {
 
       {/* Triage Level Selector */}
       <div className="space-y-4">
-        <label className="flex items-center gap-2 text-lg font-bold text-gray-900 dark:text-white">
+        <label className="flex items-center gap-2 text-lg font-bold text-gray-900 ">
           <Stethoscope className="w-6 h-6 text-teal-600" />
           Nivel de Triaje
         </label>
@@ -269,20 +269,20 @@ export function VitalSignsForm({ initialData, onSubmit, isLoading }: Props) {
 
       {/* Notes */}
       <div className="space-y-2">
-        <label className="text-sm font-bold text-gray-900 dark:text-white flex items-center gap-2">
+        <label className="text-sm font-bold text-gray-900  flex items-center gap-2">
           Notas de Enfermería / Observaciones
         </label>
         <textarea 
           {...register('notes')}
           rows={3}
-          className="w-full rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-4 text-sm outline-none focus:ring-4 focus:ring-teal-100 dark:focus:ring-teal-900/20 focus:border-teal-500 transition-all resize-none"
+          className="w-full rounded-2xl border border-gray-200  bg-white  p-4 text-sm outline-none focus:ring-4 focus:ring-teal-100  focus:border-teal-500 transition-all resize-none"
           placeholder="Ej: Paciente refiere dolor en pecho, sudoración fría..."
         />
         {errors.notes && <p className="text-xs text-red-500">{errors.notes.message}</p>}
       </div>
 
       {/* Footer Actions */}
-      <div className="flex items-center justify-between pt-6 border-t border-gray-100 dark:border-gray-800">
+      <div className="flex items-center justify-between pt-6 border-t border-gray-100 ">
         <div className="flex items-center gap-2 text-gray-400 text-xs italic">
           <Info className="w-4 h-4" />
           Los campos vacíos serán ignorados.

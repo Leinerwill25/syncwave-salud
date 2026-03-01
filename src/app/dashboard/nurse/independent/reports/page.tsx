@@ -44,22 +44,22 @@ export default function NurseIndependentReportsPage() {
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+          <h1 className="text-2xl font-bold text-gray-900 ">
             Mis Reportes
           </h1>
-          <p className="text-sm text-gray-500 dark:text-gray-400">
+          <p className="text-sm text-gray-500 ">
             Histórico de jornadas y reportes de atención independiente.
           </p>
         </div>
-        <button className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg transition-colors font-medium">
+        <button className="flex items-center gap-2 px-4 py-2 bg-white  border border-gray-200  hover:bg-gray-50  text-gray-700  rounded-lg transition-colors font-medium">
           <Calendar className="w-4 h-4" />
           Filtrar por Mes
         </button>
       </div>
 
-      <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl shadow-sm overflow-hidden">
+      <div className="bg-white  border border-gray-200  rounded-2xl shadow-sm overflow-hidden">
         {/* Toolbar */}
-        <div className="p-4 border-b border-gray-200 dark:border-gray-800 flex flex-col sm:flex-row gap-4 justify-between items-center">
+        <div className="p-4 border-b border-gray-200  flex flex-col sm:flex-row gap-4 justify-between items-center">
           <div className="relative w-full sm:w-80">
             <Search className="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
             <input 
@@ -67,7 +67,7 @@ export default function NurseIndependentReportsPage() {
               placeholder="Buscar por fecha (YYYY-MM-DD)..." 
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 focus:bg-white dark:focus:bg-gray-800 focus:ring-4 focus:ring-teal-100 dark:focus:ring-teal-900/20 outline-none transition-all"
+              className="w-full pl-10 pr-4 py-2 rounded-xl border border-gray-200  bg-gray-50  focus:bg-white  focus:ring-4 focus:ring-teal-100  outline-none transition-all"
             />
           </div>
         </div>
@@ -76,7 +76,7 @@ export default function NurseIndependentReportsPage() {
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">
             <thead>
-              <tr className="bg-gray-50 dark:bg-gray-800/50 text-gray-500 dark:text-gray-400 text-sm">
+              <tr className="bg-gray-50  text-gray-500  text-sm">
                 <th className="p-4 font-medium flex items-center gap-2">
                   <Calendar className="w-4 h-4" /> Fecha
                 </th>
@@ -86,35 +86,35 @@ export default function NurseIndependentReportsPage() {
                 <th className="p-4 font-medium text-right">Acciones</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
+            <tbody className="divide-y divide-gray-100 ">
               {shiftReports.map((report) => {
                 const start = new Date(report.shift_start).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
                 const end = new Date(report.shift_end).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
                 const date = new Date(report.report_date).toLocaleDateString();
 
                 return (
-                <tr key={report.report_id} className="hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
+                <tr key={report.report_id} className="hover:bg-gray-50  transition-colors">
                   <td className="p-4">
                     <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-xl bg-teal-50 dark:bg-teal-900/20 flex items-center justify-center text-teal-600 dark:text-teal-400">
+                      <div className="w-10 h-10 rounded-xl bg-teal-50  flex items-center justify-center text-teal-600 ">
                         <FileText className="w-5 h-5" />
                       </div>
                       <div>
-                        <p className="font-bold text-gray-900 dark:text-white">Reporte — {date}</p>
+                        <p className="font-bold text-gray-900 ">Reporte — {date}</p>
                         <p className="text-sm text-gray-500">Jornada: {start} - {end}</p>
                       </div>
                     </div>
                   </td>
                   <td className="p-4">
-                    <span className="text-gray-900 dark:text-gray-100 font-medium">{report.patients_count}</span>
+                    <span className="text-gray-900  font-medium">{report.patients_count}</span>
                     <span className="text-sm text-gray-500 ml-1">pacientes</span>
                   </td>
                   <td className="p-4">
-                    <span className="text-gray-900 dark:text-gray-100 font-medium">{report.procedures?.length || 0}</span>
+                    <span className="text-gray-900  font-medium">{report.procedures?.length || 0}</span>
                     <span className="text-sm text-gray-500 ml-1">procs. (estimados)</span>
                   </td>
                   <td className="p-4">
-                    <span className="px-2.5 py-1 text-xs font-medium rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400">
+                    <span className="px-2.5 py-1 text-xs font-medium rounded-full bg-emerald-100 text-emerald-700  ">
                       {report.status || 'Completado'}
                     </span>
                   </td>
@@ -122,7 +122,7 @@ export default function NurseIndependentReportsPage() {
                     <div className="flex items-center justify-end gap-2">
                       <button 
                         onClick={() => handleDownload(report.report_id, date)}
-                        className="flex items-center gap-2 px-3 py-1.5 text-sm bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg transition-colors shadow-sm"
+                        className="flex items-center gap-2 px-3 py-1.5 text-sm bg-white  border border-gray-200  hover:bg-gray-50  text-gray-700  rounded-lg transition-colors shadow-sm"
                       >
                         <Download className="w-4 h-4" />
                         PDF

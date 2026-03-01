@@ -94,7 +94,7 @@ export function PatientProceduresTab({ queueId }: Props) {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h3 className="text-lg font-black text-gray-900 dark:text-white flex items-center gap-2">
+        <h3 className="text-lg font-black text-gray-900  flex items-center gap-2">
           <Droplet className="w-5 h-5 text-teal-600" />
           Módulo de Procedimientos
         </h3>
@@ -107,9 +107,9 @@ export function PatientProceduresTab({ queueId }: Props) {
       </div>
 
       {procedures.length === 0 ? (
-        <div className="bg-gray-50 dark:bg-gray-800/40 rounded-3xl p-12 border border-dashed border-gray-200 dark:border-gray-700 flex flex-col items-center text-center">
+        <div className="bg-gray-50  rounded-3xl p-12 border border-dashed border-gray-200  flex flex-col items-center text-center">
           <Clipboard className="w-12 h-12 text-gray-300 mb-4" />
-          <h4 className="text-gray-900 dark:text-white font-bold mb-1">No hay procedimientos asignados</h4>
+          <h4 className="text-gray-900  font-bold mb-1">No hay procedimientos asignados</h4>
           <p className="text-sm text-gray-500 max-w-xs">No se han registrado curas, sondajes u otros procedimientos para este paciente.</p>
         </div>
       ) : (
@@ -118,8 +118,8 @@ export function PatientProceduresTab({ queueId }: Props) {
             <div 
               key={proc.procedure_id}
               className={cn(
-                "bg-white dark:bg-gray-900 border rounded-3xl p-6 transition-all shadow-sm",
-                proc.status === 'completed' ? "border-emerald-100 dark:border-emerald-900/30 bg-emerald-50/10" : "border-gray-100 dark:border-gray-800"
+                "bg-white  border rounded-3xl p-6 transition-all shadow-sm",
+                proc.status === 'completed' ? "border-emerald-100  bg-emerald-50/10" : "border-gray-100 "
               )}
             >
               <div className="flex flex-col md:flex-row md:items-start justify-between gap-6">
@@ -132,14 +132,14 @@ export function PatientProceduresTab({ queueId }: Props) {
                   </div>
                   <div className="space-y-1">
                     <div className="flex items-center gap-3">
-                      <h4 className="font-black text-gray-900 dark:text-white text-lg">{proc.procedure_name}</h4>
+                      <h4 className="font-black text-gray-900  text-lg">{proc.procedure_name}</h4>
                       {getStatusBadge(proc.status)}
                     </div>
                     {proc.description && (
                       <p className="text-sm text-gray-500 line-clamp-2 italic">{proc.description}</p>
                     )}
                     
-                    <div className="flex flex-wrap items-center gap-x-4 gap-y-2 mt-3 pt-3 border-t border-gray-50 dark:border-gray-800">
+                    <div className="flex flex-wrap items-center gap-x-4 gap-y-2 mt-3 pt-3 border-t border-gray-50 ">
                        {proc.procedure_code && (
                          <span className="text-[10px] font-bold text-gray-400 uppercase tracking-tighter">Código: {proc.procedure_code}</span>
                        )}
@@ -187,9 +187,9 @@ export function PatientProceduresTab({ queueId }: Props) {
 
               {/* Outcome or Notes if Finished */}
               {proc.status === 'completed' && proc.outcome && (
-                <div className="mt-4 p-4 bg-white dark:bg-gray-800 rounded-2xl border border-emerald-100 dark:border-emerald-900/30">
+                <div className="mt-4 p-4 bg-white  rounded-2xl border border-emerald-100 ">
                   <span className="text-[10px] font-black text-emerald-600 uppercase mb-2 block tracking-widest">Resultado</span>
-                  <p className="text-sm text-gray-700 dark:text-gray-300 italic">"{proc.outcome}"</p>
+                  <p className="text-sm text-gray-700  italic">"{proc.outcome}"</p>
                 </div>
               )}
 
@@ -197,7 +197,7 @@ export function PatientProceduresTab({ queueId }: Props) {
               {proc.supplies_used && proc.supplies_used.length > 0 && (
                 <div className="mt-4 flex flex-wrap gap-2">
                   {proc.supplies_used.map((item, idx) => (
-                    <span key={idx} className="flex items-center gap-1 text-[10px] font-bold bg-gray-100 dark:bg-gray-800 text-gray-500 px-2 py-1 rounded-lg">
+                    <span key={idx} className="flex items-center gap-1 text-[10px] font-bold bg-gray-100  text-gray-500 px-2 py-1 rounded-lg">
                       <Box className="w-3 h-3" />
                       {item.quantity} {item.unit} {item.name}
                     </span>
@@ -210,9 +210,9 @@ export function PatientProceduresTab({ queueId }: Props) {
       )}
 
       {/* Guidelines Alert */}
-      <div className="p-5 bg-teal-50 dark:bg-teal-900/10 border border-teal-100 dark:border-teal-900/30 rounded-3xl flex gap-4">
+      <div className="p-5 bg-teal-50  border border-teal-100  rounded-3xl flex gap-4">
         <AlertCircle className="w-6 h-6 text-teal-600 flex-shrink-0" />
-        <div className="text-xs text-teal-800 dark:text-teal-400 leading-relaxed font-bold">
+        <div className="text-xs text-teal-800  leading-relaxed font-bold">
           Recordatorio: Todo procedimiento invasivo requiere consentimiento informado verbal o escrito según protocolo institucional. Asegúrese de registrar cualquier complicación inmediatamente.
         </div>
       </div>

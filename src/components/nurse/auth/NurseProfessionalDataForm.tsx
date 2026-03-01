@@ -39,7 +39,7 @@ export function NurseProfessionalDataForm({ defaultValues, onSubmit, onBack }: P
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
       <div className="grid grid-cols-2 gap-4">
         <div>
-          <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1.5">
+          <label className="block text-xs font-semibold text-gray-700  mb-1.5">
             Número de licencia / colegiatura
           </label>
           <input
@@ -50,7 +50,7 @@ export function NurseProfessionalDataForm({ defaultValues, onSubmit, onBack }: P
           {errors.license_number && <p className="text-xs text-red-500 mt-1">{errors.license_number.message}</p>}
         </div>
         <div>
-          <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1.5">
+          <label className="block text-xs font-semibold text-gray-700  mb-1.5">
             Vencimiento de licencia <span className="text-gray-400">(opcional)</span>
           </label>
           <input
@@ -62,7 +62,7 @@ export function NurseProfessionalDataForm({ defaultValues, onSubmit, onBack }: P
       </div>
 
       <div>
-        <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-2">
+        <label className="block text-xs font-semibold text-gray-700  mb-2">
           Especializaciones <span className="text-red-500">*</span>
         </label>
         <div className="flex flex-wrap gap-2">
@@ -77,7 +77,7 @@ export function NurseProfessionalDataForm({ defaultValues, onSubmit, onBack }: P
                   'flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-full border transition-all duration-150',
                   active
                     ? 'bg-teal-600 border-teal-600 text-white shadow-sm'
-                    : 'bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:border-teal-400 hover:text-teal-600'
+                    : 'bg-white  border-gray-300  text-gray-600  hover:border-teal-400 hover:text-teal-600'
                 )}
               >
                 {active && <Check className="w-3 h-3" />}
@@ -92,7 +92,7 @@ export function NurseProfessionalDataForm({ defaultValues, onSubmit, onBack }: P
       </div>
 
       <div>
-        <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1.5">
+        <label className="block text-xs font-semibold text-gray-700  mb-1.5">
           Cargo en la organización <span className="text-gray-400">(opcional)</span>
         </label>
         <input
@@ -106,7 +106,7 @@ export function NurseProfessionalDataForm({ defaultValues, onSubmit, onBack }: P
         <button
           type="button"
           onClick={onBack}
-          className="flex items-center gap-2 border border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-300 font-medium rounded-lg px-5 py-2.5 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors text-sm"
+          className="flex items-center gap-2 border border-gray-300  text-gray-700  font-medium rounded-lg px-5 py-2.5 hover:bg-gray-50  transition-colors text-sm"
         >
           <ChevronLeft className="w-4 h-4" /> Atrás
         </button>
@@ -123,9 +123,9 @@ export function NurseProfessionalDataForm({ defaultValues, onSubmit, onBack }: P
 
 function inputCls(hasError: boolean) {
   return cn(
-    'w-full rounded-lg border px-3 py-2.5 text-sm text-gray-900 dark:text-white bg-white dark:bg-gray-800 outline-none transition-colors',
+    'w-full rounded-lg border px-3 py-2.5 text-sm text-gray-900  bg-white  outline-none transition-colors',
     hasError
       ? 'border-red-400 focus:border-red-500'
-      : 'border-gray-300 dark:border-gray-700 focus:border-teal-500 focus:ring-2 focus:ring-teal-100 dark:focus:ring-teal-900'
+      : 'border-gray-300  focus:border-teal-500 focus:ring-2 focus:ring-teal-100 '
   );
 }

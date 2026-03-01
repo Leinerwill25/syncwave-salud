@@ -116,9 +116,9 @@ export function PatientNotesTab({ queueId }: Props) {
   return (
     <div className="space-y-8 pb-10">
       {/* Form Container */}
-      <div className="bg-white dark:bg-gray-900 rounded-3xl border border-gray-100 dark:border-gray-800 p-6 shadow-xl shadow-gray-200/20 dark:shadow-none">
+      <div className="bg-white  rounded-3xl border border-gray-100  p-6 shadow-xl shadow-gray-200/20 ">
         <div className="flex items-center justify-between mb-6">
-          <h3 className="text-lg font-black text-gray-900 dark:text-white flex items-center gap-2">
+          <h3 className="text-lg font-black text-gray-900  flex items-center gap-2">
             <Sparkles className="w-5 h-5 text-teal-600" />
             Nueva Nota de Evolución
           </h3>
@@ -126,7 +126,7 @@ export function PatientNotesTab({ queueId }: Props) {
 
         <form onSubmit={handleSubmit} className="space-y-4">
           {/* Type Selector Tabs */}
-          <div className="flex flex-wrap gap-2 p-1 bg-gray-50 dark:bg-gray-800/50 rounded-2xl w-fit">
+          <div className="flex flex-wrap gap-2 p-1 bg-gray-50  rounded-2xl w-fit">
             {(['standard', 'subjective', 'objective', 'assessment', 'plan'] as const).map((type) => (
               <button
                 key={type}
@@ -135,8 +135,8 @@ export function PatientNotesTab({ queueId }: Props) {
                 className={cn(
                   "px-4 py-2 text-xs font-bold rounded-xl transition-all",
                   evolutionType === type 
-                    ? "bg-white dark:bg-gray-800 text-teal-600 shadow-sm"
-                    : "text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
+                    ? "bg-white  text-teal-600 shadow-sm"
+                    : "text-gray-500 hover:text-gray-700 "
                 )}
               >
                 {type === 'standard' ? 'Estándar' : type.charAt(0).toUpperCase()}
@@ -149,7 +149,7 @@ export function PatientNotesTab({ queueId }: Props) {
               value={content}
               onChange={(e) => setContent(e.target.value)}
               placeholder={evolutionType === 'standard' ? "Escribe el progreso del paciente..." : `Escribe la parte ${getTypeName(evolutionType)} de tu evolución...`}
-              className="w-full min-h-[150px] p-5 text-sm bg-gray-50 dark:bg-gray-800/20 border border-gray-100 dark:border-gray-800 rounded-2xl outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all resize-none group-hover:bg-white dark:group-hover:bg-gray-800/40"
+              className="w-full min-h-[150px] p-5 text-sm bg-gray-50  border border-gray-100  rounded-2xl outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all resize-none group-hover:bg-white "
             />
             <div className="absolute bottom-4 right-4 text-[10px] text-gray-400 font-medium">
               Soporta múltiples párrafos
@@ -175,26 +175,26 @@ export function PatientNotesTab({ queueId }: Props) {
 
       {/* History List */}
       <div className="space-y-4">
-        <h3 className="text-lg font-black text-gray-900 dark:text-white flex items-center gap-2">
+        <h3 className="text-lg font-black text-gray-900  flex items-center gap-2">
           <Clock className="w-5 h-5 text-gray-400" />
           Historial de Evolución
         </h3>
 
         {notes.length === 0 ? (
-          <div className="bg-gray-50 dark:bg-gray-800/40 rounded-3xl p-12 border border-dashed border-gray-200 dark:border-gray-700 flex flex-col items-center text-center">
+          <div className="bg-gray-50  rounded-3xl p-12 border border-dashed border-gray-200  flex flex-col items-center text-center">
             <MessageSquare className="w-10 h-10 text-gray-300 mb-3" />
             <p className="text-sm text-gray-500">No hay notas registradas aún para esta atención.</p>
           </div>
         ) : (
-          <div className="space-y-6 relative before:absolute before:left-[19px] before:top-4 before:bottom-4 before:w-0.5 before:bg-gray-100 dark:before:bg-gray-800">
+          <div className="space-y-6 relative before:absolute before:left-[19px] before:top-4 before:bottom-4 before:w-0.5 before:bg-gray-100 ">
             {notes.map((note) => (
               <div key={note.note_id} className="relative pl-12 group">
                 {/* Timeline dot */}
-                <div className="absolute left-0 top-1 w-10 h-10 rounded-full border-4 border-white dark:border-gray-950 bg-gray-100 dark:bg-gray-800 flex items-center justify-center z-10 transition-colors group-hover:bg-teal-50 dark:group-hover:bg-teal-900/20">
+                <div className="absolute left-0 top-1 w-10 h-10 rounded-full border-4 border-white  bg-gray-100  flex items-center justify-center z-10 transition-colors group-hover:bg-teal-50 ">
                   <FileText className="w-4 h-4 text-gray-400 group-hover:text-teal-600" />
                 </div>
 
-                <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-3xl p-5 shadow-sm group-hover:border-teal-100 dark:group-hover:border-teal-900/30 transition-all">
+                <div className="bg-white  border border-gray-100  rounded-3xl p-5 shadow-sm group-hover:border-teal-100  transition-all">
                   <div className="flex items-center justify-between mb-3">
                     <div className="flex items-center gap-3">
                       <span className={cn(
@@ -210,13 +210,13 @@ export function PatientNotesTab({ queueId }: Props) {
                     </div>
                   </div>
 
-                  <p className="text-sm text-gray-600 dark:text-gray-300 leading-relaxed whitespace-pre-line">
+                  <p className="text-sm text-gray-600  leading-relaxed whitespace-pre-line">
                     {note.content}
                   </p>
 
-                  <div className="mt-4 pt-4 border-t border-gray-50 dark:border-gray-800 flex items-center gap-4">
+                  <div className="mt-4 pt-4 border-t border-gray-50  flex items-center gap-4">
                     <div className="flex items-center gap-2">
-                       <div className="w-6 h-6 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-[10px] text-gray-600 font-bold">
+                       <div className="w-6 h-6 rounded-full bg-gray-100  flex items-center justify-center text-[10px] text-gray-600 font-bold">
                          <User className="w-3 h-3" />
                        </div>
                        <span className="text-[10px] text-gray-500 font-bold">Responded: Enfermería</span>

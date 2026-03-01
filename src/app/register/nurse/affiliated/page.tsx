@@ -71,28 +71,28 @@ function AffiliatedRegisterContent() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-teal-50 via-white to-gray-50 dark:from-gray-950 dark:via-gray-900 dark:to-gray-950 flex flex-col items-center px-4 py-8">
+    <div className="min-h-screen bg-gradient-to-b from-teal-50 via-white to-gray-50    flex flex-col items-center px-4 py-8">
       {/* Logo */}
       <div className="mb-8 flex flex-col items-center">
         <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-teal-500 to-cyan-600 flex items-center justify-center shadow-lg mb-3">
           <Activity className="w-6 h-6 text-white" />
         </div>
-        <p className="text-gray-500 dark:text-gray-400 text-sm">ASHIRA Software · Registro Afiliada</p>
+        <p className="text-gray-500  text-sm">ASHIRA Software · Registro Afiliada</p>
       </div>
 
       {/* Stepper */}
       <div className="w-full max-w-2xl mb-8">
         <div className="flex items-center justify-between relative">
-          <div className="absolute left-0 right-0 top-4 h-0.5 bg-gray-200 dark:bg-gray-800 z-0" />
+          <div className="absolute left-0 right-0 top-4 h-0.5 bg-gray-200  z-0" />
           <div className="absolute left-0 top-4 h-0.5 bg-teal-500 z-0 transition-all duration-500" style={{ width: `${(step / (STEPS.length - 1)) * 100}%` }} />
           {STEPS.map((s, i) => {
             const done = i < step, active = i === step;
             return (
               <div key={s.label} className="flex flex-col items-center z-10">
-                <div className={cn('w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold border-2 transition-all', done ? 'bg-teal-500 border-teal-500 text-white' : active ? 'bg-white dark:bg-gray-900 border-teal-500 text-teal-600' : 'bg-white dark:bg-gray-900 border-gray-300 dark:border-gray-700 text-gray-400')}>
+                <div className={cn('w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold border-2 transition-all', done ? 'bg-teal-500 border-teal-500 text-white' : active ? 'bg-white  border-teal-500 text-teal-600' : 'bg-white  border-gray-300  text-gray-400')}>
                   {done ? <Check className="w-4 h-4" /> : i + 1}
                 </div>
-                <p className={cn('text-[10px] font-semibold mt-2 hidden sm:block', active || done ? 'text-gray-900 dark:text-white' : 'text-gray-400')}>{s.label}</p>
+                <p className={cn('text-[10px] font-semibold mt-2 hidden sm:block', active || done ? 'text-gray-900 ' : 'text-gray-400')}>{s.label}</p>
               </div>
             );
           })}
@@ -100,9 +100,9 @@ function AffiliatedRegisterContent() {
       </div>
 
       {/* Card */}
-      <div className="w-full max-w-2xl bg-white dark:bg-gray-900 rounded-2xl shadow-lg border border-gray-200 dark:border-gray-800 overflow-hidden">
-        <div className="px-6 py-4 border-b border-gray-100 dark:border-gray-800">
-          <h2 className="text-lg font-bold text-gray-900 dark:text-white">{STEPS[step].label}</h2>
+      <div className="w-full max-w-2xl bg-white  rounded-2xl shadow-lg border border-gray-200  overflow-hidden">
+        <div className="px-6 py-4 border-b border-gray-100 ">
+          <h2 className="text-lg font-bold text-gray-900 ">{STEPS[step].label}</h2>
         </div>
         <div className="p-6">
           {step === 0 && (
@@ -133,7 +133,7 @@ function AffiliatedRegisterContent() {
           )}
           {step === 3 && org && personal && professional && (
             <div className="space-y-5">
-              <div className="bg-gray-50 dark:bg-gray-800/50 rounded-xl p-4 space-y-2">
+              <div className="bg-gray-50  rounded-xl p-4 space-y-2">
                 <p className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Resumen</p>
                 <Row label="Organización" value={org.name} />
                 <Row label="Nombre" value={`${personal.firstName} ${personal.lastName}`} />
@@ -142,7 +142,7 @@ function AffiliatedRegisterContent() {
                 <Row label="Especializaciones" value={professional.specializations.join(', ')} />
               </div>
               <div className="flex gap-3">
-                <button onClick={() => setStep(2)} className="flex items-center gap-2 border border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-300 rounded-lg px-5 py-2.5 text-sm font-medium hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
+                <button onClick={() => setStep(2)} className="flex items-center gap-2 border border-gray-300  text-gray-700  rounded-lg px-5 py-2.5 text-sm font-medium hover:bg-gray-50  transition-colors">
                   <ChevronLeft className="w-4 h-4" /> Atrás
                 </button>
                 <button
@@ -158,9 +158,9 @@ function AffiliatedRegisterContent() {
         </div>
       </div>
 
-      <p className="mt-6 text-xs text-gray-400 dark:text-gray-600 text-center">
+      <p className="mt-6 text-xs text-gray-400  text-center">
         ¿Eres independiente?{' '}
-        <a href="/register/nurse" className="text-teal-600 dark:text-teal-400 hover:underline font-medium">
+        <a href="/register/nurse" className="text-teal-600  hover:underline font-medium">
           Regístrate aquí
         </a>
       </p>
@@ -172,7 +172,7 @@ function Row({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex items-center justify-between">
       <span className="text-xs text-gray-500">{label}</span>
-      <span className="text-xs font-medium text-gray-900 dark:text-white">{value}</span>
+      <span className="text-xs font-medium text-gray-900 ">{value}</span>
     </div>
   );
 }

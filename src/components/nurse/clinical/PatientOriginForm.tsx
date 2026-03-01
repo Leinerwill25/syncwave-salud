@@ -34,9 +34,9 @@ export function PatientOriginForm({ initialData, onSubmit, isLoading }: Props) {
 
   return (
     <form onSubmit={handleSubmit(onLocalSubmit)} className="space-y-6">
-      <div className="bg-teal-50 dark:bg-teal-900/10 p-4 rounded-2xl border border-teal-100 dark:border-teal-900/30 flex gap-3 mb-6">
+      <div className="bg-teal-50  p-4 rounded-2xl border border-teal-100  flex gap-3 mb-6">
         <Info className="w-5 h-5 text-teal-600 flex-shrink-0 mt-0.5" />
-        <p className="text-sm text-teal-800 dark:text-teal-300">
+        <p className="text-sm text-teal-800 ">
           Registrar el origen del paciente ayuda a mantener la trazabilidad clínica y la coordinación con otros centros o médicos tratantes.
         </p>
       </div>
@@ -44,14 +44,14 @@ export function PatientOriginForm({ initialData, onSubmit, isLoading }: Props) {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Origin Type */}
         <div className="space-y-2">
-          <label className="text-sm font-bold text-gray-900 dark:text-white flex items-center gap-2">
+          <label className="text-sm font-bold text-gray-900  flex items-center gap-2">
             <MapPin className="w-4 h-4 text-teal-600" /> Tipo de Procedencia
           </label>
           <select 
             {...register('origin_type')}
             className={cn(
-              "w-full rounded-xl border px-4 py-3 bg-white dark:bg-gray-800 outline-none transition-all focus:ring-4 focus:ring-teal-100 dark:focus:ring-teal-900/20",
-              errors.origin_type ? "border-red-500" : "border-gray-200 dark:border-gray-700"
+              "w-full rounded-xl border px-4 py-3 bg-white  outline-none transition-all focus:ring-4 focus:ring-teal-100 ",
+              errors.origin_type ? "border-red-500" : "border-gray-200 "
             )}
           >
             <option value="">Seleccione origen...</option>
@@ -64,44 +64,44 @@ export function PatientOriginForm({ initialData, onSubmit, isLoading }: Props) {
 
         {/* Origin Org Name */}
         <div className="space-y-2">
-          <label className="text-sm font-bold text-gray-900 dark:text-white flex items-center gap-2">
+          <label className="text-sm font-bold text-gray-900  flex items-center gap-2">
             <Building className="w-4 h-4 text-teal-600" /> Organización Origen
           </label>
           <input 
             {...register('origin_org_name')}
             placeholder="Nombre de la clínica o centro"
             className={cn(
-              "w-full rounded-xl border px-4 py-3 bg-white dark:bg-gray-800 outline-none transition-all focus:ring-4 focus:ring-teal-100 dark:focus:ring-teal-900/20",
-              errors.origin_org_name ? "border-red-500" : "border-gray-200 dark:border-gray-700"
+              "w-full rounded-xl border px-4 py-3 bg-white  outline-none transition-all focus:ring-4 focus:ring-teal-100 ",
+              errors.origin_org_name ? "border-red-500" : "border-gray-200 "
             )}
           />
         </div>
 
         {/* Referring Doctor */}
         <div className="space-y-2">
-          <label className="text-sm font-bold text-gray-900 dark:text-white flex items-center gap-2">
+          <label className="text-sm font-bold text-gray-900  flex items-center gap-2">
             <UserPlus className="w-4 h-4 text-teal-600" /> Médico que Remite
           </label>
           <input 
             {...register('referring_doctor_name')}
             placeholder="Nombre del médico tratante"
             className={cn(
-              "w-full rounded-xl border px-4 py-3 bg-white dark:bg-gray-800 outline-none transition-all focus:ring-4 focus:ring-teal-100 dark:focus:ring-teal-900/20",
-              errors.referring_doctor_name ? "border-red-500" : "border-gray-200 dark:border-gray-700"
+              "w-full rounded-xl border px-4 py-3 bg-white  outline-none transition-all focus:ring-4 focus:ring-teal-100 ",
+              errors.referring_doctor_name ? "border-red-500" : "border-gray-200 "
             )}
           />
         </div>
 
         {/* Referral Reason */}
         <div className="space-y-2">
-          <label className="text-sm font-bold text-gray-900 dark:text-white flex items-center gap-2">
+          <label className="text-sm font-bold text-gray-900  flex items-center gap-2">
             <FileText className="w-4 h-4 text-teal-600" /> Motivo de Remisión
           </label>
           <select 
             {...register('referral_reason')}
             className={cn(
-              "w-full rounded-xl border px-4 py-3 bg-white dark:bg-gray-800 outline-none transition-all focus:ring-4 focus:ring-teal-100 dark:focus:ring-teal-900/20",
-              errors.referral_reason ? "border-red-500" : "border-gray-200 dark:border-gray-700"
+              "w-full rounded-xl border px-4 py-3 bg-white  outline-none transition-all focus:ring-4 focus:ring-teal-100 ",
+              errors.referral_reason ? "border-red-500" : "border-gray-200 "
             )}
           >
             <option value="">Seleccione motivo...</option>
@@ -114,12 +114,12 @@ export function PatientOriginForm({ initialData, onSubmit, isLoading }: Props) {
 
       {/* Referral Notes */}
       <div className="space-y-2">
-        <label className="text-sm font-bold text-gray-900 dark:text-white">Notas Adiocionales de Origen</label>
+        <label className="text-sm font-bold text-gray-900 ">Notas Adiocionales de Origen</label>
         <textarea 
           {...register('referral_notes')}
           rows={3}
           placeholder="Detalles sobre la remisión, diagnósticos previos relevantes, etc."
-          className="w-full rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4 text-sm outline-none focus:ring-4 focus:ring-teal-100 dark:focus:ring-teal-900/20 transition-all resize-none"
+          className="w-full rounded-xl border border-gray-200  bg-white  p-4 text-sm outline-none focus:ring-4 focus:ring-teal-100  transition-all resize-none"
         />
       </div>
 

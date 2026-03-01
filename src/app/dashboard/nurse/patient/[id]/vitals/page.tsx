@@ -89,12 +89,12 @@ export default function PatientVitalsPage({ params }: { params: Promise<{ id: st
         <div className="flex items-center gap-4">
           <Link 
             href="/dashboard/nurse/queue"
-            className="p-2 rounded-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:bg-gray-50 flex items-center justify-center transition-colors"
+            className="p-2 rounded-full bg-white  border border-gray-200  hover:bg-gray-50 flex items-center justify-center transition-colors"
           >
-            <ChevronLeft className="w-5 h-5 text-gray-600 dark:text-gray-300" />
+            <ChevronLeft className="w-5 h-5 text-gray-600 " />
           </Link>
           <div>
-            <h1 className="text-2xl font-black text-gray-900 dark:text-white flex items-center gap-2">
+            <h1 className="text-2xl font-black text-gray-900  flex items-center gap-2">
               <Activity className="w-6 h-6 text-red-500" />
               Toma de Signos Vitales y Triaje
             </h1>
@@ -103,14 +103,14 @@ export default function PatientVitalsPage({ params }: { params: Promise<{ id: st
         </div>
 
         {/* Patient Info Chip */}
-        <div className="bg-teal-50 dark:bg-teal-900/20 border border-teal-100 dark:border-teal-800 rounded-2xl p-4 flex items-center gap-4">
-          <div className="w-12 h-12 rounded-full bg-teal-100 dark:bg-teal-800 flex items-center justify-center text-teal-600 font-bold">
+        <div className="bg-teal-50  border border-teal-100  rounded-2xl p-4 flex items-center gap-4">
+          <div className="w-12 h-12 rounded-full bg-teal-100  flex items-center justify-center text-teal-600 font-bold">
             <User className="w-6 h-6" />
           </div>
           <div>
-            <p className="text-sm font-bold text-gray-900 dark:text-white">{patientName}</p>
+            <p className="text-sm font-bold text-gray-900 ">{patientName}</p>
             <div className="flex items-center gap-3 mt-1">
-              <span className="text-[10px] bg-white dark:bg-gray-800 px-1.5 py-0.5 rounded border border-teal-200 dark:border-teal-700 font-bold uppercase text-teal-700 dark:text-teal-400">
+              <span className="text-[10px] bg-white  px-1.5 py-0.5 rounded border border-teal-200  font-bold uppercase text-teal-700 ">
                 ID: {activePatient?.patient_identifier || activePatient?.unreg_identifier || 'N/A'}
               </span>
               <span className="text-[10px] flex items-center gap-1 text-gray-500 font-medium">
@@ -122,7 +122,7 @@ export default function PatientVitalsPage({ params }: { params: Promise<{ id: st
       </div>
 
       {/* Main Form Card */}
-      <div className="bg-white dark:bg-gray-900 rounded-3xl border border-gray-100 dark:border-gray-800 p-6 md:p-8 shadow-xl shadow-gray-200/20 dark:shadow-none">
+      <div className="bg-white  rounded-3xl border border-gray-100  p-6 md:p-8 shadow-xl shadow-gray-200/20 ">
         <VitalSignsForm 
           onSubmit={handleSubmit} 
           isLoading={submitting} 
@@ -134,13 +134,13 @@ export default function PatientVitalsPage({ params }: { params: Promise<{ id: st
 
       {/* Disclaimer / Helpful info */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pb-8">
-        <div className="p-4 bg-gray-50 dark:bg-gray-800/20 rounded-2xl border border-gray-100 dark:border-gray-800 flex items-start gap-3">
+        <div className="p-4 bg-gray-50  rounded-2xl border border-gray-100  flex items-start gap-3">
           <Activity className="w-5 h-5 text-gray-400 flex-shrink-0 mt-0.5" />
           <p className="text-xs text-gray-500">
             La toma de signos vitales es el paso crítico para el Triaje. Un registro preciso ayuda a priorizar los casos según la urgencia clínica real.
           </p>
         </div>
-        <div className="p-4 bg-gray-50 dark:bg-gray-800/20 rounded-2xl border border-gray-100 dark:border-gray-800 flex items-start gap-3">
+        <div className="p-4 bg-gray-50  rounded-2xl border border-gray-100  flex items-start gap-3">
           <Clock className="w-5 h-5 text-gray-400 flex-shrink-0 mt-0.5" />
           <p className="text-xs text-gray-500">
             Después de guardar, el estado del paciente cambiará a <strong>"Listo para médico"</strong> y aparecerá en la lista del especialista correspondiente.

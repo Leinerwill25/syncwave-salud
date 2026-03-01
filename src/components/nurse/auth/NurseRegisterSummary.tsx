@@ -68,9 +68,9 @@ export function NurseRegisterSummary({ data, onBack }: Props) {
   return (
     <div className="space-y-6">
       {/* Verification warning */}
-      <div className="flex items-start gap-3 p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg">
-        <AlertCircle className="w-4 h-4 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
-        <p className="text-xs text-amber-700 dark:text-amber-300">
+      <div className="flex items-start gap-3 p-3 bg-amber-50  border border-amber-200  rounded-lg">
+        <AlertCircle className="w-4 h-4 text-amber-600  flex-shrink-0 mt-0.5" />
+        <p className="text-xs text-amber-700 ">
           Tu licencia quedará <strong>pendiente de verificación</strong> hasta que el equipo ASHIRA la revise. Podrás acceder al sistema en modo básico.
         </p>
       </div>
@@ -121,7 +121,7 @@ export function NurseRegisterSummary({ data, onBack }: Props) {
           type="button"
           onClick={onBack}
           disabled={loading}
-          className="flex items-center gap-2 border border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-300 font-medium rounded-lg px-5 py-2.5 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors text-sm disabled:opacity-50"
+          className="flex items-center gap-2 border border-gray-300  text-gray-700  font-medium rounded-lg px-5 py-2.5 hover:bg-gray-50  transition-colors text-sm disabled:opacity-50"
         >
           <ChevronLeft className="w-4 h-4" /> Atrás
         </button>
@@ -131,7 +131,7 @@ export function NurseRegisterSummary({ data, onBack }: Props) {
           className={cn(
             'flex-1 flex items-center justify-center gap-2 font-semibold rounded-lg px-6 py-2.5 transition-all text-sm',
             loading || !acceptTerms || !acceptPrivacy
-              ? 'bg-gray-300 dark:bg-gray-700 text-gray-500 cursor-not-allowed'
+              ? 'bg-gray-300  text-gray-500 cursor-not-allowed'
               : 'bg-teal-600 hover:bg-teal-700 text-white shadow-sm hover:shadow-md'
           )}
         >
@@ -148,8 +148,8 @@ export function NurseRegisterSummary({ data, onBack }: Props) {
 
 function SummarySection({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <div className="bg-gray-50 dark:bg-gray-800/50 rounded-xl p-4">
-      <p className="text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3">{title}</p>
+    <div className="bg-gray-50  rounded-xl p-4">
+      <p className="text-[10px] font-bold text-gray-500  uppercase tracking-wider mb-3">{title}</p>
       <div className="space-y-2">{children}</div>
     </div>
   );
@@ -158,8 +158,8 @@ function SummarySection({ title, children }: { title: string; children: React.Re
 function Row({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex items-start justify-between gap-4">
-      <span className="text-xs text-gray-500 dark:text-gray-400 flex-shrink-0">{label}</span>
-      <span className="text-xs font-medium text-gray-900 dark:text-white text-right">{value}</span>
+      <span className="text-xs text-gray-500  flex-shrink-0">{label}</span>
+      <span className="text-xs font-medium text-gray-900  text-right">{value}</span>
     </div>
   );
 }
@@ -180,12 +180,12 @@ function CheckField({
         onClick={() => onChange(!checked)}
         className={cn(
           'flex-shrink-0 w-5 h-5 rounded border-2 flex items-center justify-center transition-all mt-0.5',
-          checked ? 'bg-teal-600 border-teal-600' : 'border-gray-300 dark:border-gray-600 group-hover:border-teal-400'
+          checked ? 'bg-teal-600 border-teal-600' : 'border-gray-300  group-hover:border-teal-400'
         )}
       >
         {checked && <CheckCircle className="w-3.5 h-3.5 text-white" />}
       </button>
-      <span className="text-xs text-gray-600 dark:text-gray-400 leading-relaxed">{children}</span>
+      <span className="text-xs text-gray-600  leading-relaxed">{children}</span>
     </label>
   );
 }

@@ -34,11 +34,11 @@ export function NurseGlobalReminders() {
             initial={{ opacity: 0, y: 20, scale: 0.95 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 20, scale: 0.95 }}
-            className="w-80 md:w-96 max-h-[70vh] bg-white dark:bg-gray-900 rounded-[2.5rem] shadow-2xl shadow-indigo-500/10 border border-gray-100 dark:border-gray-800 overflow-hidden flex flex-col"
+            className="w-80 md:w-96 max-h-[70vh] bg-white  rounded-[2.5rem] shadow-2xl shadow-indigo-500/10 border border-gray-100  overflow-hidden flex flex-col"
           >
             {/* Header */}
-            <div className="p-6 border-b border-gray-50 dark:border-gray-800 flex items-center justify-between bg-gray-50/50 dark:bg-gray-800/30">
-              <h3 className="font-black text-gray-900 dark:text-white flex items-center gap-2">
+            <div className="p-6 border-b border-gray-50  flex items-center justify-between bg-gray-50/50 ">
+              <h3 className="font-black text-gray-900  flex items-center gap-2">
                 <Bell className="w-5 h-5 text-indigo-600" />
                 Recordatorios
                 <span className="bg-indigo-600 text-white text-[10px] px-2 py-0.5 rounded-full">
@@ -47,7 +47,7 @@ export function NurseGlobalReminders() {
               </h3>
               <button 
                 onClick={() => setIsOpen(false)}
-                className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full transition-colors"
+                className="p-2 hover:bg-gray-100  rounded-full transition-colors"
               >
                 <X className="w-4 h-4 text-gray-400" />
               </button>
@@ -60,9 +60,9 @@ export function NurseGlobalReminders() {
                   key={alert.id}
                   className={cn(
                     "p-4 rounded-3xl border border-transparent transition-all group relative",
-                    alert.type === 'critical' ? "bg-red-50 dark:bg-red-900/10 border-red-100 dark:border-red-900/30" : 
-                    alert.type === 'warning' ? "bg-amber-50 dark:bg-amber-900/10 border-amber-100 dark:border-amber-900/30" : 
-                    "bg-blue-50 dark:bg-blue-900/10 border-blue-100 dark:border-blue-900/30"
+                    alert.type === 'critical' ? "bg-red-50  border-red-100 " : 
+                    alert.type === 'warning' ? "bg-amber-50  border-amber-100 " : 
+                    "bg-blue-50  border-blue-100 "
                   )}
                 >
                   <div className="flex gap-3">
@@ -78,10 +78,10 @@ export function NurseGlobalReminders() {
                     </div>
                     
                     <div className="flex-1 min-w-0">
-                      <p className="text-xs font-black text-gray-900 dark:text-white uppercase tracking-tight">
+                      <p className="text-xs font-black text-gray-900  uppercase tracking-tight">
                         {alert.title}
                       </p>
-                      <p className="text-sm text-gray-600 dark:text-gray-400 font-medium leading-snug mt-0.5">
+                      <p className="text-sm text-gray-600  font-medium leading-snug mt-0.5">
                         {alert.message}
                       </p>
                       
@@ -94,7 +94,7 @@ export function NurseGlobalReminders() {
                         {alert.action && (
                           <Link 
                             href={alert.action.href}
-                            className="bg-white dark:bg-gray-800 text-[10px] font-black py-1.5 px-3 rounded-full shadow-sm hover:shadow-md transition-all flex items-center gap-1 group/btn"
+                            className="bg-white  text-[10px] font-black py-1.5 px-3 rounded-full shadow-sm hover:shadow-md transition-all flex items-center gap-1 group/btn"
                             onClick={() => setIsOpen(false)}
                           >
                             {alert.action.label}
@@ -115,10 +115,10 @@ export function NurseGlobalReminders() {
               ))}
             </div>
             
-            <div className="p-4 bg-gray-50/50 dark:bg-gray-800/30 border-t border-gray-50 dark:border-gray-800 text-center">
+            <div className="p-4 bg-gray-50/50  border-t border-gray-50  text-center">
               <button 
                 onClick={() => activeAlerts.forEach(a => dismissAlert(a.id))}
-                className="text-xs font-black text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors uppercase tracking-widest"
+                className="text-xs font-black text-gray-400 hover:text-gray-600  transition-colors uppercase tracking-widest"
               >
                 Limpiar Todo
               </button>

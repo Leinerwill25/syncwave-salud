@@ -33,7 +33,7 @@ export default async function NurseLayout({
   // Shell principal para todos los enfermeros (Afiliados e Independientes)
   return (
     <NurseProvider userId={nurseSession.userId}>
-      <div className="flex h-screen bg-gray-50 dark:bg-gray-950 overflow-hidden">
+      <div className="flex h-screen bg-gray-50  overflow-hidden">
         {/* Sidebar adaptativo */}
         <NurseSidebar nurseType={nurseSession.nurseType} />
 

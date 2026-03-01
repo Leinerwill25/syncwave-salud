@@ -85,9 +85,9 @@ export function ShiftReportForm() {
   return (
     <div className="max-w-4xl mx-auto space-y-8 pb-20">
       {/* Header Info */}
-      <div className="bg-white dark:bg-gray-900 rounded-3xl p-6 md:p-8 border border-gray-100 dark:border-gray-800 shadow-xl shadow-gray-200/20 flex flex-col md:flex-row md:items-center justify-between gap-6">
+      <div className="bg-white  rounded-3xl p-6 md:p-8 border border-gray-100  shadow-xl shadow-gray-200/20 flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div>
-          <h2 className="text-2xl font-black text-gray-900 dark:text-white flex items-center gap-3">
+          <h2 className="text-2xl font-black text-gray-900  flex items-center gap-3">
              <ClipboardCheck className="w-8 h-8 text-teal-600" />
              Entrega de Turno
           </h2>
@@ -97,11 +97,11 @@ export function ShiftReportForm() {
         </div>
         
         <div className="flex flex-wrap gap-4">
-           <div className="bg-gray-50 dark:bg-gray-800 px-4 py-2 rounded-2xl border border-gray-100 dark:border-gray-700">
+           <div className="bg-gray-50  px-4 py-2 rounded-2xl border border-gray-100 ">
              <span className="text-[10px] font-black text-gray-400 uppercase block tracking-widest">Pacientes</span>
              <span className="text-xl font-black text-teal-600">{todaySummary?.total_patients || 0}</span>
            </div>
-           <div className="bg-gray-50 dark:bg-gray-800 px-4 py-2 rounded-2xl border border-gray-100 dark:border-gray-700">
+           <div className="bg-gray-50  px-4 py-2 rounded-2xl border border-gray-100 ">
              <span className="text-[10px] font-black text-gray-400 uppercase block tracking-widest">Turno</span>
              <span className="text-xl font-black text-teal-600">8h+</span>
            </div>
@@ -111,8 +111,8 @@ export function ShiftReportForm() {
       {/* Main Form */}
       <div className="space-y-6">
         {/* Summary */}
-        <div className="bg-white dark:bg-gray-900 rounded-3xl p-6 border border-gray-100 dark:border-gray-800">
-          <label className="text-sm font-black text-gray-700 dark:text-gray-300 mb-3 block flex items-center gap-2">
+        <div className="bg-white  rounded-3xl p-6 border border-gray-100 ">
+          <label className="text-sm font-black text-gray-700  mb-3 block flex items-center gap-2">
             <FileText className="w-4 h-4 text-teal-600" />
             Resumen General del Turno
           </label>
@@ -120,22 +120,22 @@ export function ShiftReportForm() {
             value={summaryText}
             onChange={(e) => setSummaryText(e.target.value)}
             placeholder="Describe las novedades generales, estado del servicio y pacientes críticos..."
-            className="w-full min-h-[120px] p-4 text-sm bg-gray-50 dark:bg-gray-800/30 border border-gray-100 dark:border-gray-800 rounded-2xl outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all resize-none"
+            className="w-full min-h-[120px] p-4 text-sm bg-gray-50  border border-gray-100  rounded-2xl outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all resize-none"
           />
         </div>
 
         {/* Incidents Section */}
-        <div className="bg-white dark:bg-gray-900 rounded-3xl p-6 border border-gray-100 dark:border-gray-800">
-          <label className="text-sm font-black text-gray-700 dark:text-gray-300 mb-4 block flex items-center gap-2">
+        <div className="bg-white  rounded-3xl p-6 border border-gray-100 ">
+          <label className="text-sm font-black text-gray-700  mb-4 block flex items-center gap-2">
             <AlertTriangle className="w-4 h-4 text-amber-500" />
             Novedades e Incidentes
           </label>
           
           <div className="space-y-4 mb-6">
             {incidents.map((inc, idx) => (
-              <div key={idx} className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700">
+              <div key={idx} className="flex items-center justify-between p-3 bg-gray-50  rounded-2xl border border-gray-100 ">
                 <div className="flex items-center gap-3">
-                  <span className="text-[10px] font-bold bg-white dark:bg-gray-900 px-2 py-1 rounded-lg border">{inc.time}</span>
+                  <span className="text-[10px] font-bold bg-white  px-2 py-1 rounded-lg border">{inc.time}</span>
                   <div className="text-sm">
                     <span className={cn(
                       "text-[10px] font-black uppercase mr-2",
@@ -143,7 +143,7 @@ export function ShiftReportForm() {
                     )}>
                       [{inc.severity}]
                     </span>
-                    <span className="text-gray-700 dark:text-gray-300">{inc.description}</span>
+                    <span className="text-gray-700 ">{inc.description}</span>
                   </div>
                 </div>
                 <button onClick={() => setIncidents(incidents.filter((_, i) => i !== idx))} className="text-red-400 hover:text-red-600">
@@ -158,19 +158,19 @@ export function ShiftReportForm() {
                type="time" 
                value={newIncident.time}
                onChange={(e) => setNewIncident({...newIncident, time: e.target.value})}
-               className="bg-gray-50 dark:bg-gray-800 p-2.5 rounded-xl border border-gray-100 dark:border-gray-700 text-sm outline-none w-full md:w-32" 
+               className="bg-gray-50  p-2.5 rounded-xl border border-gray-100  text-sm outline-none w-full md:w-32" 
              />
              <input 
                type="text"
                placeholder="Descripción del incidente..."
                value={newIncident.description || ''}
                onChange={(e) => setNewIncident({...newIncident, description: e.target.value})}
-               className="flex-1 bg-gray-50 dark:bg-gray-800 p-2.5 rounded-xl border border-gray-100 dark:border-gray-700 text-sm outline-none" 
+               className="flex-1 bg-gray-50  p-2.5 rounded-xl border border-gray-100  text-sm outline-none" 
              />
              <select 
                value={newIncident.severity}
                onChange={(e) => setNewIncident({...newIncident, severity: e.target.value as any})}
-               className="bg-gray-50 dark:bg-gray-800 p-2.5 rounded-xl border border-gray-100 dark:border-gray-700 text-sm outline-none"
+               className="bg-gray-50  p-2.5 rounded-xl border border-gray-100  text-sm outline-none"
              >
                <option value="low">Baja</option>
                <option value="medium">Media</option>
@@ -187,21 +187,21 @@ export function ShiftReportForm() {
         </div>
 
         {/* Pending Tasks Section */}
-        <div className="bg-white dark:bg-gray-900 rounded-3xl p-6 border border-gray-100 dark:border-gray-800">
-          <label className="text-sm font-black text-gray-700 dark:text-gray-300 mb-4 block flex items-center gap-2">
+        <div className="bg-white  rounded-3xl p-6 border border-gray-100 ">
+          <label className="text-sm font-black text-gray-700  mb-4 block flex items-center gap-2">
             <History className="w-4 h-4 text-blue-500" />
             Pendientes para el Siguiente Turno
           </label>
 
           <div className="space-y-4 mb-6">
             {pendingTasks.map((task, idx) => (
-              <div key={idx} className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700">
+              <div key={idx} className="flex items-center justify-between p-3 bg-gray-50  rounded-2xl border border-gray-100 ">
                 <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-lg bg-white dark:bg-gray-900 flex items-center justify-center">
+                  <div className="w-8 h-8 rounded-lg bg-white  flex items-center justify-center">
                     <TrendingUp className={cn("w-4 h-4", task.priority === 'urgent' ? "text-red-500" : "text-blue-500")} />
                   </div>
                   <div className="text-sm">
-                    <p className="font-bold text-gray-900 dark:text-white">{task.patient_name}</p>
+                    <p className="font-bold text-gray-900 ">{task.patient_name}</p>
                     <p className="text-gray-500">{task.description}</p>
                   </div>
                 </div>
@@ -218,19 +218,19 @@ export function ShiftReportForm() {
                placeholder="Nombre del paciente..."
                value={newPendingTask.patient_name || ''}
                onChange={(e) => setNewPendingTask({...newPendingTask, patient_name: e.target.value})}
-               className="bg-gray-50 dark:bg-gray-800 p-2.5 rounded-xl border border-gray-100 dark:border-gray-700 text-sm outline-none w-full md:w-48" 
+               className="bg-gray-50  p-2.5 rounded-xl border border-gray-100  text-sm outline-none w-full md:w-48" 
              />
              <input 
                type="text"
                placeholder="Tarea pendiente (ej: Repetir laboratorios)..."
                value={newPendingTask.description || ''}
                onChange={(e) => setNewPendingTask({...newPendingTask, description: e.target.value})}
-               className="flex-1 bg-gray-50 dark:bg-gray-800 p-2.5 rounded-xl border border-gray-100 dark:border-gray-700 text-sm outline-none" 
+               className="flex-1 bg-gray-50  p-2.5 rounded-xl border border-gray-100  text-sm outline-none" 
              />
              <select 
                value={newPendingTask.priority}
                onChange={(e) => setNewPendingTask({...newPendingTask, priority: e.target.value as any})}
-               className="bg-gray-50 dark:bg-gray-800 p-2.5 rounded-xl border border-gray-100 dark:border-gray-700 text-sm outline-none"
+               className="bg-gray-50  p-2.5 rounded-xl border border-gray-100  text-sm outline-none"
              >
                <option value="routine">Rutina</option>
                <option value="urgent">Urgente</option>
@@ -247,9 +247,9 @@ export function ShiftReportForm() {
 
         {/* Footer Actions */}
         <div className="flex flex-col md:flex-row items-center gap-4 pt-4">
-           <div className="flex items-center gap-3 p-4 bg-teal-50 dark:bg-teal-900/10 border border-teal-100 dark:border-teal-900/30 rounded-2xl flex-1">
+           <div className="flex items-center gap-3 p-4 bg-teal-50  border border-teal-100  rounded-2xl flex-1">
              <Clock className="w-5 h-5 text-teal-600" />
-             <div className="text-[10px] text-teal-800 dark:text-teal-400 font-bold leading-tight">
+             <div className="text-[10px] text-teal-800  font-bold leading-tight">
                Al confirmar, tu turno se marcará como FINALIZADO y no podrás editar este reporte a menos que lo guardes como borrador.
              </div>
            </div>
@@ -258,7 +258,7 @@ export function ShiftReportForm() {
              <button 
                disabled={loading}
                onClick={() => handleSubmit(false)}
-               className="flex-1 md:flex-none px-8 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 font-black rounded-2xl hover:bg-gray-50 transition-all"
+               className="flex-1 md:flex-none px-8 py-3 bg-white  border border-gray-200  text-gray-700  font-black rounded-2xl hover:bg-gray-50 transition-all"
              >
                Guardar Borrador
              </button>

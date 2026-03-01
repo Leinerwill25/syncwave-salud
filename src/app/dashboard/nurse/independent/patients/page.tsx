@@ -69,10 +69,10 @@ export default function NurseIndependentPatientsPage() {
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+          <h1 className="text-2xl font-bold text-gray-900 ">
             Mis Pacientes
           </h1>
-          <p className="text-sm text-gray-500 dark:text-gray-400">
+          <p className="text-sm text-gray-500 ">
             Gestiona los pacientes a tu cargo y revisa sus historiales.
           </p>
         </div>
@@ -85,9 +85,9 @@ export default function NurseIndependentPatientsPage() {
         </button>
       </div>
 
-      <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl shadow-sm overflow-hidden">
+      <div className="bg-white  border border-gray-200  rounded-2xl shadow-sm overflow-hidden">
         {/* Toolbar */}
-        <div className="p-4 border-b border-gray-200 dark:border-gray-800 flex flex-col sm:flex-row gap-4 justify-between items-center">
+        <div className="p-4 border-b border-gray-200  flex flex-col sm:flex-row gap-4 justify-between items-center">
           <div className="relative w-full sm:w-96">
             <Search className="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
             <input 
@@ -95,10 +95,10 @@ export default function NurseIndependentPatientsPage() {
               placeholder="Buscar paciente o diagnóstico..." 
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 focus:bg-white dark:focus:bg-gray-800 focus:ring-4 focus:ring-teal-100 dark:focus:ring-teal-900/20 outline-none transition-all"
+              className="w-full pl-10 pr-4 py-2 rounded-xl border border-gray-200  bg-gray-50  focus:bg-white  focus:ring-4 focus:ring-teal-100  outline-none transition-all"
             />
           </div>
-          <button className="flex items-center gap-2 px-4 py-2 border border-gray-200 dark:border-gray-700 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors w-full sm:w-auto justify-center">
+          <button className="flex items-center gap-2 px-4 py-2 border border-gray-200  rounded-xl hover:bg-gray-50  transition-colors w-full sm:w-auto justify-center">
             <Filter className="w-4 h-4" />
             <span className="text-sm font-medium">Filtrar</span>
           </button>
@@ -108,7 +108,7 @@ export default function NurseIndependentPatientsPage() {
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">
             <thead>
-              <tr className="bg-gray-50 dark:bg-gray-800/50 text-gray-500 dark:text-gray-400 text-sm">
+              <tr className="bg-gray-50  text-gray-500  text-sm">
                 <th className="p-4 font-medium">Paciente</th>
                 <th className="p-4 font-medium">Diagnóstico / Motivo</th>
                 <th className="p-4 font-medium">Contacto</th>
@@ -116,7 +116,7 @@ export default function NurseIndependentPatientsPage() {
                 <th className="p-4 font-medium text-right">Acciones</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
+            <tbody className="divide-y divide-gray-100 ">
               {filteredPatients.length > 0 ? (
                 filteredPatients.map((patient, idx) => (
                   <motion.tr 
@@ -124,21 +124,21 @@ export default function NurseIndependentPatientsPage() {
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: idx * 0.05 }}
-                    className="hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors group"
+                    className="hover:bg-gray-50  transition-colors group"
                   >
                     <td className="p-4">
                       <div>
-                        <p className="font-bold text-gray-900 dark:text-white">{patient.first_name} {patient.last_name}</p>
+                        <p className="font-bold text-gray-900 ">{patient.first_name} {patient.last_name}</p>
                         <p className="text-sm text-gray-500">{patient.identification || 'Sin DNI'}</p>
                       </div>
                     </td>
                     <td className="p-4">
-                      <p className="text-sm text-gray-600 dark:text-gray-300 max-w-xs truncate">{patient.motive || 'Atención Independiente'}</p>
+                      <p className="text-sm text-gray-600  max-w-xs truncate">{patient.motive || 'Atención Independiente'}</p>
                       <p className="text-xs text-gray-400 mt-0.5">Adicionado: {new Date(patient.created_at).toLocaleDateString()}</p>
                     </td>
                     <td className="p-4">
                       <div className="flex flex-col gap-1">
-                        <span className="flex items-center gap-1.5 text-sm text-gray-600 dark:text-gray-300">
+                        <span className="flex items-center gap-1.5 text-sm text-gray-600 ">
                           <Phone className="w-3.5 h-3.5" /> {patient.phone}
                         </span>
                       </div>
@@ -147,8 +147,8 @@ export default function NurseIndependentPatientsPage() {
                       <span className={cn(
                         "px-2.5 py-1 text-[10px] font-black uppercase rounded-full tracking-wider",
                         patient.is_registered 
-                          ? "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400" 
-                          : "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400"
+                          ? "bg-blue-100 text-blue-700  " 
+                          : "bg-amber-100 text-amber-700  "
                       )}>
                         {patient.is_registered ? 'Clínica' : 'Independiente'}
                       </span>
@@ -158,12 +158,12 @@ export default function NurseIndependentPatientsPage() {
                         <button 
                           onClick={() => handleDownloadSummary(patient.id, !patient.is_registered, `${patient.first_name} ${patient.last_name}`)}
                           disabled={downloadingId === patient.id}
-                          className="p-2 text-gray-400 hover:text-teal-600 hover:bg-teal-50 dark:hover:bg-teal-900/20 rounded-lg transition-colors disabled:opacity-50" 
+                          className="p-2 text-gray-400 hover:text-teal-600 hover:bg-teal-50  rounded-lg transition-colors disabled:opacity-50" 
                           title="Descargar Resumen"
                         >
                           {downloadingId === patient.id ? <Loader2 className="w-5 h-5 animate-spin" /> : <FileText className="w-5 h-5" />}
                         </button>
-                        <Link href={`/dashboard/nurse/patient/${patient.id}?isUnreg=${!patient.is_registered}`} className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors" title="Ir a Panel de Paciente">
+                        <Link href={`/dashboard/nurse/patient/${patient.id}?isUnreg=${!patient.is_registered}`} className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50  rounded-lg transition-colors" title="Ir a Panel de Paciente">
                           <ArrowRight className="w-5 h-5" />
                         </Link>
                       </div>
@@ -172,7 +172,7 @@ export default function NurseIndependentPatientsPage() {
                 ))
               ) : (
                 <tr>
-                  <td colSpan={5} className="p-8 text-center text-gray-500 dark:text-gray-400">
+                  <td colSpan={5} className="p-8 text-center text-gray-500 ">
                     No se encontraron pacientes que coincidan con la búsqueda.
                   </td>
                 </tr>

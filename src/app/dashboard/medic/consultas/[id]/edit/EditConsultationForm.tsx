@@ -74,8 +74,8 @@ function isNumericOrEmpty(s: string | number | null | undefined) {
 }
 
 const inputBase = 'w-full p-2 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all';
-const inputDark = 'dark:bg-slate-800 dark:border-slate-700 dark:text-slate-100';
-const labelClass = 'block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1';
+const inputDark = '  ';
+const labelClass = 'block text-xs font-medium text-slate-700  mb-1';
 
 // Componente para entrada múltiple (lista dinámica)
 const MultiInput = ({ 
@@ -125,7 +125,7 @@ const MultiInput = ({
 				<button
 					type="button"
 					onClick={handleAdd}
-					className="p-2 bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors"
+					className="p-2 bg-slate-100  text-slate-600  rounded-lg hover:bg-slate-200  transition-colors"
 				>
 					<Plus size={18} />
 				</button>
@@ -133,8 +133,8 @@ const MultiInput = ({
 			{items.length > 0 && (
 				<ul className="space-y-1">
 					{items.map((item, idx) => (
-						<li key={idx} className="flex items-start justify-between gap-2 bg-slate-50 dark:bg-slate-800/50 px-2 py-1.5 rounded text-sm group">
-							<span className="text-slate-700 dark:text-slate-300 break-words">{item}</span>
+						<li key={idx} className="flex items-start justify-between gap-2 bg-slate-50  px-2 py-1.5 rounded text-sm group">
+							<span className="text-slate-700  break-words">{item}</span>
 							<button
 								type="button"
 								onClick={() => handleRemove(idx)}
@@ -1962,9 +1962,9 @@ export default function EditConsultationForm({ initial, patient, doctor, doctorS
      Styling helpers
      ----------------- */
 	const inputBase = 'w-full px-4 py-2.5 rounded-lg border border-slate-200 bg-white text-sm shadow-sm placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500 transition';
-	const inputDark = 'dark:bg-slate-800 dark:border-slate-700 dark:placeholder-slate-500 dark:text-slate-100';
-	const labelClass = 'block text-sm font-semibold text-slate-700 dark:text-slate-200 mb-2';
-	const sectionCard = 'bg-white rounded-xl border border-slate-200 shadow-sm p-6 dark:bg-slate-800 dark:border-slate-700';
+	const inputDark = '   ';
+	const labelClass = 'block text-sm font-semibold text-slate-700  mb-2';
+	const sectionCard = 'bg-white rounded-xl border border-slate-200 shadow-sm p-6  ';
 
 	const tabs = [
 		{ id: 'main', label: 'Información General', icon: ClipboardList },
@@ -1974,16 +1974,16 @@ export default function EditConsultationForm({ initial, patient, doctor, doctorS
 	];
 
 	return (
-		<div className="bg-slate-50 dark:bg-slate-900 min-h-screen">
+		<div className="bg-slate-50  min-h-screen">
 			<form onSubmit={handleSave} className="max-w-7xl mx-auto">
 				{/* Tabs Navigation */}
-				<div className="bg-white border-b border-slate-200 dark:bg-slate-800 dark:border-slate-700 sticky top-0 z-10">
+				<div className="bg-white border-b border-slate-200   sticky top-0 z-10">
 					<div className="flex overflow-x-auto scrollbar-hide">
 						{tabs.map((tab) => {
 							const Icon = tab.icon;
 							const isActive = activeTab === tab.id;
 							return (
-								<button key={tab.id} type="button" onClick={() => setActiveTab(tab.id as any)} className={`flex items-center gap-2 px-6 py-4 text-sm font-medium transition-colors whitespace-nowrap border-b-2 ${isActive ? 'border-teal-600 text-teal-600 bg-teal-50 dark:bg-teal-900/20 dark:text-teal-400 dark:border-teal-400' : 'border-transparent text-slate-600 hover:text-slate-900 hover:bg-slate-50 dark:text-slate-400 dark:hover:text-slate-300 dark:hover:bg-slate-700/50'}`}>
+								<button key={tab.id} type="button" onClick={() => setActiveTab(tab.id as any)} className={`flex items-center gap-2 px-6 py-4 text-sm font-medium transition-colors whitespace-nowrap border-b-2 ${isActive ? 'border-teal-600 text-teal-600 bg-teal-50   ' : 'border-transparent text-slate-600 hover:text-slate-900 hover:bg-slate-50   '}`}>
 									<Icon size={18} />
 									{tab.label}
 								</button>
@@ -1998,7 +1998,7 @@ export default function EditConsultationForm({ initial, patient, doctor, doctorS
 					{activeTab === 'main' && (
 						<div className="space-y-6">
 							<div className={sectionCard}>
-								<h2 className="text-xl font-bold text-slate-900 dark:text-slate-100 mb-6 flex items-center gap-2">
+								<h2 className="text-xl font-bold text-slate-900  mb-6 flex items-center gap-2">
 									<ClipboardList size={20} />
 									Información General del Paciente
 								</h2>
@@ -2034,9 +2034,9 @@ export default function EditConsultationForm({ initial, patient, doctor, doctorS
 										<div className="flex items-center gap-2">
 											<input type="date" value={patientDob} onChange={(e) => setPatientDob(e.target.value)} className={`${inputBase} ${inputDark} flex-1`} />
 											{patientAge !== null && (
-												<div className="flex items-center gap-2 px-3 py-2 bg-slate-100 dark:bg-slate-700 rounded-md border border-slate-300 dark:border-slate-600">
-													<span className="text-sm font-medium text-slate-700 dark:text-slate-300">Edad:</span>
-													<span className="text-sm font-semibold text-slate-900 dark:text-slate-100">{patientAge} años</span>
+												<div className="flex items-center gap-2 px-3 py-2 bg-slate-100  rounded-md border border-slate-300 ">
+													<span className="text-sm font-medium text-slate-700 ">Edad:</span>
+													<span className="text-sm font-semibold text-slate-900 ">{patientAge} años</span>
 												</div>
 											)}
 										</div>
@@ -2109,7 +2109,7 @@ export default function EditConsultationForm({ initial, patient, doctor, doctorS
 					{/* Vitals Tab */}
 					{activeTab === 'vitals' && (
 						<div className={sectionCard}>
-							<h2 className="text-xl font-bold text-slate-900 dark:text-slate-100 mb-6 flex items-center gap-2">
+							<h2 className="text-xl font-bold text-slate-900  mb-6 flex items-center gap-2">
 								<Activity size={20} />
 								Signos Vitales Generales
 							</h2>
@@ -2193,23 +2193,23 @@ export default function EditConsultationForm({ initial, patient, doctor, doctorS
 					{activeTab === 'specialty' && (
 						<div className="space-y-4">
 							<div className={sectionCard}>
-								<h2 className="text-xl font-bold text-slate-900 dark:text-slate-100 mb-4 flex items-center gap-2">
+								<h2 className="text-xl font-bold text-slate-900  mb-4 flex items-center gap-2">
 									<Stethoscope size={20} />
 									Signos Vitales por Especialidad
 								</h2>
-								<p className="text-sm text-slate-600 dark:text-slate-400 mb-6">Expande las secciones relevantes para tu especialidad y completa los campos necesarios.</p>
+								<p className="text-sm text-slate-600  mb-6">Expande las secciones relevantes para tu especialidad y completa los campos necesarios.</p>
 
 								{/* Cardiology */}
 								{shouldShowSpecialty('cardiology') && (
-									<div className="border border-slate-200 dark:border-slate-700 rounded-lg mb-4">
-										<button type="button" onClick={() => toggleSpecialty('cardiology')} className="w-full flex items-center justify-between p-4 text-left hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors rounded-lg">
-											<span className="font-semibold text-slate-900 dark:text-slate-100">Cardiología</span>
+									<div className="border border-slate-200  rounded-lg mb-4">
+										<button type="button" onClick={() => toggleSpecialty('cardiology')} className="w-full flex items-center justify-between p-4 text-left hover:bg-slate-50  transition-colors rounded-lg">
+											<span className="font-semibold text-slate-900 ">Cardiología</span>
 											{expandedSpecialties.has('cardiology') ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
 										</button>
 										{expandedSpecialties.has('cardiology') && (
 											<div className="p-4 pt-0 space-y-4">
 												{/* Botón de Grabar Audio para generar informe */}
-												<div className="mb-4 pb-4 border-b border-slate-200 dark:border-slate-700">
+												<div className="mb-4 pb-4 border-b border-slate-200 ">
 													<AudioRecorderButton
 														consultationId={initial.id}
 														reportType="cardiology"
@@ -2252,15 +2252,15 @@ export default function EditConsultationForm({ initial, patient, doctor, doctorS
 
 								{/* Pulmonology */}
 								{shouldShowSpecialty('pulmonology') && (
-									<div className="border border-slate-200 dark:border-slate-700 rounded-lg mb-4">
-										<button type="button" onClick={() => toggleSpecialty('pulmonology')} className="w-full flex items-center justify-between p-4 text-left hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors rounded-lg">
-											<span className="font-semibold text-slate-900 dark:text-slate-100">Neumología</span>
+									<div className="border border-slate-200  rounded-lg mb-4">
+										<button type="button" onClick={() => toggleSpecialty('pulmonology')} className="w-full flex items-center justify-between p-4 text-left hover:bg-slate-50  transition-colors rounded-lg">
+											<span className="font-semibold text-slate-900 ">Neumología</span>
 											{expandedSpecialties.has('pulmonology') ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
 										</button>
 										{expandedSpecialties.has('pulmonology') && (
 											<div className="p-4 pt-0 space-y-4">
 												{/* Botón de Grabar Audio para generar informe */}
-												<div className="mb-4 pb-4 border-b border-slate-200 dark:border-slate-700">
+												<div className="mb-4 pb-4 border-b border-slate-200 ">
 													<AudioRecorderButton
 														consultationId={initial.id}
 														reportType="pulmonology"
@@ -2299,15 +2299,15 @@ export default function EditConsultationForm({ initial, patient, doctor, doctorS
 
 								{/* Neurology */}
 								{shouldShowSpecialty('neurology') && (
-									<div className="border border-slate-200 dark:border-slate-700 rounded-lg mb-4">
-										<button type="button" onClick={() => toggleSpecialty('neurology')} className="w-full flex items-center justify-between p-4 text-left hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors rounded-lg">
-											<span className="font-semibold text-slate-900 dark:text-slate-100">Neurología</span>
+									<div className="border border-slate-200  rounded-lg mb-4">
+										<button type="button" onClick={() => toggleSpecialty('neurology')} className="w-full flex items-center justify-between p-4 text-left hover:bg-slate-50  transition-colors rounded-lg">
+											<span className="font-semibold text-slate-900 ">Neurología</span>
 											{expandedSpecialties.has('neurology') ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
 										</button>
 										{expandedSpecialties.has('neurology') && (
 											<div className="p-4 pt-0 space-y-4">
 												{/* Botón de Grabar Audio para generar informe */}
-												<div className="mb-4 pb-4 border-b border-slate-200 dark:border-slate-700">
+												<div className="mb-4 pb-4 border-b border-slate-200 ">
 													<AudioRecorderButton
 														consultationId={initial.id}
 														reportType="neurology"
@@ -2342,9 +2342,9 @@ export default function EditConsultationForm({ initial, patient, doctor, doctorS
 
 								{/* Obstetrics */}
 								{shouldShowSpecialty('obstetrics') && (
-									<div className="border border-slate-200 dark:border-slate-700 rounded-lg mb-4">
-										<button type="button" onClick={() => toggleSpecialty('obstetrics')} className="w-full flex items-center justify-between p-4 text-left hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors rounded-lg">
-											<span className="font-semibold text-slate-900 dark:text-slate-100">Obstetricia</span>
+									<div className="border border-slate-200  rounded-lg mb-4">
+										<button type="button" onClick={() => toggleSpecialty('obstetrics')} className="w-full flex items-center justify-between p-4 text-left hover:bg-slate-50  transition-colors rounded-lg">
+											<span className="font-semibold text-slate-900 ">Obstetricia</span>
 											{expandedSpecialties.has('obstetrics') ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
 										</button>
 										{expandedSpecialties.has('obstetrics') && (
@@ -2353,15 +2353,15 @@ export default function EditConsultationForm({ initial, patient, doctor, doctorS
 												{hasObstetrics && (
 													<>
 													{/* Formulario del Primer Trimestre - Siempre visible si tiene Obstetricia */}
-													<div className="bg-gradient-to-br from-pink-50 to-rose-50 dark:from-pink-950/20 dark:to-rose-950/20 rounded-xl border border-pink-200 dark:border-pink-800 shadow-sm p-6 mb-6">
-														<div className="flex items-center gap-3 mb-6 pb-4 border-b border-pink-200 dark:border-pink-800">
-															<div className="w-10 h-10 rounded-lg bg-pink-500 dark:bg-pink-600 flex items-center justify-center">
+													<div className="bg-gradient-to-br from-pink-50 to-rose-50   rounded-xl border border-pink-200  shadow-sm p-6 mb-6">
+														<div className="flex items-center gap-3 mb-6 pb-4 border-b border-pink-200 ">
+															<div className="w-10 h-10 rounded-lg bg-pink-500  flex items-center justify-center">
 																<FileText className="w-5 h-5 text-white" />
 															</div>
-															<h3 className="text-xl font-bold text-slate-900 dark:text-slate-100">Formulario del Primer Trimestre</h3>
+															<h3 className="text-xl font-bold text-slate-900 ">Formulario del Primer Trimestre</h3>
 														</div>
 														{/* Botón de Grabar Audio para Primer Trimestre */}
-														<div className="mb-4 pb-4 border-b border-pink-200 dark:border-pink-800">
+														<div className="mb-4 pb-4 border-b border-pink-200 ">
 															<AudioRecorderButton
 																consultationId={initial.id}
 																reportType="first_trimester"
@@ -2377,8 +2377,8 @@ export default function EditConsultationForm({ initial, patient, doctor, doctorS
 														</div>
 														<div className="space-y-6">
 														{/* Sección: Datos de la Paciente */}
-														<div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 shadow-sm p-5">
-															<h4 className="font-bold text-slate-900 dark:text-slate-100 mb-5 text-base flex items-center gap-2 pb-3 border-b border-slate-200 dark:border-slate-700">
+														<div className="bg-white  rounded-lg border border-slate-200  shadow-sm p-5">
+															<h4 className="font-bold text-slate-900  mb-5 text-base flex items-center gap-2 pb-3 border-b border-slate-200 ">
 																<span className="w-1.5 h-1.5 rounded-full bg-pink-500"></span>
 																Datos De La Paciente
 															</h4>
@@ -2427,8 +2427,8 @@ export default function EditConsultationForm({ initial, patient, doctor, doctorS
 														</div>
 
 														{/* Sección: Datos Obstétricos Del 1er Trimestre */}
-														<div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 shadow-sm p-5">
-															<h4 className="font-bold text-slate-900 dark:text-slate-100 mb-5 text-base flex items-center gap-2 pb-3 border-b border-slate-200 dark:border-slate-700">
+														<div className="bg-white  rounded-lg border border-slate-200  shadow-sm p-5">
+															<h4 className="font-bold text-slate-900  mb-5 text-base flex items-center gap-2 pb-3 border-b border-slate-200 ">
 																<span className="w-1.5 h-1.5 rounded-full bg-pink-500"></span>
 																Datos Obstétricos Del 1er Trimestre
 															</h4>
@@ -2478,8 +2478,8 @@ export default function EditConsultationForm({ initial, patient, doctor, doctorS
 														</div>
 
 														{/* Sección: Saco Gestacional */}
-														<div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 shadow-sm p-5">
-															<h4 className="font-bold text-slate-900 dark:text-slate-100 mb-5 text-base flex items-center gap-2 pb-3 border-b border-slate-200 dark:border-slate-700">
+														<div className="bg-white  rounded-lg border border-slate-200  shadow-sm p-5">
+															<h4 className="font-bold text-slate-900  mb-5 text-base flex items-center gap-2 pb-3 border-b border-slate-200 ">
 																<span className="w-1.5 h-1.5 rounded-full bg-pink-500"></span>
 																Saco Gestacional
 															</h4>
@@ -2523,8 +2523,8 @@ export default function EditConsultationForm({ initial, patient, doctor, doctorS
 														</div>
 
 														{/* Sección: Embrión */}
-														<div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 shadow-sm p-5">
-															<h4 className="font-bold text-slate-900 dark:text-slate-100 mb-5 text-base flex items-center gap-2 pb-3 border-b border-slate-200 dark:border-slate-700">
+														<div className="bg-white  rounded-lg border border-slate-200  shadow-sm p-5">
+															<h4 className="font-bold text-slate-900  mb-5 text-base flex items-center gap-2 pb-3 border-b border-slate-200 ">
 																<span className="w-1.5 h-1.5 rounded-full bg-pink-500"></span>
 																Embrión
 															</h4>
@@ -2577,8 +2577,8 @@ export default function EditConsultationForm({ initial, patient, doctor, doctorS
 														</div>
 
 														{/* Sección: Conclusiones */}
-														<div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 shadow-sm p-5">
-															<h4 className="font-bold text-slate-900 dark:text-slate-100 mb-5 text-base flex items-center gap-2 pb-3 border-b border-slate-200 dark:border-slate-700">
+														<div className="bg-white  rounded-lg border border-slate-200  shadow-sm p-5">
+															<h4 className="font-bold text-slate-900  mb-5 text-base flex items-center gap-2 pb-3 border-b border-slate-200 ">
 																<span className="w-1.5 h-1.5 rounded-full bg-pink-500"></span>
 																Conclusiones
 															</h4>
@@ -2620,15 +2620,15 @@ export default function EditConsultationForm({ initial, patient, doctor, doctorS
 														</div>
 													</div>
 													{/* Formulario del Segundo y Tercer Trimestre */}
-													<div className="bg-gradient-to-br from-indigo-50 to-blue-50 dark:from-indigo-950/20 dark:to-blue-950/20 rounded-xl border border-indigo-200 dark:border-indigo-800 shadow-sm p-6 mt-6">
-														<div className="flex items-center gap-3 mb-6 pb-4 border-b border-indigo-200 dark:border-indigo-800">
-															<div className="w-10 h-10 rounded-lg bg-indigo-500 dark:bg-indigo-600 flex items-center justify-center">
+													<div className="bg-gradient-to-br from-indigo-50 to-blue-50   rounded-xl border border-indigo-200  shadow-sm p-6 mt-6">
+														<div className="flex items-center gap-3 mb-6 pb-4 border-b border-indigo-200 ">
+															<div className="w-10 h-10 rounded-lg bg-indigo-500  flex items-center justify-center">
 																<FileText className="w-5 h-5 text-white" />
 															</div>
-															<h3 className="text-xl font-bold text-slate-900 dark:text-slate-100">Formulario del Segundo y Tercer Trimestre</h3>
+															<h3 className="text-xl font-bold text-slate-900 ">Formulario del Segundo y Tercer Trimestre</h3>
 														</div>
 														{/* Botón de Grabar Audio para Segundo y Tercer Trimestre */}
-														<div className="mb-4 pb-4 border-b border-indigo-200 dark:border-indigo-800">
+														<div className="mb-4 pb-4 border-b border-indigo-200 ">
 															<AudioRecorderButton
 																consultationId={initial.id}
 																reportType="second_third_trimester"
@@ -2644,8 +2644,8 @@ export default function EditConsultationForm({ initial, patient, doctor, doctorS
 														</div>
 														<div className="space-y-6">
 															{/* Primera sección: Datos de la Paciente */}
-															<div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 shadow-sm p-5">
-																<h4 className="font-bold text-slate-900 dark:text-slate-100 mb-5 text-base flex items-center gap-2 pb-3 border-b border-slate-200 dark:border-slate-700">
+															<div className="bg-white  rounded-lg border border-slate-200  shadow-sm p-5">
+																<h4 className="font-bold text-slate-900  mb-5 text-base flex items-center gap-2 pb-3 border-b border-slate-200 ">
 																	<span className="w-1.5 h-1.5 rounded-full bg-indigo-500"></span>
 																	Datos De La Paciente
 																</h4>
@@ -2694,8 +2694,8 @@ export default function EditConsultationForm({ initial, patient, doctor, doctorS
 															</div>
 
 															{/* Segunda sección: Datos Obstétricos */}
-															<div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 shadow-sm p-5">
-																<h4 className="font-bold text-slate-900 dark:text-slate-100 mb-5 text-base flex items-center gap-2 pb-3 border-b border-slate-200 dark:border-slate-700">
+															<div className="bg-white  rounded-lg border border-slate-200  shadow-sm p-5">
+																<h4 className="font-bold text-slate-900  mb-5 text-base flex items-center gap-2 pb-3 border-b border-slate-200 ">
 																	<span className="w-1.5 h-1.5 rounded-full bg-indigo-500"></span>
 																	Datos Obstétricos
 																</h4>
@@ -2729,8 +2729,8 @@ export default function EditConsultationForm({ initial, patient, doctor, doctorS
 															</div>
 
 															{/* Tercera sección: Datos Biométricos */}
-															<div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 shadow-sm p-5">
-																<h4 className="font-bold text-slate-900 dark:text-slate-100 mb-5 text-base flex items-center gap-2 pb-3 border-b border-slate-200 dark:border-slate-700">
+															<div className="bg-white  rounded-lg border border-slate-200  shadow-sm p-5">
+																<h4 className="font-bold text-slate-900  mb-5 text-base flex items-center gap-2 pb-3 border-b border-slate-200 ">
 																	<span className="w-1.5 h-1.5 rounded-full bg-indigo-500"></span>
 																	Datos Biométricos
 																</h4>
@@ -2763,8 +2763,8 @@ export default function EditConsultationForm({ initial, patient, doctor, doctorS
 															</div>
 
 															{/* Cuarta sección: Datos Placenta Foliculares */}
-															<div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 shadow-sm p-5">
-																<h4 className="font-bold text-slate-900 dark:text-slate-100 mb-5 text-base flex items-center gap-2 pb-3 border-b border-slate-200 dark:border-slate-700">
+															<div className="bg-white  rounded-lg border border-slate-200  shadow-sm p-5">
+																<h4 className="font-bold text-slate-900  mb-5 text-base flex items-center gap-2 pb-3 border-b border-slate-200 ">
 																	<span className="w-1.5 h-1.5 rounded-full bg-indigo-500"></span>
 																	Datos Placenta Foliculares
 																</h4>
@@ -2809,15 +2809,15 @@ export default function EditConsultationForm({ initial, patient, doctor, doctorS
 															</div>
 
 															{/* Quinta sección: Datos Anatomofuncionales */}
-															<div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 shadow-sm p-5">
-																<h4 className="font-bold text-slate-900 dark:text-slate-100 mb-6 text-base flex items-center gap-2 pb-3 border-b border-slate-200 dark:border-slate-700">
+															<div className="bg-white  rounded-lg border border-slate-200  shadow-sm p-5">
+																<h4 className="font-bold text-slate-900  mb-6 text-base flex items-center gap-2 pb-3 border-b border-slate-200 ">
 																	<span className="w-1.5 h-1.5 rounded-full bg-indigo-500"></span>
 																	Datos Anatomofuncionales
 																</h4>
 																
 																{/* Subsección: CABEZA, CUELLO, SNC */}
-																<div className="mb-6 pb-4 border-b border-slate-100 dark:border-slate-700">
-																	<h5 className="font-semibold text-slate-800 dark:text-slate-200 mb-4 text-sm uppercase tracking-wide text-slate-600 dark:text-slate-400">CABEZA, CUELLO, SNC</h5>
+																<div className="mb-6 pb-4 border-b border-slate-100 ">
+																	<h5 className="font-semibold text-slate-800  mb-4 text-sm uppercase tracking-wide text-slate-600 ">CABEZA, CUELLO, SNC</h5>
 																	<div className="grid grid-cols-1 md:grid-cols-3 gap-4">
 																		<div>
 																			<label className={labelClass}>Cráneo</label>
@@ -2832,8 +2832,8 @@ export default function EditConsultationForm({ initial, patient, doctor, doctorS
 																</div>
 
 																{/* Subsección: TÓRAX */}
-																<div className="mb-6 pb-4 border-b border-slate-100 dark:border-slate-700">
-																	<h5 className="font-semibold text-slate-800 dark:text-slate-200 mb-4 text-sm uppercase tracking-wide text-slate-600 dark:text-slate-400">TÓRAX</h5>
+																<div className="mb-6 pb-4 border-b border-slate-100 ">
+																	<h5 className="font-semibold text-slate-800  mb-4 text-sm uppercase tracking-wide text-slate-600 ">TÓRAX</h5>
 																	<div className="grid grid-cols-1 md:grid-cols-3 gap-4">
 																		<div>
 																			<label className={labelClass}>Corazón</label>
@@ -2861,8 +2861,8 @@ export default function EditConsultationForm({ initial, patient, doctor, doctorS
 																</div>
 
 																{/* Subsección: ABDOMEN */}
-																<div className="mb-6 pb-4 border-b border-slate-100 dark:border-slate-700">
-																	<h5 className="font-semibold text-slate-800 dark:text-slate-200 mb-4 text-sm uppercase tracking-wide text-slate-600 dark:text-slate-400">ABDOMEN</h5>
+																<div className="mb-6 pb-4 border-b border-slate-100 ">
+																	<h5 className="font-semibold text-slate-800  mb-4 text-sm uppercase tracking-wide text-slate-600 ">ABDOMEN</h5>
 																	<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
 																		<div>
 																			<label className={labelClass}>Situs Visceral</label>
@@ -2936,7 +2936,7 @@ export default function EditConsultationForm({ initial, patient, doctor, doctorS
 
 																{/* Subsección: EXTREMIDADES */}
 																<div className="mb-6">
-																	<h5 className="font-semibold text-slate-800 dark:text-slate-200 mb-4 text-sm uppercase tracking-wide text-slate-600 dark:text-slate-400">EXTREMIDADES</h5>
+																	<h5 className="font-semibold text-slate-800  mb-4 text-sm uppercase tracking-wide text-slate-600 ">EXTREMIDADES</h5>
 																	<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
 																		<div>
 																			<label className={labelClass}>Miembros Superiores</label>
@@ -2979,8 +2979,8 @@ export default function EditConsultationForm({ initial, patient, doctor, doctorS
 															</div>
 
 															{/* Sección: Conclusiones */}
-															<div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 shadow-sm p-5">
-																<h4 className="font-bold text-slate-900 dark:text-slate-100 mb-5 text-base flex items-center gap-2 pb-3 border-b border-slate-200 dark:border-slate-700">
+															<div className="bg-white  rounded-lg border border-slate-200  shadow-sm p-5">
+																<h4 className="font-bold text-slate-900  mb-5 text-base flex items-center gap-2 pb-3 border-b border-slate-200 ">
 																	<span className="w-1.5 h-1.5 rounded-full bg-indigo-500"></span>
 																	Conclusiones
 																</h4>
@@ -3072,15 +3072,15 @@ export default function EditConsultationForm({ initial, patient, doctor, doctorS
 														
 														{/* Formulario del Primer Trimestre */}
 														{obstetricReportType === 'first_trimester' && (
-															<div className="bg-gradient-to-br from-pink-50 to-rose-50 dark:from-pink-950/20 dark:to-rose-950/20 rounded-xl border border-pink-200 dark:border-pink-800 shadow-sm p-6 mt-6">
-																<div className="flex items-center gap-3 mb-6 pb-4 border-b border-pink-200 dark:border-pink-800">
-																	<div className="w-10 h-10 rounded-lg bg-pink-500 dark:bg-pink-600 flex items-center justify-center">
+															<div className="bg-gradient-to-br from-pink-50 to-rose-50   rounded-xl border border-pink-200  shadow-sm p-6 mt-6">
+																<div className="flex items-center gap-3 mb-6 pb-4 border-b border-pink-200 ">
+																	<div className="w-10 h-10 rounded-lg bg-pink-500  flex items-center justify-center">
 																		<FileText className="w-5 h-5 text-white" />
 																	</div>
-																	<h3 className="text-xl font-bold text-slate-900 dark:text-slate-100">Formulario del Primer Trimestre</h3>
+																	<h3 className="text-xl font-bold text-slate-900 ">Formulario del Primer Trimestre</h3>
 																</div>
 																{/* Botón de Grabar Audio para Primer Trimestre */}
-																<div className="mb-4 pb-4 border-b border-pink-200 dark:border-pink-800">
+																<div className="mb-4 pb-4 border-b border-pink-200 ">
 																	<AudioRecorderButton
 																		consultationId={initial.id}
 																		reportType="first_trimester"
@@ -3096,8 +3096,8 @@ export default function EditConsultationForm({ initial, patient, doctor, doctorS
 																</div>
 																<div className="space-y-6">
 																{/* Sección: Datos de la Paciente */}
-																<div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 shadow-sm p-5">
-																	<h4 className="font-bold text-slate-900 dark:text-slate-100 mb-5 text-base flex items-center gap-2 pb-3 border-b border-slate-200 dark:border-slate-700">
+																<div className="bg-white  rounded-lg border border-slate-200  shadow-sm p-5">
+																	<h4 className="font-bold text-slate-900  mb-5 text-base flex items-center gap-2 pb-3 border-b border-slate-200 ">
 																		<span className="w-1.5 h-1.5 rounded-full bg-pink-500"></span>
 																		Datos De La Paciente
 																	</h4>
@@ -3146,8 +3146,8 @@ export default function EditConsultationForm({ initial, patient, doctor, doctorS
 																</div>
 
 																{/* Sección: Datos Obstétricos Del 1er Trimestre */}
-																<div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 shadow-sm p-5">
-																	<h4 className="font-bold text-slate-900 dark:text-slate-100 mb-5 text-base flex items-center gap-2 pb-3 border-b border-slate-200 dark:border-slate-700">
+																<div className="bg-white  rounded-lg border border-slate-200  shadow-sm p-5">
+																	<h4 className="font-bold text-slate-900  mb-5 text-base flex items-center gap-2 pb-3 border-b border-slate-200 ">
 																		<span className="w-1.5 h-1.5 rounded-full bg-pink-500"></span>
 																		Datos Obstétricos Del 1er Trimestre
 																	</h4>
@@ -3197,8 +3197,8 @@ export default function EditConsultationForm({ initial, patient, doctor, doctorS
 																</div>
 
 																{/* Sección: Saco Gestacional */}
-																<div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 shadow-sm p-5">
-																	<h4 className="font-bold text-slate-900 dark:text-slate-100 mb-5 text-base flex items-center gap-2 pb-3 border-b border-slate-200 dark:border-slate-700">
+																<div className="bg-white  rounded-lg border border-slate-200  shadow-sm p-5">
+																	<h4 className="font-bold text-slate-900  mb-5 text-base flex items-center gap-2 pb-3 border-b border-slate-200 ">
 																		<span className="w-1.5 h-1.5 rounded-full bg-pink-500"></span>
 																		Saco Gestacional
 																	</h4>
@@ -3242,8 +3242,8 @@ export default function EditConsultationForm({ initial, patient, doctor, doctorS
 																</div>
 
 																{/* Sección: Embrión */}
-																<div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 shadow-sm p-5">
-																	<h4 className="font-bold text-slate-900 dark:text-slate-100 mb-5 text-base flex items-center gap-2 pb-3 border-b border-slate-200 dark:border-slate-700">
+																<div className="bg-white  rounded-lg border border-slate-200  shadow-sm p-5">
+																	<h4 className="font-bold text-slate-900  mb-5 text-base flex items-center gap-2 pb-3 border-b border-slate-200 ">
 																		<span className="w-1.5 h-1.5 rounded-full bg-pink-500"></span>
 																		Embrión
 																	</h4>
@@ -3296,8 +3296,8 @@ export default function EditConsultationForm({ initial, patient, doctor, doctorS
 																</div>
 
 																{/* Sección: Conclusiones */}
-																<div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 shadow-sm p-5">
-																	<h4 className="font-bold text-slate-900 dark:text-slate-100 mb-5 text-base flex items-center gap-2 pb-3 border-b border-slate-200 dark:border-slate-700">
+																<div className="bg-white  rounded-lg border border-slate-200  shadow-sm p-5">
+																	<h4 className="font-bold text-slate-900  mb-5 text-base flex items-center gap-2 pb-3 border-b border-slate-200 ">
 																		<span className="w-1.5 h-1.5 rounded-full bg-pink-500"></span>
 																		Conclusiones
 																	</h4>
@@ -3340,15 +3340,15 @@ export default function EditConsultationForm({ initial, patient, doctor, doctorS
 
 														{/* Formulario del Segundo y Tercer Trimestre */}
 														{obstetricReportType === 'second_third_trimester' && (
-															<div className="bg-gradient-to-br from-indigo-50 to-blue-50 dark:from-indigo-950/20 dark:to-blue-950/20 rounded-xl border border-indigo-200 dark:border-indigo-800 shadow-sm p-6 mt-6">
-																<div className="flex items-center gap-3 mb-6 pb-4 border-b border-indigo-200 dark:border-indigo-800">
-																	<div className="w-10 h-10 rounded-lg bg-indigo-500 dark:bg-indigo-600 flex items-center justify-center">
+															<div className="bg-gradient-to-br from-indigo-50 to-blue-50   rounded-xl border border-indigo-200  shadow-sm p-6 mt-6">
+																<div className="flex items-center gap-3 mb-6 pb-4 border-b border-indigo-200 ">
+																	<div className="w-10 h-10 rounded-lg bg-indigo-500  flex items-center justify-center">
 																		<FileText className="w-5 h-5 text-white" />
 																	</div>
-																	<h3 className="text-xl font-bold text-slate-900 dark:text-slate-100">Formulario del Segundo y Tercer Trimestre</h3>
+																	<h3 className="text-xl font-bold text-slate-900 ">Formulario del Segundo y Tercer Trimestre</h3>
 																</div>
 																{/* Botón de Grabar Audio para Segundo y Tercer Trimestre */}
-																<div className="mb-4 pb-4 border-b border-indigo-200 dark:border-indigo-800">
+																<div className="mb-4 pb-4 border-b border-indigo-200 ">
 																	<AudioRecorderButton
 																		consultationId={initial.id}
 																		reportType="second_third_trimester"
@@ -3364,8 +3364,8 @@ export default function EditConsultationForm({ initial, patient, doctor, doctorS
 																</div>
 																<div className="space-y-6">
 																	{/* Primera sección: Datos de la Paciente */}
-																	<div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 shadow-sm p-5">
-																		<h4 className="font-bold text-slate-900 dark:text-slate-100 mb-5 text-base flex items-center gap-2 pb-3 border-b border-slate-200 dark:border-slate-700">
+																	<div className="bg-white  rounded-lg border border-slate-200  shadow-sm p-5">
+																		<h4 className="font-bold text-slate-900  mb-5 text-base flex items-center gap-2 pb-3 border-b border-slate-200 ">
 																			<span className="w-1.5 h-1.5 rounded-full bg-indigo-500"></span>
 																			Datos De La Paciente
 																		</h4>
@@ -3414,8 +3414,8 @@ export default function EditConsultationForm({ initial, patient, doctor, doctorS
 																	</div>
 
 																	{/* Segunda sección: Datos Obstétricos */}
-																	<div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 shadow-sm p-5">
-																		<h4 className="font-bold text-slate-900 dark:text-slate-100 mb-5 text-base flex items-center gap-2 pb-3 border-b border-slate-200 dark:border-slate-700">
+																	<div className="bg-white  rounded-lg border border-slate-200  shadow-sm p-5">
+																		<h4 className="font-bold text-slate-900  mb-5 text-base flex items-center gap-2 pb-3 border-b border-slate-200 ">
 																			<span className="w-1.5 h-1.5 rounded-full bg-indigo-500"></span>
 																			Datos Obstétricos
 																		</h4>
@@ -3449,8 +3449,8 @@ export default function EditConsultationForm({ initial, patient, doctor, doctorS
 																	</div>
 
 																	{/* Tercera sección: Datos Biométricos */}
-																	<div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 shadow-sm p-5">
-																		<h4 className="font-bold text-slate-900 dark:text-slate-100 mb-5 text-base flex items-center gap-2 pb-3 border-b border-slate-200 dark:border-slate-700">
+																	<div className="bg-white  rounded-lg border border-slate-200  shadow-sm p-5">
+																		<h4 className="font-bold text-slate-900  mb-5 text-base flex items-center gap-2 pb-3 border-b border-slate-200 ">
 																			<span className="w-1.5 h-1.5 rounded-full bg-indigo-500"></span>
 																			Datos Biométricos
 																		</h4>
@@ -3483,8 +3483,8 @@ export default function EditConsultationForm({ initial, patient, doctor, doctorS
 																	</div>
 
 																	{/* Cuarta sección: Datos Placenta Foliculares */}
-																	<div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 shadow-sm p-5">
-																		<h4 className="font-bold text-slate-900 dark:text-slate-100 mb-5 text-base flex items-center gap-2 pb-3 border-b border-slate-200 dark:border-slate-700">
+																	<div className="bg-white  rounded-lg border border-slate-200  shadow-sm p-5">
+																		<h4 className="font-bold text-slate-900  mb-5 text-base flex items-center gap-2 pb-3 border-b border-slate-200 ">
 																			<span className="w-1.5 h-1.5 rounded-full bg-indigo-500"></span>
 																			Datos Placenta Foliculares
 																		</h4>
@@ -3529,15 +3529,15 @@ export default function EditConsultationForm({ initial, patient, doctor, doctorS
 																	</div>
 
 																	{/* Quinta sección: Datos Anatomofuncionales */}
-																	<div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 shadow-sm p-5">
-																		<h4 className="font-bold text-slate-900 dark:text-slate-100 mb-6 text-base flex items-center gap-2 pb-3 border-b border-slate-200 dark:border-slate-700">
+																	<div className="bg-white  rounded-lg border border-slate-200  shadow-sm p-5">
+																		<h4 className="font-bold text-slate-900  mb-6 text-base flex items-center gap-2 pb-3 border-b border-slate-200 ">
 																			<span className="w-1.5 h-1.5 rounded-full bg-indigo-500"></span>
 																			Datos Anatomofuncionales
 																		</h4>
 																		
 																		{/* Subsección: CABEZA, CUELLO, SNC */}
-																		<div className="mb-6 pb-4 border-b border-slate-100 dark:border-slate-700">
-																			<h5 className="font-semibold text-slate-800 dark:text-slate-200 mb-4 text-sm uppercase tracking-wide text-slate-600 dark:text-slate-400">CABEZA, CUELLO, SNC</h5>
+																		<div className="mb-6 pb-4 border-b border-slate-100 ">
+																			<h5 className="font-semibold text-slate-800  mb-4 text-sm uppercase tracking-wide text-slate-600 ">CABEZA, CUELLO, SNC</h5>
 																			<div className="grid grid-cols-1 md:grid-cols-3 gap-4">
 																				<div>
 																					<label className={labelClass}>Cráneo</label>
@@ -3552,8 +3552,8 @@ export default function EditConsultationForm({ initial, patient, doctor, doctorS
 																		</div>
 
 																		{/* Subsección: TÓRAX */}
-																		<div className="mb-6 pb-4 border-b border-slate-100 dark:border-slate-700">
-																			<h5 className="font-semibold text-slate-800 dark:text-slate-200 mb-4 text-sm uppercase tracking-wide text-slate-600 dark:text-slate-400">TÓRAX</h5>
+																		<div className="mb-6 pb-4 border-b border-slate-100 ">
+																			<h5 className="font-semibold text-slate-800  mb-4 text-sm uppercase tracking-wide text-slate-600 ">TÓRAX</h5>
 																			<div className="grid grid-cols-1 md:grid-cols-3 gap-4">
 																				<div>
 																					<label className={labelClass}>Corazón</label>
@@ -3581,8 +3581,8 @@ export default function EditConsultationForm({ initial, patient, doctor, doctorS
 																		</div>
 
 																		{/* Subsección: ABDOMEN */}
-																		<div className="mb-6 pb-4 border-b border-slate-100 dark:border-slate-700">
-																			<h5 className="font-semibold text-slate-800 dark:text-slate-200 mb-4 text-sm uppercase tracking-wide text-slate-600 dark:text-slate-400">ABDOMEN</h5>
+																		<div className="mb-6 pb-4 border-b border-slate-100 ">
+																			<h5 className="font-semibold text-slate-800  mb-4 text-sm uppercase tracking-wide text-slate-600 ">ABDOMEN</h5>
 																			<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
 																				<div>
 																					<label className={labelClass}>Situs Visceral</label>
@@ -3656,7 +3656,7 @@ export default function EditConsultationForm({ initial, patient, doctor, doctorS
 
 																		{/* Subsección: EXTREMIDADES */}
 																		<div className="mb-6">
-																			<h5 className="font-semibold text-slate-800 dark:text-slate-200 mb-4 text-sm uppercase tracking-wide text-slate-600 dark:text-slate-400">EXTREMIDADES</h5>
+																			<h5 className="font-semibold text-slate-800  mb-4 text-sm uppercase tracking-wide text-slate-600 ">EXTREMIDADES</h5>
 																			<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
 																				<div>
 																					<label className={labelClass}>Miembros Superiores</label>
@@ -3699,8 +3699,8 @@ export default function EditConsultationForm({ initial, patient, doctor, doctorS
 																	</div>
 
 																	{/* Sección: Conclusiones */}
-																	<div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 shadow-sm p-5">
-																		<h4 className="font-bold text-slate-900 dark:text-slate-100 mb-5 text-base flex items-center gap-2 pb-3 border-b border-slate-200 dark:border-slate-700">
+																	<div className="bg-white  rounded-lg border border-slate-200  shadow-sm p-5">
+																		<h4 className="font-bold text-slate-900  mb-5 text-base flex items-center gap-2 pb-3 border-b border-slate-200 ">
 																			<span className="w-1.5 h-1.5 rounded-full bg-indigo-500"></span>
 																			Conclusiones
 																		</h4>
@@ -3774,7 +3774,7 @@ export default function EditConsultationForm({ initial, patient, doctor, doctorS
 
 														{/* Formulario de Ginecología (campos antiguos) */}
 														{obstetricReportType === 'gynecology' && (
-															<div className="grid grid-cols-1 md:grid-cols-4 gap-4 border-t border-slate-200 dark:border-slate-700 pt-4">
+															<div className="grid grid-cols-1 md:grid-cols-4 gap-4 border-t border-slate-200  pt-4">
 																<div>
 																	<label className={labelClass}>Altura Uterina (cm)</label>
 																	<input value={fundalHeight} onChange={(e) => setFundalHeight(e.target.value)} className={`${inputBase} ${inputDark}`} type="number" inputMode="decimal" />
@@ -3802,15 +3802,15 @@ export default function EditConsultationForm({ initial, patient, doctor, doctorS
 
 								{/* Nutrition */}
 								{shouldShowSpecialty('nutrition') && (
-									<div className="border border-slate-200 dark:border-slate-700 rounded-lg mb-4">
-										<button type="button" onClick={() => toggleSpecialty('nutrition')} className="w-full flex items-center justify-between p-4 text-left hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors rounded-lg">
-											<span className="font-semibold text-slate-900 dark:text-slate-100">Nutrición</span>
+									<div className="border border-slate-200  rounded-lg mb-4">
+										<button type="button" onClick={() => toggleSpecialty('nutrition')} className="w-full flex items-center justify-between p-4 text-left hover:bg-slate-50  transition-colors rounded-lg">
+											<span className="font-semibold text-slate-900 ">Nutrición</span>
 											{expandedSpecialties.has('nutrition') ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
 										</button>
 										{expandedSpecialties.has('nutrition') && (
 											<div className="p-4 pt-0 space-y-4">
 												{/* Botón de Grabar Audio para generar informe */}
-												<div className="mb-4 pb-4 border-b border-slate-200 dark:border-slate-700">
+												<div className="mb-4 pb-4 border-b border-slate-200 ">
 													<AudioRecorderButton
 														consultationId={initial.id}
 														reportType="nutrition"
@@ -3841,15 +3841,15 @@ export default function EditConsultationForm({ initial, patient, doctor, doctorS
 
 								{/* Dermatology */}
 								{shouldShowSpecialty('dermatology') && (
-									<div className="border border-slate-200 dark:border-slate-700 rounded-lg mb-4">
-										<button type="button" onClick={() => toggleSpecialty('dermatology')} className="w-full flex items-center justify-between p-4 text-left hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors rounded-lg">
-											<span className="font-semibold text-slate-900 dark:text-slate-100">Dermatología</span>
+									<div className="border border-slate-200  rounded-lg mb-4">
+										<button type="button" onClick={() => toggleSpecialty('dermatology')} className="w-full flex items-center justify-between p-4 text-left hover:bg-slate-50  transition-colors rounded-lg">
+											<span className="font-semibold text-slate-900 ">Dermatología</span>
 											{expandedSpecialties.has('dermatology') ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
 										</button>
 										{expandedSpecialties.has('dermatology') && (
 											<div className="p-4 pt-0 space-y-4">
 												{/* Botón de Grabar Audio para generar informe */}
-												<div className="mb-4 pb-4 border-b border-slate-200 dark:border-slate-700">
+												<div className="mb-4 pb-4 border-b border-slate-200 ">
 													<AudioRecorderButton
 														consultationId={initial.id}
 														reportType="dermatology"
@@ -3880,15 +3880,15 @@ export default function EditConsultationForm({ initial, patient, doctor, doctorS
 
 								{/* Psychiatry */}
 								{shouldShowSpecialty('psychiatry') && (
-									<div className="border border-slate-200 dark:border-slate-700 rounded-lg mb-4">
-										<button type="button" onClick={() => toggleSpecialty('psychiatry')} className="w-full flex items-center justify-between p-4 text-left hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors rounded-lg">
-											<span className="font-semibold text-slate-900 dark:text-slate-100">Psiquiatría</span>
+									<div className="border border-slate-200  rounded-lg mb-4">
+										<button type="button" onClick={() => toggleSpecialty('psychiatry')} className="w-full flex items-center justify-between p-4 text-left hover:bg-slate-50  transition-colors rounded-lg">
+											<span className="font-semibold text-slate-900 ">Psiquiatría</span>
 											{expandedSpecialties.has('psychiatry') ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
 										</button>
 										{expandedSpecialties.has('psychiatry') && (
 											<div className="p-4 pt-0 space-y-4">
 												{/* Botón de Grabar Audio para generar informe */}
-												<div className="mb-4 pb-4 border-b border-slate-200 dark:border-slate-700">
+												<div className="mb-4 pb-4 border-b border-slate-200 ">
 													<AudioRecorderButton
 														consultationId={initial.id}
 														reportType="psychiatry"
@@ -3919,15 +3919,15 @@ export default function EditConsultationForm({ initial, patient, doctor, doctorS
 
 								{/* Orthopedics */}
 								{shouldShowSpecialty('orthopedics') && (
-									<div className="border border-slate-200 dark:border-slate-700 rounded-lg mb-4">
-										<button type="button" onClick={() => toggleSpecialty('orthopedics')} className="w-full flex items-center justify-between p-4 text-left hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors rounded-lg">
-											<span className="font-semibold text-slate-900 dark:text-slate-100">Ortopedia</span>
+									<div className="border border-slate-200  rounded-lg mb-4">
+										<button type="button" onClick={() => toggleSpecialty('orthopedics')} className="w-full flex items-center justify-between p-4 text-left hover:bg-slate-50  transition-colors rounded-lg">
+											<span className="font-semibold text-slate-900 ">Ortopedia</span>
 											{expandedSpecialties.has('orthopedics') ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
 										</button>
 										{expandedSpecialties.has('orthopedics') && (
 											<div className="p-4 pt-0 space-y-4">
 												{/* Botón de Grabar Audio para generar informe */}
-												<div className="mb-4 pb-4 border-b border-slate-200 dark:border-slate-700">
+												<div className="mb-4 pb-4 border-b border-slate-200 ">
 													<AudioRecorderButton
 														consultationId={initial.id}
 														reportType="orthopedics"
@@ -3958,15 +3958,15 @@ export default function EditConsultationForm({ initial, patient, doctor, doctorS
 
 								{/* ENT */}
 								{shouldShowSpecialty('ent') && (
-									<div className="border border-slate-200 dark:border-slate-700 rounded-lg mb-4">
-										<button type="button" onClick={() => toggleSpecialty('ent')} className="w-full flex items-center justify-between p-4 text-left hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors rounded-lg">
-											<span className="font-semibold text-slate-900 dark:text-slate-100">ORL / Otorrino</span>
+									<div className="border border-slate-200  rounded-lg mb-4">
+										<button type="button" onClick={() => toggleSpecialty('ent')} className="w-full flex items-center justify-between p-4 text-left hover:bg-slate-50  transition-colors rounded-lg">
+											<span className="font-semibold text-slate-900 ">ORL / Otorrino</span>
 											{expandedSpecialties.has('ent') ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
 										</button>
 										{expandedSpecialties.has('ent') && (
 											<div className="p-4 pt-0 space-y-4">
 												{/* Botón de Grabar Audio para generar informe */}
-												<div className="mb-4 pb-4 border-b border-slate-200 dark:border-slate-700">
+												<div className="mb-4 pb-4 border-b border-slate-200 ">
 													<AudioRecorderButton
 														consultationId={initial.id}
 														reportType="ent"
@@ -4001,21 +4001,21 @@ export default function EditConsultationForm({ initial, patient, doctor, doctorS
 
 								{/* Gynecology */}
 								{shouldShowSpecialty('gynecology') && (
-									<div className="border border-slate-200 dark:border-slate-700 rounded-lg mb-4">
+									<div className="border border-slate-200  rounded-lg mb-4">
 										{/* Si es solo Vídeo colposcopía O solo colposcopia, mostrar directamente la sección de colposcopia sin el resto del formulario */}
 										{(isOnlyVideoColposcopia || shouldOnlyShowColposcopy) ? (
 											<div className="p-4">
-												<h3 className="text-xl font-bold text-slate-900 dark:text-slate-100 mb-2 flex items-center gap-2">
+												<h3 className="text-xl font-bold text-slate-900  mb-2 flex items-center gap-2">
 													<div className="w-1 h-6 bg-gradient-to-b from-teal-500 to-cyan-500 rounded-full"></div>
 													Vídeo Colposcopía
 												</h3>
-												<p className="text-sm text-slate-600 dark:text-slate-400 mb-6">Complete todos los campos del examen colposcópico según los hallazgos observados</p>
+												<p className="text-sm text-slate-600  mb-6">Complete todos los campos del examen colposcópico según los hallazgos observados</p>
 												
 												{/* Sección de Colposcopia directamente visible - Solo mostrar la sección de colposcopia completa */}
 												<div className="space-y-8">
 													{/* Sección 1: Información General y Preparación */}
-															<div className="bg-gradient-to-br from-slate-50 to-slate-100/50 dark:from-slate-800/50 dark:to-slate-700/30 rounded-xl p-6 border border-slate-200 dark:border-slate-700 shadow-sm">
-																<h4 className="text-base font-semibold text-slate-900 dark:text-slate-100 mb-4 flex items-center gap-2">
+															<div className="bg-gradient-to-br from-slate-50 to-slate-100/50   rounded-xl p-6 border border-slate-200  shadow-sm">
+																<h4 className="text-base font-semibold text-slate-900  mb-4 flex items-center gap-2">
 																	<div className="w-2 h-2 bg-teal-500 rounded-full"></div>
 																	Información General
 																</h4>
@@ -4041,8 +4041,8 @@ export default function EditConsultationForm({ initial, patient, doctor, doctorS
 															</div>
 
 															{/* Sección 2: Resultado de la Colposcopia */}
-															<div className="bg-gradient-to-br from-blue-50 to-cyan-50/50 dark:from-blue-900/20 dark:to-cyan-900/10 rounded-xl p-6 border border-blue-200 dark:border-blue-800 shadow-sm">
-																<h4 className="text-base font-semibold text-slate-900 dark:text-slate-100 mb-4 flex items-center gap-2">
+															<div className="bg-gradient-to-br from-blue-50 to-cyan-50/50   rounded-xl p-6 border border-blue-200  shadow-sm">
+																<h4 className="text-base font-semibold text-slate-900  mb-4 flex items-center gap-2">
 																	<div className="w-2 h-2 bg-blue-500 rounded-full"></div>
 																	Resultado de la Colposcopia
 																</h4>
@@ -4093,8 +4093,8 @@ export default function EditConsultationForm({ initial, patient, doctor, doctorS
 															</div>
 
 															{/* Sección 3: Hallazgos del Epitelio Acetoblanco */}
-															<div className="bg-gradient-to-br from-purple-50 to-pink-50/50 dark:from-purple-900/20 dark:to-pink-900/10 rounded-xl p-6 border border-purple-200 dark:border-purple-800 shadow-sm">
-																<h4 className="text-base font-semibold text-slate-900 dark:text-slate-100 mb-4 flex items-center gap-2">
+															<div className="bg-gradient-to-br from-purple-50 to-pink-50/50   rounded-xl p-6 border border-purple-200  shadow-sm">
+																<h4 className="text-base font-semibold text-slate-900  mb-4 flex items-center gap-2">
 																	<div className="w-2 h-2 bg-purple-500 rounded-full"></div>
 																	Epitelio Acetoblanco
 																</h4>
@@ -4122,8 +4122,8 @@ export default function EditConsultationForm({ initial, patient, doctor, doctorS
 															</div>
 
 															{/* Sección 4: Patrones de Vascularización */}
-															<div className="bg-gradient-to-br from-amber-50 to-orange-50/50 dark:from-amber-900/20 dark:to-orange-900/10 rounded-xl p-6 border border-amber-200 dark:border-amber-800 shadow-sm">
-																<h4 className="text-base font-semibold text-slate-900 dark:text-slate-100 mb-4 flex items-center gap-2">
+															<div className="bg-gradient-to-br from-amber-50 to-orange-50/50   rounded-xl p-6 border border-amber-200  shadow-sm">
+																<h4 className="text-base font-semibold text-slate-900  mb-4 flex items-center gap-2">
 																	<div className="w-2 h-2 bg-amber-500 rounded-full"></div>
 																	Patrones
 																</h4>
@@ -4160,8 +4160,8 @@ export default function EditConsultationForm({ initial, patient, doctor, doctorS
 															</div>
 
 															{/* Sección 5: Características de la Lesión */}
-															<div className="bg-gradient-to-br from-emerald-50 to-teal-50/50 dark:from-emerald-900/20 dark:to-teal-900/10 rounded-xl p-6 border border-emerald-200 dark:border-emerald-800 shadow-sm">
-																<h4 className="text-base font-semibold text-slate-900 dark:text-slate-100 mb-4 flex items-center gap-2">
+															<div className="bg-gradient-to-br from-emerald-50 to-teal-50/50   rounded-xl p-6 border border-emerald-200  shadow-sm">
+																<h4 className="text-base font-semibold text-slate-900  mb-4 flex items-center gap-2">
 																	<div className="w-2 h-2 bg-emerald-500 rounded-full"></div>
 																	Características de la Lesión
 																</h4>
@@ -4202,8 +4202,8 @@ export default function EditConsultationForm({ initial, patient, doctor, doctorS
 															</div>
 
 															{/* Sección 6: Pruebas Complementarias y Biopsia */}
-															<div className="bg-gradient-to-br from-indigo-50 to-violet-50/50 dark:from-indigo-900/20 dark:to-violet-900/10 rounded-xl p-6 border border-indigo-200 dark:border-indigo-800 shadow-sm">
-																<h4 className="text-base font-semibold text-slate-900 dark:text-slate-100 mb-4 flex items-center gap-2">
+															<div className="bg-gradient-to-br from-indigo-50 to-violet-50/50   rounded-xl p-6 border border-indigo-200  shadow-sm">
+																<h4 className="text-base font-semibold text-slate-900  mb-4 flex items-center gap-2">
 																	<div className="w-2 h-2 bg-indigo-500 rounded-full"></div>
 																	Pruebas Complementarias y Biopsia
 																</h4>
@@ -4244,8 +4244,8 @@ export default function EditConsultationForm({ initial, patient, doctor, doctorS
 															</div>
 
 															{/* Sección 7: Imagen Colposcópica y Detalles Adicionales */}
-															<div className="bg-gradient-to-br from-rose-50 to-pink-50/50 dark:from-rose-900/20 dark:to-pink-900/10 rounded-xl p-6 border border-rose-200 dark:border-rose-800 shadow-sm">
-																<h4 className="text-base font-semibold text-slate-900 dark:text-slate-100 mb-4 flex items-center gap-2">
+															<div className="bg-gradient-to-br from-rose-50 to-pink-50/50   rounded-xl p-6 border border-rose-200  shadow-sm">
+																<h4 className="text-base font-semibold text-slate-900  mb-4 flex items-center gap-2">
 																	<div className="w-2 h-2 bg-rose-500 rounded-full"></div>
 																	Documentación Adicional
 																</h4>
@@ -4256,39 +4256,39 @@ export default function EditConsultationForm({ initial, patient, doctor, doctorS
 																		<label className={labelClass}>Imagen Colposcópica</label>
 																		<div className="space-y-3">
 																			{colposcopyImage ? (
-																				<div className="relative border-2 border-slate-200 dark:border-slate-700 rounded-lg p-4 bg-slate-50 dark:bg-slate-800/50">
+																				<div className="relative border-2 border-slate-200  rounded-lg p-4 bg-slate-50 ">
 																					<div className="flex items-center justify-between">
 																						<div className="flex items-center gap-3 flex-1 min-w-0">
 																							<div className="flex-shrink-0 w-12 h-12 rounded-lg bg-gradient-to-br from-teal-500 to-cyan-500 flex items-center justify-center">
 																								<Image className="w-6 h-6 text-white" />
 																							</div>
 																							<div className="flex-1 min-w-0">
-																								<p className="text-sm font-medium text-slate-900 dark:text-slate-100 truncate">Imagen colposcópica cargada</p>
-																								<a href={colposcopyImage} target="_blank" rel="noopener noreferrer" className="text-xs text-teal-600 dark:text-teal-400 hover:underline truncate block">
+																								<p className="text-sm font-medium text-slate-900  truncate">Imagen colposcópica cargada</p>
+																								<a href={colposcopyImage} target="_blank" rel="noopener noreferrer" className="text-xs text-teal-600  hover:underline truncate block">
 																									Ver imagen
 																								</a>
 																							</div>
 																						</div>
-																						<button type="button" onClick={() => setColposcopyImage('')} className="flex-shrink-0 ml-3 p-2 rounded-lg bg-rose-100 dark:bg-rose-900/50 text-rose-600 dark:text-rose-400 hover:bg-rose-200 dark:hover:bg-rose-900 transition-colors">
+																						<button type="button" onClick={() => setColposcopyImage('')} className="flex-shrink-0 ml-3 p-2 rounded-lg bg-rose-100  text-rose-600  hover:bg-rose-200  transition-colors">
 																							<X size={18} />
 																						</button>
 																					</div>
 																				</div>
 																			) : (
-																				<label className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-slate-300 dark:border-slate-600 rounded-lg cursor-pointer bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors">
+																				<label className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-slate-300  rounded-lg cursor-pointer bg-white  hover:bg-slate-50  transition-colors">
 																					<div className="flex flex-col items-center justify-center pt-5 pb-6">
 																						{uploadingColposcopyImage ? (
 																							<>
-																								<Loader2 className="w-8 h-8 mb-2 text-teal-600 dark:text-teal-400 animate-spin" />
-																								<p className="text-sm text-slate-600 dark:text-slate-400">Subiendo imagen...</p>
+																								<Loader2 className="w-8 h-8 mb-2 text-teal-600  animate-spin" />
+																								<p className="text-sm text-slate-600 ">Subiendo imagen...</p>
 																							</>
 																						) : (
 																							<>
-																								<Upload className="w-8 h-8 mb-2 text-slate-400 dark:text-slate-500" />
-																								<p className="mb-2 text-sm text-slate-600 dark:text-slate-400">
+																								<Upload className="w-8 h-8 mb-2 text-slate-400 " />
+																								<p className="mb-2 text-sm text-slate-600 ">
 																									<span className="font-semibold">Haz clic para subir</span> o arrastra y suelta
 																								</p>
-																								<p className="text-xs text-slate-500 dark:text-slate-500">PNG, JPG, WEBP (MAX. 10MB)</p>
+																								<p className="text-xs text-slate-500 ">PNG, JPG, WEBP (MAX. 10MB)</p>
 																							</>
 																						)}
 																					</div>
@@ -4337,14 +4337,14 @@ export default function EditConsultationForm({ initial, patient, doctor, doctorS
 																				</label>
 																			)}
 																		</div>
-																		<p className="mt-2 text-xs text-slate-500 dark:text-slate-400">Sube una imagen del examen colposcópico para documentar los hallazgos visuales</p>
+																		<p className="mt-2 text-xs text-slate-500 ">Sube una imagen del examen colposcópico para documentar los hallazgos visuales</p>
 																	</div>
 
 																	{/* Campo de Detalles Adicionales */}
 																	<div>
 																		<label className={labelClass}>Detalles Adicionales</label>
 																		<textarea value={colposcopyAdditionalDetails} onChange={(e) => setColposcopyAdditionalDetails(e.target.value)} rows={4} className={`${inputBase} ${inputDark} resize-none`} placeholder="Agrega comentarios adicionales sobre la colposcopía, observaciones importantes, recomendaciones de seguimiento, etc." />
-																		<p className="mt-2 text-xs text-slate-500 dark:text-slate-400">Comentarios adicionales sobre el examen colposcópico</p>
+																		<p className="mt-2 text-xs text-slate-500 ">Comentarios adicionales sobre el examen colposcópico</p>
 																	</div>
 																</div>
 															</div>
@@ -4352,14 +4352,14 @@ export default function EditConsultationForm({ initial, patient, doctor, doctorS
 													</div>
 												) : (
 													<>
-														<button type="button" onClick={() => toggleSpecialty('gynecology')} className="w-full flex items-center justify-between p-4 text-left hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors rounded-lg">
-															<span className="font-semibold text-slate-900 dark:text-slate-100">Ginecología</span>
+														<button type="button" onClick={() => toggleSpecialty('gynecology')} className="w-full flex items-center justify-between p-4 text-left hover:bg-slate-50  transition-colors rounded-lg">
+															<span className="font-semibold text-slate-900 ">Ginecología</span>
 															{expandedSpecialties.has('gynecology') ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
 														</button>
 														{expandedSpecialties.has('gynecology') && (
 															<div className="p-4 pt-0 space-y-6">
 																{/* Botón de Grabar Audio para generar informe */}
-																<div className="mb-4 pb-4 border-b border-slate-200 dark:border-slate-700">
+																<div className="mb-4 pb-4 border-b border-slate-200 ">
 																	<AudioRecorderButton
 																		consultationId={initial.id}
 																		reportType="gynecology"
@@ -4383,8 +4383,8 @@ export default function EditConsultationForm({ initial, patient, doctor, doctorS
 																		</div>
 
 																{/* Antecedentes Médicos */}
-																<div className="border-t border-slate-200 dark:border-slate-700 pt-4">
-																	<h4 className="text-sm font-semibold text-slate-900 dark:text-slate-100 mb-3">Antecedentes Médicos</h4>
+																<div className="border-t border-slate-200  pt-4">
+																	<h4 className="text-sm font-semibold text-slate-900  mb-3">Antecedentes Médicos</h4>
 																	<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
 																		<div>
 																			<label className={labelClass}>Alérgicos</label>
@@ -4398,8 +4398,8 @@ export default function EditConsultationForm({ initial, patient, doctor, doctorS
 																</div>
 
 																{/* Antecedentes Familiares */}
-																<div className="border-t border-slate-200 dark:border-slate-700 pt-4">
-																	<h4 className="text-sm font-semibold text-slate-900 dark:text-slate-100 mb-3">Antecedentes Familiares</h4>
+																<div className="border-t border-slate-200  pt-4">
+																	<h4 className="text-sm font-semibold text-slate-900  mb-3">Antecedentes Familiares</h4>
 																	<div className="grid grid-cols-1 md:grid-cols-3 gap-4">
 																		<div>
 																			<label className={labelClass}>Madre</label>
@@ -4417,8 +4417,8 @@ export default function EditConsultationForm({ initial, patient, doctor, doctorS
 																</div>
 
 																{/* Antecedentes Ginecológicos */}
-																<div className="border-t border-slate-200 dark:border-slate-700 pt-4">
-																	<h4 className="text-sm font-semibold text-slate-900 dark:text-slate-100 mb-3">Antecedentes Ginecológicos</h4>
+																<div className="border-t border-slate-200  pt-4">
+																	<h4 className="text-sm font-semibold text-slate-900  mb-3">Antecedentes Ginecológicos</h4>
 																	<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
 																		<div>
 																			<label className={labelClass}>Menarquia</label>
@@ -4506,8 +4506,8 @@ export default function EditConsultationForm({ initial, patient, doctor, doctorS
 																</div>
 
 																{/* Examen Físico */}
-																<div className="border-t border-slate-200 dark:border-slate-700 pt-4">
-																	<h4 className="text-sm font-semibold text-slate-900 dark:text-slate-100 mb-3">Examen Físico</h4>
+																<div className="border-t border-slate-200  pt-4">
+																	<h4 className="text-sm font-semibold text-slate-900  mb-3">Examen Físico</h4>
 																	<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
 																		<div>
 																			<label className={labelClass}>Condiciones Generales</label>
@@ -4566,8 +4566,8 @@ export default function EditConsultationForm({ initial, patient, doctor, doctorS
 
 																{/* Ecografía Transvaginal - Mostrar si tiene Ecografía Transvaginal o si NO es una Consulta simple Y NO es solo colposcopia */}
 																{(hasEcografiaTransvaginal || (!isSimpleConsulta && !shouldOnlyShowColposcopy)) && (
-																	<div className="border-t border-slate-200 dark:border-slate-700 pt-4">
-																		<h4 className="text-sm font-semibold text-slate-900 dark:text-slate-100 mb-3">Ecografía Transvaginal</h4>
+																	<div className="border-t border-slate-200  pt-4">
+																		<h4 className="text-sm font-semibold text-slate-900  mb-3">Ecografía Transvaginal</h4>
 																		<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
 																			<div>
 																				<label className={labelClass}>Útero - Dimensiones (ej: 74X34X50 MM)</label>
@@ -4605,17 +4605,17 @@ export default function EditConsultationForm({ initial, patient, doctor, doctorS
 
 																{/* Diagnóstico con CIE-11 - Solo si NO es solo colposcopia */}
 																{!shouldOnlyShowColposcopy && (
-																	<div className="border-t border-slate-200 dark:border-slate-700 pt-4">
+																	<div className="border-t border-slate-200  pt-4">
 																		<div className="flex items-center justify-between mb-2">
 																			<label className={labelClass}>Diagnósticos</label>
-																			<div className="flex bg-slate-100 dark:bg-slate-800 rounded-lg p-1">
+																			<div className="flex bg-slate-100  rounded-lg p-1">
 																				<button
 																					type="button"
 																					onClick={() => setDiagnosisInputMode('cie11')}
 																					className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${
 																						diagnosisInputMode === 'cie11'
-																							? 'bg-white dark:bg-slate-700 text-teal-600 dark:text-teal-400 shadow-sm'
-																							: 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300'
+																							? 'bg-white  text-teal-600  shadow-sm'
+																							: 'text-slate-500  hover:text-slate-700 '
 																					}`}
 																				>
 																					Buscador CIE-11
@@ -4625,8 +4625,8 @@ export default function EditConsultationForm({ initial, patient, doctor, doctorS
 																					onClick={() => setDiagnosisInputMode('manual')}
 																					className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${
 																						diagnosisInputMode === 'manual'
-																							? 'bg-white dark:bg-slate-700 text-teal-600 dark:text-teal-400 shadow-sm'
-																							: 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300'
+																							? 'bg-white  text-teal-600  shadow-sm'
+																							: 'text-slate-500  hover:text-slate-700 '
 																					}`}
 																				>
 																					Manual
@@ -4685,8 +4685,8 @@ export default function EditConsultationForm({ initial, patient, doctor, doctorS
 																		{gynDiagnoses.length > 0 && (
 																			<div className="space-y-2 mb-4">
 																				{gynDiagnoses.map((diag, index) => (
-																					<div key={index} className="flex items-center justify-between p-2 bg-slate-50 dark:bg-slate-800/50 rounded-lg border border-slate-200 dark:border-slate-700 max-w-[50%]">
-																						<span className="text-sm text-slate-700 dark:text-slate-300">{diag}</span>
+																					<div key={index} className="flex items-center justify-between p-2 bg-slate-50  rounded-lg border border-slate-200  max-w-[50%]">
+																						<span className="text-sm text-slate-700 ">{diag}</span>
 																						<button
 																							type="button"
 																							onClick={() => {
@@ -4707,15 +4707,15 @@ export default function EditConsultationForm({ initial, patient, doctor, doctorS
 
 																{/* Nuevo Bloque: Plan / Tratamiento */}
 																{!shouldOnlyShowColposcopy && (
-																	<div className="border-t border-slate-200 dark:border-slate-700 pt-4">
-																		<h4 className="text-sm font-semibold text-slate-900 dark:text-slate-100 mb-3 flex items-center gap-2">
+																	<div className="border-t border-slate-200  pt-4">
+																		<h4 className="text-sm font-semibold text-slate-900  mb-3 flex items-center gap-2">
 																			<FileText className="w-4 h-4 text-teal-500" />
 																			Plan / Tratamiento
 																		</h4>
 																		
 																		{/* Buscador de Plantillas (Recipes) */}
-																		<div className="mb-6 bg-teal-50/50 dark:bg-teal-900/10 p-4 rounded-xl border border-teal-100 dark:border-teal-800">
-																			<div className="flex items-center gap-2 mb-3 text-teal-800 dark:text-teal-200">
+																		<div className="mb-6 bg-teal-50/50  p-4 rounded-xl border border-teal-100 ">
+																			<div className="flex items-center gap-2 mb-3 text-teal-800 ">
 																				<Sparkles size={16} className="animate-pulse" />
 																				<span className="text-xs font-bold uppercase tracking-wider">Asistente de Recetas</span>
 																			</div>
@@ -4735,7 +4735,7 @@ export default function EditConsultationForm({ initial, patient, doctor, doctorS
 																					</select>
 																				</div>
 																				{applyingRecipe && (
-																					<div className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-slate-800 rounded-lg border border-teal-200 dark:border-teal-700 animate-pulse text-teal-600 dark:text-teal-400 text-sm font-medium">
+																					<div className="flex items-center gap-2 px-4 py-2 bg-white  rounded-lg border border-teal-200  animate-pulse text-teal-600  text-sm font-medium">
 																						<Loader2 className="animate-spin" size={16} />
 																						Procesando...
 																					</div>
@@ -4744,14 +4744,14 @@ export default function EditConsultationForm({ initial, patient, doctor, doctorS
 																					<button 
 																						type="button"
 																						onClick={() => handleApplyRecipe(linkedRecipeId)}
-																						className="px-4 py-2 bg-teal-100 dark:bg-teal-900/30 text-teal-700 dark:text-teal-300 rounded-lg border border-teal-200 dark:border-teal-700 hover:bg-teal-200 transition-colors text-sm font-medium flex items-center gap-2"
+																						className="px-4 py-2 bg-teal-100  text-teal-700  rounded-lg border border-teal-200  hover:bg-teal-200 transition-colors text-sm font-medium flex items-center gap-2"
 																					>
 																						<Clipboard size={16} />
 																						Re-aplicar
 																					</button>
 																				)}
 																			</div>
-																			<p className="mt-2 text-[10px] text-slate-500 dark:text-slate-400">
+																			<p className="mt-2 text-[10px] text-slate-500 ">
 																				Al seleccionar una plantilla, se auto-completarán los campos de dieta, indicaciones y tratamientos basados en el texto del documento.
 																			</p>
 																		</div>
@@ -4796,7 +4796,7 @@ export default function EditConsultationForm({ initial, patient, doctor, doctorS
 
 																{/* Observaciones Adicionales - Solo si NO es solo colposcopia */}
 																{!shouldOnlyShowColposcopy && (
-																	<div className="border-t border-slate-200 dark:border-slate-700 pt-4">
+																	<div className="border-t border-slate-200  pt-4">
 																		<label className={labelClass}>Observaciones Adicionales</label>
 																		<textarea value={cervicalExamNotes} onChange={(e) => setCervicalExamNotes(e.target.value)} className={`${inputBase} ${inputDark}`} rows={3} placeholder="Observaciones adicionales del examen cervical" />
 																	</div>
@@ -4806,7 +4806,7 @@ export default function EditConsultationForm({ initial, patient, doctor, doctorS
 
 																{/* Botón para mostrar formulario de Colposcopia - Solo si NO es una Consulta simple Y NO es solo Consulta+Ecografía Y NO es solo Vídeo colposcopía Y NO se muestra automáticamente Y NO es solo colposcopia */}
 																{!isSimpleConsulta && !hasEcografiaTransvaginal && !isOnlyVideoColposcopia && !shouldAutoShowColposcopy && !shouldOnlyShowColposcopy && (
-																	<div className="border-t border-slate-200 dark:border-slate-700 pt-4 flex justify-end">
+																	<div className="border-t border-slate-200  pt-4 flex justify-end">
 																		<button type="button" onClick={() => setShowColposcopySection(!showColposcopySection)} className="px-6 py-2.5 bg-gradient-to-r from-teal-600 to-cyan-600 hover:from-teal-700 hover:to-cyan-700 text-white font-semibold rounded-lg shadow-md hover:shadow-lg transition-all duration-200 flex items-center gap-2">
 																			{showColposcopySection ? 'Ocultar' : 'Siguiente'} - Colposcopia
 																			{showColposcopySection ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
@@ -4818,18 +4818,18 @@ export default function EditConsultationForm({ initial, patient, doctor, doctorS
 																	- NO es una Consulta simple Y NO es solo Consulta+Ecografía Y showColposcopySection está activo
 																	- O si debe mostrarse automáticamente (ginecología sin consulta o servicio con colposcopia) */}
 																{((!isSimpleConsulta && !hasEcografiaTransvaginal && showColposcopySection) || shouldAutoShowColposcopy) && (
-																	<div className="border-t-2 border-teal-500 dark:border-teal-400 pt-6 mt-6">
+																	<div className="border-t-2 border-teal-500  pt-6 mt-6">
 																		<div className="mb-6">
-																			<h3 className="text-xl font-bold text-slate-900 dark:text-slate-100 mb-2 flex items-center gap-2">
+																			<h3 className="text-xl font-bold text-slate-900  mb-2 flex items-center gap-2">
 																				<div className="w-1 h-6 bg-gradient-to-b from-teal-500 to-cyan-500 rounded-full"></div>
 																				Informe Colposcópico
 																			</h3>
-																			<p className="text-sm text-slate-600 dark:text-slate-400 ml-3">Complete todos los campos del examen colposcópico según los hallazgos observados</p>
+																			<p className="text-sm text-slate-600  ml-3">Complete todos los campos del examen colposcópico según los hallazgos observados</p>
 																		</div>
 																		<div className="space-y-8">
 																			{/* Sección 1: Información General y Preparación */}
-																			<div className="bg-gradient-to-br from-slate-50 to-slate-100/50 dark:from-slate-800/50 dark:to-slate-700/30 rounded-xl p-6 border border-slate-200 dark:border-slate-700 shadow-sm">
-																				<h4 className="text-base font-semibold text-slate-900 dark:text-slate-100 mb-4 flex items-center gap-2">
+																			<div className="bg-gradient-to-br from-slate-50 to-slate-100/50   rounded-xl p-6 border border-slate-200  shadow-sm">
+																				<h4 className="text-base font-semibold text-slate-900  mb-4 flex items-center gap-2">
 																					<div className="w-2 h-2 bg-teal-500 rounded-full"></div>
 																					Información General
 																				</h4>
@@ -4854,8 +4854,8 @@ export default function EditConsultationForm({ initial, patient, doctor, doctorS
 																				</div>
 																			</div>
 																			{/* Sección 2: Resultado de la Colposcopia */}
-																			<div className="bg-gradient-to-br from-blue-50 to-cyan-50/50 dark:from-blue-900/20 dark:to-cyan-900/10 rounded-xl p-6 border border-blue-200 dark:border-blue-800 shadow-sm">
-																				<h4 className="text-base font-semibold text-slate-900 dark:text-slate-100 mb-4 flex items-center gap-2">
+																			<div className="bg-gradient-to-br from-blue-50 to-cyan-50/50   rounded-xl p-6 border border-blue-200  shadow-sm">
+																				<h4 className="text-base font-semibold text-slate-900  mb-4 flex items-center gap-2">
 																					<div className="w-2 h-2 bg-blue-500 rounded-full"></div>
 																					Resultado de la Colposcopia
 																				</h4>
@@ -4905,8 +4905,8 @@ export default function EditConsultationForm({ initial, patient, doctor, doctorS
 																				</div>
 																			</div>
 																			{/* Sección 3: Hallazgos del Epitelio Acetoblanco */}
-																			<div className="bg-gradient-to-br from-purple-50 to-pink-50/50 dark:from-purple-900/20 dark:to-pink-900/10 rounded-xl p-6 border border-purple-200 dark:border-purple-800 shadow-sm">
-																				<h4 className="text-base font-semibold text-slate-900 dark:text-slate-100 mb-4 flex items-center gap-2">
+																			<div className="bg-gradient-to-br from-purple-50 to-pink-50/50   rounded-xl p-6 border border-purple-200  shadow-sm">
+																				<h4 className="text-base font-semibold text-slate-900  mb-4 flex items-center gap-2">
 																					<div className="w-2 h-2 bg-purple-500 rounded-full"></div>
 																					Epitelio Acetoblanco
 																				</h4>
@@ -4933,8 +4933,8 @@ export default function EditConsultationForm({ initial, patient, doctor, doctorS
 																				</div>
 																			</div>
 																			{/* Sección 4: Patrones de Vascularización */}
-																			<div className="bg-gradient-to-br from-amber-50 to-orange-50/50 dark:from-amber-900/20 dark:to-orange-900/10 rounded-xl p-6 border border-amber-200 dark:border-amber-800 shadow-sm">
-																				<h4 className="text-base font-semibold text-slate-900 dark:text-slate-100 mb-4 flex items-center gap-2">
+																			<div className="bg-gradient-to-br from-amber-50 to-orange-50/50   rounded-xl p-6 border border-amber-200  shadow-sm">
+																				<h4 className="text-base font-semibold text-slate-900  mb-4 flex items-center gap-2">
 																					<div className="w-2 h-2 bg-amber-500 rounded-full"></div>
 																					Patrones
 																				</h4>
@@ -4970,8 +4970,8 @@ export default function EditConsultationForm({ initial, patient, doctor, doctorS
 																				</div>
 																			</div>
 																			{/* Sección 5: Características de la Lesión */}
-																			<div className="bg-gradient-to-br from-emerald-50 to-teal-50/50 dark:from-emerald-900/20 dark:to-teal-900/10 rounded-xl p-6 border border-emerald-200 dark:border-emerald-800 shadow-sm">
-																				<h4 className="text-base font-semibold text-slate-900 dark:text-slate-100 mb-4 flex items-center gap-2">
+																			<div className="bg-gradient-to-br from-emerald-50 to-teal-50/50   rounded-xl p-6 border border-emerald-200  shadow-sm">
+																				<h4 className="text-base font-semibold text-slate-900  mb-4 flex items-center gap-2">
 																					<div className="w-2 h-2 bg-emerald-500 rounded-full"></div>
 																					Características de la Lesión
 																				</h4>
@@ -5011,8 +5011,8 @@ export default function EditConsultationForm({ initial, patient, doctor, doctorS
 																				</div>
 																			</div>
 																			{/* Sección 6: Pruebas Complementarias y Biopsia */}
-																			<div className="bg-gradient-to-br from-indigo-50 to-violet-50/50 dark:from-indigo-900/20 dark:to-violet-900/10 rounded-xl p-6 border border-indigo-200 dark:border-indigo-800 shadow-sm">
-																				<h4 className="text-base font-semibold text-slate-900 dark:text-slate-100 mb-4 flex items-center gap-2">
+																			<div className="bg-gradient-to-br from-indigo-50 to-violet-50/50   rounded-xl p-6 border border-indigo-200  shadow-sm">
+																				<h4 className="text-base font-semibold text-slate-900  mb-4 flex items-center gap-2">
 																					<div className="w-2 h-2 bg-indigo-500 rounded-full"></div>
 																					Pruebas Complementarias y Biopsia
 																				</h4>
@@ -5052,8 +5052,8 @@ export default function EditConsultationForm({ initial, patient, doctor, doctorS
 																				</div>
 																			</div>
 																			{/* Sección 7: Imagen Colposcópica y Detalles Adicionales */}
-																			<div className="bg-gradient-to-br from-rose-50 to-pink-50/50 dark:from-rose-900/20 dark:to-pink-900/10 rounded-xl p-6 border border-rose-200 dark:border-rose-800 shadow-sm">
-																				<h4 className="text-base font-semibold text-slate-900 dark:text-slate-100 mb-4 flex items-center gap-2">
+																			<div className="bg-gradient-to-br from-rose-50 to-pink-50/50   rounded-xl p-6 border border-rose-200  shadow-sm">
+																				<h4 className="text-base font-semibold text-slate-900  mb-4 flex items-center gap-2">
 																					<div className="w-2 h-2 bg-rose-500 rounded-full"></div>
 																					Documentación Adicional
 																				</h4>
@@ -5062,39 +5062,39 @@ export default function EditConsultationForm({ initial, patient, doctor, doctorS
 																						<label className={labelClass}>Imagen Colposcópica</label>
 																						<div className="space-y-3">
 																							{colposcopyImage ? (
-																								<div className="relative border-2 border-slate-200 dark:border-slate-700 rounded-lg p-4 bg-slate-50 dark:bg-slate-800/50">
+																								<div className="relative border-2 border-slate-200  rounded-lg p-4 bg-slate-50 ">
 																									<div className="flex items-center justify-between">
 																										<div className="flex items-center gap-3 flex-1 min-w-0">
 																											<div className="flex-shrink-0 w-12 h-12 rounded-lg bg-gradient-to-br from-teal-500 to-cyan-500 flex items-center justify-center">
 																												<Image className="w-6 h-6 text-white" />
 																											</div>
 																											<div className="flex-1 min-w-0">
-																												<p className="text-sm font-medium text-slate-900 dark:text-slate-100 truncate">Imagen colposcópica cargada</p>
-																												<a href={colposcopyImage} target="_blank" rel="noopener noreferrer" className="text-xs text-teal-600 dark:text-teal-400 hover:underline truncate block">
+																												<p className="text-sm font-medium text-slate-900  truncate">Imagen colposcópica cargada</p>
+																												<a href={colposcopyImage} target="_blank" rel="noopener noreferrer" className="text-xs text-teal-600  hover:underline truncate block">
 																													Ver imagen
 																												</a>
 																											</div>
 																										</div>
-																										<button type="button" onClick={() => setColposcopyImage('')} className="flex-shrink-0 ml-3 p-2 rounded-lg bg-rose-100 dark:bg-rose-900/50 text-rose-600 dark:text-rose-400 hover:bg-rose-200 dark:hover:bg-rose-900 transition-colors">
+																										<button type="button" onClick={() => setColposcopyImage('')} className="flex-shrink-0 ml-3 p-2 rounded-lg bg-rose-100  text-rose-600  hover:bg-rose-200  transition-colors">
 																											<X size={18} />
 																										</button>
 																									</div>
 																								</div>
 																							) : (
-																								<label className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-slate-300 dark:border-slate-600 rounded-lg cursor-pointer bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors">
+																								<label className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-slate-300  rounded-lg cursor-pointer bg-white  hover:bg-slate-50  transition-colors">
 																									<div className="flex flex-col items-center justify-center pt-5 pb-6">
 																										{uploadingColposcopyImage ? (
 																											<>
-																												<Loader2 className="w-8 h-8 mb-2 text-teal-600 dark:text-teal-400 animate-spin" />
-																												<p className="text-sm text-slate-600 dark:text-slate-400">Subiendo imagen...</p>
+																												<Loader2 className="w-8 h-8 mb-2 text-teal-600  animate-spin" />
+																												<p className="text-sm text-slate-600 ">Subiendo imagen...</p>
 																											</>
 																										) : (
 																											<>
-																												<Upload className="w-8 h-8 mb-2 text-slate-400 dark:text-slate-500" />
-																												<p className="mb-2 text-sm text-slate-600 dark:text-slate-400">
+																												<Upload className="w-8 h-8 mb-2 text-slate-400 " />
+																												<p className="mb-2 text-sm text-slate-600 ">
 																													<span className="font-semibold">Haz clic para subir</span> o arrastra y suelta
 																												</p>
-																												<p className="text-xs text-slate-500 dark:text-slate-500">PNG, JPG, WEBP (MAX. 10MB)</p>
+																												<p className="text-xs text-slate-500 ">PNG, JPG, WEBP (MAX. 10MB)</p>
 																											</>
 																										)}
 																									</div>
@@ -5136,12 +5136,12 @@ export default function EditConsultationForm({ initial, patient, doctor, doctorS
 																								</label>
 																							)}
 																						</div>
-																						<p className="mt-2 text-xs text-slate-500 dark:text-slate-400">Sube una imagen del examen colposcópico para documentar los hallazgos visuales</p>
+																						<p className="mt-2 text-xs text-slate-500 ">Sube una imagen del examen colposcópico para documentar los hallazgos visuales</p>
 																					</div>
 																					<div>
 																						<label className={labelClass}>Detalles Adicionales</label>
 																						<textarea value={colposcopyAdditionalDetails} onChange={(e) => setColposcopyAdditionalDetails(e.target.value)} rows={4} className={`${inputBase} ${inputDark} resize-none`} placeholder="Agrega comentarios adicionales sobre la colposcopía, observaciones importantes, recomendaciones de seguimiento, etc." />
-																						<p className="mt-2 text-xs text-slate-500 dark:text-slate-400">Comentarios adicionales sobre el examen colposcópico</p>
+																						<p className="mt-2 text-xs text-slate-500 ">Comentarios adicionales sobre el examen colposcópico</p>
 																					</div>
 																				</div>
 																			</div>
@@ -5157,15 +5157,15 @@ export default function EditConsultationForm({ initial, patient, doctor, doctorS
 
 								{/* Endocrinology */}
 								{shouldShowSpecialty('endocrinology') && (
-									<div className="border border-slate-200 dark:border-slate-700 rounded-lg mb-4">
-										<button type="button" onClick={() => toggleSpecialty('endocrinology')} className="w-full flex items-center justify-between p-4 text-left hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors rounded-lg">
-											<span className="font-semibold text-slate-900 dark:text-slate-100">Endocrinología</span>
+									<div className="border border-slate-200  rounded-lg mb-4">
+										<button type="button" onClick={() => toggleSpecialty('endocrinology')} className="w-full flex items-center justify-between p-4 text-left hover:bg-slate-50  transition-colors rounded-lg">
+											<span className="font-semibold text-slate-900 ">Endocrinología</span>
 											{expandedSpecialties.has('endocrinology') ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
 										</button>
 										{expandedSpecialties.has('endocrinology') && (
 											<div className="p-4 pt-0 space-y-4">
 												{/* Botón de Grabar Audio para generar informe */}
-												<div className="mb-4 pb-4 border-b border-slate-200 dark:border-slate-700">
+												<div className="mb-4 pb-4 border-b border-slate-200 ">
 													<AudioRecorderButton
 														consultationId={initial.id}
 														reportType="endocrinology"
@@ -5196,15 +5196,15 @@ export default function EditConsultationForm({ initial, patient, doctor, doctorS
 
 								{/* Ophthalmology */}
 								{shouldShowSpecialty('ophthalmology') && (
-									<div className="border border-slate-200 dark:border-slate-700 rounded-lg mb-4">
-										<button type="button" onClick={() => toggleSpecialty('ophthalmology')} className="w-full flex items-center justify-between p-4 text-left hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors rounded-lg">
-											<span className="font-semibold text-slate-900 dark:text-slate-100">Oftalmología</span>
+									<div className="border border-slate-200  rounded-lg mb-4">
+										<button type="button" onClick={() => toggleSpecialty('ophthalmology')} className="w-full flex items-center justify-between p-4 text-left hover:bg-slate-50  transition-colors rounded-lg">
+											<span className="font-semibold text-slate-900 ">Oftalmología</span>
 											{expandedSpecialties.has('ophthalmology') ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
 										</button>
 										{expandedSpecialties.has('ophthalmology') && (
 											<div className="p-4 pt-0 space-y-4">
 												{/* Botón de Grabar Audio para generar informe */}
-												<div className="mb-4 pb-4 border-b border-slate-200 dark:border-slate-700">
+												<div className="mb-4 pb-4 border-b border-slate-200 ">
 													<AudioRecorderButton
 														consultationId={initial.id}
 														reportType="ophthalmology"
@@ -5240,7 +5240,7 @@ export default function EditConsultationForm({ initial, patient, doctor, doctorS
 					{activeTab === 'report' && (
 						<div className={sectionCard} data-tab="report">
 							<div className="mb-6 flex items-center justify-between">
-								<h2 className="text-xl font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
+								<h2 className="text-xl font-bold text-slate-900  flex items-center gap-2">
 									<FileCheck size={20} />
 									Generar Informe Médico
 								</h2>
@@ -5254,8 +5254,8 @@ export default function EditConsultationForm({ initial, patient, doctor, doctorS
 							</div>
 
 							{hasObstetrics ? (
-								<div className="bg-pink-50 dark:bg-pink-900/20 border border-pink-200 dark:border-pink-800 rounded-lg p-4 mb-6">
-									<p className="text-sm text-pink-800 dark:text-pink-200 mb-3">
+								<div className="bg-pink-50  border border-pink-200  rounded-lg p-4 mb-6">
+									<p className="text-sm text-pink-800  mb-3">
 										<strong>Tipo de Informe:</strong> Selecciona el tipo de informe que deseas generar.
 									</p>
 									<div className="flex flex-wrap gap-3">
@@ -5270,7 +5270,7 @@ export default function EditConsultationForm({ initial, patient, doctor, doctorS
 											className={`px-4 py-2 rounded-lg font-medium transition-colors ${
 												selectedReportType === 'gynecology'
 													? 'bg-teal-600 text-white shadow-md'
-													: 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-teal-300 dark:border-teal-700 hover:bg-teal-100 dark:hover:bg-teal-900/30'
+													: 'bg-white  text-slate-700  border border-teal-300  hover:bg-teal-100 '
 											}`}>
 											📋 Informe de Ginecología
 										</button>
@@ -5285,7 +5285,7 @@ export default function EditConsultationForm({ initial, patient, doctor, doctorS
 											className={`px-4 py-2 rounded-lg font-medium transition-colors ${
 												selectedReportType === 'first_trimester'
 													? 'bg-pink-600 text-white shadow-md'
-													: 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-pink-300 dark:border-pink-700 hover:bg-pink-100 dark:hover:bg-pink-900/30'
+													: 'bg-white  text-slate-700  border border-pink-300  hover:bg-pink-100 '
 											}`}>
 											📋 Informe del Primer Trimestre
 										</button>
@@ -5300,15 +5300,15 @@ export default function EditConsultationForm({ initial, patient, doctor, doctorS
 											className={`px-4 py-2 rounded-lg font-medium transition-colors ${
 												selectedReportType === 'second_third_trimester'
 													? 'bg-indigo-600 text-white shadow-md'
-													: 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-indigo-300 dark:border-indigo-700 hover:bg-indigo-100 dark:hover:bg-indigo-900/30'
+													: 'bg-white  text-slate-700  border border-indigo-300  hover:bg-indigo-100 '
 											}`}>
 											📋 Informe del 2do y 3er Trimestre
 										</button>
 									</div>
 								</div>
 							) : (
-								<div className="bg-teal-50 dark:bg-teal-900/20 border border-teal-200 dark:border-teal-800 rounded-lg p-4 mb-6">
-									<p className="text-sm text-teal-800 dark:text-teal-200">
+								<div className="bg-teal-50  border border-teal-200  rounded-lg p-4 mb-6">
+									<p className="text-sm text-teal-800 ">
 										<strong>Informe Médico Generado:</strong> Se generará un informe médico estándar basado en los datos de la consulta.
 									</p>
 								</div>
@@ -5316,14 +5316,14 @@ export default function EditConsultationForm({ initial, patient, doctor, doctorS
 
 							{/* Instrucciones diferentes según el tipo de informe */}
 							{selectedReportType === 'first_trimester' || selectedReportType === 'second_third_trimester' ? (
-								<div className="bg-pink-50 dark:bg-pink-900/20 border border-pink-200 dark:border-pink-800 rounded-lg p-4 mb-6">
-									<p className="text-sm text-pink-800 dark:text-pink-200">
+								<div className="bg-pink-50  border border-pink-200  rounded-lg p-4 mb-6">
+									<p className="text-sm text-pink-800 ">
 										<strong>Instrucciones:</strong> Este informe se genera directamente desde la plantilla de Word cargada. Las variables del formulario se insertarán automáticamente en el documento Word.
 										<span className="block mt-2">
 											<strong>Importante:</strong> Asegúrate de haber cargado la plantilla de Word correspondiente en{' '}
 											<Link 
 												href="/dashboard/medic/plantilla-informe" 
-												className="text-pink-700 dark:text-pink-300 underline font-semibold hover:text-pink-800 dark:hover:text-pink-200 transition-colors"
+												className="text-pink-700  underline font-semibold hover:text-pink-800  transition-colors"
 											>
 												"dashboard/medic/plantilla-informe"
 											</Link>
@@ -5332,18 +5332,18 @@ export default function EditConsultationForm({ initial, patient, doctor, doctorS
 									</p>
 								</div>
 							) : (
-								<div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4 mb-6">
-									<p className="text-sm text-blue-800 dark:text-blue-200">
+								<div className="bg-blue-50  border border-blue-200  rounded-lg p-4 mb-6">
+									<p className="text-sm text-blue-800 ">
 										<strong>Instrucciones:</strong> El contenido del informe se genera automáticamente desde la plantilla de texto configurada o puedes escribirlo manualmente.
 										<span className="block mt-2">
 											Si tienes una plantilla de Word configurada en{' '}
 											<Link 
 												href="/dashboard/medic/plantilla-informe" 
-												className="text-blue-700 dark:text-blue-300 underline font-semibold hover:text-blue-800 dark:hover:text-blue-200 transition-colors"
+												className="text-blue-700  underline font-semibold hover:text-blue-800  transition-colors"
 											>
 												"Plantillas"
 											</Link>
-											, el contenido se insertará en el marcador <code className="bg-blue-100 dark:bg-blue-900 px-1.5 py-0.5 rounded font-mono text-xs">{'{{contenido}}'}</code>.
+											, el contenido se insertará en el marcador <code className="bg-blue-100  px-1.5 py-0.5 rounded font-mono text-xs">{'{{contenido}}'}</code>.
 										</span>
 										<span className="block mt-2">
 											<strong>Nota:</strong> Si no tienes una plantilla cargada y dejas el contenido vacío, se generará un informe automático con el diseño genérico (logo y colores configurados).
@@ -5363,7 +5363,7 @@ export default function EditConsultationForm({ initial, patient, doctor, doctorS
 											</option>
 										))}
 									</select>
-									<p className="mt-2 text-xs text-slate-500 dark:text-slate-400">La fuente seleccionada se aplicará al generar el informe.</p>
+									<p className="mt-2 text-xs text-slate-500 ">La fuente seleccionada se aplicará al generar el informe.</p>
 								</div>
 
 								{/* Campo de Contenido del Informe - Solo para informes que NO son de obstetricia (1er trimestre o 2do/3er trimestre) */}
@@ -5406,14 +5406,14 @@ export default function EditConsultationForm({ initial, patient, doctor, doctorS
 															setReportSuccess(null);
 														}
 													}}
-													className="px-4 py-2 rounded-lg bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 text-sm font-medium hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors border border-slate-200 dark:border-slate-700">
+													className="px-4 py-2 rounded-lg bg-slate-100 text-slate-700   text-sm font-medium hover:bg-slate-200  transition-colors border border-slate-200 ">
 													📄 Cargar Plantilla Guardada
 												</button>
 											</div>
 
 											{/* Botón de Audio con IA para informe completo (N8N) */}
-											<div className="p-4 bg-gradient-to-br from-indigo-50 to-purple-50 dark:from-indigo-900/20 dark:to-purple-900/20 rounded-xl border border-indigo-100 dark:border-indigo-800">
-												<h4 className="text-sm font-semibold text-indigo-900 dark:text-indigo-200 mb-3 flex items-center gap-2">
+											<div className="p-4 bg-gradient-to-br from-indigo-50 to-purple-50   rounded-xl border border-indigo-100 ">
+												<h4 className="text-sm font-semibold text-indigo-900  mb-3 flex items-center gap-2">
 													<Sparkles size={16} />
 													Generar Informe con IA
 												</h4>
@@ -5441,7 +5441,7 @@ export default function EditConsultationForm({ initial, patient, doctor, doctorS
 													}}
 													className="w-full"
 												/>
-												<p className="mt-2 text-xs text-indigo-600 dark:text-indigo-400">
+												<p className="mt-2 text-xs text-indigo-600 ">
 													Graba el audio de la consulta y la IA generará automáticamente el informe completo (DOCX) usando el flujo avanzado (N8N).
 												</p>
 											</div>
@@ -5450,9 +5450,9 @@ export default function EditConsultationForm({ initial, patient, doctor, doctorS
 									</>
 								)}
 
-								{reportError && <div className="rounded-lg bg-rose-50 dark:bg-rose-900/20 border border-rose-200 dark:border-rose-800 text-rose-700 dark:text-rose-300 p-4 text-sm">{reportError}</div>}
+								{reportError && <div className="rounded-lg bg-rose-50  border border-rose-200  text-rose-700  p-4 text-sm">{reportError}</div>}
 
-								{reportSuccess && <div className="rounded-lg bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300 p-4 text-sm">{reportSuccess}</div>}
+								{reportSuccess && <div className="rounded-lg bg-emerald-50  border border-emerald-200  text-emerald-700  p-4 text-sm">{reportSuccess}</div>}
 
 								{/* Botones de acción del informe */}
 								<div className="flex flex-col gap-3">
@@ -5514,14 +5514,14 @@ export default function EditConsultationForm({ initial, patient, doctor, doctorS
 					{activeTab === 'report' && (
 						<div className={sectionCard}>
 							<div className="mb-6">
-								<h2 className="text-xl font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2 mb-4">
+								<h2 className="text-xl font-bold text-slate-900  flex items-center gap-2 mb-4">
 									<ClipboardList size={20} />
 									Prescripción Médica
 								</h2>
 							</div>
 
-							<div className="bg-teal-50 dark:bg-teal-900/20 border border-teal-200 dark:border-teal-800 rounded-lg p-4 mb-6">
-								<p className="text-sm text-teal-800 dark:text-teal-200">
+							<div className="bg-teal-50  border border-teal-200  rounded-lg p-4 mb-6">
+								<p className="text-sm text-teal-800 ">
 									<strong>Información:</strong> Crea y gestiona las prescripciones médicas para esta consulta. Puedes agregar medicamentos, dosis, frecuencia y duración del tratamiento.
 								</p>
 							</div>
@@ -5543,11 +5543,11 @@ export default function EditConsultationForm({ initial, patient, doctor, doctorS
 					)}
 
 					{/* Error and Success Messages */}
-					{error && <div className="rounded-lg bg-rose-50 dark:bg-rose-900/20 border border-rose-200 dark:border-rose-800 text-rose-700 dark:text-rose-300 p-4 whitespace-pre-line text-sm">{error}</div>}
-					{success && <div className="rounded-lg bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300 p-4 text-sm">{success}</div>}
+					{error && <div className="rounded-lg bg-rose-50  border border-rose-200  text-rose-700  p-4 whitespace-pre-line text-sm">{error}</div>}
+					{success && <div className="rounded-lg bg-emerald-50  border border-emerald-200  text-emerald-700  p-4 text-sm">{success}</div>}
 
 					{/* Action Buttons */}
-					<div className="flex items-center justify-between pt-6 border-t border-slate-200 dark:border-slate-700">
+					<div className="flex items-center justify-between pt-6 border-t border-slate-200 ">
 						<div className="flex items-center gap-3">
 							<button type="submit" disabled={loading} className="inline-flex items-center gap-2 px-6 py-3 rounded-lg bg-gradient-to-r from-teal-600 to-cyan-600 text-white font-semibold shadow-lg hover:shadow-xl hover:scale-[1.02] transition-all disabled:opacity-50">
 								{loading ? (
@@ -5563,7 +5563,7 @@ export default function EditConsultationForm({ initial, patient, doctor, doctorS
 								)}
 							</button>
 
-							<button type="button" onClick={() => router.push(`/dashboard/medic/consultas/${initial.id}`)} className="px-5 py-3 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors font-medium">
+							<button type="button" onClick={() => router.push(`/dashboard/medic/consultas/${initial.id}`)} className="px-5 py-3 rounded-lg border border-slate-300  bg-white  text-slate-700  hover:bg-slate-50  transition-colors font-medium">
 								Cancelar
 							</button>
 						</div>

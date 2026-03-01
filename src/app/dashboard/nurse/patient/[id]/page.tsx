@@ -11,7 +11,7 @@ export default function PatientSummaryPage({ params }: { params: Promise<{ id: s
 
   if (!activePatient) {
     return (
-      <div className="flex flex-col items-center justify-center py-20 bg-white dark:bg-gray-900 rounded-3xl border border-gray-100 dark:border-gray-800">
+      <div className="flex flex-col items-center justify-center py-20 bg-white  rounded-3xl border border-gray-100 ">
         <Loader2 className="w-10 h-10 text-teal-600 animate-spin mb-4" />
         <p className="text-gray-500 font-medium">Sincronizando datos del paciente...</p>
       </div>

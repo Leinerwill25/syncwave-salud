@@ -89,18 +89,18 @@ export function PatientMARTab({ queueId }: Props) {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h3 className="text-lg font-black text-gray-900 dark:text-white flex items-center gap-2">
+        <h3 className="text-lg font-black text-gray-900  flex items-center gap-2">
           <Pill className="w-5 h-5 text-teal-600" />
           Registro de Administración (MAR)
         </h3>
         
         <div className="flex items-center gap-4">
-          <div className="bg-gray-100 dark:bg-gray-800 p-1 rounded-xl flex items-center">
+          <div className="bg-gray-100  p-1 rounded-xl flex items-center">
             <button
               onClick={() => setViewMode('list')}
               className={cn(
                 "px-3 py-1.5 rounded-lg text-xs font-bold transition-all",
-                viewMode === 'list' ? "bg-white dark:bg-gray-700 text-teal-600 shadow-sm" : "text-gray-500 hover:text-gray-700"
+                viewMode === 'list' ? "bg-white  text-teal-600 shadow-sm" : "text-gray-500 hover:text-gray-700"
               )}
             >
               Lista
@@ -109,7 +109,7 @@ export function PatientMARTab({ queueId }: Props) {
               onClick={() => setViewMode('kardex')}
               className={cn(
                 "px-3 py-1.5 rounded-lg text-xs font-bold transition-all",
-                viewMode === 'kardex' ? "bg-white dark:bg-gray-700 text-teal-600 shadow-sm" : "text-gray-500 hover:text-gray-700"
+                viewMode === 'kardex' ? "bg-white  text-teal-600 shadow-sm" : "text-gray-500 hover:text-gray-700"
               )}
             >
               Kardex
@@ -126,15 +126,15 @@ export function PatientMARTab({ queueId }: Props) {
       </div>
 
       {records.length === 0 ? (
-        <div className="bg-gray-50 dark:bg-gray-800/40 rounded-3xl p-12 border border-dashed border-gray-200 dark:border-gray-700 flex flex-col items-center text-center">
-          <div className="w-16 h-16 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center mb-4">
+        <div className="bg-gray-50  rounded-3xl p-12 border border-dashed border-gray-200  flex flex-col items-center text-center">
+          <div className="w-16 h-16 rounded-full bg-gray-100  flex items-center justify-center mb-4">
             <Info className="w-8 h-8 text-gray-400" />
           </div>
-          <h4 className="text-gray-900 dark:text-white font-bold mb-1">No hay medicamentos programados</h4>
+          <h4 className="text-gray-900  font-bold mb-1">No hay medicamentos programados</h4>
           <p className="text-sm text-gray-500 max-w-xs">Este paciente no tiene indicaciones de medicamentos registradas para esta visita.</p>
         </div>
       ) : viewMode === 'kardex' ? (
-        <div className="bg-white dark:bg-gray-950 p-6 md:p-8 rounded-[2.5rem] border border-gray-100 dark:border-gray-800 shadow-sm">
+        <div className="bg-white  p-6 md:p-8 rounded-[2.5rem] border border-gray-100  shadow-sm">
           <MedicationKardex records={records} />
         </div>
       ) : (
@@ -143,8 +143,8 @@ export function PatientMARTab({ queueId }: Props) {
             <div 
               key={record.mar_id}
               className={cn(
-                "bg-white dark:bg-gray-900 border rounded-3xl p-5 transition-all shadow-sm",
-                record.status === 'administered' ? "border-emerald-100 dark:border-emerald-900/30" : "border-gray-100 dark:border-gray-800"
+                "bg-white  border rounded-3xl p-5 transition-all shadow-sm",
+                record.status === 'administered' ? "border-emerald-100 " : "border-gray-100 "
               )}
             >
               <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -157,31 +157,31 @@ export function PatientMARTab({ queueId }: Props) {
                   </div>
                   <div>
                     <div className="flex items-center gap-2 mb-1">
-                      <h4 className="font-black text-gray-900 dark:text-white">{record.medication_name}</h4>
+                      <h4 className="font-black text-gray-900 ">{record.medication_name}</h4>
                       {getStatusBadge(record.status)}
                     </div>
                     <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-gray-500">
                       <span className="flex items-center gap-1">
-                        <span className="font-bold text-gray-700 dark:text-gray-300">Dosis:</span> {record.dose}
+                        <span className="font-bold text-gray-700 ">Dosis:</span> {record.dose}
                       </span>
                       <span className="flex items-center gap-1">
-                        <span className="font-bold text-gray-700 dark:text-gray-300">Vía:</span> {record.route}
+                        <span className="font-bold text-gray-700 ">Vía:</span> {record.route}
                       </span>
                       {record.frequency && (
                         <span className="flex items-center gap-1">
-                          <span className="font-bold text-gray-700 dark:text-gray-300">Frecuencia:</span> {record.frequency}
+                          <span className="font-bold text-gray-700 ">Frecuencia:</span> {record.frequency}
                         </span>
                       )}
                     </div>
                   </div>
                 </div>
 
-                <div className="flex flex-col items-end gap-2 md:border-l border-gray-100 dark:border-gray-800 md:pl-6">
+                <div className="flex flex-col items-end gap-2 md:border-l border-gray-100  md:pl-6">
                   <div className="flex items-center gap-2 text-xs font-bold text-gray-400 uppercase tracking-wider">
                     <Clock className="w-3 h-3" />
                     Programado
                   </div>
-                  <div className="text-lg font-black text-gray-900 dark:text-white">
+                  <div className="text-lg font-black text-gray-900 ">
                     {format(new Date(record.scheduled_at), 'hh:mm a')}
                   </div>
                   <div className="text-[10px] text-gray-400 font-medium">
@@ -192,7 +192,7 @@ export function PatientMARTab({ queueId }: Props) {
 
               {/* Action Buttons if Pending */}
               {record.status === 'pending' && (
-                <div className="mt-6 pt-6 border-t border-gray-50 dark:border-gray-800 flex flex-wrap gap-3">
+                <div className="mt-6 pt-6 border-t border-gray-50  flex flex-wrap gap-3">
                   <button
                     disabled={processingId === record.mar_id}
                     onClick={() => handleUpdateStatus(record.mar_id, 'administered')}
@@ -207,7 +207,7 @@ export function PatientMARTab({ queueId }: Props) {
                       const reason = window.prompt('Motivo de la omisión/rechazo:');
                       if (reason) handleUpdateStatus(record.mar_id, 'omitted', '', reason);
                     }}
-                    className="flex-1 min-w-[140px] bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300 font-bold py-2.5 px-4 rounded-2xl flex items-center justify-center gap-2 transition-all disabled:opacity-50"
+                    className="flex-1 min-w-[140px] bg-white  border border-gray-200  hover:bg-gray-50  text-gray-700  font-bold py-2.5 px-4 rounded-2xl flex items-center justify-center gap-2 transition-all disabled:opacity-50"
                   >
                     <XCircle className="w-4 h-4" />
                     Omitir
@@ -217,7 +217,7 @@ export function PatientMARTab({ queueId }: Props) {
 
               {/* Log Info if Completed */}
               {record.status !== 'pending' && (
-                <div className="mt-4 p-3 bg-gray-50 dark:bg-gray-800/50 rounded-2xl flex items-center gap-3">
+                <div className="mt-4 p-3 bg-gray-50  rounded-2xl flex items-center gap-3">
                   <div className={cn(
                     "w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0",
                     record.status === 'administered' ? "bg-emerald-100 text-emerald-600" : "bg-gray-200 text-gray-600"
@@ -240,9 +240,9 @@ export function PatientMARTab({ queueId }: Props) {
       )}
 
       {/* Warning Alert */}
-      <div className="p-4 bg-amber-50 dark:bg-amber-900/10 border border-amber-100 dark:border-amber-900/30 rounded-3xl flex gap-3">
+      <div className="p-4 bg-amber-50  border border-amber-100  rounded-3xl flex gap-3">
         <AlertCircle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
-        <div className="text-xs text-amber-800 dark:text-amber-400 leading-relaxed font-medium">
+        <div className="text-xs text-amber-800  leading-relaxed font-medium">
           <strong>Importante:</strong> La administración de medicamentos debe ser verificada según la indicación médica. Si existen discrepancias o reacciones adversas, regístrelas en las Notas de Evolución.
         </div>
       </div>

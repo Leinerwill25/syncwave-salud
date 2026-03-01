@@ -80,10 +80,10 @@ export default function NurseIndependentSettingsPage() {
     <div className="max-w-4xl mx-auto space-y-6">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+          <h1 className="text-2xl font-bold text-gray-900 ">
             Mi Perfil y Credenciales
           </h1>
-          <p className="text-sm text-gray-500 dark:text-gray-400">
+          <p className="text-sm text-gray-500 ">
             Administra tu información personal y alcance de práctica independiente.
           </p>
         </div>
@@ -91,96 +91,96 @@ export default function NurseIndependentSettingsPage() {
 
       <form onSubmit={handleSave} className="space-y-6">
         {/* Datos Personales */}
-        <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl shadow-sm overflow-hidden">
-          <div className="p-6 border-b border-gray-100 dark:border-gray-800 flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-blue-50 dark:bg-blue-900/20 flex items-center justify-center text-blue-600 dark:text-blue-400">
+        <div className="bg-white  border border-gray-200  rounded-2xl shadow-sm overflow-hidden">
+          <div className="p-6 border-b border-gray-100  flex items-center gap-3">
+            <div className="w-10 h-10 rounded-full bg-blue-50  flex items-center justify-center text-blue-600 ">
               <User className="w-5 h-5" />
             </div>
-            <h2 className="text-lg font-bold text-gray-900 dark:text-white">Información Personal</h2>
+            <h2 className="text-lg font-bold text-gray-900 ">Información Personal</h2>
           </div>
           <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="space-y-2">
-              <label className="text-sm font-bold text-gray-700 dark:text-gray-300">Nombre Completo</label>
+              <label className="text-sm font-bold text-gray-700 ">Nombre Completo</label>
               <input 
                 type="text" 
                 value={formData.name}
                 onChange={e => setFormData({...formData, name: e.target.value})}
-                className="w-full px-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 focus:bg-white dark:focus:bg-gray-800 focus:ring-4 focus:ring-blue-100 dark:focus:ring-blue-900/20 outline-none transition-all"
+                className="w-full px-4 py-2.5 rounded-xl border border-gray-200  bg-gray-50  focus:bg-white  focus:ring-4 focus:ring-blue-100  outline-none transition-all"
               />
             </div>
             <div className="space-y-2">
-              <label className="text-sm font-bold text-gray-700 dark:text-gray-300 flex items-center gap-2">
+              <label className="text-sm font-bold text-gray-700  flex items-center gap-2">
                 Especialidad Principal
               </label>
               <input 
                 type="text" 
                 value={formData.specialty}
                 onChange={e => setFormData({...formData, specialty: e.target.value})}
-                className="w-full px-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 focus:bg-white dark:focus:bg-gray-800 focus:ring-4 focus:ring-blue-100 dark:focus:ring-blue-900/20 outline-none transition-all"
+                className="w-full px-4 py-2.5 rounded-xl border border-gray-200  bg-gray-50  focus:bg-white  focus:ring-4 focus:ring-blue-100  outline-none transition-all"
               />
             </div>
             <div className="space-y-2">
-              <label className="text-sm flex items-center text-gray-700 dark:text-gray-300 gap-2 font-bold"><Mail className="w-4 h-4 text-gray-400"/> Correo Electrónico</label>
+              <label className="text-sm flex items-center text-gray-700  gap-2 font-bold"><Mail className="w-4 h-4 text-gray-400"/> Correo Electrónico</label>
               <input 
                 type="email" 
                 value={formData.email}
                 onChange={e => setFormData({...formData, email: e.target.value})}
-                className="w-full px-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 focus:bg-white dark:focus:bg-gray-800 focus:ring-4 focus:ring-blue-100 dark:focus:ring-blue-900/20 outline-none transition-all"
+                className="w-full px-4 py-2.5 rounded-xl border border-gray-200  bg-gray-50  focus:bg-white  focus:ring-4 focus:ring-blue-100  outline-none transition-all"
               />
             </div>
             <div className="space-y-2">
-              <label className="text-sm flex items-center text-gray-700 dark:text-gray-300 gap-2 font-bold"><Phone className="w-4 h-4 text-gray-400"/> Teléfono</label>
+              <label className="text-sm flex items-center text-gray-700  gap-2 font-bold"><Phone className="w-4 h-4 text-gray-400"/> Teléfono</label>
               <input 
                 type="tel" 
                 value={formData.phone}
                 onChange={e => setFormData({...formData, phone: e.target.value})}
-                className="w-full px-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 focus:bg-white dark:focus:bg-gray-800 focus:ring-4 focus:ring-blue-100 dark:focus:ring-blue-900/20 outline-none transition-all"
+                className="w-full px-4 py-2.5 rounded-xl border border-gray-200  bg-gray-50  focus:bg-white  focus:ring-4 focus:ring-blue-100  outline-none transition-all"
               />
             </div>
           </div>
         </div>
 
         {/* Credenciales y Seguridad */}
-        <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl shadow-sm overflow-hidden">
-          <div className="p-6 border-b border-gray-100 dark:border-gray-800 flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-emerald-50 dark:bg-emerald-900/20 flex items-center justify-center text-emerald-600 dark:text-emerald-400">
+        <div className="bg-white  border border-gray-200  rounded-2xl shadow-sm overflow-hidden">
+          <div className="p-6 border-b border-gray-100  flex items-center gap-3">
+            <div className="w-10 h-10 rounded-full bg-emerald-50  flex items-center justify-center text-emerald-600 ">
               <Shield className="w-5 h-5" />
             </div>
-            <h2 className="text-lg font-bold text-gray-900 dark:text-white">Credenciales y Licencia</h2>
+            <h2 className="text-lg font-bold text-gray-900 ">Credenciales y Licencia</h2>
           </div>
           <div className="p-6">
-            <div className="bg-gray-50 dark:bg-gray-800/50 p-6 rounded-xl border border-gray-200 dark:border-gray-700 mb-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div className="bg-gray-50  p-6 rounded-xl border border-gray-200  mb-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
               <div>
-                <p className="text-sm font-bold text-gray-600 dark:text-gray-400 mb-1">Estado de Licencia</p>
+                <p className="text-sm font-bold text-gray-600  mb-1">Estado de Licencia</p>
                 {formData.isLicenseVerified ? (
-                  <div className="flex items-center gap-2 text-emerald-600 dark:text-emerald-400">
+                  <div className="flex items-center gap-2 text-emerald-600 ">
                     <CheckCircle2 className="w-5 h-5" />
                     <span className="font-bold">Verificada por el Ente Regulador</span>
                   </div>
                 ) : (
-                  <div className="flex items-center gap-2 text-amber-600 dark:text-amber-400">
+                  <div className="flex items-center gap-2 text-amber-600 ">
                     <AlertCircle className="w-5 h-5" />
                     <span className="font-bold">Pendiente de Validación</span>
                   </div>
                 )}
               </div>
-              <button type="button" className="px-4 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors text-sm font-medium shadow-sm">
+              <button type="button" className="px-4 py-2 bg-white  border border-gray-200  text-gray-700  rounded-xl hover:bg-gray-50  transition-colors text-sm font-medium shadow-sm">
                 Solicitar Re-evaluación
               </button>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-2">
-                <label className="text-sm font-bold text-gray-700 dark:text-gray-300">Número de Licencia / Registro</label>
+                <label className="text-sm font-bold text-gray-700 ">Número de Licencia / Registro</label>
                 <input 
                   type="text" 
                   value={formData.licenseNumber}
                   readOnly={formData.isLicenseVerified}
                   onChange={e => setFormData({...formData, licenseNumber: e.target.value})}
-                  className={`w-full px-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 outline-none transition-all ${
+                  className={`w-full px-4 py-2.5 rounded-xl border border-gray-200  outline-none transition-all ${
                     formData.isLicenseVerified 
-                      ? 'bg-gray-100 dark:bg-gray-800 text-gray-500 cursor-not-allowed' 
-                      : 'bg-white focus:ring-4 focus:ring-emerald-100 dark:focus:ring-emerald-900/20'
+                      ? 'bg-gray-100  text-gray-500 cursor-not-allowed' 
+                      : 'bg-white focus:ring-4 focus:ring-emerald-100 '
                   }`}
                 />
                 {formData.isLicenseVerified && (
@@ -188,9 +188,9 @@ export default function NurseIndependentSettingsPage() {
                 )}
               </div>
               <div className="space-y-2">
-                <label className="text-sm font-bold text-gray-700 dark:text-gray-300">Documento Respaldo (PDF, JPG)</label>
-                <div className="w-full flex items-center justify-center px-4 py-2 border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-xl bg-gray-50 dark:bg-gray-800/30 hover:bg-gray-100 dark:hover:bg-gray-800/80 transition-colors cursor-pointer group">
-                  <span className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">
+                <label className="text-sm font-bold text-gray-700 ">Documento Respaldo (PDF, JPG)</label>
+                <div className="w-full flex items-center justify-center px-4 py-2 border-2 border-dashed border-gray-300  rounded-xl bg-gray-50  hover:bg-gray-100  transition-colors cursor-pointer group">
+                  <span className="flex items-center gap-2 text-sm text-gray-500  group-hover:text-emerald-600  transition-colors">
                     <UploadCloud className="w-5 h-5" /> Subir archivo
                   </span>
                 </div>
@@ -200,18 +200,18 @@ export default function NurseIndependentSettingsPage() {
         </div>
 
         {/* Alcance de Práctica */}
-        <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl shadow-sm overflow-hidden">
-          <div className="p-6 border-b border-gray-100 dark:border-gray-800 flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-teal-50 dark:bg-teal-900/20 flex items-center justify-center text-teal-600 dark:text-teal-400">
+        <div className="bg-white  border border-gray-200  rounded-2xl shadow-sm overflow-hidden">
+          <div className="p-6 border-b border-gray-100  flex items-center gap-3">
+            <div className="w-10 h-10 rounded-full bg-teal-50  flex items-center justify-center text-teal-600 ">
               <Briefcase className="w-5 h-5" />
             </div>
             <div>
-              <h2 className="text-lg font-bold text-gray-900 dark:text-white">Alcance de Práctica</h2>
+              <h2 className="text-lg font-bold text-gray-900 ">Alcance de Práctica</h2>
               <p className="text-xs text-gray-500">Servicios que ofreces como profesional independiente.</p>
             </div>
           </div>
           <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-4">
-            <label className="flex items-center gap-3 p-4 border border-gray-200 dark:border-gray-700 rounded-xl cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
+            <label className="flex items-center gap-3 p-4 border border-gray-200  rounded-xl cursor-pointer hover:bg-gray-50  transition-colors">
               <input 
                 type="checkbox" 
                 checked={formData.scope.homeVisits} 
@@ -221,9 +221,9 @@ export default function NurseIndependentSettingsPage() {
                 })}
                 className="w-5 h-5 text-teal-600 border-gray-300 rounded focus:ring-teal-500"
               />
-              <span className="font-medium text-gray-700 dark:text-gray-300">Visitas Domiciliarias</span>
+              <span className="font-medium text-gray-700 ">Visitas Domiciliarias</span>
             </label>
-            <label className="flex items-center gap-3 p-4 border border-gray-200 dark:border-gray-700 rounded-xl cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
+            <label className="flex items-center gap-3 p-4 border border-gray-200  rounded-xl cursor-pointer hover:bg-gray-50  transition-colors">
               <input 
                 type="checkbox" 
                 checked={formData.scope.ivAdministration} 
@@ -233,9 +233,9 @@ export default function NurseIndependentSettingsPage() {
                 })}
                 className="w-5 h-5 text-teal-600 border-gray-300 rounded focus:ring-teal-500"
               />
-              <span className="font-medium text-gray-700 dark:text-gray-300">Administración de vías (IV/IM)</span>
+              <span className="font-medium text-gray-700 ">Administración de vías (IV/IM)</span>
             </label>
-            <label className="flex items-center gap-3 p-4 border border-gray-200 dark:border-gray-700 rounded-xl cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
+            <label className="flex items-center gap-3 p-4 border border-gray-200  rounded-xl cursor-pointer hover:bg-gray-50  transition-colors">
               <input 
                 type="checkbox" 
                 checked={formData.scope.woundCare} 
@@ -245,9 +245,9 @@ export default function NurseIndependentSettingsPage() {
                 })}
                 className="w-5 h-5 text-teal-600 border-gray-300 rounded focus:ring-teal-500"
               />
-              <span className="font-medium text-gray-700 dark:text-gray-300">Manejo y Cuidado de Heridas</span>
+              <span className="font-medium text-gray-700 ">Manejo y Cuidado de Heridas</span>
             </label>
-            <label className="flex items-center gap-3 p-4 border border-gray-200 dark:border-gray-700 rounded-xl cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
+            <label className="flex items-center gap-3 p-4 border border-gray-200  rounded-xl cursor-pointer hover:bg-gray-50  transition-colors">
               <input 
                 type="checkbox" 
                 checked={formData.scope.elderly} 
@@ -257,7 +257,7 @@ export default function NurseIndependentSettingsPage() {
                 })}
                 className="w-5 h-5 text-teal-600 border-gray-300 rounded focus:ring-teal-500"
               />
-              <span className="font-medium text-gray-700 dark:text-gray-300">Atención Geriátrica Exclusiva</span>
+              <span className="font-medium text-gray-700 ">Atención Geriátrica Exclusiva</span>
             </label>
           </div>
         </div>

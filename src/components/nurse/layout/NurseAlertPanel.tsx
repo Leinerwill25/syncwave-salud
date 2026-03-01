@@ -28,9 +28,9 @@ function AlertIcon({ type }: { type: NurseAlert['type'] }) {
 
 function AlertCard({ alert, onDismiss }: { alert: NurseAlert; onDismiss: () => void }) {
   const bgClass = {
-    critical: 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800',
-    warning:  'bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800',
-    info:     'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800',
+    critical: 'bg-red-50  border-red-200 ',
+    warning:  'bg-amber-50  border-amber-200 ',
+    info:     'bg-blue-50  border-blue-200 ',
   }[alert.type];
 
   return (
@@ -44,7 +44,7 @@ function AlertCard({ alert, onDismiss }: { alert: NurseAlert; onDismiss: () => v
       {alert.type !== 'critical' && (
         <button
           onClick={onDismiss}
-          className="absolute top-2 right-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+          className="absolute top-2 right-2 text-gray-400 hover:text-gray-600 "
           aria-label="Descartar alerta"
         >
           <X className="w-3.5 h-3.5" />
@@ -54,20 +54,20 @@ function AlertCard({ alert, onDismiss }: { alert: NurseAlert; onDismiss: () => v
       <div className="flex items-start gap-2 pr-4">
         <AlertIcon type={alert.type} />
         <div className="min-w-0">
-          <p className="text-xs font-semibold text-gray-900 dark:text-white">{alert.title}</p>
-          <p className="text-xs text-gray-600 dark:text-gray-400 mt-0.5 leading-snug">{alert.message}</p>
+          <p className="text-xs font-semibold text-gray-900 ">{alert.title}</p>
+          <p className="text-xs text-gray-600  mt-0.5 leading-snug">{alert.message}</p>
           {alert.patientName && (
-            <p className="text-[10px] text-gray-500 dark:text-gray-500 mt-0.5">
+            <p className="text-[10px] text-gray-500  mt-0.5">
               Paciente: {alert.patientName}
             </p>
           )}
-          <p className="text-[10px] text-gray-400 dark:text-gray-600 mt-1">
+          <p className="text-[10px] text-gray-400  mt-1">
             {formatDistanceToNow(alert.createdAt, { addSuffix: true, locale: es })}
           </p>
           {alert.action && (
             <Link
               href={alert.action.href}
-              className="inline-block mt-1.5 text-[10px] font-medium text-teal-600 dark:text-teal-400 hover:underline"
+              className="inline-block mt-1.5 text-[10px] font-medium text-teal-600  hover:underline"
             >
               {alert.action.label} →
             </Link>
@@ -115,19 +115,19 @@ export function NurseAlertPanel() {
             animate={{ x: 0 }}
             exit={{ x: '100%' }}
             transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-            className="fixed right-0 top-0 h-full w-80 bg-white dark:bg-gray-900 border-l border-gray-200 dark:border-gray-800 shadow-2xl z-20 flex flex-col"
+            className="fixed right-0 top-0 h-full w-80 bg-white  border-l border-gray-200  shadow-2xl z-20 flex flex-col"
           >
             {/* Header */}
-            <div className="flex items-center justify-between px-4 py-4 border-b border-gray-200 dark:border-gray-800">
+            <div className="flex items-center justify-between px-4 py-4 border-b border-gray-200 ">
               <div>
-                <h2 className="text-sm font-semibold text-gray-900 dark:text-white">Alertas activas</h2>
-                <p className="text-xs text-gray-500 dark:text-gray-400">
+                <h2 className="text-sm font-semibold text-gray-900 ">Alertas activas</h2>
+                <p className="text-xs text-gray-500 ">
                   {visible.length === 0 ? 'Sin alertas nuevas' : `${visible.length} alerta${visible.length !== 1 ? 's' : ''}`}
                 </p>
               </div>
               <button
                 onClick={() => setOpen(false)}
-                className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500 transition-colors"
+                className="p-1.5 rounded-lg hover:bg-gray-100  text-gray-500 transition-colors"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -136,7 +136,7 @@ export function NurseAlertPanel() {
             {/* Critical section (non-dismissable) */}
             {criticals.length > 0 && (
               <div className="px-3 pt-3">
-                <p className="text-[10px] font-bold text-red-600 dark:text-red-400 uppercase tracking-wider mb-2 flex items-center gap-1">
+                <p className="text-[10px] font-bold text-red-600  uppercase tracking-wider mb-2 flex items-center gap-1">
                   <span className="inline-block w-2 h-2 bg-red-500 rounded-full animate-pulse" />
                   Críticas — no descartar
                 </p>
@@ -156,11 +156,11 @@ export function NurseAlertPanel() {
             <div className="flex-1 overflow-y-auto px-3 pt-2 pb-4">
               {visible.filter((a) => a.type !== 'critical').length === 0 && criticals.length === 0 ? (
                 <div className="flex flex-col items-center justify-center h-full text-center">
-                  <div className="w-12 h-12 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center mb-3">
+                  <div className="w-12 h-12 rounded-full bg-gray-100  flex items-center justify-center mb-3">
                     <Info className="w-5 h-5 text-gray-400" />
                   </div>
-                  <p className="text-sm text-gray-500 dark:text-gray-400">Sin alertas nuevas</p>
-                  <p className="text-xs text-gray-400 dark:text-gray-600 mt-1">
+                  <p className="text-sm text-gray-500 ">Sin alertas nuevas</p>
+                  <p className="text-xs text-gray-400  mt-1">
                     Las alertas aparecerán aquí automáticamente
                   </p>
                 </div>

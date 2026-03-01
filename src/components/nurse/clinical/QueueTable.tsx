@@ -26,9 +26,9 @@ export function QueueTable({ data, onAction }: Props) {
   });
 
   return (
-    <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 overflow-hidden">
+    <div className="bg-white  rounded-xl border border-gray-200  overflow-hidden">
       {/* Header & Controls */}
-      <div className="p-4 border-bottom border-gray-100 dark:border-gray-800 flex flex-col md:flex-row md:items-center justify-between gap-4 bg-gray-50/50 dark:bg-gray-800/50">
+      <div className="p-4 border-bottom border-gray-100  flex flex-col md:flex-row md:items-center justify-between gap-4 bg-gray-50/50 ">
         <div className="relative flex-1 max-w-md">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
           <input
@@ -36,7 +36,7 @@ export function QueueTable({ data, onAction }: Props) {
             placeholder="Buscar paciente por nombre o ID..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 text-sm bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all"
+            className="w-full pl-10 pr-4 py-2 text-sm bg-white  border border-gray-200  rounded-lg outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all"
           />
         </div>
 
@@ -47,7 +47,7 @@ export function QueueTable({ data, onAction }: Props) {
               "px-3 py-1.5 text-xs font-medium rounded-full whitespace-nowrap transition-colors",
               statusFilter === 'all' 
                 ? "bg-teal-600 text-white" 
-                : "bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-400 border border-gray-200 dark:border-gray-700 hover:bg-gray-50"
+                : "bg-white  text-gray-600  border border-gray-200  hover:bg-gray-50"
             )}
           >
             Todos
@@ -60,7 +60,7 @@ export function QueueTable({ data, onAction }: Props) {
                 "px-3 py-1.5 text-xs font-medium rounded-full whitespace-nowrap transition-colors",
                 statusFilter === status 
                   ? "bg-teal-600 text-white" 
-                  : "bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-400 border border-gray-200 dark:border-gray-700 hover:bg-gray-50"
+                  : "bg-white  text-gray-600  border border-gray-200  hover:bg-gray-50"
               )}
             >
               {QUEUE_STATUS_LABELS[status]}
@@ -73,46 +73,46 @@ export function QueueTable({ data, onAction }: Props) {
       <div className="overflow-x-auto">
         <table className="w-full text-left border-collapse">
           <thead>
-            <tr className="border-b border-gray-100 dark:border-gray-800 bg-gray-50/30 dark:bg-gray-800/30">
-              <th className="px-4 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">H. Llegada</th>
-              <th className="px-4 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Paciente</th>
-              <th className="px-4 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Motivo</th>
-              <th className="px-4 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Triaje</th>
-              <th className="px-4 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-right">Acciones</th>
+            <tr className="border-b border-gray-100  bg-gray-50/30 ">
+              <th className="px-4 py-3 text-xs font-semibold text-gray-500  uppercase tracking-wider">H. Llegada</th>
+              <th className="px-4 py-3 text-xs font-semibold text-gray-500  uppercase tracking-wider">Paciente</th>
+              <th className="px-4 py-3 text-xs font-semibold text-gray-500  uppercase tracking-wider">Motivo</th>
+              <th className="px-4 py-3 text-xs font-semibold text-gray-500  uppercase tracking-wider">Triaje</th>
+              <th className="px-4 py-3 text-xs font-semibold text-gray-500  uppercase tracking-wider text-right">Acciones</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
+          <tbody className="divide-y divide-gray-100 ">
             {filteredData.length > 0 ? (
               filteredData.map((item) => (
                 <tr 
                   key={item.queue_id} 
-                  className="hover:bg-gray-50 dark:hover:bg-gray-800/40 transition-colors group"
+                  className="hover:bg-gray-50  transition-colors group"
                 >
                   <td className="px-4 py-4">
                     <div className="flex items-center gap-2">
                       <Clock className="w-3.5 h-3.5 text-gray-400" />
-                      <span className="text-sm text-gray-600 dark:text-gray-300 font-medium">
+                      <span className="text-sm text-gray-600  font-medium">
                         {format(new Date(item.arrival_time), 'HH:mm')}
                       </span>
                     </div>
                   </td>
                   <td className="px-4 py-4">
                     <div className="flex items-center gap-3">
-                      <div className="w-9 h-9 rounded-full bg-teal-50 dark:bg-teal-900/20 flex items-center justify-center border border-teal-100 dark:border-teal-800 flex-shrink-0">
-                        <User className="w-5 h-5 text-teal-600 dark:text-teal-400" />
+                      <div className="w-9 h-9 rounded-full bg-teal-50  flex items-center justify-center border border-teal-100  flex-shrink-0">
+                        <User className="w-5 h-5 text-teal-600 " />
                       </div>
                       <div className="min-w-0">
-                        <p className="text-sm font-semibold text-gray-900 dark:text-white truncate">
+                        <p className="text-sm font-semibold text-gray-900  truncate">
                           {item.patient_first_name || item.unreg_first_name} {item.patient_last_name || item.unreg_last_name}
                         </p>
-                        <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
+                        <p className="text-xs text-gray-500  truncate">
                           ID: {item.patient_identifier || item.unreg_identifier || 'N/A'}
                         </p>
                       </div>
                     </div>
                   </td>
                   <td className="px-4 py-4 max-w-[200px]">
-                    <p className="text-sm text-gray-600 dark:text-gray-300 truncate italic">
+                    <p className="text-sm text-gray-600  truncate italic">
                       {item.chief_complaint || 'Sin motivo especificado'}
                     </p>
                     <div className="flex gap-1 mt-1">
@@ -155,7 +155,7 @@ export function QueueTable({ data, onAction }: Props) {
                         className={cn(
                           "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all",
                           item.vital_signs_taken
-                            ? "bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-800"
+                            ? "bg-emerald-50  text-emerald-700  border border-emerald-100 "
                             : "bg-teal-600 hover:bg-teal-700 text-white shadow-sm"
                         )}
                       >
@@ -169,7 +169,7 @@ export function QueueTable({ data, onAction }: Props) {
                       
                       <button
                         onClick={() => onAction('details', item)}
-                        className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+                        className="p-2 rounded-lg hover:bg-gray-100  text-gray-400 hover:text-gray-600  transition-colors"
                         title="Ver detalles"
                       >
                         <ChevronRight className="w-5 h-5" />
@@ -182,8 +182,8 @@ export function QueueTable({ data, onAction }: Props) {
               <tr>
                 <td colSpan={5} className="px-4 py-12 text-center">
                   <div className="flex flex-col items-center gap-2">
-                    <FileText className="w-10 h-10 text-gray-200 dark:text-gray-800" />
-                    <p className="text-sm text-gray-500 dark:text-gray-400">No se encontraron pacientes para hoy.</p>
+                    <FileText className="w-10 h-10 text-gray-200 " />
+                    <p className="text-sm text-gray-500 ">No se encontraron pacientes para hoy.</p>
                   </div>
                 </td>
               </tr>
@@ -193,9 +193,9 @@ export function QueueTable({ data, onAction }: Props) {
       </div>
       
       {/* Summary Footer */}
-      <div className="px-4 py-3 bg-gray-50 dark:bg-gray-800/50 border-t border-gray-100 dark:border-gray-800">
-        <p className="text-xs text-gray-500 dark:text-gray-400">
-          Mostrando <span className="font-semibold text-gray-900 dark:text-white">{filteredData.length}</span> de <span className="font-semibold text-gray-900 dark:text-white">{data.length}</span> pacientes registrados hoy.
+      <div className="px-4 py-3 bg-gray-50  border-t border-gray-100 ">
+        <p className="text-xs text-gray-500 ">
+          Mostrando <span className="font-semibold text-gray-900 ">{filteredData.length}</span> de <span className="font-semibold text-gray-900 ">{data.length}</span> pacientes registrados hoy.
         </p>
       </div>
     </div>

@@ -89,7 +89,7 @@ export default function ReportsPage() {
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div>
-          <h1 className="text-3xl font-black text-gray-900 dark:text-white flex items-center gap-3">
+          <h1 className="text-3xl font-black text-gray-900  flex items-center gap-3">
             <FileText className="w-8 h-8 text-teal-600" />
             Control de Turnos
           </h1>
@@ -114,10 +114,10 @@ export default function ReportsPage() {
             placeholder="Buscar por resumen o fecha..."
             value={filter}
             onChange={(e) => setFilter(e.target.value)}
-            className="w-full pl-11 pr-4 py-3 bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all shadow-sm"
+            className="w-full pl-11 pr-4 py-3 bg-white  border border-gray-100  rounded-2xl outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all shadow-sm"
           />
         </div>
-        <button className="px-5 py-3 bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl text-gray-500 font-bold flex items-center gap-2 hover:bg-gray-50 transition-all shadow-sm">
+        <button className="px-5 py-3 bg-white  border border-gray-100  rounded-2xl text-gray-500 font-bold flex items-center gap-2 hover:bg-gray-50 transition-all shadow-sm">
           <Filter className="w-4 h-4" />
           Filtros Avanzados
         </button>
@@ -125,11 +125,11 @@ export default function ReportsPage() {
 
       {/* Content */}
       {filteredReports.length === 0 ? (
-        <div className="bg-white dark:bg-gray-900 rounded-[2.5rem] border border-gray-100 dark:border-gray-800 p-20 flex flex-col items-center text-center shadow-sm">
-           <div className="w-20 h-20 rounded-full bg-gray-50 dark:bg-gray-800 flex items-center justify-center mb-6">
+        <div className="bg-white  rounded-[2.5rem] border border-gray-100  p-20 flex flex-col items-center text-center shadow-sm">
+           <div className="w-20 h-20 rounded-full bg-gray-50  flex items-center justify-center mb-6">
              <FileText className="w-10 h-10 text-gray-300" />
            </div>
-           <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">No se encontraron reportes</h3>
+           <h3 className="text-xl font-bold text-gray-900  mb-2">No se encontraron reportes</h3>
            <p className="text-gray-500 max-w-sm">
              {filter ? 'No hay reportes que coincidan con tu búsqueda.' : 'Aún no has generado ningún reporte de turno o atención.'}
            </p>
@@ -139,7 +139,7 @@ export default function ReportsPage() {
            {filteredReports.map((report) => (
              <div 
                key={report.report_id}
-               className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-3xl p-6 hover:border-teal-100 dark:hover:border-teal-900/30 transition-all shadow-sm group"
+               className="bg-white  border border-gray-100  rounded-3xl p-6 hover:border-teal-100  transition-all shadow-sm group"
              >
                <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
                  <div className="flex items-start gap-4">
@@ -151,7 +151,7 @@ export default function ReportsPage() {
                    </div>
                    <div className="space-y-1">
                      <div className="flex items-center gap-3">
-                       <h3 className="text-lg font-black text-gray-900 dark:text-white">
+                       <h3 className="text-lg font-black text-gray-900 ">
                          Reporte de {report.report_type === 'shift_report' ? 'Turno' : 'Atención'}
                        </h3>
                        {report.signed_at ? (
@@ -177,7 +177,7 @@ export default function ReportsPage() {
                  </div>
 
                  <div className="flex items-center gap-2">
-                    <button className="flex-1 md:flex-none px-4 py-2 text-sm font-bold text-gray-600 hover:text-teal-600 hover:bg-teal-50 dark:hover:bg-teal-900/10 rounded-xl transition-all flex items-center justify-center gap-2">
+                    <button className="flex-1 md:flex-none px-4 py-2 text-sm font-bold text-gray-600 hover:text-teal-600 hover:bg-teal-50  rounded-xl transition-all flex items-center justify-center gap-2">
                       Ver Detalle
                     </button>
                     <button 
@@ -191,8 +191,8 @@ export default function ReportsPage() {
                </div>
 
                {report.summary && (
-                 <div className="mt-6 pt-6 border-t border-gray-50 dark:border-gray-800">
-                    <p className="text-sm text-gray-600 dark:text-gray-400 line-clamp-2 italic">
+                 <div className="mt-6 pt-6 border-t border-gray-50 ">
+                    <p className="text-sm text-gray-600  line-clamp-2 italic">
                       "{report.summary}"
                     </p>
                  </div>
@@ -203,11 +203,11 @@ export default function ReportsPage() {
       )}
 
       {/* Info Card */}
-      <div className="p-6 bg-blue-50 dark:bg-blue-900/10 border border-blue-100 dark:border-blue-900/30 rounded-[2rem] flex gap-4">
+      <div className="p-6 bg-blue-50  border border-blue-100  rounded-[2rem] flex gap-4">
         <AlertCircle className="w-6 h-6 text-blue-600 flex-shrink-0" />
         <div>
-          <h4 className="text-sm font-black text-blue-900 dark:text-blue-400 mb-1 uppercase tracking-tight">Legal y Protocolo</h4>
-          <p className="text-xs text-blue-800/80 dark:text-blue-500/80 leading-relaxed font-medium">
+          <h4 className="text-sm font-black text-blue-900  mb-1 uppercase tracking-tight">Legal y Protocolo</h4>
+          <p className="text-xs text-blue-800/80  leading-relaxed font-medium">
             Los reportes aquí generados constituyen un documento legal de la atención brindada. Asegúrese de que toda la información crítica esté contenida antes de la firma digital. Los registros firmados no pueden ser modificados.
           </p>
         </div>
