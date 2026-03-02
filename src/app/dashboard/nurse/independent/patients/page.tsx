@@ -76,13 +76,13 @@ export default function NurseIndependentPatientsPage() {
             Gestiona los pacientes a tu cargo y revisa sus historiales.
           </p>
         </div>
-        <button 
-          onClick={() => setIsModalOpen(true)}
+        <Link 
+          href="/dashboard/nurse/independent/patients/new"
           className="flex items-center gap-2 px-4 py-2 bg-teal-600 hover:bg-teal-700 text-white rounded-lg transition-colors font-medium"
         >
           <Plus className="w-4 h-4" />
           Nuevo Paciente
-        </button>
+        </Link>
       </div>
 
       <div className="bg-white  border border-gray-200  rounded-2xl shadow-sm overflow-hidden">
