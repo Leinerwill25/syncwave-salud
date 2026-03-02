@@ -296,16 +296,16 @@ export interface SupplyItem {
 }
 
 export interface NursingEvolutionNote {
-  note_id: string;
+  id: string;
   queue_id: string;
   patient_id: string | null;
   unregistered_patient_id: string | null;
   nurse_id: string;
   content: string;
-  evolution_type: 'subjective' | 'objective' | 'assessment' | 'plan' | 'standard';
+  note_type: 'private' | 'public' | 'evolution';
   created_at: string;
   updated_at: string;
-  created_by: string;
+  created_by: string | null;
 }
 
 // ─── Shift Monitoring Types ───────────────────────────────
@@ -439,7 +439,7 @@ export interface CreateEvolutionNoteDto {
   unregistered_patient_id?: string;
   nurse_id: string;
   content: string;
-  evolution_type?: 'subjective' | 'objective' | 'assessment' | 'plan' | 'standard';
+  note_type: 'private' | 'public' | 'evolution';
 }
 
 export interface RegisterOriginDto {

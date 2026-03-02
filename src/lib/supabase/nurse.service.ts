@@ -613,7 +613,7 @@ export async function updateProcedureStatus(
 export async function getEvolutionNotes(queueId: string): Promise<NursingEvolutionNote[]> {
   const supabase = getClient();
   const { data, error } = await supabase
-    .from('nurse_evolution_notes')
+    .from('nurse_kardex_notes')
     .select('*')
     .eq('queue_id', queueId)
     .order('created_at', { ascending: false });
@@ -629,13 +629,13 @@ export async function getEvolutionNotes(queueId: string): Promise<NursingEvoluti
 
     if (queueData?.nurse_notes) {
       return [{
-        note_id: 'legacy',
+        id: 'legacy',
         queue_id: queueId,
         patient_id: queueData.patient_id,
         unregistered_patient_id: queueData.unregistered_patient_id,
         nurse_id: queueData.assigned_nurse_id || '',
         content: queueData.nurse_notes,
-        evolution_type: 'standard',
+        note_type: 'evolution',
         created_at: queueData.created_at,
         updated_at: queueData.created_at,
         created_by: queueData.created_by || ''
@@ -653,10 +653,10 @@ export async function createEvolutionNote(
   const { data: { user } } = await supabase.auth.getUser();
 
   const { data, error } = await supabase
-    .from('nurse_evolution_notes')
+    .from('nurse_kardex_notes')
     .insert({
       ...dto,
-      evolution_type: dto.evolution_type || 'standard',
+      note_type: dto.note_type || 'public',
       created_by: user?.id,
     })
     .select()
@@ -675,11 +675,11 @@ export async function createEvolutionNote(
     if (!updError) {
       return { 
         data: {
-          note_id: 'legacy_new',
+          id: 'legacy_new',
           ...dto,
           patient_id: dto.patient_id || null,
           unregistered_patient_id: dto.unregistered_patient_id || null,
-          evolution_type: dto.evolution_type || 'standard',
+          note_type: dto.note_type || 'public',
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
           created_by: user?.id || ''

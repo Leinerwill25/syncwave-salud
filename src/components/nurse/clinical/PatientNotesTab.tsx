@@ -21,7 +21,7 @@ export function PatientNotesTab({ queueId }: Props) {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [content, setContent] = useState('');
-  const [evolutionType, setEvolutionType] = useState<NursingEvolutionNote['evolution_type']>('standard');
+  const [noteType, setNoteType] = useState<NursingEvolutionNote['note_type']>('public');
 
   const loadNotes = useCallback(async () => {
     setLoading(true);
@@ -50,7 +50,7 @@ export function PatientNotesTab({ queueId }: Props) {
       patient_id: activePatient?.patient_id || undefined,
       unregistered_patient_id: activePatient?.unregistered_patient_id || undefined,
       content: content.trim(),
-      evolution_type: evolutionType
+      note_type: noteType
     };
 
     setSubmitting(true);
@@ -60,7 +60,7 @@ export function PatientNotesTab({ queueId }: Props) {
         // Optimistic update for history
         const tempId = `temp-${Date.now()}`;
         setNotes(prev => [{
-          note_id: tempId,
+          id: tempId,
           ...payload,
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
@@ -86,21 +86,19 @@ export function PatientNotesTab({ queueId }: Props) {
 
   const getTypeColor = (type: string) => {
     switch (type) {
-      case 'subjective': return 'text-blue-600 bg-blue-50 border-blue-100';
-      case 'objective': return 'text-purple-600 bg-purple-50 border-purple-100';
-      case 'assessment': return 'text-amber-600 bg-amber-50 border-amber-100';
-      case 'plan': return 'text-emerald-600 bg-emerald-50 border-emerald-100';
+      case 'private': return 'text-red-600 bg-red-50 border-red-100';
+      case 'evolution': return 'text-purple-600 bg-purple-50 border-purple-100';
+      case 'public': return 'text-emerald-600 bg-emerald-50 border-emerald-100';
       default: return 'text-gray-600 bg-gray-50 border-gray-100';
     }
   };
 
   const getTypeName = (type: string) => {
     switch (type) {
-      case 'subjective': return 'Subjetivo (S)';
-      case 'objective': return 'Objetivo (O)';
-      case 'assessment': return 'Apreciación (A)';
-      case 'plan': return 'Plan (P)';
-      default: return 'Evolución Estándar';
+      case 'private': return 'Nota Privada (Incidente/Anomalía)';
+      case 'evolution': return 'Nota de Evolución';
+      case 'public': return 'Nota Pública';
+      default: return 'Nota Estándar';
     }
   };
 
@@ -127,19 +125,19 @@ export function PatientNotesTab({ queueId }: Props) {
         <form onSubmit={handleSubmit} className="space-y-4">
           {/* Type Selector Tabs */}
           <div className="flex flex-wrap gap-2 p-1 bg-gray-50  rounded-2xl w-fit">
-            {(['standard', 'subjective', 'objective', 'assessment', 'plan'] as const).map((type) => (
+            {(['public', 'evolution', 'private'] as const).map((type) => (
               <button
                 key={type}
                 type="button"
-                onClick={() => setEvolutionType(type)}
+                onClick={() => setNoteType(type)}
                 className={cn(
                   "px-4 py-2 text-xs font-bold rounded-xl transition-all",
-                  evolutionType === type 
+                  noteType === type 
                     ? "bg-white  text-teal-600 shadow-sm"
                     : "text-gray-500 hover:text-gray-700 "
                 )}
               >
-                {type === 'standard' ? 'Estándar' : type.charAt(0).toUpperCase()}
+                {type === 'public' ? 'Pública' : type === 'private' ? 'Privada' : 'Evolutiva'}
               </button>
             ))}
           </div>
@@ -148,7 +146,7 @@ export function PatientNotesTab({ queueId }: Props) {
             <textarea
               value={content}
               onChange={(e) => setContent(e.target.value)}
-              placeholder={evolutionType === 'standard' ? "Escribe el progreso del paciente..." : `Escribe la parte ${getTypeName(evolutionType)} de tu evolución...`}
+              placeholder={noteType === 'public' ? "Escribe el registro detallado de atención..." : noteType === 'private' ? "Describe el incidente o anomalía (solo visible para médicos)..." : "Describe la mejora o evolución del paciente..."}
               className="w-full min-h-[150px] p-5 text-sm bg-gray-50  border border-gray-100  rounded-2xl outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all resize-none group-hover:bg-white "
             />
             <div className="absolute bottom-4 right-4 text-[10px] text-gray-400 font-medium">
@@ -188,7 +186,7 @@ export function PatientNotesTab({ queueId }: Props) {
         ) : (
           <div className="space-y-6 relative before:absolute before:left-[19px] before:top-4 before:bottom-4 before:w-0.5 before:bg-gray-100 ">
             {notes.map((note) => (
-              <div key={note.note_id} className="relative pl-12 group">
+              <div key={note.id} className="relative pl-12 group">
                 {/* Timeline dot */}
                 <div className="absolute left-0 top-1 w-10 h-10 rounded-full border-4 border-white  bg-gray-100  flex items-center justify-center z-10 transition-colors group-hover:bg-teal-50 ">
                   <FileText className="w-4 h-4 text-gray-400 group-hover:text-teal-600" />
@@ -199,9 +197,9 @@ export function PatientNotesTab({ queueId }: Props) {
                     <div className="flex items-center gap-3">
                       <span className={cn(
                         "px-2.5 py-1 rounded-lg text-[10px] font-bold border uppercase tracking-wider",
-                        getTypeColor(note.evolution_type)
+                        getTypeColor(note.note_type)
                       )}>
-                        {getTypeName(note.evolution_type)}
+                        {getTypeName(note.note_type)}
                       </span>
                       <div className="flex items-center gap-2 text-[10px] text-gray-400 font-bold group-hover:text-gray-500">
                         <Clock className="w-3 h-3" />
