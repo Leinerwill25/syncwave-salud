@@ -49,7 +49,7 @@ export default async function AnalyticsKPIsPage() {
 					<KPICard
 						title="Consultas (Mes)"
 						value={stats?.totalConsultations ?? 0}
-						icon={Activity}
+						icon={<Activity />}
 						trend={{ value: 12, isPositive: true }}
 						variant="default"
 						index={0}
@@ -57,7 +57,7 @@ export default async function AnalyticsKPIsPage() {
 					<KPICard
 						title="Pacientes (Mes)"
 						value={stats?.totalPatients ?? 0}
-						icon={Users}
+						icon={<Users />}
 						trend={{ value: 5, isPositive: true }}
 						variant="success"
 						index={1}
@@ -65,7 +65,7 @@ export default async function AnalyticsKPIsPage() {
 					<KPICard
 						title="Ingresos (Mes)"
 						value={`$${(stats?.totalIncome ?? 0).toLocaleString()}`}
-						icon={DollarSign}
+						icon={<DollarSign />}
 						trend={{ value: 8, isPositive: true }}
 						variant="success"
 						index={2}
@@ -73,7 +73,7 @@ export default async function AnalyticsKPIsPage() {
 					<KPICard
 						title="Especialistas"
 						value={stats?.activeSpecialists ?? 0}
-						icon={Stethoscope}
+						icon={<Stethoscope />}
 						variant="default"
 						index={3}
 					/>

@@ -124,6 +124,17 @@ function normalizeJsonFields(profile: any) {
 		}
 	}
 
+	// Normalizar services
+	if (profile.services === null || profile.services === undefined) {
+		profile.services = [];
+	} else if (typeof profile.services === 'string') {
+		try {
+			profile.services = JSON.parse(profile.services);
+		} catch {
+			profile.services = [];
+		}
+	}
+
 	return profile;
 }
 
@@ -175,10 +186,13 @@ function toCamelCase(profile: any) {
 		photos: profile.photos,
 		profilePhoto: profile.profile_photo,
 		hasCashea: profile.has_cashea,
+		businessModel: profile.business_model,
+		doctorCommissionPercentage: profile.doctor_commission_percentage,
+		services: profile.services,
 	};
 }
 
-/** GET handler (trae profile por organizationId) */
+// GET handler (trae profile por organizationId)
 export async function GET(req: Request) {
 	try {
 		const supabase = await createSupabaseServerClient();
@@ -220,57 +234,30 @@ export async function GET(req: Request) {
 		}
 
 		const organizationId = appUser.organizationId;
-
-		// Dev shortcut
 		const targetOrgId = TEST_ORG_ID || organizationId;
 
-		// Obtener profile desde Supabase
+		// 1. Obtener info de la organización (para fallback)
+		const { data: orgData } = await supabase
+			.from('organization')
+			.select('name, contactEmail, sede_count, specialistCount')
+			.eq('id', targetOrgId)
+			.maybeSingle();
+
+		// 2. Obtener profile desde Supabase
 		const { data: profile, error: profileError } = await supabase
 			.from('clinic_profile')
 			.select(`
-				id,
-				organization_id,
-				legal_rif,
-				legal_name,
-				trade_name,
-				entity_type,
-				address_fiscal,
-				address_operational,
-				state_province,
-				city_municipality,
-				postal_code,
-				phone_fixed,
-				phone_mobile,
-				contact_email,
-				website,
-				social_facebook,
-				social_instagram,
-				social_linkedin,
-				offices_count,
-				specialties,
-				opening_hours,
-				capacity_per_day,
-				employees_count,
-				director_name,
-				admin_name,
-				director_id_number,
-				sanitary_license,
-				liability_insurance_number,
-				bank_name,
-				bank_account_type,
-				bank_account_number,
-				bank_account_owner,
-				currency,
-				payment_methods,
-				billing_series,
-				tax_regime,
-				billing_address,
-				created_at,
-				updated_at,
-				location,
-				photos,
-				profile_photo,
-				has_cashea
+				id, organization_id, legal_rif, legal_name, trade_name, entity_type,
+				address_fiscal, address_operational, state_province, city_municipality,
+				postal_code, phone_fixed, phone_mobile, contact_email, website,
+				social_facebook, social_instagram, social_linkedin, offices_count,
+				specialties, opening_hours, capacity_per_day, employees_count,
+				director_name, admin_name, director_id_number, sanitary_license,
+				liability_insurance_number, bank_name, bank_account_type,
+				bank_account_number, bank_account_owner, currency, payment_methods,
+				billing_series, tax_regime, billing_address, created_at, updated_at,
+				location, photos, profile_photo, has_cashea, business_model,
+				doctor_commission_percentage, services
 			`)
 			.eq('organization_id', targetOrgId)
 			.maybeSingle();
@@ -280,20 +267,67 @@ export async function GET(req: Request) {
 			return NextResponse.json({ ok: false, message: 'Error obteniendo perfil de clínica' }, { status: 500 });
 		}
 
-		if (!profile) {
-			return NextResponse.json({ ok: false, message: 'clinic profile not found' }, { status: 404 });
+		// 3. Obtener especialidades agregadas de los doctores (medic_profile)
+		const { data: medicsData } = await supabase
+			.from('users')
+			.select('id')
+			.eq('organizationId', targetOrgId)
+			.eq('role', 'MEDICO');
+		
+		let aggregatedSpecList: string[] = [];
+		if (medicsData && medicsData.length > 0) {
+			const medicIds = medicsData.map(m => m.id);
+			const { data: profilesData } = await supabase
+				.from('medic_profile')
+				.select('specialty, private_specialty')
+				.in('doctor_id', medicIds);
+			
+			if (profilesData) {
+				const specsSet = new Set<string>();
+				profilesData.forEach(p => {
+					if (p.specialty) specsSet.add(p.specialty);
+					if (p.private_specialty) specsSet.add(p.private_specialty);
+				});
+				aggregatedSpecList = Array.from(specsSet);
+			}
 		}
 
-		// Normalizar campos JSON y convertir a camelCase
-		const normalized = normalizeJsonFields(profile);
-		const camelCaseProfile = toCamelCase(normalized);
+		// Construir respuesta con fallbacks
+		let finalProfile = profile ? normalizeJsonFields(profile) : {
+			organization_id: targetOrgId,
+			legal_name: orgData?.name || '',
+			contact_email: orgData?.contactEmail || '',
+			offices_count: orgData?.sede_count || 1,
+			employees_count: orgData?.specialistCount || 0,
+			specialties: [],
+			opening_hours: [],
+			payment_methods: [],
+			photos: [],
+			services: []
+		};
 
-		return NextResponse.json({ ok: true, profile: camelCaseProfile }, { status: 200 });
+		if (orgData) {
+			finalProfile.offices_count = orgData.sede_count ?? finalProfile.offices_count;
+			finalProfile.employees_count = orgData.specialistCount ?? finalProfile.employees_count;
+			// Solo fallback si el campo está vacío en el profile real
+			if (!finalProfile.legal_name) finalProfile.legal_name = orgData.name;
+			if (!finalProfile.contact_email) finalProfile.contact_email = orgData.contactEmail;
+		}
+
+		const camelCaseProfile = toCamelCase(finalProfile);
+
+		return NextResponse.json({ 
+			ok: true, 
+			profile: camelCaseProfile,
+			aggregatedSpecialties: aggregatedSpecList
+		}, { status: 200 });
+
 	} catch (err: any) {
 		console.error('GET /api/clinic-profile error', err);
 		return NextResponse.json({ ok: false, message: err?.message ?? 'server error' }, { status: 500 });
 	}
 }
+
 
 /** PUT handler: actualiza (o crea) clinicProfile para la organization del usuario */
 export async function PUT(req: Request) {
@@ -346,6 +380,7 @@ export async function PUT(req: Request) {
 		payload.specialties = safeParseMaybeJson(payload.specialties) ?? [];
 		payload.openingHours = safeParseMaybeJson(payload.openingHours) ?? [];
 		payload.paymentMethods = safeParseMaybeJson(payload.paymentMethods) ?? [];
+		payload.services = safeParseMaybeJson(payload.services) ?? [];
 
 		// Convertir camelCase a snake_case para la base de datos
 		const dataToUpdate: any = {
@@ -384,6 +419,9 @@ export async function PUT(req: Request) {
 			billing_series: payload.billingSeries,
 			tax_regime: payload.taxRegime,
 			billing_address: payload.billingAddress,
+			business_model: payload.businessModel,
+			doctor_commission_percentage: payload.doctorCommissionPercentage,
+			services: payload.services,
 		};
 
 		// Normalizaciones: empty string -> null for optional fields

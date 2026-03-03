@@ -77,7 +77,7 @@ export default function PatientsList({
 					iconBg="bg-indigo-50"
 					action={
 						<Link
-							href="/dashboard/patients/new"
+							href="/dashboard/clinic/patients/new"
 							className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-sky-600 to-teal-500 text-white text-sm font-medium shadow-sm hover:shadow-md transition-shadow"
 						>
 							<UserPlus className="w-4 h-4" />

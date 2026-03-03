@@ -135,16 +135,26 @@ export default function InviteRegisterClient({ invite, organizationName }: Props
 					</div>
 				</div>
 
-				<div>
-					<label className="block text-sm font-medium text-slate-700">Email</label>
-					{hasInviteEmail ? (
-						<div className="mt-1 flex items-center gap-3">
-							<input value={email} readOnly className="block w-full rounded-lg border border-slate-100 bg-slate-50 px-3 py-2 text-slate-700" aria-readonly />
-							<div className="text-sm text-slate-500">Email pre-asignado por invitación</div>
+				<div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+					<div>
+						<label className="block text-sm font-medium text-slate-700">Email</label>
+						{hasInviteEmail ? (
+							<div className="mt-1 flex items-center gap-3">
+								<input value={email} readOnly className="block w-full rounded-lg border border-slate-100 bg-slate-50 px-3 py-2 text-slate-700" aria-readonly />
+							</div>
+						) : (
+							<input value={email} onChange={(e) => setEmail(e.target.value)} required placeholder="tu-email@ejemplo.com" type="email" className="mt-1 block w-full rounded-lg border border-slate-200 bg-white px-3 py-2 shadow-sm placeholder-slate-400 focus:border-sky-500 focus:ring-1 focus:ring-sky-500" />
+						)}
+						{hasInviteEmail && <div className="mt-1 text-xs text-slate-500">Email pre-asignado por invitación</div>}
+					</div>
+
+					<div>
+						<label className="block text-sm font-medium text-slate-700">Rol Asignado</label>
+						<div className="mt-1">
+							<input value={invite.role} readOnly className="block w-full rounded-lg border border-slate-100 bg-slate-50 px-3 py-2 text-slate-700 font-medium" aria-readonly />
 						</div>
-					) : (
-						<input value={email} onChange={(e) => setEmail(e.target.value)} required placeholder="tu-email@ejemplo.com" type="email" className="mt-1 block w-full rounded-lg border border-slate-200 bg-white px-3 py-2 shadow-sm placeholder-slate-400 focus:border-sky-500 focus:ring-1 focus:ring-sky-500" />
-					)}
+						<div className="mt-1 text-xs text-amber-600">Este valor no puede ser modificado</div>
+					</div>
 				</div>
 
 				{/* Passwords */}

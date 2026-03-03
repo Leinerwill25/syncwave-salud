@@ -28,18 +28,18 @@ export default async function AnalyticsFollowupPage() {
           <KPICard 
               title="Tasa de Retención" 
               value={`${stats?.retentionRate ?? 0}%`} 
-              icon={Repeat}
+              icon={<Repeat />}
               subtitle="Pacientes que regresan"
           />
           <KPICard 
               title="Pacientes Recurrentes" 
               value={stats?.returningPatients ?? 0} 
-              icon={Users}
+              icon={<Users />}
           />
           <KPICard 
               title="Total Pacientes Únicos" 
               value={stats?.totalPatients ?? 0} 
-              icon={Users}
+              icon={<Users />}
           />
         </div>
       </div>

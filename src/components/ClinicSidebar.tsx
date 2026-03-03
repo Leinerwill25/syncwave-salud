@@ -41,6 +41,7 @@ const ICONS = {
 	followup: Heart,
 	comparison: GitCompare,
 	data: Database,
+	currency: CreditCard, // Reusing CreditCard for currency as a fallback
 } as const;
 
 type IconKey = keyof typeof ICONS;
@@ -63,8 +64,10 @@ const NAV_GROUPS: NavGroup[] = [
 		items: [
 			{ href: '/dashboard/clinic', label: 'Resumen', icon: 'dashboard' },
 			{ href: '/dashboard/clinic/invites', label: 'Invitaciones', icon: 'invite' },
-			{ href: '/dashboard/clinic/specialists', label: 'Especialistas', icon: 'users' },
-			{ href: '/dashboard/clinic/billing', label: 'Facturación', icon: 'billing', comingSoon: true },
+			{ href: '/dashboard/clinic/patients', label: 'Pacientes', icon: 'users' },
+			{ href: '/dashboard/clinic/specialists', label: 'Especialistas', icon: 'specialists' },
+			{ href: '/dashboard/clinic/incomes', label: 'Ingresos', icon: 'billing' },
+			{ href: '/dashboard/clinic/settings/currency', label: 'Moneda', icon: 'currency' },
 			{ href: '/dashboard/clinic/settings', label: 'Configuración', icon: 'settings' },
 		],
 	},

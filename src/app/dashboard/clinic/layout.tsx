@@ -2,6 +2,7 @@
 import React from 'react';
 import ClinicSidebar from '@/components/ClinicSidebar';
 import ServerDashboardGuard from '@/components/auth/ServerDashboardGuard';
+import CurrencyFloatingWidget from '@/components/clinic/CurrencyFloatingWidget';
 
 // Forzar renderizado dinámico ya que usa cookies para autenticación
 export const dynamic = 'force-dynamic';
@@ -20,6 +21,7 @@ export default function ClinicLayout({ children }: { children: React.ReactNode }
 						<main className="min-w-0">{children}</main>
 					</div>
 				</div>
+				<CurrencyFloatingWidget />
 			</div>
 		</ServerDashboardGuard>
 	);

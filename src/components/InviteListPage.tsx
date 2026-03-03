@@ -77,9 +77,11 @@ export default function InviteListPage({ initialInvites, organizationId }: Props
 	const [isSendingManual, setIsSendingManual] = useState(false);
 
 	// Estado Modal Asignar
-	const [assignModal, setAssignModal] = useState<{ open: boolean; inviteId: string | null }>({ open: false, inviteId: null });
+	const [assignModal, setAssignModal] = useState<{ open: boolean; inviteId: string | null; role?: string }>({ open: false, inviteId: null });
 	const [assignEmail, setAssignEmail] = useState('');
 	const [isAssigning, setIsAssigning] = useState(false);
+
+	const [selectedRoles, setSelectedRoles] = useState<Record<string, string>>({});
 
 	// Filtrado y Paginación
 	const filteredInvites = useMemo(() => {
@@ -184,7 +186,7 @@ export default function InviteListPage({ initialInvites, organizationId }: Props
 		setIsAssigning(true);
 		try {
 			const { assignEmailToInvite } = await import('@/lib/actions/invites');
-			const result = await assignEmailToInvite(assignModal.inviteId, assignEmail);
+			const result = await assignEmailToInvite(assignModal.inviteId, assignEmail, assignModal.role);
 			
 			if (result.success) {
 				toast(`Invitación asignada y enviada a ${assignEmail}`, 'success');
@@ -304,7 +306,21 @@ export default function InviteListPage({ initialInvites, organizationId }: Props
 												<Badge variant="warning">Pendiente</Badge>
 											)}
 										</td>
-										<td className="px-6 py-4 text-slate-600">{invite.role}</td>
+										<td className="px-6 py-4 text-slate-600">
+											{!invite.email && !invite.used ? (
+												<select
+													value={selectedRoles[invite.id] || invite.role}
+													onChange={(e) => setSelectedRoles(prev => ({ ...prev, [invite.id]: e.target.value }))}
+													className="w-full min-w-[150px] px-3 py-1.5 text-sm rounded-lg border border-slate-200 bg-white focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all text-slate-700 font-medium"
+												>
+													{INVITE_ROLES.map((r) => (
+														<option key={r.value} value={r.value}>{r.label}</option>
+													))}
+												</select>
+											) : (
+												<span className="font-medium text-slate-700">{invite.role}</span>
+											)}
+										</td>
 										<td className="px-6 py-4 text-slate-500">
 											{new Date(invite.createdAt).toLocaleDateString()}
 										</td>
@@ -313,7 +329,7 @@ export default function InviteListPage({ initialInvites, organizationId }: Props
 												<button
 													onClick={async () => {
 														if (!invite.email) {
-															setAssignModal({ open: true, inviteId: invite.id });
+															setAssignModal({ open: true, inviteId: invite.id, role: selectedRoles[invite.id] || invite.role });
 															return;
 														}
 														toast('Reenviando invitación...', 'success');

@@ -13,20 +13,24 @@ export async function GET() {
 		// Guardar referencia en una constante local no-null para TypeScript
 		const client = ratesSupabase;
 
-		// Obtener todos los códigos únicos de monedas
-		const { data: uniqueCodes, error: codesError } = await client
+		// Obtener códigos recientes (en lugar de ordenar alfabéticamente lo cual corta en 1000 filas por defecto)
+		const { data: recentRates, error: codesError } = await client
 			.from('rates')
 			.select('code')
-			.order('code', { ascending: true });
+			.order('rate_datetime', { ascending: false })
+			.limit(1000);
 
 		if (codesError) {
 			console.error('[Currency Available API] Error obteniendo códigos:', codesError);
 			return NextResponse.json({ error: 'Error obteniendo códigos de moneda' }, { status: 500 });
 		}
 
-		// Obtener códigos únicos
-		const codesSet = new Set((uniqueCodes || []).map((r: any) => r.code));
-		const codes = Array.from(codesSet);
+		// Obtener códigos únicos de las tasas recientes
+		const codesSet = new Set((recentRates || []).map((r: any) => r.code));
+		// Asegurarnos que siempre estén USD y EUR
+		codesSet.add('USD');
+		codesSet.add('EUR');
+		const codes = Array.from(codesSet).sort();
 
 		// Para cada código, obtener la tasa más reciente
 		const currenciesWithRates = await Promise.all(

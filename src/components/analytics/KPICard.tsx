@@ -11,7 +11,7 @@ interface KPICardProps {
 	title: string;
 	value: string | number;
 	subtitle?: string;
-	icon: LucideIcon;
+	icon: React.ReactNode;
 	trend?: {
 		value: number;
 		isPositive: boolean;
@@ -48,7 +48,7 @@ export function KPICard({
 	title,
 	value,
 	subtitle,
-	icon: Icon,
+	icon,
 	trend,
 	variant = 'default',
 	className = '',
@@ -65,8 +65,8 @@ export function KPICard({
 		>
 			<div className="flex items-start justify-between">
 				{/* Ícono */}
-				<div className={`p-2.5 rounded-xl ${styles.iconBg}`} aria-hidden="true">
-					<Icon className={`w-5 h-5 ${styles.iconText}`} />
+				<div className={`p-2.5 rounded-xl ${styles.iconBg} [&>svg]:w-5 [&>svg]:h-5 [&>svg]:${styles.iconText}`} aria-hidden="true">
+					{icon}
 				</div>
 
 				{/* Trend badge */}

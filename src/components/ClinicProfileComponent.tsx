@@ -28,7 +28,9 @@ import {
     Banknote,
     SmartphoneNfc,
     RotateCw,
-    WalletCards
+    WalletCards,
+    Sparkles,
+    Stethoscope
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -74,6 +76,10 @@ type ClinicForm = {
 	billingSeries: string;
 	taxRegime: string;
 	billingAddress: string;
+
+	businessModel: string;
+	doctorCommissionPercentage: number;
+	services: { id: string; name: string; description: string; price: number; active: boolean }[];
 };
 
 // --- Helpers ---
@@ -102,7 +108,7 @@ function safeParseArrayField(v: any): any[] {
 }
 
 // --- Components ---
-const InputField = React.memo(({ label, name, value, onChange, type = 'text', placeholder, icon: Icon, error }: { label: string; name: string; value: any; onChange: (v: any) => void; type?: string; placeholder?: string; icon?: any; error?: string }) => (
+const InputField = React.memo(({ label, name, value, onChange, type = 'text', placeholder, icon: Icon, error, disabled }: { label: string; name: string; value: any; onChange: (v: any) => void; type?: string; placeholder?: string; icon?: any; error?: string; disabled?: boolean }) => (
     <div className="space-y-1.5">
         <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider ml-1" htmlFor={name}>
             {label}
@@ -119,11 +125,12 @@ const InputField = React.memo(({ label, name, value, onChange, type = 'text', pl
                 type={type}
                 value={value ?? ''}
                 placeholder={placeholder}
+                disabled={disabled}
                 onChange={(e) => onChange(type === 'number' ? (e.target.value === '' ? '' : Number(e.target.value)) : e.target.value)}
                 className={cx(
                     "w-full bg-white border border-slate-200 rounded-xl py-2.5 transition-all outline-none",
                     Icon ? "pl-10 pr-4" : "px-4",
-                    error ? "border-red-300 ring-2 ring-red-50" : "focus:border-indigo-400 focus:ring-4 focus:ring-indigo-50",
+                    disabled ? "bg-slate-50 cursor-not-allowed text-slate-500 opacity-70" : (error ? "border-red-300 ring-2 ring-red-50" : "focus:border-indigo-400 focus:ring-4 focus:ring-indigo-50"),
                     "text-slate-700 placeholder:text-slate-400 font-medium"
                 )}
             />
@@ -171,6 +178,9 @@ export default function ClinicProfileComponent() {
 		billingSeries: '',
 		taxRegime: '',
 		billingAddress: '',
+		businessModel: 'CLIENTES_PROPIOS',
+		doctorCommissionPercentage: 0,
+		services: [],
 	});
 
 	const [errors, setErrors] = useState<Record<string, string>>({});
@@ -180,6 +190,8 @@ export default function ClinicProfileComponent() {
 	useEffect(() => {
 		loadProfile();
 	}, []);
+
+	const [aggregatedSpecs, setAggregatedSpecs] = useState<string[]>([]);
 
 	const loadProfile = async () => {
 		try {
@@ -224,7 +236,13 @@ export default function ClinicProfileComponent() {
 					billingSeries: p.billingSeries ?? '',
 					taxRegime: p.taxRegime ?? '',
 					billingAddress: p.billingAddress ?? '',
+					businessModel: p.businessModel ?? 'CLIENTES_PROPIOS',
+					doctorCommissionPercentage: p.doctorCommissionPercentage ? Number(p.doctorCommissionPercentage) : 0,
+					services: safeParseArrayField(p.services),
 				});
+				if (data.aggregatedSpecialties) {
+					setAggregatedSpecs(data.aggregatedSpecialties);
+				}
 			}
 		} catch (err) {
 			console.error('Error loading clinic profile:', err);
@@ -252,13 +270,20 @@ export default function ClinicProfileComponent() {
 	const handleSubmit = async (e?: React.FormEvent) => {
 		e?.preventDefault();
         const eObj: Record<string, string> = {};
-		if (!form.rif) eObj.rif = 'Requerido';
-		if (!form.legalName) eObj.legalName = 'Requerido';
-		if (!form.email) eObj.email = 'Requerido';
+		
+		// Validaciones críticas
+		if (!form.rif) eObj.rif = 'El RIF es obligatorio';
+		if (!form.legalName) eObj.legalName = 'El nombre legal es obligatorio';
+		if (!form.email) eObj.email = 'El email de contacto es obligatorio';
 
         if (Object.keys(eObj).length > 0) {
             setErrors(eObj);
-            toast.error('Corrige los errores antes de continuar');
+			// Determinar en qué pestaña están los errores
+			let errorTab = 'general';
+			if (eObj.rif || eObj.legalName || eObj.email) errorTab = 'general';
+			
+			setActiveTab(errorTab);
+            toast.error('Corrige los campos obligatorios en la pestaña Legal & Fiscal');
             return;
         }
 
@@ -303,6 +328,9 @@ export default function ClinicProfileComponent() {
                     billingSeries: form.billingSeries,
                     taxRegime: form.taxRegime,
                     billingAddress: form.billingAddress,
+                    businessModel: form.businessModel,
+                    doctorCommissionPercentage: form.doctorCommissionPercentage,
+                    services: form.services,
                 }),
 			});
 
@@ -403,6 +431,9 @@ export default function ClinicProfileComponent() {
                     {tabs.map(tab => {
                         const Icon = tab.icon;
                         const active = activeTab === tab.id;
+						// Verificar si hay errores en esta pestaña
+						const hasErrors = (tab.id === 'general' && (errors.rif || errors.legalName || errors.email));
+
                         return (
                             <button
                                 key={tab.id}
@@ -411,12 +442,14 @@ export default function ClinicProfileComponent() {
                                     "w-full flex items-center gap-3 px-6 py-4 rounded-2xl font-semibold transition-all group relative overflow-hidden",
                                     active 
                                         ? "bg-indigo-50 text-indigo-700 shadow-sm border border-indigo-100" 
-                                        : "text-slate-500 hover:bg-slate-50 hover:text-slate-700"
+                                        : "text-slate-500 hover:bg-slate-50 hover:text-slate-700",
+									hasErrors && "border-red-200 bg-red-50/30"
                                 )}
                             >
                                 {active && <div className="absolute left-0 top-0 bottom-0 w-1 bg-indigo-600 rounded-r-full"></div>}
-                                <Icon size={20} className={active ? "text-indigo-600" : "text-slate-400 group-hover:text-indigo-400"} />
-                                <span>{tab.label}</span>
+                                <Icon size={20} className={cx(active ? "text-indigo-600" : "text-slate-400 group-hover:text-indigo-400", hasErrors && "text-red-500")} />
+                                <span className={cx(hasErrors && "text-red-700")}>{tab.label}</span>
+								{hasErrors && <div className="ml-2 w-2 h-2 bg-red-500 rounded-full animate-pulse"></div>}
                                 <ChevronRight size={16} className={cx("ml-auto transition-transform", active ? "rotate-90 text-indigo-400" : "opacity-0 group-hover:opacity-100")} />
                             </button>
                         );
@@ -531,12 +564,124 @@ export default function ClinicProfileComponent() {
                                         />
                                         
                                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                                            <InputField label="Total Consultorios" name="officesCount" type="number" value={form.officesCount} onChange={v => updateField('officesCount', v)} icon={Building2} />
+                                            <InputField label="Total Consultorios" disabled name="officesCount" type="number" value={form.officesCount} onChange={v => updateField('officesCount', v)} icon={Building2} />
                                             <InputField label="Capacidad Diaria" name="capacityPerDay" type="number" value={form.capacityPerDay} onChange={v => updateField('capacityPerDay', v)} icon={UserCircle2} />
-                                            <InputField label="Nº de Empleados" name="employeesCount" type="number" value={form.employeesCount} onChange={v => updateField('employeesCount', v)} />
+                                            <InputField label="Nº de Empleados (Plan)" disabled name="employeesCount" type="number" value={form.employeesCount} onChange={v => updateField('employeesCount', v)} />
                                         </div>
 
-                                        <div className="space-y-10">
+                                        <div className="space-y-6 pt-10 border-t border-slate-100">
+                                            <div>
+                                                <h3 className="text-lg font-bold text-slate-800">Modelo de Negocio</h3>
+                                                <p className="text-sm text-slate-500">Configuración de cómo operan los especialistas en la clínica.</p>
+                                            </div>
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                                <div className="space-y-1.5">
+                                                    <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider ml-1">Estructura</label>
+                                                    <select 
+                                                        value={form.businessModel} 
+                                                        onChange={e => updateField('businessModel', e.target.value)}
+                                                        className="w-full bg-white border border-slate-200 rounded-xl py-3 px-4 focus:border-indigo-400 focus:ring-4 focus:ring-indigo-50 outline-none text-slate-700 font-medium transition-all"
+                                                    >
+                                                        <option value="CLIENTES_PROPIOS">Clientes Propios (Clínica paga a Doctores)</option>
+                                                        <option value="CLIENTES_DOCTOR">Clientes del Doctor (Clínica cobra a Doctores)</option>
+                                                    </select>
+                                                </div>
+                                                <InputField 
+                                                    label={form.businessModel === 'CLIENTES_PROPIOS' ? "Porcentaje Pagado al Doctor (%)" : "Porcentaje Cobrado al Doctor (%)"} 
+                                                    name="doctorCommissionPercentage" 
+                                                    type="number" 
+                                                    value={form.doctorCommissionPercentage} 
+                                                    onChange={v => updateField('doctorCommissionPercentage', v)} 
+                                                    icon={Banknote} 
+                                                />
+                                            </div>
+                                        </div>
+
+                                        {form.businessModel === 'CLIENTES_PROPIOS' && (
+                                            <div className="space-y-6 pt-10 border-t border-slate-100 animate-in fade-in duration-300">
+                                                <div className="flex items-center justify-between">
+                                                    <div>
+                                                        <h3 className="text-lg font-bold text-slate-800">Servicios y Costos</h3>
+                                                        <p className="text-sm text-slate-500">Defina el tabulador de precios de los servicios de la institución.</p>
+                                                    </div>
+                                                    <button 
+                                                        type="button"
+                                                        onClick={() => updateField('services', [...form.services, { id: crypto.randomUUID(), name: '', description: '', price: 0, active: true }])}
+                                                        className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 transition-all shadow-sm font-semibold text-sm"
+                                                    >
+                                                        <Plus size={18} />
+                                                        Añadir Servicio
+                                                    </button>
+                                                </div>
+                                                <div className="space-y-4">
+                                                    {form.services.map((svc, idx) => (
+                                                        <div key={svc.id || idx} className="grid grid-cols-1 md:grid-cols-12 gap-4 bg-slate-50 p-4 rounded-2xl border border-slate-200 fade-in duration-300 relative group">
+                                                            <div className="md:col-span-4">
+                                                                <input 
+                                                                    value={svc.name} 
+                                                                    onChange={e => {
+                                                                        const ns = [...form.services];
+                                                                        ns[idx].name = e.target.value;
+                                                                        updateField('services', ns);
+                                                                    }}
+                                                                    placeholder="Nombre del servicio (Ej. Consulta General)"
+                                                                    className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm font-semibold text-slate-700 outline-none focus:border-indigo-400"
+                                                                />
+                                                            </div>
+                                                            <div className="md:col-span-5">
+                                                                <input 
+                                                                    value={svc.description} 
+                                                                    onChange={e => {
+                                                                        const ns = [...form.services];
+                                                                        ns[idx].description = e.target.value;
+                                                                        updateField('services', ns);
+                                                                    }}
+                                                                    placeholder="Breve descripción..."
+                                                                    className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-600 outline-none focus:border-indigo-400"
+                                                                />
+                                                            </div>
+                                                            <div className="md:col-span-2">
+                                                                <div className="relative">
+                                                                    <div className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">
+                                                                        <Banknote size={14} />
+                                                                    </div>
+                                                                    <input 
+                                                                        type="number"
+                                                                        value={svc.price || ''} 
+                                                                        onChange={e => {
+                                                                            const ns = [...form.services];
+                                                                            ns[idx].price = Number(e.target.value);
+                                                                            updateField('services', ns);
+                                                                        }}
+                                                                        placeholder="Monto"
+                                                                        className="w-full bg-white border border-slate-200 rounded-lg pl-8 pr-3 py-2 text-sm font-bold text-emerald-600 outline-none focus:border-indigo-400"
+                                                                    />
+                                                                </div>
+                                                            </div>
+                                                            <div className="md:col-span-1 flex justify-center items-center">
+                                                                <button 
+                                                                    type="button" 
+                                                                    onClick={() => {
+                                                                        const ns = form.services.filter((_, i) => i !== idx);
+                                                                        updateField('services', ns);
+                                                                    }}
+                                                                    className="w-8 h-8 flex items-center justify-center text-slate-400 hover:text-red-500 transition-colors bg-white rounded-lg border border-slate-200 shadow-sm opacity-50 hover:opacity-100"
+                                                                >
+                                                                    <Trash2 size={16} />
+                                                                </button>
+                                                            </div>
+                                                        </div>
+                                                    ))}
+                                                    {form.services.length === 0 && (
+                                                        <div className="p-8 border-2 border-dashed border-slate-200 rounded-2xl text-center">
+                                                            <p className="text-slate-500 font-medium text-sm">No hay servicios registrados aún.</p>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        <div className="space-y-10 pt-10 border-t border-slate-100">
                                             <div className="space-y-6">
                                                 <div className="flex items-center justify-between">
                                                     <div>
@@ -584,6 +729,31 @@ export default function ClinicProfileComponent() {
                                                         </div>
                                                     ))}
                                                 </div>
+
+												{form.specialties.filter(Boolean).length === 0 && aggregatedSpecs.length > 0 && (
+													<div className="mt-4 p-4 bg-slate-50 border border-slate-100 rounded-2xl">
+														<p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3 flex items-center gap-2">
+															<Sparkles size={14} className="text-indigo-400" /> Especialidades sugeridas (de sus especialistas)
+														</p>
+														<div className="flex flex-wrap gap-2">
+															{aggregatedSpecs.map((s, i) => (
+																<button 
+																	key={i} 
+																	type="button"
+																	onClick={() => {
+																		const current = form.specialties.filter(Boolean);
+																		if (!current.includes(s)) {
+																			updateField('specialties', [...current, s]);
+																		}
+																	}}
+																	className="px-3 py-1 bg-white border border-slate-200 rounded-full text-[10px] font-bold text-slate-600 hover:border-indigo-300 hover:text-indigo-600 transition-all shadow-sm"
+																>
+																	+ {s}
+																</button>
+															))}
+														</div>
+													</div>
+												)}
                                             </div>
 
                                             {/* HORARIOS DE ATENCIÓN ESTRUCTURADOS */}
@@ -606,16 +776,14 @@ export default function ClinicProfileComponent() {
                                                         Nuevo Bloque
                                                     </button>
                                                 </div>
-
                                                 <div className="space-y-4">
-                                                    {safeParseArrayField(form.openingHours).map((item: any, idx: number) => {
-                                                        const schedule = typeof item === 'object' ? item : { days: item, hours: '' };
+                                                    {safeParseArrayField(form.openingHours).map((schedule: any, idx: number) => {
                                                         return (
-                                                            <div key={idx} className="flex flex-col md:flex-row gap-4 items-end bg-slate-50/50 p-6 rounded-[2rem] border border-slate-100 animate-in fade-in duration-300">
-                                                                <div className="flex-1 w-full space-y-1.5">
-                                                                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Días de Atención</label>
+                                                            <div key={idx} className="flex items-end gap-4 bg-slate-50/50 p-4 rounded-2xl border border-slate-100 group animate-in slide-in-from-right-2 duration-300">
+                                                                <div className="flex-1 space-y-1.5">
+                                                                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Días</label>
                                                                     <div className="relative">
-                                                                        <div className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">
+                                                                        <div className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-indigo-500 transition-colors">
                                                                             <CalendarDays size={18} />
                                                                         </div>
                                                                         <input 
@@ -630,10 +798,10 @@ export default function ClinicProfileComponent() {
                                                                         />
                                                                     </div>
                                                                 </div>
-                                                                <div className="flex-1 w-full space-y-1.5">
-                                                                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Bloque Horario</label>
+                                                                <div className="flex-1 space-y-1.5">
+                                                                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Horario</label>
                                                                     <div className="relative">
-                                                                        <div className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">
+                                                                        <div className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-indigo-500 transition-colors">
                                                                             <Clock size={18} />
                                                                         </div>
                                                                         <input 
@@ -858,7 +1026,7 @@ export default function ClinicProfileComponent() {
 
                             </div>
                         ) : (
-                            <PreviewPanel form={form} />
+                            <PreviewPanel form={form} aggregatedSpecs={aggregatedSpecs} />
                         )}
                     </div>
                 </div>
@@ -882,7 +1050,7 @@ function SectionHeader({ title, subtitle, icon: Icon }: { title: string; subtitl
     );
 }
 
-function PreviewPanel({ form }: { form: ClinicForm }) {
+function PreviewPanel({ form, aggregatedSpecs = [] }: { form: ClinicForm; aggregatedSpecs?: string[] }) {
     return (
         <div className="animate-in fade-in zoom-in-95 duration-500 overflow-hidden relative min-h-[600px] flex flex-col">
             <div className="absolute top-0 right-0 p-4">
@@ -910,7 +1078,7 @@ function PreviewPanel({ form }: { form: ClinicForm }) {
                 <div className="grid grid-cols-3 gap-px bg-slate-100 border border-slate-100 rounded-[2rem] overflow-hidden shadow-sm">
                     {[
                         { label: 'Sedes', value: form.officesCount },
-                        { label: 'Especialidades', value: form.specialties.filter(Boolean).length },
+                        { label: 'Especialidades', value: form.specialties.filter(Boolean).length || aggregatedSpecs.length },
                         { label: 'Capacidad/Día', value: form.capacityPerDay || '—' }
                     ].map((idx, i) => (
                         <div key={i} className="bg-white p-6 text-center">
@@ -951,10 +1119,15 @@ function PreviewPanel({ form }: { form: ClinicForm }) {
                          <div className="p-6 bg-slate-50/50 rounded-[2.5rem] border border-slate-100">
                             <h4 className="text-[10px] font-bold text-indigo-600 uppercase tracking-widest mb-4">Servicios Médicos</h4>
                             <div className="flex flex-wrap gap-2">
-                                {form.specialties.filter(Boolean).map((s, i) => (
-                                    <span key={i} className="px-3 py-1.5 bg-white border border-slate-200 rounded-xl text-[10px] font-black text-slate-600 shadow-sm uppercase tracking-tight">{s}</span>
-                                ))}
-                                {form.specialties.filter(Boolean).length === 0 && (
+                                {form.specialties.filter(Boolean).length > 0 ? (
+                                    form.specialties.filter(Boolean).map((s, i) => (
+                                        <span key={i} className="px-3 py-1.5 bg-white border border-slate-200 rounded-xl text-[10px] font-black text-slate-600 shadow-sm uppercase tracking-tight">{s}</span>
+                                    ))
+                                ) : aggregatedSpecs.length > 0 ? (
+									aggregatedSpecs.map((s, i) => (
+										<span key={i} className="px-3 py-1.5 bg-slate-50 border border-slate-100 rounded-xl text-[10px] font-bold text-slate-400 shadow-sm uppercase tracking-tight italic">{s}</span>
+									))
+								) : (
                                     <p className="text-[11px] text-slate-400 italic">Especialidades no registradas.</p>
                                 )}
                             </div>
