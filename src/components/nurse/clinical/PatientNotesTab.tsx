@@ -4,11 +4,12 @@ import { useState, useEffect, useCallback } from 'react';
 import type { NursingEvolutionNote } from '@/types/nurse.types';
 import { getEvolutionNotes, createEvolutionNote } from '@/lib/supabase/nurse.service';
 import { useNurseState, useNurseActions } from '@/context/NurseContext';
-import { FileText, Send, Clock, User, MessageSquare, Loader2, Sparkles } from 'lucide-react';
+import { FileText, Send, Clock, User, MessageSquare, Loader2, Sparkles, Mic, Brain } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { toast } from 'sonner';
+import AudioRecorderButton from '@/components/medic/AudioRecorderButton';
 
 interface Props {
   queueId: string;
@@ -22,6 +23,7 @@ export function PatientNotesTab({ queueId }: Props) {
   const [submitting, setSubmitting] = useState(false);
   const [content, setContent] = useState('');
   const [noteType, setNoteType] = useState<NursingEvolutionNote['note_type']>('public');
+  const [isAIProcessing, setIsAIProcessing] = useState(false);
 
   const loadNotes = useCallback(async () => {
     setLoading(true);
@@ -39,6 +41,12 @@ export function PatientNotesTab({ queueId }: Props) {
   useEffect(() => {
     loadNotes();
   }, [loadNotes]);
+
+  const handleAISuccess = (generatedContent: string, transcription?: string) => {
+    setContent(generatedContent);
+    toast.success('Nota generada con IA exitosamente');
+    setIsAIProcessing(false);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -116,10 +124,29 @@ export function PatientNotesTab({ queueId }: Props) {
       {/* Form Container */}
       <div className="bg-white  rounded-3xl border border-gray-100  p-6 shadow-xl shadow-gray-200/20 ">
         <div className="flex items-center justify-between mb-6">
-          <h3 className="text-lg font-black text-gray-900  flex items-center gap-2">
-            <Sparkles className="w-5 h-5 text-teal-600" />
-            Nueva Nota de Evolución
-          </h3>
+          <div className="flex items-center gap-3">
+             <div className="p-2.5 bg-teal-50 rounded-2xl text-teal-600">
+               <Sparkles className="w-5 h-5" />
+             </div>
+             <div>
+               <h3 className="text-lg font-black text-gray-900 ">Nueva Nota de Evolución</h3>
+               <p className="text-xs text-gray-500 font-medium">Registra el progreso del paciente</p>
+             </div>
+          </div>
+
+          <AudioRecorderButton 
+            consultationId={queueId}
+            reportType="nurse_kardex"
+            specialty="enfermeria"
+            customEndpoint="/api/nurse/kardex/audio-to-note"
+            onSuccessContent={handleAISuccess}
+            onStart={() => setIsAIProcessing(true)}
+            onError={(err) => {
+              toast.error(err);
+              setIsAIProcessing(false);
+            }}
+            className="w-fit"
+          />
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -143,6 +170,15 @@ export function PatientNotesTab({ queueId }: Props) {
           </div>
 
           <div className="relative group">
+            {isAIProcessing && (
+              <div className="absolute inset-0 bg-white/60 backdrop-blur-sm z-10 rounded-2xl flex flex-col items-center justify-center gap-3">
+                <div className="relative">
+                  <div className="w-12 h-12 bg-teal-100 rounded-full animate-pulse" />
+                  <Brain className="w-6 h-6 text-teal-600 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" />
+                </div>
+                <p className="text-xs font-bold text-teal-800 animate-pulse">La IA está redactando tu nota...</p>
+              </div>
+            )}
             <textarea
               value={content}
               onChange={(e) => setContent(e.target.value)}
