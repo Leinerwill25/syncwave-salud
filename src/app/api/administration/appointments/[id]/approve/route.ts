@@ -11,10 +11,10 @@ export async function POST(
   const authResult = await apiRequireRole(['ADMINISTRACION', 'ADMIN']);
   if (authResult.response) return authResult.response;
 
-  const clinicId = authResult.user?.organizationId;
+  const organizationId = authResult.user?.organizationId;
   const authId = authResult.user?.authId;
 
-  if (!clinicId || !authId) {
+  if (!organizationId || !authId) {
     return NextResponse.json({ error: 'Datos de sesión incompletos' }, { status: 400 });
   }
 
@@ -24,12 +24,12 @@ export async function POST(
 
     const supabase = await createSupabaseServerClient();
 
-    // 1. Check if appointment exists, belongs to clinic, and is PENDIENTE
+    // 1. Verificar que la cita existe, pertenece a la organización y está PENDIENTE
     const { data: appointment, error: fetchError } = await supabase
-      .from('appointments')
+      .from('admin_appointments')
       .select('*')
       .eq('id', id)
-      .eq('clinic_id', clinicId)
+      .eq('organization_id', organizationId)
       .single();
 
     if (fetchError || !appointment) {
@@ -40,20 +40,19 @@ export async function POST(
       return NextResponse.json({ error: 'La cita ya fue procesada anteriormente' }, { status: 400 });
     }
 
-    // 2. Start a transaction (in Supabase, we can use RPC or subsequent calls carefully)
     const now = new Date().toISOString();
 
-    // Create the consultation record first (auto-generated)
+    // 2. Crear el registro de consulta
     const { data: consultation, error: consultError } = await supabase
-      .from('consultations')
+      .from('admin_consultations')
       .insert({
-        clinic_id: clinicId,
+        organization_id: organizationId,
         specialist_id: appointment.specialist_id,
         patient_id: appointment.patient_id,
         appointment_id: appointment.id,
         consultation_date: appointment.scheduled_date,
         start_time: appointment.scheduled_time,
-        status: 'EN_PROCESO',
+        status: 'PROGRAMADA',
         created_by: authId,
         updated_by: authId,
       })
@@ -64,9 +63,9 @@ export async function POST(
       return NextResponse.json({ error: 'Error al generar la consulta clínica' }, { status: 500 });
     }
 
-    // Update the appointment status
+    // 3. Actualizar el estado de la cita
     const { data: updatedAppointment, error: updateError } = await supabase
-      .from('appointments')
+      .from('admin_appointments')
       .update({
         status: 'APROBADA',
         service_id: validatedData.serviceId,
@@ -82,8 +81,6 @@ export async function POST(
       .single();
 
     if (updateError) {
-      // Rollback consultation if possible, or leave it orphaned (not ideal, RPC is better for real transactions)
-      // For MVP, this is acceptable.
       return NextResponse.json({ error: 'Error al actualizar el estado de la cita' }, { status: 500 });
     }
 

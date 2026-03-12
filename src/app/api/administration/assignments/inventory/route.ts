@@ -15,22 +15,21 @@ export async function GET(request: Request) {
   const to = from + limit - 1;
 
   const supabase = await createSupabaseServerClient();
-  const clinicId = authResult.user?.organizationId;
+  const organizationId = authResult.user?.organizationId;
 
-  if (!clinicId) {
-    return NextResponse.json({ error: 'Usuario sin clínica asociada' }, { status: 400 });
+  if (!organizationId) {
+    return NextResponse.json({ error: 'Usuario sin organización asociada' }, { status: 400 });
   }
 
   let query = supabase
-    .from('inventory_assignments')
+    .from('admin_inventory_assignments')
     .select(`
       *,
-      patients!inner (first_name, last_name),
-      inventory_medications (name, dosage, presentation),
-      inventory_materials (name, specifications),
-      users:assigned_by (email)
+      patient!inner (first_name, last_name),
+      admin_inventory_medications (name, dosage, presentation),
+      admin_inventory_materials (name, specifications)
     `, { count: 'exact' })
-    .eq('clinic_id', clinicId)
+    .eq('organization_id', organizationId)
     .range(from, to);
 
   if (patientId) {
@@ -56,7 +55,7 @@ export async function POST(request: Request) {
   const authResult = await apiRequireRole(['ADMINISTRACION', 'ADMIN']);
   if (authResult.response) return authResult.response;
 
-  const clinicId = authResult.user?.organizationId;
+  const organizationId = authResult.user?.organizationId;
   const authId = authResult.user?.authId;
 
   try {
@@ -68,9 +67,8 @@ export async function POST(request: Request) {
     // Si el paciente no lo trajo, deducir del inventario
     if (!validatedData.patientProvided) {
       if (validatedData.medicationId) {
-        // Check medication stock
         const { data: med, error: medError } = await supabase
-          .from('inventory_medications')
+          .from('admin_inventory_medications')
           .select('quantity')
           .eq('id', validatedData.medicationId)
           .single();
@@ -79,16 +77,14 @@ export async function POST(request: Request) {
           return NextResponse.json({ error: 'Stock insuficiente de este medicamento' }, { status: 400 });
         }
 
-        // Deduct stock
         await supabase
-          .from('inventory_medications')
+          .from('admin_inventory_medications')
           .update({ quantity: med.quantity - validatedData.quantityAssigned, updated_at: new Date().toISOString() })
           .eq('id', validatedData.medicationId);
 
       } else if (validatedData.materialId) {
-        // Check material stock
         const { data: mat, error: matError } = await supabase
-          .from('inventory_materials')
+          .from('admin_inventory_materials')
           .select('quantity')
           .eq('id', validatedData.materialId)
           .single();
@@ -97,19 +93,17 @@ export async function POST(request: Request) {
           return NextResponse.json({ error: 'Stock insuficiente de este material' }, { status: 400 });
         }
 
-        // Deduct stock
         await supabase
-          .from('inventory_materials')
+          .from('admin_inventory_materials')
           .update({ quantity: mat.quantity - validatedData.quantityAssigned, updated_at: new Date().toISOString() })
           .eq('id', validatedData.materialId);
       }
     }
 
-    // Insert assignment record
     const { data, error } = await supabase
-      .from('inventory_assignments')
+      .from('admin_inventory_assignments')
       .insert({
-        clinic_id: clinicId,
+        organization_id: organizationId,
         patient_id: validatedData.patientId,
         medication_id: validatedData.medicationId || null,
         material_id: validatedData.materialId || null,
@@ -121,7 +115,7 @@ export async function POST(request: Request) {
       .single();
 
     if (error) {
-       return NextResponse.json({ error: error.message }, { status: 500 });
+      return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
     return NextResponse.json(data);

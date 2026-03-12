@@ -8,39 +8,36 @@ export async function GET(request: Request) {
 
   const { searchParams } = new URL(request.url);
   const status = searchParams.get('status') || '';
-  const specialty = searchParams.get('specialty') || ''; // Could filter by specialist role
   const page = parseInt(searchParams.get('page') || '1');
   const limit = parseInt(searchParams.get('limit') || '50');
   const from = (page - 1) * limit;
   const to = from + limit - 1;
 
   const supabase = await createSupabaseServerClient();
-  const clinicId = authResult.user?.organizationId;
+  const organizationId = authResult.user?.organizationId;
 
-  if (!clinicId) {
-    return NextResponse.json({ error: 'Usuario sin clínica asociada' }, { status: 400 });
+  if (!organizationId) {
+    return NextResponse.json({ error: 'Usuario sin organización asociada' }, { status: 400 });
   }
 
   let query = supabase
-    .from('appointments')
+    .from('admin_appointments')
     .select(`
       *,
       specialists!inner (first_name, last_name, role),
-      patients!inner (first_name, last_name, phone_number, email),
-      clinic_services (name)
+      patient!inner (first_name, last_name, phone, email),
+      admin_clinic_services (name)
     `, { count: 'exact' })
-    .eq('clinic_id', clinicId)
+    .eq('organization_id', organizationId)
     .range(from, to);
 
   if (status) {
     query = query.eq('status', status);
   }
 
-  if (specialty) {
-    query = query.eq('specialists.role', specialty);
-  }
-
-  const { data, count, error } = await query.order('scheduled_date', { ascending: true }).order('scheduled_time', { ascending: true });
+  const { data, count, error } = await query
+    .order('scheduled_date', { ascending: true })
+    .order('scheduled_time', { ascending: true });
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });

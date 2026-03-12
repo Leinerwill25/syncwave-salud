@@ -10,23 +10,22 @@ export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const search = searchParams.get('search') || '';
   const role = searchParams.get('role') || '';
-  const active = searchParams.get('active') === 'false' ? false : true;
   const page = parseInt(searchParams.get('page') || '1');
   const limit = parseInt(searchParams.get('limit') || '50');
   const from = (page - 1) * limit;
   const to = from + limit - 1;
 
   const supabase = await createSupabaseServerClient();
-  const clinicId = authResult.user?.organizationId;
+  const organizationId = authResult.user?.organizationId;
 
-  if (!clinicId) {
-    return NextResponse.json({ error: 'Usuario sin clínica asociada' }, { status: 400 });
+  if (!organizationId) {
+    return NextResponse.json({ error: 'Usuario sin organización asociada' }, { status: 400 });
   }
 
   let query = supabase
     .from('specialists')
     .select('*', { count: 'exact' })
-    .eq('clinic_id', clinicId)
+    .eq('organization_id', organizationId)
     .range(from, to);
 
   if (search) {
@@ -35,10 +34,6 @@ export async function GET(request: Request) {
 
   if (role) {
     query = query.eq('role', role);
-  }
-
-  if (active !== undefined) {
-    query = query.eq('is_active', active);
   }
 
   const { data, count, error } = await query.order('created_at', { ascending: false });
@@ -60,10 +55,10 @@ export async function POST(request: Request) {
   const authResult = await apiRequireRole(['ADMINISTRACION', 'ADMIN']);
   if (authResult.response) return authResult.response;
 
-  const clinicId = authResult.user?.organizationId;
+  const organizationId = authResult.user?.organizationId;
   const authId = authResult.user?.authId;
 
-  if (!clinicId || !authId) {
+  if (!organizationId || !authId) {
     return NextResponse.json({ error: 'Datos de sesión incompletos' }, { status: 400 });
   }
 
@@ -76,14 +71,14 @@ export async function POST(request: Request) {
     const { data, error } = await supabase
       .from('specialists')
       .insert({
-        clinic_id: clinicId,
+        organization_id: organizationId,
         first_name: validatedData.firstName,
         last_name: validatedData.lastName,
         phone_number: validatedData.phoneNumber,
         email: validatedData.email,
         inpres_sax: validatedData.inpresSax,
         role: validatedData.role,
-        is_active: validatedData.isActive,
+        is_active: validatedData.isActive ?? true,
         created_by: authId,
         updated_by: authId,
       })
@@ -92,7 +87,7 @@ export async function POST(request: Request) {
 
     if (error) {
       if (error.code === '23505') {
-        return NextResponse.json({ error: 'El email o el INPRES ya están registrados para esta clínica' }, { status: 409 });
+        return NextResponse.json({ error: 'El email o el INPRES ya están registrados para esta organización' }, { status: 409 });
       }
       return NextResponse.json({ error: error.message }, { status: 500 });
     }

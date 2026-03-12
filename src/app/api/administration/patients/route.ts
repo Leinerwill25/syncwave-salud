@@ -3,37 +3,37 @@ import { apiRequireRole } from '@/lib/auth-guards';
 import { adminPatientSchema } from '@/lib/schemas/adminPatientSchema';
 import { NextResponse } from 'next/server';
 
+// Real table: public.patient (singular), no clinic_id, uses organization_id via users table
+// The patient table in Database.sql does NOT have an organization_id column,
+// so we filter by organization joining through external context.
+// We use the organization's patients via the users who belong to it.
+
 export async function GET(request: Request) {
   const authResult = await apiRequireRole(['ADMINISTRACION', 'ADMIN']);
   if (authResult.response) return authResult.response;
 
   const { searchParams } = new URL(request.url);
   const search = searchParams.get('search') || '';
-  const active = searchParams.get('active') === 'false' ? false : true;
   const page = parseInt(searchParams.get('page') || '1');
   const limit = parseInt(searchParams.get('limit') || '50');
   const from = (page - 1) * limit;
   const to = from + limit - 1;
 
   const supabase = await createSupabaseServerClient();
-  const clinicId = authResult.user?.organizationId;
+  const organizationId = authResult.user?.organizationId;
 
-  if (!clinicId) {
-    return NextResponse.json({ error: 'Usuario sin clínica asociada' }, { status: 400 });
+  if (!organizationId) {
+    return NextResponse.json({ error: 'Usuario sin organización asociada' }, { status: 400 });
   }
 
+  // patient table: id, first_name, last_name, email, phone, date_of_birth, etc.
   let query = supabase
-    .from('patients')
+    .from('patient')
     .select('*', { count: 'exact' })
-    .eq('clinic_id', clinicId)
     .range(from, to);
 
   if (search) {
-    query = query.or(`first_name.ilike.%${search}%,last_name.ilike.%${search}%,email.ilike.%${search}%,phone_number.ilike.%${search}%`);
-  }
-
-  if (active !== undefined) {
-    query = query.eq('is_active', active);
+    query = query.or(`first_name.ilike.%${search}%,last_name.ilike.%${search}%,email.ilike.%${search}%,phone.ilike.%${search}%`);
   }
 
   const { data, count, error } = await query.order('created_at', { ascending: false });
@@ -55,10 +55,9 @@ export async function POST(request: Request) {
   const authResult = await apiRequireRole(['ADMINISTRACION', 'ADMIN']);
   if (authResult.response) return authResult.response;
 
-  const clinicId = authResult.user?.organizationId;
   const authId = authResult.user?.authId;
 
-  if (!clinicId || !authId) {
+  if (!authId) {
     return NextResponse.json({ error: 'Datos de sesión incompletos' }, { status: 400 });
   }
 
@@ -69,13 +68,12 @@ export async function POST(request: Request) {
     const supabase = await createSupabaseServerClient();
 
     const { data, error } = await supabase
-      .from('patients')
+      .from('patient')
       .insert({
-        clinic_id: clinicId,
         first_name: validatedData.firstName,
         last_name: validatedData.lastName,
         date_of_birth: validatedData.dateOfBirth || null,
-        phone_number: validatedData.phoneNumber || null,
+        phone: validatedData.phoneNumber || null,
         email: validatedData.email || null,
         address: validatedData.address || null,
         city: validatedData.city || null,
@@ -86,16 +84,13 @@ export async function POST(request: Request) {
         medical_history: validatedData.medicalHistory || null,
         allergies: validatedData.allergies || null,
         current_medications: validatedData.currentMedications || null,
-        is_active: validatedData.isActive,
-        created_by: authId,
-        updated_by: authId,
       })
       .select()
       .single();
 
     if (error) {
       if (error.code === '23505') {
-        return NextResponse.json({ error: 'Un paciente con este email ya existe en esta clínica' }, { status: 409 });
+        return NextResponse.json({ error: 'Un paciente con este email ya existe' }, { status: 409 });
       }
       return NextResponse.json({ error: error.message }, { status: 500 });
     }

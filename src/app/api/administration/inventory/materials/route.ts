@@ -15,16 +15,16 @@ export async function GET(request: Request) {
   const to = from + limit - 1;
 
   const supabase = await createSupabaseServerClient();
-  const clinicId = authResult.user?.organizationId;
+  const organizationId = authResult.user?.organizationId;
 
-  if (!clinicId) {
-    return NextResponse.json({ error: 'Usuario sin clínica asociada' }, { status: 400 });
+  if (!organizationId) {
+    return NextResponse.json({ error: 'Usuario sin organización asociada' }, { status: 400 });
   }
 
   let query = supabase
-    .from('inventory_materials')
+    .from('admin_inventory_materials')
     .select('*', { count: 'exact' })
-    .eq('clinic_id', clinicId)
+    .eq('organization_id', organizationId)
     .range(from, to);
 
   if (search) {
@@ -50,7 +50,7 @@ export async function POST(request: Request) {
   const authResult = await apiRequireRole(['ADMINISTRACION', 'ADMIN']);
   if (authResult.response) return authResult.response;
 
-  const clinicId = authResult.user?.organizationId;
+  const organizationId = authResult.user?.organizationId;
   const authId = authResult.user?.authId;
 
   try {
@@ -60,15 +60,15 @@ export async function POST(request: Request) {
     const supabase = await createSupabaseServerClient();
 
     const { data, error } = await supabase
-      .from('inventory_materials')
+      .from('admin_inventory_materials')
       .insert({
-        clinic_id: clinicId,
+        organization_id: organizationId,
         name: validatedData.name,
         specifications: validatedData.specifications || null,
         quantity: validatedData.quantity,
         supplier: validatedData.supplier || null,
         notes: validatedData.notes || null,
-        is_active: validatedData.isActive,
+        is_active: validatedData.isActive ?? true,
         created_by: authId,
         updated_by: authId,
       })

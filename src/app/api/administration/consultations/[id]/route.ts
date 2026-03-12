@@ -11,25 +11,22 @@ export async function GET(
   if (authResult.response) return authResult.response;
 
   const supabase = await createSupabaseServerClient();
-  const clinicId = authResult.user?.organizationId;
+  const organizationId = authResult.user?.organizationId;
 
-  // Retrieve consultation with all vital relationships
   const { data, error } = await supabase
-    .from('consultations')
+    .from('admin_consultations')
     .select(`
       *,
       specialists!inner (first_name, last_name, email, role, inpres_sax),
-      patients!inner (first_name, last_name, phone_number, email, address, date_of_birth),
-      appointments!inner (appointment_type, scheduled_date, scheduled_time, clinic_services (name)),
-      prescriptions (*),
-      clinical_documents (*),
-      inventory_assignments (*, 
-        inventory_medications (name, dosage, presentation), 
-        inventory_materials (name, specifications)
+      patient!inner (first_name, last_name, phone, email, address, date_of_birth),
+      admin_appointments (appointment_type, scheduled_date, scheduled_time, admin_clinic_services (name)),
+      admin_inventory_assignments (*,
+        admin_inventory_medications (name, dosage, presentation),
+        admin_inventory_materials (name, specifications)
       )
     `)
     .eq('id', id)
-    .eq('clinic_id', clinicId)
+    .eq('organization_id', organizationId)
     .single();
 
   if (error) {
@@ -39,7 +36,6 @@ export async function GET(
   return NextResponse.json(data);
 }
 
-// Admins might need to update notes or status (e.g. mark as COMPLETADA if it got stuck, or CANCELADA)
 export async function PATCH(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
@@ -48,26 +44,23 @@ export async function PATCH(
   const authResult = await apiRequireRole(['ADMINISTRACION', 'ADMIN']);
   if (authResult.response) return authResult.response;
 
-  const clinicId = authResult.user?.organizationId;
+  const organizationId = authResult.user?.organizationId;
   const authId = authResult.user?.authId;
 
   try {
     const body = await request.json();
-
     const supabase = await createSupabaseServerClient();
 
     const { data, error } = await supabase
-      .from('consultations')
+      .from('admin_consultations')
       .update({
         status: body.status,
-        notes: body.notes,
-        // Admins shouldn't normally override clinical findings, but could correct typos if authorized
-        // We'll restrict it to basic admin fields here to prevent altering medical records
+        shared_notes: body.shared_notes,
         updated_by: authId,
         updated_at: new Date().toISOString(),
       })
       .eq('id', id)
-      .eq('clinic_id', clinicId)
+      .eq('organization_id', organizationId)
       .select()
       .single();
 

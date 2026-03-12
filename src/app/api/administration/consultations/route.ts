@@ -16,28 +16,30 @@ export async function GET(request: Request) {
   const to = from + limit - 1;
 
   const supabase = await createSupabaseServerClient();
-  const clinicId = authResult.user?.organizationId;
+  const organizationId = authResult.user?.organizationId;
 
-  if (!clinicId) {
-    return NextResponse.json({ error: 'Usuario sin clínica asociada' }, { status: 400 });
+  if (!organizationId) {
+    return NextResponse.json({ error: 'Usuario sin organización asociada' }, { status: 400 });
   }
 
   let query = supabase
-    .from('consultations')
+    .from('admin_consultations')
     .select(`
       *,
       specialists!inner (first_name, last_name, role, inpres_sax),
-      patients!inner (first_name, last_name, phone_number, email),
-      appointments (appointment_type, scheduled_date, scheduled_time, clinic_services (name))
+      patient!inner (first_name, last_name, phone, email),
+      admin_appointments (appointment_type, scheduled_date, scheduled_time, admin_clinic_services (name))
     `, { count: 'exact' })
-    .eq('clinic_id', clinicId)
+    .eq('organization_id', organizationId)
     .range(from, to);
 
   if (status) query = query.eq('status', status);
   if (specialistId) query = query.eq('specialist_id', specialistId);
   if (patientId) query = query.eq('patient_id', patientId);
 
-  const { data, count, error } = await query.order('consultation_date', { ascending: false }).order('start_time', { ascending: false });
+  const { data, count, error } = await query
+    .order('consultation_date', { ascending: false })
+    .order('start_time', { ascending: false });
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });

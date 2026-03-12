@@ -16,26 +16,25 @@ export async function GET(request: Request) {
   const to = from + limit - 1;
 
   const supabase = await createSupabaseServerClient();
-  const clinicId = authResult.user?.organizationId;
+  const organizationId = authResult.user?.organizationId;
 
-  if (!clinicId) {
-    return NextResponse.json({ error: 'Usuario sin clínica asociada' }, { status: 400 });
+  if (!organizationId) {
+    return NextResponse.json({ error: 'Usuario sin organización asociada' }, { status: 400 });
   }
 
+  // clinical_documents doesn't exist in real schema, use consultation_files instead
   let query = supabase
-    .from('clinical_documents')
+    .from('consultation_files')
     .select(`
       *,
-      patients!inner (first_name, last_name),
-      users:uploaded_by (email)
+      consultation!inner (id, patient_id, organization_id)
     `, { count: 'exact' })
-    .eq('clinic_id', clinicId)
+    .eq('consultation.organization_id', organizationId)
     .range(from, to);
 
-  if (patientId) query = query.eq('patient_id', patientId);
   if (consultationId) query = query.eq('consultation_id', consultationId);
 
-  const { data, count, error } = await query.order('uploaded_at', { ascending: false });
+  const { data, count, error } = await query.order('created_at', { ascending: false });
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
@@ -54,28 +53,22 @@ export async function POST(request: Request) {
   const authResult = await apiRequireRole(['ADMINISTRACION', 'ADMIN']);
   if (authResult.response) return authResult.response;
 
-  const clinicId = authResult.user?.organizationId;
-  const authId = authResult.user?.authId;
-
   try {
     const body = await request.json();
     const validatedData = clinicalDocumentSchema.parse(body);
 
     const supabase = await createSupabaseServerClient();
 
+    // Store in consultation_files (existing real table)
     const { data, error } = await supabase
-      .from('clinical_documents')
+      .from('consultation_files')
       .insert({
-        clinic_id: clinicId,
-        patient_id: validatedData.patientId,
-        consultation_id: validatedData.consultationId || null,
-        document_type: validatedData.documentType || null,
-        description: validatedData.description || null,
-        file_path: validatedData.filePath,
+        consultation_id: validatedData.consultationId,
         file_name: validatedData.fileName,
-        file_size_bytes: validatedData.fileSizeBytes || null,
-        mime_type: validatedData.mimeType || null,
-        uploaded_by: authId,
+        path: validatedData.filePath,
+        url: validatedData.filePath,
+        content_type: validatedData.mimeType || null,
+        size: validatedData.fileSizeBytes || null,
       })
       .select()
       .single();

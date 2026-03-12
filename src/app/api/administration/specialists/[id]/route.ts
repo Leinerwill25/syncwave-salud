@@ -12,13 +12,13 @@ export async function GET(
   if (authResult.response) return authResult.response;
 
   const supabase = await createSupabaseServerClient();
-  const clinicId = authResult.user?.organizationId;
+  const organizationId = authResult.user?.organizationId;
 
   const { data, error } = await supabase
     .from('specialists')
     .select('*')
     .eq('id', id)
-    .eq('clinic_id', clinicId)
+    .eq('organization_id', organizationId)
     .single();
 
   if (error) {
@@ -36,12 +36,11 @@ export async function PATCH(
   const authResult = await apiRequireRole(['ADMINISTRACION', 'ADMIN']);
   if (authResult.response) return authResult.response;
 
-  const clinicId = authResult.user?.organizationId;
+  const organizationId = authResult.user?.organizationId;
   const authId = authResult.user?.authId;
 
   try {
     const body = await request.json();
-    // Partial validation for patch
     const partialSchema = specialistSchema.partial();
     const validatedData = partialSchema.parse(body);
 
@@ -60,7 +59,7 @@ export async function PATCH(
         updated_at: new Date().toISOString(),
       })
       .eq('id', id)
-      .eq('clinic_id', clinicId)
+      .eq('organization_id', organizationId)
       .select()
       .single();
 
@@ -82,15 +81,14 @@ export async function DELETE(
   const authResult = await apiRequireRole(['ADMINISTRACION', 'ADMIN']);
   if (authResult.response) return authResult.response;
 
-  const clinicId = authResult.user?.organizationId;
+  const organizationId = authResult.user?.organizationId;
   const supabase = await createSupabaseServerClient();
 
-  // We could do a soft delete or hard delete. Here we'll do a hard delete as per requirements "ELIMINADO"
   const { error } = await supabase
     .from('specialists')
     .delete()
     .eq('id', id)
-    .eq('clinic_id', clinicId);
+    .eq('organization_id', organizationId);
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });

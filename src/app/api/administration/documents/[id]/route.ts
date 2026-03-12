@@ -1,6 +1,5 @@
 import { createSupabaseServerClient } from '@/app/adapters/server';
 import { apiRequireRole } from '@/lib/auth-guards';
-import { clinicalDocumentSchema } from '@/lib/schemas/documentSchema';
 import { NextResponse } from 'next/server';
 
 export async function GET(
@@ -12,17 +11,12 @@ export async function GET(
   if (authResult.response) return authResult.response;
 
   const supabase = await createSupabaseServerClient();
-  const clinicId = authResult.user?.organizationId;
 
+  // Using the real consultation_files table
   const { data, error } = await supabase
-    .from('clinical_documents')
-    .select(`
-      *,
-      patients!inner (first_name, last_name),
-      users:uploaded_by (email)
-    `)
+    .from('consultation_files')
+    .select('*')
     .eq('id', id)
-    .eq('clinic_id', clinicId)
     .single();
 
   if (error) {
@@ -30,45 +24,6 @@ export async function GET(
   }
 
   return NextResponse.json(data);
-}
-
-export async function PATCH(
-  request: Request,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  const { id } = await params;
-  const authResult = await apiRequireRole(['ADMINISTRACION', 'ADMIN']);
-  if (authResult.response) return authResult.response;
-
-  const clinicId = authResult.user?.organizationId;
-
-  try {
-    const body = await request.json();
-    const partialSchema = clinicalDocumentSchema.partial();
-    const validatedData = partialSchema.parse(body);
-
-    const supabase = await createSupabaseServerClient();
-
-    const { data, error } = await supabase
-      .from('clinical_documents')
-      .update({
-        document_type: validatedData.documentType,
-        description: validatedData.description,
-        file_name: validatedData.fileName,
-      })
-      .eq('id', id)
-      .eq('clinic_id', clinicId)
-      .select()
-      .single();
-
-    if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
-    }
-
-    return NextResponse.json(data);
-  } catch (err: any) {
-    return NextResponse.json({ error: err.message || 'Error en la validación' }, { status: 400 });
-  }
 }
 
 export async function DELETE(
@@ -79,15 +34,12 @@ export async function DELETE(
   const authResult = await apiRequireRole(['ADMINISTRACION', 'ADMIN']);
   if (authResult.response) return authResult.response;
 
-  const clinicId = authResult.user?.organizationId;
   const supabase = await createSupabaseServerClient();
 
-  // En un sistema real, aquí también borraríamos el archivo físico de Storage
   const { error } = await supabase
-    .from('clinical_documents')
+    .from('consultation_files')
     .delete()
-    .eq('id', id)
-    .eq('clinic_id', clinicId);
+    .eq('id', id);
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
