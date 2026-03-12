@@ -1,29 +1,31 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createSupabaseServerClient } from '@/app/adapters/server';
+import { createSupabaseAdminClient } from '@/app/adapters/admin';
 
 export async function POST(req: NextRequest) {
 	try {
+		// 1. Verificar sesión con el cliente normal (respeta auth)
 		const supabase = await createSupabaseServerClient();
+		const { data: { user }, error: sessionError } = await supabase.auth.getUser();
 		
-		// Verificar sesión
-		const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-		
-		if (sessionError || !session) {
+		if (sessionError || !user) {
 			return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
 		}
 
-		// Leer payload
+		// 2. Leer payload
 		const body = await req.json();
 
-		// El cálculo de BMI lo haremos aquí para asegurar consistencia
+		// 3. Calcular BMI si se proporcionó talla y peso
 		let bmi = null;
 		if (body.heightCm && body.weightKg && body.heightCm > 0) {
 			const heightM = body.heightCm / 100;
 			bmi = Number((body.weightKg / (heightM * heightM)).toFixed(2));
 		}
 
-		// Insertar en la tabla unregisteredpatients
-		const { data, error } = await supabase
+		// 4. Usar el cliente admin (service role) para bypassar RLS en unregisteredpatients
+		const adminSupabase = createSupabaseAdminClient();
+
+		const { data, error } = await adminSupabase
 			.from('unregisteredpatients')
 			.insert({
 				first_name: body.firstName,
@@ -54,7 +56,7 @@ export async function POST(req: NextRequest) {
 				emergency_contact_name: body.emergencyContactName || null,
 				emergency_contact_phone: body.emergencyContactPhone || null,
 				emergency_contact_relation: body.emergencyContactRelation || null,
-				created_by: session.user.id
+				created_by: user.id,
 			})
 			.select()
 			.single();

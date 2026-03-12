@@ -1,4 +1,5 @@
 import { createSupabaseServerClient } from '@/app/adapters/server';
+import { createSupabaseAdminClient } from '@/app/adapters/admin';
 import { apiRequireRole } from '@/lib/auth-guards';
 import { adminPatientSchema } from '@/lib/schemas/adminPatientSchema';
 import { NextResponse } from 'next/server';
@@ -14,7 +15,7 @@ export async function GET(
   const supabase = await createSupabaseServerClient();
 
   const { data, error } = await supabase
-    .from('patient')
+    .from('unregisteredpatients')
     .select('*')
     .eq('id', id)
     .single();
@@ -39,25 +40,23 @@ export async function PATCH(
     const partialSchema = adminPatientSchema.partial();
     const validatedData = partialSchema.parse(body);
 
-    const supabase = await createSupabaseServerClient();
+    // Use admin client to bypass RLS for update
+    const adminSupabase = createSupabaseAdminClient();
 
-    const { data, error } = await supabase
-      .from('patient')
+    const { data, error } = await adminSupabase
+      .from('unregisteredpatients')
       .update({
         first_name: validatedData.firstName,
         last_name: validatedData.lastName,
-        date_of_birth: validatedData.dateOfBirth,
+        birth_date: validatedData.dateOfBirth,
         phone: validatedData.phoneNumber,
         email: validatedData.email,
         address: validatedData.address,
-        city: validatedData.city,
-        country: validatedData.country,
         emergency_contact_name: validatedData.emergencyContactName,
         emergency_contact_phone: validatedData.emergencyContactPhone,
         emergency_contact_relation: validatedData.emergencyContactRelation,
-        medical_history: validatedData.medicalHistory,
+        current_medication: validatedData.currentMedications,
         allergies: validatedData.allergies,
-        current_medications: validatedData.currentMedications,
       })
       .eq('id', id)
       .select()
@@ -81,10 +80,10 @@ export async function DELETE(
   const authResult = await apiRequireRole(['ADMINISTRACION', 'ADMIN']);
   if (authResult.response) return authResult.response;
 
-  const supabase = await createSupabaseServerClient();
+  const adminSupabase = createSupabaseAdminClient();
 
-  const { error } = await supabase
-    .from('patient')
+  const { error } = await adminSupabase
+    .from('unregisteredpatients')
     .delete()
     .eq('id', id);
 
