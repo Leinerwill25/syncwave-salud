@@ -20,10 +20,12 @@ export default async function AdministrationLayout({
   }
 
   return (
-    <div className="flex bg-slate-50 min-h-screen">
-      <AdministrationSidebar />
-      <main className="flex-1 w-full overflow-hidden flex flex-col pt-16 md:pt-0">
-        <div className="flex-1 overflow-x-hidden overflow-y-auto">
+    <div className="flex bg-[#F8FAFC] min-h-screen">
+      <div className="flex-shrink-0">
+        <AdministrationSidebar />
+      </div>
+      <main className="flex-1 w-full flex flex-col pt-16 md:pt-6 px-4 md:px-6 lg:px-8">
+        <div className="max-w-7xl w-full mx-auto">
           {children}
         </div>
       </main>

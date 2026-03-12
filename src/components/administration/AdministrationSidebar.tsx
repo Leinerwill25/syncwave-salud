@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { 
   Building2, 
   Users, 
@@ -14,176 +14,222 @@ import {
   Menu,
   X,
   LogOut,
-  Activity
+  Activity,
+  Search as SearchIcon,
+  ChevronDown,
+  LayoutDashboard,
+  Settings
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { createSupabaseBrowserClient } from '@/app/adapters/client';
 
-// Sidebar Items Definition
-const NAV_GROUPS = [
-  {
-    title: 'General',
-    items: [
-      { name: 'Dashboard', href: '/dashboard/administration', icon: Activity },
-    ]
-  },
-  {
-    title: 'Gestión Clínica',
-    items: [
-      { name: 'Especialistas', href: '/dashboard/administration/specialists', icon: UserSquare2 },
-      { name: 'Pacientes', href: '/dashboard/administration/patients', icon: Users },
-      { name: 'Inventario', href: '/dashboard/administration/inventory', icon: Package },
-      { name: 'Agendamiento', href: '/dashboard/administration/appointments', icon: CalendarCheck },
-      { name: 'Consultas', href: '/dashboard/administration/consultations', icon: FileText },
-    ]
-  },
-  {
-    title: 'Configuración',
-    items: [
-      { name: 'Servicios', href: '/dashboard/administration/services', icon: Settings2 },
-    ]
-  }
+type IconComponent = React.ComponentType<React.SVGProps<SVGSVGElement>>;
+
+type LinkItem = {
+	href?: string;
+	label: string;
+	icon?: IconComponent;
+	submenu?: LinkItem[];
+	comingSoon?: boolean;
+};
+
+const LINKS: LinkItem[] = [
+	{
+		href: '/dashboard/administration',
+		label: 'Dashboard',
+		icon: LayoutDashboard,
+	},
+	{
+		href: '/dashboard/administration/specialists',
+		label: 'Especialistas',
+		icon: UserSquare2,
+	},
+	{
+		href: '/dashboard/administration/patients',
+		label: 'Pacientes',
+		icon: Users,
+	},
+	{
+		href: '/dashboard/administration/inventory',
+		label: 'Inventario',
+		icon: Package,
+	},
+	{
+		href: '/dashboard/administration/appointments',
+		label: 'Agendamiento',
+		icon: CalendarCheck,
+	},
+	{
+		href: '/dashboard/administration/consultations',
+		label: 'Consultas',
+		icon: FileText,
+	},
+	{
+		href: '/dashboard/administration/services',
+		label: 'Servicios',
+		icon: Settings2,
+	},
 ];
 
 export function AdministrationSidebar() {
-  const pathname = usePathname();
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [mounted, setMounted] = useState(false);
+	const pathname = usePathname() ?? '/';
+    const router = useRouter();
+	const [openMenus, setOpenMenus] = useState<string[]>([]);
+    const [mounted, setMounted] = useState(false);
+    const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
-  useEffect(() => {
-    setMounted(true);
-  }, []);
+    useEffect(() => {
+        setMounted(true);
+    }, []);
 
-  // Close mobile menu when pathname changes
-  useEffect(() => {
-    setIsMobileMenuOpen(false);
-  }, [pathname]);
+	const toggleMenu = (label: string) => {
+		setOpenMenus((prev) => (prev.includes(label) ? prev.filter((m) => m !== label) : [...prev, label]));
+	};
 
-  const handleSignOut = async () => {
-    const supabase = createSupabaseBrowserClient();
-    await supabase.auth.signOut();
-    window.location.href = '/login';
-  };
+	// Normalize path
+	const normalize = (p: string | undefined | null) => {
+		if (!p) return '';
+		if (p === '/') return '/';
+		return p.endsWith('/') ? p.slice(0, -1) : p;
+	};
 
-  const SidebarContent = () => (
-    <div className="flex flex-col h-full bg-slate-900 text-slate-300 w-64 md:w-72 lg:w-80 border-r border-slate-800 shadow-xl transition-all duration-300 ease-in-out">
-      {/* Header / Logo Area */}
-      <div className="p-6 border-b border-slate-800/60 bg-slate-900/50 backdrop-blur-sm sticky top-0 z-10 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-teal-500 to-emerald-400 flex items-center justify-center shadow-lg shadow-teal-500/20 transform hover:rotate-6 transition-all">
-            <Building2 className="w-5 h-5 text-white" />
-          </div>
-          <div>
-            <h2 className="text-xl font-bold text-white tracking-tight">ASHIRA</h2>
-            <p className="text-[10px] font-medium text-teal-400 uppercase tracking-widest bg-teal-500/10 inline-block px-2 py-0.5 rounded-full mt-0.5">Administración</p>
-          </div>
+	const isPathActive = (href?: string | null) => {
+		if (!href) return false;
+		const normalizedHref = normalize(href);
+		const normalizedPath = normalize(pathname);
+		return normalizedPath === normalizedHref || normalizedPath.startsWith(normalizedHref + '/');
+	};
+
+    const handleSignOut = async () => {
+        const supabase = createSupabaseBrowserClient();
+        await supabase.auth.signOut();
+        window.location.href = '/login';
+    };
+
+	const renderLink = (link: LinkItem) => {
+		const isActive = !!link.href && isPathActive(link.href);
+		const isComing = !!link.comingSoon;
+
+		if (link.submenu) {
+			const childActive = link.submenu.some((l) => isPathActive(l.href));
+			const isOpen = openMenus.includes(link.label) || childActive;
+
+			return (
+				<li key={link.label}>
+					<button
+						onClick={() => toggleMenu(link.label)}
+						className={`group flex items-center justify-between w-full px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-lg text-xs sm:text-sm font-medium transition
+						${isOpen ? 'bg-gradient-to-r from-blue-600 to-emerald-500 text-white shadow-md' : 'text-slate-700 hover:bg-slate-50'}`}>
+						<span className="flex items-center gap-2 sm:gap-3 min-w-0">
+							{link.icon && <link.icon className={`w-4 h-4 sm:w-5 sm:h-5 flex-shrink-0 ${isOpen ? 'text-white' : 'text-blue-600'}`} />}
+							<span className="truncate">{link.label}</span>
+						</span>
+						<ChevronDown className={`w-3.5 h-3.5 sm:w-4 sm:h-4 flex-shrink-0 transition-transform ${isOpen ? 'rotate-180 text-white' : 'text-slate-400 group-hover:text-blue-600'}`} />
+					</button>
+
+					<ul className={`pl-6 sm:pl-8 mt-1 flex flex-col gap-0.5 sm:gap-1 transition-[max-height] duration-200 overflow-hidden ${isOpen ? 'max-h-60' : 'max-h-0'}`}>
+						{link.submenu.map((sub) => {
+							const subActive = isPathActive(sub.href);
+							return (
+								<li key={sub.label}>
+									<Link
+										href={sub.href!}
+										className={`group block px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-lg text-xs sm:text-sm transition
+											${subActive ? 'bg-blue-50 text-blue-700 font-semibold' : 'text-slate-700 hover:bg-slate-50'}`}>
+										<span className="truncate block">{sub.label}</span>
+									</Link>
+								</li>
+							);
+						})}
+					</ul>
+				</li>
+			);
+		}
+
+		return (
+			<li key={link.label}>
+				<Link
+					href={link.href!}
+					className={`group flex items-center gap-2 sm:gap-3 w-full px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-lg text-xs sm:text-sm font-medium transition
+					${isActive ? 'bg-gradient-to-r from-blue-600 to-emerald-500 text-white shadow-md' : 'text-slate-700 hover:bg-slate-50'}`}>
+					{link.icon && <link.icon className={`w-4 h-4 sm:w-5 sm:h-5 flex-shrink-0 ${isActive ? 'text-white' : 'text-blue-600'}`} />}
+					<span className="truncate">{link.label}</span>
+				</Link>
+			</li>
+		);
+	};
+
+    const SidebarContent = () => (
+        <div className="flex flex-col gap-3 sm:gap-4 bg-white/90 backdrop-blur-md rounded-xl sm:rounded-2xl p-3 sm:p-4 shadow-lg ring-1 ring-slate-100 border border-slate-50 h-fit">
+            {/* Brand */}
+            <div className="flex items-center gap-2 sm:gap-3">
+                <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-lg sm:rounded-xl bg-gradient-to-br from-blue-600 to-emerald-500 flex items-center justify-center text-white font-bold text-base sm:text-lg shadow-md ring-1 ring-white/20 flex-shrink-0">AD</div>
+                <div className="min-w-0">
+                    <div className="text-xs sm:text-sm font-semibold text-slate-900 truncate uppercase tracking-tight">ASHIRA</div>
+                    <div className="text-[10px] sm:text-[12px] text-emerald-600 font-medium truncate uppercase tracking-widest bg-emerald-50 px-2 py-0.5 rounded-full mt-0.5">Administración</div>
+                </div>
+            </div>
+
+            {/* Search */}
+            <div className="relative">
+                <input placeholder="Buscar sección..." className="w-full px-2.5 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm rounded-lg border border-slate-100 bg-slate-50 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-200 transition" />
+                <SearchIcon className="absolute right-2.5 sm:right-3 top-1.5 sm:top-2.5 w-3.5 h-3.5 sm:w-4 sm:h-4 text-slate-400" />
+            </div>
+
+            {/* Navigation */}
+            <nav className="mt-1">
+                <ul className="flex flex-col gap-0.5 sm:gap-1">
+                    {LINKS.map(renderLink)}
+                </ul>
+            </nav>
+
+            {/* Logout */}
+            <div className="mt-2 sm:mt-3 pt-2 border-t border-slate-100">
+                <button
+                    onClick={handleSignOut}
+                    className="w-full flex items-center gap-2 px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-lg text-xs sm:text-sm font-medium text-rose-600 hover:bg-rose-50 transition"
+                >
+                    <LogOut className="w-4 h-4 sm:w-5 sm:h-5" />
+                    <span>Cerrar Sesión</span>
+                </button>
+            </div>
         </div>
-        
-        {/* Mobile close button */}
-        <button 
-          onClick={() => setIsMobileMenuOpen(false)}
-          className="md:hidden p-2 bg-slate-800 rounded-lg text-slate-400 hover:text-white transition-colors"
-        >
-          <X className="w-5 h-5" />
-        </button>
-      </div>
+    );
 
-      {/* Scrollable Navigation Area */}
-      <div className="flex-1 overflow-y-auto py-6 px-4 space-y-8 scrollbar-thin scrollbar-thumb-slate-700 scrollbar-track-transparent">
-        {NAV_GROUPS.map((group, idx) => (
-          <div key={idx} className="space-y-2 animate-in fade-in slide-in-from-left-4" style={{ animationDelay: `${idx * 100}ms` }}>
-            <h3 className="px-3 text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3">
-              {group.title}
-            </h3>
-            <ul className="space-y-1">
-              {group.items.map((item) => {
-                const isActive = pathname === item.href || (item.href !== '/dashboard/administration' && pathname.startsWith(item.href));
-                const Icon = item.icon;
-                
-                return (
-                  <li key={item.name}>
-                    <Link
-                      href={item.href}
-                      className={cn(
-                        "group flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 relative overflow-hidden",
-                        isActive 
-                          ? "bg-slate-800 text-white shadow-md shadow-slate-900/20 ring-1 ring-slate-700/50" 
-                          : "text-slate-400 hover:bg-slate-800/50 hover:text-slate-200"
-                      )}
-                    >
-                      {/* Active Background Effect */}
-                      {isActive && (
-                        <div className="absolute inset-0 bg-gradient-to-r from-teal-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-                      )}
-                      
-                      {/* Active Indicator Line */}
-                      {isActive && (
-                        <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-teal-500 rounded-r-full" />
-                      )}
-                      
-                      <div className={cn(
-                        "p-1.5 rounded-lg transition-colors",
-                        isActive ? "bg-teal-500/20 text-teal-400" : "bg-slate-800/50 group-hover:bg-slate-700/50"
-                      )}>
-                        <Icon className="w-4 h-4" />
-                      </div>
-                      
-                      <span className="font-medium text-sm z-10">{item.name}</span>
-                    </Link>
-                  </li>
-                );
-              })}
-            </ul>
-          </div>
-        ))}
-      </div>
+    if (!mounted) return null;
 
-      {/* Footer Area */}
-      <div className="p-4 border-t border-slate-800 bg-slate-900/80 sticky bottom-0">
-        <button
-          onClick={handleSignOut}
-          className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-slate-400 hover:bg-red-500/10 hover:text-red-400 transition-all duration-200 group"
-        >
-          <div className="p-1.5 rounded-lg bg-slate-800/50 group-hover:bg-red-500/20 transition-colors">
-            <LogOut className="w-4 h-4" />
-          </div>
-          <span className="font-medium text-sm">Cerrar Sesión</span>
-        </button>
-      </div>
-    </div>
-  );
+	return (
+		<>
+            {/* Mobile Toggle */}
+            <button
+                onClick={() => setIsMobileMenuOpen(true)}
+                className="md:hidden fixed top-20 left-4 z-40 p-2.5 bg-white text-blue-600 rounded-xl shadow-xl border border-slate-100 active:scale-95 transition-transform"
+            >
+                <Menu className="w-5 h-5" />
+            </button>
 
-  // Prevent hydration mismatch
-  if (!mounted) return null;
+            {/* Mobile Overlay */}
+            {isMobileMenuOpen && (
+                <div 
+                    className="md:hidden fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-40 animate-in fade-in"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                />
+            )}
 
-  return (
-    <>
-      {/* Mobile Toggle Button (Fixed on screen) */}
-      <button
-        onClick={() => setIsMobileMenuOpen(true)}
-        className="md:hidden fixed top-4 left-4 z-40 p-2.5 bg-slate-900 text-white rounded-xl shadow-xl shadow-slate-900/20 border border-slate-700 active:scale-95 transition-transform"
-        aria-label="Abrir menú"
-      >
-        <Menu className="w-5 h-5" />
-      </button>
-
-      {/* Mobile Overlay */}
-      {isMobileMenuOpen && (
-        <div 
-          className="md:hidden fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-40 animate-in fade-in transition-all"
-          onClick={() => setIsMobileMenuOpen(false)}
-        />
-      )}
-
-      {/* Sidebar Container */}
-      <aside
-        className={cn(
-          "fixed inset-y-0 left-0 z-50 md:sticky md:top-0 transform transition-transform duration-300 ease-in-out h-[100dvh]",
-          isMobileMenuOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"
-        )}
-      >
-        <SidebarContent />
-      </aside>
-    </>
-  );
+            {/* Sidebar View */}
+            <aside 
+                className={cn(
+                    "fixed inset-y-0 left-0 z-50 md:sticky md:top-6 transform transition-transform duration-300 ease-in-out w-64 md:w-64 lg:w-68 self-start px-4 md:px-0 py-20 md:py-0",
+                    isMobileMenuOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"
+                )}
+            >
+                <div className="md:hidden absolute top-4 right-8 z-[60]">
+                    <button onClick={() => setIsMobileMenuOpen(false)} className="p-2 bg-white rounded-lg shadow-md text-slate-400">
+                        <X className="w-5 h-5" />
+                    </button>
+                </div>
+                <SidebarContent />
+            </aside>
+        </>
+	);
 }
