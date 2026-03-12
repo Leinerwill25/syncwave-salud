@@ -34,7 +34,7 @@ const AccountSchema = z.object({
 	email: z.string().email().max(255),
 	fullName: z.string().min(1).max(100),
 	password: z.string().min(8).max(100),
-	role: z.enum(['ADMIN', 'MEDICO', 'ENFERMERA', 'ENFERMERO', 'RECEPCION', 'FARMACIA', 'PACIENTE', 'LABORATORIO']).optional(),
+	role: z.enum(['ADMIN', 'MEDICO', 'ENFERMERA', 'ENFERMERO', 'RECEPCION', 'FARMACIA', 'PACIENTE', 'LABORATORIO', 'ADMINISTRACION']).optional(),
 });
 
 const OrganizationSchema = z.object({
@@ -96,7 +96,7 @@ const RegisterSchema = z.object({
 type RegisterBody = z.infer<typeof RegisterSchema>;
 
 /* ---------- Tipos locales ---------- */
-export const USER_ROLES = ['ADMIN', 'MEDICO', 'ENFERMERA', 'ENFERMERO', 'RECEPCION', 'FARMACIA', 'PACIENTE', 'LABORATORIO'] as const;
+export const USER_ROLES = ['ADMIN', 'MEDICO', 'ENFERMERA', 'ENFERMERO', 'RECEPCION', 'FARMACIA', 'PACIENTE', 'LABORATORIO', 'ADMINISTRACION'] as const;
 export type UserRoleLocal = (typeof USER_ROLES)[number];
 
 const ORG_TYPES = ['CLINICA', 'HOSPITAL', 'CONSULTORIO', 'FARMACIA', 'LABORATORIO'] as const;

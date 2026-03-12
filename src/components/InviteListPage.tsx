@@ -8,13 +8,14 @@ import * as XLSX from 'xlsx';
 /**
  * Tipos
  */
-export type UserRole = 'ADMIN' | 'MEDICO' | 'ENFERMERA' | 'ENFERMERO' | 'RECEPCION' | 'FARMACIA' | 'PACIENTE';
+export type UserRole = 'ADMIN' | 'MEDICO' | 'ENFERMERA' | 'ENFERMERO' | 'RECEPCION' | 'FARMACIA' | 'PACIENTE' | 'ADMINISTRACION';
 
 const INVITE_ROLES: { value: UserRole; label: string }[] = [
 	{ value: 'MEDICO', label: 'Médico / Especialista' },
 	{ value: 'ENFERMERA', label: 'Enfermera' },
 	{ value: 'ENFERMERO', label: 'Enfermero' },
 	{ value: 'RECEPCION', label: 'Recepción / Asistente de Citas' },
+	{ value: 'ADMINISTRACION', label: 'Administrador de Clínica' },
 ];
 
 export type Invite = {

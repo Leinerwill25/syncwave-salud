@@ -14,7 +14,7 @@ type CreateInviteBody = {
 const SUPABASE_URL = process.env.SUPABASE_URL ?? '';
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY ?? '';
 
-const USER_ROLES = ['ADMIN', 'MEDICO', 'ENFERMERA', 'RECEPCION', 'FARMACIA', 'PACIENTE'] as const;
+const USER_ROLES = ['ADMIN', 'MEDICO', 'ENFERMERA', 'RECEPCION', 'FARMACIA', 'PACIENTE', 'ADMINISTRACION'] as const;
 type UserRole = (typeof USER_ROLES)[number];
 
 function parseRoleOrDefault(roleCandidate?: string): UserRole {
@@ -175,7 +175,7 @@ export async function POST(req: Request) {
 
 		// Security: Only allow specific roles to create invites
 		const userRole = (dbUser.role || '').toUpperCase();
-		const allowedRoles = ['ADMIN', 'MEDICO', 'RECEPCION', 'RECEPCIONISTA'];
+		const allowedRoles = ['ADMIN', 'MEDICO', 'RECEPCION', 'RECEPCIONISTA', 'ADMINISTRACION'];
 		if (!allowedRoles.includes(userRole)) {
 			console.warn(`[Invites API] Unauthorized invite attempt by role: ${userRole}`);
 			return NextResponse.json({ error: 'Unauthorized: insufficient privileges to create invites' }, { status: 403 });
