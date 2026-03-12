@@ -65,6 +65,7 @@ const NAV_GROUPS: NavGroup[] = [
 			{ href: '/dashboard/clinic', label: 'Resumen', icon: 'dashboard' },
 			{ href: '/dashboard/clinic/invites', label: 'Invitaciones', icon: 'invite' },
 			{ href: '/dashboard/clinic/patients', label: 'Pacientes', icon: 'users' },
+			{ href: '/dashboard/clinic/care-coordination', label: 'Coordinación', icon: 'comparison' },
 			{ href: '/dashboard/clinic/specialists', label: 'Especialistas', icon: 'specialists' },
 			{ href: '/dashboard/clinic/incomes', label: 'Ingresos', icon: 'billing' },
 			{ href: '/dashboard/clinic/settings/currency', label: 'Moneda', icon: 'currency' },

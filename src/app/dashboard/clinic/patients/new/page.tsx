@@ -6,6 +6,61 @@ import { unregisteredPatientSchema, UnregisteredPatientFormValues } from '@/lib/
 import { User, Phone, MapPin, Activity, Save, ArrowLeft, Loader2, AlertCircle, Plus, Trash2, Heart } from 'lucide-react';
 import Link from 'next/link';
 
+interface DynamicListInputProps {
+    label: string;
+    field: 'allergies' | 'chronicConditions' | 'currentMedication' | 'familyHistory';
+    placeholder: string;
+    values: string[];
+    handleDynamicInput: (field: 'allergies' | 'chronicConditions' | 'currentMedication' | 'familyHistory', index: number, value: string) => void;
+    handleKeyDown: (e: React.KeyboardEvent, field: 'allergies' | 'chronicConditions' | 'currentMedication' | 'familyHistory', index: number) => void;
+    removeDynamicInput: (field: 'allergies' | 'chronicConditions' | 'currentMedication' | 'familyHistory', index: number) => void;
+    addDynamicInput: (field: 'allergies' | 'chronicConditions' | 'currentMedication' | 'familyHistory') => void;
+}
+
+const DynamicListInput = ({ 
+    label, 
+    field, 
+    placeholder,
+    values,
+    handleDynamicInput,
+    handleKeyDown,
+    removeDynamicInput,
+    addDynamicInput
+}: DynamicListInputProps) => (
+    <div className="space-y-2">
+        <label className="block text-sm font-semibold text-slate-700">{label}</label>
+        {values.map((val, idx) => (
+            <div key={idx} className="flex gap-2 animate-in slide-in-from-left-2 duration-200">
+                <input 
+                    type="text"
+                    value={val}
+                    onChange={e => handleDynamicInput(field, idx, e.target.value)}
+                    onKeyDown={e => handleKeyDown(e, field, idx)}
+                    className="flex-1 p-2 rounded-lg border border-slate-200 focus:border-rose-400 focus:ring-rose-100 focus:ring-2 bg-slate-50 outline-none transition-all text-sm"
+                    placeholder={placeholder}
+                    autoFocus={idx > 0 && val === ''}
+                />
+                <button 
+                    type="button"
+                    onClick={() => removeDynamicInput(field, idx)}
+                    className="p-2 text-slate-400 hover:text-red-500 transition-colors bg-white border border-slate-200 rounded-lg"
+                >
+                    <Trash2 size={16} />
+                </button>
+                {idx === values.length - 1 && (
+                    <button 
+                        type="button"
+                        onClick={() => addDynamicInput(field)}
+                        className="p-2 text-sky-600 hover:bg-sky-50 transition-colors bg-white border border-sky-100 rounded-lg"
+                    >
+                        <Plus size={16} />
+                    </button>
+                )}
+            </div>
+        ))}
+    </div>
+);
+
 export default function NewUnregisteredPatientPage() {
     const router = useRouter();
     const [loading, setLoading] = useState(false);
@@ -77,7 +132,6 @@ export default function NewUnregisteredPatientPage() {
         if (e.key === 'Enter') {
             e.preventDefault();
             addDynamicInput(field);
-            // We could try to focus the next input here if we had refs, but for now simple addition is good
         }
     };
 
@@ -88,7 +142,6 @@ export default function NewUnregisteredPatientPage() {
         setLoading(true);
 
         try {
-            // Filter out empty strings from dynamic arrays
             const cleanedData = {
                 ...formData,
                 allergies: formData.allergies?.filter(s => s.trim() !== ''),
@@ -135,49 +188,6 @@ export default function NewUnregisteredPatientPage() {
             setLoading(false);
         }
     };
-
-    const DynamicListInput = ({ 
-        label, 
-        field, 
-        placeholder 
-    }: { 
-        label: string, 
-        field: 'allergies' | 'chronicConditions' | 'currentMedication' | 'familyHistory',
-        placeholder: string
-    }) => (
-        <div className="space-y-2">
-            <label className="block text-sm font-semibold text-slate-700">{label}</label>
-            {(formData[field] || ['']).map((val, idx) => (
-                <div key={idx} className="flex gap-2 animate-in slide-in-from-left-2 duration-200">
-                    <input 
-                        type="text"
-                        value={val}
-                        onChange={e => handleDynamicInput(field, idx, e.target.value)}
-                        onKeyDown={e => handleKeyDown(e, field, idx)}
-                        className="flex-1 p-2 rounded-lg border border-slate-200 focus:border-rose-400 focus:ring-rose-100 focus:ring-2 bg-slate-50 outline-none transition-all text-sm"
-                        placeholder={placeholder}
-                        autoFocus={idx > 0}
-                    />
-                    <button 
-                        type="button"
-                        onClick={() => removeDynamicInput(field, idx)}
-                        className="p-2 text-slate-400 hover:text-red-500 transition-colors bg-white border border-slate-200 rounded-lg"
-                    >
-                        <Trash2 size={16} />
-                    </button>
-                    {idx === (formData[field]?.length || 1) - 1 && (
-                        <button 
-                            type="button"
-                            onClick={() => addDynamicInput(field)}
-                            className="p-2 text-sky-600 hover:bg-sky-50 transition-colors bg-white border border-sky-100 rounded-lg"
-                        >
-                            <Plus size={16} />
-                        </button>
-                    )}
-                </div>
-            ))}
-        </div>
-    );
 
     return (
         <div className="max-w-4xl mx-auto p-6 space-y-6 animate-in fade-in duration-500 pb-20">
@@ -424,21 +434,41 @@ export default function NewUnregisteredPatientPage() {
                                     label="Alergias" 
                                     field="allergies" 
                                     placeholder="Ej. Penicilina" 
+                                    values={formData.allergies || ['']}
+                                    handleDynamicInput={handleDynamicInput}
+                                    handleKeyDown={handleKeyDown}
+                                    addDynamicInput={addDynamicInput}
+                                    removeDynamicInput={removeDynamicInput}
                                 />
                                 <DynamicListInput 
                                     label="Condiciones Crónicas" 
                                     field="chronicConditions" 
                                     placeholder="Ej. Diabetes tipo 2" 
+                                    values={formData.chronicConditions || ['']}
+                                    handleDynamicInput={handleDynamicInput}
+                                    handleKeyDown={handleKeyDown}
+                                    addDynamicInput={addDynamicInput}
+                                    removeDynamicInput={removeDynamicInput}
                                 />
                                 <DynamicListInput 
                                     label="Medicación Actual" 
                                     field="currentMedication" 
                                     placeholder="Ej. Metformina 500mg" 
+                                    values={formData.currentMedication || ['']}
+                                    handleDynamicInput={handleDynamicInput}
+                                    handleKeyDown={handleKeyDown}
+                                    addDynamicInput={addDynamicInput}
+                                    removeDynamicInput={removeDynamicInput}
                                 />
                                 <DynamicListInput 
                                     label="Antecedentes Familiares" 
                                     field="familyHistory" 
                                     placeholder="Ej. Hipertensión (Padre)" 
+                                    values={formData.familyHistory || ['']}
+                                    handleDynamicInput={handleDynamicInput}
+                                    handleKeyDown={handleKeyDown}
+                                    addDynamicInput={addDynamicInput}
+                                    removeDynamicInput={removeDynamicInput}
                                 />
                             </div>
                         </div>

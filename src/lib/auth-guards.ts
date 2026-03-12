@@ -5,7 +5,7 @@ import { cookies, headers } from 'next/headers';
 import { createSupabaseServerClient } from '@/app/adapters/server';
 import { NextResponse } from 'next/server';
 
-export type UserRole = 'ADMIN' | 'MEDICO' | 'ENFERMERA' | 'ENFERMERO' | 'RECEPCION' | 'FARMACIA' | 'PACIENTE' | 'LABORATORIO';
+export type UserRole = 'ADMIN' | 'MEDICO' | 'ENFERMERA' | 'ENFERMERO' | 'RECEPCION' | 'FARMACIA' | 'PACIENTE' | 'LABORATORIO' | 'ADMINISTRACION';
 
 export interface AuthenticatedUser {
 	authId: string;
@@ -302,6 +302,7 @@ export const ROUTE_ROLE_MAP: Record<string, UserRole[]> = {
 	'/dashboard/pharmacy': ['FARMACIA'],
 	'/dashboard/patient': ['PACIENTE'],
 	'/dashboard/nurse': ['ENFERMERO', 'ENFERMERA'],
+	'/dashboard/administration': ['ADMINISTRACION'],
 };
 
 /**

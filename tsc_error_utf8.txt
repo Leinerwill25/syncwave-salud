@@ -1,0 +1,3 @@
+﻿src/app/api/clinic/assignments/route.ts(3,44): error TS2307: Cannot find module '@/app/adapters/server' or its corresponding type declarations.
+src/app/api/clinic/assignments/route.ts(4,32): error TS2307: Cannot find module '@/lib/auth-guards' or its corresponding type declarations.
+src/app/api/clinic/assignments/route.ts(5,44): error TS2307: Cannot find module '@/lib/resend-service' or its corresponding type declarations.
