@@ -12,6 +12,7 @@ const ROUTE_ROLE_MAP: Record<string, string[]> = {
 	'/dashboard/pharmacy': ['FARMACIA'],
 	'/dashboard/patient': ['PACIENTE'],
 	'/dashboard/nurse': ['ENFERMERO', 'ENFERMERA', 'ADMIN'],
+	'/dashboard/administration': ['ADMINISTRACION'],
 };
 
 // Orígenes permitidos para CORS
@@ -110,6 +111,9 @@ function getRoleRedirectPath(userRole: string, pathname: string): string | null 
 		case 'ENFERMERO':
 		case 'ENFERMERA':
 			redirectPath = '/dashboard/nurse';
+			break;
+		case 'ADMINISTRACION':
+			redirectPath = '/dashboard/administration';
 			break;
 	}
 	// Si ya estamos en una ruta que empieza con el redirectPath deseado, no redirigir

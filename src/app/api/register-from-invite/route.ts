@@ -74,18 +74,20 @@ export async function POST(request: Request) {
 
 		if (supaErr) {
 			console.error('supabase admin createUser error', supaErr);
-			// no throw; devolver error controlado
-			return NextResponse.json({ ok: false, message: supaErr.message ?? 'Error creando usuario en Supabase' }, { status: 500 });
+			return NextResponse.json({ 
+				ok: false, 
+				message: `Error en la creación de autenticación: ${supaErr.message}`,
+				details: supaErr
+			}, { status: 500 });
 		}
 
 		const authId = (createdUser?.user as any)?.id;
 		if (!authId) {
 			console.error('register-from-invite: created user without id', createdUser);
-			return NextResponse.json({ ok: false, message: 'Error interno creando usuario' }, { status: 500 });
+			return NextResponse.json({ ok: false, message: 'El usuario fue creado pero no se obtuvo un ID de autenticación.' }, { status: 500 });
 		}
 
 		// 3) Crear user en Supabase y marcar invite usado
-		// Usar transacción simulada con múltiples operaciones
 		const { error: userError } = await supabaseAdmin.from('users').insert({
 			email,
 			name: `${firstName} ${lastName}`,
@@ -102,7 +104,12 @@ export async function POST(request: Request) {
 			} catch (deleteErr) {
 				console.error('register-from-invite: error eliminando usuario de auth', deleteErr);
 			}
-			return NextResponse.json({ ok: false, message: 'Error al crear usuario en la base de datos' }, { status: 500 });
+			return NextResponse.json({ 
+				ok: false, 
+				message: `Error al crear el perfil de usuario en la base de datos: ${userError.message}`,
+				code: userError.code,
+				details: userError.details
+			}, { status: 500 });
 		}
 
 		// ─── NUEVO: Crear perfil de enfermería si el rol es enfermería ───
@@ -111,7 +118,7 @@ export async function POST(request: Request) {
 			const { error: nurseErr } = await supabaseAdmin.from('nurse_profiles').insert({
 				user_id: authId,
 				nurse_type: 'affiliated',
-				license_number: `PENDING-${authId.substring(0, 8)}`, // Se actualizará después
+				license_number: `PENDING-${authId.substring(0, 8)}`,
 				organization_id: invite.organizationId,
 				status: 'active'
 			});
@@ -128,12 +135,15 @@ export async function POST(request: Request) {
 
 		if (updateInviteError) {
 			console.error('register-from-invite: error actualizando invite', updateInviteError);
-			// No fallar el registro si solo falla el update del invite, pero loguear
 		}
 
 		return NextResponse.json({ ok: true }, { status: 201 });
 	} catch (err: any) {
 		console.error('POST /api/register-from-invite error', err);
-		return NextResponse.json({ ok: false, message: err?.message ?? 'Server error' }, { status: 500 });
+		return NextResponse.json({ 
+			ok: false, 
+			message: `Error interno del servidor: ${err?.message ?? 'Sin mensaje'}`,
+			stack: process.env.NODE_ENV === 'development' ? err?.stack : undefined
+		}, { status: 500 });
 	}
 }

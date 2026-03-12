@@ -86,6 +86,9 @@ export default function DashboardRedirectPage() {
 								router.replace('/login');
 							}
 							break;
+						case 'ADMINISTRACION':
+							router.replace('/dashboard/administration');
+							break;
 						default:
 							if (isRoleUser) {
 								router.replace('/login/role-user');

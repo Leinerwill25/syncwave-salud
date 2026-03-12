@@ -29,6 +29,8 @@ function getProfileUrl(role: string | null): string {
 			return '/dashboard/clinic/profile';
 		case 'FARMACIA':
 			return '/dashboard/pharmacy/profile';
+		case 'ADMINISTRACION':
+			return '/dashboard/administration/profile';
 		default:
 			return '/dashboard';
 	}
@@ -45,6 +47,8 @@ function getSettingsUrl(role: string | null): string {
 			return '/dashboard/clinic/settings';
 		case 'FARMACIA':
 			return '/dashboard/pharmacy/settings';
+		case 'ADMINISTRACION':
+			return '/dashboard/administration/settings';
 		default:
 			return '/dashboard';
 	}
