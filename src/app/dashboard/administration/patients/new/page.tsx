@@ -302,7 +302,7 @@ export default function NewAdminPatientPage() {
                 
                 <h4 className="text-sm font-bold text-slate-600 mb-2 uppercase tracking-wider">Antecedentes Médicos (Presiona Enter para añadir otro)</h4>
                 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
+                <div className="grid grid-cols-1 gap-y-6">
                     <DynamicListInput 
                         label="Alergias Conocidas" 
                         field="allergies" 
@@ -326,8 +326,8 @@ export default function NewAdminPatientPage() {
                     />
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
-                    <div className="md:col-span-2">
+                <div className="grid grid-cols-1 gap-y-6">
+                    <div className="col-span-1">
                         <DynamicListInput 
                             label="Antecedentes Relevantes (Breves)" 
                             field="history" 
