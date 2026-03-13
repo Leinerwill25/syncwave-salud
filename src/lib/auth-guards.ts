@@ -69,16 +69,16 @@ export async function getAuthenticatedUser(): Promise<AuthenticatedUser | null> 
 			}
 		}
 
-		// 4. Fallback: getSession estándar si no hay token explícito o falló getUser(token)
-		if (!user) {
-			const { data: { session } } = await supabase.auth.getSession();
-			user = session?.user || null;
-		}
-
-		// 5. Último intento: getUser() sin argumentos (por si el adapter tiene su propio estado)
+		// 4. Fallback: getUser() sin argumentos (por si el adapter tiene su propio estado)
 		if (!user) {
 			const { data: { user: userData } } = await supabase.auth.getUser();
 			user = userData;
+		}
+
+		// 5. Último intento: getSession estándar (solo como respaldo de metadata si getUser falló)
+		if (!user) {
+			const { data: { session } } = await supabase.auth.getSession();
+			user = session?.user || null;
 		}
 
 		if (!user) {

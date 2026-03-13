@@ -18,8 +18,8 @@ export async function GET(
     .select(`
       *,
       specialists!inner (first_name, last_name, email, role, inpres_sax),
-      patient!inner (first_name, last_name, phone, email, address, date_of_birth),
-      admin_appointments (appointment_type, scheduled_date, scheduled_time, admin_clinic_services (name)),
+      patient!inner (firstName, lastName, phone, address, dob),
+      admin_appointments!admin_consultations_appointment_id_fkey (appointment_type, scheduled_date, scheduled_time, admin_clinic_services (name)),
       admin_inventory_assignments (*,
         admin_inventory_medications (name, dosage, presentation),
         admin_inventory_materials (name, specifications)
@@ -65,7 +65,12 @@ export async function PATCH(
       .single();
 
     if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
+      console.error(`[Consultation Detail Error ID: ${id}]:`, error);
+      return NextResponse.json({
+        error: error.message,
+        details: error,
+        hint: error.hint
+      }, { status: 500 });
     }
 
     return NextResponse.json(data);

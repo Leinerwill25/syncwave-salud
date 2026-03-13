@@ -11,11 +11,12 @@ export default async function ClinicPatientsPage() {
 		return <div className="p-6">No se detectó la organización.</div>;
 	}
 
-	// Obtener citas de la clínica con datos del paciente
+	// Obtener citas de la clínica con datos de pacientes (registrados y no registrados)
 	const { data: appointments, error } = await supabase
 		.from('appointment')
 		.select(`
 			patient_id,
+			unregistered_patient_id,
 			patient (
 				id,
 				firstName,
@@ -25,21 +26,51 @@ export default async function ClinicPatientsPage() {
 				dob,
 				emergency_contact_name,
 				emergency_contact_phone
+			),
+			unregisteredpatients (
+				id,
+				first_name,
+				last_name,
+				identification,
+				phone,
+				birth_date,
+				emergency_contact_name,
+				emergency_contact_phone
 			)
 		`)
-		.eq('organization_id', organizationId)
-		.not('patient_id', 'is', null);
+		.eq('organization_id', organizationId);
 
 	if (error) {
 		console.error('Error fetching clinic patients:', error);
 	}
 
-	// Deduplicar pacientes por ID
+	// Deduplicar y normalizar pacientes
 	const patientMap = new Map<string, any>();
+	
 	appointments?.forEach(app => {
-        const p = Array.isArray(app.patient) ? app.patient[0] : app.patient;
-		if (p && !patientMap.has(p.id)) {
-			patientMap.set(p.id, p);
+		// 1. Procesar pacientes registrados
+		const pReg = Array.isArray(app.patient) ? app.patient[0] : app.patient;
+		if (pReg && !patientMap.has(pReg.id)) {
+			patientMap.set(pReg.id, {
+				...pReg,
+				type: 'REGISTRADO'
+			});
+		}
+
+		// 2. Procesar pacientes NO registrados
+		const pUnreg = Array.isArray(app.unregisteredpatients) ? app.unregisteredpatients[0] : app.unregisteredpatients;
+		if (pUnreg && !patientMap.has(pUnreg.id)) {
+			patientMap.set(pUnreg.id, {
+				id: pUnreg.id,
+				firstName: pUnreg.first_name,
+				lastName: pUnreg.last_name,
+				identifier: pUnreg.identification,
+				phone: pUnreg.phone,
+				dob: pUnreg.birth_date,
+				emergency_contact_name: pUnreg.emergency_contact_name,
+				emergency_contact_phone: pUnreg.emergency_contact_phone,
+				type: 'NO_REGISTRADO'
+			});
 		}
 	});
 
@@ -92,7 +123,14 @@ export default async function ClinicPatientsPage() {
 													{patient.firstName?.charAt(0)}{patient.lastName?.charAt(0)}
 												</div>
 												<div>
-													<span className="font-semibold text-slate-900 block">{patient.firstName} {patient.lastName}</span>
+													<div className="flex items-center gap-2">
+														<span className="font-semibold text-slate-900 block">{patient.firstName} {patient.lastName}</span>
+														<span className={`text-[10px] font-black px-1.5 py-0.5 rounded uppercase tracking-tighter ${
+															patient.type === 'REGISTRADO' ? 'bg-emerald-50 text-emerald-600 border border-emerald-100' : 'bg-amber-50 text-amber-600 border border-amber-100'
+														}`}>
+															{patient.type === 'REGISTRADO' ? 'App' : 'No Reg'}
+														</span>
+													</div>
 													{patient.dob && (
 														<span className="text-xs text-slate-500">
 															Nac: {new Date(patient.dob).toLocaleDateString()}
@@ -119,7 +157,10 @@ export default async function ClinicPatientsPage() {
 										</td>
 										<td className="px-6 py-4 text-right">
 											<Link 
-												href={`/dashboard/clinic/patients/${patient.id}`}
+												href={patient.type === 'REGISTRADO' 
+													? `/dashboard/clinic/patients/${patient.id}`
+													: `/dashboard/clinic/patients/${patient.id}?type=unregistered`
+												}
 												className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border border-slate-200 text-sky-600 hover:bg-sky-50 hover:border-sky-200 transition-all font-medium text-xs shadow-sm"
 											>
 												<Activity className="w-4 h-4" />

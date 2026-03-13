@@ -36,7 +36,50 @@ export async function GET(request: Request) {
     query = query.eq('is_active', active);
   }
 
-  const { data, count, error } = await query.order('name', { ascending: true });
+  let { data, count, error } = await query.order('name', { ascending: true });
+  
+  // -- LAZY MIGRATION LOGIC --
+  // If no services found in structured table, check for legacy services in clinic_profile
+  if (!error && (!data || data.length === 0) && page === 1) {
+    const { data: profile } = await supabase
+      .from('clinic_profile')
+      .select('services')
+      .eq('organization_id', organizationId)
+      .maybeSingle();
+    
+    if (profile?.services && Array.isArray(profile.services) && profile.services.length > 0) {
+      console.log(`[Services Sync] Migrating ${profile.services.length} services for org ${organizationId}`);
+      
+      const servicesToInsert = profile.services.map((s: any) => ({
+        organization_id: organizationId,
+        name: s.name || 'Servicio sin nombre',
+        description: s.description || null,
+        price: s.price || 0,
+        is_active: s.is_active ?? true,
+        service_code: s.id?.substring(0, 8) || null, // Best effort code
+        created_by: authResult.user?.authId,
+        updated_by: authResult.user?.authId
+      }));
+
+      const { error: insertError } = await supabase
+        .from('admin_clinic_services')
+        .insert(servicesToInsert);
+
+      if (!insertError) {
+        // Re-run query to get the newly inserted data
+        const secondQuery = await supabase
+          .from('admin_clinic_services')
+          .select('*', { count: 'exact' })
+          .eq('organization_id', organizationId)
+          .range(from, to)
+          .order('name', { ascending: true });
+        
+        data = secondQuery.data;
+        count = secondQuery.count;
+        error = secondQuery.error;
+      }
+    }
+  }
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });

@@ -22,19 +22,20 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: 'Usuario sin organización asociada' }, { status: 400 });
   }
 
-  // clinical_documents doesn't exist in real schema, use consultation_files instead
   let query = supabase
-    .from('consultation_files')
+    .from('clinical_documents')
     .select(`
       *,
-      consultation!inner (id, patient_id, organization_id)
+      patient!inner (firstName, lastName)
     `, { count: 'exact' })
-    .eq('consultation.organization_id', organizationId)
+    .eq('organization_id', organizationId)
     .range(from, to);
 
-  if (consultationId) query = query.eq('consultation_id', consultationId);
+  if (patientId) query = query.eq('patient_id', patientId);
+  const docType = searchParams.get('document_type');
+  if (docType) query = query.eq('document_type', docType);
 
-  const { data, count, error } = await query.order('created_at', { ascending: false });
+  const { data, count, error } = await query.order('uploaded_at', { ascending: false });
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
@@ -53,22 +54,32 @@ export async function POST(request: Request) {
   const authResult = await apiRequireRole(['ADMINISTRACION', 'ADMIN']);
   if (authResult.response) return authResult.response;
 
+  const organizationId = authResult.user?.organizationId;
+  const authId = authResult.user?.authId;
+
+  if (!organizationId || !authId) {
+    return NextResponse.json({ error: 'Datos de sesión incompletos' }, { status: 400 });
+  }
+
   try {
     const body = await request.json();
     const validatedData = clinicalDocumentSchema.parse(body);
 
     const supabase = await createSupabaseServerClient();
 
-    // Store in consultation_files (existing real table)
     const { data, error } = await supabase
-      .from('consultation_files')
+      .from('clinical_documents')
       .insert({
-        consultation_id: validatedData.consultationId,
+        organization_id: organizationId,
+        patient_id: validatedData.patientId,
+        consultation_id: validatedData.consultationId || null,
+        document_type: validatedData.documentType,
         file_name: validatedData.fileName,
-        path: validatedData.filePath,
-        url: validatedData.filePath,
-        content_type: validatedData.mimeType || null,
-        size: validatedData.fileSizeBytes || null,
+        file_path: validatedData.filePath,
+        file_size_bytes: validatedData.fileSizeBytes || null,
+        mime_type: validatedData.mimeType || null,
+        description: validatedData.description || '',
+        uploaded_by: authId,
       })
       .select()
       .single();
@@ -76,6 +87,16 @@ export async function POST(request: Request) {
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
+
+    // 3. Registrar en auditoría
+    await supabase.from('admin_audit_logs').insert({
+      organization_id: organizationId,
+      user_id: authId,
+      action: 'UPLOAD_CLINICAL_DOCUMENT',
+      table_name: 'clinical_documents',
+      record_id: data.id,
+      new_values: data
+    });
 
     return NextResponse.json(data);
   } catch (err: any) {

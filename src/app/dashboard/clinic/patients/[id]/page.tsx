@@ -4,29 +4,58 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { ArrowLeft, User, Activity, Calendar, Stethoscope, FileText } from 'lucide-react';
 
-export default async function ClinicPatientDetailPage({ params }: { params: { id: string } }) {
+export default async function ClinicPatientDetailPage({ 
+	params, 
+	searchParams 
+}: { 
+	params: { id: string },
+	searchParams: { type?: string }
+}) {
 	const supabase = await createSupabaseServerClient();
 	const organizationId = await getCurrentOrganizationId(supabase);
 	const patientId = params.id;
+	const isUnregistered = searchParams.type === 'unregistered';
 
 	if (!organizationId) {
 		return <div className="p-6">No se detectó la organización.</div>;
 	}
 
-	// Obtener datos del paciente
-	const { data: patient, error: patientError } = await supabase
-		.from('patient')
-		.select('*')
-		.eq('id', patientId)
-		.single();
+	// Obtener datos del paciente (de la tabla correspondiente)
+	let patientData: any = null;
+	if (isUnregistered) {
+		const { data, error } = await supabase
+			.from('unregisteredpatients')
+			.select('*')
+			.eq('id', patientId)
+			.single();
+		
+		if (data) {
+			patientData = {
+				...data,
+				firstName: data.first_name,
+				lastName: data.last_name,
+				identifier: data.identification,
+				dob: data.birth_date,
+				phone: data.phone
+			};
+		}
+	} else {
+		const { data, error } = await supabase
+			.from('patient')
+			.select('*')
+			.eq('id', patientId)
+			.single();
+		patientData = data;
+	}
 
-	if (patientError || !patient) {
-		console.error('Patient load error:', patientError);
+	if (!patientData) {
 		return notFound();
 	}
 
+	const patient = patientData;
+
 	// Obtener consultas (consultation) de la clínica para este paciente
-	const { data: consultations, error: consultationsError } = await supabase
+	const consultationsQuery = supabase
 		.from('consultation')
 		.select(`
 			id,
@@ -42,14 +71,21 @@ export default async function ClinicPatientDetailPage({ params }: { params: { id
 				email
 			)
 		`)
-		.eq('patient_id', patientId)
 		.eq('organization_id', organizationId)
 		.order('started_at', { ascending: false });
+
+	if (isUnregistered) {
+		consultationsQuery.eq('unregistered_patient_id', patientId);
+	} else {
+		consultationsQuery.eq('patient_id', patientId);
+	}
+
+	const { data: consultations, error: consultationsError } = await consultationsQuery;
 
 	if (consultationsError) console.error('Error loading consultations:', consultationsError);
 
 	// Obtener facturación
-	const { data: facturacion, error: factError } = await supabase
+	const billingQuery = supabase
 		.from('facturacion')
 		.select(`
 			id,
@@ -60,14 +96,21 @@ export default async function ClinicPatientDetailPage({ params }: { params: { id
 			fecha_emision,
 			numero_factura
 		`)
-		.eq('patient_id', patientId)
 		.eq('organization_id', organizationId)
 		.order('fecha_emision', { ascending: false });
+
+	if (isUnregistered) {
+		billingQuery.eq('unregistered_patient_id', patientId);
+	} else {
+		billingQuery.eq('patient_id', patientId);
+	}
+
+	const { data: facturacion, error: factError } = await billingQuery;
 
 	if (factError) console.error('Error loading facturacion:', factError);
 
 	// Obtener Notas de Enfermería (Kardex)
-	const { data: nursingNotes, error: notesError } = await supabase
+	const nursingNotesQuery = supabase
 		.from('nurse_kardex_notes')
 		.select(`
 			id,
@@ -82,13 +125,20 @@ export default async function ClinicPatientDetailPage({ params }: { params: { id
 				)
 			)
 		`)
-		.eq('patient_id', patientId)
 		.order('created_at', { ascending: false });
+
+	if (isUnregistered) {
+		nursingNotesQuery.eq('unregistered_patient_id', patientId);
+	} else {
+		nursingNotesQuery.eq('patient_id', patientId);
+	}
+
+	const { data: nursingNotes, error: notesError } = await nursingNotesQuery;
 
 	if (notesError) console.error('Error loading nursing notes:', notesError);
 
 	// Obtener Procedimientos de Enfermería (Tratamientos/Atenciones)
-	const { data: nurseProcedures, error: proceduresError } = await supabase
+	const proceduresQuery = supabase
 		.from('nurse_procedures')
 		.select(`
 			procedure_id,
@@ -105,8 +155,15 @@ export default async function ClinicPatientDetailPage({ params }: { params: { id
 				)
 			)
 		`)
-		.eq('patient_id', patientId)
 		.order('started_at', { ascending: false });
+
+	if (isUnregistered) {
+		proceduresQuery.eq('unregistered_patient_id', patientId);
+	} else {
+		proceduresQuery.eq('patient_id', patientId);
+	}
+
+	const { data: nurseProcedures, error: proceduresError } = await proceduresQuery;
 
 	if (proceduresError) console.error('Error loading nurse procedures:', proceduresError);
 

@@ -1,8 +1,9 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { UserSquare2, Search, Plus, MoreVertical, Edit2, Trash2, ShieldAlert } from 'lucide-react';
+import { UserSquare2, Search, Plus, MoreVertical, Edit2, Trash2, ShieldAlert, CheckCircle, RefreshCcw, Loader2 } from 'lucide-react';
 import Link from 'next/link';
+import { toast } from 'sonner';
 
 interface Specialist {
   id: string;
@@ -13,12 +14,15 @@ interface Specialist {
   role: string;
   inpres_sax: string;
   is_active: boolean;
+  // Local state for UI feedback
+  verificationStatus?: 'VERIFIED' | 'INVALID' | 'PENDING';
 }
 
 export default function AdministrationSpecialistsPage() {
   const [specialists, setSpecialists] = useState<Specialist[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
+  const [validatingId, setValidatingId] = useState<string | null>(null);
 
   useEffect(() => {
     fetchSpecialists();
@@ -35,6 +39,34 @@ export default function AdministrationSpecialistsPage() {
       console.error('Error fetching specialists:', error);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleValidateInpres = async (specialistId: string) => {
+    setValidatingId(specialistId);
+    try {
+      const res = await fetch(`/api/administration/specialists/${specialistId}/validate-inpres`, {
+        method: 'POST',
+      });
+      const result = await res.json();
+
+      if (result.isValid) {
+        toast.success(`Especialista verificado: ${result.status}`, {
+            icon: <CheckCircle className="w-5 h-5 text-emerald-500" />
+        });
+        setSpecialists(prev => prev.map(s => 
+            s.id === specialistId ? { ...s, verificationStatus: 'VERIFIED' } : s
+        ));
+      } else {
+        toast.error(result.message || 'Código INPRES inválido');
+        setSpecialists(prev => prev.map(s => 
+            s.id === specialistId ? { ...s, verificationStatus: 'INVALID' } : s
+        ));
+      }
+    } catch (error) {
+      toast.error('Error en el servicio de validación');
+    } finally {
+      setValidatingId(null);
     }
   };
 
@@ -56,7 +88,7 @@ export default function AdministrationSpecialistsPage() {
             Gestión de Especialistas
           </h1>
           <p className="text-slate-500 mt-1 max-w-xl">
-            Administra el equipo médico y clínico de tu institución.
+            Administra el equipo médico y clínico de tu institución y valida sus credenciales INPRES.
           </p>
         </div>
         <Link
@@ -113,8 +145,15 @@ export default function AdministrationSpecialistsPage() {
               </div>
 
               <div className="flex items-start gap-4 mb-6">
-                <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-teal-500 to-emerald-400 text-white flex items-center justify-center text-xl font-bold shadow-lg shadow-teal-500/20">
-                  {specialist.first_name[0]}{specialist.last_name[0]}
+                <div className="relative">
+                    <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-teal-500 to-emerald-400 text-white flex items-center justify-center text-xl font-bold shadow-lg shadow-teal-500/20">
+                    {specialist.first_name[0]}{specialist.last_name[0]}
+                    </div>
+                    {specialist.verificationStatus === 'VERIFIED' && (
+                        <div className="absolute -bottom-1 -right-1 bg-white p-0.5 rounded-full ring-2 ring-emerald-500">
+                            <CheckCircle className="w-4 h-4 text-emerald-500" />
+                        </div>
+                    )}
                 </div>
                 <div>
                   <h3 className="font-bold text-slate-900 text-lg leading-tight">
@@ -125,9 +164,19 @@ export default function AdministrationSpecialistsPage() {
               </div>
 
               <div className="space-y-3 pt-6 border-t border-slate-100">
-                <div className="flex justify-between text-sm">
+                <div className="flex justify-between text-sm items-center">
                   <span className="text-slate-500">INPRES SAX</span>
-                  <span className="font-semibold text-slate-900">{specialist.inpres_sax}</span>
+                  <div className="flex items-center gap-2">
+                    <span className={`font-semibold ${specialist.verificationStatus === 'INVALID' ? 'text-rose-500' : 'text-slate-900'}`}>{specialist.inpres_sax}</span>
+                    <button 
+                        onClick={() => handleValidateInpres(specialist.id)}
+                        disabled={validatingId === specialist.id}
+                        className="p-1.5 bg-slate-50 hover:bg-teal-50 text-slate-400 hover:text-teal-600 rounded-lg transition-all"
+                        title="Validar Licencia"
+                    >
+                        {validatingId === specialist.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RefreshCcw className="w-3.5 h-3.5" />}
+                    </button>
+                  </div>
                 </div>
                 <div className="flex justify-between text-sm">
                   <span className="text-slate-500">Teléfono</span>

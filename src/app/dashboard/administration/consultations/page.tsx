@@ -14,9 +14,9 @@ interface Consultation {
   start_time: string;
   
   // Joined
-  patients: { first_name: string; last_name: string };
+  patient: { firstName: string; lastName: string };
   specialists: { first_name: string; last_name: string; role: string; inpres_sax: string };
-  appointments: { appointment_type: string; clinic_services?: { name: string } };
+  admin_appointments: { appointment_type: string; admin_clinic_services?: { name: string } };
 }
 
 export default function AdministrationConsultationsPage() {
@@ -47,8 +47,8 @@ export default function AdministrationConsultationsPage() {
   };
 
   const filteredConsultations = consultations.filter(c => 
-    c.patients.first_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    c.patients.last_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    c.patient.firstName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    c.patient.lastName.toLowerCase().includes(searchTerm.toLowerCase()) ||
     c.specialists.first_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     c.specialists.last_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     c.specialists.inpres_sax.toLowerCase().includes(searchTerm.toLowerCase())
@@ -135,10 +135,10 @@ export default function AdministrationConsultationsPage() {
                 <div className="flex justify-between items-start">
                    <div>
                      <p className="text-xs font-bold text-indigo-600 uppercase tracking-widest mb-1.5 flex items-center gap-1.5">
-                       {consultation.appointments.clinic_services?.name || consultation.appointments.appointment_type.replace('_', ' ')}
+                       {consultation.admin_appointments.admin_clinic_services?.name || consultation.admin_appointments.appointment_type.replace('_', ' ')}
                      </p>
                      <h3 className="font-black text-slate-900 text-xl flex items-center gap-2">
-                        {consultation.patients.first_name} {consultation.patients.last_name}
+                        {consultation.patient.firstName} {consultation.patient.lastName}
                      </h3>
                    </div>
                    <span className={`px-3 py-1 text-xs font-bold rounded-full border ${getStatusColor(consultation.status)}`}>

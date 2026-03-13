@@ -34,15 +34,20 @@ export default function AdministrationAppointmentsPage() {
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isApproving, setIsApproving] = useState<string | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [selectedAppointment, setSelectedAppointment] = useState<Appointment | null>(null);
+  const [services, setServices] = useState<any[]>([]);
+  const [selectedServiceId, setSelectedServiceId] = useState('');
+  const [approvalNotes, setApprovalNotes] = useState('');
 
   useEffect(() => {
     fetchAppointments();
+    fetchServices();
   }, []);
 
   const fetchAppointments = async () => {
     try {
       setIsLoading(true);
-      // Fetch only PENDING appointments for the queue
       const res = await fetch('/api/administration/appointments?status=PENDIENTE');
       if (!res.ok) throw new Error('Failed to fetch appointments');
       const data = await res.json();
@@ -55,16 +60,38 @@ export default function AdministrationAppointmentsPage() {
     }
   };
 
-  const handleApprove = async (appointmentId: string) => {
-    setIsApproving(appointmentId);
+  const fetchServices = async () => {
     try {
-      const res = await fetch(`/api/administration/appointments/${appointmentId}/approve`, {
+      const res = await fetch('/api/administration/services?active=true');
+      if (!res.ok) throw new Error('Failed to fetch services');
+      const data = await res.json();
+      setServices(data.data || []);
+    } catch (error) {
+      console.error('Error fetching services:', error);
+    }
+  };
+
+  const openApprovalModal = (appointment: Appointment) => {
+    setSelectedAppointment(appointment);
+    setIsModalOpen(true);
+  };
+
+  const handleApprove = async () => {
+    if (!selectedAppointment || !selectedServiceId) {
+      toast.error('Debes seleccionar un servicio para aprobar la cita');
+      return;
+    }
+
+    setIsApproving(selectedAppointment.id);
+    try {
+      const res = await fetch(`/api/administration/appointments/${selectedAppointment.id}/approve`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          notes: 'Aprobación automática desde el panel de administración',
+          serviceId: selectedServiceId,
+          notes: approvalNotes || 'Aprobada desde el panel administrativo',
         }),
       });
 
@@ -77,7 +104,12 @@ export default function AdministrationAppointmentsPage() {
         duration: 4000,
         icon: <CheckCircle2 className="w-5 h-5 text-emerald-500" />
       });
-      fetchAppointments(); // Refresh the list
+      
+      setIsModalOpen(false);
+      setSelectedAppointment(null);
+      setSelectedServiceId('');
+      setApprovalNotes('');
+      fetchAppointments();
       
     } catch (error: any) {
       toast.error(error.message);
@@ -182,7 +214,7 @@ export default function AdministrationAppointmentsPage() {
                 {/* Actions */}
                 <div className="flex lg:flex-col gap-3 shrink-0 pt-4 lg:pt-0 border-t lg:border-t-0 lg:border-l border-slate-100 lg:pl-6 w-full lg:w-48">
                    <button
-                     onClick={() => handleApprove(appointment.id)}
+                     onClick={() => openApprovalModal(appointment)}
                      disabled={isApproving !== null}
                      className="flex-1 w-full bg-emerald-600 hover:bg-emerald-700 text-white py-3 px-4 rounded-xl font-bold flex items-center justify-center gap-2 transition-all active:scale-95 disabled:opacity-50"
                    >
@@ -202,6 +234,69 @@ export default function AdministrationAppointmentsPage() {
 
              </div>
           ))}
+        </div>
+      )}
+
+      {/* Approval Modal */}
+      {isModalOpen && selectedAppointment && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-300">
+           <div className="bg-white rounded-3xl w-full max-w-lg overflow-hidden shadow-2xl animate-in zoom-in-95 duration-300">
+              <div className="bg-gradient-to-r from-emerald-600 to-teal-500 p-6 text-white text-center">
+                 <CheckCircle2 className="w-12 h-12 mx-auto mb-2" />
+                 <h2 className="text-xl font-black italic uppercase tracking-tighter">Confirmar Aprobación</h2>
+                 <p className="text-emerald-50 text-xs font-medium uppercase tracking-widest mt-1 opacity-80">Finalizar autorización de cita</p>
+              </div>
+              
+              <div className="p-8 space-y-6">
+                 <div>
+                    <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Servicio Médico Asignado *</label>
+                    <select
+                      value={selectedServiceId}
+                      onChange={(e) => setSelectedServiceId(e.target.value)}
+                      className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-xl text-slate-700 font-medium focus:ring-2 focus:ring-emerald-200 focus:border-emerald-500 outline-none transition-all"
+                    >
+                      <option value="">Selecciona un servicio...</option>
+                      {services.map(s => (
+                        <option key={s.id} value={s.id}>{s.name} - ${s.price || '0.00'}</option>
+                      ))}
+                    </select>
+                 </div>
+
+                 <div>
+                    <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Notas de Aprobación</label>
+                    <textarea
+                      placeholder="Agrega notas adicionales para el especialista o paciente..."
+                      className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-xl text-slate-700 text-sm focus:ring-2 focus:ring-emerald-200 outline-none transition-all resize-none"
+                      rows={3}
+                      value={approvalNotes}
+                      onChange={(e) => setApprovalNotes(e.target.value)}
+                    />
+                 </div>
+
+                 <div className="bg-amber-50 rounded-2xl p-4 flex gap-3 border border-amber-100">
+                    <AlertCircle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+                    <p className="text-xs text-amber-800 font-medium leading-relaxed">
+                       Al aprobar esta cita, se creará automáticamente un registro de **Consulta Médica** para que el especialista pueda iniciar la atención.
+                    </p>
+                 </div>
+
+                 <div className="grid grid-cols-2 gap-4">
+                    <button 
+                      onClick={() => setIsModalOpen(false)}
+                      className="py-3 px-6 rounded-xl font-bold text-slate-500 hover:bg-slate-100 transition-colors"
+                    >
+                       Atrás
+                    </button>
+                    <button 
+                      onClick={handleApprove}
+                      disabled={isApproving !== null || !selectedServiceId}
+                      className="bg-slate-900 hover:bg-black text-white py-3 px-6 rounded-xl font-bold shadow-lg shadow-slate-900/20 active:scale-95 transition-all disabled:opacity-50"
+                    >
+                       {isApproving === selectedAppointment.id ? <Loader2 className="w-5 h-5 animate-spin mx-auto" /> : 'Confirmar Aprobación'}
+                    </button>
+                 </div>
+              </div>
+           </div>
         </div>
       )}
     </div>

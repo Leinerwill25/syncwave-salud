@@ -69,6 +69,16 @@ const LINKS: LinkItem[] = [
 		label: 'Servicios',
 		icon: Settings2,
 	},
+	{
+		href: '/dashboard/administration/documents',
+		label: 'Documentos',
+		icon: FileText,
+	},
+	{
+		href: '/dashboard/administration/settings',
+		label: 'Configuración',
+		icon: Settings,
+	},
 ];
 
 export function AdministrationSidebar() {

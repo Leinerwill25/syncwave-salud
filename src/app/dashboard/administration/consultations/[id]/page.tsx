@@ -78,7 +78,7 @@ export default function AdministrationConsultationDetailPage({ params }: { param
              </span>
           </div>
           <p className="text-slate-500 mt-2 text-lg">
-            Revisión de la atención brindada a <span className="font-bold text-slate-700">{consultation.patients.first_name} {consultation.patients.last_name}</span>.
+            Revisión de la atención brindada a <span className="font-bold text-slate-700">{consultation.patient.firstName} {consultation.patient.lastName}</span>.
           </p>
         </div>
       </div>

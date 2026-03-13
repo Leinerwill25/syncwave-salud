@@ -25,7 +25,7 @@ export async function GET(request: Request) {
     .select(`
       *,
       specialists!inner (first_name, last_name, role),
-      patient!inner (first_name, last_name, phone, email),
+      patient!inner (firstName, lastName, phone),
       admin_clinic_services (name)
     `, { count: 'exact' })
     .eq('organization_id', organizationId)

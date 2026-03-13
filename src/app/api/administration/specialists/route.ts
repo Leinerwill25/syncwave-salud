@@ -92,6 +92,16 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
+    // 3. Registrar en auditoría
+    await supabase.from('admin_audit_logs').insert({
+      organization_id: organizationId,
+      user_id: authId,
+      action: 'CREATE_SPECIALIST',
+      table_name: 'specialists',
+      record_id: data.id,
+      new_values: data
+    });
+
     return NextResponse.json(data);
   } catch (err: any) {
     return NextResponse.json({ error: err.message || 'Error en la validación de datos' }, { status: 400 });

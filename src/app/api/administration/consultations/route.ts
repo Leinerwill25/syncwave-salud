@@ -27,8 +27,8 @@ export async function GET(request: Request) {
     .select(`
       *,
       specialists!inner (first_name, last_name, role, inpres_sax),
-      patient!inner (first_name, last_name, phone, email),
-      admin_appointments (appointment_type, scheduled_date, scheduled_time, admin_clinic_services (name))
+      patient!inner (firstName, lastName, phone),
+      admin_appointments!admin_consultations_appointment_id_fkey (appointment_type, scheduled_date, scheduled_time, admin_clinic_services (name))
     `, { count: 'exact' })
     .eq('organization_id', organizationId)
     .range(from, to);
@@ -42,7 +42,12 @@ export async function GET(request: Request) {
     .order('start_time', { ascending: false });
 
   if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    console.error('[Consultations API Error]:', error);
+    return NextResponse.json({ 
+      error: error.message,
+      details: error,
+      hint: error.hint
+    }, { status: 500 });
   }
 
   return NextResponse.json({
