@@ -61,6 +61,7 @@ export default async function ClinicPatientDetailPage({
 	const patient = patientData;
 
 	// Obtener consultas (consultation) de la clínica para este paciente
+	// Obtener consultas (consultation) de la clínica para este paciente
 	const consultationsQuery = supabase
 		.from('consultation')
 		.select(`
@@ -70,7 +71,7 @@ export default async function ClinicPatientDetailPage({
 			diagnosis,
 			chief_complaint,
 			notes,
-			doctor:doctor_id (
+			doctor:users!doctor_id (
 				id,
 				first_name,
 				last_name,
@@ -123,12 +124,10 @@ export default async function ClinicPatientDetailPage({
 			note_type,
 			content,
 			created_at,
-			nurse:nurse_id (
-				user:user_id (
-					first_name,
-					last_name,
-					email
-				)
+			nurse:users!nurse_id (
+				first_name,
+				last_name,
+				email
 			)
 		`)
 		.order('created_at', { ascending: false });
@@ -154,11 +153,9 @@ export default async function ClinicPatientDetailPage({
 			started_at,
 			completed_at,
 			outcome,
-			nurse:nurse_id (
-				user:user_id (
-					first_name,
-					last_name
-				)
+			nurse:users!nurse_id (
+				first_name,
+				last_name
 			)
 		`)
 		.order('started_at', { ascending: false });
@@ -356,7 +353,7 @@ export default async function ClinicPatientDetailPage({
 													</span>
 													<div className="flex items-center gap-1.5 text-sm font-medium bg-slate-100 text-slate-700 px-3 py-1 rounded-md">
 														<User className="w-3.5 h-3.5" />
-														Enf. {note.nurse?.user?.first_name} {note.nurse?.user?.last_name}
+														Enf. {note.nurse?.first_name} {note.nurse?.last_name}
 													</div>
 												</div>
 											</div>
@@ -398,7 +395,7 @@ export default async function ClinicPatientDetailPage({
 													{proc.description && <p className="text-xs text-slate-500 mt-1">{proc.description}</p>}
 												</td>
 												<td className="px-4 py-3 text-slate-700">
-													{proc.nurse?.user?.first_name} {proc.nurse?.user?.last_name}
+													{proc.nurse?.first_name} {proc.nurse?.last_name}
 												</td>
 												<td className="px-4 py-3">
 													<span className={`inline-block px-2 py-1 text-xs font-medium rounded-full ${
