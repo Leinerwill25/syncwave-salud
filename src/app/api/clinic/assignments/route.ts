@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createSupabaseServerClient } from '@/app/adapters/server';
+import { createSupabaseAdminClient } from '@/app/adapters/admin';
 import { apiRequireRole } from '@/lib/auth-guards';
 import { sendAssignmentNotification } from '@/lib/resend-service';
 
 export async function GET(request: NextRequest) {
     try {
-        const authCheck = await apiRequireRole(['ADMIN']);
+        const authCheck = await apiRequireRole(['ADMIN', 'ADMINISTRACION']);
         if (authCheck.response) return authCheck.response;
 
         const supabase = await createSupabaseServerClient();
@@ -14,15 +15,44 @@ export async function GET(request: NextRequest) {
         if (!orgId) return NextResponse.json({ error: 'Organización no encontrada' }, { status: 400 });
 
         // 1. Obtener Pacientes (Registrados y no registrados)
-        const { data: regPatients } = await supabase
+        // a. Pacientes registrados (via auth normal funciona bien porque sí tienen orgId en profile)
+        const { data: regPatients, error: regError } = await supabase
             .from('patient')
-            .select('id, first_name, last_name, identifier')
+            .select('id, first_name:firstName, last_name:lastName, identifier')
             .eq('organization_id', orgId);
+            
+        console.log('Reg patients err:', regError);
+        console.log('Reg patients data size:', regPatients?.length);
 
-        const { data: unregPatients } = await supabase
-            .from('unregisteredpatients')
-            .select('id, first_name, last_name, identifier')
-            .eq('organization_id', orgId);
+        // b. Pacientes no registrados (via auth_id de org_users)
+        let unregPatients: any[] = [];
+        const adminSupabase = createSupabaseAdminClient(); 
+
+        const { data: orgUsers, error: orgUsersErr } = await supabase
+            .from('users')
+            .select('authId')
+            .eq('organizationId', orgId);
+            
+        console.log('Org users err:', orgUsersErr);
+        console.log('Org users data:', orgUsers);
+
+        const orgUserIds = orgUsers?.map(u => u.authId).filter(Boolean) || [];
+        console.log('Org User IDs:', orgUserIds);
+
+        if (orgUserIds.length > 0) {
+            const { data: unregData, error: unregErr } = await adminSupabase
+                .from('unregisteredpatients')
+                .select('id, first_name, last_name, identification, emergency_contact_name, phone')
+                .in('created_by', orgUserIds);
+                
+            console.log('Unreg patients err:', unregErr);
+            console.log('Unreg patients size:', unregData?.length);
+            // mapeamos identification a identifier para la logica commun
+            unregPatients = (unregData || []).map(p => ({
+                ...p,
+                identifier: p.identification
+            }));
+        }
 
         // 2. Obtener Médicos de la organización
         const { data: medics } = await supabase
@@ -51,11 +81,39 @@ export async function GET(request: NextRequest) {
             .select('*')
             .eq('organization_id', orgId);
 
+        // 6. Deduplicación de pacientes
+        const allPatientsMap = new Map<string, any>();
+        
+        [
+            ...(regPatients || []).map(p => ({ ...p, type: 'REG' })),
+            ...unregPatients.map(p => ({ ...p, type: 'UNREG' }))
+        ].forEach(patient => {
+            if (!patient.identifier) {
+                allPatientsMap.set(patient.id, patient);
+                return;
+            }
+
+            const normalizedId = patient.identifier.toUpperCase().replace(/\s+/g, '');
+            const existing = allPatientsMap.get(normalizedId);
+
+            if (!existing) {
+                allPatientsMap.set(normalizedId, patient);
+            } else {
+                const existingScore = (existing.emergency_contact_name ? 2 : 0) + (existing.phone ? 1 : 0);
+                const currentScore = (patient.emergency_contact_name ? 2 : 0) + (patient.phone ? 1 : 0);
+                
+                if (currentScore > existingScore) {
+                    allPatientsMap.set(normalizedId, patient);
+                } else if (currentScore === existingScore) {
+                    if (patient.type === 'REG' && existing.type === 'UNREG') {
+                        allPatientsMap.set(normalizedId, patient);
+                    }
+                }
+            }
+        });
+
         return NextResponse.json({
-            patients: [
-                ...(regPatients || []).map(p => ({ ...p, type: 'REG' })),
-                ...(unregPatients || []).map(p => ({ ...p, type: 'UNREG' }))
-            ],
+            patients: Array.from(allPatientsMap.values()),
             professionals: [
                 ...(medics || []),
                 ...(nurses || [])
@@ -71,7 +129,7 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
     try {
-        const authCheck = await apiRequireRole(['ADMIN']);
+        const authCheck = await apiRequireRole(['ADMIN', 'ADMINISTRACION']);
         if (authCheck.response) return authCheck.response;
 
         const supabase = await createSupabaseServerClient();

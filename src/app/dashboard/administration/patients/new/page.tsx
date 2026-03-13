@@ -4,16 +4,111 @@ import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { adminPatientSchema, AdminPatientFormValues } from '@/lib/schemas/adminPatientSchema';
-import { UserPlus, ArrowLeft, Loader2, Save, AlertCircle } from 'lucide-react';
+import { UserPlus, ArrowLeft, Loader2, Save, AlertCircle, Trash2, Plus } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 
+interface DynamicListInputProps {
+    label: string;
+    field: 'allergies' | 'medications' | 'history';
+    placeholder: string;
+    values: string[];
+    handleDynamicInput: (field: 'allergies' | 'medications' | 'history', index: number, value: string) => void;
+    handleKeyDown: (e: React.KeyboardEvent, field: 'allergies' | 'medications' | 'history', index: number) => void;
+    removeDynamicInput: (field: 'allergies' | 'medications' | 'history', index: number) => void;
+    addDynamicInput: (field: 'allergies' | 'medications' | 'history') => void;
+}
+
+const DynamicListInput = ({ 
+    label, 
+    field, 
+    placeholder,
+    values,
+    handleDynamicInput,
+    handleKeyDown,
+    removeDynamicInput,
+    addDynamicInput
+}: DynamicListInputProps) => (
+    <div className="space-y-2">
+        <label className="block text-sm font-semibold text-slate-700">{label}</label>
+        {values.map((val, idx) => (
+            <div key={idx} className="flex gap-2 animate-in slide-in-from-left-2 duration-200">
+                <input 
+                    type="text"
+                    value={val}
+                    onChange={e => handleDynamicInput(field, idx, e.target.value)}
+                    onKeyDown={e => handleKeyDown(e, field, idx)}
+                    className="flex-1 p-2 rounded-xl border border-slate-200 focus:border-teal-400 focus:ring-teal-100 focus:ring-2 bg-slate-50 outline-none transition-all text-sm"
+                    placeholder={placeholder}
+                    autoFocus={idx > 0 && val === ''}
+                />
+                <button 
+                    type="button"
+                    onClick={() => removeDynamicInput(field, idx)}
+                    className="p-2 text-slate-400 hover:text-red-500 transition-colors bg-white border border-slate-200 rounded-xl"
+                >
+                    <Trash2 size={16} />
+                </button>
+                {idx === values.length - 1 && (
+                    <button 
+                        type="button"
+                        onClick={() => addDynamicInput(field)}
+                        className="p-2 text-teal-600 hover:bg-teal-50 transition-colors bg-white border border-teal-100 rounded-xl"
+                    >
+                        <Plus size={16} />
+                    </button>
+                )}
+            </div>
+        ))}
+    </div>
+);
+
 export default function NewAdminPatientPage() {
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
+
+  const [allergiesList, setAllergiesList] = useState<string[]>(['']);
+  const [medicationsList, setMedicationsList] = useState<string[]>(['']);
+  const [historyList, setHistoryList] = useState<string[]>(['']);
+
+  const handleDynamicInput = (field: 'allergies' | 'medications' | 'history', index: number, value: string) => {
+    if (field === 'allergies') {
+        const current = [...allergiesList]; current[index] = value; setAllergiesList(current);
+    } else if (field === 'medications') {
+        const current = [...medicationsList]; current[index] = value; setMedicationsList(current);
+    } else if (field === 'history') {
+        const current = [...historyList]; current[index] = value; setHistoryList(current);
+    }
+  };
+  
+  const addDynamicInput = (field: 'allergies' | 'medications' | 'history') => {
+    if (field === 'allergies') setAllergiesList(prev => [...prev, '']);
+    else if (field === 'medications') setMedicationsList(prev => [...prev, '']);
+    else if (field === 'history') setHistoryList(prev => [...prev, '']);
+  };
+  
+  const removeDynamicInput = (field: 'allergies' | 'medications' | 'history', index: number) => {
+    if (field === 'allergies') {
+        if (allergiesList.length > 1) setAllergiesList(prev => prev.filter((_, i) => i !== index));
+        else setAllergiesList(['']);
+    } else if (field === 'medications') {
+        if (medicationsList.length > 1) setMedicationsList(prev => prev.filter((_, i) => i !== index));
+        else setMedicationsList(['']);
+    } else if (field === 'history') {
+        if (historyList.length > 1) setHistoryList(prev => prev.filter((_, i) => i !== index));
+        else setHistoryList(['']);
+    }
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent, field: 'allergies' | 'medications' | 'history', index: number) => {
+      if (e.key === 'Enter') {
+          e.preventDefault();
+          addDynamicInput(field);
+      }
+  };
 
   const {
     register,
@@ -29,6 +124,11 @@ export default function NewAdminPatientPage() {
   const onSubmit = async (data: AdminPatientFormValues) => {
     setIsSubmitting(true);
     setErrorMsg('');
+
+    // Unir arreglos en formato string para que hagan match con el esquema y bd
+    data.allergies = allergiesList.filter(s => s.trim() !== '').join(', ');
+    data.currentMedications = medicationsList.filter(s => s.trim() !== '').join(', ');
+    data.medicalHistory = historyList.filter(s => s.trim() !== '').join('\n\n');
 
     try {
       const response = await fetch('/api/administration/patients', {
@@ -200,19 +300,45 @@ export default function NewAdminPatientPage() {
                    Datos Clínicos Adicionales
                 </h3>
                 
-                <div className="space-y-2">
-                  <label className="text-sm font-bold text-slate-700">Alergias Conocidas</label>
-                  <input {...register('allergies')} placeholder="Múltiples alergias separadas por comas" className="w-full rounded-xl border px-4 py-3 bg-slate-50 outline-none transition-all focus:ring-4 focus:ring-teal-100 focus:bg-white text-sm border-slate-200" />
+                <h4 className="text-sm font-bold text-slate-600 mb-2 uppercase tracking-wider">Antecedentes Médicos (Presiona Enter para añadir otro)</h4>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
+                    <DynamicListInput 
+                        label="Alergias Conocidas" 
+                        field="allergies" 
+                        placeholder="Ej. Penicilina" 
+                        values={allergiesList}
+                        handleDynamicInput={handleDynamicInput}
+                        handleKeyDown={handleKeyDown}
+                        addDynamicInput={addDynamicInput}
+                        removeDynamicInput={removeDynamicInput}
+                    />
+                    
+                    <DynamicListInput 
+                        label="Medicamentos Actuales" 
+                        field="medications" 
+                        placeholder="Ej. Metformina 500mg" 
+                        values={medicationsList}
+                        handleDynamicInput={handleDynamicInput}
+                        handleKeyDown={handleKeyDown}
+                        addDynamicInput={addDynamicInput}
+                        removeDynamicInput={removeDynamicInput}
+                    />
                 </div>
 
-                <div className="space-y-2">
-                  <label className="text-sm font-bold text-slate-700">Medicamentos Actuales</label>
-                  <input {...register('currentMedications')} className="w-full rounded-xl border px-4 py-3 bg-slate-50 outline-none transition-all focus:ring-4 focus:ring-teal-100 focus:bg-white text-sm border-slate-200" />
-                </div>
-
-                <div className="space-y-2">
-                  <label className="text-sm font-bold text-slate-700">Antecedentes Relevantes (Breve)</label>
-                  <textarea {...register('medicalHistory')} rows={3} className="w-full rounded-xl border px-4 py-3 bg-slate-50 outline-none transition-all focus:ring-4 focus:ring-teal-100 focus:bg-white text-sm border-slate-200 resize-none" />
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
+                    <div className="md:col-span-2">
+                        <DynamicListInput 
+                            label="Antecedentes Relevantes (Breves)" 
+                            field="history" 
+                            placeholder="Ej. Operación de apéndice (2010)" 
+                            values={historyList}
+                            handleDynamicInput={handleDynamicInput}
+                            handleKeyDown={handleKeyDown}
+                            addDynamicInput={addDynamicInput}
+                            removeDynamicInput={removeDynamicInput}
+                        />
+                    </div>
                 </div>
                 
                 <div className="flex items-center gap-3 pt-4">

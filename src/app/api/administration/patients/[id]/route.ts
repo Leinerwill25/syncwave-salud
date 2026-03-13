@@ -14,17 +14,50 @@ export async function GET(
 
   const supabase = await createSupabaseServerClient();
 
-  const { data, error } = await supabase
+  // 1. Intentar buscar en patient primero
+  const { data: regPatient, error: regError } = await supabase
+    .from('patient')
+    .select('*')
+    .eq('id', id)
+    .single();
+
+  if (regPatient) {
+    return NextResponse.json({
+        ...regPatient,
+        first_name: regPatient.firstName || regPatient.first_name,
+        last_name: regPatient.lastName || regPatient.last_name,
+        date_of_birth: regPatient.dob || regPatient.date_of_birth,
+        phone_number: regPatient.phone,
+        current_medications: regPatient.current_medications || regPatient.current_medication || '',
+        medical_history: regPatient.medical_history || regPatient.background || regPatient.notes || '',
+        type: 'REG'
+    });
+  }
+
+  // 2. Si no es registrado, buscar en unregisteredpatients usando adminSupabase para evitar RLS
+  const adminSupabase = createSupabaseAdminClient();
+  const { data: unregPatient, error: unregError } = await adminSupabase
     .from('unregisteredpatients')
     .select('*')
     .eq('id', id)
     .single();
 
-  if (error) {
+  if (unregError || !unregPatient) {
     return NextResponse.json({ error: 'Paciente no encontrado' }, { status: 404 });
   }
 
-  return NextResponse.json(data);
+  return NextResponse.json({
+      ...unregPatient,
+      date_of_birth: unregPatient.birth_date,
+      phone_number: unregPatient.phone,
+      current_medications: unregPatient.current_medication || '',
+      medical_history: [
+        unregPatient.motive ? `Motivo: ${unregPatient.motive}` : '',
+        unregPatient.chronic_conditions ? `Condiciones Crónicas: ${unregPatient.chronic_conditions}` : '',
+        unregPatient.family_history ? `Historial Familiar: ${unregPatient.family_history}` : ''
+      ].filter(Boolean).join('\n\n') || '',
+      type: 'UNREG'
+  });
 }
 
 export async function PATCH(

@@ -14,10 +14,14 @@ import {
   Activity,
   HeartPulse,
   Pill,
-  Users
+  Users,
+  X,
+  Stethoscope,
+  Plus
 } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { toast } from 'sonner';
 
 interface PatientDetail {
   id: string;
@@ -37,12 +41,18 @@ interface PatientDetail {
   current_medications: string;
   medical_history: string;
   created_at: string;
+  type: string;
 }
 
 export default function AdminPatientDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const router = useRouter();
   const [patient, setPatient] = useState<PatientDetail | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  
+  // Specialists Modal State
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [specialists, setSpecialists] = useState<any[]>([]);
+  const [isLoadingSpecialists, setIsLoadingSpecialists] = useState(false);
 
   useEffect(() => {
     async function fetchPatient() {
@@ -62,6 +72,44 @@ export default function AdminPatientDetailPage({ params }: { params: Promise<{ i
 
     fetchPatient();
   }, [params, router]);
+
+  const handleOpenAssignModal = async () => {
+    setIsModalOpen(true);
+    setIsLoadingSpecialists(true);
+    try {
+      const res = await fetch('/api/clinic/assignments');
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      setSpecialists(data.professionals || []);
+    } catch (err) {
+      toast.error('Error al cargar especialistas');
+    } finally {
+      setIsLoadingSpecialists(false);
+    }
+  };
+
+  const handleAssign = async (profId: string, role: string) => {
+    if (!patient) return;
+    try {
+      const res = await fetch('/api/clinic/assignments', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          patientId: patient.id,
+          isUnregistered: patient.type === 'UNREG',
+          professionalId: profId,
+          professionalRole: role,
+          action: 'ASSIGN'
+        })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      toast.success('Especialista asignado correctamente');
+      setIsModalOpen(false);
+    } catch (err: any) {
+      toast.error(`Error al asignar: ${err.message}`);
+    }
+  };
 
   if (isLoading) {
     return (
@@ -108,8 +156,10 @@ export default function AdminPatientDetailPage({ params }: { params: Promise<{ i
            >
              <FileText className="w-4 h-4" /> Editar Ficha
            </Link>
-           {/* In a real app, this would open a modal to assign a specialist or navigate to assignments */}
-           <button className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2.5 rounded-xl font-bold flex items-center gap-2 shadow-lg shadow-blue-500/20 transition-all hover:-translate-y-1">
+           <button 
+             onClick={handleOpenAssignModal}
+             className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2.5 rounded-xl font-bold flex items-center gap-2 shadow-lg shadow-blue-500/20 transition-all hover:-translate-y-1"
+           >
              <Users className="w-4 h-4" /> Asignar Especialista
            </button>
         </div>
@@ -265,6 +315,60 @@ export default function AdminPatientDetailPage({ params }: { params: Promise<{ i
 
         </div>
       </div>
+
+      {/* Assign Specialist Modal */}
+      {isModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm">
+          <div className="bg-white rounded-3xl shadow-xl w-full max-w-lg overflow-hidden animate-in zoom-in-95 duration-200">
+            <div className="p-6 border-b border-slate-100 flex items-center justify-between bg-slate-50">
+              <h3 className="text-xl font-black text-slate-800 flex items-center gap-2">
+                <Stethoscope className="w-5 h-5 text-blue-600" />
+                Asignar Especialista
+              </h3>
+              <button 
+                onClick={() => setIsModalOpen(false)}
+                className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-200/50 rounded-xl transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            
+            <div className="p-6 max-h-[60vh] overflow-y-auto space-y-4">
+              {isLoadingSpecialists ? (
+                <div className="flex flex-col items-center justify-center py-10 gap-3">
+                  <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+                  <p className="text-sm font-bold text-slate-500 uppercase tracking-widest">Cargando especialistas...</p>
+                </div>
+              ) : specialists.length === 0 ? (
+                <div className="py-10 text-center">
+                  <p className="text-slate-500 font-medium">No hay especialistas disponibles en la organización.</p>
+                </div>
+              ) : (
+                specialists.map(prof => (
+                  <div key={prof.id} className="flex items-center justify-between p-4 bg-white border border-slate-100 rounded-2xl shadow-sm hover:border-blue-200 transition-colors group">
+                    <div className="flex items-center gap-3">
+                      <div className={`w-10 h-10 rounded-full flex items-center justify-center ${prof.role === 'MEDICO' ? 'bg-teal-50 text-teal-600' : 'bg-indigo-50 text-indigo-600'}`}>
+                        {prof.role === 'MEDICO' ? <Stethoscope className="w-5 h-5" /> : <Plus className="w-5 h-5" />}
+                      </div>
+                      <div>
+                        <p className="font-bold text-slate-800">{prof.full_name}</p>
+                        <p className="text-[10px] font-black uppercase tracking-wider text-slate-400">{prof.role}</p>
+                      </div>
+                    </div>
+                    <button 
+                      onClick={() => handleAssign(prof.id, prof.role)}
+                      className="px-4 py-2 bg-slate-50 hover:bg-blue-50 text-slate-600 hover:text-blue-600 font-bold text-xs rounded-xl transition-colors"
+                    >
+                      Asignar
+                    </button>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }

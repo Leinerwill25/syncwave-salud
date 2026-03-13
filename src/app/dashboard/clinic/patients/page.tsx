@@ -1,4 +1,5 @@
 import { createSupabaseServerClient } from '@/app/adapters/server';
+import { createSupabaseAdminClient } from '@/app/adapters/admin';
 import { getCurrentOrganizationId } from '@/app/dashboard/clinic/invites/page';
 import Link from 'next/link';
 import { Users, Search, Activity, User, Plus } from 'lucide-react';
@@ -44,6 +45,43 @@ export default async function ClinicPatientsPage() {
 		console.error('Error fetching clinic patients:', error);
 	}
 
+	// Obtener pacientes no registrados creados manualmente por la clínica
+	let manualPatients: any[] = [];
+	const adminSupabase = createSupabaseAdminClient();
+	
+	const { data: orgUsers, error: orgUsersError } = await adminSupabase
+		.from('users')
+		.select('authId')
+		.eq('organizationId', organizationId);
+
+	if (orgUsersError) {
+		console.error('Error fetching org users:', orgUsersError);
+	}
+
+	const orgUserIds = orgUsers?.map(u => u.authId).filter(Boolean) || [];
+
+	if (orgUserIds.length > 0) {
+		const { data: unregData, error: unregError } = await adminSupabase
+			.from('unregisteredpatients')
+			.select(`
+				id,
+				first_name,
+				last_name,
+				identification,
+				phone,
+				birth_date,
+				emergency_contact_name,
+				emergency_contact_phone
+			`)
+			.in('created_by', orgUserIds);
+
+		if (unregError) {
+			console.error('Error fetching unregistered patients:', unregError);
+		} else {
+			manualPatients = unregData || [];
+		}
+	}
+
 	// Deduplicar y normalizar pacientes
 	const patientMap = new Map<string, any>();
 	
@@ -74,7 +112,59 @@ export default async function ClinicPatientsPage() {
 		}
 	});
 
-	const uniquePatients = Array.from(patientMap.values());
+	// 3. Procesar pacientes NO registrados (manuales sin cita aún)
+	manualPatients.forEach(pUnreg => {
+		if (pUnreg && !patientMap.has(pUnreg.id)) {
+			patientMap.set(pUnreg.id, {
+				id: pUnreg.id,
+				firstName: pUnreg.first_name,
+				lastName: pUnreg.last_name,
+				identifier: pUnreg.identification,
+				phone: pUnreg.phone,
+				dob: pUnreg.birth_date,
+				emergency_contact_name: pUnreg.emergency_contact_name,
+				emergency_contact_phone: pUnreg.emergency_contact_phone,
+				type: 'NO_REGISTRADO'
+			});
+		}
+	});
+
+	const rawUniquePatients = Array.from(patientMap.values());
+
+	// Deduplicar adicionalmente por documento de identidad normalizado
+	const deduplicatedPatientsMap = new Map<string, any>();
+	
+	rawUniquePatients.forEach(patient => {
+		if (!patient.identifier) {
+			// Si no tiene cédula, se guarda por su ID único para no perderlo
+			deduplicatedPatientsMap.set(patient.id, patient);
+			return;
+		}
+
+		// Normalizar documento: quitar todos los espacios y pasar a mayúscula
+		const normalizedId = patient.identifier.toUpperCase().replace(/\s+/g, '');
+		const existing = deduplicatedPatientsMap.get(normalizedId);
+
+		if (!existing) {
+			deduplicatedPatientsMap.set(normalizedId, patient);
+		} else {
+			// Si ya existe uno, evaluar cuál tiene más información para quedarse con el mejor.
+			// Damos puntos por tener información importante (contacto de emergencia, etc)
+			const existingScore = (existing.emergency_contact_name ? 2 : 0) + (existing.phone ? 1 : 0);
+			const currentScore = (patient.emergency_contact_name ? 2 : 0) + (patient.phone ? 1 : 0);
+
+			if (currentScore > existingScore) {
+				deduplicatedPatientsMap.set(normalizedId, patient);
+			} else if (currentScore === existingScore) {
+				// En caso de empate, la App Registrado tiene más fuerza
+				if (patient.type === 'REGISTRADO' && existing.type === 'NO_REGISTRADO') {
+					deduplicatedPatientsMap.set(normalizedId, patient);
+				}
+			}
+		}
+	});
+
+	const uniquePatients = Array.from(deduplicatedPatientsMap.values());
 
 	return (
 		<div className="max-w-7xl mx-auto p-6 space-y-8 animate-in fade-in duration-500">

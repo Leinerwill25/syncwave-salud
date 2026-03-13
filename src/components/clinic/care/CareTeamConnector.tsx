@@ -150,18 +150,28 @@ export default function CareTeamConnector({
                 ))}
 
                 {/* Live Dragging Line */}
-                {draggingFrom && (
-                    <line 
-                        x1={lines.find((l: any) => l.id?.includes(draggingFrom.id))?.x1 || 0} // Placeholder, will fix below
-                        y1={0} // Fixed later with dynamic start post
-                        x2={mousePos.x}
-                        y2={mousePos.y}
-                        stroke="#0d9488"
-                        strokeWidth="3"
-                        strokeDasharray="6 4"
-                        opacity="0.5"
-                    />
-                )}
+                {draggingFrom && (() => {
+                    let dragStartX = 0;
+                    let dragStartY = 0;
+                    if (containerRef.current && patientRefs.current[draggingFrom.id]) {
+                        const rect = containerRef.current.getBoundingClientRect();
+                        const pRect = patientRefs.current[draggingFrom.id]!.getBoundingClientRect();
+                        dragStartX = (pRect.left + pRect.width) - rect.left;
+                        dragStartY = (pRect.top + pRect.height / 2) - rect.top;
+                    }
+                    return (
+                        <line 
+                            x1={dragStartX}
+                            y1={dragStartY}
+                            x2={mousePos.x}
+                            y2={mousePos.y}
+                            stroke="#0d9488"
+                            strokeWidth="3"
+                            strokeDasharray="6 4"
+                            opacity="0.5"
+                        />
+                    );
+                })()}
             </svg>
 
             {/* Left Column: Patients */}
