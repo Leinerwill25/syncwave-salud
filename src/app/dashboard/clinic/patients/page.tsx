@@ -3,6 +3,7 @@ import { createSupabaseAdminClient } from '@/app/adapters/admin';
 import { getCurrentOrganizationId } from '@/app/dashboard/clinic/invites/page';
 import Link from 'next/link';
 import { Users, Search, Activity, User, Plus } from 'lucide-react';
+import { formatDateDisplay } from '@/lib/format';
 
 export default async function ClinicPatientsPage() {
 	const supabase = await createSupabaseServerClient();
@@ -223,7 +224,7 @@ export default async function ClinicPatientsPage() {
 													</div>
 													{patient.dob && (
 														<span className="text-xs text-slate-500">
-															Nac: {new Date(patient.dob).toLocaleDateString()}
+															Nac: {formatDateDisplay(patient.dob)}
 														</span>
 													)}
 												</div>

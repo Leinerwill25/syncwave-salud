@@ -4,6 +4,7 @@ import { getCurrentOrganizationId } from '@/app/dashboard/clinic/invites/page';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { ArrowLeft, User, Activity, Calendar, Stethoscope, FileText } from 'lucide-react';
+import { formatDateDisplay } from '@/lib/format';
 
 export default async function ClinicPatientDetailPage({ 
 	params, 
@@ -73,8 +74,7 @@ export default async function ClinicPatientDetailPage({
 			notes,
 			doctor:users!doctor_id (
 				id,
-				first_name,
-				last_name,
+				full_name,
 				email
 			)
 		`)
@@ -117,6 +117,8 @@ export default async function ClinicPatientDetailPage({
 	if (factError) console.error('Error loading facturacion:', factError);
 
 	// Obtener Notas de Enfermería (Kardex)
+	// Como nurse_id apunta a nurse_profiles, y no hay relación directa a users detectable por PostgREST en el esquema cache
+	// intentamos traer el perfil y ver si podemos anidar el user de auth.
 	const nursingNotesQuery = supabase
 		.from('nurse_kardex_notes')
 		.select(`
@@ -124,10 +126,9 @@ export default async function ClinicPatientDetailPage({
 			note_type,
 			content,
 			created_at,
-			nurse:users!nurse_id (
-				first_name,
-				last_name,
-				email
+			nurse:nurse_profiles!nurse_id (
+				nurse_profile_id,
+				nurse_type
 			)
 		`)
 		.order('created_at', { ascending: false });
@@ -153,9 +154,9 @@ export default async function ClinicPatientDetailPage({
 			started_at,
 			completed_at,
 			outcome,
-			nurse:users!nurse_id (
-				first_name,
-				last_name
+			nurse:nurse_profiles!nurse_id (
+				nurse_profile_id,
+				nurse_type
 			)
 		`)
 		.order('started_at', { ascending: false });
@@ -218,7 +219,7 @@ export default async function ClinicPatientDetailPage({
 							</div>
 							<div>
 								<span className="block text-slate-500 font-medium text-xs uppercase tracking-wider">Fecha de Nacimiento</span>
-								<span className="text-slate-700">{patient.dob ? new Date(patient.dob).toLocaleDateString() : 'No especificada'}</span>
+								<span className="text-slate-700">{formatDateDisplay(patient.dob)}</span>
 							</div>
 							
 							<div className="pt-4 border-t border-slate-100">
@@ -258,7 +259,7 @@ export default async function ClinicPatientDetailPage({
 											</div>
 											<div className="flex items-center gap-2 text-sm font-medium bg-indigo-50 text-indigo-700 px-3 py-1 rounded-md">
 												<Stethoscope className="w-4 h-4" />
-												Dr. {c.doctor?.first_name} {c.doctor?.last_name}
+												Dr. {c.doctor?.full_name}
 											</div>
 										</div>
 										<p className="text-sm font-semibold text-slate-800 mb-1">Motivo: <span className="font-normal text-slate-600">{c.chief_complaint || 'No especificado'}</span></p>
@@ -353,7 +354,7 @@ export default async function ClinicPatientDetailPage({
 													</span>
 													<div className="flex items-center gap-1.5 text-sm font-medium bg-slate-100 text-slate-700 px-3 py-1 rounded-md">
 														<User className="w-3.5 h-3.5" />
-														Enf. {note.nurse?.first_name} {note.nurse?.last_name}
+														Enf. {note.nurse?.nurse_type?.toUpperCase() || 'PERSONAL'}
 													</div>
 												</div>
 											</div>
@@ -395,7 +396,7 @@ export default async function ClinicPatientDetailPage({
 													{proc.description && <p className="text-xs text-slate-500 mt-1">{proc.description}</p>}
 												</td>
 												<td className="px-4 py-3 text-slate-700">
-													{proc.nurse?.first_name} {proc.nurse?.last_name}
+													{proc.nurse?.nurse_type?.toUpperCase() || 'ENFERMERÍA'}
 												</td>
 												<td className="px-4 py-3">
 													<span className={`inline-block px-2 py-1 text-xs font-medium rounded-full ${

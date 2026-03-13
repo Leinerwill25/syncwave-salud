@@ -20,6 +20,7 @@ import {
   Plus
 } from 'lucide-react';
 import Link from 'next/link';
+import { formatDateDisplay } from '@/lib/format';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 
@@ -179,7 +180,7 @@ export default function AdminPatientDetailPage({ params }: { params: Promise<{ i
                  <div className="p-2 bg-slate-50 rounded-lg text-slate-400"><Calendar className="w-4 h-4" /></div>
                  <div>
                    <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Nacimiento</p>
-                   <p className="font-medium text-slate-900">{patient.date_of_birth ? new Date(patient.date_of_birth).toLocaleDateString() : 'No registrado'}</p>
+                   <p className="font-medium text-slate-900">{formatDateDisplay(patient.date_of_birth)}</p>
                  </div>
                </div>
                <div className="flex items-start gap-3">

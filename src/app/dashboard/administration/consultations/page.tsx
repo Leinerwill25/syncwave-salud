@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { FileText, Search, Calendar, Clock, Activity, CheckCircle2, ChevronRight, User } from 'lucide-react';
 import Link from 'next/link';
+import { formatDateDisplay } from '@/lib/format';
 
 interface Consultation {
   id: string;
@@ -164,7 +165,7 @@ export default function AdministrationConsultationsPage() {
                         <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Fecha</p>
                         <p className="text-sm font-medium text-slate-700 flex items-center gap-1.5">
                           <Calendar className="w-3.5 h-3.5" /> 
-                          {new Date(`${consultation.consultation_date}T00:00:00`).toLocaleDateString()}
+                          {formatDateDisplay(consultation.consultation_date)}
                         </p>
                       </div>
                       <div>
