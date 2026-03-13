@@ -1,4 +1,5 @@
 import { createSupabaseServerClient } from '@/app/adapters/server';
+import { createSupabaseAdminClient } from '@/app/adapters/admin';
 import { getCurrentOrganizationId } from '@/app/dashboard/clinic/invites/page';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
@@ -8,22 +9,27 @@ export default async function ClinicPatientDetailPage({
 	params, 
 	searchParams 
 }: { 
-	params: { id: string },
-	searchParams: { type?: string }
+	params: Promise<{ id: string }>,
+	searchParams: Promise<{ type?: string }>
 }) {
 	const supabase = await createSupabaseServerClient();
 	const organizationId = await getCurrentOrganizationId(supabase);
-	const patientId = params.id;
-	const isUnregistered = searchParams.type === 'unregistered';
+	
+	const resolvedParams = await params;
+	const resolvedSearchParams = await searchParams;
+	
+	const patientId = resolvedParams.id;
+	const isUnregistered = resolvedSearchParams.type === 'unregistered';
 
 	if (!organizationId) {
 		return <div className="p-6">No se detectó la organización.</div>;
 	}
 
-	// Obtener datos del paciente (de la tabla correspondiente)
+	// Obtener datos del paciente
 	let patientData: any = null;
 	if (isUnregistered) {
-		const { data, error } = await supabase
+	    const adminSupabase = createSupabaseAdminClient();
+		const { data, error } = await adminSupabase
 			.from('unregisteredpatients')
 			.select('*')
 			.eq('id', patientId)
