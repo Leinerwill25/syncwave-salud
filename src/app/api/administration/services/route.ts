@@ -2,6 +2,7 @@ import { createSupabaseServerClient } from '@/app/adapters/server';
 import { apiRequireRole } from '@/lib/auth-guards';
 import { serviceSchema } from '@/lib/schemas/serviceSchema';
 import { NextResponse } from 'next/server';
+import crypto from 'crypto';
 
 export async function GET(request: Request) {
   const authResult = await apiRequireRole(['ADMINISTRACION', 'ADMIN']);
@@ -9,11 +10,11 @@ export async function GET(request: Request) {
 
   const { searchParams } = new URL(request.url);
   const search = searchParams.get('search') || '';
-  const active = searchParams.get('active') === 'false' ? false : true;
+  const activeParam = searchParams.get('active');
+  const active = activeParam === 'false' ? false : activeParam === 'true' ? true : undefined;
   const page = parseInt(searchParams.get('page') || '1');
   const limit = parseInt(searchParams.get('limit') || '50');
   const from = (page - 1) * limit;
-  const to = from + limit - 1;
 
   const supabase = await createSupabaseServerClient();
   const organizationId = authResult.user?.organizationId;
@@ -22,71 +23,54 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: 'Usuario sin organización asociada' }, { status: 400 });
   }
 
-  let query = supabase
-    .from('admin_clinic_services')
-    .select('*', { count: 'exact' })
+  const { data: profile, error } = await supabase
+    .from('clinic_profile')
+    .select('services')
     .eq('organization_id', organizationId)
-    .range(from, to);
-
-  if (search) {
-    query = query.or(`name.ilike.%${search}%,service_code.ilike.%${search}%`);
-  }
-
-  if (active !== undefined) {
-    query = query.eq('is_active', active);
-  }
-
-  let { data, count, error } = await query.order('name', { ascending: true });
-  
-  // -- LAZY MIGRATION LOGIC --
-  // If no services found in structured table, check for legacy services in clinic_profile
-  if (!error && (!data || data.length === 0) && page === 1) {
-    const { data: profile } = await supabase
-      .from('clinic_profile')
-      .select('services')
-      .eq('organization_id', organizationId)
-      .maybeSingle();
-    
-    if (profile?.services && Array.isArray(profile.services) && profile.services.length > 0) {
-      console.log(`[Services Sync] Migrating ${profile.services.length} services for org ${organizationId}`);
-      
-      const servicesToInsert = profile.services.map((s: any) => ({
-        organization_id: organizationId,
-        name: s.name || 'Servicio sin nombre',
-        description: s.description || null,
-        price: s.price || 0,
-        is_active: s.is_active ?? true,
-        service_code: s.id?.substring(0, 8) || null, // Best effort code
-        created_by: authResult.user?.authId,
-        updated_by: authResult.user?.authId
-      }));
-
-      const { error: insertError } = await supabase
-        .from('admin_clinic_services')
-        .insert(servicesToInsert);
-
-      if (!insertError) {
-        // Re-run query to get the newly inserted data
-        const secondQuery = await supabase
-          .from('admin_clinic_services')
-          .select('*', { count: 'exact' })
-          .eq('organization_id', organizationId)
-          .range(from, to)
-          .order('name', { ascending: true });
-        
-        data = secondQuery.data;
-        count = secondQuery.count;
-        error = secondQuery.error;
-      }
-    }
-  }
+    .single();
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
+  let services: any[] = [];
+  if (profile?.services) {
+    if (typeof profile.services === 'string') {
+      try { services = JSON.parse(profile.services); } catch(e) {}
+    } else if (Array.isArray(profile.services)) {
+      services = profile.services;
+    }
+  }
+
+  if (search) {
+    const sTerm = search.toLowerCase();
+    services = services.filter(s => 
+      s.name?.toLowerCase().includes(sTerm) || 
+      s.service_code?.toLowerCase().includes(sTerm)
+    );
+  }
+
+  if (active !== undefined) {
+    services = services.filter(s => {
+      const isActive = s.active !== undefined ? s.active : s.is_active !== undefined ? s.is_active : true;
+      return isActive === active;
+    });
+  }
+
+  services.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+
+  const count = services.length;
+  const paginatedData = services.slice(from, from + limit).map(s => ({
+    id: s.id,
+    name: s.name,
+    description: s.description,
+    service_code: s.service_code || s.serviceCode || null,
+    price: s.price,
+    is_active: s.active !== undefined ? s.active : s.is_active !== undefined ? s.is_active : true
+  }));
+
   return NextResponse.json({
-    data,
+    data: paginatedData,
     total: count,
     page,
     limit,
@@ -99,7 +83,6 @@ export async function POST(request: Request) {
   if (authResult.response) return authResult.response;
 
   const organizationId = authResult.user?.organizationId;
-  const authId = authResult.user?.authId;
 
   try {
     const body = await request.json();
@@ -107,29 +90,55 @@ export async function POST(request: Request) {
 
     const supabase = await createSupabaseServerClient();
 
-    const { data, error } = await supabase
-      .from('admin_clinic_services')
-      .insert({
-        organization_id: organizationId,
-        name: validatedData.name,
-        description: validatedData.description || null,
-        service_code: validatedData.serviceCode || null,
-        price: validatedData.price || null,
-        is_active: validatedData.isActive ?? true,
-        created_by: authId,
-        updated_by: authId,
-      })
-      .select()
+    const { data: profile, error: profileError } = await supabase
+      .from('clinic_profile')
+      .select('id, services')
+      .eq('organization_id', organizationId)
       .single();
 
-    if (error) {
-      if (error.code === '23505') {
-        return NextResponse.json({ error: 'Ya existe un servicio con este nombre' }, { status: 409 });
-      }
-      return NextResponse.json({ error: error.message }, { status: 500 });
+    if (profileError) {
+      return NextResponse.json({ error: 'Perfil de clínica no encontrado' }, { status: 404 });
     }
 
-    return NextResponse.json(data);
+    let services: any[] = [];
+    if (profile?.services) {
+      if (typeof profile.services === 'string') {
+        try { services = JSON.parse(profile.services); } catch(e) {}
+      } else if (Array.isArray(profile.services)) {
+        services = profile.services;
+      }
+    }
+
+    if (services.some(s => s.name.toLowerCase() === validatedData.name.toLowerCase())) {
+        return NextResponse.json({ error: 'Ya existe un servicio con este nombre' }, { status: 409 });
+    }
+
+    const newService = {
+      id: crypto.randomUUID(),
+      name: validatedData.name,
+      description: validatedData.description || null,
+      service_code: validatedData.serviceCode || null,
+      price: validatedData.price || 0,
+      active: validatedData.isActive ?? true,
+      is_active: validatedData.isActive ?? true,
+    };
+
+    services.push(newService);
+
+    const { error: updateError } = await supabase
+      .from('clinic_profile')
+      .update({ services })
+      .eq('id', profile.id);
+
+    if (updateError) {
+      return NextResponse.json({ error: updateError.message }, { status: 500 });
+    }
+
+    return NextResponse.json({
+        ...newService,
+        serviceCode: newService.service_code,
+        isActive: newService.is_active
+    });
   } catch (err: any) {
     return NextResponse.json({ error: err.message || 'Error en la validación' }, { status: 400 });
   }

@@ -13,27 +13,59 @@ export async function GET(
   const supabase = await createSupabaseServerClient();
   const organizationId = authResult.user?.organizationId;
 
-  const { data, error } = await supabase
-    .from('admin_consultations')
-    .select(`
-      *,
-      specialists!inner (first_name, last_name, email, role, inpres_sax),
-      patient!inner (firstName, lastName, phone, address, dob),
-      admin_appointments!admin_consultations_appointment_id_fkey (appointment_type, scheduled_date, scheduled_time, admin_clinic_services (name)),
-      admin_inventory_assignments (*,
-        admin_inventory_medications (name, dosage, presentation),
-        admin_inventory_materials (name, specifications)
-      )
-    `)
-    .eq('id', id)
-    .eq('organization_id', organizationId)
-    .single();
+    const { data, error } = await supabase
+      .from('admin_consultations')
+      .select(`
+        *,
+        specialists!inner (first_name, last_name, email, role, inpres_sax),
+        patient!inner (firstName, lastName, phone, address, dob),
+        admin_appointments!admin_consultations_appointment_id_fkey (appointment_type, scheduled_date, scheduled_time, service_id),
+        admin_inventory_assignments (*,
+          admin_inventory_medications (name, dosage, presentation),
+          admin_inventory_materials (name, specifications)
+        )
+      `)
+      .eq('id', id)
+      .eq('organization_id', organizationId)
+      .single();
 
-  if (error) {
-    return NextResponse.json({ error: 'Consulta no encontrada' }, { status: 404 });
-  }
+    if (error) {
+      return NextResponse.json({ error: 'Consulta no encontrada' }, { status: 404 });
+    }
 
-  return NextResponse.json(data);
+    let enhancedData = data;
+    if (data) {
+      const { data: profile } = await supabase
+        .from('clinic_profile')
+        .select('services')
+        .eq('organization_id', organizationId)
+        .single();
+        
+      let services: any[] = [];
+      if (profile?.services) {
+        if (typeof profile.services === 'string') {
+          try { services = JSON.parse(profile.services); } catch(e) {}
+        } else if (Array.isArray(profile.services)) {
+          services = profile.services;
+        }
+      }
+
+      let serviceName = null;
+      if (data.admin_appointments && data.admin_appointments.service_id) {
+        const s = services.find(s => s.id === data.admin_appointments.service_id);
+        if (s) serviceName = s.name;
+      }
+
+      enhancedData = {
+        ...data,
+        admin_appointments: data.admin_appointments ? {
+          ...data.admin_appointments,
+          admin_clinic_services: serviceName ? { name: serviceName } : null
+        } : null
+      };
+    }
+
+    return NextResponse.json(enhancedData);
 }
 
 export async function PATCH(

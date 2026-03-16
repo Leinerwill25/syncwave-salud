@@ -22,39 +22,73 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: 'Usuario sin organización asociada' }, { status: 400 });
   }
 
-  let query = supabase
-    .from('admin_consultations')
-    .select(`
-      *,
-      specialists!inner (first_name, last_name, role, inpres_sax),
-      patient!inner (firstName, lastName, phone),
-      admin_appointments!admin_consultations_appointment_id_fkey (appointment_type, scheduled_date, scheduled_time, admin_clinic_services (name))
-    `, { count: 'exact' })
-    .eq('organization_id', organizationId)
-    .range(from, to);
+    let query = supabase
+      .from('admin_consultations')
+      .select(`
+        *,
+        specialists!inner (first_name, last_name, role, inpres_sax),
+        patient!inner (firstName, lastName, phone),
+        admin_appointments!admin_consultations_appointment_id_fkey (appointment_type, scheduled_date, scheduled_time, service_id)
+      `, { count: 'exact' })
+      .eq('organization_id', organizationId)
+      .range(from, to);
 
-  if (status) query = query.eq('status', status);
-  if (specialistId) query = query.eq('specialist_id', specialistId);
-  if (patientId) query = query.eq('patient_id', patientId);
+    if (status) query = query.eq('status', status);
+    if (specialistId) query = query.eq('specialist_id', specialistId);
+    if (patientId) query = query.eq('patient_id', patientId);
 
-  const { data, count, error } = await query
-    .order('consultation_date', { ascending: false })
-    .order('start_time', { ascending: false });
+    const { data, count, error } = await query
+      .order('consultation_date', { ascending: false })
+      .order('start_time', { ascending: false });
 
-  if (error) {
-    console.error('[Consultations API Error]:', error);
-    return NextResponse.json({ 
-      error: error.message,
-      details: error,
-      hint: error.hint
-    }, { status: 500 });
-  }
+    if (error) {
+      console.error('[Consultations API Error]:', error);
+      return NextResponse.json({ 
+        error: error.message,
+        details: error,
+        hint: error.hint
+      }, { status: 500 });
+    }
 
-  return NextResponse.json({
-    data,
-    total: count,
-    page,
-    limit,
-    totalPages: count ? Math.ceil(count / limit) : 0
-  });
+    let enhancedData = data;
+    if (data && data.length > 0) {
+      const { data: profile } = await supabase
+        .from('clinic_profile')
+        .select('services')
+        .eq('organization_id', organizationId)
+        .single();
+        
+      let services: any[] = [];
+      if (profile?.services) {
+        if (typeof profile.services === 'string') {
+          try { services = JSON.parse(profile.services); } catch(e) {}
+        } else if (Array.isArray(profile.services)) {
+          services = profile.services;
+        }
+      }
+
+      enhancedData = data.map((cons: any) => {
+        let serviceName = null;
+        if (cons.admin_appointments && cons.admin_appointments.service_id) {
+          const s = services.find(s => s.id === cons.admin_appointments.service_id);
+          if (s) serviceName = s.name;
+        }
+        
+        return {
+          ...cons,
+          admin_appointments: cons.admin_appointments ? {
+            ...cons.admin_appointments,
+            admin_clinic_services: serviceName ? { name: serviceName } : null
+          } : null
+        };
+      });
+    }
+
+    return NextResponse.json({
+      data: enhancedData,
+      total: count,
+      page,
+      limit,
+      totalPages: count ? Math.ceil(count / limit) : 0
+    });
 }

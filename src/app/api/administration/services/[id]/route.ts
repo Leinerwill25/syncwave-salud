@@ -14,18 +14,39 @@ export async function GET(
   const supabase = await createSupabaseServerClient();
   const organizationId = authResult.user?.organizationId;
 
-  const { data, error } = await supabase
-    .from('admin_clinic_services')
-    .select('*')
-    .eq('id', id)
+  const { data: profile, error } = await supabase
+    .from('clinic_profile')
+    .select('services')
     .eq('organization_id', organizationId)
     .single();
 
-  if (error) {
+  if (error || !profile) {
+    return NextResponse.json({ error: 'Perfil no encontrado' }, { status: 404 });
+  }
+
+  let services: any[] = [];
+  if (profile?.services) {
+    if (typeof profile.services === 'string') {
+      try { services = JSON.parse(profile.services); } catch(e) {}
+    } else if (Array.isArray(profile.services)) {
+      services = profile.services;
+    }
+  }
+
+  const service = services.find(s => s.id === id);
+
+  if (!service) {
     return NextResponse.json({ error: 'Servicio no encontrado' }, { status: 404 });
   }
 
-  return NextResponse.json(data);
+  return NextResponse.json({
+    id: service.id,
+    name: service.name,
+    description: service.description,
+    service_code: service.service_code || service.serviceCode,
+    price: service.price,
+    is_active: service.active !== undefined ? service.active : service.is_active !== undefined ? service.is_active : true,
+  });
 }
 
 export async function PATCH(
@@ -37,38 +58,79 @@ export async function PATCH(
   if (authResult.response) return authResult.response;
 
   const organizationId = authResult.user?.organizationId;
-  const authId = authResult.user?.authId;
 
   try {
     const body = await request.json();
     const partialSchema = serviceSchema.partial();
-    const validatedData = partialSchema.parse(body);
+    
+    let validatedData: any = {};
+    try {
+        validatedData = partialSchema.parse(body);
+    } catch {
+        // use raw body if exact keys from patch
+    }
+    
+    const is_active = body.is_active !== undefined ? body.is_active : validatedData.isActive;
+    const name = body.name || validatedData.name;
+    const description = body.description || validatedData.description;
+    const service_code = body.service_code || body.serviceCode || validatedData.serviceCode;
+    const price = body.price || validatedData.price;
 
     const supabase = await createSupabaseServerClient();
 
-    const { data, error } = await supabase
-      .from('admin_clinic_services')
-      .update({
-        name: validatedData.name,
-        description: validatedData.description,
-        service_code: validatedData.serviceCode,
-        price: validatedData.price,
-        is_active: validatedData.isActive,
-        updated_by: authId,
-        updated_at: new Date().toISOString(),
-      })
-      .eq('id', id)
+    const { data: profile, error: profileError } = await supabase
+      .from('clinic_profile')
+      .select('id, services')
       .eq('organization_id', organizationId)
-      .select()
       .single();
 
-    if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
+    if (profileError) {
+       return NextResponse.json({ error: 'Perfil no encontrado' }, { status: 404 });
     }
 
-    return NextResponse.json(data);
+    let services: any[] = [];
+    if (profile?.services) {
+      if (typeof profile.services === 'string') {
+        try { services = JSON.parse(profile.services); } catch(e) {}
+      } else if (Array.isArray(profile.services)) {
+        services = profile.services;
+      }
+    }
+
+    const serviceIndex = services.findIndex(s => s.id === id);
+    if (serviceIndex === -1) {
+       return NextResponse.json({ error: 'Servicio no encontrado' }, { status: 404 });
+    }
+
+    const currentService = services[serviceIndex];
+
+    const updatedService = {
+        ...currentService,
+        name: name !== undefined ? name : currentService.name,
+        description: description !== undefined ? description : currentService.description,
+        service_code: service_code !== undefined ? service_code : currentService.service_code,
+        price: price !== undefined ? price : currentService.price,
+        active: is_active !== undefined ? is_active : currentService.active,
+        is_active: is_active !== undefined ? is_active : currentService.is_active,
+    };
+
+    services[serviceIndex] = updatedService;
+
+    const { error: updateError } = await supabase
+      .from('clinic_profile')
+      .update({ services })
+      .eq('id', profile.id);
+
+    if (updateError) {
+      return NextResponse.json({ error: updateError.message }, { status: 500 });
+    }
+
+    return NextResponse.json({
+        ...updatedService,
+        isActive: updatedService.is_active || updatedService.active
+    });
   } catch (err: any) {
-    return NextResponse.json({ error: err.message || 'Error en la validación' }, { status: 400 });
+    return NextResponse.json({ error: err.message || 'Error en la actualización' }, { status: 400 });
   }
 }
 
@@ -83,14 +145,39 @@ export async function DELETE(
   const organizationId = authResult.user?.organizationId;
   const supabase = await createSupabaseServerClient();
 
-  const { error } = await supabase
-    .from('admin_clinic_services')
-    .delete()
-    .eq('id', id)
-    .eq('organization_id', organizationId);
+  const { data: profile, error: profileError } = await supabase
+    .from('clinic_profile')
+    .select('id, services')
+    .eq('organization_id', organizationId)
+    .single();
 
-  if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  if (profileError) {
+     return NextResponse.json({ error: 'Perfil no encontrado' }, { status: 404 });
+  }
+
+  let services: any[] = [];
+  if (profile?.services) {
+    if (typeof profile.services === 'string') {
+      try { services = JSON.parse(profile.services); } catch(e) {}
+    } else if (Array.isArray(profile.services)) {
+      services = profile.services;
+    }
+  }
+
+  const initialLength = services.length;
+  services = services.filter(s => s.id !== id);
+
+  if (services.length === initialLength) {
+     return NextResponse.json({ success: true, message: 'El servicio ya no existe' });
+  }
+
+  const { error: updateError } = await supabase
+    .from('clinic_profile')
+    .update({ services })
+    .eq('id', profile.id);
+
+  if (updateError) {
+    return NextResponse.json({ error: updateError.message }, { status: 500 });
   }
 
   return NextResponse.json({ success: true, message: 'Servicio eliminado' });

@@ -19,6 +19,17 @@ export const adminPatientSchema = z.object({
   allergies: z.string().optional(),
   currentMedications: z.string().optional(),
   
+  // Home Care Fields
+  serviceId: z.string().optional(),
+  careDate: z.string().optional(),
+  specialistIds: z.array(z.string()).optional(),
+  inventoryItems: z.array(z.object({
+    id: z.string(),
+    type: z.enum(['medication', 'material']),
+    name: z.string(),
+    quantity: z.number().min(1)
+  })).optional(),
+
   isActive: z.boolean().optional(),
 });
 

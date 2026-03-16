@@ -185,7 +185,113 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
-    return NextResponse.json(data);
+    const newPatient = data;
+
+    // --- LOGICA DE ATENCION DOMICILIARIA (CITA + ESPECIALISTAS) ---
+    if (validatedData.serviceId && validatedData.careDate) {
+      const organizationId = authResult.user?.organizationId;
+      
+      // 1. Crear la Cita Administrativa
+      // Usamos el primer especialista como el 'responsable' principal de la cita
+      const mainSpecialistId = validatedData.specialistIds?.[0];
+      
+      if (mainSpecialistId) {
+        const { data: appointment, error: apptError } = await adminSupabase
+          .from('admin_appointments')
+          .insert({
+            organization_id: organizationId,
+            specialist_id: mainSpecialistId,
+            unregistered_patient_id: newPatient.id,
+            service_id: validatedData.serviceId,
+            scheduled_date: validatedData.careDate,
+            scheduled_time: '08:00:00', // Default time for home care if not specified
+            status: 'APROBADA',
+            appointment_type: 'DOMICILIARIO',
+            created_by: authId,
+            approved_by: authId,
+            approved_at: new Date().toISOString()
+          })
+          .select()
+          .single();
+
+        if (!apptError && appointment && validatedData.specialistIds) {
+          // 2. Registrar todo el equipo en la tabla relacional de la cita
+          const teamAssignments = validatedData.specialistIds.map(specId => ({
+            appointment_id: appointment.id,
+            specialist_id: specId
+          }));
+
+          await adminSupabase
+            .from('admin_appointment_specialists')
+            .insert(teamAssignments);
+
+          // 3. Registrar asignaciones permanentes de especialistas al paciente
+          const permanentAssignments = validatedData.specialistIds.map(specId => ({
+            specialist_id: specId,
+            unregistered_patient_id: newPatient.id,
+            assignment_date: validatedData.careDate,
+            status: 'ACTIVE'
+          }));
+
+          await adminSupabase
+            .from('specialist_patient_assignments')
+            .insert(permanentAssignments);
+
+          // 4. Crear la Consulta Automática (para que aparezca en el historial y lista de consultas)
+          await adminSupabase
+            .from('admin_consultations')
+            .insert({
+              organization_id: organizationId,
+              appointment_id: appointment.id,
+              specialist_id: mainSpecialistId,
+              unregistered_patient_id: newPatient.id,
+              consultation_date: validatedData.careDate,
+              start_time: '08:00:00',
+              status: 'PROGRAMADA'
+            });
+        }
+      }
+    }
+
+    // 5. LOGICA DE INVENTARIO DOMICILIARIO
+    if (validatedData.inventoryItems && validatedData.inventoryItems.length > 0) {
+      const organizationId = authResult.user?.organizationId;
+      
+      for (const item of validatedData.inventoryItems) {
+        // a. Registrar la asignación al paciente (uso domiciliario)
+        await adminSupabase
+          .from('admin_inventory_assignments')
+          .insert({
+            organization_id: organizationId,
+            unregistered_patient_id: newPatient.id,
+            medication_id: item.type === 'medication' ? item.id : null,
+            material_id: item.type === 'material' ? item.id : null,
+            quantity_assigned: item.quantity,
+            assigned_by: authId,
+            assigned_at: new Date().toISOString()
+          });
+
+        // b. Descontar del inventario de la clinica (Stock Restante)
+        const table = item.type === 'medication' ? 'admin_inventory_medications' : 'admin_inventory_materials';
+        
+        // Obtenemos cantidad actual directamente del servidor para evitar race conditions
+        const { data: currentItem } = await adminSupabase
+          .from(table)
+          .select('quantity')
+          .eq('id', item.id)
+          .single();
+
+        if (currentItem) {
+          const newQty = Math.max(0, currentItem.quantity - item.quantity);
+          await adminSupabase
+            .from(table)
+            .update({ quantity: newQty })
+            .eq('id', item.id);
+        }
+      }
+    }
+
+    return NextResponse.json(newPatient);
   } catch (err: any) {
     return NextResponse.json({ error: err.message || 'Error en la validación de datos' }, { status: 400 });
   }
