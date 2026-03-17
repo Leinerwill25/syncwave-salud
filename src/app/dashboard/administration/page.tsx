@@ -102,60 +102,60 @@ export default function AdministrationDashboardPage() {
   ];
 
   return (
-    <div className="p-4 md:p-8 lg:p-12 space-y-8 animate-in fade-in duration-500">
+    <div className="p-4 md:p-8 lg:p-12 space-y-6 md:space-y-8 animate-in fade-in duration-500 max-w-screen overflow-x-hidden">
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-black text-slate-900 tracking-tight flex items-center gap-3">
-            <Activity className="w-8 h-8 text-teal-600" />
+          <h1 className="text-2xl md:text-3xl font-black text-slate-900 tracking-tight flex items-center gap-3">
+            <Activity className="w-6 h-6 md:w-8 md:h-8 text-teal-600" />
             Panel de Administración
           </h1>
-          <p className="text-slate-500 mt-2 text-lg">
+          <p className="text-slate-500 mt-2 text-sm md:text-lg">
             Resumen operativo y estado general de la clínica.
           </p>
         </div>
-        <div className="text-sm font-medium text-slate-400 bg-white px-4 py-2 rounded-xl shadow-sm border border-slate-100">
+        <div className="hidden md:block text-sm font-medium text-slate-400 bg-white px-4 py-2 rounded-xl shadow-sm border border-slate-100">
           Última actualización: {new Date().toLocaleTimeString()}
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-6">
         {statCards.map((stat, idx) => {
           const Icon = stat.icon;
           return (
             <div 
               key={idx} 
-              className="group bg-white rounded-3xl p-6 shadow-sm border border-slate-100 hover:shadow-xl transition-all duration-300 hover:-translate-y-1 relative overflow-hidden"
+              className="group bg-white rounded-2xl md:rounded-3xl p-4 md:p-6 shadow-sm border border-slate-100 hover:shadow-xl transition-all duration-300 hover:-translate-y-1 relative overflow-hidden flex flex-col justify-between"
               style={{ animationDelay: `${idx * 150}ms` }}
             >
-              <div className="flex items-start justify-between relative z-10">
-                <div className="space-y-4">
-                  <div className={`w-12 h-12 rounded-2xl ${stat.bgColor} flex items-center justify-center`}>
-                    <Icon className={`w-6 h-6 ${stat.textColor}`} />
+              <div className="flex items-start justify-between relative z-10 w-full">
+                <div className="space-y-2 md:space-y-4">
+                  <div className={`w-10 h-10 md:w-12 md:h-12 rounded-xl md:rounded-2xl ${stat.bgColor} flex items-center justify-center`}>
+                    <Icon className={`w-5 h-5 md:w-6 md:h-6 ${stat.textColor}`} />
                   </div>
                   <div>
-                    <h3 className="text-slate-500 font-medium">{stat.title}</h3>
+                    <h3 className="text-slate-500 font-medium text-[10px] md:text-sm uppercase tracking-wider">{stat.title}</h3>
                     <div className="flex items-baseline gap-2 mt-1">
                       {isLoading ? (
-                        <div className="h-10 w-20 bg-slate-200 animate-pulse rounded-lg" />
+                        <div className="h-6 md:h-10 w-12 md:w-20 bg-slate-200 animate-pulse rounded-lg" />
                       ) : (
-                        <span className="text-4xl font-black text-slate-900 tracking-tight">{stat.value}</span>
+                        <span className="text-xl md:text-4xl font-black text-slate-900 tracking-tight">{stat.value}</span>
                       )}
                     </div>
                   </div>
                 </div>
                 
-                <div className={`px-2.5 py-1 rounded-full text-xs font-bold ${stat.bgColor} ${stat.textColor} flex items-center gap-1`}>
-                  <TrendingUp className="w-3 h-3" />
-                  {stat.trend}
+                <div className={`px-2 py-0.5 md:py-1 rounded-full text-[9px] md:text-xs font-bold ${stat.bgColor} ${stat.textColor} flex items-center gap-1 shrink-0`}>
+                  <TrendingUp className="w-2.5 h-2.5 md:w-3 md:h-3" />
+                  {stat.trend.length > 5 && window?.innerWidth < 768 ? 'Aviso' : stat.trend}
                 </div>
               </div>
 
-              <div className="mt-6 pt-6 border-t border-slate-50 relative z-10">
+              <div className="mt-4 md:mt-6 pt-4 md:pt-6 border-t border-slate-50 relative z-10">
                 <Link 
                   href={stat.href}
-                  className={`text-sm font-bold ${stat.textColor} flex items-center gap-2 group-hover:gap-3 transition-all`}
+                  className={`text-[10px] md:text-sm font-bold ${stat.textColor} flex items-center gap-2 group-hover:gap-3 transition-all`}
                 >
-                  Ver detalles <ArrowRight className="w-4 h-4" />
+                  Detalles <ArrowRight className="w-3.5 h-3.5 md:w-4 md:h-4" />
                 </Link>
               </div>
 

@@ -24,8 +24,9 @@ export async function GET(request: Request) {
       .from('admin_appointments')
       .select(`
         *,
-        specialists!inner (first_name, last_name, role),
-        patient!inner (firstName, lastName, phone)
+        specialists:specialists!admin_appointments_specialist_id_fkey (first_name, last_name, role),
+        patient (firstName, lastName, phone),
+        unregistered_patient:unregisteredpatients (first_name, last_name, phone)
       `, { count: 'exact' })
       .eq('organization_id', organizationId)
       .range(from, to);
@@ -39,7 +40,12 @@ export async function GET(request: Request) {
       .order('scheduled_time', { ascending: true });
 
     if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
+      console.error('[Appointments API Query Error]:', error);
+      return NextResponse.json({ 
+        error: error.message,
+        details: error,
+        hint: error.hint 
+      }, { status: 500 });
     }
 
     // Inyección manual del nombre del servicio desde clinic_profile
@@ -66,9 +72,31 @@ export async function GET(request: Request) {
           const s = services.find(s => s.id === appt.service_id);
           if (s) serviceName = s.name;
         }
+
+        // Consolidar datos del paciente (Registrado o No Registrado)
+        let first_name = '';
+        let last_name = '';
+        let phone_number = '';
+
+        if (appt.patient) {
+          first_name = appt.patient.firstName || '';
+          last_name = appt.patient.lastName || '';
+          phone_number = appt.patient.phone || '';
+        } else if (appt.unregistered_patient) {
+          first_name = appt.unregistered_patient.first_name || '';
+          last_name = appt.unregistered_patient.last_name || '';
+          phone_number = appt.unregistered_patient.phone || '';
+        }
+
         return {
           ...appt,
-          admin_clinic_services: serviceName ? { name: serviceName } : null
+          patients: {
+            first_name,
+            last_name,
+            phone_number,
+            displayName: `${first_name} ${last_name}`.trim()
+          },
+          clinic_services: serviceName ? { name: serviceName } : null
         };
       });
     }

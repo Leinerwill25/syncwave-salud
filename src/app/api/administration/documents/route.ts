@@ -26,7 +26,8 @@ export async function GET(request: Request) {
     .from('clinical_documents')
     .select(`
       *,
-      patient!inner (firstName, lastName)
+      patient (firstName, lastName, phone),
+      unregisteredpatients (first_name, last_name, phone)
     `, { count: 'exact' })
     .eq('organization_id', organizationId)
     .range(from, to);
@@ -38,11 +39,25 @@ export async function GET(request: Request) {
   const { data, count, error } = await query.order('uploaded_at', { ascending: false });
 
   if (error) {
+    console.error('[Documents API Error]:', error);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
+  // Consolidar datos de pacientes
+  const mappedData = (data || []).map((doc: any) => {
+    const p = doc.patient || doc.unregisteredpatients || {};
+    return {
+      ...doc,
+      patients: {
+        first_name: p.firstName || p.first_name || 'N/A',
+        last_name: p.lastName || p.last_name || '',
+        phone_number: p.phone || ''
+      }
+    };
+  });
+
   return NextResponse.json({
-    data,
+    data: mappedData,
     total: count,
     page,
     limit,

@@ -8,6 +8,8 @@ export const metadata = {
   description: 'Panel de control para administradores de clínicas en la red ASHIRA.',
 };
 
+import { MobileBottomNav } from '@/components/administration/MobileBottomNav';
+
 export default async function AdministrationLayout({
   children,
 }: {
@@ -24,11 +26,12 @@ export default async function AdministrationLayout({
       <div className="flex-shrink-0">
         <AdministrationSidebar />
       </div>
-      <main className="flex-1 w-full flex flex-col pt-16 md:pt-6 px-4 md:px-6 lg:px-8">
+      <main className="flex-1 w-full flex flex-col pt-20 md:pt-6 pb-24 md:pb-6 px-4 md:px-6 lg:px-8">
         <div className="max-w-7xl w-full mx-auto">
           {children}
         </div>
       </main>
+      <MobileBottomNav />
     </div>
   );
 }

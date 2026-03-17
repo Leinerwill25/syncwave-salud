@@ -90,6 +90,13 @@ export function AdministrationSidebar() {
 
     useEffect(() => {
         setMounted(true);
+        
+        const handleExternalToggle = () => {
+            setIsMobileMenuOpen(true);
+        };
+
+        window.addEventListener('toggle-admin-sidebar', handleExternalToggle);
+        return () => window.removeEventListener('toggle-admin-sidebar', handleExternalToggle);
     }, []);
 
 	const toggleMenu = (label: string) => {

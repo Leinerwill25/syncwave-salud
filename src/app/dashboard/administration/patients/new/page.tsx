@@ -238,115 +238,115 @@ export default function NewAdminPatientPage() {
   };
 
   return (
-    <div className="p-4 md:p-8 lg:p-12 max-w-6xl mx-auto space-y-8 animate-in fade-in duration-300">
+    <div className="p-4 md:p-8 lg:p-12 max-w-6xl mx-auto space-y-4 md:space-y-8 animate-in fade-in duration-300 pb-20">
       
       {/* Header */}
       <div className="flex items-center justify-between">
-        <div>
-          <Link href="/dashboard/administration/patients" className="inline-flex items-center gap-2 text-sm font-bold text-slate-500 hover:text-blue-600 transition-colors mb-4">
-            <ArrowLeft className="w-4 h-4" /> Volver a Pacientes
+        <div className="w-full">
+          <Link href="/dashboard/administration/patients" className="inline-flex items-center gap-2 text-[10px] md:text-sm font-black text-slate-400 hover:text-blue-600 transition-colors mb-2 md:mb-4 uppercase tracking-widest">
+            <ArrowLeft className="w-3.5 h-3.5" /> Volver
           </Link>
-          <h1 className="text-3xl font-black text-slate-900 tracking-tight flex items-center gap-3">
-            <UserPlus className="w-8 h-8 text-blue-600" />
-            Registro de Paciente
+          <h1 className="text-xl md:text-3xl font-black text-slate-900 tracking-tight flex items-center gap-2 md:gap-3">
+            <UserPlus className="w-6 h-6 md:w-8 md:h-8 text-blue-600" />
+            Nuevo Paciente
           </h1>
-          <p className="text-slate-500 mt-2 text-lg">
-            Añade un nuevo paciente al directorio de la clínica.
+          <p className="text-slate-500 mt-1 md:mt-2 text-xs md:text-lg">
+            Añade un nuevo paciente al directorio.
           </p>
         </div>
       </div>
 
       {errorMsg && (
-        <div className="bg-red-50 text-red-600 p-4 rounded-xl border border-red-100 flex items-center gap-3 animate-in shake">
-          <AlertCircle className="w-5 h-5 flex-shrink-0" />
-          <p className="text-sm font-medium">{errorMsg}</p>
+        <div className="bg-red-50 text-red-600 p-3 md:p-4 rounded-xl border border-red-100 flex items-center gap-2 md:gap-3 animate-in shake text-xs md:text-sm">
+          <AlertCircle className="w-4 h-4 md:w-5 md:h-5 flex-shrink-0" />
+          <p className="font-bold uppercase tracking-tight">{errorMsg}</p>
         </div>
       )}
 
       {/* Form Card */}
-      <div className="bg-white rounded-3xl shadow-sm border border-slate-100 p-6 md:p-10">
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-10">
+      <div className="bg-white rounded-2xl md:rounded-3xl shadow-sm border border-slate-100 p-4 md:p-10">
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-8 md:space-y-10">
           
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-x-12 gap-y-10">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-x-12 gap-y-8 md:gap-y-10">
             {/* Informacion Principal */}
-            <div className="space-y-6">
-              <h3 className="text-xl font-bold text-slate-900 border-b pb-3 flex items-center gap-2">
-                 <div className="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center text-blue-600 font-black">1</div>
+            <div className="space-y-5 md:space-y-6">
+              <h3 className="text-base md:text-xl font-black text-slate-900 border-b pb-2 md:pb-3 flex items-center gap-2 uppercase tracking-tight">
+                 <div className="w-6 h-6 md:w-8 md:h-8 rounded-lg bg-blue-50 flex items-center justify-center text-blue-600 text-xs md:text-sm font-black">1</div>
                  Datos Generales
               </h3>
               
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <label className="text-sm font-bold text-slate-700">Nombre(s) *</label>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-1.5 md:space-y-2">
+                  <label className="text-[10px] md:text-sm font-black text-slate-500 uppercase tracking-widest">Nombre(s) *</label>
                   <input 
                     {...register('firstName')}
                     autoFocus
                     className={cn(
-                      "w-full rounded-xl border px-4 py-3 bg-slate-50 outline-none transition-all focus:ring-4 focus:ring-blue-100 focus:bg-white text-sm",
+                      "w-full rounded-xl border px-3 md:px-4 py-2.5 md:py-3 bg-slate-50 outline-none transition-all focus:ring-4 focus:ring-blue-100 focus:bg-white text-xs md:text-sm font-bold",
                       errors.firstName ? "border-red-500" : "border-slate-200"
                     )}
                   />
-                  {errors.firstName && <p className="text-xs font-bold text-red-500">{errors.firstName.message}</p>}
+                  {errors.firstName && <p className="text-[10px] font-bold text-red-500">{errors.firstName.message}</p>}
                 </div>
 
-                <div className="space-y-2">
-                  <label className="text-sm font-bold text-slate-700">Apellido(s) *</label>
+                <div className="space-y-1.5 md:space-y-2">
+                  <label className="text-[10px] md:text-sm font-black text-slate-500 uppercase tracking-widest">Apellido(s) *</label>
                   <input 
                     {...register('lastName')}
                     className={cn(
-                      "w-full rounded-xl border px-4 py-3 bg-slate-50 outline-none transition-all focus:ring-4 focus:ring-blue-100 focus:bg-white text-sm",
+                      "w-full rounded-xl border px-3 md:px-4 py-2.5 md:py-3 bg-slate-50 outline-none transition-all focus:ring-4 focus:ring-blue-100 focus:bg-white text-xs md:text-sm font-bold",
                       errors.lastName ? "border-red-500" : "border-slate-200"
                     )}
                   />
-                  {errors.lastName && <p className="text-xs font-bold text-red-500">{errors.lastName.message}</p>}
+                  {errors.lastName && <p className="text-[10px] font-bold text-red-500">{errors.lastName.message}</p>}
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                 <div className="space-y-2">
-                    <label className="text-sm font-bold text-slate-700">Fecha de Nacimiento</label>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                 <div className="space-y-1.5 md:space-y-2">
+                    <label className="text-[10px] md:text-sm font-black text-slate-500 uppercase tracking-widest">Fecha Nacimiento</label>
                     <input 
                       type="date"
                       {...register('dateOfBirth')}
-                      className="w-full rounded-xl border px-4 py-3 bg-slate-50 outline-none transition-all focus:ring-4 focus:ring-blue-100 focus:bg-white text-sm border-slate-200 text-slate-600"
+                      className="w-full rounded-xl border px-3 md:px-4 py-2.5 md:py-3 bg-slate-50 outline-none transition-all focus:ring-4 focus:ring-blue-100 focus:bg-white text-xs md:text-sm font-bold border-slate-200 text-slate-600"
                     />
                   </div>
-                  <div className="space-y-2">
-                    <label className="text-sm font-bold text-slate-700">Teléfono</label>
+                  <div className="space-y-1.5 md:space-y-2">
+                    <label className="text-[10px] md:text-sm font-black text-slate-500 uppercase tracking-widest">Teléfono</label>
                     <input 
                       {...register('phoneNumber')}
-                      className="w-full rounded-xl border px-4 py-3 bg-slate-50 outline-none transition-all focus:ring-4 focus:ring-blue-100 focus:bg-white text-sm border-slate-200"
+                      className="w-full rounded-xl border px-3 md:px-4 py-2.5 md:py-3 bg-slate-50 outline-none transition-all focus:ring-4 focus:ring-blue-100 focus:bg-white text-xs md:text-sm font-bold border-slate-200"
                     />
                   </div>
               </div>
 
-              <div className="space-y-2">
-                <label className="text-sm font-bold text-slate-700">Correo Electrónico</label>
+              <div className="space-y-1.5 md:space-y-2">
+                <label className="text-[10px] md:text-sm font-black text-slate-500 uppercase tracking-widest">Correo Electrónico</label>
                 <input 
                   type="email"
                   {...register('email')}
                   className={cn(
-                    "w-full rounded-xl border px-4 py-3 bg-slate-50 outline-none transition-all focus:ring-4 focus:ring-blue-100 focus:bg-white text-sm",
+                    "w-full rounded-xl border px-3 md:px-4 py-2.5 md:py-3 bg-slate-50 outline-none transition-all focus:ring-4 focus:ring-blue-100 focus:bg-white text-xs md:text-sm font-bold",
                     errors.email ? "border-red-500" : "border-slate-200"
                   )}
                 />
-                {errors.email && <p className="text-xs font-bold text-red-500">{errors.email.message}</p>}
+                {errors.email && <p className="text-[10px] font-bold text-red-500">{errors.email.message}</p>}
               </div>
 
               <div className="space-y-4 pt-4">
-                 <h4 className="text-sm font-bold text-slate-900 border-b pb-2">Ubicación</h4>
-                 <div className="space-y-2">
-                    <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Dirección Completa</label>
-                    <input {...register('address')} className="w-full rounded-xl border px-4 py-3 bg-slate-50 outline-none transition-all focus:ring-4 focus:ring-blue-100 focus:bg-white text-sm border-slate-200" />
+                 <h4 className="text-[11px] font-black text-slate-900 border-b pb-2 uppercase tracking-widest">Ubicación</h4>
+                 <div className="space-y-1.5 md:space-y-2">
+                    <label className="text-[9px] md:text-xs font-black text-slate-400 uppercase tracking-wider">Dirección Completa</label>
+                    <input {...register('address')} className="w-full rounded-xl border px-3 md:px-4 py-2.5 md:py-3 bg-slate-50 outline-none transition-all focus:ring-4 focus:ring-blue-100 focus:bg-white text-xs md:text-sm font-bold border-slate-200" />
                  </div>
-                 <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                        <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Ciudad</label>
-                        <input {...register('city')} className="w-full rounded-xl border px-4 py-3 bg-slate-50 outline-none transition-all focus:ring-4 focus:ring-blue-100 focus:bg-white text-sm border-slate-200" />
+                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="space-y-1.5 md:space-y-2">
+                        <label className="text-[9px] md:text-xs font-black text-slate-400 uppercase tracking-wider">Ciudad</label>
+                        <input {...register('city')} className="w-full rounded-xl border px-3 md:px-4 py-2.5 md:py-3 bg-slate-50 outline-none transition-all focus:ring-4 focus:ring-blue-100 focus:bg-white text-xs md:text-sm font-bold border-slate-200" />
                     </div>
-                    <div className="space-y-2">
-                        <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">País</label>
-                        <input {...register('country')} className="w-full rounded-xl border px-4 py-3 bg-slate-50 outline-none transition-all focus:ring-4 focus:ring-blue-100 focus:bg-white text-sm border-slate-200" />
+                    <div className="space-y-1.5 md:space-y-2">
+                        <label className="text-[9px] md:text-xs font-black text-slate-400 uppercase tracking-wider">País</label>
+                        <input {...register('country')} className="w-full rounded-xl border px-3 md:px-4 py-2.5 md:py-3 bg-slate-50 outline-none transition-all focus:ring-4 focus:ring-blue-100 focus:bg-white text-xs md:text-sm font-bold border-slate-200" />
                     </div>
                  </div>
               </div>
@@ -354,38 +354,36 @@ export default function NewAdminPatientPage() {
 
             {/* Informacion Medica & Emergencia */}
             <div className="space-y-8">
-              <div className="space-y-6">
-                <h3 className="text-xl font-bold text-slate-900 border-b pb-3 flex items-center gap-2">
-                   <div className="w-8 h-8 rounded-lg bg-rose-50 flex items-center justify-center text-rose-600 font-black">2</div>
+              <div className="space-y-5 md:space-y-6">
+                <h3 className="text-base md:text-xl font-black text-slate-900 border-b pb-2 md:pb-3 flex items-center gap-2 uppercase tracking-tight">
+                   <div className="w-6 h-6 md:w-8 md:h-8 rounded-lg bg-rose-50 flex items-center justify-center text-rose-600 text-xs md:text-sm font-black">2</div>
                    Contacto de Emergencia
                 </h3>
                 
-                <div className="space-y-2">
-                  <label className="text-sm font-bold text-slate-700">Nombre del Contacto</label>
-                  <input {...register('emergencyContactName')} className="w-full rounded-xl border px-4 py-3 bg-slate-50 outline-none transition-all focus:ring-4 focus:ring-rose-100 focus:bg-white text-sm border-slate-200" />
+                <div className="space-y-1.5 md:space-y-2">
+                  <label className="text-[10px] md:text-sm font-black text-slate-500 uppercase tracking-widest">Nombre del Contacto</label>
+                  <input {...register('emergencyContactName')} className="w-full rounded-xl border px-3 md:px-4 py-2.5 md:py-3 bg-slate-50 outline-none transition-all focus:ring-4 focus:ring-rose-100 focus:bg-white text-xs md:text-sm font-bold border-slate-200" />
                 </div>
                 
-                <div className="grid grid-cols-2 gap-4">
-                   <div className="space-y-2">
-                      <label className="text-sm font-bold text-slate-700">Teléfono Auxiliar</label>
-                      <input {...register('emergencyContactPhone')} className="w-full rounded-xl border px-4 py-3 bg-slate-50 outline-none transition-all focus:ring-4 focus:ring-rose-100 focus:bg-white text-sm border-slate-200" />
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                   <div className="space-y-1.5 md:space-y-2">
+                      <label className="text-[10px] md:text-sm font-black text-slate-500 uppercase tracking-widest">Teléfono Auxiliar</label>
+                      <input {...register('emergencyContactPhone')} className="w-full rounded-xl border px-3 md:px-4 py-2.5 md:py-3 bg-slate-50 outline-none transition-all focus:ring-4 focus:ring-rose-100 focus:bg-white text-xs md:text-sm font-bold border-slate-200" />
                    </div>
-                   <div className="space-y-2">
-                      <label className="text-sm font-bold text-slate-700">Parentesco</label>
-                      <input {...register('emergencyContactRelation')} placeholder="Ej: Madre, Esposo..." className="w-full rounded-xl border px-4 py-3 bg-slate-50 outline-none transition-all focus:ring-4 focus:ring-rose-100 focus:bg-white text-sm border-slate-200" />
+                   <div className="space-y-1.5 md:space-y-2">
+                      <label className="text-[10px] md:text-sm font-black text-slate-500 uppercase tracking-widest">Parentesco</label>
+                      <input {...register('emergencyContactRelation')} placeholder="Ej: Madre, Esposo..." className="w-full rounded-xl border px-3 md:px-4 py-2.5 md:py-3 bg-slate-50 outline-none transition-all focus:ring-4 focus:ring-rose-100 focus:bg-white text-xs md:text-sm font-bold border-slate-200" />
                    </div>
                 </div>
               </div>
 
-              <div className="space-y-6">
-                <h3 className="text-xl font-bold text-slate-900 border-b pb-3 flex items-center gap-2">
-                   <div className="w-8 h-8 rounded-lg bg-teal-50 flex items-center justify-center text-teal-600 font-black">3</div>
-                   Datos Clínicos Adicionales
+              <div className="space-y-5 md:space-y-6">
+                <h3 className="text-base md:text-xl font-black text-slate-900 border-b pb-2 md:pb-3 flex items-center gap-2 uppercase tracking-tight">
+                   <div className="w-6 h-6 md:w-8 md:h-8 rounded-lg bg-teal-50 flex items-center justify-center text-teal-600 text-xs md:text-sm font-black">3</div>
+                   Datos Clínicos
                 </h3>
                 
-                <h4 className="text-sm font-bold text-slate-600 mb-2 uppercase tracking-wider">Antecedentes Médicos (Presiona Enter para añadir otro)</h4>
-                
-                <div className="grid grid-cols-1 gap-y-6">
+                <div className="grid grid-cols-1 gap-y-5 md:gap-y-6">
                     <DynamicListInput 
                         label="Alergias Conocidas" 
                         field="allergies" 
@@ -409,12 +407,12 @@ export default function NewAdminPatientPage() {
                     />
                 </div>
 
-                <div className="grid grid-cols-1 gap-y-6">
+                <div className="grid grid-cols-1 gap-y-5 md:gap-y-6">
                     <div className="col-span-1">
                         <DynamicListInput 
-                            label="Antecedentes Relevantes (Breves)" 
+                            label="Historial Relevante" 
                             field="history" 
-                            placeholder="Ej. Operación de apéndice (2010)" 
+                            placeholder="Ej. Operación (2010)" 
                             values={historyList}
                             handleDynamicInput={handleDynamicInput}
                             handleKeyDown={handleKeyDown}
@@ -424,14 +422,14 @@ export default function NewAdminPatientPage() {
                     </div>
                 </div>
                 
-                <div className="flex items-center gap-3 pt-4">
+                <div className="flex items-center gap-3 pt-2">
                   <input 
                     type="checkbox"
                     id="isActive"
                     {...register('isActive')}
                     className="w-5 h-5 rounded text-blue-600 focus:ring-blue-500 cursor-pointer"
                   />
-                  <label htmlFor="isActive" className="text-sm font-bold text-slate-700 cursor-pointer">
+                  <label htmlFor="isActive" className="text-xs md:text-sm font-black text-slate-700 cursor-pointer uppercase tracking-tighter">
                     Paciente Activo
                   </label>
                 </div>
@@ -440,18 +438,18 @@ export default function NewAdminPatientPage() {
           </div>
 
           {/* Seccion 4: Plan de Atencion (Home Care) */}
-          <div className="space-y-6 pt-10 border-t border-slate-100">
-             <h3 className="text-xl font-bold text-slate-900 flex items-center gap-2">
-                <div className="w-8 h-8 rounded-lg bg-teal-50 flex items-center justify-center text-teal-600 font-black">4</div>
-                Plan de Atención Domiciliaria (Opcional)
+          <div className="space-y-6 pt-8 md:pt-10 border-t border-slate-100">
+             <h3 className="text-base md:text-xl font-black text-slate-900 flex items-center gap-2 uppercase tracking-tight">
+                <div className="w-6 h-6 md:w-8 md:h-8 rounded-lg bg-teal-50 flex items-center justify-center text-teal-600 text-xs md:text-sm font-black">4</div>
+                Plan de Atención (Opcional)
              </h3>
-             <p className="text-slate-500 text-sm italic">Configura el primer servicio y el equipo de trabajo para este paciente de forma inmediata.</p>
+             <p className="text-slate-500 text-[10px] md:text-sm italic">Configura el equipo de trabajo inmediatamente.</p>
 
-             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
+             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6 items-start">
                 {/* Servicio */}
-                <div className="space-y-2">
-                  <label className="text-sm font-bold text-slate-700 flex items-center gap-2 h-5">
-                    <Activity className="w-4 h-4 text-teal-600" /> Servicio a Prestar
+                <div className="space-y-1.5 md:space-y-2">
+                  <label className="text-[10px] md:text-sm font-black text-slate-500 flex items-center gap-2 h-5 uppercase tracking-widest">
+                    <Activity className="w-3.5 h-3.5 text-teal-600" /> Servicio
                   </label>
                   <div className="relative">
                     <input 
@@ -464,10 +462,10 @@ export default function NewAdminPatientPage() {
                         if (e.target.value === '') setSelectedService('');
                       }}
                       onFocus={() => setShowServDropdown(true)}
-                      className="w-full rounded-xl border border-slate-200 px-4 py-3 bg-slate-50 outline-none focus:ring-4 focus:ring-teal-100 text-sm transition-all h-[48px]"
+                      className="w-full rounded-xl border border-slate-200 px-4 py-2.5 md:py-3 bg-slate-50 outline-none focus:ring-4 focus:ring-teal-100 text-xs md:text-sm font-bold transition-all h-[44px] md:h-[48px]"
                     />
                     {showServDropdown && services.length > 0 && (
-                      <div className="absolute z-50 w-full mt-2 bg-white border border-slate-200 rounded-xl shadow-2xl max-h-60 overflow-y-auto animate-in fade-in zoom-in-95 duration-200">
+                      <div className="absolute z-50 w-full mt-2 bg-white border border-slate-200 rounded-xl shadow-2xl max-h-48 overflow-y-auto">
                         {services.filter(s => s.name.toLowerCase().includes(searchService.toLowerCase())).map((s) => (
                           <div 
                             key={s.id} 
@@ -477,12 +475,12 @@ export default function NewAdminPatientPage() {
                               setShowServDropdown(false);
                             }}
                             className={cn(
-                              "px-4 py-3 cursor-pointer transition-colors flex items-center justify-between",
+                              "px-4 py-2.5 cursor-pointer transition-colors flex items-center justify-between",
                               selectedService === s.id ? "bg-teal-50 text-teal-700 font-bold" : "hover:bg-slate-50 text-slate-600"
                             )}
                           >
-                            <span className="text-sm">{s.name}</span>
-                            {selectedService === s.id && <Check size={16} />}
+                            <span className="text-xs md:text-sm uppercase font-bold tracking-tighter">{s.name}</span>
+                            {selectedService === s.id && <Check size={14} />}
                           </div>
                         ))}
                       </div>
@@ -491,39 +489,39 @@ export default function NewAdminPatientPage() {
                 </div>
 
                 {/* Fecha */}
-                <div className="space-y-2">
-                  <label className="text-sm font-bold text-slate-700 flex items-center gap-2 h-5">
-                    <CalendarIcon className="w-4 h-4 text-teal-600" /> Fecha de Atención
+                <div className="space-y-1.5 md:space-y-2">
+                  <label className="text-[10px] md:text-sm font-black text-slate-500 flex items-center gap-2 h-5 uppercase tracking-widest">
+                    <CalendarIcon className="w-3.5 h-3.5 text-teal-600" /> Inicio
                   </label>
                   <input 
                     type="date"
                     {...register('careDate')}
-                    className="w-full rounded-xl border border-slate-200 px-4 py-3 bg-slate-50 outline-none focus:ring-4 focus:ring-teal-100 text-sm border-slate-200 text-slate-600 h-[48px]"
+                    className="w-full rounded-xl border border-slate-200 px-4 py-2.5 md:py-3 bg-slate-50 outline-none focus:ring-4 focus:ring-teal-100 text-xs md:text-sm font-bold text-slate-600 h-[44px] md:h-[48px]"
                   />
                 </div>
 
                 {/* Especialistas Team */}
-                <div className="space-y-2">
-                  <label className="text-sm font-bold text-slate-700 flex items-center gap-2 h-5">
-                    <UserPlus className="w-4 h-4 text-teal-600" /> Equipo de Especialistas
+                <div className="space-y-1.5 md:space-y-2">
+                  <label className="text-[10px] md:text-sm font-black text-slate-500 flex items-center gap-2 h-5 uppercase tracking-widest">
+                    <UserPlus className="w-3.5 h-3.5 text-teal-600" /> Especialistas
                   </label>
-                  <div className="relative group">
+                  <div className="relative">
                     <div className="relative">
                       <input 
                         type="text"
-                        placeholder="Buscar médico, enfermera..."
+                        placeholder="Añadir profesional..."
                         value={searchSpecialist}
                         onChange={(e) => {
                           setSearchSpecialist(e.target.value);
                           setShowSpecDropdown(true);
                         }}
                         onFocus={() => setShowSpecDropdown(true)}
-                        className="w-full rounded-xl border border-slate-200 px-10 py-3 bg-slate-50 outline-none focus:ring-4 focus:ring-teal-100 text-sm transition-all h-[48px]"
+                        className="w-full rounded-xl border border-slate-200 px-10 py-2.5 md:py-3 bg-slate-50 outline-none focus:ring-4 focus:ring-teal-100 text-xs md:text-sm font-bold transition-all h-[44px] md:h-[48px]"
                       />
-                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4" />
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-3.5 h-3.5" />
                     </div>
                     {showSpecDropdown && specialists.length > 0 && (
-                      <div className="absolute z-50 w-full mt-2 bg-white border border-slate-200 rounded-xl shadow-2xl max-h-60 overflow-y-auto animate-in fade-in zoom-in-95 duration-200">
+                      <div className="absolute z-50 w-full mt-2 bg-white border border-slate-200 rounded-xl shadow-2xl max-h-48 overflow-y-auto">
                         {specialists.filter(s => 
                           `${s.first_name} ${s.last_name}`.toLowerCase().includes(searchSpecialist.toLowerCase())
                         ).map((s) => (
@@ -538,29 +536,28 @@ export default function NewAdminPatientPage() {
                               setSearchSpecialist('');
                             }}
                             className={cn(
-                              "px-4 py-3 cursor-pointer transition-colors flex items-center justify-between border-b border-slate-50 last:border-0",
+                              "px-4 py-2.5 cursor-pointer transition-colors flex items-center justify-between border-b border-slate-50 last:border-0",
                               selectedSpecialists.includes(s.id) ? "bg-teal-50 text-teal-700 font-bold" : "hover:bg-slate-50"
                             )}
                           >
                             <div className="flex flex-col">
-                              <span className="text-sm font-semibold">{s.first_name} {s.last_name}</span>
-                              <span className="text-[10px] text-slate-400 uppercase font-black tracking-tighter">{s.role}</span>
+                              <span className="text-xs md:text-sm font-bold text-slate-700 uppercase tracking-tighter">{s.first_name} {s.last_name}</span>
+                              <span className="text-[9px] text-slate-400 uppercase font-black tracking-tighter">{s.role}</span>
                             </div>
-                            {selectedSpecialists.includes(s.id) && <Check size={16} />}
+                            {selectedSpecialists.includes(s.id) && <Check size={14} />}
                           </div>
                         ))}
                       </div>
                     )}
                   </div>
-                  {/* Tags positioned BELOW the input */}
-                  <div className="flex flex-wrap gap-2 mt-2 min-h-[24px]">
+                  <div className="flex flex-wrap gap-1.5 mt-2 min-h-[20px]">
                     {selectedSpecialists.map((id) => {
                       const spec = specialists.find(s => s.id === id);
                       return (
-                        <div key={id} className="bg-teal-100 text-teal-700 px-3 py-1 rounded-full text-[10px] font-black flex items-center gap-2 animate-in zoom-in-50">
-                          {spec?.first_name} {spec?.last_name}
-                          <button type="button" onClick={() => setSelectedSpecialists(prev => prev.filter(i => i !== id))} className="hover:text-teal-900 transition-colors">
-                            <X size={12} />
+                        <div key={id} className="bg-teal-50 text-teal-600 px-2.5 py-1 rounded-lg text-[9px] font-black uppercase flex items-center gap-1.5 transition-all border border-teal-100">
+                          {spec?.last_name}
+                          <button type="button" onClick={() => setSelectedSpecialists(prev => prev.filter(i => i !== id))} className="text-teal-400 hover:text-teal-600">
+                            <X size={10} />
                           </button>
                         </div>
                       );
@@ -571,12 +568,11 @@ export default function NewAdminPatientPage() {
           </div>
 
           {/* Seccion 5: Insumos y Materiales (Home Care Inventory) */}
-          <div className="space-y-6 pt-10 border-t border-slate-100">
-             <h3 className="text-xl font-bold text-slate-900 flex items-center gap-2">
-                <div className="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center text-blue-600 font-black">5</div>
-                Insumos y Materiales p/ Domicilio (Opcional)
+          <div className="space-y-6 pt-8 md:pt-10 border-t border-slate-100">
+             <h3 className="text-base md:text-xl font-black text-slate-900 flex items-center gap-2 uppercase tracking-tight">
+                <div className="w-6 h-6 md:w-8 md:h-8 rounded-lg bg-blue-50 flex items-center justify-center text-blue-600 text-xs md:text-sm font-black">5</div>
+                Insumos a Domicilio (Opcional)
              </h3>
-             <p className="text-slate-500 text-sm italic">Define qué materiales se trasladarán al domicilio del paciente para su atención.</p>
 
              <div className="space-y-4">
                 {/* Buscador de Inventario */}
@@ -584,101 +580,73 @@ export default function NewAdminPatientPage() {
                    <div className="relative">
                       <input 
                         type="text"
-                        placeholder="Buscar medicamento o material..."
+                        placeholder="Buscar item médicamento / material..."
                         value={inventorySearch}
                         onChange={(e) => {
                           setInventorySearch(e.target.value);
                           setShowInvDropdown(true);
                         }}
                         onFocus={() => setShowInvDropdown(true)}
-                        className="w-full rounded-xl border border-slate-200 px-10 py-3 bg-slate-50 outline-none focus:ring-4 focus:ring-blue-100 text-sm transition-all h-[48px]"
+                        className="w-full rounded-xl border border-slate-200 px-10 py-2.5 md:py-3 bg-slate-50 outline-none focus:ring-4 focus:ring-blue-100 text-xs md:text-sm font-bold transition-all h-[44px] md:h-[48px]"
                       />
-                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4" />
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-3.5 h-3.5" />
                    </div>
 
                    {showInvDropdown && (
-                      <div className="absolute z-50 w-full mt-2 bg-white border border-slate-200 rounded-xl shadow-2xl max-h-60 overflow-y-auto animate-in fade-in zoom-in-95 duration-200">
-                        {/* Medicamentos */}
-                        <div className="px-4 py-2 bg-slate-50 text-[10px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-100">Medicamentos</div>
+                      <div className="absolute z-50 w-full mt-2 bg-white border border-slate-200 rounded-xl shadow-2xl max-h-60 overflow-y-auto">
+                        <div className="px-4 py-2 bg-slate-50 text-[9px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-100">Medicamentos</div>
                         {medications.filter(m => m.name.toLowerCase().includes(inventorySearch.toLowerCase())).map(m => (
-                          <div key={m.id} onClick={() => addInventoryItem(m, 'medication')} className="px-4 py-3 hover:bg-blue-50 cursor-pointer transition-colors flex items-center justify-between border-b border-slate-50 last:border-0">
+                          <div key={m.id} onClick={() => addInventoryItem(m, 'medication')} className="px-4 py-2.5 hover:bg-blue-50 cursor-pointer transition-colors flex items-center justify-between border-b border-slate-50 last:border-0">
                             <div className="flex items-center gap-3">
-                              <div className="p-2 bg-blue-100 text-blue-600 rounded-lg"><Pill size={14} /></div>
+                              <div className="p-1.5 bg-blue-50 text-blue-600 rounded-lg"><Pill size={12} /></div>
                               <div className="flex flex-col">
-                                <span className="text-sm font-semibold text-slate-700">{m.name}</span>
-                                <span className="text-[10px] text-slate-400 uppercase font-black">{m.dosage || 'S/D'} - {m.presentation || 'S/P'}</span>
+                                <span className="text-xs font-bold text-slate-700 uppercase tracking-tighter">{m.name}</span>
+                                <span className="text-[9px] text-slate-400 font-black uppercase tracking-tighter">{m.dosage || 'S/D'}</span>
                               </div>
                             </div>
-                            <div className="text-[10px] font-black px-2 py-1 bg-slate-100 rounded text-slate-500">STOCK: {m.quantity}</div>
+                            <div className="text-[9px] font-black px-1.5 py-0.5 bg-slate-100 rounded text-slate-400">S: {m.quantity}</div>
                           </div>
                         ))}
 
-                        {/* Materiales */}
-                        <div className="px-4 py-2 bg-slate-50 text-[10px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-100 mt-2">Materiales Médicos</div>
+                        <div className="px-4 py-2 bg-slate-50 text-[9px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-100 mt-2">Materiales</div>
                         {materials.filter(m => m.name.toLowerCase().includes(inventorySearch.toLowerCase())).map(m => (
-                          <div key={m.id} onClick={() => addInventoryItem(m, 'material')} className="px-4 py-3 hover:bg-teal-50 cursor-pointer transition-colors flex items-center justify-between border-b border-slate-50 last:border-0">
+                          <div key={m.id} onClick={() => addInventoryItem(m, 'material')} className="px-4 py-2.5 hover:bg-teal-50 cursor-pointer transition-colors flex items-center justify-between border-b border-slate-50 last:border-0">
                             <div className="flex items-center gap-3">
-                              <div className="p-2 bg-teal-100 text-teal-600 rounded-lg"><Package size={14} /></div>
+                              <div className="p-1.5 bg-teal-50 text-teal-600 rounded-lg"><Package size={12} /></div>
                               <div className="flex flex-col">
-                                <span className="text-sm font-semibold text-slate-700">{m.name}</span>
-                                <span className="text-[10px] text-slate-400 uppercase font-black">{m.specifications || 'Sin especificaciones'}</span>
+                                <span className="text-xs font-bold text-slate-700 uppercase tracking-tighter">{m.name}</span>
                               </div>
                             </div>
-                            <div className="text-[10px] font-black px-2 py-1 bg-slate-100 rounded text-slate-500">STOCK: {m.quantity}</div>
+                            <div className="text-[9px] font-black px-1.5 py-0.5 bg-slate-100 rounded text-slate-400">S: {m.quantity}</div>
                           </div>
                         ))}
-
-                        {medications.length === 0 && materials.length === 0 && (
-                          <div className="px-4 py-8 text-center text-slate-400 text-sm">No hay productos en inventario</div>
-                        )}
                       </div>
                    )}
                 </div>
 
                 {/* Lista de Items Seleccionados */}
                 {selectedInvItems.length > 0 && (
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mt-6 animate-in fade-in slide-in-from-bottom-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4 mt-4 md:mt-6">
                     {selectedInvItems.map((item) => (
-                      <div key={item.id} className="bg-white border border-slate-200 rounded-2xl p-4 flex items-center gap-4 group hover:border-blue-300 hover:shadow-lg transition-all">
+                      <div key={item.id} className="bg-slate-50 border border-slate-100 rounded-xl md:rounded-2xl p-3 md:p-4 flex items-center gap-3 md:gap-4 transition-all">
                         <div className={cn(
-                          "w-12 h-12 rounded-xl flex items-center justify-center shrink-0",
-                          item.type === 'medication' ? "bg-blue-50 text-blue-600" : "bg-teal-50 text-teal-600"
+                          "w-10 h-10 md:w-12 md:h-12 rounded-lg md:rounded-xl flex items-center justify-center shrink-0",
+                          item.type === 'medication' ? "bg-blue-100 text-blue-600" : "bg-teal-100 text-teal-600"
                         )}>
-                          {item.type === 'medication' ? <Pill size={20} /> : <Layers size={20} />}
+                          {item.type === 'medication' ? <Pill size={16} /> : <Layers size={16} />}
                         </div>
                         <div className="flex-1 min-w-0">
-                          <h4 className="text-sm font-bold text-slate-800 truncate">{item.name}</h4>
-                          <span className="text-[10px] text-slate-400 uppercase font-black tracking-tighter">{item.type === 'medication' ? 'Medicamento' : 'Insumo'}</span>
+                          <h4 className="text-[11px] md:text-sm font-black text-slate-800 uppercase tracking-tighter truncate">{item.name}</h4>
                           
-                          <div className="mt-2 flex items-center gap-3">
-                             <div className="flex items-center bg-slate-50 rounded-lg border border-slate-200">
-                                <button 
-                                  type="button" 
-                                  onClick={() => updateInvQuantity(item.id, item.quantity - 1)}
-                                  className="px-2 py-1 text-slate-400 hover:text-blue-600 transition-colors"
-                                >-</button>
-                                <input 
-                                  type="number" 
-                                  value={item.quantity}
-                                  onChange={(e) => updateInvQuantity(item.id, parseInt(e.target.value))}
-                                  className="w-10 bg-transparent text-center text-xs font-black text-slate-700 outline-none"
-                                />
-                                <button 
-                                  type="button" 
-                                  onClick={() => updateInvQuantity(item.id, item.quantity + 1)}
-                                  className="px-2 py-1 text-slate-400 hover:text-blue-600 transition-colors"
-                                >+</button>
+                          <div className="mt-2 flex items-center gap-2">
+                             <div className="flex items-center bg-white rounded-lg border border-slate-200">
+                                <button type="button" onClick={() => updateInvQuantity(item.id, item.quantity - 1)} className="px-2 py-0.5 text-slate-400 hover:text-blue-600 transition-colors">-</button>
+                                <input type="number" value={item.quantity} onChange={(e) => updateInvQuantity(item.id, parseInt(e.target.value))} className="w-8 md:w-10 bg-transparent text-center text-[10px] md:text-xs font-black text-slate-700 outline-none" />
+                                <button type="button" onClick={() => updateInvQuantity(item.id, item.quantity + 1)} className="px-2 py-0.5 text-slate-400 hover:text-blue-600 transition-colors">+</button>
                              </div>
-                             <span className="text-[9px] font-black text-slate-300 italic">Disponibles: {item.stock}</span>
                           </div>
                         </div>
-                        <button 
-                          type="button" 
-                          onClick={() => removeInvItem(item.id)}
-                          className="p-2 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all"
-                        >
-                          <Trash2 size={16} />
-                        </button>
+                        <button type="button" onClick={() => removeInvItem(item.id)} className="p-2 text-slate-300 hover:text-red-500 transition-colors"><Trash2 size={14} /></button>
                       </div>
                     ))}
                   </div>
@@ -686,20 +654,16 @@ export default function NewAdminPatientPage() {
              </div>
           </div>
 
-          <div className="pt-10 border-t border-slate-100 flex justify-end">
+          <div className="pt-8 md:pt-10 border-t border-slate-100 flex justify-end">
             <button
               type="submit"
               disabled={isSubmitting}
-              className="bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white px-10 py-4 rounded-xl font-black flex items-center justify-center gap-3 shadow-xl shadow-blue-500/30 transition-all hover:-translate-y-1 active:scale-95 text-lg uppercase tracking-widest min-w-[280px]"
+              className="w-full md:w-auto bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white px-8 md:px-12 py-3 md:py-4 rounded-xl font-black flex items-center justify-center gap-3 shadow-xl shadow-blue-500/20 transition-all active:scale-95 text-sm md:text-lg uppercase tracking-widest"
             >
               {isSubmitting ? (
-                <>
-                  <Loader2 className="w-6 h-6 animate-spin" /> Guardando...
-                </>
+                <><Loader2 className="w-5 h-5 md:w-6 md:h-6 animate-spin" /> Guardando...</>
               ) : (
-                <>
-                  <Save className="w-6 h-6" /> REGISTRAR PACIENTE
-                </>
+                <><Save className="w-5 h-5 md:w-6 md:h-6" /> Guardar Paciente</>
               )}
             </button>
           </div>

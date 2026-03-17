@@ -78,38 +78,38 @@ export default function AdministrationSpecialistsPage() {
   );
 
   return (
-    <div className="p-4 md:p-8 lg:p-12 space-y-8 animate-in fade-in duration-500">
+    <div className="p-4 md:p-8 lg:p-12 space-y-4 md:space-y-8 animate-in fade-in duration-500 pb-20">
       {/* Header section */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 bg-white p-6 rounded-3xl shadow-sm border border-slate-100 relative overflow-hidden">
-        <div className="absolute top-0 left-0 w-2 h-full bg-teal-500" />
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 md:gap-6 bg-white p-5 md:p-6 rounded-2xl md:rounded-3xl shadow-sm border border-slate-100 relative overflow-hidden">
+        <div className="absolute top-0 left-0 w-1.5 md:w-2 h-full bg-teal-500" />
         <div className="pl-4">
-          <h1 className="text-2xl font-black text-slate-900 tracking-tight flex items-center gap-3">
-            <UserSquare2 className="w-7 h-7 text-teal-600" />
-            Gestión de Especialistas
+          <h1 className="text-xl md:text-2xl font-black text-slate-900 tracking-tight flex items-center gap-2 md:gap-3">
+            <UserSquare2 className="w-6 h-6 md:w-7 md:h-7 text-teal-600" />
+            Especialistas
           </h1>
-          <p className="text-slate-500 mt-1 max-w-xl">
-            Administra el equipo médico y clínico de tu institución y valida sus credenciales INPRES.
+          <p className="text-slate-500 mt-1 max-w-xl text-xs md:text-base">
+            Administra el equipo médico y valida sus credenciales INPRES.
           </p>
         </div>
         <Link
           href="/dashboard/administration/specialists/new"
-          className="bg-teal-600 hover:bg-teal-700 text-white px-6 py-3 rounded-xl font-bold flex items-center justify-center gap-2 shadow-lg shadow-teal-500/20 transition-all hover:-translate-y-1"
+          className="bg-teal-600 hover:bg-teal-700 text-white px-5 py-3 rounded-xl font-bold flex items-center justify-center gap-2 shadow-lg shadow-teal-500/20 transition-all active:scale-95 text-sm md:text-base"
         >
-          <Plus className="w-5 h-5" />
+          <Plus className="w-4 h-4 md:w-5 md:h-5" />
           Nuevo Especialista
         </Link>
       </div>
 
       {/* Utilities / Filters */}
-      <div className="flex items-center gap-4 bg-white p-4 rounded-2xl shadow-sm border border-slate-100">
-        <div className="relative flex-1 max-w-md">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+      <div className="flex items-center gap-4 bg-white p-3 md:p-4 rounded-xl md:rounded-2xl shadow-sm border border-slate-100">
+        <div className="relative w-full md:max-w-md">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 md:w-5 md:h-5 text-slate-400" />
           <input 
             type="text"
-            placeholder="Buscar por nombre, email, o INPRES..."
+            placeholder="Nombre, email, o INPRES..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-10 pr-4 py-3 bg-slate-50 border-none rounded-xl text-sm outline-none focus:ring-2 focus:ring-teal-100 transition-shadow"
+            className="w-full pl-9 md:pl-10 pr-4 py-2.5 md:py-3 bg-slate-50 border-none rounded-xl text-xs md:text-sm outline-none focus:ring-2 focus:ring-teal-100 transition-shadow"
           />
         </div>
       </div>

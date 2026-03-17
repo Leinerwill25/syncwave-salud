@@ -6,6 +6,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { serviceSchema } from '@/lib/schemas/serviceSchema';
 import { Settings, Plus, Trash2, Loader2, Save, XOctagon, CreditCard, Stethoscope, Search, AlertCircle } from 'lucide-react';
 import { toast } from 'sonner';
+import { cn } from '@/lib/utils';
 
 interface ClinicService {
   id: string;
@@ -118,25 +119,25 @@ export default function AdministrationServicesPage() {
   );
 
   return (
-    <div className="p-4 md:p-8 lg:p-12 space-y-8 animate-in fade-in duration-500">
+    <div className="p-4 md:p-8 lg:p-12 space-y-4 md:space-y-8 animate-in fade-in duration-500 pb-20">
       
       {/* Header section */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 bg-white p-6 rounded-3xl shadow-sm border border-slate-100 relative overflow-hidden">
-        <div className="absolute top-0 left-0 w-2 h-full bg-fuchsia-500" />
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 md:gap-6 bg-white p-5 md:p-6 rounded-2xl md:rounded-3xl shadow-sm border border-slate-100 relative overflow-hidden">
+        <div className="absolute top-0 left-0 w-1.5 md:w-2 h-full bg-fuchsia-500" />
         <div className="pl-4">
-          <h1 className="text-2xl font-black text-slate-900 tracking-tight flex items-center gap-3">
-            <Settings className="w-7 h-7 text-fuchsia-600" />
-            Configuración de Servicios y Precios
+          <h1 className="text-xl md:text-2xl font-black text-slate-900 tracking-tight flex items-center gap-2 md:gap-3">
+            <Settings className="w-6 h-6 md:w-7 md:h-7 text-fuchsia-600" />
+            Servicios y Precios
           </h1>
-          <p className="text-slate-500 mt-1 max-w-xl">
-            Gestiona el catálogo de procedimientos médicos y consultas que ofrece la clínica.
+          <p className="text-slate-500 mt-1 max-w-xl text-xs md:text-base">
+            Gestiona el catálogo de procedimientos médicos y consultas.
           </p>
         </div>
         <button
            onClick={() => setIsAdding(!isAdding)}
-           className="bg-fuchsia-600 hover:bg-fuchsia-700 text-white px-6 py-3 rounded-xl font-bold flex items-center justify-center gap-2 shadow-lg shadow-fuchsia-500/20 transition-all hover:-translate-y-1"
+           className="bg-fuchsia-600 hover:bg-fuchsia-700 text-white px-5 py-3 rounded-xl font-bold flex items-center justify-center gap-2 shadow-lg shadow-fuchsia-500/20 transition-all active:scale-95 text-sm md:text-base"
         >
-           {isAdding ? <XOctagon className="w-5 h-5" /> : <Plus className="w-5 h-5" />}
+           {isAdding ? <XOctagon className="w-4 h-4 md:w-5 md:h-5" /> : <Plus className="w-4 h-4 md:w-5 md:h-5" />}
            {isAdding ? 'Cancelar' : 'Nuevo Servicio'}
         </button>
       </div>
@@ -213,14 +214,14 @@ export default function AdministrationServicesPage() {
       )}
 
       {/* Utilities / Filters */}
-      <div className="relative w-full max-w-md">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+      <div className="relative w-full md:max-w-md">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 md:w-5 md:h-5 text-slate-400" />
         <input 
           type="text"
-          placeholder="Buscar servicios por nombre o código..."
+          placeholder="Buscar servicios..."
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
-          className="w-full pl-10 pr-4 py-3 bg-white border border-slate-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-fuchsia-100 shadow-sm"
+          className="w-full pl-9 md:pl-10 pr-4 py-2.5 md:py-3 bg-white border border-slate-200 rounded-xl text-xs md:text-sm outline-none focus:ring-2 focus:ring-fuchsia-100 shadow-sm"
         />
       </div>
 
@@ -233,64 +234,65 @@ export default function AdministrationServicesPage() {
         </div>
       ) : filteredServices.length === 0 ? (
         <div className="bg-white p-12 rounded-3xl border border-dashed border-slate-200 flex flex-col items-center justify-center text-center">
-          <div className="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center mb-4">
-            <Stethoscope className="w-10 h-10 text-slate-400" />
+          <div className="w-16 h-16 md:w-20 md:h-20 bg-slate-50 rounded-full flex items-center justify-center mb-4">
+            <Stethoscope className="w-8 h-8 md:w-10 md:h-10 text-slate-400" />
           </div>
-          <h3 className="text-lg font-bold text-slate-900">Catálogo Vacío</h3>
-          <p className="text-slate-500 max-w-md mt-2">
+          <h3 className="text-base md:text-lg font-bold text-slate-900">Catálogo Vacío</h3>
+          <p className="text-slate-500 max-w-md mt-2 text-xs md:text-sm">
             No has configurado ningún servicio médico todavía.
           </p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 xl:grid-cols-2 gap-3 md:gap-4">
           {filteredServices.map((service) => (
-             <div key={service.id} className="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm hover:shadow-md transition-shadow flex flex-col sm:flex-row justify-between shrink-0 gap-6">
+             <div key={service.id} className="bg-white rounded-2xl p-4 md:p-5 border border-slate-200 shadow-sm hover:shadow-md transition-shadow flex flex-col md:flex-row justify-between gap-4">
                 
-                <div className="flex-1 flex gap-4">
-                   <div className="w-12 h-12 rounded-xl bg-slate-50 flex items-center justify-center text-slate-400 shrink-0">
-                      <Stethoscope className="w-6 h-6" />
+                <div className="flex-1 flex gap-3 md:gap-4 min-w-0">
+                   <div className="w-10 h-10 md:w-12 md:h-12 rounded-xl bg-slate-50 flex items-center justify-center text-slate-400 shrink-0">
+                      <Stethoscope className="w-5 h-5 md:w-6 md:h-6" />
                    </div>
-                   <div>
+                   <div className="min-w-0 flex-1">
                      <div className="flex items-center gap-2 mb-1">
-                        <h3 className="font-extrabold text-slate-900 leading-tight">
+                        <h3 className="font-black text-slate-900 text-sm md:text-base leading-tight line-clamp-1">
                            {service.name}
                         </h3>
                         {service.service_code && (
-                           <span className="text-[10px] uppercase font-bold tracking-widest bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full inline-flex">
+                           <span className="text-[8px] md:text-[10px] uppercase font-black tracking-widest bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full inline-flex">
                               {service.service_code}
                            </span>
                         )}
                      </div>
-                     <p className="text-sm font-medium text-slate-500 line-clamp-2">
-                        {service.description || 'Sin descripción detallada.'}
+                     <p className="text-xs md:text-sm font-medium text-slate-500 line-clamp-2">
+                        {service.description || 'Sin descripción.'}
                      </p>
                    </div>
                 </div>
 
-                <div className="flex items-center gap-6 border-t sm:border-t-0 border-slate-100 pt-4 sm:pt-0 sm:pl-6 sm:border-l">
-                   <div className="text-center sm:text-right flex-1 sm:flex-none">
-                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Tarifa Actual</p>
-                      <p className="text-xl font-black text-emerald-600">
+                <div className="flex items-center justify-between md:justify-end gap-4 md:gap-6 pt-3 md:pt-0 md:pl-6 border-t md:border-t-0 md:border-l border-slate-50 shrink-0">
+                   <div className="text-left md:text-right flex-1 md:flex-none">
+                      <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-0.5 md:mb-1">Tarifa</p>
+                      <p className="text-lg md:text-xl font-black text-emerald-600">
                          ${Number(service.price).toFixed(2)}
                       </p>
                    </div>
                    
-                   <div className="flex flex-col gap-2 shrink-0">
+                   <div className="flex items-center md:flex-col gap-2 shrink-0">
                       <button 
                          onClick={() => toggleStatus(service.id, service.is_active)}
-                         className={`px-3 py-1.5 rounded-md text-xs font-bold border transition-colors ${
+                         className={cn(
+                           "px-3 py-1.5 rounded-lg text-[10px] md:text-xs font-black border transition-all uppercase tracking-tighter",
                            service.is_active 
-                            ? 'bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100' 
-                            : 'bg-slate-50 text-slate-500 border-slate-200 hover:bg-slate-100'
-                         }`}
+                            ? 'bg-blue-50 text-blue-700 border-blue-200' 
+                            : 'bg-slate-50 text-slate-500 border-slate-200'
+                         )}
                       >
                          {service.is_active ? 'Activo' : 'Inactivo'}
                       </button>
                       <button 
                         onClick={() => deleteService(service.id)}
-                        className="p-1.5 bg-white text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-md transition-colors border border-transparent hover:border-rose-100 flex justify-center"
+                        className="p-2 text-slate-300 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-all"
                       >
-                         <Trash2 className="w-4 h-4" />
+                         <Trash2 size={16} />
                       </button>
                    </div>
                 </div>

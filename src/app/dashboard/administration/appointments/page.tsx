@@ -119,18 +119,18 @@ export default function AdministrationAppointmentsPage() {
   };
 
   return (
-    <div className="p-4 md:p-8 lg:p-12 space-y-8 animate-in fade-in duration-500">
+    <div className="p-4 md:p-8 lg:p-12 space-y-4 md:space-y-8 animate-in fade-in duration-500 max-w-screen overflow-x-hidden pb-10">
       
       {/* Header section */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 bg-white p-6 rounded-3xl shadow-sm border border-slate-100 relative overflow-hidden">
-        <div className="absolute top-0 left-0 w-2 h-full bg-amber-500" />
-        <div className="pl-4">
-          <h1 className="text-2xl font-black text-slate-900 tracking-tight flex items-center gap-3">
-            <CalendarCheck className="w-7 h-7 text-amber-600" />
-            Cola de Aprobación de Citas
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 md:gap-6 bg-white p-4 md:p-6 rounded-2xl md:rounded-3xl shadow-sm border border-slate-100 relative overflow-hidden">
+        <div className="absolute top-0 left-0 w-1.5 md:w-2 h-full bg-amber-500" />
+        <div className="pl-3 md:pl-4">
+          <h1 className="text-xl md:text-2xl font-black text-slate-900 tracking-tight flex items-center gap-2 md:gap-3">
+            <CalendarCheck className="w-6 h-6 md:w-7 md:h-7 text-amber-600" />
+            Cola de Aprobación
           </h1>
-          <p className="text-slate-500 mt-1 max-w-xl">
-            Revisa y autoriza las citas solicitadas. La aprobación generará automáticamente el registro de consulta médica.
+          <p className="text-slate-500 mt-1 text-xs md:text-sm max-w-xl">
+            Autoriza las citas solicitadas. Se generará la consulta médica automáticamente.
           </p>
         </div>
       </div>
@@ -143,92 +143,92 @@ export default function AdministrationAppointmentsPage() {
            ))}
         </div>
       ) : appointments.length === 0 ? (
-        <div className="bg-white p-12 rounded-3xl border border-dashed border-slate-200 flex flex-col items-center justify-center text-center">
-          <div className="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center mb-4">
-            <CheckCircle2 className="w-10 h-10 text-emerald-400" />
+        <div className="bg-white p-8 md:p-12 rounded-2xl md:rounded-3xl border border-dashed border-slate-200 flex flex-col items-center justify-center text-center">
+          <div className="w-16 h-16 md:w-20 md:h-20 bg-slate-50 rounded-full flex items-center justify-center mb-4">
+            <CheckCircle2 className="w-8 h-8 md:w-10 md:h-10 text-emerald-400" />
           </div>
-          <h3 className="text-lg font-bold text-slate-900">No hay citas pendientes</h3>
-          <p className="text-slate-500 max-w-md mt-2">
-            La cola de aprobación está vacía. Todas las solicitudes han sido gestionadas.
+          <h3 className="text-base md:text-lg font-bold text-slate-900">No hay citas pendientes</h3>
+          <p className="text-slate-500 text-xs md:text-sm max-w-md mt-2">
+            La cola de aprobación está vacía actualmente.
           </p>
         </div>
       ) : (
         <div className="space-y-4">
           {appointments.map((appointment) => (
-             <div key={appointment.id} className="bg-white rounded-2xl p-6 shadow-sm border border-amber-100/50 hover:border-amber-200 hover:shadow-md transition-all flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+             <div key={appointment.id} className="bg-white rounded-2xl p-4 md:p-6 shadow-sm border border-amber-100/50 hover:border-amber-200 transition-all flex flex-col lg:flex-row lg:items-center justify-between gap-4 md:gap-6">
                 
-                <div className="flex-1 grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div className="flex-1 grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6">
                    {/* Col 1: Paciente & Servicio */}
                    <div>
-                     <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1.5 flex items-center gap-1.5">
+                     <p className="text-[9px] md:text-xs font-black text-amber-600 uppercase tracking-widest mb-1 md:mb-1.5 flex items-center gap-1.5">
                        <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></span>
-                       Solicitud Pendiente
+                       Pendiente
                      </p>
-                     <h3 className="font-black text-slate-900 text-lg leading-tight">
+                     <h3 className="font-black text-slate-900 text-base md:text-lg leading-tight uppercase tracking-tighter">
                         {appointment.patients.first_name} {appointment.patients.last_name}
                      </h3>
-                     <p className="text-sm font-medium text-amber-700 bg-amber-50 inline-block px-2 py-0.5 rounded-md mt-1.5">
+                     <p className="text-[10px] md:text-sm font-bold text-amber-900 bg-amber-50 inline-block px-2 py-1 rounded-md mt-1.5 uppercase">
                         {appointment.clinic_services?.name || appointment.appointment_type.replace('_', ' ')}
                      </p>
                    </div>
 
                    {/* Col 2: Fecha & Especialista */}
-                   <div className="space-y-3 md:border-l border-slate-100 md:pl-6">
-                     <div className="flex items-center gap-3">
+                   <div className="space-y-2.5 md:space-y-3 md:border-l border-slate-100 md:pl-6">
+                      <div className="flex items-center gap-3">
                         <div className="w-8 h-8 rounded-lg bg-slate-50 flex items-center justify-center text-slate-500 shrink-0">
                           <Calendar className="w-4 h-4" />
                         </div>
                         <div>
-                          <p className="text-sm font-bold text-slate-900">
+                          <p className="text-xs md:text-sm font-bold text-slate-900 uppercase">
                              {new Date(`${appointment.scheduled_date}T00:00:00`).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric'})}
                           </p>
-                          <p className="text-xs font-medium text-slate-500 flex items-center gap-1">
+                          <p className="text-[10px] md:text-xs font-medium text-slate-500 flex items-center gap-1">
                             <Clock className="w-3 h-3" /> {appointment.scheduled_time.substring(0,5)}
                           </p>
                         </div>
-                     </div>
-                     <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-lg bg-teal-50 flex items-center justify-center text-teal-600 shrink-0 uppercase font-bold text-xs">
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-lg bg-teal-50 flex items-center justify-center text-teal-600 shrink-0 uppercase font-black text-[10px]">
                           {appointment.specialists.first_name[0]}{appointment.specialists.last_name[0]}
                         </div>
                         <div>
-                          <p className="text-sm font-bold text-slate-900 truncate">
+                          <p className="text-xs md:text-sm font-bold text-slate-900 truncate uppercase">
                              Dr. {appointment.specialists.last_name}
                           </p>
-                          <p className="text-xs font-medium text-slate-500">
+                          <p className="text-[10px] md:text-xs font-medium text-slate-500 uppercase">
                             {appointment.specialists.role}
                           </p>
                         </div>
-                     </div>
+                      </div>
                    </div>
 
                    {/* Col 3: Notas u otro detalle */}
                    <div className="md:border-l border-slate-100 md:pl-6">
-                     <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Notas del Solicitante</p>
-                     <div className="bg-slate-50 border border-slate-100 rounded-xl p-3 text-sm text-slate-600 h-16 overflow-y-auto w-full">
-                       {appointment.notes || <span className="text-slate-400 italic">Sin notas adicionales...</span>}
+                     <p className="text-[9px] md:text-xs font-black text-slate-400 uppercase tracking-widest mb-1.5">Notas del Solicitante</p>
+                     <div className="bg-slate-50 border border-slate-100 rounded-xl p-3 text-xs md:text-sm text-slate-600 h-16 overflow-y-auto w-full italic">
+                       {appointment.notes || <span className="text-slate-300">Sin notas adicionales...</span>}
                      </div>
                    </div>
                 </div>
 
                 {/* Actions */}
-                <div className="flex lg:flex-col gap-3 shrink-0 pt-4 lg:pt-0 border-t lg:border-t-0 lg:border-l border-slate-100 lg:pl-6 w-full lg:w-48">
+                <div className="flex md:flex-row lg:flex-col gap-2 md:gap-3 shrink-0 pt-4 md:pt-4 lg:pt-0 border-t md:border-t-0 lg:border-l border-slate-100 lg:pl-6 w-full lg:w-48">
                    <button
                      onClick={() => openApprovalModal(appointment)}
                      disabled={isApproving !== null}
-                     className="flex-1 w-full bg-emerald-600 hover:bg-emerald-700 text-white py-3 px-4 rounded-xl font-bold flex items-center justify-center gap-2 transition-all active:scale-95 disabled:opacity-50"
+                     className="flex-1 w-full bg-emerald-600 hover:bg-emerald-700 text-white py-2.5 md:py-3 px-4 rounded-xl font-bold flex items-center justify-center gap-2 transition-all active:scale-95 disabled:opacity-50 text-xs md:text-sm uppercase tracking-tighter shadow-lg shadow-emerald-500/10"
                    >
                      {isApproving === appointment.id ? (
-                        <Loader2 className="w-5 h-5 animate-spin" />
+                        <Loader2 className="w-4 h-4 md:w-5 md:h-5 animate-spin" />
                      ) : (
-                        <><CheckCircle2 className="w-5 h-5" /> Aprobar</>
+                        <><CheckCircle2 className="w-4 h-4 md:w-5 md:h-5" /> Aprobar</>
                      )}
                    </button>
                    <button
                      disabled={isApproving !== null}
-                     className="flex-1 w-full bg-white hover:bg-rose-50 border border-slate-200 hover:border-rose-200 text-slate-600 hover:text-rose-600 py-3 px-4 rounded-xl font-bold flex items-center justify-center gap-2 transition-colors disabled:opacity-50"
+                     className="flex-1 w-full bg-white hover:bg-rose-50 border border-slate-200 text-slate-600 hover:text-rose-600 py-2.5 md:py-3 px-4 rounded-xl font-bold flex items-center justify-center gap-2 transition-colors disabled:opacity-50 text-xs md:text-sm uppercase tracking-tighter"
                    >
-                      <XOctagon className="w-5 h-5" /> Cancelar
+                      <XOctagon className="w-4 h-4 md:w-5 md:h-5" /> Cancelar
                    </button>
                 </div>
 
