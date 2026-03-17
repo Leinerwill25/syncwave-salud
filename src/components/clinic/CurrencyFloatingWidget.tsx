@@ -8,6 +8,7 @@ import { useCurrencyRate } from '@/hooks/useCurrencyRate';
 export default function CurrencyFloatingWidget() {
     const [isOpen, setIsOpen] = useState(false);
     const [amount, setAmount] = useState<string>('1');
+    const [bsAmount, setBsAmount] = useState<string>(''); // Nuevo estado para monto en Bs
     const [calculatorMode, setCalculatorMode] = useState<'USD' | 'EUR'>('USD');
 
     // Fechas desde el API (o simular la carga)
@@ -27,6 +28,10 @@ export default function CurrencyFloatingWidget() {
                             newRates[c.code] = Number(c.rate);
                         });
                         setRates(newRates);
+                        
+                        // Inicializar bsAmount con el valor por defecto (1 divisa)
+                        const initialRate = newRates[calculatorMode] || 0;
+                        setBsAmount(initialRate.toFixed(2));
                     }
                 }
             } catch (error) {
@@ -41,8 +46,34 @@ export default function CurrencyFloatingWidget() {
         }
     }, [isOpen]);
 
-    const activeRate = rates[calculatorMode] || 0;
-    const bsValue = (Number(amount || 0) * activeRate).toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    // Recalcular Bs cuando cambia la moneda o el monto en divisa
+    const handleCurrencyChange = (val: string) => {
+        setAmount(val);
+        const rate = rates[calculatorMode] || 0;
+        if (rate > 0) {
+            const calculated = Number(val) * rate;
+            setBsAmount(calculated.toFixed(2));
+        }
+    };
+
+    // Recalcular Divisa cuando cambia el monto en Bs
+    const handleBsChange = (val: string) => {
+        setBsAmount(val);
+        const rate = rates[calculatorMode] || 0;
+        if (rate > 0) {
+            const calculated = Number(val) / rate;
+            setAmount(calculated.toFixed(4)); // Más precisión para divisas
+        }
+    };
+
+    // Al cambiar la moneda, recalculamos Bs basado en el monto actual en divisa
+    useEffect(() => {
+        const rate = rates[calculatorMode] || 0;
+        if (rate > 0 && amount) {
+            const calculated = Number(amount) * rate;
+            setBsAmount(calculated.toFixed(2));
+        }
+    }, [calculatorMode]);
 
     return (
         <div className="fixed bottom-6 right-6 z-50">
@@ -91,7 +122,7 @@ export default function CurrencyFloatingWidget() {
 
                             {/* Calculator */}
                             <div className="pt-2 border-t border-slate-100">
-                                <div className="text-xs font-semibold text-slate-500 mb-2">Calculadora Rápida</div>
+                                <div className="text-xs font-semibold text-slate-500 mb-2">Calculadora Bidireccional</div>
                                 <div className="flex items-center gap-2">
                                     <div className="relative flex-1">
                                         <div className="absolute left-3 top-1/2 -translate-y-1/2 font-bold text-slate-400">
@@ -100,13 +131,21 @@ export default function CurrencyFloatingWidget() {
                                         <input 
                                             type="number" 
                                             value={amount}
-                                            onChange={(e) => setAmount(e.target.value)}
-                                            className="w-full bg-slate-50 border border-slate-200 rounded-lg pl-8 pr-3 py-2 text-sm font-semibold outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100 transition-all"
+                                            onChange={(e) => handleCurrencyChange(e.target.value)}
+                                            className="w-full bg-slate-50 border border-slate-200 rounded-lg pl-8 pr-3 py-2 text-sm font-semibold outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100 transition-all text-center"
                                         />
                                     </div>
                                     <ArrowRight size={16} className="text-slate-400 shrink-0" />
-                                    <div className="flex-1 bg-emerald-50 border border-emerald-100 rounded-lg px-3 py-2 text-sm font-bold text-emerald-700 text-center truncate">
-                                        Bs {bsValue}
+                                    <div className="relative flex-1">
+                                        <div className="absolute left-3 top-1/2 -translate-y-1/2 font-bold text-emerald-600 text-[10px]">
+                                            Bs
+                                        </div>
+                                        <input 
+                                            type="number" 
+                                            value={bsAmount}
+                                            onChange={(e) => handleBsChange(e.target.value)}
+                                            className="w-full bg-emerald-50 border border-emerald-100 rounded-lg pl-8 pr-3 py-2 text-sm font-bold text-emerald-700 outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100 transition-all text-center"
+                                        />
                                     </div>
                                 </div>
                             </div>

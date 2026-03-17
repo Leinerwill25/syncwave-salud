@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { serviceSchema } from '@/lib/schemas/serviceSchema';
-import { Settings, Plus, Trash2, Loader2, Save, XOctagon, CreditCard, Stethoscope, Search, AlertCircle } from 'lucide-react';
+import { Settings, Plus, Trash2, Loader2, Save, XOctagon, CreditCard, Stethoscope, Search, AlertCircle, Pencil } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 
@@ -23,6 +23,7 @@ export default function AdministrationServicesPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isAdding, setIsAdding] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+  const [editingService, setEditingService] = useState<ClinicService | null>(null);
 
   const {
     register,
@@ -57,31 +58,55 @@ export default function AdministrationServicesPage() {
 
   const onSubmit = async (data: any) => {
     try {
-      const res = await fetch('/api/administration/services', {
-        method: 'POST',
+      const url = editingService 
+        ? `/api/administration/services/${editingService.id}`
+        : '/api/administration/services';
+      
+      const method = editingService ? 'PATCH' : 'POST';
+
+      const res = await fetch(url, {
+        method,
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-           ...data,
-           // Explicit mapping from camelCase to snake_case if backend expects it
-           // our backend actually uses exact keys on schema, so we just pass data
-        }),
+        body: JSON.stringify(data),
       });
 
       if (!res.ok) {
          const errData = await res.json();
-         throw new Error(errData.error || 'Error al crear el servicio');
+         throw new Error(errData.error || `Error al ${editingService ? 'actualizar' : 'crear'} el servicio`);
       }
 
-      toast.success('Servicio configurado exitosamente');
-      reset();
-      setIsAdding(false);
+      toast.success(editingService ? 'Servicio actualizado exitosamente' : 'Servicio configurado exitosamente');
+      handleCancel();
       fetchServices();
       
     } catch (error: any) {
       toast.error(error.message);
     }
+  };
+
+  const handleEdit = (service: ClinicService) => {
+    setEditingService(service);
+    setIsAdding(true);
+    reset({
+      name: service.name,
+      description: service.description,
+      serviceCode: service.service_code,
+      price: Number(service.price)
+    });
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleCancel = () => {
+    setIsAdding(false);
+    setEditingService(null);
+    reset({
+      name: '',
+      description: '',
+      serviceCode: '',
+      price: 0
+    });
   };
 
   const toggleStatus = async (id: string, currentStatus: boolean) => {
@@ -134,7 +159,7 @@ export default function AdministrationServicesPage() {
           </p>
         </div>
         <button
-           onClick={() => setIsAdding(!isAdding)}
+           onClick={() => isAdding ? handleCancel() : setIsAdding(true)}
            className="bg-fuchsia-600 hover:bg-fuchsia-700 text-white px-5 py-3 rounded-xl font-bold flex items-center justify-center gap-2 shadow-lg shadow-fuchsia-500/20 transition-all active:scale-95 text-sm md:text-base"
         >
            {isAdding ? <XOctagon className="w-4 h-4 md:w-5 md:h-5" /> : <Plus className="w-4 h-4 md:w-5 md:h-5" />}
@@ -147,7 +172,9 @@ export default function AdministrationServicesPage() {
         <div className="bg-white rounded-3xl p-6 md:p-8 shadow-md border border-fuchsia-100 animate-in slide-in-from-top-4">
           <div className="flex items-center gap-3 mb-6 pb-4 border-b border-slate-100">
              <Stethoscope className="w-6 h-6 text-fuchsia-600" />
-             <h3 className="text-xl font-bold text-slate-800">Definir Nuevo Procedimiento</h3>
+             <h3 className="text-xl font-bold text-slate-800">
+               {editingService ? 'Editar Procedimiento' : 'Definir Nuevo Procedimiento'}
+             </h3>
           </div>
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -206,7 +233,7 @@ export default function AdministrationServicesPage() {
                   className="bg-fuchsia-600 hover:bg-fuchsia-700 disabled:opacity-50 text-white px-8 py-3 rounded-xl font-bold flex items-center justify-center gap-2 shadow-lg shadow-fuchsia-500/20 w-full sm:w-auto"
                 >
                   {isSubmitting ? <Loader2 className="w-5 h-5 animate-spin" /> : <Save className="w-5 h-5" />}
-                  {isSubmitting ? 'Guardando...' : 'Crear y Publicar'}
+                  {isSubmitting ? 'Guardando...' : (editingService ? 'Guardar Cambios' : 'Crear y Publicar')}
                 </button>
              </div>
           </form>
@@ -276,23 +303,33 @@ export default function AdministrationServicesPage() {
                       </p>
                    </div>
                    
-                   <div className="flex items-center md:flex-col gap-2 shrink-0">
+                    <div className="flex items-center md:flex-col gap-2 shrink-0">
+                      <div className="flex items-center gap-1 md:w-full">
+                        <button 
+                          onClick={() => handleEdit(service)}
+                          className="p-2 text-slate-400 hover:text-fuchsia-600 hover:bg-fuchsia-50 rounded-xl transition-all"
+                          title="Editar servicio"
+                        >
+                          <Pencil size={16} />
+                        </button>
+                        <button 
+                          onClick={() => deleteService(service.id)}
+                          className="p-2 text-slate-300 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-all"
+                          title="Eliminar servicio"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
                       <button 
                          onClick={() => toggleStatus(service.id, service.is_active)}
                          className={cn(
-                           "px-3 py-1.5 rounded-lg text-[10px] md:text-xs font-black border transition-all uppercase tracking-tighter",
+                           "px-3 py-1.5 rounded-lg text-[10px] md:text-xs font-black border transition-all uppercase tracking-tighter w-full",
                            service.is_active 
                             ? 'bg-blue-50 text-blue-700 border-blue-200' 
                             : 'bg-slate-50 text-slate-500 border-slate-200'
                          )}
                       >
                          {service.is_active ? 'Activo' : 'Inactivo'}
-                      </button>
-                      <button 
-                        onClick={() => deleteService(service.id)}
-                        className="p-2 text-slate-300 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-all"
-                      >
-                         <Trash2 size={16} />
                       </button>
                    </div>
                 </div>

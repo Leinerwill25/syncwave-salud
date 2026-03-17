@@ -9,6 +9,7 @@ export const metadata = {
 };
 
 import { MobileBottomNav } from '@/components/administration/MobileBottomNav';
+import CurrencyFloatingWidget from '@/components/clinic/CurrencyFloatingWidget';
 
 export default async function AdministrationLayout({
   children,
@@ -32,6 +33,7 @@ export default async function AdministrationLayout({
         </div>
       </main>
       <MobileBottomNav />
+      <CurrencyFloatingWidget />
     </div>
   );
 }
