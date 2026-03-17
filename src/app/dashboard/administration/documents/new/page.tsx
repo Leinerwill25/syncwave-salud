@@ -9,7 +9,8 @@ import {
   FileText, 
   AlertCircle,
   CheckCircle2,
-  Loader2
+  Loader2,
+  Clock
 } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -37,6 +38,8 @@ export default function NewDocumentPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
+  const [attentions, setAttentions] = useState<any[]>([]);
+  const [isLoadingAttentions, setIsLoadingAttentions] = useState(false);
 
   const [formData, setFormData] = useState({
     patientId: '',
@@ -44,6 +47,7 @@ export default function NewDocumentPage() {
     description: '',
     fileName: '',
     filePath: '', // Simulado
+    attentionId: '',
   });
 
   useEffect(() => {
@@ -59,6 +63,27 @@ export default function NewDocumentPage() {
       console.error('Error fetching patients:', err);
     } finally {
       setIsLoadingPatients(false);
+    }
+  };
+
+  useEffect(() => {
+    if (formData.patientId) {
+      fetchAttentions(formData.patientId);
+    } else {
+      setAttentions([]);
+    }
+  }, [formData.patientId]);
+
+  const fetchAttentions = async (patientId: string) => {
+    setIsLoadingAttentions(true);
+    try {
+      const res = await fetch(`/api/administration/patients/attentions?patientId=${patientId}&status=PENDIENTE`);
+      const data = await res.json();
+      setAttentions(data.data || []);
+    } catch (err) {
+      console.error('Error fetching attentions:', err);
+    } finally {
+      setIsLoadingAttentions(false);
     }
   };
 
@@ -140,6 +165,27 @@ export default function NewDocumentPage() {
                   <option key={p.id} value={p.id}>{p.firstName} {p.lastName} {p.identifier ? `(${p.identifier})` : ''}</option>
                 ))}
               </select>
+            </div>
+
+            {/* Vinculación con Atención */}
+            <div className="space-y-2">
+               <label className="text-sm font-bold text-slate-700 flex items-center gap-2">
+                  <Clock className="w-4 h-4 text-blue-500" /> Atención Pendiente (Opcional)
+               </label>
+               <select
+                 disabled={!formData.patientId || isLoadingAttentions}
+                 value={formData.attentionId}
+                 onChange={(e) => setFormData({ ...formData, attentionId: e.target.value })}
+                 className="w-full px-4 py-3 bg-slate-50 border-none rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-100 transition-shadow disabled:opacity-50"
+               >
+                 <option value="">Ninguna - Documento independiente</option>
+                 {attentions.map((a) => (
+                   <option key={a.id} value={a.id}>{a.title} ({new Date(a.attention_date).toLocaleDateString()})</option>
+                 ))}
+               </select>
+               {formData.patientId && attentions.length === 0 && !isLoadingAttentions && (
+                  <p className="text-[10px] text-slate-400 font-bold italic">No hay atenciones pendientes para este paciente.</p>
+               )}
             </div>
 
             {/* Tipo de Documento */}

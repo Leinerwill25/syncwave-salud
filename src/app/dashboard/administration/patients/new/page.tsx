@@ -93,6 +93,16 @@ export default function NewAdminPatientPage() {
   const [inventorySearch, setInventorySearch] = useState('');
   const [showInvDropdown, setShowInvDropdown] = useState(false);
   const [selectedInvItems, setSelectedInvItems] = useState<any[]>([]);
+  
+  // Attention Reminders State
+  const [attentionsList, setAttentionsList] = useState<any[]>([]);
+  const [attTitle, setAttTitle] = useState('');
+  const [attDate, setAttDate] = useState('');
+  const [attIsInternal, setAttIsInternal] = useState(true);
+  const [attSpecialistId, setAttSpecialistId] = useState('');
+  const [attDesc, setAttDesc] = useState('');
+  const [attSpecSearch, setAttSpecSearch] = useState('');
+  const [showAttSpecDropdown, setShowAttSpecDropdown] = useState(false);
 
   React.useEffect(() => {
     const fetchData = async () => {
@@ -141,6 +151,32 @@ export default function NewAdminPatientPage() {
 
   const removeInvItem = (id: string) => {
     setSelectedInvItems(prev => prev.filter(item => item.id !== id));
+  };
+
+  const addAttention = () => {
+    if (!attTitle || !attDate) {
+      toast.error('Título y Fecha son requeridos para el recordatorio');
+      return;
+    }
+    const newAtt = {
+      title: attTitle,
+      attentionDate: attDate,
+      description: attDesc,
+      isInternal: attIsInternal,
+      specialistId: attIsInternal ? attSpecialistId : null,
+      status: 'PENDIENTE'
+    };
+    setAttentionsList(prev => [...prev, newAtt]);
+    // Reset fields
+    setAttTitle('');
+    setAttDate('');
+    setAttDesc('');
+    setAttSpecialistId('');
+    setAttSpecSearch('');
+  };
+
+  const removeAttention = (index: number) => {
+    setAttentionsList(prev => prev.filter((_, i) => i !== index));
   };
 
   const handleDynamicInput = (field: 'allergies' | 'medications' | 'history', index: number, value: string) => {
@@ -212,6 +248,7 @@ export default function NewAdminPatientPage() {
       name: i.name,
       quantity: i.quantity
     }));
+    data.attentions = attentionsList;
 
     try {
       const response = await fetch('/api/administration/patients', {
@@ -667,7 +704,133 @@ export default function NewAdminPatientPage() {
              </div>
           </div>
 
-          <div className="pt-8 md:pt-10 border-t border-slate-100 flex justify-end">
+
+           {/* Seccion 6: Atenciones y Recordatorios */}
+           <div className="space-y-6 pt-8 md:pt-10 border-t border-slate-100">
+              <h3 className="text-base md:text-xl font-black text-slate-900 flex items-center gap-2 uppercase tracking-tight">
+                 <div className="w-6 h-6 md:w-8 md:h-8 rounded-lg bg-emerald-50 flex items-center justify-center text-emerald-600 text-xs md:text-sm font-black">6</div>
+                 Recordatorios de Atenciones
+              </h3>
+              <p className="text-slate-500 text-[10px] md:text-sm italic">Programa consultas, laboratorios o exámenes pendientes.</p>
+
+              <div className="bg-slate-50 rounded-2xl p-4 md:p-6 space-y-4 md:space-y-6">
+                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <div className="space-y-1">
+                       <label className="text-[10px] font-black text-slate-500 uppercase">Título de Atención *</label>
+                       <input 
+                         type="text" 
+                         placeholder="Ej: Consulta Odontología" 
+                         value={attTitle}
+                         onChange={(e) => setAttTitle(e.target.value)}
+                         className="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs md:text-sm font-bold outline-none focus:ring-4 focus:ring-emerald-100"
+                       />
+                    </div>
+                    <div className="space-y-1">
+                       <label className="text-[10px] font-black text-slate-500 uppercase">Fecha *</label>
+                       <input 
+                         type="date" 
+                         value={attDate}
+                         onChange={(e) => setAttDate(e.target.value)}
+                         className="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs md:text-sm font-bold outline-none focus:ring-4 focus:ring-emerald-100"
+                       />
+                    </div>
+                    <div className="space-y-1">
+                       <label className="text-[10px] font-black text-slate-500 uppercase">Tipo Specialist</label>
+                       <div className="flex bg-white rounded-xl border border-slate-200 p-1">
+                          <button 
+                            type="button" 
+                            onClick={() => setAttIsInternal(true)}
+                            className={cn("flex-1 py-1.5 text-[10px] font-black uppercase rounded-lg transition-all", attIsInternal ? "bg-emerald-500 text-white" : "text-slate-400")}
+                          >Interno</button>
+                          <button 
+                            type="button" 
+                            onClick={() => { setAttIsInternal(false); setAttSpecialistId(''); }}
+                            className={cn("flex-1 py-1.5 text-[10px] font-black uppercase rounded-lg transition-all", !attIsInternal ? "bg-slate-700 text-white" : "text-slate-400")}
+                          >Externo</button>
+                       </div>
+                    </div>
+                 </div>
+
+                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {attIsInternal && (
+                       <div className="space-y-1 relative">
+                          <label className="text-[10px] font-black text-slate-500 uppercase">Seleccionar Especialista</label>
+                          <input 
+                            type="text" 
+                            placeholder="Buscar profesional..." 
+                            value={attSpecSearch}
+                            onChange={(e) => { setAttSpecSearch(e.target.value); setShowAttSpecDropdown(true); }}
+                            onFocus={() => setShowAttSpecDropdown(true)}
+                            className="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs md:text-sm font-bold outline-none focus:ring-4 focus:ring-emerald-100"
+                          />
+                          {showAttSpecDropdown && specialists.length > 0 && (
+                             <div className="absolute z-[60] w-full mt-1 bg-white border border-slate-200 rounded-xl shadow-xl max-h-40 overflow-y-auto">
+                                {specialists.filter(s => `${s.first_name} ${s.last_name}`.toLowerCase().includes(attSpecSearch.toLowerCase())).map(s => (
+                                   <div 
+                                     key={s.id} 
+                                     onClick={() => { setAttSpecialistId(s.id); setAttSpecSearch(`${s.first_name} ${s.last_name}`); setShowAttSpecDropdown(false); }}
+                                     className="px-3 py-2 hover:bg-emerald-50 cursor-pointer text-xs font-bold uppercase tracking-tighter"
+                                   >
+                                      {s.first_name} {s.last_name} <span className="text-[9px] text-slate-400 font-black">({s.role})</span>
+                                   </div>
+                                ))}
+                             </div>
+                          )}
+                       </div>
+                    )}
+                    <div className="space-y-1">
+                       <label className="text-[10px] font-black text-slate-500 uppercase">Descripción / Notas</label>
+                       <input 
+                         type="text" 
+                         placeholder="Notas adicionales..." 
+                         value={attDesc}
+                         onChange={(e) => setAttDesc(e.target.value)}
+                         className="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs md:text-sm font-bold outline-none focus:ring-4 focus:ring-emerald-100"
+                       />
+                    </div>
+                 </div>
+
+                 <button 
+                   type="button" 
+                   onClick={addAttention}
+                   className="w-full bg-emerald-600 hover:bg-emerald-700 text-white py-2.5 rounded-xl font-black text-xs uppercase tracking-widest flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/20"
+                 >
+                    <Plus size={14} /> Añadir a Recordatorios
+                 </button>
+              </div>
+
+              {/* Lista de Recordatorios */}
+              {attentionsList.length > 0 && (
+                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                    {attentionsList.map((att, idx) => {
+                       const spec = specialists.find(s => s.id === att.specialistId);
+                       return (
+                          <div key={idx} className="bg-white border border-slate-100 rounded-xl p-3 shadow-sm flex items-start justify-between">
+                             <div className="space-y-1">
+                                <h4 className="text-xs font-black text-slate-800 uppercase tracking-tighter">{att.title}</h4>
+                                <div className="flex items-center gap-2 text-[9px] font-black text-slate-400 uppercase">
+                                   <CalendarIcon size={10} /> {att.attentionDate}
+                                </div>
+                                <div className="flex items-center gap-2">
+                                   <span className={cn("text-[8px] px-1.5 py-0.5 rounded font-black uppercase", att.isInternal ? "bg-emerald-50 text-emerald-600" : "bg-slate-100 text-slate-500")}>
+                                      {att.isInternal ? 'Interno' : 'Externo'}
+                                   </span>
+                                   {att.isInternal && spec && (
+                                      <span className="text-[9px] font-bold text-slate-600">{spec.last_name}</span>
+                                   )}
+                                </div>
+                             </div>
+                             <button type="button" onClick={() => removeAttention(idx)} className="p-1.5 text-slate-300 hover:text-red-500 transition-colors">
+                                <Trash2 size={14} />
+                             </button>
+                          </div>
+                       );
+                    })}
+                 </div>
+              )}
+           </div>
+
+           <div className="pt-8 md:pt-10 border-t border-slate-100 flex justify-end">
             <button
               type="submit"
               disabled={isSubmitting}

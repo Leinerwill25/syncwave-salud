@@ -9,6 +9,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
+import { Calendar as CalendarIcon, Plus, Trash2, Check, UserPlus } from 'lucide-react';
 
 export default function EditAdminPatientPage({ params }: { params: Promise<{ id: string }> }) {
   const router = useRouter();
@@ -16,6 +17,17 @@ export default function EditAdminPatientPage({ params }: { params: Promise<{ id:
   const [isLoading, setIsLoading] = useState(true);
   const [errorMsg, setErrorMsg] = useState('');
   const [id, setId] = useState<string>('');
+
+  // Attention Reminders State
+  const [attentionsList, setAttentionsList] = useState<any[]>([]);
+  const [attTitle, setAttTitle] = useState('');
+  const [attDate, setAttDate] = useState('');
+  const [attIsInternal, setAttIsInternal] = useState(true);
+  const [attSpecialistId, setAttSpecialistId] = useState('');
+  const [attDesc, setAttDesc] = useState('');
+  const [attSpecSearch, setAttSpecSearch] = useState('');
+  const [showAttSpecDropdown, setShowAttSpecDropdown] = useState(false);
+  const [specialists, setSpecialists] = useState<any[]>([]);
 
   const {
     register,
@@ -25,6 +37,13 @@ export default function EditAdminPatientPage({ params }: { params: Promise<{ id:
   } = useForm({
     resolver: zodResolver(adminPatientSchema),
   });
+
+  useEffect(() => {
+    fetch('/api/administration/specialists?limit=100')
+      .then(res => res.json())
+      .then(data => setSpecialists(data.data || []))
+      .catch(console.error);
+  }, []);
 
   useEffect(() => {
     async function loadData() {
@@ -54,6 +73,14 @@ export default function EditAdminPatientPage({ params }: { params: Promise<{ id:
           currentMedications: data.current_medications,
           medicalHistory: data.medical_history,
         });
+        if (data.attentions) {
+          setAttentionsList(data.attentions.map((att: any) => ({
+             ...att,
+             attentionDate: att.attention_date ? att.attention_date.split('T')[0] : '',
+             isInternal: att.is_internal,
+             specialistId: att.specialist_id
+          })));
+        }
       } catch (err: any) {
         toast.error(err.message);
         router.push('/dashboard/administration/patients');
@@ -64,6 +91,27 @@ export default function EditAdminPatientPage({ params }: { params: Promise<{ id:
     loadData();
   }, [params, reset, router]);
 
+  const addAttention = () => {
+    if (!attTitle || !attDate) {
+      toast.error('Título y Fecha son requeridos');
+      return;
+    }
+    const newAtt = {
+      title: attTitle,
+      attentionDate: attDate,
+      description: attDesc,
+      isInternal: attIsInternal,
+      specialistId: attIsInternal ? attSpecialistId : null,
+      status: 'PENDIENTE'
+    };
+    setAttentionsList(prev => [...prev, newAtt]);
+    setAttTitle(''); setAttDate(''); setAttDesc(''); setAttSpecialistId(''); setAttSpecSearch('');
+  };
+
+  const removeAttention = (index: number) => {
+    setAttentionsList(prev => prev.filter((_, i) => i !== index));
+  };
+
   const onSubmit = async (data: AdminPatientFormValues) => {
     setIsSubmitting(true);
     setErrorMsg('');
@@ -72,7 +120,10 @@ export default function EditAdminPatientPage({ params }: { params: Promise<{ id:
       const response = await fetch(`/api/administration/patients/${id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
+        body: JSON.stringify({
+           ...data,
+           attentions: attentionsList
+        }),
       });
 
       if (!response.ok) {
@@ -287,6 +338,101 @@ export default function EditAdminPatientPage({ params }: { params: Promise<{ id:
                 </div>
               </div>
             </div>
+          </div>
+
+          {/* Seccion 6: Atenciones y Recordatorios */}
+          <div className="space-y-6 pt-10 border-t border-slate-100">
+              <h3 className="text-xl font-bold text-slate-900 flex items-center gap-2 uppercase">
+                 <div className="w-8 h-8 rounded-lg bg-emerald-50 flex items-center justify-center text-emerald-600 font-black">4</div>
+                 Recordatorios de Atenciones
+              </h3>
+              
+              <div className="bg-slate-50 rounded-2xl p-6 space-y-6">
+                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="space-y-1">
+                       <label className="text-[10px] font-black text-slate-500 uppercase">Atención / Examen *</label>
+                       <input 
+                         type="text" 
+                         value={attTitle}
+                         onChange={(e) => setAttTitle(e.target.value)}
+                         placeholder="Ej: Rayos X Tórax" 
+                         className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm font-bold outline-none focus:ring-4 focus:ring-emerald-100"
+                       />
+                    </div>
+                    <div className="space-y-1">
+                       <label className="text-[10px] font-black text-slate-500 uppercase">Fecha Programada *</label>
+                       <input 
+                         type="date" 
+                         value={attDate}
+                         onChange={(e) => setAttDate(e.target.value)}
+                         className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm font-bold outline-none focus:ring-4 focus:ring-emerald-100"
+                       />
+                    </div>
+                    <div className="space-y-1">
+                       <label className="text-[10px] font-black text-slate-500 uppercase">Especialista</label>
+                       <div className="flex bg-white rounded-xl border border-slate-200 p-1">
+                          <button type="button" onClick={() => setAttIsInternal(true)} className={cn("flex-1 py-1.5 text-[10px] font-black uppercase rounded-lg transition-all", attIsInternal ? "bg-emerald-500 text-white" : "text-slate-400")}>Interno</button>
+                          <button type="button" onClick={() => { setAttIsInternal(false); setAttSpecialistId(''); }} className={cn("flex-1 py-1.5 text-[10px] font-black uppercase rounded-lg transition-all", !attIsInternal ? "bg-slate-700 text-white" : "text-slate-400")}>Externo</button>
+                       </div>
+                    </div>
+                 </div>
+
+                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {attIsInternal && (
+                       <div className="space-y-1 relative">
+                          <label className="text-[10px] font-black text-slate-500 uppercase">Especialista Asignado</label>
+                          <input 
+                            type="text" 
+                            placeholder="Buscar..." 
+                            value={attSpecSearch}
+                            onChange={(e) => { setAttSpecSearch(e.target.value); setShowAttSpecDropdown(true); }}
+                            onFocus={() => setShowAttSpecDropdown(true)}
+                            className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm font-bold outline-none focus:ring-4 focus:ring-emerald-100"
+                          />
+                          {showAttSpecDropdown && specialists.length > 0 && (
+                             <div className="absolute z-50 w-full mt-1 bg-white border border-slate-200 rounded-xl shadow-xl max-h-40 overflow-y-auto">
+                                {specialists.filter(s => `${s.first_name} ${s.last_name}`.toLowerCase().includes(attSpecSearch.toLowerCase())).map(s => (
+                                   <div key={s.id} onClick={() => { setAttSpecialistId(s.id); setAttSpecSearch(`${s.first_name} ${s.last_name}`); setShowAttSpecDropdown(false); }} className="px-3 py-2 hover:bg-emerald-50 cursor-pointer text-xs font-bold uppercase">{s.first_name} {s.last_name}</div>
+                                ))}
+                             </div>
+                          )}
+                       </div>
+                    )}
+                    <div className="space-y-1">
+                       <label className="text-[10px] font-black text-slate-500 uppercase">Notas</label>
+                       <input 
+                         type="text" 
+                         value={attDesc}
+                         onChange={(e) => setAttDesc(e.target.value)}
+                         placeholder="Indicaciones..." 
+                         className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm font-bold outline-none focus:ring-4 focus:ring-emerald-100"
+                       />
+                    </div>
+                 </div>
+
+                 <button type="button" onClick={addAttention} className="w-full bg-emerald-600 hover:bg-emerald-700 text-white py-3 rounded-xl font-black text-xs uppercase tracking-widest flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/20"><Plus size={16} /> Agregar Recordatorio</button>
+              </div>
+
+              {attentionsList.length > 0 && (
+                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                    {attentionsList.map((att, idx) => {
+                       const spec = specialists.find(s => s.id === att.specialistId);
+                       return (
+                          <div key={idx} className="bg-white border border-slate-100 rounded-xl p-3 shadow-sm flex items-start justify-between">
+                             <div className="space-y-1">
+                                <h4 className="text-xs font-black text-slate-800 uppercase tracking-tighter">{att.title}</h4>
+                                <div className="flex items-center gap-2 text-[9px] font-black text-slate-400 uppercase"><CalendarIcon size={12} /> {att.attentionDate}</div>
+                                <div className="flex items-center gap-1.5">
+                                   <span className={cn("text-[8px] px-1.5 py-0.5 rounded font-black uppercase", att.isInternal ? "bg-emerald-50 text-emerald-600" : "bg-slate-100 text-slate-500")}>{att.isInternal ? 'Interno' : 'Externo'}</span>
+                                   {att.isInternal && spec && <span className="text-[10px] font-bold text-slate-600">{spec.last_name}</span>}
+                                </div>
+                             </div>
+                             <button type="button" onClick={() => removeAttention(idx)} className="p-1.5 text-slate-300 hover:text-red-500 transition-colors"><Trash2 size={16} /></button>
+                          </div>
+                       );
+                    })}
+                 </div>
+              )}
           </div>
 
           <div className="pt-10 border-t border-slate-100 flex justify-end">

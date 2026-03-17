@@ -113,6 +113,17 @@ export async function POST(request: Request) {
       new_values: data
     });
 
+    // 4. Si hay vinculación con atención, marcar como completada
+    if (validatedData.attentionId) {
+      await supabase
+        .from('patient_attentions')
+        .update({ 
+          status: 'COMPLETADA',
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', validatedData.attentionId);
+    }
+
     return NextResponse.json(data);
   } catch (err: any) {
     return NextResponse.json({ error: err.message || 'Error en la validación' }, { status: 400 });

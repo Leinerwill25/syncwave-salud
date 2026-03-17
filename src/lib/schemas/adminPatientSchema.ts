@@ -32,6 +32,16 @@ export const adminPatientSchema = z.object({
 
   identifier: z.string().optional(),
   isActive: z.boolean().optional(),
+
+  // Attention Reminders
+  attentions: z.array(z.object({
+    title: z.string().min(2, 'El título es requerido'),
+    description: z.string().optional(),
+    attentionDate: z.string().min(1, 'La fecha es requerida'),
+    isInternal: z.boolean().default(true),
+    specialistId: z.string().optional(),
+    status: z.enum(['PENDIENTE', 'COMPLETADA', 'CANCELADA']).default('PENDIENTE')
+  })).optional(),
 });
 
 export type AdminPatientFormValues = z.infer<typeof adminPatientSchema>;

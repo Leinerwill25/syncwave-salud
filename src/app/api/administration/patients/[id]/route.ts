@@ -42,7 +42,8 @@ export async function GET(
             unregPatient.chronic_conditions ? `Condiciones Crónicas: ${unregPatient.chronic_conditions}` : '',
             unregPatient.family_history ? `Historial Familiar: ${unregPatient.family_history}` : ''
           ].filter(Boolean).join('\n\n') || '',
-          type: 'UNREG'
+          type: 'UNREG',
+          attentions: (await adminSupabase.from('patient_attentions').select('*, specialist:specialist_id(*)').eq('unregistered_patient_id', id)).data || []
       });
     }
   }
@@ -73,7 +74,8 @@ export async function GET(
           phone_number: regPatient.phone,
           current_medications: regPatient.current_medications || regPatient.current_medication || '',
           medical_history: regPatient.medical_history || regPatient.background || regPatient.notes || '',
-          type: 'REG'
+          type: 'REG',
+          attentions: (await adminSupabase.from('patient_attentions').select('*, specialist:specialist_id(*)').eq('patient_id', id)).data || []
       });
     }
   }
@@ -128,6 +130,31 @@ export async function PATCH(
 
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+
+    // Sincronización de atenciones en PATCH
+    if (validatedData.attentions && validatedData.attentions.length > 0) {
+      const organizationId = authResult.user?.organizationId;
+      const authId = authResult.user?.authId;
+      
+      // Para simplificar: En el PATCH de paciente, si vienen atenciones, son "nuevas" atenciones 
+      // o atenciones que se desean sobreescribir. Dado que el esquema es nuevo, 
+      // insertaremos las que vengan que no tengan ID asignado.
+      const attentionInserts = validatedData.attentions.map(att => ({
+        organization_id: organizationId,
+        unregistered_patient_id: id,
+        title: att.title,
+        description: att.description || null,
+        attention_date: att.attentionDate,
+        is_internal: att.isInternal ?? true,
+        specialist_id: att.specialistId || null,
+        status: att.status || 'PENDIENTE',
+        created_by: authId
+      }));
+
+      await adminSupabase
+        .from('patient_attentions')
+        .insert(attentionInserts);
     }
 
     return NextResponse.json(data);

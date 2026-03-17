@@ -258,6 +258,25 @@ export async function POST(request: Request) {
         }
       }
     }
+    // 6. LOGICA DE RECORDATORIOS DE ATENCION (PATIENT ATTENTIONS)
+    if (validatedData.attentions && validatedData.attentions.length > 0) {
+      const organizationId = authResult.user?.organizationId;
+      const attentionInserts = validatedData.attentions.map(att => ({
+        organization_id: organizationId,
+        unregistered_patient_id: newPatient.id,
+        title: att.title,
+        description: att.description || null,
+        attention_date: att.attentionDate,
+        is_internal: att.isInternal ?? true,
+        specialist_id: att.specialistId || null,
+        status: att.status || 'PENDIENTE',
+        created_by: authId
+      }));
+
+      await adminSupabase
+        .from('patient_attentions')
+        .insert(attentionInserts);
+    }
 
     return NextResponse.json(newPatient);
   } catch (err: any) {

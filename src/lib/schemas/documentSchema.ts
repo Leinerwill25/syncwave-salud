@@ -11,6 +11,7 @@ export const clinicalDocumentSchema = z.object({
   fileName: z.string().min(1, 'El nombre del archivo es requerido'),
   fileSizeBytes: z.number().int().optional(),
   mimeType: z.string().optional(),
+  attentionId: z.string().uuid().optional(),
 });
 
 export type ClinicalDocumentFormValues = z.infer<typeof clinicalDocumentSchema>;

@@ -18,7 +18,8 @@ import {
   Search as SearchIcon,
   ChevronDown,
   LayoutDashboard,
-  Settings
+  Settings,
+  Clock
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { createSupabaseBrowserClient } from '@/app/adapters/client';
@@ -58,6 +59,11 @@ const LINKS: LinkItem[] = [
 		href: '/dashboard/administration/appointments',
 		label: 'Agendamiento',
 		icon: CalendarCheck,
+	},
+	{
+		href: '/dashboard/administration/reminders',
+		label: 'Recordatorios',
+		icon: Clock,
 	},
 	{
 		href: '/dashboard/administration/consultations',
