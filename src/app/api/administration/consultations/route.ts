@@ -1,4 +1,4 @@
-import { createSupabaseServerClient } from '@/app/adapters/server';
+import { createSupabaseAdminClient } from '@/app/adapters/admin';
 import { apiRequireRole } from '@/lib/auth-guards';
 import { NextResponse } from 'next/server';
 
@@ -15,7 +15,8 @@ export async function GET(request: Request) {
   const from = (page - 1) * limit;
   const to = from + limit - 1;
 
-  const supabase = await createSupabaseServerClient();
+  // Usar admin client para bypassear RLS
+  const supabase = createSupabaseAdminClient();
   const organizationId = authResult.user?.organizationId;
 
   if (!organizationId) {

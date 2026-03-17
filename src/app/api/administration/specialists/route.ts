@@ -1,4 +1,4 @@
-import { createSupabaseServerClient } from '@/app/adapters/server';
+import { createSupabaseAdminClient } from '@/app/adapters/admin';
 import { apiRequireRole } from '@/lib/auth-guards';
 import { specialistSchema } from '@/lib/schemas/specialistSchema';
 import { NextResponse } from 'next/server';
@@ -14,8 +14,8 @@ export async function GET(request: Request) {
   const limit = parseInt(searchParams.get('limit') || '50');
   const from = (page - 1) * limit;
   const to = from + limit - 1;
-
-  const supabase = await createSupabaseServerClient();
+  // Usar admin client para bypassear RLS
+  const supabase = createSupabaseAdminClient();
   const organizationId = authResult.user?.organizationId;
 
   if (!organizationId) {
@@ -66,7 +66,7 @@ export async function POST(request: Request) {
     const body = await request.json();
     const validatedData = specialistSchema.parse(body);
 
-    const supabase = await createSupabaseServerClient();
+    const supabase = createSupabaseAdminClient();
 
     const { data, error } = await supabase
       .from('specialists')

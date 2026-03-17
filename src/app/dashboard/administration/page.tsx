@@ -9,18 +9,32 @@ import {
   TrendingUp
 } from 'lucide-react';
 import Link from 'next/link';
-import { createSupabaseServerClient } from '@/app/adapters/server';
+import { requireRole } from '@/lib/auth-guards';
+import { redirect } from 'next/navigation';
+import { createClient } from '@supabase/supabase-js';
 
-async function getStats() {
-  const supabase = await createSupabaseServerClient();
-  
-  // Get counts in parallel on server
+async function getStats(organizationId: string) {
+  // Usar service role para bypassear RLS y ver datos reales
+  const supabase = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    { auth: { persistSession: false } }
+  );
+
   const [patients, specialists, appointments, medications, materials] = await Promise.all([
     supabase.from('patient').select('id', { count: 'exact', head: true }),
-    supabase.from('specialists').select('id', { count: 'exact', head: true }).eq('is_active', true),
-    supabase.from('admin_appointments').select('id', { count: 'exact', head: true }).eq('status', 'PENDIENTE'),
-    supabase.from('admin_inventory_medications').select('id', { count: 'exact', head: true }).lt('quantity', 10),
-    supabase.from('admin_inventory_materials').select('id', { count: 'exact', head: true }).lt('quantity', 10),
+    supabase.from('specialists').select('id', { count: 'exact', head: true })
+      .eq('organization_id', organizationId)
+      .eq('is_active', true),
+    supabase.from('admin_appointments').select('id', { count: 'exact', head: true })
+      .eq('organization_id', organizationId)
+      .eq('status', 'PENDIENTE'),
+    supabase.from('admin_inventory_medications').select('id', { count: 'exact', head: true })
+      .eq('organization_id', organizationId)
+      .lt('quantity', 10),
+    supabase.from('admin_inventory_materials').select('id', { count: 'exact', head: true })
+      .eq('organization_id', organizationId)
+      .lt('quantity', 10),
   ]);
 
   return {
@@ -32,7 +46,12 @@ async function getStats() {
 }
 
 export default async function AdministrationDashboardPage() {
-  const stats = await getStats();
+  // Obtener usuario autenticado para conocer su organizationId
+  const user = await requireRole(['ADMINISTRACION', 'ADMIN']);
+  if (!user) redirect('/login');
+
+  const organizationId = user.organizationId || '';
+  const stats = await getStats(organizationId);
 
   const statCards = [
     {

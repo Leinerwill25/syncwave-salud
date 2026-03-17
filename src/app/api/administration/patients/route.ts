@@ -1,4 +1,3 @@
-import { createSupabaseServerClient } from '@/app/adapters/server';
 import { createSupabaseAdminClient } from '@/app/adapters/admin';
 import { apiRequireRole } from '@/lib/auth-guards';
 import { adminPatientSchema } from '@/lib/schemas/adminPatientSchema';
@@ -18,39 +17,51 @@ export async function GET(request: Request) {
   const from = (page - 1) * limit;
   const to = from + limit - 1;
 
-  // Use normal client for reads (RLS allows reads with auth)
-  const supabase = await createSupabaseServerClient();
+  // Usar el admin client (service role) para bypassear RLS en todas las queries
+  const adminSupabase = createSupabaseAdminClient();
   const organizationId = authResult.user?.organizationId;
 
   if (!organizationId) {
     return NextResponse.json({ error: 'Usuario sin organización asociada' }, { status: 400 });
   }
 
-  // 1. Obtener Pacientes Registrados (Paginados)
-  const { data: regPatients } = await supabase
-    .from('patient')
-    .select('*')
-    .eq('organization_id', organizationId)
-    .range(from, to)
-    .order('created_at', { ascending: false });
+  // 1. Obtener IDs de usuarios (authId) de la organización
+  const { data: orgUsers } = await adminSupabase
+    .from('users')
+    .select('authId, patientProfileId')
+    .eq('organizationId', organizationId)
+    .eq('role', 'PACIENTE')
+    .not('patientProfileId', 'is', null);
 
-  // 2. Obtener Pacientes No Registrados (Paginados)
-  const adminSupabase = createSupabaseAdminClient();
-  const { data: orgUsers } = await supabase
+  const patientProfileIds = orgUsers?.map(u => u.patientProfileId).filter(Boolean) || [];
+
+  // 2. Obtener Pacientes Registrados de la organización (filtrados por IDs)
+  let regPatients: any[] = [];
+  if (patientProfileIds.length > 0) {
+    let q = adminSupabase.from('patient').select('*').in('id', patientProfileIds);
+    if (search) {
+      q = q.or(`firstName.ilike.%${search}%,lastName.ilike.%${search}%,identifier.ilike.%${search}%`);
+    }
+    const { data } = await q.order('createdAt', { ascending: false });
+    regPatients = data || [];
+  }
+
+  // 3. Obtener Pacientes No Registrados (creados por staff de la organización)
+  const orgUserAuthIds = orgUsers?.map(u => u.authId).filter(Boolean) || [];
+  // También incluir los médicos y enfermeras que pueden crear pacientes no registrados
+  const { data: allOrgUsers } = await adminSupabase
     .from('users')
     .select('authId')
     .eq('organizationId', organizationId);
-
-  const orgUserIds = orgUsers?.map(u => u.authId).filter(Boolean) || [];
+  const allOrgAuthIds = allOrgUsers?.map(u => u.authId).filter(Boolean) || [];
 
   let unregPatients: any[] = [];
-  if (orgUserIds.length > 0) {
-    const { data: unregData } = await adminSupabase
-      .from('unregisteredpatients')
-      .select('*')
-      .in('created_by', orgUserIds)
-      .range(from, to)
-      .order('created_at', { ascending: false });
+  if (allOrgAuthIds.length > 0) {
+    let q = adminSupabase.from('unregisteredpatients').select('*').in('created_by', allOrgAuthIds);
+    if (search) {
+      q = q.or(`first_name.ilike.%${search}%,last_name.ilike.%${search}%,identification.ilike.%${search}%`);
+    }
+    const { data: unregData } = await q.order('created_at', { ascending: false });
     unregPatients = unregData || [];
   }
 
