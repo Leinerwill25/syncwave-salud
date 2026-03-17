@@ -64,10 +64,11 @@ export async function GET(request: Request) {
   const deduplicatedMap = new Map();
   (patients || []).forEach((p: any) => {
     // Generar una llave de deduplicación: Identificación > Combinación de Nombre/Email
-    let dedupKey = p.identification ? `ID_${p.identification.trim().toUpperCase()}` : null;
+    // Limpieza profunda de identificación para ignorar espacios extra o puntos
+    let dedupKey = p.identification ? `ID_${p.identification.replace(/[^a-zA-Z0-9]/g, '').toUpperCase()}` : null;
     
     if (!dedupKey) {
-      const nameKey = `${p.first_name || ''} ${p.last_name || ''}`.toLowerCase().trim();
+      const nameKey = `${p.first_name || ''} ${p.last_name || ''}`.toLowerCase().replace(/\s+/g, '').trim();
       const emailKey = p.email ? p.email.toLowerCase().trim() : '';
       dedupKey = `NAME_${nameKey}_${emailKey}`;
     }

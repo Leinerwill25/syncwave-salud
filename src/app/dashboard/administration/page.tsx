@@ -51,11 +51,13 @@ async function getStats(organizationId: string) {
   const uniquePatients = new Set();
   (patientsData.data || []).forEach((p: any) => {
     // Usar identificación como llave primaria de deduplicación
+    // Limpieza profunda: remover espacios y caracteres especiales para detectar duplicados por formato
     if (p.identification) {
-      uniquePatients.add(p.identification.trim().toUpperCase());
+      const cleanId = p.identification.replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
+      uniquePatients.add(cleanId);
     } else {
       // Si no hay ID, usar nombre normalizado para detectar duplicados obvios
-      const nameKey = `${p.first_name || ''} ${p.last_name || ''}`.toLowerCase().trim();
+      const nameKey = `${p.first_name || ''} ${p.last_name || ''}`.toLowerCase().replace(/\s+/g, '').trim();
       if (nameKey) uniquePatients.add(nameKey);
     }
   });
