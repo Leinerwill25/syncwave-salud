@@ -293,25 +293,31 @@ export default function AdminPatientDetailPage({ params }: { params: Promise<{ i
              </div>
           </div>
 
-          {/* Placeholders for future feature integrations */}
+          {/* Navigation Links for feature integrations */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-             <div className="bg-slate-50 border border-slate-200 border-dashed rounded-3xl p-6 flex flex-col items-center justify-center text-center">
-                <div className="w-12 h-12 bg-white rounded-xl shadow-sm flex items-center justify-center mb-3">
-                  <Users className="w-6 h-6 text-slate-400" />
+             <Link 
+                href={`/dashboard/administration/appointments?patient_id=${patient.id}`}
+                className="bg-slate-50 border border-slate-200 border-dashed rounded-3xl p-6 flex flex-col items-center justify-center text-center hover:bg-blue-50 hover:border-blue-200 transition-all group"
+             >
+                <div className="w-12 h-12 bg-white rounded-xl shadow-sm flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
+                  <Users className="w-6 h-6 text-slate-400 group-hover:text-blue-600" />
                 </div>
                 <h4 className="font-bold text-slate-700">Especialistas Asignados</h4>
-                <p className="text-sm text-slate-500 mt-1 mb-4">Ver equipo médico a cargo.</p>
-                <button className="text-sm font-bold text-blue-600 hover:text-blue-700">Ver asignaciones →</button>
-             </div>
+                <p className="text-sm text-slate-500 mt-1 mb-4">Ver equipo médico y citas programadas.</p>
+                <span className="text-sm font-bold text-blue-600">Ver asignaciones →</span>
+             </Link>
              
-             <div className="bg-slate-50 border border-slate-200 border-dashed rounded-3xl p-6 flex flex-col items-center justify-center text-center">
-                <div className="w-12 h-12 bg-white rounded-xl shadow-sm flex items-center justify-center mb-3">
-                  <Activity className="w-6 h-6 text-slate-400" />
+             <Link 
+                href={`/dashboard/administration/consultations?patient_id=${patient.id}`}
+                className="bg-slate-50 border border-slate-200 border-dashed rounded-3xl p-6 flex flex-col items-center justify-center text-center hover:bg-indigo-50 hover:border-indigo-200 transition-all group"
+             >
+                <div className="w-12 h-12 bg-white rounded-xl shadow-sm flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
+                  <Activity className="w-6 h-6 text-slate-400 group-hover:text-indigo-600" />
                 </div>
                 <h4 className="font-bold text-slate-700">Historial de Consultas</h4>
-                <p className="text-sm text-slate-500 mt-1 mb-4">Registros de visitas y notas.</p>
-                <button className="text-sm font-bold text-blue-600 hover:text-blue-700">Ver expediente →</button>
-             </div>
+                <p className="text-sm text-slate-500 mt-1 mb-4">Registros de visitas y notas clínicas.</p>
+                <span className="text-sm font-bold text-blue-600">Ver expediente →</span>
+             </Link>
           </div>
 
         </div>

@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { FileText, Search, Calendar, Clock, Activity, CheckCircle2, ChevronRight, User } from 'lucide-react';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import { formatDateDisplay } from '@/lib/format';
 
 interface Consultation {
@@ -26,15 +27,19 @@ export default function AdministrationConsultationsPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
 
+  const searchParams = useSearchParams();
+  const patientIdFilter = searchParams.get('patient_id');
+
   useEffect(() => {
     fetchConsultations();
-  }, [statusFilter]);
+  }, [statusFilter, patientIdFilter]);
 
   const fetchConsultations = async () => {
     try {
       setIsLoading(true);
       const url = new URL('/api/administration/consultations', window.location.origin);
       if (statusFilter) url.searchParams.append('status', statusFilter);
+      if (patientIdFilter) url.searchParams.append('patient_id', patientIdFilter);
       
       const res = await fetch(url.toString());
       if (!res.ok) throw new Error('Failed to fetch consultations');

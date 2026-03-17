@@ -34,6 +34,11 @@ export async function GET(request: Request) {
     if (status) {
       query = query.eq('status', status);
     }
+    
+    const patientId = searchParams.get('patient_id');
+    if (patientId) {
+      query = query.eq('patient_id', patientId);
+    }
 
     const { data, count, error } = await query
       .order('scheduled_date', { ascending: true })

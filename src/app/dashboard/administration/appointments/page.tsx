@@ -12,6 +12,7 @@ import {
   Calendar
 } from 'lucide-react';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import { toast } from 'sonner';
 
 interface Appointment {
@@ -40,15 +41,22 @@ export default function AdministrationAppointmentsPage() {
   const [selectedServiceId, setSelectedServiceId] = useState('');
   const [approvalNotes, setApprovalNotes] = useState('');
 
+  const searchParams = useSearchParams();
+  const patientIdFilter = searchParams.get('patient_id');
+
   useEffect(() => {
     fetchAppointments();
     fetchServices();
-  }, []);
+  }, [patientIdFilter]);
 
   const fetchAppointments = async () => {
     try {
       setIsLoading(true);
-      const res = await fetch('/api/administration/appointments?status=PENDIENTE');
+      let url = '/api/administration/appointments?status=PENDIENTE';
+      if (patientIdFilter) {
+        url += `&patient_id=${patientIdFilter}`;
+      }
+      const res = await fetch(url);
       if (!res.ok) throw new Error('Failed to fetch appointments');
       const data = await res.json();
       setAppointments(data.data || []);
