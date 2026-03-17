@@ -300,6 +300,19 @@ export default function NewAdminPatientPage() {
                   />
                   {errors.lastName && <p className="text-[10px] font-bold text-red-500">{errors.lastName.message}</p>}
                 </div>
+
+                <div className="space-y-1.5 md:space-y-2">
+                  <label className="text-[10px] md:text-sm font-black text-slate-500 uppercase tracking-widest">Identificación (Cédula/ID)</label>
+                  <input 
+                    {...register('identifier')}
+                    className={cn(
+                      "w-full rounded-xl border px-3 md:px-4 py-2.5 md:py-3 bg-slate-50 outline-none transition-all focus:ring-4 focus:ring-blue-100 focus:bg-white text-xs md:text-sm font-bold",
+                      errors.identifier ? "border-red-500" : "border-slate-200"
+                    )}
+                    placeholder="V-25.555.555"
+                  />
+                  {errors.identifier && <p className="text-[10px] font-bold text-red-500">{errors.identifier.message}</p>}
+                </div>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

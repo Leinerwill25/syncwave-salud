@@ -11,6 +11,7 @@ interface Patient {
   email?: string;
   phone_number?: string;
   is_active: boolean;
+  identifier?: string;
   date_of_birth?: string;
 }
 
@@ -127,18 +128,22 @@ export default function AdministrationPatientsPage() {
                 </div>
               </div>
 
-              <div className="space-y-2 md:space-y-3 pt-3 md:pt-4 border-t border-slate-100 flex-1">
-                <div className="flex justify-between items-center text-[11px] md:text-sm">
-                  <span className="text-slate-500 flex items-center gap-1.5 font-medium"><Phone className="w-3.5 h-3.5" /> Teléfono</span>
-                  <span className="font-bold text-slate-700 uppercase">{patient.phone_number || '-'}</span>
+                <div className="space-y-2 md:space-y-3 pt-3 md:pt-4 border-t border-slate-100 flex-1">
+                  <div className="flex justify-between items-center text-[11px] md:text-sm">
+                    <span className="text-slate-500 flex items-center gap-1.5 font-medium">ID / Cédula</span>
+                    <span className="font-bold text-slate-700 uppercase">{patient.identifier || '-'}</span>
+                  </div>
+                  <div className="flex justify-between items-center text-[11px] md:text-sm">
+                    <span className="text-slate-500 flex items-center gap-1.5 font-medium"><Phone className="w-3.5 h-3.5" /> Teléfono</span>
+                    <span className="font-bold text-slate-700 uppercase">{patient.phone_number || '-'}</span>
+                  </div>
+                  <div className="flex justify-between items-center text-[11px] md:text-sm">
+                    <span className="text-slate-500 font-medium">Estado</span>
+                    <span className={`px-2 py-0.5 md:px-2.5 md:py-1 rounded-full text-[9px] md:text-xs font-black uppercase ${patient.is_active ? 'bg-blue-50 text-blue-600' : 'bg-slate-100 text-slate-500'}`}>
+                      {patient.is_active ? 'Activo' : 'Inactivo'}
+                    </span>
+                  </div>
                 </div>
-                <div className="flex justify-between items-center text-[11px] md:text-sm">
-                  <span className="text-slate-500 font-medium">Estado</span>
-                  <span className={`px-2 py-0.5 md:px-2.5 md:py-1 rounded-full text-[9px] md:text-xs font-black uppercase ${patient.is_active ? 'bg-blue-50 text-blue-600' : 'bg-slate-100 text-slate-500'}`}>
-                    {patient.is_active ? 'Activo' : 'Inactivo'}
-                  </span>
-                </div>
-              </div>
 
               <div className="mt-5 md:mt-6 pt-4 md:pt-4 border-t border-slate-50 grid grid-cols-2 gap-2 md:gap-3">
                 <Link 

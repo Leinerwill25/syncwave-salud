@@ -42,6 +42,7 @@ interface PatientDetail {
   current_medications: string;
   medical_history: string;
   created_at: string;
+  identifier: string;
   type: string;
 }
 
@@ -176,6 +177,13 @@ export default function AdminPatientDetailPage({ params }: { params: Promise<{ i
                <User className="w-5 h-5 text-blue-600" /> Datos Personales
             </h3>
             <div className="space-y-4 relative z-10">
+               <div className="flex items-start gap-3">
+                 <div className="p-2 bg-slate-50 rounded-lg text-slate-400 font-bold text-[10px]">ID</div>
+                 <div>
+                   <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Identificación</p>
+                   <p className="font-medium text-slate-900">{patient.identifier || 'No registrado'}</p>
+                 </div>
+               </div>
                <div className="flex items-start gap-3">
                  <div className="p-2 bg-slate-50 rounded-lg text-slate-400"><Calendar className="w-4 h-4" /></div>
                  <div>

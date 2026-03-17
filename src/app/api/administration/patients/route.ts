@@ -17,7 +17,6 @@ export async function GET(request: Request) {
   const from = (page - 1) * limit;
   const to = from + limit - 1;
 
-  // Usar el admin client (service role) para bypassear RLS en todas las queries
   const adminSupabase = createSupabaseAdminClient();
   const organizationId = authResult.user?.organizationId;
 
@@ -25,64 +24,44 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: 'Usuario sin organización asociada' }, { status: 400 });
   }
 
-  // 1. Obtener IDs de usuarios (authId) de la organización
-  const { data: orgUsers } = await adminSupabase
-    .from('users')
-    .select('authId, patientProfileId')
-    .eq('organizationId', organizationId)
-    .eq('role', 'PACIENTE')
-    .not('patientProfileId', 'is', null);
-
-  const patientProfileIds = orgUsers?.map(u => u.patientProfileId).filter(Boolean) || [];
-
-  // 2. Obtener Pacientes Registrados de la organización (filtrados por IDs)
-  let regPatients: any[] = [];
-  if (patientProfileIds.length > 0) {
-    let q = adminSupabase.from('patient').select('*').in('id', patientProfileIds);
-    if (search) {
-      q = q.or(`firstName.ilike.%${search}%,lastName.ilike.%${search}%,identifier.ilike.%${search}%`);
-    }
-    const { data } = await q.order('createdAt', { ascending: false });
-    regPatients = data || [];
-  }
-
-  // 3. Obtener Pacientes No Registrados (creados por staff de la organización)
-  const orgUserAuthIds = orgUsers?.map(u => u.authId).filter(Boolean) || [];
-  // También incluir los médicos y enfermeras que pueden crear pacientes no registrados
+  // Obtener todos los authIds del staff de la organización
+  // (medicos, enfermeras, recepcionistas, admin, etc.)
   const { data: allOrgUsers } = await adminSupabase
     .from('users')
     .select('authId')
     .eq('organizationId', organizationId);
-  const allOrgAuthIds = allOrgUsers?.map(u => u.authId).filter(Boolean) || [];
 
-  let unregPatients: any[] = [];
-  if (allOrgAuthIds.length > 0) {
-    let q = adminSupabase.from('unregisteredpatients').select('*').in('created_by', allOrgAuthIds);
-    if (search) {
-      q = q.or(`first_name.ilike.%${search}%,last_name.ilike.%${search}%,identification.ilike.%${search}%`);
-    }
-    const { data: unregData } = await q.order('created_at', { ascending: false });
-    unregPatients = unregData || [];
+  const allOrgAuthIds = allOrgUsers?.map((u: any) => u.authId).filter(Boolean) || [];
+
+  if (allOrgAuthIds.length === 0) {
+    return NextResponse.json({ data: [], total: 0, page, limit, totalPages: 0 });
   }
 
-  // 3. Unificar y Deduplicar
-  const allPatientsMap = new Map<string, any>();
+  // Consultar SOLO la tabla unregisteredpatients
+  // Filtrar por creadores que pertenezcan a la organización
+  let query = adminSupabase
+    .from('unregisteredpatients')
+    .select('*', { count: 'exact' })
+    .in('created_by', allOrgAuthIds);
 
-  const formatRegPatient = (p: any) => ({
-    id: p.id,
-    first_name: p.firstName || p.first_name,
-    last_name: p.lastName || p.last_name,
-    email: p.email,
-    phone_number: p.phone,
-    is_active: p.status === 'ACTIVE' || true,
-    date_of_birth: p.dob || p.date_of_birth,
-    identifier: p.identifier,
-    type: 'REG',
-    emergency_contact_name: p.emergency_contact_name,
-    created_at: p.created_at || ''
-  });
+  // Búsqueda en servidor
+  if (search) {
+    query = query.or(
+      `first_name.ilike.%${search}%,last_name.ilike.%${search}%,identification.ilike.%${search}%,email.ilike.%${search}%,phone.ilike.%${search}%`
+    );
+  }
 
-  const formatUnregPatient = (p: any) => ({
+  const { data: patients, count, error } = await query
+    .order('created_at', { ascending: false })
+    .range(from, to);
+
+  if (error) {
+    console.error('[Admin Patients API]:', error);
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+
+  // Normalizar al formato que espera el frontend
+  const formattedPatients = (patients || []).map((p: any) => ({
     id: p.id,
     first_name: p.first_name,
     last_name: p.last_name,
@@ -94,63 +73,11 @@ export async function GET(request: Request) {
     type: 'UNREG',
     emergency_contact_name: p.emergency_contact_name,
     created_at: p.created_at || ''
-  });
-
-  [
-    ...(regPatients || []).map(formatRegPatient),
-    ...unregPatients.map(formatUnregPatient)
-  ].forEach(patient => {
-    if (!patient.identifier) {
-      allPatientsMap.set(patient.id, patient);
-      return;
-    }
-
-    const normalizedId = patient.identifier.toUpperCase().replace(/\s+/g, '');
-    const existing = allPatientsMap.get(normalizedId);
-
-    if (!existing) {
-      allPatientsMap.set(normalizedId, patient);
-    } else {
-      const existingScore = (existing.emergency_contact_name ? 2 : 0) + (existing.phone_number ? 1 : 0);
-      const currentScore = (patient.emergency_contact_name ? 2 : 0) + (patient.phone_number ? 1 : 0);
-      
-      if (currentScore > existingScore) {
-        allPatientsMap.set(normalizedId, patient);
-      } else if (currentScore === existingScore) {
-        if (patient.type === 'REG' && existing.type === 'UNREG') {
-          allPatientsMap.set(normalizedId, patient);
-        }
-      }
-    }
-  });
-
-  let unifiedPatients = Array.from(allPatientsMap.values());
-
-  // 4. Ordenar (los más recientes primero)
-  unifiedPatients.sort((a, b) => {
-    if (!a.created_at || !b.created_at) return 0;
-    return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
-  });
-
-  // 5. Aplicar Filtro de Búsqueda (en Memoria)
-  if (search) {
-    const s = search.toLowerCase();
-    unifiedPatients = unifiedPatients.filter(p => 
-      p.first_name?.toLowerCase().includes(s) ||
-      p.last_name?.toLowerCase().includes(s) ||
-      p.email?.toLowerCase().includes(s) ||
-      p.phone_number?.includes(s) ||
-      p.identifier?.toLowerCase().includes(s)
-    );
-  }
-
-  // 6. Paginación Manual
-  const count = unifiedPatients.length;
-  const paginatedData = unifiedPatients.slice(from, to + 1);
+  }));
 
   return NextResponse.json({
-    data: paginatedData,
-    total: count,
+    data: formattedPatients,
+    total: count || 0,
     page,
     limit,
     totalPages: count ? Math.ceil(count / limit) : 0
@@ -189,6 +116,7 @@ export async function POST(request: Request) {
         current_medication: validatedData.currentMedications || null,
         allergies: validatedData.allergies || null,
         created_by: authId,
+        identification: validatedData.identifier || null,
       })
       .select()
       .single();

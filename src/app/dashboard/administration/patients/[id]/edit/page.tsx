@@ -39,6 +39,7 @@ export default function EditAdminPatientPage({ params }: { params: Promise<{ id:
         reset({
           firstName: data.first_name,
           lastName: data.last_name,
+          identifier: data.identifier,
           dateOfBirth: data.date_of_birth,
           phoneNumber: data.phone_number,
           email: data.email,
@@ -162,6 +163,19 @@ export default function EditAdminPatientPage({ params }: { params: Promise<{ id:
                   />
                   {errors.lastName && <p className="text-xs font-bold text-red-500">{errors.lastName.message}</p>}
                 </div>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-bold text-slate-700">Identificación (Cédula/ID)</label>
+                <input 
+                  {...register('identifier')}
+                  className={cn(
+                    "w-full rounded-xl border px-4 py-3 bg-slate-50 outline-none transition-all focus:ring-4 focus:ring-blue-100 focus:bg-white text-sm",
+                    errors.identifier ? "border-red-500" : "border-slate-200"
+                  )}
+                  placeholder="V-25.555.555"
+                />
+                {errors.identifier && <p className="text-xs font-bold text-red-500">{errors.identifier.message}</p>}
               </div>
 
               <div className="grid grid-cols-2 gap-4">

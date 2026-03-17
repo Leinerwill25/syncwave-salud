@@ -12,52 +12,73 @@ export async function GET(
   const authResult = await apiRequireRole(['ADMINISTRACION', 'ADMIN']);
   if (authResult.response) return authResult.response;
 
-  const supabase = await createSupabaseServerClient();
-
-  // 1. Intentar buscar en patient primero
-  const { data: regPatient, error: regError } = await supabase
-    .from('patient')
-    .select('*')
-    .eq('id', id)
-    .single();
-
-  if (regPatient) {
-    return NextResponse.json({
-        ...regPatient,
-        first_name: regPatient.firstName || regPatient.first_name,
-        last_name: regPatient.lastName || regPatient.last_name,
-        date_of_birth: regPatient.dob || regPatient.date_of_birth,
-        phone_number: regPatient.phone,
-        current_medications: regPatient.current_medications || regPatient.current_medication || '',
-        medical_history: regPatient.medical_history || regPatient.background || regPatient.notes || '',
-        type: 'REG'
-    });
-  }
-
-  // 2. Si no es registrado, buscar en unregisteredpatients usando adminSupabase para evitar RLS
+  const organizationId = authResult.user?.organizationId;
   const adminSupabase = createSupabaseAdminClient();
-  const { data: unregPatient, error: unregError } = await adminSupabase
+
+  // 1. Buscar en unregisteredpatients primero (prioridad administración)
+  const { data: unregPatient } = await adminSupabase
     .from('unregisteredpatients')
     .select('*')
     .eq('id', id)
     .single();
 
-  if (unregError || !unregPatient) {
-    return NextResponse.json({ error: 'Paciente no encontrado' }, { status: 404 });
+  if (unregPatient) {
+    // Verificar que el creador pertenezca a la organización
+    const { data: creator } = await adminSupabase
+      .from('users')
+      .select('organizationId')
+      .eq('authId', unregPatient.created_by)
+      .single();
+
+    if (creator?.organizationId === organizationId) {
+      return NextResponse.json({
+          ...unregPatient,
+          identifier: unregPatient.identification,
+          date_of_birth: unregPatient.birth_date,
+          phone_number: unregPatient.phone,
+          current_medications: unregPatient.current_medication || '',
+          medical_history: [
+            unregPatient.motive ? `Motivo: ${unregPatient.motive}` : '',
+            unregPatient.chronic_conditions ? `Condiciones Crónicas: ${unregPatient.chronic_conditions}` : '',
+            unregPatient.family_history ? `Historial Familiar: ${unregPatient.family_history}` : ''
+          ].filter(Boolean).join('\n\n') || '',
+          type: 'UNREG'
+      });
+    }
   }
 
-  return NextResponse.json({
-      ...unregPatient,
-      date_of_birth: unregPatient.birth_date,
-      phone_number: unregPatient.phone,
-      current_medications: unregPatient.current_medication || '',
-      medical_history: [
-        unregPatient.motive ? `Motivo: ${unregPatient.motive}` : '',
-        unregPatient.chronic_conditions ? `Condiciones Crónicas: ${unregPatient.chronic_conditions}` : '',
-        unregPatient.family_history ? `Historial Familiar: ${unregPatient.family_history}` : ''
-      ].filter(Boolean).join('\n\n') || '',
-      type: 'UNREG'
-  });
+  // 2. Fallback: Buscar en patient si el administrador tiene permiso (pacientes de su organización)
+  // Nota: Esto asume que el paciente tiene un perfil de usuario en la organización
+  const { data: orgUser } = await adminSupabase
+    .from('users')
+    .select('patientProfileId')
+    .eq('organizationId', organizationId)
+    .eq('patientProfileId', id)
+    .single();
+
+  if (orgUser) {
+    const { data: regPatient } = await adminSupabase
+      .from('patient')
+      .select('*')
+      .eq('id', id)
+      .single();
+
+    if (regPatient) {
+      return NextResponse.json({
+          ...regPatient,
+          identifier: regPatient.identifier,
+          first_name: regPatient.firstName || regPatient.first_name,
+          last_name: regPatient.lastName || regPatient.last_name,
+          date_of_birth: regPatient.dob || regPatient.date_of_birth,
+          phone_number: regPatient.phone,
+          current_medications: regPatient.current_medications || regPatient.current_medication || '',
+          medical_history: regPatient.medical_history || regPatient.background || regPatient.notes || '',
+          type: 'REG'
+      });
+    }
+  }
+
+  return NextResponse.json({ error: 'Paciente no encontrado o no pertenece a su organización' }, { status: 404 });
 }
 
 export async function PATCH(
@@ -73,8 +94,17 @@ export async function PATCH(
     const partialSchema = adminPatientSchema.partial();
     const validatedData = partialSchema.parse(body);
 
-    // Use admin client to bypass RLS for update
     const adminSupabase = createSupabaseAdminClient();
+
+    const { data: unregPatient } = await adminSupabase
+      .from('unregisteredpatients')
+      .select('id')
+      .eq('id', id)
+      .single();
+
+    if (!unregPatient) {
+      return NextResponse.json({ error: 'Solo se pueden editar pacientes registrados directamente por la administración' }, { status: 403 });
+    }
 
     const { data, error } = await adminSupabase
       .from('unregisteredpatients')
@@ -85,6 +115,7 @@ export async function PATCH(
         phone: validatedData.phoneNumber,
         email: validatedData.email,
         address: validatedData.address,
+        identification: validatedData.identifier, // Mapeado correctamente
         emergency_contact_name: validatedData.emergencyContactName,
         emergency_contact_phone: validatedData.emergencyContactPhone,
         emergency_contact_relation: validatedData.emergencyContactRelation,

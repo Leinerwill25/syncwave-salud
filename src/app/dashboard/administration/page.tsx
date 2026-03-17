@@ -21,8 +21,18 @@ async function getStats(organizationId: string) {
     { auth: { persistSession: false } }
   );
 
-  const [patients, specialists, appointments, medications, materials] = await Promise.all([
-    supabase.from('patient').select('id', { count: 'exact', head: true }),
+  // 1. Obtener todos los authIds del staff de la organización
+  const { data: allOrgUsers } = await supabase
+    .from('users')
+    .select('authId')
+    .eq('organizationId', organizationId);
+
+  const allOrgAuthIds = allOrgUsers?.map((u: any) => u.authId).filter(Boolean) || [];
+
+  const [patientsCountResult, specialists, appointments, medications, materials] = await Promise.all([
+    allOrgAuthIds.length > 0 
+      ? supabase.from('unregisteredpatients').select('id', { count: 'exact', head: true }).in('created_by', allOrgAuthIds)
+      : Promise.resolve({ count: 0 }),
     supabase.from('specialists').select('id', { count: 'exact', head: true })
       .eq('organization_id', organizationId)
       .eq('is_active', true),
@@ -38,7 +48,7 @@ async function getStats(organizationId: string) {
   ]);
 
   return {
-    totalPatients: patients.count || 0,
+    totalPatients: patientsCountResult.count || 0,
     totalSpecialists: specialists.count || 0,
     pendingAppointments: appointments.count || 0,
     inventoryAlerts: (medications.count || 0) + (materials.count || 0),

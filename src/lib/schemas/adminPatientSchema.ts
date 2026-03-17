@@ -30,6 +30,7 @@ export const adminPatientSchema = z.object({
     quantity: z.number().min(1)
   })).optional(),
 
+  identifier: z.string().optional(),
   isActive: z.boolean().optional(),
 });
 
