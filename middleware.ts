@@ -2,10 +2,9 @@
 import { type NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
 
-// Rutas públicas que no requieren autenticación
+// ===== CONFIGURACIÓN DE RUTAS =====
 const PUBLIC_ROUTES = ['/login', '/register', '/reset-password', '/api/auth', '/api/plans', '/api/register', '/api/organizations', '/api/public', '/'];
 
-// 9. Mapeo de rutas a roles permitidos
 const ROUTE_ROLE_MAP: Record<string, string[]> = {
 	'/dashboard/clinic': ['ADMIN', 'CLINICA'],
 	'/dashboard/medic': ['MEDICO'],
@@ -15,7 +14,24 @@ const ROUTE_ROLE_MAP: Record<string, string[]> = {
 	'/dashboard/administration': ['ADMINISTRACION'],
 };
 
+// ===== WHITELIST DE CORS =====
+const ALLOWED_ORIGINS = new Set([
+	'https://ashira.click',
+	'https://www.ashira.click',
+	'https://app.ashira.click',
+	'https://admin.ashira.click',
+	'https://dashboard.ashira.click',
+]);
 
+if (process.env.NODE_ENV === 'development') {
+	ALLOWED_ORIGINS.add('http://localhost:3000');
+	ALLOWED_ORIGINS.add('http://localhost:3001');
+}
+
+// ===== RUTAS SENSIBLES (cache restrictivo) =====
+const SENSITIVE_ROUTES = ['/api/', '/dashboard', '/patients', '/login', '/admin', '/billing'];
+
+// ===== FUNCIONES AUXILIARES =====
 function isPublicRoute(pathname: string): boolean {
 	return PUBLIC_ROUTES.some((route) => {
 		if (route === '/') return pathname === '/';
@@ -40,110 +56,6 @@ function getAllowedRolesForRoute(pathname: string): string[] | null {
 	return null;
 }
 
-// Orígenes permitidos para CORS - Whitelist estricta
-const ALLOWED_ORIGINS = new Set([
-	'https://ashira.click',
-	'https://www.ashira.click',
-	'https://app.ashira.click',
-	'https://admin.ashira.click',
-	'https://dashboard.ashira.click',
-	'https://syncwavesaludbeta.vercel.app'
-]);
-
-if (process.env.NODE_ENV === 'development') {
-	ALLOWED_ORIGINS.add('http://localhost:3000');
-	ALLOWED_ORIGINS.add('http://localhost:3001');
-}
-
-/**
- * Aplica cabeceras de seguridad incluyendo CSP refinada y Trusted Types
- */
-function applySecurityHeaders(request: NextRequest, response: NextResponse, nonce: string) {
-	// CSP Endurecida: Dominios de Google específicos (reCAPTCHA, GTM, Analytics)
-	const googleDomains = [
-		'https://www.google.com/recaptcha/',
-		'https://www.gstatic.com/recaptcha/',
-		'https://www.googletagmanager.com',
-		'https://www.google-analytics.com',
-		'https://maps.googleapis.com',
-		'https://maps.gstatic.com'
-	].join(' ');
-
-	const cspHeader = `
-		default-src 'self';
-		script-src 'self' 'nonce-${nonce}' https://*.supabase.co ${googleDomains} https://*.vercel-scripts.com;
-		style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
-		img-src 'self' blob: data: https://*.supabase.co https://*.ashira.click ${googleDomains} https://*.vercel-scripts.com https://*.tile.openstreetmap.org;
-		font-src 'self' https://fonts.gstatic.com;
-		connect-src 'self' https://*.supabase.co https://*.ashira.click https://api.groq.com https://nominatim.openstreetmap.org ${googleDomains};
-		frame-src 'self' https://www.google.com/recaptcha/ https://recaptcha.google.com https://www.youtube.com https://youtube.com;
-		frame-ancestors 'none';
-		base-uri 'self';
-		form-action 'self';
-		upgrade-insecure-requests;
-	`.replace(/\s{2,}/g, ' ').trim();
-
-	response.headers.set('Content-Security-Policy', cspHeader);
-	response.headers.set('x-nonce', nonce); // Para que el layout raíz lo recupere
-	
-	// Trusted Types - Fase 1: Report-Only (No bloquea, solo reporta en consola)
-	response.headers.set(
-		'Content-Security-Policy-Report-Only',
-		"require-trusted-types-for 'script'; trusted-types default nextjs nextjs#bundler"
-	);
-
-	response.headers.set('X-Frame-Options', 'DENY');
-	response.headers.set('X-Content-Type-Options', 'nosniff');
-	response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
-	response.headers.set('Permissions-Policy', 'camera=(), microphone=(), geolocation=(), payment=()');
-	response.headers.set('Strict-Transport-Security', 'max-age=63072000; includeSubDomains; preload');
-	
-	// Intento de suprimir header Server
-	response.headers.set('Server', 'ASHIRA-SECURE'); 
-
-	// --- CACHE RESTRICTIVO PARA RUTAS SENSIBLES (ePHI) ---
-	const { pathname } = request.nextUrl;
-	const sensitiveRoutes = ['/api/', '/dashboard', '/patients', '/login', '/nurse', '/medic', '/admin'];
-	const isSensitive = sensitiveRoutes.some(route => pathname.startsWith(route));
-	
-	if (isSensitive) {
-		response.headers.set('Cache-Control', 'no-cache, no-store, must-revalidate, private');
-		response.headers.set('Pragma', 'no-cache');
-		response.headers.set('Expires', '0');
-	}
-}
-
-/**
- * Maneja cabeceras CORS de forma restrictiva con Whitelist dinámica
- */
-function handleCors(request: NextRequest, response: NextResponse): NextResponse | null {
-	const { pathname } = request.nextUrl;
-	const origin = request.headers.get('origin');
-	const isAllowedOrigin = origin && ALLOWED_ORIGINS.has(origin);
-
-	if (pathname.startsWith('/api/') || pathname.startsWith('/_next/data/')) {
-		if (isAllowedOrigin) {
-			response.headers.set('Access-Control-Allow-Origin', origin!);
-			response.headers.set('Access-Control-Allow-Credentials', 'true');
-			response.headers.set('Access-Control-Allow-Methods', 'GET,DELETE,PATCH,POST,PUT,OPTIONS');
-			response.headers.set('Access-Control-Allow-Headers', 'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version, Authorization');
-			response.headers.set('Access-Control-Max-Age', '86400');
-			response.headers.set('Vary', 'Origin'); // Crítico para caché selectiva
-		}
-		
-		if (request.method === 'OPTIONS') {
-			return new NextResponse(null, { 
-				status: 204, 
-				headers: response.headers 
-			});
-		}
-	}
-	return null;
-}
-
-/**
- * Maneja la lógica de redirección por rol
- */
 function getRoleRedirectPath(userRole: string, pathname: string): string | null {
 	let redirectPath = '/dashboard';
 	switch (userRole) {
@@ -168,14 +80,30 @@ function getRoleRedirectPath(userRole: string, pathname: string): string | null 
 			redirectPath = '/dashboard/administration';
 			break;
 	}
-	// Si ya estamos en una ruta que empieza con el redirectPath deseado, no redirigir
 	return !pathname.startsWith(redirectPath) ? redirectPath : null;
 }
 
+// ===== MIDDLEWARE PRINCIPAL =====
 export async function middleware(request: NextRequest) {
 	const nonce = Buffer.from(crypto.randomUUID()).toString('base64');
 	const { pathname } = request.nextUrl;
+	const origin = request.headers.get('origin');
 
+	// 1. Manejar Preflight de CORS (OPTIONS)
+	if (request.method === 'OPTIONS') {
+		const preflightResponse = new NextResponse(null, { status: 204 });
+		if (origin && ALLOWED_ORIGINS.has(origin)) {
+			preflightResponse.headers.set('Access-Control-Allow-Origin', origin);
+			preflightResponse.headers.set('Access-Control-Allow-Credentials', 'true');
+			preflightResponse.headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS');
+			preflightResponse.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With');
+			preflightResponse.headers.set('Access-Control-Max-Age', '86400');
+			preflightResponse.headers.set('Vary', 'Origin');
+		}
+		return preflightResponse;
+	}
+
+	// 2. Base de la respuesta con Nonce en Request Headers (para Server Components)
 	const requestHeaders = new Headers(request.headers);
 	requestHeaders.set('x-nonce', nonce);
 
@@ -183,14 +111,7 @@ export async function middleware(request: NextRequest) {
 		request: { headers: requestHeaders },
 	});
 
-	// 1. Cabeceras de seguridad
-	applySecurityHeaders(request, response, nonce);
-
-	// 2. CORS
-	const corsResponse = handleCors(request, response);
-	if (corsResponse) return corsResponse;
-
-	// 3. Supabase Client
+	// 3. Inicializar Supabase Client (Sync cookies)
 	const supabase = createServerClient(
 		process.env.NEXT_PUBLIC_SUPABASE_URL!,
 		process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -207,9 +128,50 @@ export async function middleware(request: NextRequest) {
 		}
 	);
 
-	// 4. Autenticación Robusta usando el SDK
-	// El SDK se encarga de leer las cookies automágicamente
-	const { data: { user }, error: authError } = await supabase.auth.getUser();
+	// 4. Cabeceras de Seguridad Globales (CSP, HSTS, etc.)
+	const csp = [
+		"default-src 'self'",
+		`script-src 'self' 'nonce-${nonce}' https://*.supabase.co https://www.googletagmanager.com https://*.vercel-scripts.com`,
+		"style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+		"img-src 'self' blob: data: https://*.supabase.co https://*.ashira.click https://www.googletagmanager.com https://*.vercel-scripts.com https://*.tile.openstreetmap.org",
+		"font-src 'self' https://fonts.gstatic.com",
+		"connect-src 'self' https://*.supabase.co https://*.ashira.click https://api.groq.com https://nominatim.openstreetmap.org https://www.google-analytics.com https://analytics.google.com",
+		"frame-src 'self' https://www.youtube.com https://youtube.com",
+		"frame-ancestors 'none'",
+		"base-uri 'self'",
+		"form-action 'self'",
+		"upgrade-insecure-requests",
+	].join('; ');
+
+	response.headers.set('Content-Security-Policy', csp);
+	response.headers.set('x-nonce', nonce);
+	response.headers.set('X-Content-Type-Options', 'nosniff');
+	response.headers.set('X-Frame-Options', 'DENY');
+	response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
+	response.headers.set('Permissions-Policy', 'camera=(), microphone=(), geolocation=(), payment=()');
+	response.headers.set('Strict-Transport-Security', 'max-age=63072000; includeSubDomains; preload');
+	response.headers.set('Server', ''); // Ofuscación de servidor
+
+	// 5. Aplicar CORS Dinámico (Whitelist)
+	if (origin && ALLOWED_ORIGINS.has(origin)) {
+		response.headers.set('Access-Control-Allow-Origin', origin);
+		response.headers.set('Access-Control-Allow-Credentials', 'true');
+		response.headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS');
+		response.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With');
+		response.headers.set('Access-Control-Max-Age', '86400');
+		response.headers.set('Vary', 'Origin');
+	}
+
+	// 6. Cache restrictivo para ePHI
+	const isSensitive = SENSITIVE_ROUTES.some((route) => pathname.startsWith(route));
+	if (isSensitive) {
+		response.headers.set('Cache-Control', 'no-cache, no-store, must-revalidate, private');
+		response.headers.set('Pragma', 'no-cache');
+		response.headers.set('Expires', '0');
+	}
+
+	// 7. Autenticación y Autorización
+	const { data: { user } } = await supabase.auth.getUser();
 
 	if (isPublicRoute(pathname)) return response;
 
@@ -223,21 +185,14 @@ export async function middleware(request: NextRequest) {
 			return NextResponse.redirect(loginUrl);
 		}
 
-		// Obtener rol del usuario. Manejar caso de múltiples perfiles (ej. MEDICO + PACIENTE)
-		const { data: appUsers, error: userError } = await supabase.from('users').select('role').eq('authId', user.id);
+		// Obtener rol del usuario
+		const { data: appUsers } = await supabase.from('users').select('role').eq('authId', user.id);
 		let userRole: string | undefined;
 		
-		if (!userError && appUsers && appUsers.length > 0) {
+		if (appUsers && appUsers.length > 0) {
 			const metaRole = user.user_metadata?.role;
-			if (metaRole) {
-				userRole = appUsers.find(u => u.role === metaRole)?.role || appUsers[0].role;
-			} else {
-				userRole = appUsers.find(u => u.role !== 'PACIENTE')?.role || appUsers[0].role;
-			}
-		}
-
-		// Fallback: Si no está en la tabla "users", buscar en metadata (muy común en registros nuevos/migrados)
-		if (!userRole && user.user_metadata?.role) {
+			userRole = metaRole ? (appUsers.find(u => u.role === metaRole)?.role || appUsers[0].role) : (appUsers.find(u => u.role !== 'PACIENTE')?.role || appUsers[0].role);
+		} else if (user.user_metadata?.role) {
 			userRole = user.user_metadata.role;
 		}
 
@@ -245,7 +200,6 @@ export async function middleware(request: NextRequest) {
 			if (pathname.startsWith('/api')) {
 				return NextResponse.json({ error: 'Usuario sin rol asignado' }, { status: 403 });
 			}
-			console.warn('[Middleware] No role found for user:', user.id);
 			return NextResponse.redirect(new URL('/login', request.url));
 		}
 
