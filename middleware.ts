@@ -15,8 +15,6 @@ const ROUTE_ROLE_MAP: Record<string, string[]> = {
 	'/dashboard/administration': ['ADMINISTRACION'],
 };
 
-// Orígenes permitidos para CORS
-const ALLOWED_ORIGINS = ['https://ashira.click', 'https://app.ashira.click', 'http://localhost:3000'];
 
 function isPublicRoute(pathname: string): boolean {
 	return PUBLIC_ROUTES.some((route) => {
@@ -45,10 +43,13 @@ function getAllowedRolesForRoute(pathname: string): string[] | null {
 /**
  * Aplica cabeceras de seguridad incluyendo CSP
  */
-function applySecurityHeaders(response: NextResponse, nonce: string) {
+function applySecurityHeaders(request: NextRequest, response: NextResponse, nonce: string) {
+	const isProd = process.env.NODE_ENV === 'production';
+	
+	// CSP Endurecida: No unsafe-eval, directivas restrictivas
 	const cspHeader = `
 		default-src 'self';
-		script-src 'self' 'unsafe-inline' 'unsafe-eval' https://*.supabase.co https://*.google.com https://*.vercel-scripts.com;
+		script-src 'self' 'nonce-${nonce}' https://*.supabase.co https://*.google.com https://*.vercel-scripts.com;
 		style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
 		img-src 'self' blob: data: https://*.supabase.co https://*.ashira.click https://*.google.com https://*.vercel-scripts.com https://*.tile.openstreetmap.org;
 		font-src 'self' https://fonts.gstatic.com;
@@ -57,6 +58,7 @@ function applySecurityHeaders(response: NextResponse, nonce: string) {
 		frame-ancestors 'none';
 		base-uri 'self';
 		form-action 'self';
+		upgrade-insecure-requests;
 	`.replace(/\s{2,}/g, ' ').trim();
 
 	response.headers.set('x-nonce', nonce);
@@ -64,23 +66,49 @@ function applySecurityHeaders(response: NextResponse, nonce: string) {
 	response.headers.set('X-Frame-Options', 'DENY');
 	response.headers.set('X-Content-Type-Options', 'nosniff');
 	response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
-	response.headers.set('Permissions-Policy', 'camera=(self), microphone=(self), geolocation=(self)');
-	response.headers.set('Strict-Transport-Security', 'max-age=31536000; includeSubDomains; preload');
+	response.headers.set('Permissions-Policy', 'camera=(), microphone=(), geolocation=(), payment=()');
+	response.headers.set('Strict-Transport-Security', 'max-age=63072000; includeSubDomains; preload');
+
+	// --- CACHE RESTRICTIVO PARA RUTAS SENSIBLES (ePHI) ---
+	const { pathname } = request.nextUrl;
+	const sensitiveRoutes = ['/api/', '/dashboard', '/patients', '/login', '/nurse', '/medic', '/admin'];
+	const isSensitive = sensitiveRoutes.some(route => pathname.startsWith(route));
+	
+	if (isSensitive) {
+		response.headers.set('Cache-Control', 'no-cache, no-store, must-revalidate, private');
+		response.headers.set('Pragma', 'no-cache');
+		response.headers.set('Expires', '0');
+	}
 }
 
 /**
- * Maneja cabeceras CORS
+ * Maneja cabeceras CORS de forma restrictiva
  */
 function handleCors(request: NextRequest, response: NextResponse): NextResponse | null {
 	const { pathname } = request.nextUrl;
 	const origin = request.headers.get('origin');
+	
+	// Whitelist basada en el Mega Prompt de Seguridad
+	const ALLOWED_ORIGINS = [
+		'https://ashira.click', 
+		'https://app.ashira.click', 
+		'https://admin.ashira.click',
+		'https://syncwavesaludbeta.vercel.app'
+	];
+
+	// Permitir localhost solo en desarrollo
+	if (process.env.NODE_ENV !== 'production') {
+		ALLOWED_ORIGINS.push('http://localhost:3000');
+	}
+
 	const isAllowedOrigin = origin && ALLOWED_ORIGINS.includes(origin);
 
 	if (pathname.startsWith('/api/') && isAllowedOrigin) {
-		response.headers.set('Access-Control-Allow-Origin', origin);
+		response.headers.set('Access-Control-Allow-Origin', origin!);
 		response.headers.set('Access-Control-Allow-Credentials', 'true');
 		response.headers.set('Access-Control-Allow-Methods', 'GET,DELETE,PATCH,POST,PUT,OPTIONS');
 		response.headers.set('Access-Control-Allow-Headers', 'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version, Authorization');
+		response.headers.set('Access-Control-Max-Age', '86400');
 		
 		if (request.method === 'OPTIONS') {
 			return new NextResponse(null, { status: 204, headers: response.headers });
@@ -129,7 +157,7 @@ export async function middleware(request: NextRequest) {
 	});
 
 	// 1. Cabeceras de seguridad
-	applySecurityHeaders(response, nonce);
+	applySecurityHeaders(request, response, nonce);
 
 	// 2. CORS
 	const corsResponse = handleCors(request, response);

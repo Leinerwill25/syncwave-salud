@@ -25,43 +25,51 @@ const nextConfig: NextConfig = {
 	compress: true,
 	// Mejorar prefetching de rutas
 	poweredByHeader: false,
-	// Headers de caché (Las de seguridad se manejan en middleware.ts para soporte de Nonces)
+	// Headers de seguridad y caché
 	async headers() {
 		return [
 			{
+				source: '/(.*)',
+				headers: [
+					{ key: 'X-Content-Type-Options', value: 'nosniff' },
+					{ key: 'X-Frame-Options', value: 'DENY' },
+					{ key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
+					{ key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=(), payment=()' },
+					{ key: 'Strict-Transport-Security', value: 'max-age=63072000; includeSubDomains; preload' },
+				],
+			},
+			{
 				source: '/api/:path*',
 				headers: [
-					{ key: 'Cache-Control', value: 'no-store, max-age=0, must-revalidate' },
+					{ key: 'Cache-Control', value: 'no-cache, no-store, must-revalidate, private' },
+					{ key: 'Pragma', 'value': 'no-cache' },
+					{ key: 'Expires', 'value': '0' },
 				],
 			},
 			{
 				source: '/dashboard/:path*',
 				headers: [
-					{ key: 'Cache-Control', value: 'no-store, max-age=0, must-revalidate' },
+					{ key: 'Cache-Control', value: 'no-cache, no-store, must-revalidate, private' },
+					{ key: 'Pragma', 'value': 'no-cache' },
+					{ key: 'Expires', 'value': '0' },
 				],
 			},
 			{
 				source: '/login',
 				headers: [
-					{ key: 'Cache-Control', value: 'no-store, max-age=0, must-revalidate' },
+					{ key: 'Cache-Control', value: 'no-cache, no-store, must-revalidate, private' },
 				],
 			},
 			{
 				source: '/:path*.{js,css,woff,woff2,ttf,otf}',
 				headers: [
-					{
-						key: 'Cache-Control',
-						value: 'public, max-age=31536000, immutable',
-					},
+					{ key: 'Cache-Control', value: 'public, max-age=31536000, immutable' },
 				],
 			},
 			{
 				source: '/:path*.{jpg,jpeg,png,gif,webp,svg,ico}',
 				headers: [
-					{
-						key: 'Cache-Control',
-						value: 'public, max-age=31536000, immutable',
-					},
+					{ key: 'Cache-Control', value: 'public, max-age=31536000, immutable' },
 				],
 			},
 		];
