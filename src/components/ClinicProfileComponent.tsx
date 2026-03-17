@@ -615,60 +615,71 @@ export default function ClinicProfileComponent() {
                                                 </div>
                                                 <div className="space-y-4">
                                                     {form.services.map((svc, idx) => (
-                                                        <div key={svc.id || idx} className="grid grid-cols-1 md:grid-cols-12 gap-4 bg-slate-50 p-4 rounded-2xl border border-slate-200 fade-in duration-300 relative group">
-                                                            <div className="md:col-span-4">
-                                                                <input 
-                                                                    value={svc.name} 
-                                                                    onChange={e => {
-                                                                        const ns = [...form.services];
-                                                                        ns[idx].name = e.target.value;
-                                                                        updateField('services', ns);
-                                                                    }}
-                                                                    placeholder="Nombre del servicio (Ej. Consulta General)"
-                                                                    className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm font-semibold text-slate-700 outline-none focus:border-indigo-400"
-                                                                />
-                                                            </div>
-                                                            <div className="md:col-span-5">
-                                                                <input 
-                                                                    value={svc.description} 
-                                                                    onChange={e => {
-                                                                        const ns = [...form.services];
-                                                                        ns[idx].description = e.target.value;
-                                                                        updateField('services', ns);
-                                                                    }}
-                                                                    placeholder="Breve descripción..."
-                                                                    className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-600 outline-none focus:border-indigo-400"
-                                                                />
-                                                            </div>
-                                                            <div className="md:col-span-2">
-                                                                <div className="relative">
-                                                                    <div className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">
-                                                                        <Banknote size={14} />
-                                                                    </div>
+                                                        <div key={svc.id || idx} className="bg-slate-50/50 p-5 rounded-[2rem] border border-slate-200 hover:border-indigo-200 transition-colors fade-in duration-300 relative group shadow-sm">
+                                                            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                                                                {/* Row 1: Name (3) and Amount (1) */}
+                                                                <div className="md:col-span-3 space-y-1.5">
+                                                                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Nombre del Servicio</label>
                                                                     <input 
-                                                                        type="number"
-                                                                        value={svc.price || ''} 
+                                                                        value={svc.name} 
                                                                         onChange={e => {
                                                                             const ns = [...form.services];
-                                                                            ns[idx].price = Number(e.target.value);
+                                                                            ns[idx].name = e.target.value;
                                                                             updateField('services', ns);
                                                                         }}
-                                                                        placeholder="Monto"
-                                                                        className="w-full bg-white border border-slate-200 rounded-lg pl-8 pr-3 py-2 text-sm font-bold text-emerald-600 outline-none focus:border-indigo-400"
+                                                                        placeholder="Ej. Consulta de Pediatría Especializada"
+                                                                        className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-sm font-bold text-slate-700 outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-50 transition-all"
                                                                     />
                                                                 </div>
-                                                            </div>
-                                                            <div className="md:col-span-1 flex justify-center items-center">
-                                                                <button 
-                                                                    type="button" 
-                                                                    onClick={() => {
-                                                                        const ns = form.services.filter((_, i) => i !== idx);
-                                                                        updateField('services', ns);
-                                                                    }}
-                                                                    className="w-8 h-8 flex items-center justify-center text-slate-400 hover:text-red-500 transition-colors bg-white rounded-lg border border-slate-200 shadow-sm opacity-50 hover:opacity-100"
-                                                                >
-                                                                    <Trash2 size={16} />
-                                                                </button>
+
+                                                                <div className="md:col-span-1 space-y-1.5 relative">
+                                                                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Costo (VES)</label>
+                                                                    <div className="relative">
+                                                                        <div className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">
+                                                                            <Banknote size={16} />
+                                                                        </div>
+                                                                        <input 
+                                                                            type="number"
+                                                                            value={svc.price || ''} 
+                                                                            onChange={e => {
+                                                                                const ns = [...form.services];
+                                                                                ns[idx].price = Number(e.target.value);
+                                                                                updateField('services', ns);
+                                                                            }}
+                                                                            placeholder="Monto"
+                                                                            className="w-full bg-white border border-slate-200 rounded-xl pl-10 pr-4 py-2.5 text-sm font-black text-emerald-600 outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-50 transition-all"
+                                                                        />
+                                                                    </div>
+                                                                    
+                                                                    {/* Delete button positioned in the upper right of the service block */}
+                                                                    <button 
+                                                                        type="button" 
+                                                                        onClick={() => {
+                                                                            const ns = form.services.filter((_, i) => i !== idx);
+                                                                            updateField('services', ns);
+                                                                        }}
+                                                                        className="absolute -top-1 -right-1 w-8 h-8 flex items-center justify-center text-slate-300 hover:text-red-500 hover:bg-white hover:shadow-sm border border-transparent hover:border-slate-100 rounded-xl transition-all active:scale-90"
+                                                                        title="Eliminar servicio"
+                                                                    >
+                                                                        <Trash2 size={16} />
+                                                                    </button>
+                                                                </div>
+
+                                                                {/* Row 2: Description (4) */}
+                                                                <div className="md:col-span-4 space-y-1.5">
+                                                                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Descripción del Servicio</label>
+                                                                    <textarea 
+                                                                        value={svc.description} 
+                                                                        rows={2}
+                                                                        onChange={e => {
+                                                                            const ns = [...form.services];
+                                                                            ns[idx].description = e.target.value;
+                                                                            updateField('services', ns);
+                                                                        }}
+                                                                        placeholder="Describa brevemente qué incluye este servicio para la facturación y agenda..."
+                                                                        className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm text-slate-600 outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-50 transition-all resize-none"
+                                                                    />
+                                                                </div>
                                                             </div>
                                                         </div>
                                                     ))}

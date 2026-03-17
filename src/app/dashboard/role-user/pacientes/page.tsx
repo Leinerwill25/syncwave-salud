@@ -40,6 +40,9 @@ export default function RoleUserPatientsPage() {
 	const [patients, setPatients] = useState<PatientAppointments[]>([]);
 	const [loading, setLoading] = useState(true);
 	const [searchQuery, setSearchQuery] = useState('');
+	const [debouncedSearch, setDebouncedSearch] = useState('');
+	const [page, setPage] = useState(1);
+	const [total, setTotal] = useState(0);
 	
 	// Estado para edición
 	const [editingPatient, setEditingPatient] = useState<Patient | null>(null);
@@ -52,10 +55,18 @@ export default function RoleUserPatientsPage() {
 	}, []);
 
 	useEffect(() => {
+		const timer = setTimeout(() => {
+			setDebouncedSearch(searchQuery);
+			setPage(1); // Reset to first page on search
+		}, 500);
+		return () => clearTimeout(timer);
+	}, [searchQuery]);
+
+	useEffect(() => {
 		if (session) {
 			loadPatients();
 		}
-	}, [session]);
+	}, [session, debouncedSearch, page]);
 
 	const loadSession = async () => {
 		try {
@@ -76,7 +87,7 @@ export default function RoleUserPatientsPage() {
 
 		setLoading(true);
 		try {
-			const res = await fetch('/api/role-users/patients', {
+			const res = await fetch(`/api/role-users/patients?search=${encodeURIComponent(debouncedSearch)}&page=${page}`, {
 				credentials: 'include',
 			});
 
@@ -86,6 +97,7 @@ export default function RoleUserPatientsPage() {
 
 			const data = await res.json();
 			setPatients(data.patients || []);
+			setTotal(data.total || 0);
 		} catch (err) {
 			console.error('[Role User Patients] Error:', err);
 		} finally {
@@ -174,16 +186,7 @@ export default function RoleUserPatientsPage() {
 		);
 	};
 
-	const filteredPatients = patients.filter((item) => {
-		if (!searchQuery.trim()) return true;
-		const query = searchQuery.toLowerCase();
-		return (
-			item.patient.firstName?.toLowerCase().includes(query) ||
-			item.patient.lastName?.toLowerCase().includes(query) ||
-			item.patient.identifier?.toLowerCase().includes(query) ||
-			item.patient.phone?.toLowerCase().includes(query)
-		);
-	});
+	// El filtrado ahora se realiza en el servidor para mayor rendimiento
 
 	if (loading) {
 		return (
@@ -219,14 +222,14 @@ export default function RoleUserPatientsPage() {
 			</div>
 
 			{/* Patients List */}
-			{filteredPatients.length === 0 ? (
+			{patients.length === 0 ? (
 				<div className="bg-white rounded-xl sm:rounded-2xl shadow-lg border border-slate-200 p-6 sm:p-8 text-center">
 					<User className="w-12 h-12 sm:w-16 sm:h-16 text-slate-400 mx-auto mb-3 sm:mb-4" />
 					<p className="text-sm sm:text-base text-slate-600">{searchQuery ? 'No se encontraron pacientes' : 'No hay pacientes registrados'}</p>
 				</div>
 			) : (
 				<div className="space-y-3 sm:space-y-4">
-					{filteredPatients.map((item, index) => (
+					{patients.map((item: any, index: number) => (
 						<motion.div
 							key={item.patient.id}
 							initial={{ opacity: 0, y: 20 }}
@@ -294,7 +297,7 @@ export default function RoleUserPatientsPage() {
 										<span>Citas Programadas</span>
 									</h4>
 									<div className="space-y-2">
-										{item.scheduledAppointments.map((appointment) => (
+										{item.scheduledAppointments.map((appointment: any) => (
 											<div
 												key={appointment.id}
 												className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-3 p-2.5 sm:p-3 bg-blue-50 rounded-lg border border-blue-100"
@@ -319,7 +322,7 @@ export default function RoleUserPatientsPage() {
 										<span>Fechas de Consultas</span>
 									</h4>
 									<div className="flex flex-wrap gap-1.5 sm:gap-2">
-										{item.consultationDates.map((date, idx) => (
+										{item.consultationDates.map((date: string, idx: number) => (
 											<span key={idx} className="px-2 sm:px-3 py-0.5 sm:py-1 text-[10px] sm:text-xs font-medium bg-teal-100 text-teal-800 rounded-full break-words">
 												{formatDate(date)}
 											</span>

@@ -17,19 +17,26 @@ import {
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
 
-export function NurseAffiliatedDashboard() {
-  const [summary, setSummary] = useState<DashboardSummaryResponse | null>(null);
-  const [recentQueue, setRecentQueue] = useState<NurseDailyDashboard[]>([]);
-  const [loading, setLoading] = useState(true);
+interface NurseAffiliatedDashboardProps {
+  initialSummary?: DashboardSummaryResponse | null;
+  initialQueue?: NurseDailyDashboard[];
+}
+
+export function NurseAffiliatedDashboard({ initialSummary, initialQueue }: NurseAffiliatedDashboardProps) {
+  const [summary, setSummary] = useState<DashboardSummaryResponse | null>(initialSummary || null);
+  const [recentQueue, setRecentQueue] = useState<NurseDailyDashboard[]>(initialQueue?.slice(0, 5) || []);
+  const [loading, setLoading] = useState(!initialSummary);
 
   async function loadData() {
-    setLoading(true);
+    // Si ya tenemos datos iniciales, no mostramos el Loader2 de pantalla completa
+    if (!summary) setLoading(true);
+    
     const [summaryRes, queueRes] = await Promise.all([
       getDashboardSummary(),
       getDailyQueue()
     ]);
     setSummary(summaryRes);
-    setRecentQueue(queueRes.slice(0, 5)); // Show only first 5 for quick view
+    setRecentQueue(queueRes.slice(0, 5));
     setLoading(false);
   }
 

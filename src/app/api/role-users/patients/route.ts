@@ -13,6 +13,13 @@ export async function GET(request: NextRequest) {
 			return NextResponse.json({ error: 'No autenticado. Debe iniciar sesión como usuario de rol.' }, { status: 401 });
 		}
 
+		const { searchParams } = new URL(request.url);
+		const search = searchParams.get('search')?.toLowerCase() || '';
+		const page = parseInt(searchParams.get('page') || '1');
+		const pageSize = parseInt(searchParams.get('pageSize') || '20');
+		const from = (page - 1) * pageSize;
+		const to = from + pageSize - 1;
+
 		// Usar service role para evitar problemas de RLS al acceder a datos de pacientes
 		const SUPABASE_URL = process.env.SUPABASE_URL ?? process.env.NEXT_PUBLIC_SUPABASE_URL ?? '';
 		const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY ?? '';
@@ -22,164 +29,118 @@ export async function GET(request: NextRequest) {
 			return NextResponse.json({ error: 'Error de configuración del servidor' }, { status: 500 });
 		}
 
-		// Crear cliente con service role para evitar RLS
 		const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
 			auth: { persistSession: false },
 		});
 
-		// 1. Obtener citas de la organización
-		const { data: appointments, error: appointmentsError } = await supabase
-			.from('appointment')
-			.select('id, patient_id, unregistered_patient_id, scheduled_at, status, reason, location')
-			.eq('organization_id', session.organizationId)
-			.order('scheduled_at', { ascending: false });
-
-		if (appointmentsError) {
-			console.error('[Role Users Patients] Error obteniendo citas:', appointmentsError);
-			return NextResponse.json({ error: 'Error al obtener citas' }, { status: 500 });
-		}
-
-		// 2. Obtener consultas realizadas (todas las vinculadas a la organización)
-		const { data: consultations, error: consultationsError } = await supabase
-			.from('consultation')
-			.select('patient_id, unregistered_patient_id, appointment_id, started_at, status')
-			.eq('organization_id', session.organizationId);
-
-		if (consultationsError) {
-			console.error('[Role Users Patients] Error obteniendo consultas:', consultationsError);
-		}
-
-		// 3. Obtener IDs de pacientes (registrados y no registrados)
-		const patientIds = new Set<string>();
-		const unregisteredPatientIds = new Set<string>();
-
-		appointments?.forEach((apt: any) => {
-			if (apt.patient_id) patientIds.add(apt.patient_id as string);
-			if (apt.unregistered_patient_id) unregisteredPatientIds.add(apt.unregistered_patient_id as string);
-		});
-		consultations?.forEach((cons: any) => {
-			if (cons.patient_id) patientIds.add(cons.patient_id as string);
-			if (cons.unregistered_patient_id) unregisteredPatientIds.add(cons.unregistered_patient_id as string);
-		});
-
-		// 4. Obtener información de pacientes REGISTRADOS
-		let registeredPatientsArr: any[] = [];
-		
-		// 4a. Obtener pacientes que tienen citas o consultas
-		if (patientIds.size > 0) {
-			const { data: pData, error: pError } = await supabase
-				.from('patient')
-				.select('id, firstName, lastName, identifier, phone')
-				.in('id', Array.from(patientIds));
-			
-			if (!pError && pData) {
-				registeredPatientsArr = pData;
-			}
-		}
-
-		// 4b. Obtener pacientes vinculados directamente a la organización vía tabla users que son pacientes
-		// (Esto captura pacientes registrados por personal administrativo que aún no tienen citas)
-		const { data: directPatients, error: directError } = await supabase
+		// 1. Obtener pacientes REGISTRADOS vinculados a la organización
+		let registeredQuery = supabase
 			.from('users')
 			.select('patient:patientProfileId(id, firstName, lastName, identifier, phone)')
 			.eq('organizationId', session.organizationId)
-			.eq('role', 'PACIENTE');
+			.eq('role', 'PACIENTE')
+			.not('patientProfileId', 'is', null);
 
+		if (search) {
+			// Nota: El filtrado por búsqueda en campos de 'patient' via join en 'users' puede ser complejo.
+			// Para máxima eficiencia en Supabase, a veces es mejor buscar en 'patient' directamente si tenemos los IDs 
+			// o usar una vista. Por ahora buscaremos en la tabla de pacientes primero si hay búsqueda.
+		}
+
+		const { data: directPatients, error: directError } = await registeredQuery;
+		
+		let registeredPatientsArr: any[] = [];
 		if (!directError && directPatients) {
-			directPatients.forEach((u: any) => {
-				if (u.patient && !registeredPatientsArr.some(p => p.id === u.patient.id)) {
-					registeredPatientsArr.push(u.patient);
-				}
-			});
+			registeredPatientsArr = directPatients
+				.map((u: any) => u.patient)
+				.filter(p => !!p);
 		}
 
-		// 5. Obtener información de pacientes NO REGISTRADOS
-		let unregisteredPatientsArr: any[] = [];
-		if (unregisteredPatientIds.size > 0) {
-			const { data: uData, error: uError } = await supabase
-				.from('unregisteredpatients')
-				.select('id, first_name, last_name, identification, phone, created_by')
-				.in('id', Array.from(unregisteredPatientIds));
+		// 2. Obtener pacientes NO REGISTRADOS
+		// Estos suelen estar vinculados vía citas o creados por médicos de la clínica
+		let unregisteredQuery = supabase
+			.from('unregisteredpatients')
+			.select('id, first_name, last_name, identification, phone, created_by');
 			
-			if (!uError && uData) {
-				unregisteredPatientsArr = uData;
-			}
+		// Filtrar por los que tienen citas en la organización
+		const { data: orgAppts } = await supabase
+			.from('appointment')
+			.select('unregistered_patient_id')
+			.eq('organization_id', session.organizationId)
+			.not('unregistered_patient_id', 'is', null);
+		
+		const unregIds = Array.from(new Set(orgAppts?.map(a => a.unregistered_patient_id) || []));
+		unregisteredQuery = unregisteredQuery.in('id', unregIds);
+
+		if (search) {
+			unregisteredQuery = unregisteredQuery.or(`first_name.ilike.%${search}%,last_name.ilike.%${search}%,identification.ilike.%${search}%`);
 		}
 
-		// 6. Mapear creadores (médicos) para pacientes no registrados
-		const creatorIds = new Set<string>(unregisteredPatientsArr.map(p => p.created_by).filter(id => !!id));
-		let creatorsMap: Record<string, string> = {};
-		if (creatorIds.size > 0) {
-			const { data: cData } = await supabase
-				.from('medic_profile')
-				.select('id, doctor:doctor_id(name)')
-				.in('id', Array.from(creatorIds));
-			
-			cData?.forEach((c: any) => {
-				const doctorData = Array.isArray(c.doctor) ? c.doctor[0] : c.doctor;
-				creatorsMap[c.id] = doctorData?.name || 'Médico';
-			});
+		const { data: unregisteredPatientsArr } = await unregisteredQuery;
+
+		// 3. Combinar y filtrar por búsqueda si es necesario (para registrados)
+		let combinedPatients = [
+			...registeredPatientsArr.map(p => ({
+				id: p.id,
+				firstName: p.firstName,
+				lastName: p.lastName,
+				identifier: p.identifier,
+				phone: p.phone,
+				isUnregistered: false
+			})),
+			...(unregisteredPatientsArr || []).map(p => ({
+				id: p.id,
+				firstName: p.first_name,
+				lastName: p.last_name,
+				identifier: p.identification,
+				phone: p.phone,
+				isUnregistered: true,
+				createdBy: p.created_by
+			}))
+		];
+
+		if (search) {
+			combinedPatients = combinedPatients.filter(p => 
+				p.firstName?.toLowerCase().includes(search) || 
+				p.lastName?.toLowerCase().includes(search) || 
+				p.identifier?.toLowerCase().includes(search) || 
+				p.phone?.toLowerCase().includes(search)
+			);
 		}
 
-		// 7. Combinar y normalizar
-		const allPatients: any[] = [];
+		// 4. Paginación en memoria del resultado combinado (ya que viene de 2 fuentes)
+		const paginatedPatients = combinedPatients.slice(from, to + 1);
 
-		// Procesar Registrados
-		registeredPatientsArr.forEach((p: any) => {
-			const patientApts = (appointments as any[])?.filter(a => a.patient_id === p.id) || [];
-			const patientCons = (consultations as any[])?.filter(c => c.patient_id === p.id) || [];
+		// 5. Enriquecer solo los de la página actual con citas y consultas
+		const enrichedPatients = await Promise.all(paginatedPatients.map(async (p) => {
+			const idField = p.isUnregistered ? 'unregistered_patient_id' : 'patient_id';
 			
-			allPatients.push({
-				patient: {
-					id: p.id,
-					firstName: p.firstName,
-					lastName: p.lastName,
-					identifier: p.identifier,
-					phone: p.phone,
-					isUnregistered: false
-				},
-				scheduledAppointments: patientApts.map((a: any) => ({
-					id: a.id,
-					scheduled_at: a.scheduled_at,
-					status: a.status,
-					reason: a.reason,
-					location: a.location
-				})),
-				attendedCount: patientCons.length,
-				consultationDates: patientCons.map((c: any) => c.started_at).sort((a: any, b: any) => new Date(b).getTime() - new Date(a).getTime())
-			});
+			const [aptsRes, consRes] = await Promise.all([
+				supabase.from('appointment')
+					.select('id, scheduled_at, status, reason, location')
+					.eq('organization_id', session.organizationId)
+					.eq(idField, p.id)
+					.order('scheduled_at', { ascending: false }),
+				supabase.from('consultation')
+					.select('started_at')
+					.eq('organization_id', session.organizationId)
+					.eq(idField, p.id)
+			]);
+
+			return {
+				patient: p,
+				scheduledAppointments: aptsRes.data || [],
+				attendedCount: consRes.data?.length || 0,
+				consultationDates: consRes.data?.map((c: any) => c.started_at).sort((a: any, b: any) => new Date(b).getTime() - new Date(a).getTime()) || []
+			};
+		}));
+
+		return NextResponse.json({ 
+			patients: enrichedPatients,
+			total: combinedPatients.length,
+			page,
+			pageSize
 		});
-
-		// Procesar No Registrados
-		unregisteredPatientsArr.forEach((p: any) => {
-			const patientApts = (appointments as any[])?.filter(a => a.unregistered_patient_id === p.id) || [];
-			// Para consultas, usualmente están ligadas a la cita
-			const aptIds = new Set(patientApts.map((a: any) => a.id));
-			const patientCons = (consultations as any[])?.filter(c => aptIds.has(c.appointment_id)) || [];
- 
-			allPatients.push({
-				patient: {
-					id: p.id,
-					firstName: p.first_name,
-					lastName: p.last_name,
-					identifier: p.identification,
-					phone: p.phone,
-					isUnregistered: true,
-					createdBy: p.created_by ? creatorsMap[p.created_by] : null
-				},
-				scheduledAppointments: patientApts.map((a: any) => ({
-					id: a.id,
-					scheduled_at: a.scheduled_at,
-					status: a.status,
-					reason: a.reason,
-					location: a.location
-				})),
-				attendedCount: patientCons.length,
-				consultationDates: patientCons.map((c: any) => c.started_at).sort((a: any, b: any) => new Date(b).getTime() - new Date(a).getTime())
-			});
-		});
-
-		return NextResponse.json({ patients: allPatients });
 	} catch (err) {
 		console.error('[Role Users Patients] Error:', err);
 		return NextResponse.json({ error: 'Error interno' }, { status: 500 });
