@@ -36,6 +36,12 @@ export async function GET(request: Request) {
     if (status) query = query.eq('status', status);
     if (specialistId) query = query.eq('specialist_id', specialistId);
     if (patientId) query = query.eq('patient_id', patientId);
+    
+    const search = searchParams.get('search');
+    if (search) {
+      // Filter on joined tables using !inner requirement
+      query = query.or(`firstName.ilike.%${search}%,lastName.ilike.%${search}%`, { foreignTable: 'patient' });
+    }
 
     const { data, count, error } = await query
       .order('consultation_date', { ascending: false })

@@ -26,13 +26,15 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: 'Usuario sin organización asociada' }, { status: 400 });
   }
 
-  // 1. Obtener Pacientes Registrados
+  // 1. Obtener Pacientes Registrados (Paginados)
   const { data: regPatients } = await supabase
     .from('patient')
     .select('*')
-    .eq('organization_id', organizationId);
+    .eq('organization_id', organizationId)
+    .range(from, to)
+    .order('created_at', { ascending: false });
 
-  // 2. Obtener Pacientes No Registrados (vía IDs de usuarios de la organización)
+  // 2. Obtener Pacientes No Registrados (Paginados)
   const adminSupabase = createSupabaseAdminClient();
   const { data: orgUsers } = await supabase
     .from('users')
@@ -46,7 +48,9 @@ export async function GET(request: Request) {
     const { data: unregData } = await adminSupabase
       .from('unregisteredpatients')
       .select('*')
-      .in('created_by', orgUserIds);
+      .in('created_by', orgUserIds)
+      .range(from, to)
+      .order('created_at', { ascending: false });
     unregPatients = unregData || [];
   }
 

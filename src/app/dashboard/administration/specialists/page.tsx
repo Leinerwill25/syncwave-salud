@@ -25,13 +25,22 @@ export default function AdministrationSpecialistsPage() {
   const [validatingId, setValidatingId] = useState<string | null>(null);
 
   useEffect(() => {
-    fetchSpecialists();
-  }, []);
+    const delayDebounceFn = setTimeout(() => {
+      fetchSpecialists();
+    }, 300);
+
+    return () => clearTimeout(delayDebounceFn);
+  }, [searchTerm]);
 
   const fetchSpecialists = async () => {
     try {
       setIsLoading(true);
-      const res = await fetch('/api/administration/specialists');
+      const url = new URL('/api/administration/specialists', window.location.origin);
+      if (searchTerm) {
+        url.searchParams.append('search', searchTerm);
+      }
+      
+      const res = await fetch(url.toString());
       if (!res.ok) throw new Error('Failed to fetch');
       const data = await res.json();
       setSpecialists(data.data || []);
@@ -70,12 +79,7 @@ export default function AdministrationSpecialistsPage() {
     }
   };
 
-  const filteredSpecialists = specialists.filter(s => 
-    s.first_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    s.last_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    s.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    s.inpres_sax.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredSpecialists = specialists;
 
   return (
     <div className="p-4 md:p-8 lg:p-12 space-y-4 md:space-y-8 animate-in fade-in duration-500 pb-20">

@@ -40,6 +40,11 @@ export async function GET(request: Request) {
       query = query.eq('patient_id', patientId);
     }
 
+    const search = searchParams.get('search');
+    if (search) {
+      query = query.or(`first_name.ilike.%${search}%,last_name.ilike.%${search}%`, { foreignTable: 'specialists' });
+    }
+
     const { data, count, error } = await query
       .order('scheduled_date', { ascending: true })
       .order('scheduled_time', { ascending: true });

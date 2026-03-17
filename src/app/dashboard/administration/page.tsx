@@ -1,62 +1,38 @@
-'use client';
-
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { 
   Users, 
   UserSquare2, 
   CalendarCheck, 
   AlertCircle,
-  TrendingUp,
   Activity,
-  ArrowRight
+  ArrowRight,
+  TrendingUp
 } from 'lucide-react';
-import { createSupabaseBrowserClient } from '@/app/adapters/client';
 import Link from 'next/link';
+import { createSupabaseServerClient } from '@/app/adapters/server';
 
-interface DashboardStats {
-  totalPatients: number;
-  totalSpecialists: number;
-  pendingAppointments: number;
-  inventoryAlerts: number;
+async function getStats() {
+  const supabase = await createSupabaseServerClient();
+  
+  // Get counts in parallel on server
+  const [patients, specialists, appointments, medications, materials] = await Promise.all([
+    supabase.from('patient').select('id', { count: 'exact', head: true }),
+    supabase.from('specialists').select('id', { count: 'exact', head: true }).eq('is_active', true),
+    supabase.from('admin_appointments').select('id', { count: 'exact', head: true }).eq('status', 'PENDIENTE'),
+    supabase.from('admin_inventory_medications').select('id', { count: 'exact', head: true }).lt('quantity', 10),
+    supabase.from('admin_inventory_materials').select('id', { count: 'exact', head: true }).lt('quantity', 10),
+  ]);
+
+  return {
+    totalPatients: patients.count || 0,
+    totalSpecialists: specialists.count || 0,
+    pendingAppointments: appointments.count || 0,
+    inventoryAlerts: (medications.count || 0) + (materials.count || 0),
+  };
 }
 
-export default function AdministrationDashboardPage() {
-  const [stats, setStats] = useState<DashboardStats>({
-    totalPatients: 0,
-    totalSpecialists: 0,
-    pendingAppointments: 0,
-    inventoryAlerts: 0,
-  });
-  const [isLoading, setIsLoading] = useState(true);
-
-  useEffect(() => {
-    async function fetchStats() {
-      try {
-        const supabase = createSupabaseBrowserClient();
-        
-        // This is a simplified fetch for MVP, ideally done via a custom RPC or optimized backend call
-        const [patientsRes, specialistsRes, appointmentsRes, inventoryRes] = await Promise.all([
-          supabase.from('patients').select('id', { count: 'exact', head: true }).eq('is_active', true),
-          supabase.from('specialists').select('id', { count: 'exact', head: true }).eq('is_active', true),
-          supabase.from('appointments').select('id', { count: 'exact', head: true }).eq('status', 'PENDIENTE'),
-          supabase.from('inventory_medications').select('id', { count: 'exact', head: true }).lt('quantity', 10), // Low stock alert logic
-        ]);
-
-        setStats({
-          totalPatients: patientsRes.count || 0,
-          totalSpecialists: specialistsRes.count || 0,
-          pendingAppointments: appointmentsRes.count || 0,
-          inventoryAlerts: inventoryRes.count || 0,
-        });
-      } catch (error) {
-        console.error('Error fetching dashboard stats:', error);
-      } finally {
-        setIsLoading(false);
-      }
-    }
-
-    fetchStats();
-  }, []);
+export default async function AdministrationDashboardPage() {
+  const stats = await getStats();
 
   const statCards = [
     {
@@ -83,7 +59,7 @@ export default function AdministrationDashboardPage() {
       title: 'Citas Pendientes',
       value: stats.pendingAppointments,
       icon: CalendarCheck,
-      trend: 'Requiere atención',
+      trend: 'Atención',
       color: 'from-amber-400 to-orange-500',
       bgColor: 'bg-amber-50',
       textColor: 'text-amber-600',
@@ -93,7 +69,7 @@ export default function AdministrationDashboardPage() {
       title: 'Alertas Inventario',
       value: stats.inventoryAlerts,
       icon: AlertCircle,
-      trend: 'Stock crítico',
+      trend: 'Crítico',
       color: 'from-rose-500 to-red-500',
       bgColor: 'bg-rose-50',
       textColor: 'text-rose-600',
@@ -114,7 +90,7 @@ export default function AdministrationDashboardPage() {
           </p>
         </div>
         <div className="hidden md:block text-sm font-medium text-slate-400 bg-white px-4 py-2 rounded-xl shadow-sm border border-slate-100">
-          Última actualización: {new Date().toLocaleTimeString()}
+          Estado Actualizado
         </div>
       </div>
 
@@ -125,7 +101,6 @@ export default function AdministrationDashboardPage() {
             <div 
               key={idx} 
               className="group bg-white rounded-2xl md:rounded-3xl p-4 md:p-6 shadow-sm border border-slate-100 hover:shadow-xl transition-all duration-300 hover:-translate-y-1 relative overflow-hidden flex flex-col justify-between"
-              style={{ animationDelay: `${idx * 150}ms` }}
             >
               <div className="flex items-start justify-between relative z-10 w-full">
                 <div className="space-y-2 md:space-y-4">
@@ -135,18 +110,14 @@ export default function AdministrationDashboardPage() {
                   <div>
                     <h3 className="text-slate-500 font-medium text-[10px] md:text-sm uppercase tracking-wider">{stat.title}</h3>
                     <div className="flex items-baseline gap-2 mt-1">
-                      {isLoading ? (
-                        <div className="h-6 md:h-10 w-12 md:w-20 bg-slate-200 animate-pulse rounded-lg" />
-                      ) : (
-                        <span className="text-xl md:text-4xl font-black text-slate-900 tracking-tight">{stat.value}</span>
-                      )}
+                       <span className="text-xl md:text-4xl font-black text-slate-900 tracking-tight">{stat.value}</span>
                     </div>
                   </div>
                 </div>
                 
                 <div className={`px-2 py-0.5 md:py-1 rounded-full text-[9px] md:text-xs font-bold ${stat.bgColor} ${stat.textColor} flex items-center gap-1 shrink-0`}>
                   <TrendingUp className="w-2.5 h-2.5 md:w-3 md:h-3" />
-                  {stat.trend.length > 5 && window?.innerWidth < 768 ? 'Aviso' : stat.trend}
+                  {stat.trend}
                 </div>
               </div>
 
@@ -159,7 +130,6 @@ export default function AdministrationDashboardPage() {
                 </Link>
               </div>
 
-              {/* Decorative gradient blob */}
               <div className={`absolute -bottom-16 -right-16 w-32 h-32 bg-gradient-to-br ${stat.color} opacity-5 rounded-full blur-2xl group-hover:scale-150 transition-transform duration-500`} />
             </div>
           );

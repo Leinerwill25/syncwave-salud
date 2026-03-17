@@ -31,17 +31,26 @@ export default function AdministrationInventoryPage() {
   const [searchTerm, setSearchTerm] = useState('');
 
   useEffect(() => {
-    fetchInventory();
-  }, [activeTab]);
+    const delayDebounceFn = setTimeout(() => {
+      fetchInventory();
+    }, 300);
+
+    return () => clearTimeout(delayDebounceFn);
+  }, [activeTab, searchTerm]);
 
   const fetchInventory = async () => {
     try {
       setIsLoading(true);
-      const endpoint = activeTab === 'MEDICACIONES' 
+      const baseUrl = activeTab === 'MEDICACIONES' 
         ? '/api/administration/inventory/medications' 
         : '/api/administration/inventory/materials';
         
-      const res = await fetch(endpoint);
+      const url = new URL(baseUrl, window.location.origin);
+      if (searchTerm) {
+        url.searchParams.append('search', searchTerm);
+      }
+
+      const res = await fetch(url.toString());
       if (!res.ok) throw new Error('Failed to fetch');
       const data = await res.json();
       

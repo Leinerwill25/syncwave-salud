@@ -34,6 +34,7 @@ interface Appointment {
 export default function AdministrationAppointmentsPage() {
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState('');
   const [isApproving, setIsApproving] = useState<string | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedAppointment, setSelectedAppointment] = useState<Appointment | null>(null);
@@ -45,9 +46,13 @@ export default function AdministrationAppointmentsPage() {
   const patientIdFilter = searchParams.get('patient_id');
 
   useEffect(() => {
-    fetchAppointments();
-    fetchServices();
-  }, [patientIdFilter]);
+    const delayDebounceFn = setTimeout(() => {
+      fetchAppointments();
+      fetchServices();
+    }, 300);
+
+    return () => clearTimeout(delayDebounceFn);
+  }, [patientIdFilter, searchTerm]);
 
   const fetchAppointments = async () => {
     try {
@@ -55,6 +60,9 @@ export default function AdministrationAppointmentsPage() {
       let url = '/api/administration/appointments?status=PENDIENTE';
       if (patientIdFilter) {
         url += `&patient_id=${patientIdFilter}`;
+      }
+      if (searchTerm) {
+        url += `&search=${searchTerm}`;
       }
       const res = await fetch(url);
       if (!res.ok) throw new Error('Failed to fetch appointments');

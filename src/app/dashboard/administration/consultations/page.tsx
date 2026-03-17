@@ -31,8 +31,12 @@ export default function AdministrationConsultationsPage() {
   const patientIdFilter = searchParams.get('patient_id');
 
   useEffect(() => {
-    fetchConsultations();
-  }, [statusFilter, patientIdFilter]);
+    const delayDebounceFn = setTimeout(() => {
+      fetchConsultations();
+    }, 300);
+
+    return () => clearTimeout(delayDebounceFn);
+  }, [statusFilter, patientIdFilter, searchTerm]);
 
   const fetchConsultations = async () => {
     try {
@@ -40,6 +44,7 @@ export default function AdministrationConsultationsPage() {
       const url = new URL('/api/administration/consultations', window.location.origin);
       if (statusFilter) url.searchParams.append('status', statusFilter);
       if (patientIdFilter) url.searchParams.append('patient_id', patientIdFilter);
+      if (searchTerm) url.searchParams.append('search', searchTerm);
       
       const res = await fetch(url.toString());
       if (!res.ok) throw new Error('Failed to fetch consultations');
@@ -52,13 +57,7 @@ export default function AdministrationConsultationsPage() {
     }
   };
 
-  const filteredConsultations = consultations.filter(c => 
-    c.patient.firstName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    c.patient.lastName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    c.specialists.first_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    c.specialists.last_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    c.specialists.inpres_sax.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredConsultations = consultations;
 
   const getStatusColor = (status: string) => {
     switch (status) {
