@@ -29,10 +29,10 @@ async function getStats(organizationId: string) {
 
   const allOrgAuthIds = allOrgUsers?.map((u: any) => u.authId).filter(Boolean) || [];
 
-  const [patientsCountResult, specialists, appointments, medications, materials] = await Promise.all([
+  const [patientsData, specialists, appointments, medications, materials] = await Promise.all([
     allOrgAuthIds.length > 0 
-      ? supabase.from('unregisteredpatients').select('id', { count: 'exact', head: true }).in('created_by', allOrgAuthIds)
-      : Promise.resolve({ count: 0 }),
+      ? supabase.from('unregisteredpatients').select('identification, first_name, last_name').in('created_by', allOrgAuthIds)
+      : Promise.resolve({ data: [] }),
     supabase.from('specialists').select('id', { count: 'exact', head: true })
       .eq('organization_id', organizationId)
       .eq('is_active', true),
@@ -47,8 +47,21 @@ async function getStats(organizationId: string) {
       .lt('quantity', 10),
   ]);
 
+  // 2. Deduplicar pacientes para el conteo real
+  const uniquePatients = new Set();
+  (patientsData.data || []).forEach((p: any) => {
+    // Usar identificación como llave primaria de deduplicación
+    if (p.identification) {
+      uniquePatients.add(p.identification.trim().toUpperCase());
+    } else {
+      // Si no hay ID, usar nombre normalizado para detectar duplicados obvios
+      const nameKey = `${p.first_name || ''} ${p.last_name || ''}`.toLowerCase().trim();
+      if (nameKey) uniquePatients.add(nameKey);
+    }
+  });
+
   return {
-    totalPatients: patientsCountResult.count || 0,
+    totalPatients: uniquePatients.size,
     totalSpecialists: specialists.count || 0,
     pendingAppointments: appointments.count || 0,
     inventoryAlerts: (medications.count || 0) + (materials.count || 0),

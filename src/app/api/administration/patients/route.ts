@@ -37,11 +37,12 @@ export async function GET(request: Request) {
     return NextResponse.json({ data: [], total: 0, page, limit, totalPages: 0 });
   }
 
-  // Consultar SOLO la tabla unregisteredpatients
+  // Consultar la tabla unregisteredpatients
   // Filtrar por creadores que pertenezcan a la organización
+  // Obtenemos todos los registros para deduplicar correctamente antes de paginar
   let query = adminSupabase
     .from('unregisteredpatients')
-    .select('*', { count: 'exact' })
+    .select('*')
     .in('created_by', allOrgAuthIds);
 
   // Búsqueda en servidor
@@ -51,17 +52,36 @@ export async function GET(request: Request) {
     );
   }
 
-  const { data: patients, count, error } = await query
-    .order('created_at', { ascending: false })
-    .range(from, to);
+  const { data: patients, error } = await query
+    .order('created_at', { ascending: false });
 
   if (error) {
     console.error('[Admin Patients API]:', error);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
+  // Deduplicación en Memoria
+  const deduplicatedMap = new Map();
+  (patients || []).forEach((p: any) => {
+    // Generar una llave de deduplicación: Identificación > Combinación de Nombre/Email
+    let dedupKey = p.identification ? `ID_${p.identification.trim().toUpperCase()}` : null;
+    
+    if (!dedupKey) {
+      const nameKey = `${p.first_name || ''} ${p.last_name || ''}`.toLowerCase().trim();
+      const emailKey = p.email ? p.email.toLowerCase().trim() : '';
+      dedupKey = `NAME_${nameKey}_${emailKey}`;
+    }
+
+    // Si ya existe, nos quedamos con el registro que tenga más información o sea más reciente (el primero lo es por el order)
+    if (!deduplicatedMap.has(dedupKey)) {
+      deduplicatedMap.set(dedupKey, p);
+    }
+  });
+
+  const uniquePatients = Array.from(deduplicatedMap.values());
+
   // Normalizar al formato que espera el frontend
-  const formattedPatients = (patients || []).map((p: any) => ({
+  const formattedPatients = uniquePatients.map((p: any) => ({
     id: p.id,
     first_name: p.first_name,
     last_name: p.last_name,
@@ -75,12 +95,16 @@ export async function GET(request: Request) {
     created_at: p.created_at || ''
   }));
 
+  // Paginación Manual tras deduplicación
+  const total = formattedPatients.length;
+  const paginatedData = formattedPatients.slice(from, to + 1);
+
   return NextResponse.json({
-    data: formattedPatients,
-    total: count || 0,
+    data: paginatedData,
+    total: total,
     page,
     limit,
-    totalPages: count ? Math.ceil(count / limit) : 0
+    totalPages: Math.ceil(total / limit)
   });
 }
 
