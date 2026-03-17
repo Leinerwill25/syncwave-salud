@@ -27,31 +27,35 @@ const nextConfig: NextConfig = {
 	poweredByHeader: false,
 	// Headers de seguridad y caché
 	async headers() {
+		const securityHeaders = [
+			{ key: 'X-Content-Type-Options', value: 'nosniff' },
+			{ key: 'X-Frame-Options', value: 'DENY' },
+			{ key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
+			{ key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=(), payment=()' },
+			{ key: 'Strict-Transport-Security', value: 'max-age=63072000; includeSubDomains; preload' },
+			{ key: 'Server', value: 'ASHIRA-SECURE' }, // Ofuscación de servidor
+		];
+
 		return [
 			{
 				source: '/(.*)',
-				headers: [
-					{ key: 'X-Content-Type-Options', value: 'nosniff' },
-					{ key: 'X-Frame-Options', value: 'DENY' },
-					{ key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
-					{ key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=(), payment=()' },
-					{ key: 'Strict-Transport-Security', value: 'max-age=63072000; includeSubDomains; preload' },
-				],
+				headers: securityHeaders,
 			},
 			{
 				source: '/api/:path*',
 				headers: [
 					{ key: 'Cache-Control', value: 'no-cache, no-store, must-revalidate, private' },
-					{ key: 'Pragma', 'value': 'no-cache' },
-					{ key: 'Expires', 'value': '0' },
+					{ key: 'Pragma', value: 'no-cache' },
+					{ key: 'Expires', value: '0' },
+					{ key: 'Vary', value: 'Origin' }, // Importante para CORS dinámico
 				],
 			},
 			{
 				source: '/dashboard/:path*',
 				headers: [
 					{ key: 'Cache-Control', value: 'no-cache, no-store, must-revalidate, private' },
-					{ key: 'Pragma', 'value': 'no-cache' },
-					{ key: 'Expires', 'value': '0' },
+					{ key: 'Pragma', value: 'no-cache' },
+					{ key: 'Expires', value: '0' },
 				],
 			},
 			{
