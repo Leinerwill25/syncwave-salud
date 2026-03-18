@@ -43,6 +43,7 @@ export async function GET(
             unregPatient.family_history ? `Historial Familiar: ${unregPatient.family_history}` : ''
           ].filter(Boolean).join('\n\n') || '',
           type: 'UNREG',
+          is_active: unregPatient.is_active ?? true,
           attentions: (await adminSupabase.from('patient_attentions').select('*, specialist:specialist_id(*)').eq('unregistered_patient_id', id)).data || []
       });
     }
@@ -123,6 +124,7 @@ export async function PATCH(
         emergency_contact_relation: validatedData.emergencyContactRelation,
         current_medication: validatedData.currentMedications,
         allergies: validatedData.allergies,
+        is_active: validatedData.isActive,
       })
       .eq('id', id)
       .select()

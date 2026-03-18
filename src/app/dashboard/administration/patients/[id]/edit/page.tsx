@@ -65,7 +65,7 @@ export default function EditAdminPatientPage({ params }: { params: Promise<{ id:
           address: data.address,
           city: data.city,
           country: data.country,
-          isActive: data.is_active,
+          isActive: data.is_active ?? true,
           emergencyContactName: data.emergency_contact_name,
           emergencyContactPhone: data.emergency_contact_phone,
           emergencyContactRelation: data.emergency_contact_relation,

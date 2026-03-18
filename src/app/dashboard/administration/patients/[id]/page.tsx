@@ -113,6 +113,18 @@ export default function AdminPatientDetailPage({ params }: { params: Promise<{ i
     }
   };
 
+  const calculateAge = (birthDate: string) => {
+    if (!birthDate) return null;
+    const today = new Date();
+    const birth = new Date(birthDate);
+    let age = today.getFullYear() - birth.getFullYear();
+    const monthDiff = today.getMonth() - birth.getMonth();
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
+      age--;
+    }
+    return age;
+  };
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
@@ -152,12 +164,18 @@ export default function AdminPatientDetailPage({ params }: { params: Promise<{ i
           </div>
         </div>
         <div className="flex gap-3">
-           <Link
-             href={`/dashboard/administration/patients/${patient.id}/edit`}
-             className="bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 px-6 py-2.5 rounded-xl font-bold flex items-center gap-2 shadow-sm transition-all hover:-translate-y-1"
-           >
-             <FileText className="w-4 h-4" /> Editar Ficha
-           </Link>
+            <Link
+              href={`/dashboard/administration/patients/${patient.id}/history`}
+              className="bg-blue-600 border border-blue-600 text-white hover:bg-blue-700 px-6 py-2.5 rounded-xl font-bold flex items-center gap-2 shadow-lg shadow-blue-500/20 transition-all hover:-translate-y-1"
+            >
+              <Activity className="w-4 h-4" /> Historial Completo
+            </Link>
+            <Link
+              href={`/dashboard/administration/patients/${patient.id}/edit`}
+              className="bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 px-6 py-2.5 rounded-xl font-bold flex items-center gap-2 shadow-sm transition-all hover:-translate-y-1"
+            >
+              <FileText className="w-4 h-4" /> Editar Ficha
+            </Link>
            <button 
              onClick={handleOpenAssignModal}
              className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2.5 rounded-xl font-bold flex items-center gap-2 shadow-lg shadow-blue-500/20 transition-all hover:-translate-y-1"
@@ -186,10 +204,15 @@ export default function AdminPatientDetailPage({ params }: { params: Promise<{ i
                </div>
                <div className="flex items-start gap-3">
                  <div className="p-2 bg-slate-50 rounded-lg text-slate-400"><Calendar className="w-4 h-4" /></div>
-                 <div>
-                   <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Nacimiento</p>
-                   <p className="font-medium text-slate-900">{formatDateDisplay(patient.date_of_birth)}</p>
-                 </div>
+                  <div>
+                    <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Nacimiento</p>
+                    <div className="flex items-center gap-2">
+                       <p className="font-medium text-slate-900">{formatDateDisplay(patient.date_of_birth)}</p>
+                       <span className="bg-blue-50 text-blue-600 px-2 py-0.5 rounded-full text-[10px] font-black uppercase">
+                          {calculateAge(patient.date_of_birth)} años
+                       </span>
+                    </div>
+                  </div>
                </div>
                <div className="flex items-start gap-3">
                  <div className="p-2 bg-slate-50 rounded-lg text-slate-400"><Phone className="w-4 h-4" /></div>
