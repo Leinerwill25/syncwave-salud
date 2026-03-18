@@ -39,7 +39,7 @@ export const adminPatientSchema = z.object({
     description: z.string().optional(),
     attentionDate: z.string().min(1, 'La fecha es requerida'),
     isInternal: z.boolean().default(true),
-    specialistId: z.string().optional(),
+    specialistId: z.string().nullable().optional(),
     status: z.enum(['PENDIENTE', 'COMPLETADA', 'CANCELADA']).default('PENDIENTE')
   })).optional(),
 });

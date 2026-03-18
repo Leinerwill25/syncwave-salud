@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Package, Search, Plus, Trash2, Edit2, AlertTriangle, Pill, Stethoscope, ChevronRight } from 'lucide-react';
+import { Package, Search, Plus, Trash2, Edit2, AlertTriangle, Pill, Stethoscope, ChevronRight, ShoppingBag, UserCheck } from 'lucide-react';
 import Link from 'next/link';
 
 type InventoryTab = 'MEDICACIONES' | 'MATERIALES';
@@ -88,10 +88,18 @@ export default function AdministrationInventoryPage() {
         </div>
         <div className="flex flex-col sm:flex-row gap-2 md:gap-3">
            <Link
-             href={`/dashboard/administration/inventory/assignments`}
-             className="bg-slate-50 hover:bg-slate-100 text-slate-600 px-5 md:px-6 py-2.5 md:py-3 rounded-xl font-bold flex items-center justify-center gap-2 transition-all active:scale-95 text-xs md:text-sm uppercase tracking-tighter"
+             href={`/dashboard/administration/inventory/purchase?type=${activeTab.toLowerCase()}`}
+             className="bg-blue-600 hover:bg-blue-700 text-white px-5 md:px-6 py-2.5 md:py-3 rounded-xl font-bold flex items-center justify-center gap-2 shadow-lg shadow-blue-500/20 transition-all active:scale-95 text-xs md:text-sm uppercase tracking-tighter"
            >
-             Movimientos
+             <ShoppingBag className="w-4 h-4" />
+             Registrar Compra
+           </Link>
+           <Link
+             href={`/dashboard/administration/inventory/delivery?type=${activeTab.toLowerCase()}`}
+             className="bg-slate-800 hover:bg-slate-900 text-white px-5 md:px-6 py-2.5 md:py-3 rounded-xl font-bold flex items-center justify-center gap-2 shadow-lg shadow-slate-900/20 transition-all active:scale-95 text-xs md:text-sm uppercase tracking-tighter"
+           >
+             <UserCheck className="w-4 h-4" />
+             Registrar Entrega
            </Link>
            <Link
              href={`/dashboard/administration/inventory/new?type=${activeTab.toLowerCase()}`}
