@@ -441,34 +441,66 @@ export default function AppointmentListForRoleUser({ selectedDate, roleName, can
 
                                                 </div>
                                             ) : appt.selected_service.name ? (
-                                                <div className="flex justify-between items-start gap-2">
-                                                    <div className="flex-1">
-                                                        <div className="text-sm font-medium text-teal-800">{appt.selected_service.name}</div>
-                                                        {appt.selected_service.description && <p className="text-xs text-teal-700 mt-1">{appt.selected_service.description}</p>}
-                                                        {appt.selected_service.price && (
-                                                            <div className="text-xs text-teal-600 mt-1 font-semibold">
-                                                                <CurrencyDisplay 
-                                                                    amount={Number(appt.selected_service.price)} 
-                                                                    currency={appt.selected_service.currency || 'USD'} 
-                                                                    showBoth={true}
-                                                                    size="xs"
-                                                                    className="gap-1 items-start"
-                                                                />
-                                                            </div>
-                                                        )}
-                                                        {/* Si hay múltiples servicios incluidos (Legacy Combo structure) */}
-                                                        {('services_included' in (appt.selected_service as any) && (appt.selected_service as any).services_included && Array.isArray((appt.selected_service as any).services_included) && (appt.selected_service as any).services_included.length > 0) && (
-                                                            <div className="mt-2 space-y-1">
-                                                                <p className="text-xs font-semibold text-teal-900">Servicios incluidos:</p>
+                                                <div className="flex flex-col gap-2">
+                                                    <div className="flex justify-between items-start gap-2">
+                                                        <div className="flex-1">
+                                                            <div className="text-sm font-medium text-teal-800">{appt.selected_service.name}</div>
+                                                            {appt.selected_service.description && <p className="text-xs text-teal-700 mt-1">{appt.selected_service.description}</p>}
+                                                            
+                                                            {/* Precio del servicio principal si existe */}
+                                                            {appt.selected_service.price && Number(appt.selected_service.price) > 0 && (
+                                                                <div className="text-xs text-teal-600 mt-1 font-semibold">
+                                                                    <CurrencyDisplay 
+                                                                        amount={Number(appt.selected_service.price)} 
+                                                                        currency={appt.selected_service.currency || 'USD'} 
+                                                                        showBoth={true}
+                                                                        size="xs"
+                                                                        className="gap-1 items-start"
+                                                                    />
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    </div>
+
+                                                    {/* Si hay múltiples servicios incluidos (Legacy Combo structure o API Aggregation) */}
+                                                    {('services_included' in (appt.selected_service as any) && (appt.selected_service as any).services_included && Array.isArray((appt.selected_service as any).services_included) && (appt.selected_service as any).services_included.length > 0) && (
+                                                        <div className="mt-2 space-y-2">
+                                                            <div className="text-[10px] font-bold text-teal-600 uppercase tracking-wider">Múltiples servicios</div>
+                                                            <div className="space-y-1">
+                                                                <p className="text-xs font-semibold text-teal-900 border-b border-teal-100 pb-1 mb-1">Servicios incluidos:</p>
                                                                 {(appt.selected_service as any).services_included.map((service: any, idx: number) => (
-                                                                    <div key={idx} className="text-xs text-teal-700 pl-2">
-                                                                        • {service?.name || service}
+                                                                    <div key={idx} className="text-xs text-teal-700 pl-2 flex justify-between items-center">
+                                                                        <span>• {service?.name || service}</span>
+                                                                        {service?.price && (
+                                                                            <span className="text-[10px] text-teal-500 font-mono">
+                                                                                {Number(service.price).toFixed(2)} {service.currency || (appt.selected_service as any)?.currency || 'USD'}
+                                                                            </span>
+                                                                        )}
                                                                     </div>
                                                                 ))}
                                                             </div>
-                                                        )}
-                                                    </div>
 
+                                                            {/* CÁLCULO DE TOTAL PARA EL COMBO SI NO TIENE PRECIO PRINCIPAL O PARA REFUERZO VISUAL */}
+                                                            <div className="mt-4 pt-3 border-t-2 border-dashed border-teal-200">
+                                                                <div className="flex flex-col gap-1">
+                                                                    <span className="text-[10px] font-bold text-teal-900 uppercase tracking-widest">Monto Total Estimado:</span>
+                                                                    <div className="bg-white/50 rounded-lg p-2 border border-teal-100">
+                                                                        <CurrencyDisplay 
+                                                                            amount={
+                                                                                (appt.selected_service as any)?.price && Number((appt.selected_service as any).price) > 0 
+                                                                                    ? Number((appt.selected_service as any).price)
+                                                                                    : (appt.selected_service as any).services_included.reduce((sum: number, s: any) => sum + (Number(s.price) || 0), 0)
+                                                                            } 
+                                                                            currency={(appt.selected_service as any)?.currency || (appt.selected_service as any).services_included[0]?.currency || 'USD'} 
+                                                                            showBoth={true} 
+                                                                            size="sm"
+                                                                            className="gap-1 items-start"
+                                                                        />
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    )}
                                                 </div>
                                             ) : (
                                                 <div className="text-sm font-medium text-teal-800">Servicio no especificado</div>
