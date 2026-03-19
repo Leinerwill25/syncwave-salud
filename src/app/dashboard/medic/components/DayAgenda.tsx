@@ -57,8 +57,8 @@ export default function DayAgenda({ onDateSelect }: DayAgendaProps) {
 						</p>
 					</div>
 
-					<div className="flex justify-center items-center bg-linear-to-b from-white to-gray-50 border border-gray-100 rounded-xl sm:rounded-2xl shadow-inner p-2 sm:p-4 w-full min-w-0 overflow-hidden">
-						<div className="w-full min-w-0 overflow-x-auto scrollbar-hide pb-2">
+					<div className="flex justify-center items-center bg-linear-to-b from-white to-gray-50 border border-gray-100 rounded-xl sm:rounded-2xl shadow-inner p-1 sm:p-4 w-full min-w-0 overflow-hidden">
+						<div className="w-full min-w-0 overflow-x-hidden pb-1">
 							<style>{`
 								.rdp-day_hasAppointment {
 									position: relative;
@@ -66,26 +66,46 @@ export default function DayAgenda({ onDateSelect }: DayAgendaProps) {
 								.rdp-day_hasAppointment::after {
 									content: "";
 									position: absolute;
-									bottom: 4px;
+									bottom: 2px;
 									left: 50%;
 									transform: translateX(-50%);
 									width: 4px;
 									height: 4px;
 									border-radius: 50%;
-									background-color: #a78bfa;
+									background-color: #7c3aed; /* violet-600 */
 								}
 								.rdp-day_selected.rdp-day_hasAppointment::after {
 									background-color: white;
 								}
                                 .rdp-table {
-                                    min-width: 280px;
+                                    width: 100% !important;
+                                    max-width: 100% !important;
+                                    margin: 0 auto !important;
                                 }
-                                .scrollbar-hide::-webkit-scrollbar {
-                                    display: none;
+                                .rdp-head_cell {
+                                    font-size: 10px !important;
+                                    padding: 2px 0 !important;
+                                    font-weight: 700 !important;
+                                    text-transform: uppercase !important;
+                                    color: #6b7280 !important;
                                 }
-                                .scrollbar-hide {
-                                    -ms-overflow-style: none;
-                                    scrollbar-width: none;
+                                .rdp-cell {
+                                    padding: 1px !important;
+                                }
+                                .rdp-button {
+                                    width: 32px !important;
+                                    height: 32px !important;
+                                    padding: 0 !important;
+                                    display: flex !important;
+                                    align-items: center !important;
+                                    justify-content: center !important;
+                                }
+                                @media (max-width: 380px) {
+                                    .rdp-button {
+                                        width: 28px !important;
+                                        height: 28px !important;
+                                        font-size: 11px !important;
+                                    }
                                 }
 							`}</style>
 							<DayPicker
@@ -96,12 +116,16 @@ export default function DayAgenda({ onDateSelect }: DayAgendaProps) {
 								onMonthChange={setMonth}
 								weekStartsOn={1}
 								modifiers={modifiers}
-								className="w-full mx-auto"
+								className="w-full m-0 p-0"
 								classNames={{
-									months: 'grid grid-cols-1 w-full justify-center text-center',
-									caption: 'text-center text-violet-700 font-semibold mb-2 sm:mb-3',
-									head_row: 'flex justify-around mb-1 text-[10px] sm:text-xs text-gray-500',
-									day: 'p-1.5 sm:p-2 text-xs sm:text-sm rounded-lg hover:bg-violet-100 hover:text-violet-700 transition-all duration-200 cursor-pointer',
+									months: 'w-full',
+									caption: 'flex justify-between items-center text-violet-700 font-semibold mb-2 px-2',
+                                    caption_label: 'text-sm sm:text-base',
+                                    nav: 'flex gap-1',
+									head_row: 'grid grid-cols-7 w-full mb-1',
+                                    head_cell: 'text-center uppercase tracking-tighter text-gray-400 font-bold',
+                                    row: 'grid grid-cols-7 w-full',
+									day: 'mx-auto flex items-center justify-center text-xs sm:text-sm rounded-lg hover:bg-violet-100 hover:text-violet-700 transition-all duration-200 cursor-pointer',
 									day_selected: 'bg-violet-600 text-white font-semibold shadow-sm',
 									day_today: 'bg-violet-100 text-violet-700 font-semibold border border-violet-200',
 								}}
