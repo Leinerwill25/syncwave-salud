@@ -57,8 +57,8 @@ export default function DayAgenda({ onDateSelect }: DayAgendaProps) {
 						</p>
 					</div>
 
-					<div className="flex justify-center items-center bg-linear-to-b from-white to-gray-50 border border-gray-100 rounded-xl sm:rounded-2xl shadow-inner p-1 sm:p-4 w-full min-w-0 overflow-hidden">
-						<div className="w-full min-w-0 overflow-hidden">
+					<div className="flex justify-center items-center bg-linear-to-b from-white to-gray-50 border border-gray-100 rounded-xl sm:rounded-2xl shadow-inner p-2 sm:p-4 w-full min-w-0 overflow-hidden">
+						<div className="w-full min-w-0 overflow-x-auto scrollbar-hide pb-2">
 							<style>{`
 								.rdp-day_hasAppointment {
 									position: relative;
@@ -66,7 +66,7 @@ export default function DayAgenda({ onDateSelect }: DayAgendaProps) {
 								.rdp-day_hasAppointment::after {
 									content: "";
 									position: absolute;
-									bottom: 3px;
+									bottom: 4px;
 									left: 50%;
 									transform: translateX(-50%);
 									width: 4px;
@@ -78,35 +78,14 @@ export default function DayAgenda({ onDateSelect }: DayAgendaProps) {
 									background-color: white;
 								}
                                 .rdp-table {
-                                    width: 100% !important;
-                                    max-width: 100% !important;
-                                    table-layout: fixed !important;
-                                    border-collapse: collapse !important;
+                                    min-width: 300px;
                                 }
-                                .rdp-head_cell {
-                                    padding: 4px 0 !important;
-                                    font-size: 11px !important;
-                                    width: 14.28% !important;
+                                .scrollbar-hide::-webkit-scrollbar {
+                                    display: none;
                                 }
-                                .rdp-cell {
-                                    padding: 1px 0 !important;
-                                    width: 14.28% !important;
-                                    text-align: center !important;
-                                }
-                                .rdp-button {
-                                    width: 32px !important;
-                                    height: 32px !important;
-                                    padding: 0 !important;
-                                    display: flex !important;
-                                    align-items: center !important;
-                                    justify-content: center !important;
-                                }
-                                @media (max-width: 380px) {
-                                    .rdp-button {
-                                        width: 28px !important;
-                                        height: 28px !important;
-                                        font-size: 11px !important;
-                                    }
+                                .scrollbar-hide {
+                                    -ms-overflow-style: none;
+                                    scrollbar-width: none;
                                 }
 							`}</style>
 							<DayPicker
@@ -117,16 +96,12 @@ export default function DayAgenda({ onDateSelect }: DayAgendaProps) {
 								onMonthChange={setMonth}
 								weekStartsOn={1}
 								modifiers={modifiers}
-								className="w-full m-0 p-0"
+								className="w-full mx-auto"
 								classNames={{
-									months: 'w-full',
-									caption: 'flex justify-between items-center text-violet-700 font-semibold mb-2 px-2',
-                                    caption_label: 'text-sm sm:text-base',
-                                    nav: 'flex gap-1',
-									head_row: 'grid grid-cols-7 w-full mb-1',
-                                    head_cell: 'text-center uppercase tracking-tighter text-gray-400 font-bold',
-                                    row: 'grid grid-cols-7 w-full',
-									day: 'mx-auto flex items-center justify-center text-xs sm:text-sm rounded-lg hover:bg-violet-100 hover:text-violet-700 transition-all duration-200 cursor-pointer',
+									months: 'grid grid-cols-1 w-full justify-center text-center',
+									caption: 'text-center text-violet-700 font-semibold mb-2 sm:mb-3',
+									head_row: 'flex justify-around mb-1 text-[10px] sm:text-xs text-gray-500',
+									day: 'p-1.5 sm:p-2 text-xs sm:text-sm rounded-lg hover:bg-violet-100 hover:text-violet-700 transition-all duration-200 cursor-pointer',
 									day_selected: 'bg-violet-600 text-white font-semibold shadow-sm',
 									day_today: 'bg-violet-100 text-violet-700 font-semibold border border-violet-200',
 								}}
