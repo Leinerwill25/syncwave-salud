@@ -17,6 +17,7 @@ import Head from 'next/head';
 import { VoiceDemo } from './VoiceDemo';
 import { MultiSedeCalculator } from './MultiSedeCalculator';
 import { MultiSedeExplainer } from './MultiSedeExplainer';
+import ClinicasDomiciliariasSection from './ClinicasDomiciliariasSection';
 
 // --- SEO & Schema Components ---
 const SEOMetadata = () => (
@@ -726,6 +727,9 @@ export default function ClinicasLandingPage() {
                         </div>
                     </div>
                 </section>
+
+                {/* --- SECCIÓN CLÍNICAS DOMICILIARIAS & SAFECARE 24/7 --- */}
+                <ClinicasDomiciliariasSection />
 
                 {/* --- CALCULATOR SECTION --- */}
                 <MultiSedeCalculator />
