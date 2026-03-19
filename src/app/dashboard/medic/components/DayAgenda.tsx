@@ -58,7 +58,7 @@ export default function DayAgenda({ onDateSelect }: DayAgendaProps) {
 					</div>
 
 					<div className="flex justify-center items-center bg-linear-to-b from-white to-gray-50 border border-gray-100 rounded-xl sm:rounded-2xl shadow-inner p-1 sm:p-4 w-full min-w-0 overflow-hidden">
-						<div className="w-full min-w-0 overflow-x-hidden pb-1">
+						<div className="w-full min-w-0 overflow-hidden">
 							<style>{`
 								.rdp-day_hasAppointment {
 									position: relative;
@@ -66,13 +66,13 @@ export default function DayAgenda({ onDateSelect }: DayAgendaProps) {
 								.rdp-day_hasAppointment::after {
 									content: "";
 									position: absolute;
-									bottom: 2px;
+									bottom: 3px;
 									left: 50%;
 									transform: translateX(-50%);
 									width: 4px;
 									height: 4px;
 									border-radius: 50%;
-									background-color: #7c3aed; /* violet-600 */
+									background-color: #7c3aed; /* Violeta intenso */
 								}
 								.rdp-day_selected.rdp-day_hasAppointment::after {
 									background-color: white;
@@ -80,17 +80,18 @@ export default function DayAgenda({ onDateSelect }: DayAgendaProps) {
                                 .rdp-table {
                                     width: 100% !important;
                                     max-width: 100% !important;
-                                    margin: 0 auto !important;
+                                    table-layout: fixed !important;
+                                    border-collapse: collapse !important;
                                 }
                                 .rdp-head_cell {
-                                    font-size: 10px !important;
-                                    padding: 2px 0 !important;
-                                    font-weight: 700 !important;
-                                    text-transform: uppercase !important;
-                                    color: #6b7280 !important;
+                                    padding: 4px 0 !important;
+                                    font-size: 11px !important;
+                                    width: 14.28% !important;
                                 }
                                 .rdp-cell {
-                                    padding: 1px !important;
+                                    padding: 1px 0 !important;
+                                    width: 14.28% !important;
+                                    text-align: center !important;
                                 }
                                 .rdp-button {
                                     width: 32px !important;
