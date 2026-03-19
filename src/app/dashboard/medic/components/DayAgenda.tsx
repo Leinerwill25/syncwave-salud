@@ -57,8 +57,8 @@ export default function DayAgenda({ onDateSelect }: DayAgendaProps) {
 						</p>
 					</div>
 
-					<div className="flex justify-center items-center bg-linear-to-b from-white to-gray-50 border border-gray-100 rounded-xl sm:rounded-2xl shadow-inner p-3 sm:p-4 w-full min-w-0 overflow-hidden">
-						<div className="w-full min-w-0 overflow-hidden">
+					<div className="flex justify-center items-center bg-linear-to-b from-white to-gray-50 border border-gray-100 rounded-xl sm:rounded-2xl shadow-inner p-2 sm:p-4 w-full min-w-0 overflow-hidden">
+						<div className="w-full min-w-0 overflow-x-auto scrollbar-hide pb-2">
 							<style>{`
 								.rdp-day_hasAppointment {
 									position: relative;
@@ -69,14 +69,24 @@ export default function DayAgenda({ onDateSelect }: DayAgendaProps) {
 									bottom: 4px;
 									left: 50%;
 									transform: translateX(-50%);
-									width: 5px;
-									height: 5px;
+									width: 4px;
+									height: 4px;
 									border-radius: 50%;
-									background-color: #a78bfa; /* violet-400 (morado claro) */
+									background-color: #a78bfa;
 								}
 								.rdp-day_selected.rdp-day_hasAppointment::after {
-									background-color: white; /* Punto blanco si el día está seleccionado */
+									background-color: white;
 								}
+                                .rdp-table {
+                                    min-width: 280px;
+                                }
+                                .scrollbar-hide::-webkit-scrollbar {
+                                    display: none;
+                                }
+                                .scrollbar-hide {
+                                    -ms-overflow-style: none;
+                                    scrollbar-width: none;
+                                }
 							`}</style>
 							<DayPicker
 								mode="single"
@@ -86,12 +96,12 @@ export default function DayAgenda({ onDateSelect }: DayAgendaProps) {
 								onMonthChange={setMonth}
 								weekStartsOn={1}
 								modifiers={modifiers}
-								className="w-full"
+								className="w-full mx-auto"
 								classNames={{
 									months: 'grid grid-cols-1 w-full justify-center text-center',
-									caption: 'text-center text-violet-700 font-semibold mb-3',
-									head_row: 'flex justify-around mb-1 text-xs text-gray-500',
-									day: 'p-2 text-sm rounded-lg hover:bg-violet-100 hover:text-violet-700 transition-all duration-200 cursor-pointer',
+									caption: 'text-center text-violet-700 font-semibold mb-2 sm:mb-3',
+									head_row: 'flex justify-around mb-1 text-[10px] sm:text-xs text-gray-500',
+									day: 'p-1.5 sm:p-2 text-xs sm:text-sm rounded-lg hover:bg-violet-100 hover:text-violet-700 transition-all duration-200 cursor-pointer',
 									day_selected: 'bg-violet-600 text-white font-semibold shadow-sm',
 									day_today: 'bg-violet-100 text-violet-700 font-semibold border border-violet-200',
 								}}
