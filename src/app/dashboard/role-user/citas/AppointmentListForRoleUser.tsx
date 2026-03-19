@@ -396,6 +396,7 @@ export default function AppointmentListForRoleUser({ selectedDate, roleName, can
 											{/* Manejar array de servicios (nuevo formato) */}
 											{Array.isArray(appt.selected_service) ? (
                                             <div className="space-y-2">
+                                                <div className="text-[10px] font-bold text-teal-600 uppercase tracking-wider mb-2">Múltiples servicios</div>
                                                 {(appt.selected_service as any[]).map((item: any, idx: number) => (
                                                     <div key={idx} className="border-b border-teal-100 last:border-0 pb-1 last:pb-0 flex justify-between items-start gap-2">
                                                         <div className="flex-1">
@@ -403,25 +404,34 @@ export default function AppointmentListForRoleUser({ selectedDate, roleName, can
                                                             {item.description && <p className="text-xs text-teal-700 mt-0.5">{item.description}</p>}
                                                             {item.price !== undefined && (
                                                                 <div className="text-xs text-teal-600 font-semibold">
-                                                                    <CurrencyDisplay 
-                                                                        amount={Number(item.price)} 
-                                                                        currency={item.currency || 'USD'} 
-                                                                        showBoth={true}
-                                                                        size="xs"
-                                                                        className="gap-1 items-start"
-                                                                    />
+                                                                    {Number(item.price).toFixed(2)} {item.currency || 'EUR'}
                                                                 </div>
                                                             )}
                                                             {/* Si es un combo */}
                                                             {item.type === 'combo' && item.serviceIds && (
                                                                 <div className="mt-1">
-                                                                    <p className="text-[10px] font-semibold text-teal-900 opacity-80">Incluye:</p>
+                                                                    <p className="text-[10px] font-semibold text-teal-900 opacity-80">Incluye: {item.services_included?.map((s:any) => s.name || s).join(', ')}</p>
                                                                 </div>
                                                             )}
                                                         </div>
-
                                                     </div>
                                                 ))}
+
+                                                {/* BLOQUE DE TOTAL PARA MÚLTIPLES SERVICIOS */}
+                                                <div className="mt-4 pt-3 border-t-2 border-dashed border-teal-200">
+                                                    <div className="flex flex-col gap-1">
+                                                        <span className="text-[10px] font-bold text-teal-900 uppercase tracking-widest">Total Estimado de la Cita:</span>
+                                                        <div className="bg-white/50 rounded-lg p-2 border border-teal-100">
+                                                            <CurrencyDisplay 
+                                                                amount={(appt.selected_service as any[]).reduce((sum, item) => sum + (Number(item.price) || 0), 0)} 
+                                                                currency={(appt.selected_service as any[])[0]?.currency || 'EUR'} 
+                                                                showBoth={true}
+                                                                size="sm"
+                                                                className="gap-1 items-start"
+                                                            />
+                                                        </div>
+                                                    </div>
+                                                </div>
                                             </div>
                                         ) : (
                                             /* Manejar diferentes formatos legacy (objeto único o string) */

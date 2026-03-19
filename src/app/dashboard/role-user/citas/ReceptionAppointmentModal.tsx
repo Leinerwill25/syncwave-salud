@@ -447,7 +447,19 @@ export default function ReceptionAppointmentModal({ isOpen, onClose, appointment
 												</div>
 											</div>
 										) : (
-											<p className="text-2xl font-bold text-teal-600">{facturacion && <CurrencyDisplay amount={facturacion.total} currency={facturacion.currency} />}</p>
+											<div className="p-3 bg-white/50 rounded-xl border border-teal-100">
+                                                <div className="text-2xl font-bold text-teal-600">
+                                                    {facturacion && (
+                                                        <CurrencyDisplay 
+                                                            amount={facturacion.total} 
+                                                            currency={facturacion.currency} 
+                                                            showBoth={true} 
+                                                            size="lg"
+                                                            className="items-start"
+                                                        />
+                                                    )}
+                                                </div>
+                                            </div>
 										)}
 									</div>
 

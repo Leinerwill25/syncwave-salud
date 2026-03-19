@@ -209,6 +209,24 @@ export default function EditAppointmentModal({ isOpen, onClose, appointment, onU
                                         No hay servicios seleccionados
                                     </div>
                                 )}
+
+                                {/* BLOQUE DE TOTAL EN MODAL DE EDICIÓN */}
+                                {currentServices.length > 0 && (
+                                    <div className="mt-4 pt-3 border-t border-teal-200">
+                                        <div className="flex justify-between items-center">
+                                            <span className="text-xs font-bold text-teal-900 uppercase tracking-widest">Total Estimado:</span>
+                                            <div className="text-right">
+                                                <CurrencyDisplay 
+                                                    amount={currentServices.reduce((sum, s) => sum + (Number(s.price) || 0), 0)} 
+                                                    currency={currentServices[0]?.currency || 'EUR'} 
+                                                    showBoth={true}
+                                                    size="sm"
+                                                    className="items-end"
+                                                />
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
                             </div>
 
 							{error && (
