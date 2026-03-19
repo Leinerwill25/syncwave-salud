@@ -130,7 +130,7 @@ export default function ClinicasDomiciliariasSection() {
               >
                 <div className="relative w-full h-full rounded-[2.5rem] overflow-hidden shadow-2xl border-8 border-white">
                   <Image 
-                    src="/clinicas/safecare/safecare-01.jpeg" 
+                    src="/clinicas/safecare/safecare-03.jpeg" 
                     alt="Atención Médica SafeCare 24/7" 
                     fill 
                     className="object-cover"
@@ -148,7 +148,7 @@ export default function ClinicasDomiciliariasSection() {
               >
                 <div className="relative w-full h-full rounded-[2.5rem] overflow-hidden shadow-2xl border-8 border-white">
                   <Image 
-                    src="/clinicas/safecare/safecare-01.jpeg" 
+                    src="/clinicas/safecare/safecare-03.jpeg" 
                     alt="Cuidado de Enfermería Domiciliaria" 
                     fill 
                     className="object-cover"
