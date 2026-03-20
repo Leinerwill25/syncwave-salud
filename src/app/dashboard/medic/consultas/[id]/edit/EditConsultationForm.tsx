@@ -21,7 +21,8 @@ import {
 	Sparkles, 
 	Plus,
 	Search,
-	Clipboard
+	Clipboard,
+	ShieldAlert
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
@@ -155,6 +156,19 @@ export default function EditConsultationForm({ initial, patient, doctor, doctorS
 	const { saveOptimistically } = useOptimisticSave();
 	const { isLiteMode } = useLiteMode();
 	const [showPrivateNotesModal, setShowPrivateNotesModal] = useState(false);
+	const [showReportSectionsModal, setShowReportSectionsModal] = useState(false);
+	const [selectedReportSections, setSelectedReportSections] = useState<Record<string, boolean>>({
+		current_illness: true,
+		medical_history: true,
+		family_history: true,
+		gynecological_history: true,
+		physical_exam: true,
+		ultrasound: true,
+		diagnostics: true,
+		plan_treatment: true,
+		colposcopy_report: true,
+	});
+	const [pendingSavePayload, setPendingSavePayload] = useState<any>(null);
 	const [genericReportConfig, setGenericReportConfig] = useState<GenericReportConfig | null>(null);
 
 	useEffect(() => {
@@ -1065,7 +1079,7 @@ export default function EditConsultationForm({ initial, patient, doctor, doctorS
 	/* -------------------------
      Build vitals object
      ------------------------- */
-	function buildVitalsObject() {
+	function buildVitalsObject(sections?: Record<string, boolean>) {
 		const g: Record<string, any> = {};
 		if (weight) g.weight = weight;
 		if (height) g.height = height;
@@ -1295,97 +1309,128 @@ export default function EditConsultationForm({ initial, patient, doctor, doctorS
 		
 		if (allowedSpecialtyCodes.includes('gynecology') && shouldSaveGynecology) {
 			const gyn: Record<string, any> = {};
-			// LMP es obligatorio si hay datos de ginecología, así que siempre lo incluimos
-			if (lmp) gyn.last_menstrual_period = lmp;
-			if (contraceptiveUse) gyn.contraceptive = contraceptiveUse;
-			// gynDiagnosis removido - ahora se usa solo el diagnóstico CIE-11 o manual array
-			// Guardar el array de diagnósticos
-			if (gynDiagnoses && gynDiagnoses.length > 0) {
-				gyn.diagnoses = gynDiagnoses;
-				// También guardar como string plano para compatibilidad
-				gyn.diagnosis = gynDiagnoses.join('\n');
+			
+			// Filtrado por secciones si se proporciona el objeto sections
+			const showAll = !sections;
+			
+			// 1. Historia de la enfermedad actual
+			if ((showAll || sections?.current_illness) && currentIllnessHistory) {
+				gyn.current_illness_history = currentIllnessHistory;
 			}
-			if (cervicalExamNotes) gyn.cervical_exam = cervicalExamNotes;
-			if (currentIllnessHistory) gyn.current_illness_history = currentIllnessHistory;
-			if (allergies) gyn.allergies = allergies;
-			if (surgicalHistory) gyn.surgical_history = surgicalHistory;
-			if (familyHistoryMother) gyn.family_history_mother = familyHistoryMother;
-			if (familyHistoryFather) gyn.family_history_father = familyHistoryFather;
-			if (familyHistoryBreastCancer) gyn.family_history_breast_cancer = familyHistoryBreastCancer;
-			if (its) gyn.its = its;
-			if (menstruationType) gyn.menstruation_type = menstruationType;
-			if (menstruationPattern) gyn.menstruation_pattern = menstruationPattern;
-			if (dysmenorrhea) gyn.dysmenorrhea = dysmenorrhea;
-			if (firstSexualRelation) gyn.first_sexual_relation = firstSexualRelation;
-			if (sexualPartners) gyn.sexual_partners = sexualPartners;
-			if (generalConditions) gyn.general_conditions = generalConditions;
-			if (breastSize) gyn.breast_size = breastSize;
-			if (breastSymmetry) gyn.breast_symmetry = breastSymmetry;
-			if (breastCap) gyn.breast_cap = breastCap;
-			if (breastSecretion) gyn.breast_secretion = breastSecretion;
-			if (axillaryFossae) gyn.axillary_fossae = axillaryFossae;
-			if (abdomen) gyn.abdomen = abdomen;
-			if (externalGenitals) gyn.external_genitals = externalGenitals;
-			if (vaginalDischarge) gyn.vaginal_discharge = vaginalDischarge;
-			if (speculumCervix) gyn.speculum_cervix = speculumCervix;
-			if (tactCervix) gyn.tact_cervix = tactCervix;
-			if (fundusSacs) gyn.fundus_sacs = fundusSacs;
-			if (adnexa) gyn.adnexa = adnexa;
-			if (hinselmannTest) gyn.hinselmann_test = hinselmannTest;
-			if (schillerTest) gyn.schiller_test = schillerTest;
-			if (uterusDimensions) gyn.uterus_dimensions = uterusDimensions;
-			if (endometrialInterface) gyn.endometrial_interface = endometrialInterface;
-			if (endometrialInterfaceType) gyn.endometrial_interface_type = endometrialInterfaceType;
-			if (endometrialInterfacePhase) gyn.endometrial_interface_phase = endometrialInterfacePhase;
-			if (leftOvaryDimensions) gyn.left_ovary_dimensions = leftOvaryDimensions;
-			if (rightOvaryDimensions) gyn.right_ovary_dimensions = rightOvaryDimensions;
-			if (fundusFluid) gyn.fundus_fluid = fundusFluid;
-			if (ho) gyn.ho = ho;
-
-			// Nuevos campos
-			if (hypersensitivity) gyn.hypersensitivity = hypersensitivity;
-			if (psychobiologicalHabits) gyn.psychobiological_habits = psychobiologicalHabits;
-			if (menarche) gyn.menarche = menarche;
-			if (lastCytology) gyn.last_cytology = lastCytology;
-			if (mastopathies) gyn.mastopathies = mastopathies;
-			if (currentPartner) gyn.current_partner = currentPartner;
-			if (gardasil) gyn.gardasil = gardasil;
-			if (vaccinated) gyn.vaccinated = vaccinated;
-			if (firstPregnancyAge) gyn.first_pregnancy_age = firstPregnancyAge;
-			if (exclusiveBreastfeeding) gyn.exclusive_breastfeeding = exclusiveBreastfeeding;
-			if (planIndications) gyn.plan_indications = planIndications;
-			if (dietIndications) gyn.diet_indications = dietIndications;
-			if (intimateSoap) gyn.intimate_soap = intimateSoap;
-			if (treatmentInfection) gyn.treatment_infection = treatmentInfection;
-			if (probiotics) gyn.probiotics = probiotics;
-			if (vitamins) gyn.vitamins = vitamins;
-			if (contraceptiveTreatment) gyn.contraceptive_treatment = contraceptiveTreatment;
-			if (bleedingTreatment) gyn.bleeding_treatment = bleedingTreatment;
-			if (linkedRecipeId) gyn.linked_recipe_id = linkedRecipeId;
-
-			// Datos de colposcopia
-			const colposcopy: Record<string, any> = {};
-			if (colposcopyAcetic5) colposcopy.acetic_5 = colposcopyAcetic5;
-			if (colposcopyEctocervix) colposcopy.ectocervix = colposcopyEctocervix;
-			if (colposcopyType) colposcopy.type = colposcopyType;
-			if (colposcopyExtension) colposcopy.extension = colposcopyExtension;
-			if (colposcopyDescription) colposcopy.description = colposcopyDescription;
-			if (colposcopyLocation) colposcopy.location = colposcopyLocation;
-			if (colposcopyAcetowhite) colposcopy.acetowhite = colposcopyAcetowhite;
-			if (colposcopyAcetowhiteDetails) colposcopy.acetowhite_details = colposcopyAcetowhiteDetails;
-			if (colposcopyMosaic) colposcopy.mosaic = colposcopyMosaic;
-			if (colposcopyPunctation) colposcopy.punctation = colposcopyPunctation;
-			if (colposcopyAtypicalVessels) colposcopy.atypical_vessels = colposcopyAtypicalVessels;
-			if (colposcopyInvasiveCarcinoma) colposcopy.invasive_carcinoma = colposcopyInvasiveCarcinoma;
-			if (colposcopyBorders) colposcopy.borders = colposcopyBorders;
-			if (colposcopySituation) colposcopy.situation = colposcopySituation;
-			if (colposcopyElevation) colposcopy.elevation = colposcopyElevation;
-			if (colposcopyBiopsy) colposcopy.biopsy = colposcopyBiopsy;
-			if (colposcopyBiopsyLocation) colposcopy.biopsy_location = colposcopyBiopsyLocation;
-			if (colposcopyLugol) colposcopy.lugol = colposcopyLugol;
-			if (colposcopyImage) colposcopy.colposcopy_image = colposcopyImage;
-			if (colposcopyAdditionalDetails) colposcopy.additional_details = colposcopyAdditionalDetails;
-			if (Object.keys(colposcopy).length) gyn.colposcopy = colposcopy;
+			
+			// 2. Antecedentes Médicos
+			if (showAll || sections?.medical_history) {
+				if (allergies) gyn.allergies = allergies;
+				if (surgicalHistory) gyn.surgical_history = surgicalHistory;
+				if (hypersensitivity) gyn.hypersensitivity = hypersensitivity;
+				if (psychobiologicalHabits) gyn.psychobiological_habits = psychobiologicalHabits;
+			}
+			
+			// 3. Antecedentes Familiares
+			if (showAll || sections?.family_history) {
+				if (familyHistoryMother) gyn.family_history_mother = familyHistoryMother;
+				if (familyHistoryFather) gyn.family_history_father = familyHistoryFather;
+				if (familyHistoryBreastCancer) gyn.family_history_breast_cancer = familyHistoryBreastCancer;
+			}
+			
+			// 4. Antecedentes Ginecológicos
+			if (showAll || sections?.gynecological_history) {
+				if (lmp) gyn.last_menstrual_period = lmp;
+				if (contraceptiveUse) gyn.contraceptive = contraceptiveUse;
+				if (its) gyn.its = its;
+				if (menstruationType) gyn.menstruation_type = menstruationType;
+				if (menstruationPattern) gyn.menstruation_pattern = menstruationPattern;
+				if (dysmenorrhea) gyn.dysmenorrhea = dysmenorrhea;
+				if (firstSexualRelation) gyn.first_sexual_relation = firstSexualRelation;
+				if (sexualPartners) gyn.sexual_partners = sexualPartners;
+				if (menarche) gyn.menarche = menarche;
+				if (lastCytology) gyn.last_cytology = lastCytology;
+				if (mastopathies) gyn.mastopathies = mastopathies;
+				if (currentPartner) gyn.current_partner = currentPartner;
+				if (gardasil) gyn.gardasil = gardasil;
+				if (vaccinated) gyn.vaccinated = vaccinated;
+				if (firstPregnancyAge) gyn.first_pregnancy_age = firstPregnancyAge;
+				if (exclusiveBreastfeeding) gyn.exclusive_breastfeeding = exclusiveBreastfeeding;
+				if (ho) gyn.ho = ho;
+			}
+			
+			// 5. Examen Físico
+			if (showAll || sections?.physical_exam) {
+				if (generalConditions) gyn.general_conditions = generalConditions;
+				if (breastSize) gyn.breast_size = breastSize;
+				if (breastSymmetry) gyn.breast_symmetry = breastSymmetry;
+				if (breastCap) gyn.breast_cap = breastCap;
+				if (breastSecretion) gyn.breast_secretion = breastSecretion;
+				if (axillaryFossae) gyn.axillary_fossae = axillaryFossae;
+				if (abdomen) gyn.abdomen = abdomen;
+				if (externalGenitals) gyn.external_genitals = externalGenitals;
+				if (vaginalDischarge) gyn.vaginal_discharge = vaginalDischarge;
+				if (speculumCervix) gyn.speculum_cervix = speculumCervix;
+				if (tactCervix) gyn.tact_cervix = tactCervix;
+				if (fundusSacs) gyn.fundus_sacs = fundusSacs;
+				if (adnexa) gyn.adnexa = adnexa;
+				if (hinselmannTest) gyn.hinselmann_test = hinselmannTest;
+				if (schillerTest) gyn.schiller_test = schillerTest;
+				if (cervicalExamNotes) gyn.cervical_exam = cervicalExamNotes;
+			}
+			
+			// 6. Ecografía Transvaginal
+			if (showAll || sections?.ultrasound) {
+				if (uterusDimensions) gyn.uterus_dimensions = uterusDimensions;
+				if (endometrialInterface) gyn.endometrial_interface = endometrialInterface;
+				if (endometrialInterfaceType) gyn.endometrial_interface_type = endometrialInterfaceType;
+				if (endometrialInterfacePhase) gyn.endometrial_interface_phase = endometrialInterfacePhase;
+				if (leftOvaryDimensions) gyn.left_ovary_dimensions = leftOvaryDimensions;
+				if (rightOvaryDimensions) gyn.right_ovary_dimensions = rightOvaryDimensions;
+				if (fundusFluid) gyn.fundus_fluid = fundusFluid;
+			}
+			
+			// 7. Diagnósticos
+			if (showAll || sections?.diagnostics) {
+				if (gynDiagnoses && gynDiagnoses.length > 0) {
+					gyn.diagnoses = gynDiagnoses;
+					gyn.diagnosis = gynDiagnoses.join('\n');
+				}
+			}
+			
+			// 8. Plan / Tratamiento
+			if (showAll || sections?.plan_treatment) {
+				if (planIndications) gyn.plan_indications = planIndications;
+				if (dietIndications) gyn.diet_indications = dietIndications;
+				if (intimateSoap) gyn.intimate_soap = intimateSoap;
+				if (treatmentInfection) gyn.treatment_infection = treatmentInfection;
+				if (probiotics) gyn.probiotics = probiotics;
+				if (vitamins) gyn.vitamins = vitamins;
+				if (contraceptiveTreatment) gyn.contraceptive_treatment = contraceptiveTreatment;
+				if (bleedingTreatment) gyn.bleeding_treatment = bleedingTreatment;
+				if (linkedRecipeId) gyn.linked_recipe_id = linkedRecipeId;
+			}
+			
+			// 9. Informe Colposcópico
+			if (showAll || sections?.colposcopy_report) {
+				const colposcopy: Record<string, any> = {};
+				if (colposcopyAcetic5) colposcopy.acetic_5 = colposcopyAcetic5;
+				if (colposcopyEctocervix) colposcopy.ectocervix = colposcopyEctocervix;
+				if (colposcopyType) colposcopy.type = colposcopyType;
+				if (colposcopyExtension) colposcopy.extension = colposcopyExtension;
+				if (colposcopyDescription) colposcopy.description = colposcopyDescription;
+				if (colposcopyLocation) colposcopy.location = colposcopyLocation;
+				if (colposcopyAcetowhite) colposcopy.acetowhite = colposcopyAcetowhite;
+				if (colposcopyAcetowhiteDetails) colposcopy.acetowhite_details = colposcopyAcetowhiteDetails;
+				if (colposcopyMosaic) colposcopy.mosaic = colposcopyMosaic;
+				if (colposcopyPunctation) colposcopy.punctation = colposcopyPunctation;
+				if (colposcopyAtypicalVessels) colposcopy.atypical_vessels = colposcopyAtypicalVessels;
+				if (colposcopyInvasiveCarcinoma) colposcopy.invasive_carcinoma = colposcopyInvasiveCarcinoma;
+				if (colposcopyBorders) colposcopy.borders = colposcopyBorders;
+				if (colposcopySituation) colposcopy.situation = colposcopySituation;
+				if (colposcopyElevation) colposcopy.elevation = colposcopyElevation;
+				if (colposcopyBiopsy) colposcopy.biopsy = colposcopyBiopsy;
+				if (colposcopyBiopsyLocation) colposcopy.biopsy_location = colposcopyBiopsyLocation;
+				if (colposcopyLugol) colposcopy.lugol = colposcopyLugol;
+				if (colposcopyImage) colposcopy.colposcopy_image = colposcopyImage;
+				if (colposcopyAdditionalDetails) colposcopy.additional_details = colposcopyAdditionalDetails;
+				if (Object.keys(colposcopy).length) gyn.colposcopy = colposcopy;
+			}
 
 			// Solo agregar ginecología si hay al menos un campo con datos
 			if (Object.keys(gyn).length > 0) out.gynecology = gyn;
@@ -1483,8 +1528,18 @@ export default function EditConsultationForm({ initial, patient, doctor, doctorS
 		return errors;
 	}
 
-	async function handleSave(e: React.FormEvent) {
+	async function handleSave(e: React.FormEvent, sectionsOverride?: Record<string, boolean>) {
 		e.preventDefault();
+
+		// Si es Ginecología y no se han pasado secciones (viniendo del botón normal), mostrar modal
+		const isGynecologyActive = allowedSpecialtyCodes?.includes('gynecology') && expandedSpecialties.has('gynecology');
+		const isObstetricReport = obstetricReportType === 'first_trimester' || obstetricReportType === 'second_third_trimester';
+
+		if (isGynecologyActive && !isObstetricReport && !sectionsOverride) {
+			setShowReportSectionsModal(true);
+			return;
+		}
+
 		setError(null);
 		setSuccess(null);
 
@@ -1542,7 +1597,7 @@ export default function EditConsultationForm({ initial, patient, doctor, doctorS
 				icd11_code: icd11Code || null,
 				icd11_title: icd11Title || null,
 				notes: notes || null,
-				vitals: buildVitalsObject(),
+				vitals: buildVitalsObject(sectionsOverride),
 				started_at: startedAt || null,
 				ended_at: endedAt || null,
 			};
@@ -5575,6 +5630,83 @@ export default function EditConsultationForm({ initial, patient, doctor, doctorS
 					</div>
 				</div>
 			</form>
+
+			{/* Modal de Selección de Secciones Ginecología */}
+			{showReportSectionsModal && (
+				<div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
+					<div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-2xl overflow-hidden animate-in zoom-in-95 duration-200">
+						{/* Header */}
+						<div className="bg-gradient-to-r from-teal-600 to-cyan-600 p-6 text-white text-center">
+							<div className="flex justify-center mb-3">
+								<div className="p-3 bg-white/20 rounded-full backdrop-blur-md">
+									<ClipboardList className="w-8 h-8" />
+								</div>
+							</div>
+							<h3 className="text-xl font-bold">Selección de Secciones a Guardar</h3>
+							<p className="text-teal-50 text-sm mt-1">Marque las secciones que realmente desea incluir en el registro del paciente.</p>
+						</div>
+
+						{/* Content */}
+						<div className="p-8">
+							<div className="bg-amber-50 border-l-4 border-amber-500 p-4 mb-6 rounded-r-lg">
+								<div className="flex gap-3">
+									<ShieldAlert className="w-5 h-5 text-amber-600 shrink-0" />
+									<p className="text-sm text-amber-800">
+										<span className="font-bold">¡AVERTENCIA CUIDADOSA!</span> Al guardar secciones con datos ficticios o predeterminados (que no corresponden a la realidad de la paciente), se estará registrando información falsa en la historia clínica, lo cual es de <span className="font-bold">extrema responsabilidad médica</span>.
+									</p>
+								</div>
+							</div>
+
+							<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+								{[
+									{ id: 'current_illness', label: 'Historia de la enfermedad actual' },
+									{ id: 'medical_history', label: 'Antecedentes Médicos' },
+									{ id: 'family_history', label: 'Antecedentes Familiares' },
+									{ id: 'gynecological_history', label: 'Antecedentes Ginecológicos' },
+									{ id: 'physical_exam', label: 'Examen Físico' },
+									{ id: 'ultrasound', label: 'Ecografía Transvaginal' },
+									{ id: 'diagnostics', label: 'Diagnósticos' },
+									{ id: 'plan_treatment', label: 'Plan / Tratamiento' },
+									{ id: 'colposcopy_report', label: 'Informe Colposcópico' },
+								].map((section) => (
+									<label key={section.id} className="flex items-center gap-3 p-3 rounded-xl border border-slate-100 hover:bg-slate-50 transition-colors cursor-pointer group">
+										<div className="relative flex items-center">
+											<input
+												type="checkbox"
+												checked={selectedReportSections[section.id]}
+												onChange={(e) => setSelectedReportSections(prev => ({ ...prev, [section.id]: e.target.checked }))}
+												className="w-5 h-5 rounded border-slate-300 text-teal-600 focus:ring-teal-500 transition-all cursor-pointer"
+											/>
+										</div>
+										<span className="text-sm font-medium text-slate-700 group-hover:text-slate-900 transition-colors">
+											{section.label}
+										</span>
+									</label>
+								))}
+							</div>
+						</div>
+
+						{/* Footer */}
+						<div className="bg-slate-50 p-6 flex flex-col sm:flex-row gap-3 border-t border-slate-100">
+							<button
+								type="button"
+								onClick={(e) => handleSave(e as any, selectedReportSections).then(() => setShowReportSectionsModal(false))}
+								className="flex-1 inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-teal-600 to-cyan-600 text-white font-bold shadow-lg hover:shadow-xl hover:scale-[1.02] active:scale-[0.98] transition-all"
+							>
+								<Save size={18} />
+								Confirmar y Guardar Registro
+							</button>
+							<button
+								type="button"
+								onClick={() => setShowReportSectionsModal(false)}
+								className="px-6 py-3 rounded-xl border border-slate-300 bg-white text-slate-600 font-semibold hover:bg-slate-50 transition-all text-sm"
+							>
+								Cancelar
+							</button>
+						</div>
+					</div>
+				</div>
+			)}
 
 			{/* Modal de Observaciones Privadas */}
 			<DoctorPrivateNotesModal

@@ -1,0 +1,153 @@
+[MÓDULO 1 - REGISTRO DE USUARIO (ROL: MÉDICO)]
+Este módulo guía al profesional en la creación de su cuenta personal en la plataforma ASHIRA, asegurando que su identidad digital esté correctamente configurada desde el inicio.
+
+PASO 1: Acceso a la Plataforma y Selección de Rol
+- Acción: Ingresar a la URL de registro y seleccionar el perfil "Médico".
+- Pantalla/Sección: Landing Page / Registro (/register)
+- Campos requeridos: Ninguno en este paso, solo selección de rol.
+- Validaciones: El sistema ajusta los planes y campos siguientes según esta elección.
+- Nota para el presenter: [ZOOM A SELECTOR DE ROL] Mencione que elegir "Médico" es vital para acceder a las herramientas de prescripción y expediente.
+- Resultado esperado: El formulario se adapta para mostrar los campos de registro profesional.
+
+PASO 2: Datos de Cuenta y Seguridad
+- Acción: Completar la información básica de acceso.
+- Pantalla/Sección: Formulario de Registro - Paso 1
+- Campos requeridos: Nombre Completo, Correo Electrónico Profesional, Contraseña, Confirmación de Contraseña.
+- Validaciones: El nombre debe tener más de 2 caracteres; la contraseña debe tener al menos 8 caracteres y coincidir en ambos campos.
+- Nota para el presenter: [CORTE A CÁMARA] Recomiende usar un correo institucional o profesional que el médico revise con frecuencia, ya que ahí recibirá notificaciones de citas.
+- Resultado esperado: El sistema habilita el botón "Siguiente" tras validar los formatos.
+
+PASO 3: Información Inicial del Consultorio
+- Acción: Ingresar el nombre y ubicación base de su práctica privada.
+- Pantalla/Sección: Formulario de Registro - Paso 2
+- Campos requeridos: Nombre del Consultorio/Práctica, Teléfono de contacto, Dirección física.
+- Validaciones: El nombre del consultorio debe ser descriptivo (ej: "Consultorio Pediátrico Dr. Arrieta").
+- Nota para el presenter: [ZOOM A CAMPOS DE TEXTO] Indique que estos datos son los que verán los pacientes inicialmente al buscarlo en la red ASHIRA.
+- Resultado esperado: Se guarda la asociación inicial entre el médico y su organización.
+
+PASO 4: Selección de Plan y Verificación
+- Acción: Elegir el plan "Médico Individual" y confirmar el registro.
+- Pantalla/Sección: Formulario de Registro - Paso 3 y 4
+- Campos requeridos: Selección de ciclo de facturación (Mensual/Anual).
+- Validaciones: Requiere aceptación de términos y condiciones.
+- Nota para el presenter: [GRÁFICO EN PANTALLA] Destaque que existe un plan gratuito de prueba para que los médicos exploren la herramienta sin compromiso.
+- Resultado esperado: El sistema envía un correo de verificación. Al confirmar, el médico es redirigido al Dashboard.
+
+ERRORES FRECUENTES EN ESTE MÓDULO:
+- [Correo ya registrado]: Si ya tiene una cuenta como paciente, debe usar un correo distinto para el rol médico o contactar a soporte para migración.
+- [Contraseña débil]: Asegúrese de incluir números y caracteres especiales para mayor seguridad de los datos de salud.
+
+CHECKLIST DE CIERRE DEL MÓDULO:
+[ ] Rol "Médico" seleccionado
+[ ] Datos de acceso completados y validados
+[ ] Nombre de consultorio registrado
+[ ] Correo electrónico de verificación confirmado
+
+---
+
+[MÓDULO 2 - REGISTRO DE DATOS DE LA CLÍNICA / CONSULTORIO]
+Configuración detallada de la identidad institucional de su consultorio para reportes y visibilidad pública.
+
+PASO 1: Identidad Institucional y Branding
+- Acción: Configurar el nombre legal y subir el logotipo oficial.
+- Pantalla/Sección: Dashboard -> Configuración -> Configuración de Informe
+- Campos requeridos: Nombre de la Clínica, Logotipo (Imagen), Encabezado de Reportes.
+- Validaciones: Se recomiendan formatos PNG o JPG menores a 2MB para el logo.
+- Nota para el presenter: [ZOOM A CUALQUIER RECUADRO DE LOGO] Explique que este logo aparecerá automáticamente en todas las recetas digitales y órdenes médicas que emita.
+- Resultado esperado: La vista previa del reporte se actualiza con la identidad visual del médico.
+
+PASO 2: Datos Fiscales y de Contacto
+- Acción: Ingresar la información para facturación y contacto directo.
+- Pantalla/Sección: Configuración -> Perfil del Consultorio
+- Campos requeridos: RFC/NIT/Identificación Fiscal, Dirección Fiscal completa, Teléfonos (Fijo y Móvil), Correo de contacto.
+- Validaciones: El ID fiscal debe seguir el formato del país (ej: J-12345678-9 en Venezuela).
+- Nota para el presenter: [CORTE A CÁMARA] Menciona que el RFC/NIT es opcional pero altamente recomendado si el médico desea emitir facturas legales a través del software.
+- Resultado esperado: El sistema genera una ficha institucional completa para el consultorio.
+
+PASO 3: Definición de Especialidades
+- Acción: Seleccionar las áreas médicas que se atienden en el consultorio.
+- Pantalla/Sección: Configuración -> Perfil -> Especialidades
+- Campos requeridos: Lista de especialidades (ej: Medicina Interna, Cardiología).
+- Validaciones: Permite seleccionar múltiples especialidades.
+- Nota para el presenter: [ZOOM A LISTA DESPLEGABLE] Sugiera agregar palabras clave de su especialidad para que el motor de búsqueda interno lo posicione mejor ante nuevos pacientes.
+- Resultado esperado: El consultorio queda categorizado correctamente en el sistema.
+
+ERRORES FRECUENTES EN ESTE MÓDULO:
+- [Logo deformado]: Use imágenes horizontales o cuadradas. Si el logo es muy vertical, use solo el isotipo.
+- [Dirección incompleta]: Asegúrese de incluir referencias, ya que el sistema puede usar geolocalización para que los pacientes lleguen vía GPS.
+
+CHECKLIST DE CIERRE DEL MÓDULO:
+[ ] Logotipo subido y visible en previa
+[ ] Datos fiscales registrados
+[ ] Especialidades seleccionadas
+[ ] Teléfonos de atención validados
+
+---
+
+[MÓDULO 3 - REGISTRO DE DATOS IMPORTANTES PARA HABILITAR EL SOFTWARE]
+Pasos críticos de validación profesional y configuración operativa para comenzar a atender pacientes.
+
+PASO 1: Validación de Credenciales Profesionales
+- Acción: Cargar los datos de su licencia médica para habilitar el expediente electrónico.
+- Pantalla/Sección: Configuración -> Perfil Profesional -> Licencia
+- Campos requeridos: Número de Cédula/Licencia, Especialidad, Universidad, Año de graduación, Foto de la credencial (opcional pero recomendada).
+- Validaciones: La fecha de expiración de la licencia no debe estar vencida.
+- Nota para el presenter: [ALERTA EN PANTALLA] Recalque que sin el número de licencia, ASHIRA no permitirá firmar recetas digitales por normativas legales de salud.
+- Resultado esperado: El estado de "Perfil Completo" cambia a verde en el Dashboard.
+
+PASO 2: Firma Digitalizada
+- Acción: Subir una imagen de la firma autógrafa para prescripciones automáticas.
+- Pantalla/Sección: Perfil Profesional -> Firma
+- Campos requeridos: Imagen de firma (fondo blanco o transparente).
+- Validaciones: El archivo debe ser nítido y estar centrado.
+- Nota para el presenter: [ZOOM A SMARTPHONE] Un tip pro es firmar en un papel blanco, tomar una foto con el celular y subirla directamente desde la plataforma móvil de ASHIRA.
+- Resultado esperado: Su firma aparecerá al final de cada documento médico emitido.
+
+PASO 3: Configuración de Servicios y Tarifas
+- Acción: Crear el catálogo de servicios ofrecidos en el consultorio.
+- Pantalla/Sección: Configuración -> Perfil Profesional -> Servicios
+- Campos requeridos: Nombre del Servicio (ej: Consulta de Primera Vez), Duración, Precio, Moneda.
+- Validaciones: El precio debe ser un valor numérico positivo.
+- Nota para el presenter: [ZOOM A LISTA DE PRECIOS] Mencione que puede crear "Combos de Servicios" para ofrecer paquetes económicos a sus pacientes recurrentes.
+- Resultado esperado: Los pacientes podrán ver estos servicios al agendar su cita en línea.
+
+PASO 4: Gestión de Disponibilidad y Horarios
+- Acción: Definir los días y bloques horarios de atención.
+- Pantalla/Sección: Configuración -> Horarios
+- Campos requeridos: Días activos, Horario de inicio (Mañana/Tarde), Horario de fin.
+- Validaciones: No permite traslape de horarios. La duración de la cita influye en los "slots" disponibles.
+- Nota para el presenter: [CORTE DE CÁMARA] Recuerde configurar el "Tiempo entre Citas" para tener esos 10-15 minutos necesarios para desinfectar el consultorio o revisar el historial.
+- Resultado esperado: El calendario de agendamiento queda habilitado para reservas reales.
+
+ERRORES FRECUENTES EN ESTE MÓDULO:
+- [Firma poco legible]: Evite sombras al tomar la foto de la firma. Use luz natural.
+- [Horarios sin guardar]: Asegúrese de dar clic en "Guardar cambios" al final de la página de horarios antes de salir.
+
+CHECKLIST DE CIERRE DEL MÓDULO:
+[ ] Número de licencia/cédula registrado
+[ ] Firma digital subida
+[ ] Catálogo de servicios creado con precios
+[ ] Horario de atención configurado y guardado
+
+---
+
+CHECKLIST GENERAL DE ONBOARDING
+[ ] Registro de cuenta (Médico) realizado y verificado
+[ ] Nombre y dirección del consultorio configurados
+[ ] RIF/NIT institucional registrado
+[ ] Logotipo institucional cargado correctamente
+[ ] Especialidades del centro definidas
+[ ] Credenciales profesionales (Cédula/Universidad) validadas
+[ ] Firma digitalizada activa para recetas
+[ ] Servicios y tarifas para pacientes configurados
+[ ] Calendario de atención habilitado
+
+---
+
+GLOSARIO DE TÉRMINOS
+- Expediente Electrónico (HCE): Registro digital de la salud del paciente disponible 24/7.
+- RIF/NIT/RFC: Identificador fiscal usado para facturación legal y registro institucional.
+- Cédula Profesional: Identificador numérico que otorga el gobierno para ejercer la medicina.
+- Firma Digitalizada: Imagen de su firma física usada para dar validez a documentos digitales.
+- Slot de Cita: Espacio de tiempo reservado en el calendario para una atención específica.
+- Dashboard: El panel central donde el médico ve sus citas del día y estadísticas.
