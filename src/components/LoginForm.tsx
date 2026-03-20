@@ -64,7 +64,19 @@ export default function LoginFormAdvanced(): React.ReactElement {
 	const [showPassword, setShowPassword] = useState(false);
 	const [loading, setLoading] = useState(false);
 	const [errorMsg, setErrorMsg] = useState<string | null>(null);
+	const [infoMsg, setInfoMsg] = useState<string | null>(null);
 	const [detectedRole, setDetectedRole] = useState<Role | null>(null);
+
+	// Detectar parámetros de URL (como el de verificación de email)
+	React.useEffect(() => {
+		if (typeof window !== 'undefined') {
+			const params = new URLSearchParams(window.location.search);
+			if (params.get('verify-email') === 'true') {
+				setInfoMsg('Por favor, verifica tu correo electrónico antes de iniciar sesión. Revisa tu bandeja de entrada y spam.');
+			}
+		}
+	}, []);
+
 	const [rememberMe, setRememberMe] = useState(() => {
 		if (typeof window !== 'undefined') {
 			return localStorage.getItem('rememberMe') === 'true';
@@ -162,6 +174,7 @@ export default function LoginFormAdvanced(): React.ReactElement {
 	async function handleSubmit(e: React.FormEvent) {
 		e.preventDefault();
 		setErrorMsg(null);
+		setInfoMsg(null);
 		setDetectedRole(null);
 		setLoading(true);
 
@@ -618,6 +631,18 @@ export default function LoginFormAdvanced(): React.ReactElement {
 									{/* Role badge + error */}
 									<div className="mt-3 sm:mt-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 sm:gap-0">
 										<div className="min-h-5 w-full sm:w-2/3" aria-live="polite">
+											{infoMsg && (
+												<div
+													role="status"
+													className="rounded-md px-3 py-2 text-xs sm:text-sm mb-2"
+													style={{
+														background: 'rgba(74,144,226,0.08)',
+														border: '1px solid rgba(74,144,226,0.16)',
+														color: '#4A90E2',
+													}}>
+													{infoMsg}
+												</div>
+											)}
 											{errorMsg && (
 												<div
 													role="alert"

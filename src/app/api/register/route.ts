@@ -202,13 +202,16 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
     // 2. Auth Creation (if needed)
     let finalAuthId = authId;
+    let emailVerificationRequired = false;
     if (!reuse) {
       const { data, error } = await admin.auth.admin.createUser({
         email: account.email, password: account.password,
-        user_metadata: { fullName: account.fullName, role }, email_confirm: true
+        user_metadata: { fullName: account.fullName, role }, 
+        email_confirm: false // Forzar envío de correo de verificación
       });
       if (error) throw error;
       finalAuthId = data.user.id;
+      emailVerificationRequired = true;
     }
 
 
@@ -265,7 +268,8 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       user: { id: usrRec.id, email: usrRec.email, role: usrRec.role },
       orgId: orgRec?.id,
       patientId: patRec?.id,
-      authId: finalAuthId
+      authId: finalAuthId,
+      emailVerificationRequired
     });
 
   } catch (err: any) {

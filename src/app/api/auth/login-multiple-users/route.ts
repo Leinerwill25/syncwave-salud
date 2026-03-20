@@ -28,7 +28,7 @@ const supabaseAnon = SUPABASE_URL && SUPABASE_ANON_KEY
 async function findUsersByEmail(admin: SupabaseClient, email: string) {
   const tableCandidates = ['users', 'user', 'User', '"users"', '"user"', '"User"'];
   for (const tableName of tableCandidates) {
-    const { data, error } = await admin.from(tableName).select('id, email, role, authId, passwordHash').eq('email', email);
+    const { data, error } = await admin.from(tableName).select('id, email, role, authId, passwordHash, used').eq('email', email);
     if (!error && data?.length) return data;
   }
   return [];
@@ -88,6 +88,13 @@ export async function POST(req: NextRequest) {
 
     const emailTrimmed = email.trim();
     const allUsers = await findUsersByEmail(admin, emailTrimmed);
+
+    // Validación de cuenta activa (Campo 'used')
+    if (allUsers.length > 0 && allUsers.every((u: any) => u.used === false)) {
+      return NextResponse.json({ 
+        error: 'Tu cuenta no está activa. Por favor, contacta a soporte técnico para habilitar tu acceso.' 
+      }, { status: 403 });
+    }
 
     if (allUsers.length === 0) {
       const { data, error } = await anon.auth.signInWithPassword({ email: emailTrimmed, password });

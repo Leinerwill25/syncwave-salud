@@ -86,6 +86,12 @@ export async function getAuthenticatedUser(): Promise<AuthenticatedUser | null> 
 			return null;
 		}
 
+		// 6. Verificar si el email está confirmado (Seguridad Crítica)
+		if (!user.email_confirmed_at) {
+			console.warn('[Auth Guard] Email no verificado para el usuario:', user.email);
+			return null;
+		}
+
 		// 6. Buscar el usuario en la base de datos de la aplicación
 		const tableCandidates = ['users', 'user'];
 		let appUser: any = null;
@@ -93,7 +99,7 @@ export async function getAuthenticatedUser(): Promise<AuthenticatedUser | null> 
 		for (const tableName of tableCandidates) {
 			const { data, error } = await supabase
 				.from(tableName)
-				.select('id, email, role, organizationId, patientProfileId')
+				.select('id, email, role, organizationId, patientProfileId, used')
 				.eq('authId', user.id);
 
 			if (!error && data && data.length > 0) {
@@ -110,7 +116,7 @@ export async function getAuthenticatedUser(): Promise<AuthenticatedUser | null> 
 			if (user.email) {
 				const { data: byEmail, error: byEmailError } = await supabase
 					.from(tableName)
-					.select('id, email, role, organizationId, patientProfileId')
+					.select('id, email, role, organizationId, patientProfileId, used')
 					.eq('email', user.email);
 				
 				if (!byEmailError && byEmail && byEmail.length > 0) {
@@ -137,6 +143,12 @@ export async function getAuthenticatedUser(): Promise<AuthenticatedUser | null> 
 				};
 			}
 			console.warn('[Auth Guard] Usuario no encontrado en BD ni metadata para authId:', user.id);
+			return null;
+		}
+
+		// 7. Verificar si la cuenta está activa ('used' flag)
+		if (appUser.used === false) {
+			console.warn('[Auth Guard] Cuenta inactiva (used=false) para:', appUser.email);
 			return null;
 		}
 
