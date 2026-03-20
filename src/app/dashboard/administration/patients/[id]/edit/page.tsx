@@ -56,11 +56,11 @@ export default function EditAdminPatientPage({ params }: { params: Promise<{ id:
         
         const data = await res.json();
         reset({
-          firstName: data.first_name,
-          lastName: data.last_name,
+          firstName: data.firstName || data.first_name,
+          lastName: data.lastName || data.last_name,
           identifier: data.identifier,
-          dateOfBirth: data.date_of_birth,
-          phoneNumber: data.phone_number,
+          dateOfBirth: data.dob || data.date_of_birth,
+          phoneNumber: data.phone || data.phone_number,
           email: data.email,
           address: data.address,
           city: data.city,
@@ -70,8 +70,8 @@ export default function EditAdminPatientPage({ params }: { params: Promise<{ id:
           emergencyContactPhone: data.emergency_contact_phone,
           emergencyContactRelation: data.emergency_contact_relation,
           allergies: data.allergies,
-          currentMedications: data.current_medications,
-          medicalHistory: data.medical_history,
+          currentMedications: data.current_medications || data.current_medication,
+          medicalHistory: data.medical_history || data.background || data.notes,
         });
         if (data.attentions) {
           setAttentionsList(data.attentions.map((att: any) => ({

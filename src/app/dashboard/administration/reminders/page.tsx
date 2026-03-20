@@ -205,6 +205,11 @@ export default function RemindersPage() {
                          <User className="w-3.5 h-3.5" />
                          {att.specialist ? `${att.specialist.first_name} ${att.specialist.last_name}` : 'Especialista Externo'}
                       </div>
+                      {/* Nombre del Paciente */}
+                      <div className="flex items-center gap-1.5 text-xs font-black text-slate-700 uppercase">
+                         <span className="text-[10px] text-slate-400">Paciente:</span>
+                         {(att as any).patient?.firstName || (att as any).unregistered_patient?.first_name || 'N/A'} {(att as any).patient?.lastName || (att as any).unregistered_patient?.last_name || ''}
+                      </div>
                     </div>
                     {att.description && (
                       <p className="text-slate-400 text-xs mt-2 italic line-clamp-1">{att.description}</p>

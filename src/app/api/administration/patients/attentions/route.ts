@@ -27,6 +27,14 @@ export async function GET(request: Request) {
         first_name,
         last_name,
         role
+      ),
+      patient:patient_id (
+        firstName,
+        lastName
+      ),
+      unregistered_patient:unregistered_patient_id (
+        first_name,
+        last_name
       )
     `)
     .eq('organization_id', organizationId);

@@ -98,70 +98,117 @@ export async function PATCH(
     const validatedData = partialSchema.parse(body);
 
     const adminSupabase = createSupabaseAdminClient();
+    const organizationId = authResult.user?.organizationId;
+    const authId = authResult.user?.authId;
 
+    // 1. Identificar si es UNREG o REG
     const { data: unregPatient } = await adminSupabase
       .from('unregisteredpatients')
       .select('id')
       .eq('id', id)
       .single();
 
-    if (!unregPatient) {
-      return NextResponse.json({ error: 'Solo se pueden editar pacientes registrados directamente por la administración' }, { status: 403 });
+    let targetTable = unregPatient ? 'unregisteredpatients' : null;
+    let patientTypeIdField = unregPatient ? 'unregistered_patient_id' : 'patient_id';
+
+    if (!targetTable) {
+      // Verificar si es un paciente REG de esta organización
+      const { data: orgUser } = await adminSupabase
+        .from('users')
+        .select('patientProfileId')
+        .eq('organizationId', organizationId)
+        .eq('patientProfileId', id)
+        .single();
+      
+      if (orgUser) targetTable = 'patient';
     }
 
-    const { data, error } = await adminSupabase
-      .from('unregisteredpatients')
-      .update({
+    if (!targetTable) {
+      return NextResponse.json({ error: 'Paciente no encontrado o sin permisos' }, { status: 404 });
+    }
+
+    // 2. Actualizar datos básicos (Mapeo según tabla)
+    let updateData: any = {};
+    if (targetTable === 'unregisteredpatients') {
+      updateData = {
         first_name: validatedData.firstName,
         last_name: validatedData.lastName,
         birth_date: validatedData.dateOfBirth,
         phone: validatedData.phoneNumber,
         email: validatedData.email,
         address: validatedData.address,
-        identification: validatedData.identifier, // Mapeado correctamente
+        identification: validatedData.identifier,
         emergency_contact_name: validatedData.emergencyContactName,
         emergency_contact_phone: validatedData.emergencyContactPhone,
         emergency_contact_relation: validatedData.emergencyContactRelation,
         current_medication: validatedData.currentMedications,
         allergies: validatedData.allergies,
         is_active: validatedData.isActive,
-      })
+      };
+    } else {
+      updateData = {
+        firstName: validatedData.firstName,
+        lastName: validatedData.lastName,
+        dob: validatedData.dateOfBirth,
+        phone: validatedData.phoneNumber,
+        email: validatedData.email,
+        address: validatedData.address,
+        identifier: validatedData.identifier,
+        emergency_contact_name: validatedData.emergencyContactName,
+        emergency_contact_phone: validatedData.emergencyContactPhone,
+        emergency_contact_relation: validatedData.emergencyContactRelation,
+        current_medications: validatedData.currentMedications,
+        allergies: validatedData.allergies,
+        is_active: validatedData.isActive,
+      };
+    }
+
+    // Limpiar campos undefined
+    Object.keys(updateData).forEach(key => updateData[key] === undefined && delete updateData[key]);
+
+    const { data, error } = await adminSupabase
+      .from(targetTable)
+      .update(updateData)
       .eq('id', id)
       .select()
       .single();
 
-    if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
-    }
+    if (error) throw error;
 
-    // Sincronización de atenciones en PATCH
-    if (validatedData.attentions && validatedData.attentions.length > 0) {
-      const organizationId = authResult.user?.organizationId;
-      const authId = authResult.user?.authId;
-      
-      // Para simplificar: En el PATCH de paciente, si vienen atenciones, son "nuevas" atenciones 
-      // o atenciones que se desean sobreescribir. Dado que el esquema es nuevo, 
-      // insertaremos las que vengan que no tengan ID asignado.
-      const attentionInserts = validatedData.attentions.map(att => ({
-        organization_id: organizationId,
-        unregistered_patient_id: id,
-        title: att.title,
-        description: att.description || null,
-        attention_date: att.attentionDate,
-        is_internal: att.isInternal ?? true,
-        specialist_id: att.specialistId || null,
-        status: att.status || 'PENDIENTE',
-        created_by: authId
-      }));
-
+    // 3. Sincronización de Recordatorios (Sincronización limpia: Borrar y re-insertar)
+    if (validatedData.attentions) {
+      // Borrar anteriores para este paciente y esta organización
       await adminSupabase
         .from('patient_attentions')
-        .insert(attentionInserts);
+        .delete()
+        .eq(patientTypeIdField, id)
+        .eq('organization_id', organizationId);
+      
+      if (validatedData.attentions.length > 0) {
+        const attentionInserts = validatedData.attentions.map(att => ({
+          organization_id: organizationId,
+          [patientTypeIdField]: id,
+          title: att.title,
+          description: att.description || null,
+          attention_date: att.attentionDate,
+          is_internal: att.isInternal ?? true,
+          specialist_id: att.specialistId || null,
+          status: att.status || 'PENDIENTE',
+          created_by: authId
+        }));
+
+        const { error: attError } = await adminSupabase
+          .from('patient_attentions')
+          .insert(attentionInserts);
+          
+        if (attError) console.error('[PATCH Patient] Error inserting attentions:', attError);
+      }
     }
 
     return NextResponse.json(data);
   } catch (err: any) {
-    return NextResponse.json({ error: err.message || 'Error en la validación' }, { status: 400 });
+    console.error('[PATCH Patient] Error:', err);
+    return NextResponse.json({ error: err.message || 'Error en la actualización' }, { status: 500 });
   }
 }
 
