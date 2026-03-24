@@ -6,6 +6,7 @@ import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import bcrypt from 'bcryptjs';
 import { z } from 'zod';
 import { createNotification } from '@/lib/notifications';
+import { sendVerificationEmail } from '@/lib/resend-service';
 
 const SUPABASE_URL = process.env.SUPABASE_URL ?? process.env.NEXT_PUBLIC_SUPABASE_URL ?? '';
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY ?? '';
@@ -212,6 +213,30 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       if (error) throw error;
       finalAuthId = data.user.id;
       emailVerificationRequired = true;
+
+      // Generar link de confirmación y enviar por Resend
+      try {
+        const { data: linkData, error: linkError } = await admin.auth.admin.generateLink({
+          type: 'signup',
+          email: account.email,
+          password: account.password,
+          options: {
+            redirectTo: `${APP_URL}/login?verified=true`
+          }
+        });
+
+        if (linkError) {
+          console.error('[Register API] Error generating link:', linkError);
+        } else if (linkData?.properties?.action_link) {
+          await sendVerificationEmail({
+            to: account.email,
+            fullName: account.fullName,
+            verificationLink: linkData.properties.action_link
+          });
+        }
+      } catch (emailErr) {
+        console.error('[Register API] Error sending verification email:', emailErr);
+      }
     }
 
 

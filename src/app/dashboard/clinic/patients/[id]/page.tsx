@@ -74,7 +74,7 @@ export default async function ClinicPatientDetailPage({
 			notes,
 			doctor:users!doctor_id (
 				id,
-				full_name,
+				name,
 				email
 			)
 		`)
@@ -259,7 +259,7 @@ export default async function ClinicPatientDetailPage({
 											</div>
 											<div className="flex items-center gap-2 text-sm font-medium bg-indigo-50 text-indigo-700 px-3 py-1 rounded-md">
 												<Stethoscope className="w-4 h-4" />
-												Dr. {c.doctor?.full_name}
+												Dr. {c.doctor?.name}
 											</div>
 										</div>
 										<p className="text-sm font-semibold text-slate-800 mb-1">Motivo: <span className="font-normal text-slate-600">{c.chief_complaint || 'No especificado'}</span></p>

@@ -57,14 +57,14 @@ export async function GET(request: NextRequest) {
         // 2. Obtener Médicos de la organización
         const { data: medics } = await supabase
             .from('users')
-            .select('id, full_name, role, email')
+            .select('id, name, role, email')
             .eq('organization_id', orgId)
             .eq('role', 'MEDICO');
 
         // 3. Obtener Enfermeros
         const { data: nurses } = await supabase
             .from('users')
-            .select('id, full_name, role, email')
+            .select('id, name, role, email')
             .eq('organization_id', orgId)
             .eq('role', 'ENFERMERO');
 
@@ -216,7 +216,7 @@ export async function POST(request: NextRequest) {
         // 3. Notificación por Correo
         const { data: prof } = await supabase
             .from('users')
-            .select('email, full_name')
+            .select('email, name')
             .eq('id', professionalId)
             .single();
 
@@ -239,7 +239,7 @@ export async function POST(request: NextRequest) {
         if (prof?.email) {
             await sendAssignmentNotification({
                 to: prof.email,
-                professionalName: prof.full_name || 'Colega',
+                professionalName: prof.name || 'Colega',
                 patientName: patientName,
                 clinicName: clinic?.name || 'la Clínica',
                 role: professionalRole
