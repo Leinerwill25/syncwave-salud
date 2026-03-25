@@ -20,13 +20,7 @@ import {
   File
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { createClient } from '@supabase/supabase-js';
 import { toast } from 'sonner';
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
 
 interface LabResult {
   id: string;
@@ -62,50 +56,19 @@ export default function PatientLabResultsPage() {
   const fetchResults = async () => {
     try {
       setLoading(true);
-      const { data: { user } } = await supabase.auth.getUser();
-
-      if (!user) {
-        toast.error('No autenticado');
-        return;
-      }
-
-      // Obtener resultados aprobados del paciente
-      const { data, error } = await supabase
-        .from('lab_result_upload')
-        .select(`
-          *,
-          consultation:consultation_id (
-            id,
-            started_at,
-            chief_complaint
-          ),
-          doctor:doctor_id (
-            id,
-            name
-          )
-        `)
-        .eq('patient_id', user.id)
-        .eq('status', 'approved')
-        .order('created_at', { ascending: false });
-
-      if (error) {
-        console.error('Error fetching results:', error);
-        toast.error('Error al cargar resultados');
-        return;
-      }
-
-      setResults(data || []);
-
-      // Marcar como visto
-      if (data && data.length > 0) {
-        const unseenIds = data.filter(r => !r.viewed_by_patient).map(r => r.id);
-        if (unseenIds.length > 0) {
-          await supabase
-            .from('lab_result_upload')
-            .update({ viewed_by_patient: true })
-            .in('id', unseenIds);
+      const response = await fetch('/api/patient/lab-results');
+      
+      if (!response.ok) {
+        if (response.status === 401) {
+          toast.error('Sesión expirada o no autenticado');
+        } else {
+          toast.error('Error al cargar resultados');
         }
+        return;
       }
+
+      const data = await response.json();
+      setResults(data || []);
     } catch (err) {
       console.error('Error:', err);
       toast.error('Error al cargar resultados');

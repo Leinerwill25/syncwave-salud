@@ -96,12 +96,17 @@ export async function GET(request: Request) {
 		const url = new URL(request.url);
 		const limit = Math.min(parseInt(url.searchParams.get('limit') || '20', 10), 50); // Límite por defecto 20, máximo 50
 
+		// Obtener el unregistered_patient_id del paciente si existe
+		const unregisteredId = patient.patient?.unregistered_patient_id;
+
 		// Obtener consultas con datos básicos y límite
-		const { data: consultations, error: consultationsError } = await supabase
+		// Buscamos tanto por el ID de paciente registrado como por el ID de "unregistered" si lo tiene
+		let query = supabase
 			.from('consultation')
 			.select(`
 				id,
 				patient_id,
+				unregistered_patient_id,
 				doctor_id,
 				appointment_id,
 				started_at,
@@ -120,8 +125,15 @@ export async function GET(request: Request) {
 					reason,
 					scheduled_at
 				)
-			`)
-			.eq('patient_id', patient.patientId)
+			`);
+
+		if (unregisteredId) {
+			query = query.or(`patient_id.eq.${patient.patientId},unregistered_patient_id.eq.${unregisteredId}`);
+		} else {
+			query = query.eq('patient_id', patient.patientId);
+		}
+
+		const { data: consultations, error: consultationsError } = await query
 			.order('created_at', { ascending: false })
 			.limit(limit);
 
@@ -204,7 +216,18 @@ export async function GET(request: Request) {
 			}
 		}
 
-		// Obtener registros médicos y mapeo de consultas en paralelo
+		// Consultas que tienen medical_record_id vinculado
+		let consultationsWithRecordsQuery = supabase
+			.from('consultation')
+			.select('id, medical_record_id')
+			.not('medical_record_id', 'is', null);
+
+		if (unregisteredId) {
+			consultationsWithRecordsQuery = consultationsWithRecordsQuery.or(`patient_id.eq.${patient.patientId},unregistered_patient_id.eq.${unregisteredId}`);
+		} else {
+			consultationsWithRecordsQuery = consultationsWithRecordsQuery.eq('patient_id', patient.patientId);
+		}
+
 		const [medicalRecordsResult, consultationsWithRecordsResult] = await Promise.all([
 			supabase
 				.from('medicalrecord')
@@ -220,12 +243,7 @@ export async function GET(request: Request) {
 				.order('createdAt', { ascending: false })
 				.limit(limit), // Límite de registros médicos
 			
-			supabase
-				.from('consultation')
-				.select('id, medical_record_id')
-				.eq('patient_id', patient.patientId)
-				.not('medical_record_id', 'is', null)
-				.limit(limit)
+			consultationsWithRecordsQuery.limit(limit)
 		]);
 
 		const { data: medicalRecords, error: recordsError } = medicalRecordsResult;

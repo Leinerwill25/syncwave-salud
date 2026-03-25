@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { Calendar, FileText, Pill, FlaskConical, Search, MapPin, Clock, Stethoscope, Building2, ShoppingBag, ChevronRight, Sparkles } from 'lucide-react';
 import Link from 'next/link';
+import SafeCareBanner from '@/components/dashboard/patient/SafeCareBanner';
 
 type Appointment = {
 	id: string;
@@ -258,6 +259,9 @@ export default function PatientDashboardPage() {
 					<p className="text-[10px] sm:text-xs md:text-sm text-gray-600">Resultados de laboratorio - Próximamente</p>
 				</div>
 			</div>
+			
+			{/* Banner SafeCare 24/7 - Servicio Destacado */}
+			<SafeCareBanner />
 
 			{/* Secciones destacadas */}
 			<div className="grid grid-cols-1 lg:grid-cols-3 gap-3 sm:gap-4 md:gap-6">

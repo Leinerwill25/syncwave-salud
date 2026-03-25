@@ -105,7 +105,7 @@ export async function GET(req: NextRequest, context: { params: Promise<{ token: 
 			}
 		}
 
-		// Obtener prescripciones activas
+		// Obtener prescripciones activas (Medicamentos actuales)
 		const { data: activePrescriptions } = await supabase
 			.from('prescription')
 			.select(`
@@ -126,14 +126,13 @@ export async function GET(req: NextRequest, context: { params: Promise<{ token: 
 			.eq('patient_id', patient.id)
 			.eq('status', 'ACTIVE')
 			.order('issued_at', { ascending: false })
-			.limit(10);
+			.limit(5);
 
-		// Obtener última consulta con signos vitales
+		// Obtener última consulta SOLO para signos vitales (esenciales en emergencia)
 		const { data: lastConsultation } = await supabase
 			.from('consultation')
 			.select(`
 				id,
-				chief_complaint,
 				vitals,
 				created_at,
 				started_at
@@ -141,45 +140,6 @@ export async function GET(req: NextRequest, context: { params: Promise<{ token: 
 			.eq('patient_id', patient.id)
 			.not('vitals', 'is', null)
 			.order('created_at', { ascending: false })
-			.limit(1)
-			.maybeSingle();
-
-		// Obtener resultados de laboratorio críticos recientes
-		const { data: criticalLabs } = await supabase
-			.from('lab_result')
-			.select(`
-				id,
-				result_type,
-				result,
-				is_critical,
-				reported_at,
-				created_at
-			`)
-			.eq('patient_id', patient.id)
-			.eq('is_critical', true)
-			.order('reported_at', { ascending: false })
-			.limit(5);
-
-		// Obtener última consulta (para motivo de atención)
-		const { data: recentConsultation } = await supabase
-			.from('consultation')
-			.select(`
-				id,
-				chief_complaint,
-				diagnosis,
-				created_at
-			`)
-			.eq('patient_id', patient.id)
-			.order('created_at', { ascending: false })
-			.limit(1)
-			.maybeSingle();
-
-		// Obtener último MedicalRecord
-		const { data: lastMedicalRecord } = await supabase
-			.from('medicalrecord')
-			.select('id, content, createdAt')
-			.eq('patientId', patient.id)
-			.order('createdAt', { ascending: false })
 			.limit(1)
 			.maybeSingle();
 
@@ -253,24 +213,7 @@ export async function GET(req: NextRequest, context: { params: Promise<{ token: 
 				...vitals,
 				recordedAt: lastConsultation?.started_at || lastConsultation?.created_at,
 			} : null,
-			criticalLabs: (criticalLabs || []).map((lab: any) => ({
-				id: lab.id,
-				type: lab.result_type,
-				result: lab.result,
-				isCritical: lab.is_critical,
-				reportedAt: lab.reported_at || lab.created_at,
-			})),
-			recentConsultation: recentConsultation ? {
-				chiefComplaint: recentConsultation.chief_complaint,
-				diagnosis: recentConsultation.diagnosis,
-				createdAt: recentConsultation.created_at,
-			} : null,
 			activePrescriptions: normalizedPrescriptions,
-			lastMedicalRecord: lastMedicalRecord ? {
-				id: lastMedicalRecord.id,
-				content: lastMedicalRecord.content,
-				createdAt: lastMedicalRecord.createdAt,
-			} : null,
 		}, {
 			headers: getApiResponseHeaders('dynamic'),
 		});

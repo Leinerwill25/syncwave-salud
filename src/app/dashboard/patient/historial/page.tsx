@@ -522,7 +522,7 @@ export default function HistorialPage() {
 									: 'border-transparent text-slate-600 hover:text-slate-900'
 							}`}
 						>
-							Registros Médicos ({consultations.length})
+							Registros Médicos ({medicalRecords.length})
 						</button>
 					</div>
 				</div>
@@ -550,7 +550,7 @@ export default function HistorialPage() {
 					</div>
 				) : (
 					<div className="space-y-6">
-						{consultations.length === 0 ? (
+						{medicalRecords.length === 0 ? (
 							<div className="bg-white rounded-2xl shadow-lg p-12 text-center border border-slate-200">
 								<FileText className="w-16 h-16 text-slate-400 mx-auto mb-4" />
 								<p className="text-slate-600 text-lg font-semibold">No hay registros médicos disponibles</p>
