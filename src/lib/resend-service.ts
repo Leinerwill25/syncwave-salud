@@ -49,21 +49,24 @@ export async function sendAssignmentNotification(params: {
     `;
 
     try {
+        const fromEmail = process.env.EMAIL_FROM || 'Syncwave Salud <onboarding@resend.dev>';
+        
         const { data, error } = await resend.emails.send({
-            from: 'Syncwave Salud <notifications@resend.dev>', // Usar dominio verificado en prod
+            from: fromEmail,
             to: [to],
             subject: subject,
             html: html,
         });
 
         if (error) {
-            console.error('[Resend Error]', error);
+            console.error('[Resend Error] sendAssignmentNotification:', error);
             return { success: false, error };
         }
 
+        console.log('[Resend Success] Assignment notification sent to:', to, 'ID:', data?.id);
         return { success: true, data };
     } catch (err) {
-        console.error('[Resend Exception]', err);
+        console.error('[Resend Exception] sendAssignmentNotification:', err);
         return { success: false, error: err };
     }
 }
@@ -113,21 +116,24 @@ export async function sendVerificationEmail(params: {
     `;
 
     try {
+        const fromEmail = process.env.EMAIL_FROM || 'Syncwave Salud <onboarding@resend.dev>';
+        
         const { data, error } = await resend.emails.send({
-            from: 'Syncwave Salud <notifications@resend.dev>',
+            from: fromEmail,
             to: [to],
             subject: subject,
             html: html,
         });
 
         if (error) {
-            console.error('[Resend Error]', error);
+            console.error('[Resend Error] sendVerificationEmail:', error);
             return { success: false, error };
         }
 
+        console.log('[Resend Success] Verification email sent to:', to, 'ID:', data?.id);
         return { success: true, data };
     } catch (err) {
-        console.error('[Resend Exception]', err);
+        console.error('[Resend Exception] sendVerificationEmail:', err);
         return { success: false, error: err };
     }
 }

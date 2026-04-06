@@ -10,7 +10,7 @@ import { sendVerificationEmail } from '@/lib/resend-service';
 
 const SUPABASE_URL = process.env.SUPABASE_URL ?? process.env.NEXT_PUBLIC_SUPABASE_URL ?? '';
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY ?? '';
-const APP_URL = process.env.APP_URL?.replace(/\/$/, '') ?? '';
+const APP_URL = (process.env.NEXT_PUBLIC_APP_URL || process.env.APP_URL || '').replace(/\/$/, '');
 
 const supabaseAdmin: SupabaseClient | null = SUPABASE_URL && SUPABASE_SERVICE_ROLE_KEY ? createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY) : null;
 
@@ -216,6 +216,9 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
       // Generar link de confirmación y enviar por Resend
       try {
+        console.log('[Register API] Generating verification link for:', account.email);
+        
+        // Intentar signup, si falla prodríamos intentar magiclink o invite según configuración
         const { data: linkData, error: linkError } = await admin.auth.admin.generateLink({
           type: 'signup',
           email: account.email,
@@ -226,16 +229,25 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
         });
 
         if (linkError) {
-          console.error('[Register API] Error generating link:', linkError);
+          console.error('[Register API] Error generating link:', linkError.message, linkError);
         } else if (linkData?.properties?.action_link) {
-          await sendVerificationEmail({
+          console.log('[Register API] Sending verification email via Resend...');
+          const emailResult = await sendVerificationEmail({
             to: account.email,
             fullName: account.fullName,
             verificationLink: linkData.properties.action_link
           });
+          
+          if (!emailResult.success) {
+            console.error('[Register API] sendVerificationEmail failed:', emailResult.error);
+          } else {
+            console.log('[Register API] Verification email sent successfully');
+          }
+        } else {
+          console.error('[Register API] No action_link returned by Supabase');
         }
       } catch (emailErr) {
-        console.error('[Register API] Error sending verification email:', emailErr);
+        console.error('[Register API] Unexpected error in email verification block:', emailErr);
       }
     }
 
