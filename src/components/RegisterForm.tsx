@@ -38,16 +38,41 @@ function computeBilling(
 	specialistCount: number, 
 	isPatient = false, 
 ) {
-	if (role === 'MEDICO') return {
-		type: 'INDIVIDUAL',
-		requiresRedirect: false,
-		totalCharge: unitPrice,
-		billingCycle: period,
-		months: 1,
-		discount: 0,
-		total: unitPrice,
-		label: 'Individual (Medico)'
-	};
+	if (role === 'MEDICO') {
+		let months = 1;
+		let discount = 0;
+		if (period === 'quarterly') {
+			months = 3;
+			discount = 0.05;
+		} else if (period === 'annual') {
+			months = 12;
+			discount = 0.15;
+		}
+
+		const subtotal = unitPrice * months;
+		const total = subtotal * (1 - discount);
+		const savings = subtotal - total;
+
+		return {
+			type: 'CALCULATED',
+			requiresRedirect: false,
+			totalCharge: total,
+			billingCycle: period,
+			months,
+			discount,
+			discountPercent: discount * 100,
+			cycleDiscount: savings,
+			total: total,
+			monthlyEquivalent: total / months,
+			label: 'Individual (Médico)',
+			pricePerEsp: unitPrice,
+			specialistCount: 1,
+			baseSubtotal: unitPrice,
+			savings,
+			monthlyBeforeDiscount: unitPrice,
+			vsIndividualSavings: 0
+		};
+	}
 
 	const numericSedeCount = typeof sedeCount === 'string' && sedeCount.includes('+') ? 11 : typeof sedeCount === 'string' && sedeCount.includes('-') ? 7 : Number(sedeCount);
 	
@@ -191,11 +216,12 @@ function computeBilling(
 	};
 }
 
-const BillingBreakdown = ({ billing, recommendedPlanLabel, specialistCount, sedeCount }: { 
+const BillingBreakdown = ({ billing, recommendedPlanLabel, specialistCount, sedeCount, role }: { 
 	billing: any; 
 	recommendedPlanLabel: string | undefined; 
 	specialistCount: number; 
 	sedeCount: number | string; 
+	role: Role;
 }) => {
 	if (!billing) return null;
 	
@@ -226,7 +252,7 @@ Quisiera una cotización personalizada.`;
 	  );
 	}
 	
-	if (billing.type === 'INDIVIDUAL') {
+	if (billing.type === 'INDIVIDUAL' && role !== 'MEDICO' && role !== 'ENFERMERO') {
 	  return (
 	    <div className="bg-amber-50 border border-amber-200 rounded-xl p-6 mt-4">
 	      <p className="font-semibold text-amber-800 mb-4">¿Eres un médico independiente? 
@@ -1829,6 +1855,7 @@ export default function RegisterForm(): React.ReactElement {
 										recommendedPlanLabel={recommendedPlan?.label} 
 										specialistCount={specialistCount} 
 										sedeCount={sedeCount} 
+										role={role}
 									/>
 								) : (
 									<div className="bg-slate-50 border border-slate-200 rounded-xl p-4 sm:p-6 mt-6">
@@ -1934,6 +1961,7 @@ export default function RegisterForm(): React.ReactElement {
 									recommendedPlanLabel={recommendedPlan?.label}
 									specialistCount={specialistCount}
 									sedeCount={sedeCount}
+									role={role}
 								/>
 							</div>
 						)}
