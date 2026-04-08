@@ -118,6 +118,9 @@ export default function AppointmentBookingModal({
 		});
 	};
 
+	const consultationType = selectedDoctor?.medic_profile?.doctor_schedule_config?.consultation_type || 'TURNOS';
+	const isOrdenLlegada = consultationType === 'ORDEN_LLEGADA';
+
 	// Generar slots de tiempo basados en disponibilidad del doctor y cargar ocupación
 	useEffect(() => {
 		const fetchAvailability = async () => {
@@ -138,8 +141,8 @@ export default function AppointmentBookingModal({
 						total: data.stats.total,
 						morning: data.stats.morning,
 						afternoon: data.stats.afternoon,
-                        slots_morning: data.stats.slots_morning,
-                        slots_afternoon: data.stats.slots_afternoon,
+						slots_morning: data.stats.slots_morning,
+						slots_afternoon: data.stats.slots_afternoon,
 						config: data.config
 					});
 				}
@@ -149,7 +152,6 @@ export default function AppointmentBookingModal({
 
 			// Obtener el horario según si hay oficina seleccionada o no
 			let daySlots: any[] = [];
-			const consultationType = selectedDoctor.medic_profile?.doctor_schedule_config?.consultation_type || 'TURNOS';
 
 			if (selectedOffice && selectedOffice.id !== 'default' && selectedOffice.schedules) {
 				// Prioridad 1: Horario específico del consultorio seleccionado
@@ -170,7 +172,7 @@ export default function AppointmentBookingModal({
 				);
 
 				if (officeScheduleForDay) {
-					if (consultationType === 'ORDEN_LLEGADA') {
+					if (isOrdenLlegada) {
 						// Si es orden de llegada, los slots son los turnos habilitados (Mañana/Tarde)
 						if (officeScheduleForDay.shifts?.includes('morning')) daySlots.push({ startTime: '08:00', endTime: '08:01', enabled: true, isShift: true, name: 'Mañana' });
 						if (officeScheduleForDay.shifts?.includes('afternoon')) daySlots.push({ startTime: '14:00', endTime: '14:01', enabled: true, isShift: true, name: 'Tarde' });
@@ -203,18 +205,24 @@ export default function AppointmentBookingModal({
 				setAlternativeOffice(null);
 				const slots: string[] = [];
                 
-                // Si es ORDEN_LLEGADA, usaremos un formato especial o flags
-                const isOrdenLlegada = consultationType === 'ORDEN_LLEGADA';
+				// Obtener duración configurada del médico o usar 30min por defecto
+				const configuredDuration = selectedDoctor.medic_profile?.availability?.appointmentDuration || 30;
                 
 				daySlots.forEach((slot: any) => {
 					if (slot.enabled && slot.startTime && slot.endTime) {
-						if (slot.isShift && isOrdenLlegada) {
-							// Caso Orden de Llegada: solo el inicio del turno
-                            // Mapeamos a 08:00 (Mañana) y 14:00 (Tarde) como identificadores
-                            if (slot.name === 'Mañana') slots.push('08:00');
-                            if (slot.name === 'Tarde') slots.push('14:00');
+						if (isOrdenLlegada) {
+							// Caso Orden de Llegada: mapear a 08:00 (Mañana) y 14:00 (Tarde)
+							if (slot.isShift) {
+								if (slot.name === 'Mañana') slots.push('08:00');
+								if (slot.name === 'Tarde') slots.push('14:00');
+							} else {
+								// Fallback: detectar turno según la hora de inicio (útil cuando viene de la disponibilidad general sin flag isShift)
+								const startHour = parseInt(slot.startTime.split(':')[0]);
+								if (startHour < 12) slots.push('08:00');
+								else slots.push('14:00');
+							}
 						} else if (!isOrdenLlegada) {
-							// Caso Turnos: generar slots de 30min (o duración configurada)
+							// Caso Turnos: generar slots según duración configurada
 							const start = slot.startTime.split(':');
 							const end = slot.endTime.split(':');
 							const startHour = parseInt(start[0]);
@@ -232,10 +240,14 @@ export default function AppointmentBookingModal({
 								const timeStr = `${String(currentHour).padStart(2, '0')}:${String(currentMin).padStart(2, '0')}`;
 								slots.push(timeStr);
 
-								currentMin += 30; // TODO: Usar duración configurada
+								currentMin += configuredDuration;
 								if (currentMin >= 60) {
 									currentMin = 0;
-									currentHour += 1;
+									currentHour += Math.floor(currentMin / 60) || 1; // Manejar incrementos > 60
+									// Ajuste correcto para incrementos de tiempo
+									const totalMins = (parseInt(start[0]) * 60 + parseInt(start[1])) + (slots.length * configuredDuration);
+									currentHour = Math.floor(totalMins / 60);
+									currentMin = totalMins % 60;
 								}
 							}
 						}
@@ -276,7 +288,7 @@ export default function AppointmentBookingModal({
 		};
 
 		fetchAvailability();
-	}, [selectedDoctor, selectedDate, selectedOffice]);
+	}, [selectedDoctor, selectedDate, selectedOffice, isOrdenLlegada]);
 
 	// Resetear formulario al cerrar
 	useEffect(() => {
@@ -335,13 +347,13 @@ export default function AppointmentBookingModal({
 				return;
 			}
 
-			if (!selectedDate || (!selectedTime && schedulingType === 'specific_time')) {
+			if (!selectedDate || (!selectedTime && schedulingType === 'specific_time' && !isOrdenLlegada)) {
 				setError('Por favor selecciona una fecha y horario');
 				setLoading(false);
 				return;
 			}
 
-            if (schedulingType === 'shift' && !selectedShift) {
+            if ((schedulingType === 'shift' || isOrdenLlegada) && !selectedShift && !selectedTime) {
                 setError('Por favor selecciona un turno (Mañana o Tarde)');
                 setLoading(false);
                 return;
@@ -358,11 +370,12 @@ export default function AppointmentBookingModal({
             let scheduledAt = '';
             let notes = '';
 
-            if (schedulingType === 'shift') {
+            if (schedulingType === 'shift' || isOrdenLlegada) {
                 // Mañana: 08:00, Tarde: 14:00 (como referencia)
-                const timeStr = selectedShift === 'morning' ? '08:00:00' : '14:00:00';
+                const currentSelection = selectedShift || (selectedTime === '08:00' ? 'morning' : 'afternoon');
+                const timeStr = currentSelection === 'morning' ? '08:00:00' : '14:00:00';
                 scheduledAt = `${selectedDate}T${timeStr}`;
-                const shiftLabel = selectedShift === 'morning' ? 'Turno Diurno (AM)' : 'Turno Vespertino (PM)';
+                const shiftLabel = currentSelection === 'morning' ? 'Turno Diurno (AM)' : 'Turno Vespertino (PM)';
                 notes = `Cita agendada por: ${shiftLabel}.`;
             } else {
                 scheduledAt = `${selectedDate}T${selectedTime}:00`;
@@ -400,7 +413,7 @@ export default function AppointmentBookingModal({
 					organizationId,
 					officeId: selectedOfficeId && selectedOfficeId !== 'default' ? selectedOfficeId : null,
 					scheduledAt, // Enviamos el string "YYYY-MM-DDTHH:mm:00"
-					durationMinutes: 30,
+					durationMinutes: selectedDoctor?.medic_profile?.availability?.appointmentDuration || 30,
                     notes, // Enviamos la nota del turno
 					selectedService: {
 						name: selectedService.name,
@@ -429,7 +442,10 @@ export default function AppointmentBookingModal({
 	};
 
 	const canProceedToStep2 = firstName && lastName && phone && selectedDoctorId && selectedOfficeId;
-	const canProceedToStep3 = selectedDate && selectedTime;
+	const canProceedToStep3 = selectedDate && (
+		(schedulingType === 'specific_time' && !isOrdenLlegada && selectedTime) ||
+		((schedulingType === 'shift' || isOrdenLlegada) && (selectedShift || selectedTime))
+	);
 	const canSubmit = selectedService !== null;
 
 	if (!mounted) return null;
@@ -1010,7 +1026,7 @@ export default function AppointmentBookingModal({
 												step === 1 && !canProceedToStep2 
 													? `Faltan: ${[!firstName && 'Nombre', !lastName && 'Apellido', !phone && 'Teléfono', !selectedDoctorId && 'Médico'].filter(Boolean).join(', ')}`
 													: step === 2 && !canProceedToStep3
-													? `Faltan: ${[!selectedDate && 'Fecha', !selectedTime && 'Hora'].filter(Boolean).join(', ')}`
+													? `Faltan: ${[!selectedDate && 'Fecha', (!selectedTime && !selectedShift) && 'Horario/Turno'].filter(Boolean).join(', ')}`
 													: ''
 											}
 											disabled={
