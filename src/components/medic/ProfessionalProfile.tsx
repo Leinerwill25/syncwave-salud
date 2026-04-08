@@ -1,14 +1,21 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { Upload, Camera, FileText, Award, Building2, Stethoscope, X, Check, User, CreditCard, Smartphone } from 'lucide-react';
+import { Upload, Camera, FileText, Award, Building2, Stethoscope, X, Check, User, CreditCard, Smartphone, Trash2, Loader2, FileCheck } from 'lucide-react';
 import type { MedicConfig, MedicCredentials, MedicService, MedicServiceCombo, CreditHistory, PaymentMethod } from '@/types/medic-config';
 import { PRIVATE_SPECIALTIES } from '@/lib/constants/specialties';
+import { uploadMedicFile, deleteMedicFile } from '@/lib/supabase/medic-storage';
+import { toast } from 'sonner';
 
 export default function ProfessionalProfile({ config, onUpdate }: { config: MedicConfig; onUpdate: () => void }) {
 	const [loading, setLoading] = useState(false);
 	const [success, setSuccess] = useState<string | null>(null);
 	const [error, setError] = useState<string | null>(null);
+
+	// Estados de carga para archivos
+	const [uploadingPhoto, setUploadingPhoto] = useState(false);
+	const [uploadingSignature, setUploadingSignature] = useState(false);
+	const [uploadingCredentials, setUploadingCredentials] = useState(false);
 
 	// Formulario para médico afiliado
 	const [affiliatedForm, setAffiliatedForm] = useState({
@@ -166,68 +173,138 @@ export default function ProfessionalProfile({ config, onUpdate }: { config: Medi
 		const file = e.target.files?.[0];
 		if (!file) return;
 
-		// TODO: Implementar upload a Supabase Storage
-		// Por ahora, solo mostramos preview
-		const reader = new FileReader();
-		reader.onloadend = () => {
-			if (config.isAffiliated) {
-				setAffiliatedForm((prev) => ({ ...prev, photo: reader.result as string }));
-			} else {
-				setPrivateForm((prev) => ({ ...prev, photo: reader.result as string }));
+		setUploadingPhoto(true);
+		try {
+			const { url, error } = await uploadMedicFile(file, 'photos');
+			if (error) {
+				toast.error('Error al subir la foto: ' + error);
+				return;
 			}
-		};
-		reader.readAsDataURL(file);
+
+			if (url) {
+				// Eliminar foto anterior si existe
+				const oldPhoto = config.isAffiliated ? affiliatedForm.photo : privateForm.photo;
+				if (oldPhoto && oldPhoto.startsWith('http')) {
+					await deleteMedicFile(oldPhoto);
+				}
+
+				if (config.isAffiliated) {
+					setAffiliatedForm((prev) => ({ ...prev, photo: url }));
+				} else {
+					setPrivateForm((prev) => ({ ...prev, photo: url }));
+				}
+				toast.success('Foto subida correctamente');
+			}
+		} catch (err) {
+			toast.error('Error inesperado al subir la foto');
+		} finally {
+			setUploadingPhoto(false);
+		}
 	};
 
 	const handleSignatureUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
 		const file = e.target.files?.[0];
 		if (!file) return;
 
-		// TODO: Implementar upload a Supabase Storage
-		const reader = new FileReader();
-		reader.onloadend = () => {
-			if (config.isAffiliated) {
-				setAffiliatedForm((prev) => ({ ...prev, signature: reader.result as string }));
-			} else {
-				setPrivateForm((prev) => ({ ...prev, signature: reader.result as string }));
+		setUploadingSignature(true);
+		try {
+			const { url, error } = await uploadMedicFile(file, 'signatures');
+			if (error) {
+				toast.error('Error al subir la firma: ' + error);
+				return;
 			}
-		};
-		reader.readAsDataURL(file);
+
+			if (url) {
+				// Eliminar firma anterior si existe
+				const oldSignature = config.isAffiliated ? affiliatedForm.signature : privateForm.signature;
+				if (oldSignature && oldSignature.startsWith('http')) {
+					await deleteMedicFile(oldSignature);
+				}
+
+				if (config.isAffiliated) {
+					setAffiliatedForm((prev) => ({ ...prev, signature: url }));
+				} else {
+					setPrivateForm((prev) => ({ ...prev, signature: url }));
+				}
+				toast.success('Firma subida correctamente');
+			}
+		} catch (err) {
+			toast.error('Error inesperado al subir la firma');
+		} finally {
+			setUploadingSignature(false);
+		}
 	};
 
 	const handleCredentialUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
 		const files = Array.from(e.target.files || []);
 		if (files.length === 0) return;
 
-		// TODO: Implementar upload a Supabase Storage
-		const newFiles: string[] = [];
-		for (const file of files) {
-			const reader = new FileReader();
-			await new Promise((resolve) => {
-				reader.onloadend = () => {
-					newFiles.push(reader.result as string);
-					resolve(null);
-				};
-				reader.readAsDataURL(file);
-			});
-		}
+		setUploadingCredentials(true);
+		try {
+			const uploadedUrls: string[] = [];
+			for (const file of files) {
+				const { url, error } = await uploadMedicFile(file, 'credentials');
+				if (error) {
+					toast.error(`Error al subir el archivo ${file.name}: ${error}`);
+					continue;
+				}
+				if (url) uploadedUrls.push(url);
+			}
 
-		if (config.isAffiliated) {
-			setAffiliatedForm((prev) => ({
-				...prev,
-				credentials: {
-					...prev.credentials,
-					credentialFiles: [...(prev.credentials.credentialFiles || []), ...newFiles],
-				},
-			}));
-		} else {
-			setPrivateForm((prev) => ({
-				...prev,
-				credentials: {
-					...prev.credentials,
-					credentialFiles: [...(prev.credentials.credentialFiles || []), ...newFiles],
-				},
-			}));
+			if (uploadedUrls.length > 0) {
+				if (config.isAffiliated) {
+					setAffiliatedForm((prev) => ({
+						...prev,
+						credentials: {
+							...prev.credentials,
+							credentialFiles: [...(prev.credentials.credentialFiles || []), ...uploadedUrls],
+						},
+					}));
+				} else {
+					setPrivateForm((prev) => ({
+						...prev,
+						credentials: {
+							...prev.credentials,
+							credentialFiles: [...(prev.credentials.credentialFiles || []), ...uploadedUrls],
+						},
+					}));
+				}
+				toast.success(`${uploadedUrls.length} documento(s) subido(s) correctamente`);
+			}
+		} catch (err) {
+			toast.error('Error inesperado al subir los documentos');
+		} finally {
+			setUploadingCredentials(false);
+		}
+	};
+
+	const handleDeleteCredential = async (urlToDelete: string) => {
+		try {
+			// Solo intentamos eliminar del storage si es una URL real
+			if (urlToDelete.startsWith('http')) {
+				await deleteMedicFile(urlToDelete);
+			}
+
+			if (config.isAffiliated) {
+				setAffiliatedForm((prev) => ({
+					...prev,
+					credentials: {
+						...prev.credentials,
+						credentialFiles: (prev.credentials.credentialFiles || []).filter(url => url !== urlToDelete),
+					},
+				}));
+			} else {
+				setPrivateForm((prev) => ({
+					...prev,
+					credentials: {
+						...prev.credentials,
+						credentialFiles: (prev.credentials.credentialFiles || []).filter(url => url !== urlToDelete),
+					},
+				}));
+			}
+			toast.success('Documento eliminado');
+		} catch (err) {
+			toast.error('Error al eliminar el documento');
 		}
 	};
 
@@ -490,20 +567,49 @@ export default function ProfessionalProfile({ config, onUpdate }: { config: Medi
 					Foto de Perfil
 				</h3>
 				<div className="flex items-center gap-6">
-					<div className="relative">
+					<div className="relative group">
 						{(config.isAffiliated ? affiliatedForm.photo : privateForm.photo) ? (
-							<img src={config.isAffiliated ? affiliatedForm.photo : privateForm.photo} alt="Foto de perfil" className="w-32 h-32 rounded-full object-cover border-4 border-indigo-200" />
+							<div className="relative">
+								<img src={config.isAffiliated ? affiliatedForm.photo : privateForm.photo} alt="Foto de perfil" className="w-32 h-32 rounded-full object-cover border-4 border-indigo-200" />
+								{uploadingPhoto && (
+									<div className="absolute inset-0 bg-black/40 rounded-full flex items-center justify-center">
+										<Loader2 className="w-8 h-8 text-white animate-spin" />
+									</div>
+								)}
+								{!uploadingPhoto && (
+									<button 
+										type="button"
+										onClick={async () => {
+											const photoUrl = config.isAffiliated ? affiliatedForm.photo : privateForm.photo;
+											if (photoUrl) {
+												await deleteMedicFile(photoUrl);
+												if (config.isAffiliated) setAffiliatedForm(prev => ({ ...prev, photo: '' }));
+												else setPrivateForm(prev => ({ ...prev, photo: '' }));
+												toast.success('Foto eliminada');
+											}
+										}}
+										className="absolute -top-1 -right-1 p-1.5 bg-red-600 text-white rounded-full shadow-lg opacity-0 group-hover:opacity-100 transition-opacity"
+									>
+										<Trash2 className="w-4 h-4" />
+									</button>
+								)}
+							</div>
 						) : (
 							<div className="w-32 h-32 rounded-full bg-gray-200 flex items-center justify-center border-4 border-indigo-200">
-								<Camera className="w-8 h-8 text-gray-400" />
+								{uploadingPhoto ? <Loader2 className="w-8 h-8 text-indigo-400 animate-spin" /> : <Camera className="w-8 h-8 text-gray-400" />}
 							</div>
 						)}
 					</div>
 					<div>
 						<input ref={photoInputRef} type="file" accept="image/*" onChange={handlePhotoUpload} className="hidden" />
-						<button type="button" onClick={() => photoInputRef.current?.click()} className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors flex items-center gap-2">
-							<Upload className="w-4 h-4" />
-							Subir Foto
+						<button 
+							type="button" 
+							onClick={() => photoInputRef.current?.click()} 
+							disabled={uploadingPhoto}
+							className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors flex items-center gap-2 disabled:opacity-50"
+						>
+							{uploadingPhoto ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
+							{config.isAffiliated ? affiliatedForm.photo : privateForm.photo ? 'Cambiar Foto' : 'Subir Foto'}
 						</button>
 					</div>
 				</div>
@@ -970,14 +1076,45 @@ por favor confirmar con un "Asistiré" o "No Asistiré"`}
 									<FileText className="w-4 h-4" />
 									Subir Documentos
 								</button>
-								{affiliatedForm.credentials.credentialFiles && affiliatedForm.credentials.credentialFiles.length > 0 && (
-									<div className="mt-2 space-y-2">
-										{affiliatedForm.credentials.credentialFiles.map((file, idx) => (
-											<div key={idx} className="flex items-center gap-2 text-sm text-gray-600">
-												<FileText className="w-4 h-4" />
-												<span>Documento {idx + 1}</span>
-											</div>
-										))}
+								{(affiliatedForm.credentials.credentialFiles || []).length > 0 && (
+									<div className="mt-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+										{affiliatedForm.credentials.credentialFiles.map((url, idx) => {
+											const isImage = url.match(/\.(jpg|jpeg|png|webp|gif)$|data:image/i);
+											return (
+												<div key={idx} className="relative group bg-white p-3 rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-all">
+													<div className="flex flex-col items-center">
+														{isImage ? (
+															<div className="w-full h-32 mb-2 rounded-lg overflow-hidden bg-gray-100 border border-gray-100 flex items-center justify-center">
+																<img src={url} alt={`Documento ${idx + 1}`} className="w-full h-full object-cover" />
+															</div>
+														) : (
+															<div className="w-full h-32 mb-2 rounded-lg bg-indigo-50 flex flex-col items-center justify-center border border-indigo-100">
+																<FileText className="w-10 h-10 text-indigo-400 mb-2" />
+																<span className="text-[10px] font-medium text-indigo-600 uppercase tracking-wider">Documento PDF/Otro</span>
+															</div>
+														)}
+														<div className="flex items-center gap-2 w-full px-1">
+															<FileCheck className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
+															<span className="text-xs text-gray-600 truncate flex-1 font-medium">Documento {idx + 1}</span>
+														</div>
+													</div>
+													<button 
+														type="button" 
+														onClick={() => handleDeleteCredential(url)}
+														className="absolute -top-2 -right-2 p-1.5 bg-red-600 text-white rounded-full shadow-lg opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-700"
+														title="Eliminar documento"
+													>
+														<Trash2 className="w-3.5 h-3.5" />
+													</button>
+												</div>
+											);
+										})}
+									</div>
+								)}
+								{uploadingCredentials && (
+									<div className="mt-4 p-4 bg-indigo-50 border border-indigo-100 rounded-xl flex items-center gap-3 animate-pulse">
+										<Loader2 className="w-5 h-5 text-indigo-600 animate-spin" />
+										<span className="text-sm text-indigo-700 font-medium">Subiendo documentos...</span>
 									</div>
 								)}
 							</div>
@@ -1492,14 +1629,45 @@ por favor confirmar con un "Asistiré" o "No Asistiré"`}
 									<FileText className="w-4 h-4" />
 									Subir Documentos
 								</button>
-								{privateForm.credentials.credentialFiles && privateForm.credentials.credentialFiles.length > 0 && (
-									<div className="mt-2 space-y-2">
-										{privateForm.credentials.credentialFiles.map((file, idx) => (
-											<div key={idx} className="flex items-center gap-2 text-sm text-gray-600">
-												<FileText className="w-4 h-4" />
-												<span>Documento {idx + 1}</span>
-											</div>
-										))}
+								{(privateForm.credentials.credentialFiles || []).length > 0 && (
+									<div className="mt-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+										{privateForm.credentials.credentialFiles.map((url, idx) => {
+											const isImage = url.match(/\.(jpg|jpeg|png|webp|gif)$|data:image/i);
+											return (
+												<div key={idx} className="relative group bg-white p-3 rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-all">
+													<div className="flex flex-col items-center">
+														{isImage ? (
+															<div className="w-full h-32 mb-2 rounded-lg overflow-hidden bg-gray-100 border border-gray-100 flex items-center justify-center">
+																<img src={url} alt={`Documento ${idx + 1}`} className="w-full h-full object-cover" />
+															</div>
+														) : (
+															<div className="w-full h-32 mb-2 rounded-lg bg-indigo-50 flex flex-col items-center justify-center border border-indigo-100">
+																<FileText className="w-10 h-10 text-indigo-400 mb-2" />
+																<span className="text-[10px] font-medium text-indigo-600 uppercase tracking-wider">Documento PDF/Otro</span>
+															</div>
+														)}
+														<div className="flex items-center gap-2 w-full px-1">
+															<FileCheck className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
+															<span className="text-xs text-gray-600 truncate flex-1 font-medium">Documento {idx + 1}</span>
+														</div>
+													</div>
+													<button 
+														type="button" 
+														onClick={() => handleDeleteCredential(url)}
+														className="absolute -top-2 -right-2 p-1.5 bg-red-600 text-white rounded-full shadow-lg opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-700"
+														title="Eliminar documento"
+													>
+														<Trash2 className="w-3.5 h-3.5" />
+													</button>
+												</div>
+											);
+										})}
+									</div>
+								)}
+								{uploadingCredentials && (
+									<div className="mt-4 p-4 bg-indigo-50 border border-indigo-100 rounded-xl flex items-center gap-3 animate-pulse">
+										<Loader2 className="w-5 h-5 text-indigo-600 animate-spin" />
+										<span className="text-sm text-indigo-700 font-medium">Subiendo documentos...</span>
 									</div>
 								)}
 							</div>
@@ -1575,28 +1743,62 @@ por favor confirmar con un "Asistiré" o "No Asistiré"`}
 				</>
 			)}
 
-			{/* Firma digital */}
 			<div className="bg-gray-50 rounded-xl p-4 sm:p-6">
 				<h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
 					<FileText className="w-5 h-5 text-indigo-600" />
 					Firma Digital
 				</h3>
 				<div className="space-y-4">
-					{(config.isAffiliated ? affiliatedForm.signature : privateForm.signature) ? (
-						<div className="border-2 border-gray-300 rounded-lg p-4 bg-white">
-							<img src={config.isAffiliated ? affiliatedForm.signature : privateForm.signature} alt="Firma digital" className="max-h-32 mx-auto" />
-						</div>
-					) : (
-						<div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center">
-							<FileText className="w-12 h-12 text-gray-400 mx-auto mb-2" />
-							<p className="text-gray-500">No hay firma digital cargada</p>
-						</div>
-					)}
-					<input ref={signatureInputRef} type="file" accept="image/*" onChange={handleSignatureUpload} className="hidden" />
-					<button type="button" onClick={() => signatureInputRef.current?.click()} className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors flex items-center gap-2">
-						<Upload className="w-4 h-4" />
-						{config.isAffiliated ? affiliatedForm.signature : privateForm.signature ? 'Cambiar Firma' : 'Subir Firma'}
-					</button>
+					<div className="relative group max-w-md mx-auto">
+						{(config.isAffiliated ? affiliatedForm.signature : privateForm.signature) ? (
+							<div className="relative border-2 border-gray-300 rounded-lg p-4 bg-white">
+								<img src={config.isAffiliated ? affiliatedForm.signature : privateForm.signature} alt="Firma digital" className="max-h-32 mx-auto" />
+								{uploadingSignature && (
+									<div className="absolute inset-0 bg-white/60 flex items-center justify-center rounded-lg">
+										<Loader2 className="w-8 h-8 text-indigo-600 animate-spin" />
+									</div>
+								)}
+								{!uploadingSignature && (
+									<button 
+										type="button"
+										onClick={async () => {
+											const sigUrl = config.isAffiliated ? affiliatedForm.signature : privateForm.signature;
+											if (sigUrl) {
+												await deleteMedicFile(sigUrl);
+												if (config.isAffiliated) setAffiliatedForm(prev => ({ ...prev, signature: '' }));
+												else setPrivateForm(prev => ({ ...prev, signature: '' }));
+												toast.success('Firma eliminada');
+											}
+										}}
+										className="absolute -top-2 -right-2 p-1.5 bg-red-600 text-white rounded-full shadow-lg opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-700"
+									>
+										<Trash2 className="w-4 h-4" />
+									</button>
+								)}
+							</div>
+						) : (
+							<div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center bg-white">
+								{uploadingSignature ? (
+									<Loader2 className="w-12 h-12 text-indigo-400 mx-auto mb-2 animate-spin" />
+								) : (
+									<FileText className="w-12 h-12 text-gray-400 mx-auto mb-2" />
+								)}
+								<p className="text-gray-500">{uploadingSignature ? 'Subiendo firma...' : 'No hay firma digital cargada'}</p>
+							</div>
+						)}
+					</div>
+					<div className="text-center">
+						<input ref={signatureInputRef} type="file" accept="image/*" onChange={handleSignatureUpload} className="hidden" />
+						<button 
+							type="button" 
+							onClick={() => signatureInputRef.current?.click()} 
+							disabled={uploadingSignature}
+							className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors flex items-center gap-2 mx-auto disabled:opacity-50"
+						>
+							{uploadingSignature ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
+							{config.isAffiliated ? affiliatedForm.signature : privateForm.signature ? 'Cambiar Firma' : 'Subir Firma'}
+						</button>
+					</div>
 				</div>
 			</div>
 
