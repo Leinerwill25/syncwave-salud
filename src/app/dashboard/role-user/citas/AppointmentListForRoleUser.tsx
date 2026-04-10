@@ -284,7 +284,8 @@ export default function AppointmentListForRoleUser({ selectedDate, roleName, can
 	};
 
 	const handleViewAppointment = (appt: any) => {
-		if (isReception) {
+		const canManagePayments = isReception || roleName === 'Asistente De Citas';
+		if (canManagePayments) {
 			setSelectedAppointment(appt);
 			setIsModalOpen(true);
 		}
@@ -307,8 +308,10 @@ export default function AppointmentListForRoleUser({ selectedDate, roleName, can
 	return (
 		<>
 			<div className="space-y-3 sm:space-y-4 w-full min-w-0">
-				{appointments.map((appt) => (
-					<motion.div key={appt.id} whileHover={{ y: -3 }} className={`rounded-xl sm:rounded-2xl bg-white/90 backdrop-blur-sm border border-gray-100 shadow-sm hover:shadow-lg transition-all p-3 sm:p-4 flex flex-col gap-3 sm:gap-4 w-full min-w-0 ${isReception ? 'cursor-pointer' : ''}`} onClick={() => isReception && handleViewAppointment(appt)}>
+				{appointments.map((appt) => {
+					const canManagePayments = isReception || roleName === 'Asistente De Citas';
+					return (
+					<motion.div key={appt.id} whileHover={{ y: -3 }} className={`rounded-xl sm:rounded-2xl bg-white/90 backdrop-blur-sm border border-gray-100 shadow-sm hover:shadow-lg transition-all p-3 sm:p-4 flex flex-col gap-3 sm:gap-4 w-full min-w-0 ${canManagePayments ? 'cursor-pointer' : ''}`} onClick={() => canManagePayments && handleViewAppointment(appt)}>
 						<div className="flex flex-col sm:flex-row justify-between items-start sm:items-start gap-3 sm:gap-4 w-full min-w-0">
 							<div className="flex-1 min-w-0 w-full sm:w-auto space-y-2">
 								{/* Información del paciente */}
@@ -542,7 +545,7 @@ export default function AppointmentListForRoleUser({ selectedDate, roleName, can
 									)}
 								</div>
 
-								{isReception && (
+								{(isReception || roleName === 'Asistente De Citas') && (
 									<p className="text-xs text-blue-600 mt-2 flex items-center gap-1 ml-6">
 										<FileText className="w-3 h-3" />
 										<span>Haz clic en la tarjeta para gestionar pagos</span>
@@ -630,8 +633,8 @@ export default function AppointmentListForRoleUser({ selectedDate, roleName, can
 				))}
 			</div>
 
-			{/* Modal para Recepción: ver servicios y gestionar pagos */}
-			{isReception && (
+			{/* Modal para Gestión de servicios y pagos (Recepción y Asistente) */}
+			{(isReception || roleName === 'Asistente De Citas') && (
 				<ReceptionAppointmentModal
 					isOpen={isModalOpen}
 					onClose={() => {

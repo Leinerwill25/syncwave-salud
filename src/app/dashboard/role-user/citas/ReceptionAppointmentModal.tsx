@@ -321,7 +321,7 @@ export default function ReceptionAppointmentModal({ isOpen, onClose, appointment
 					<motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }} className="bg-white rounded-xl shadow-xl w-full max-w-3xl max-h-[90vh] overflow-y-auto">
 						{/* Header */}
 						<div className="sticky top-0 bg-white border-b border-slate-200 p-6 flex items-center justify-between z-10">
-							<h2 className="text-xl font-bold text-slate-900">Gestionar Cita - Recepción</h2>
+							<h2 className="text-xl font-bold text-slate-900">Gestionar Cita</h2>
 							<button onClick={onClose} className="text-slate-400 hover:text-slate-600">
 								<X className="w-6 h-6" />
 							</button>
