@@ -630,7 +630,8 @@ export default function AppointmentListForRoleUser({ selectedDate, roleName, can
 							</div>
 						</div>
 					</motion.div>
-				))}
+					);
+				})}
 			</div>
 
 			{/* Modal para Gestión de servicios y pagos (Recepción y Asistente) */}
