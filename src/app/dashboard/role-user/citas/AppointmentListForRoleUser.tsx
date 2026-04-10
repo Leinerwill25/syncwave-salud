@@ -426,8 +426,8 @@ export default function AppointmentListForRoleUser({ selectedDate, roleName, can
                                                         <span className="text-[10px] font-bold text-teal-900 uppercase tracking-widest">Total Estimado de la Cita:</span>
                                                         <div className="bg-white/50 rounded-lg p-2 border border-teal-100">
                                                             <CurrencyDisplay 
-                                                                amount={(appt.selected_service as any[]).reduce((sum, item) => sum + (Number(item.price) || 0), 0)} 
-                                                                currency={(appt.selected_service as any[])[0]?.currency || 'EUR'} 
+                                                                amount={appt.billing?.total ?? (appt.selected_service as any[]).reduce((sum, item) => sum + (Number(item.price) || 0), 0)} 
+                                                                currency={appt.billing?.currency || (appt.selected_service as any[])[0]?.currency || 'EUR'} 
                                                                 showBoth={true}
                                                                 size="sm"
                                                                 className="gap-1 items-start"
@@ -490,11 +490,13 @@ export default function AppointmentListForRoleUser({ selectedDate, roleName, can
                                                                     <div className="bg-white/50 rounded-lg p-2 border border-teal-100">
                                                                         <CurrencyDisplay 
                                                                             amount={
-                                                                                (appt.selected_service as any)?.price && Number((appt.selected_service as any).price) > 0 
-                                                                                    ? Number((appt.selected_service as any).price)
-                                                                                    : (appt.selected_service as any).services_included.reduce((sum: number, s: any) => sum + (Number(s.price) || 0), 0)
+                                                                                appt.billing?.total ?? (
+                                                                                    (appt.selected_service as any)?.price && Number((appt.selected_service as any).price) > 0 
+                                                                                        ? Number((appt.selected_service as any).price)
+                                                                                        : (appt.selected_service as any).services_included.reduce((sum: number, s: any) => sum + (Number(s.price) || 0), 0)
+                                                                                )
                                                                             } 
-                                                                            currency={(appt.selected_service as any)?.currency || (appt.selected_service as any).services_included[0]?.currency || 'USD'} 
+                                                                            currency={appt.billing?.currency || (appt.selected_service as any)?.currency || (appt.selected_service as any).services_included[0]?.currency || 'USD'} 
                                                                             showBoth={true} 
                                                                             size="sm"
                                                                             className="gap-1 items-start"
@@ -642,6 +644,7 @@ export default function AppointmentListForRoleUser({ selectedDate, roleName, can
 						setIsModalOpen(false);
 						setSelectedAppointment(null);
 					}}
+					onSuccess={mutate}
 					appointment={selectedAppointment}
 					organizationId={organizationId}
 				/>

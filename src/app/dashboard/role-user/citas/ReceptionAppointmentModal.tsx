@@ -9,6 +9,7 @@ import AddServiceModal from '@/app/dashboard/components/AddServiceModal';
 interface Props {
 	isOpen: boolean;
 	onClose: () => void;
+	onSuccess?: () => void;
 	appointment: any;
 	organizationId: string;
 }
@@ -31,7 +32,7 @@ interface FacturacionData {
 	servicios?: Service[];
 }
 
-export default function ReceptionAppointmentModal({ isOpen, onClose, appointment, organizationId }: Props) {
+export default function ReceptionAppointmentModal({ isOpen, onClose, onSuccess, appointment, organizationId }: Props) {
 	const [facturacion, setFacturacion] = useState<FacturacionData | null>(null);
 	const [loading, setLoading] = useState(false);
 	const [editingTotal, setEditingTotal] = useState(false);
@@ -229,6 +230,7 @@ export default function ReceptionAppointmentModal({ isOpen, onClose, appointment
 				setEditingTotal(false);
 				setEditReason('');
 				await loadFacturacionData();
+				if (onSuccess) onSuccess();
 			}
 		} catch (err: any) {
 			setError(err.message || 'Error al actualizar el monto');
@@ -297,6 +299,7 @@ export default function ReceptionAppointmentModal({ isOpen, onClose, appointment
 			setDeleteReason('');
 			setDeletingServiceId(null);
 			await loadAppointmentAndFacturacion();
+			if (onSuccess) onSuccess();
 		} catch (err: any) {
 			setError(err.message || 'Error al eliminar el servicio');
 		} finally {
@@ -513,6 +516,7 @@ export default function ReceptionAppointmentModal({ isOpen, onClose, appointment
                     onSuccess={async () => {
                         setSuccess('Servicio agregado correctamente');
                         await loadAppointmentAndFacturacion();
+                        if (onSuccess) onSuccess();
                     }}
                 />
             )}

@@ -28,6 +28,12 @@ type Appointment = {
 	} | null;
 	referral_source?: string | null;
 	doctorName?: string | null;
+	billing?: {
+		id: string;
+		subtotal: number;
+		total: number;
+		currency: string;
+	} | null;
 };
 
 export function useAppointmentsForRoleUser(selectedDate?: Date) {
