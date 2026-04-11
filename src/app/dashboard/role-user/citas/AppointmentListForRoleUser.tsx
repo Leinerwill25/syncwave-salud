@@ -19,6 +19,7 @@ import {
 	CreditCard,
 	CalendarClock,
 	MessageCircle,
+	ClipboardList,
 } from 'lucide-react';
 import CurrencyDisplay from '@/components/CurrencyDisplay';
 import { useAppointmentsForRoleUser } from '@/app/hooks/useAppointmentsForRoleUser';
@@ -552,6 +553,19 @@ export default function AppointmentListForRoleUser({ selectedDate, roleName, can
 										<FileText className="w-3 h-3" />
 										<span>Haz clic en la tarjeta para gestionar pagos</span>
 									</p>
+								)}
+
+								{/* Notas y Observaciones de la cita */}
+								{appt.billing?.notas && (
+									<div className="mt-3 ml-6 rounded-xl border border-teal-100 bg-teal-50/50 px-3 py-2.5 flex items-start gap-2.5">
+										<ClipboardList className="w-4 h-4 text-teal-600 shrink-0 mt-1" />
+										<div className="flex-1 min-w-0">
+											<span className="text-[10px] font-bold text-teal-800 uppercase tracking-widest block mb-1">Últimas Observaciones:</span>
+											<p className="text-xs text-teal-900 line-clamp-3 italic leading-relaxed">
+												{appt.billing.notas}
+											</p>
+										</div>
+									</div>
 								)}
 
 								{/* Alerta para Asistente de Citas cuando faltan 2 días para la cita */}

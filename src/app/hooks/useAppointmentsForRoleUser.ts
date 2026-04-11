@@ -33,6 +33,7 @@ type Appointment = {
 		subtotal: number;
 		total: number;
 		currency: string;
+		notas?: string | null;
 	} | null;
 };
 
