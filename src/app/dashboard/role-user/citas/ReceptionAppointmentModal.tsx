@@ -66,8 +66,8 @@ export default function ReceptionAppointmentModal({ isOpen, onClose, onSuccess, 
 
 				if (apptRes.ok) {
 					const apptData = await apptRes.json();
-					if (apptData.data) {
-						fullAppointment = { ...appointment, ...apptData.data };
+					if (apptData) {
+						fullAppointment = { ...appointment, ...apptData };
 					}
 				}
 			} catch (err) {
@@ -122,13 +122,26 @@ export default function ReceptionAppointmentModal({ isOpen, onClose, onSuccess, 
 								});
 							});
 						} else if (rawServices && typeof rawServices === 'object') {
-							services.push({
-								id: rawServices.id,
-								name: rawServices.name || 'Servicio',
-								description: rawServices.description,
-								price: parseFloat(rawServices.price || '0'),
-								currency: rawServices.currency || 'USD',
-							});
+							// Si es un objeto agrupado (combo/múltiples servicios de la API)
+							if (rawServices.services_included && Array.isArray(rawServices.services_included)) {
+								rawServices.services_included.forEach((s: any) => {
+									services.push({
+										id: s.id,
+										name: s.name || 'Servicio',
+										description: s.description,
+										price: parseFloat(s.price || '0'),
+										currency: s.currency || (rawServices.currency || 'USD'),
+									});
+								});
+							} else {
+								services.push({
+									id: rawServices.id,
+									name: rawServices.name || 'Servicio',
+									description: rawServices.description,
+									price: parseFloat(rawServices.price || '0'),
+									currency: rawServices.currency || 'USD',
+								});
+							}
 						}
 					}
 

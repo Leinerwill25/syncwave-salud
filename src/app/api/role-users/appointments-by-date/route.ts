@@ -57,7 +57,7 @@ export async function GET(req: NextRequest) {
 			unregistered_patient:unregistered_patient_id(first_name, last_name, identification, phone, email),
 			doctor:doctor_id(id, name),
 			created_by_role_user_id,
-			billing:facturacion(id, subtotal, impuestos, total, currency)`;
+			billing:facturacion(id, subtotal, impuestos, total, currency, notas)`;
 
 		let query = supabase.from('appointment').select(selectFields).eq('organization_id', session.organizationId).gte('scheduled_at', startIso).lte('scheduled_at', endIso).order('scheduled_at', { ascending: true });
 
@@ -81,7 +81,7 @@ export async function GET(req: NextRequest) {
 				patient:patient_id(firstName, lastName, identifier, phone, dob),
 				unregistered_patient:unregistered_patient_id(first_name, last_name, identification, phone, email),
 				doctor:doctor_id(id, name),
-				billing:facturacion(id, subtotal, impuestos, total, currency)`;
+				billing:facturacion(id, subtotal, impuestos, total, currency, notas)`;
 
 			query = supabase.from('appointment').select(selectFields).eq('organization_id', session.organizationId).gte('scheduled_at', startIso).lte('scheduled_at', endIso).order('scheduled_at', { ascending: true });
 
