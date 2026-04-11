@@ -21,6 +21,12 @@ export const metadata: Metadata = {
 		title: 'ASHIRA - Plataforma Integral de Salud Digital | Dra. Carwin Silva',
 		description: 'Transforma tu práctica médica con la plataforma tecnológica más completa del sector salud. Ginecóloga especialista Dra. Carwin Silva, embajadora oficial.',
 	},
+	manifest: '/manifest.json',
+	icons: {
+		icon: '/icon.png',
+		apple: '/apple-icon.png',
+		shortcut: '/favicon.ico',
+	},
 };
 
 import { headers } from 'next/headers';
