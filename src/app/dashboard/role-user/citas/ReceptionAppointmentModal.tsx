@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, DollarSign, FileText, Edit2, Trash2, Save, AlertCircle, Loader2, PlusCircle, ClipboardList } from 'lucide-react';
+import { X, DollarSign, FileText, Edit2, Trash2, Save, AlertCircle, Loader2, PlusCircle } from 'lucide-react';
 import CurrencyDisplay from '@/components/CurrencyDisplay';
 import AddServiceModal from '@/app/dashboard/components/AddServiceModal';
 
@@ -466,21 +466,6 @@ export default function ReceptionAppointmentModal({ isOpen, onClose, onSuccess, 
 										)}
 									</div>
                                     
-                                    {/* Notas y Auditoría */}
-                                    {facturacion?.notas && (
-                                        <div className="bg-amber-50 border border-amber-200 rounded-lg p-5">
-                                            <h3 className="font-semibold text-amber-900 mb-3 flex items-center gap-2">
-                                                <ClipboardList className="w-5 h-5" />
-                                                Historial y Observaciones
-                                            </h3>
-                                            <div className="bg-white/60 rounded-lg p-3 border border-amber-100/50">
-                                                <p className="text-sm text-amber-900 whitespace-pre-wrap leading-relaxed max-h-60 overflow-y-auto">
-                                                    {facturacion.notas}
-                                                </p>
-                                            </div>
-                                        </div>
-                                    )}
-
 									{/* Modal para eliminar servicio */}
 									{deletingServiceId !== null && (
 										<div className="fixed inset-0 bg-black/50 flex items-center justify-center z-60 p-4">

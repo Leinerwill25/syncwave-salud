@@ -26,6 +26,44 @@ import { useAppointmentsForRoleUser } from '@/app/hooks/useAppointmentsForRoleUs
 import ReceptionAppointmentModal from './ReceptionAppointmentModal';
 import EditAppointmentModal from './EditAppointmentModal';
 
+const parseAuditNotes = (notes: string) => {
+	if (!notes) return [];
+	return notes
+		.split('\n\n')
+		.filter((n) => n.trim())
+		.map((n) => {
+			const headerMatch = n.match(/\[(.*?) - (.*?)\]/);
+			const rawType = headerMatch?.[1] || 'NOTA';
+			const dateTime = headerMatch?.[2] || '';
+
+			let displayType = rawType;
+			if (rawType.includes('MODIFICACIÓN')) displayType = 'Ajuste de Monto';
+			if (rawType.includes('ELIMINACIÓN')) displayType = 'Servicio Removido';
+
+			const motivoMatch = n.match(/Motivo: (.*?)(?=\. Monto anterior:|\. Servicio eliminado:|$)/);
+			const reason = motivoMatch?.[1]?.trim() || '';
+
+			const amountMatch = n.match(/Monto anterior: (.*?), Monto nuevo: (.*?)$/);
+			let delta = null;
+			if (amountMatch) {
+				delta = { old: amountMatch[1], new: amountMatch[2] };
+			}
+
+			const serviceMatch = n.match(/Servicio eliminado: (.*?)$/);
+			let removedService = serviceMatch?.[1] || null;
+
+			return {
+				type: displayType,
+				rawType,
+				dateTime,
+				reason,
+				delta,
+				removedService,
+			};
+		})
+		.reverse();
+};
+
 interface Props {
 	selectedDate: Date;
 	roleName: string;
@@ -518,6 +556,48 @@ export default function AppointmentListForRoleUser({ selectedDate, roleName, can
 										Sin servicios seleccionados
 									</div>
 								)}
+
+								{/* Historial de Cambios y Observaciones (Dentro del bloque de servicios) */}
+								{appt.billing?.notas && (
+									<div className="mt-4 pt-4 border-t border-teal-200/60">
+										<div className="flex items-center gap-1.5 mb-3">
+											<ClipboardList className="w-3.5 h-3.5 text-teal-700" />
+											<span className="text-[10px] font-bold text-teal-900 uppercase tracking-widest">Historial de Cambios:</span>
+										</div>
+										<div className="space-y-3">
+											{parseAuditNotes(appt.billing.notas).map((note, idx) => (
+												<div key={idx} className="bg-white/60 rounded-xl p-3 border border-teal-100/50 shadow-sm">
+													<div className="flex justify-between items-center gap-2 mb-2">
+														<span className={`text-[9px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider ${note.rawType.includes('ELIMINACIÓN') ? 'bg-rose-100 text-rose-700' : 'bg-teal-100 text-teal-700'}`}>
+															{note.type}
+														</span>
+														<span className="text-[9px] text-teal-600 font-mono bg-teal-50 px-1.5 py-0.5 rounded">{note.dateTime}</span>
+													</div>
+													
+													{note.reason && (
+														<div className="text-xs text-teal-900 mb-2 leading-relaxed">
+															<span className="font-semibold text-teal-700/70">Motivo:</span> "{note.reason}"
+														</div>
+													)}
+
+													{note.delta && (
+														<div className="text-[10px] flex items-center gap-2 py-1.5 px-2.5 bg-teal-50/70 rounded-lg border border-teal-100/50">
+															<span className="text-gray-400 line-through font-medium">{note.delta.old}</span>
+															<span className="text-teal-400">→</span>
+															<span className="font-bold text-teal-700">{note.delta.new}</span>
+														</div>
+													)}
+
+													{note.removedService && (
+														<div className="text-[10px] py-1.5 px-2.5 bg-rose-50/70 rounded-lg border border-rose-100/50 text-rose-700">
+															<span className="font-semibold opacity-70">Removido:</span> <span className="font-bold">{note.removedService}</span>
+														</div>
+													)}
+												</div>
+											))}
+										</div>
+									</div>
+								)}
 								</div>
 
 								{/* Motivo de la cita */}
@@ -555,18 +635,7 @@ export default function AppointmentListForRoleUser({ selectedDate, roleName, can
 									</p>
 								)}
 
-								{/* Notas y Observaciones de la cita */}
-								{appt.billing?.notas && (
-									<div className="mt-3 ml-6 rounded-xl border border-teal-100 bg-teal-50/50 px-3 py-2.5 flex items-start gap-2.5">
-										<ClipboardList className="w-4 h-4 text-teal-600 shrink-0 mt-1" />
-										<div className="flex-1 min-w-0">
-											<span className="text-[10px] font-bold text-teal-800 uppercase tracking-widest block mb-1">Últimas Observaciones:</span>
-											<p className="text-xs text-teal-900 line-clamp-3 italic leading-relaxed">
-												{appt.billing.notas}
-											</p>
-										</div>
-									</div>
-								)}
+
 
 								{/* Alerta para Asistente de Citas cuando faltan 2 días para la cita */}
 								{!isReception && getDaysUntilAppointment(appt) === 2 && (
