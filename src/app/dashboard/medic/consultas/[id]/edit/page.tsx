@@ -361,15 +361,15 @@ export default async function EditConsultationPage({ params }: Props) {
 	const startedAt = consultation.started_at ? new Date(consultation.started_at) : consultation.created_at ? new Date(consultation.created_at) : null;
 
 	return (
-		<main className="min-h-screen bg-slate-50 ">
-			<div className="max-w-7xl mx-auto">
+		<main className="min-h-screen w-full flex flex-col bg-slate-50 overflow-x-hidden">
+			<div className="max-w-7xl mx-auto w-full flex-1 flex flex-col">
 				{/* Header Section - Professional Design */}
-				<header className="bg-white  border-b border-slate-200  sticky top-0 z-20 shadow-sm">
+				<header className="bg-white border-b border-slate-200 shrink-0 z-20 shadow-sm relative">
 					<div className="px-6 py-4">
 						{/* Breadcrumb */}
-						<nav className="mb-4">
-							<Link href="/dashboard/medic/consultas" className="inline-flex items-center gap-2 text-sm font-medium text-slate-600  hover:text-teal-600  transition-colors">
-								<ArrowLeft size={16} />
+						<nav className="mb-6">
+							<Link href="/dashboard/medic/consultas" className="group inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-white border border-slate-200 text-slate-700 font-bold text-sm hover:bg-slate-50 hover:border-teal-200 hover:text-teal-600 shadow-sm hover:shadow-md transition-all duration-200">
+								<ArrowLeft size={18} className="group-hover:-translate-x-1 transition-transform" />
 								Volver a Consultas
 							</Link>
 						</nav>
@@ -463,17 +463,14 @@ export default async function EditConsultationPage({ params }: Props) {
 				</header>
 
 				{/* Form Section - No wrapper needed, form handles its own styling */}
-				<EditConsultationForm 
-					initial={consultation} 
-					patient={patient} 
-					doctor={doctor} 
-					doctorSpecialties={doctorSpecialties} 
-					isSimpleConsulta={isSimpleConsulta} 
-					hasEcografiaTransvaginal={hasEcografiaTransvaginal} 
-					isOnlyVideoColposcopia={isOnlyVideoColposcopia}
-					hasColposcopia={hasColposcopia}
-					hasConsultaInService={hasConsultaInService}
-				/>
+				<div className="flex-1 w-full relative">
+					<EditConsultationForm 
+						initial={consultation} 
+						patient={patient} 
+						doctor={doctor} 
+						doctorSpecialties={doctorSpecialties} 
+					/>
+				</div>
 			</div>
 		</main>
 	);

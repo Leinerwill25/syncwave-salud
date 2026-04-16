@@ -332,3 +332,111 @@ export function getLabResultNotificationEmailForPatient(data: {
     `;
   }
 }
+
+export function getClinicalShareEmail(data: {
+  patientName: string;
+  doctorName: string;
+  consultationLink: string;
+  prescriptionLink?: string;
+  clinicName: string;
+}) {
+  const prescriptionButton = data.prescriptionLink ? `
+    <table width="100%" cellpadding="0" cellspacing="0">
+      <tr>
+        <td align="center" style="padding: 10px 0;">
+          <a href="${data.prescriptionLink}" style="display: inline-block; background: linear-gradient(135deg, #7c3aed 0%, #4338ca 100%); color: #ffffff; text-decoration: none; padding: 14px 30px; border-radius: 12px; font-size: 15px; font-weight: 600; min-width: 200px; text-align: center; box-shadow: 0 4px 6px rgba(124, 58, 237, 0.2);">
+            💊 Ver Receta Médica
+          </a>
+        </td>
+      </tr>
+    </table>
+  ` : '';
+
+  return `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Tu Informe Médico - Syncwave Salud</title>
+</head>
+<body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #f1f5f9;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #f1f5f9; padding: 40px 10px;">
+    <tr>
+      <td align="center">
+        <table width="600" cellpadding="0" cellspacing="0" style="background-color: #ffffff; border-radius: 24px; overflow: hidden; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);">
+          <!-- Header -->
+          <tr>
+            <td style="background: linear-gradient(135deg, #0d9488 0%, #06b6d4 100%); padding: 50px 30px; text-align: center;">
+              <h1 style="margin: 0; color: #ffffff; font-size: 28px; font-weight: 800; letter-spacing: -0.5px;">
+                Syncwave Salud
+              </h1>
+              <p style="margin: 10px 0 0; color: rgba(255,255,255,0.9); font-size: 14px; font-weight: 500; text-transform: uppercase; letter-spacing: 1px;">
+                Gestión Clínica Inteligente
+              </p>
+            </td>
+          </tr>
+
+          <!-- Content -->
+          <tr>
+            <td style="padding: 45px 35px;">
+              <p style="margin: 0 0 20px; color: #1e293b; font-size: 18px; font-weight: 600;">
+                Hola, ${data.patientName}
+              </p>
+
+              <p style="margin: 0 0 30px; color: #475569; font-size: 16px; line-height: 1.7;">
+                Tu médico, el <strong>Dr. ${data.doctorName}</strong> en <strong>${data.clinicName}</strong>, ha generado documentos clínicos importantes de tu consulta reciente. Puedes visualizarlos de forma segura en los siguientes enlaces:
+              </p>
+
+              <!-- Buttons Container -->
+              <div style="background-color: #f8fafc; padding: 30px; border-radius: 20px; border: 1px solid #e2e8f0; margin-bottom: 35px;">
+                <table width="100%" cellpadding="0" cellspacing="0">
+                  <tr>
+                    <td align="center" style="padding: 10px 0;">
+                      <a href="${data.consultationLink}" style="display: inline-block; background: linear-gradient(135deg, #0d9488 0%, #06b6d4 100%); color: #ffffff; text-decoration: none; padding: 14px 30px; border-radius: 12px; font-size: 15px; font-weight: 600; min-width: 200px; text-align: center; box-shadow: 0 4px 6px rgba(13, 148, 136, 0.2);">
+                        📄 Ver Informe Médico
+                      </a>
+                    </td>
+                  </tr>
+                </table>
+                
+                ${prescriptionButton}
+              </div>
+
+              <div style="background-color: #fffbeb; border-left: 4px solid #f59e0b; padding: 20px; border-radius: 8px;">
+                <p style="margin: 0; color: #92400e; font-size: 14px; line-height: 1.6;">
+                  <strong>Nota de seguridad:</strong> Estos enlaces son estrictamente para visualización personal. No compartas este correo con personas no autorizadas para proteger tu privacidad médica.
+                </p>
+              </div>
+            </td>
+          </tr>
+
+          <!-- Footer -->
+          <tr>
+            <td style="background-color: #f8fafc; padding: 35px; text-align: center; border-top: 1px solid #f1f5f9;">
+              <p style="margin: 0 0 10px; color: #64748b; font-size: 14px; font-weight: 600;">
+                Syncwave Salud
+              </p>
+              <p style="margin: 0 0 20px; color: #94a3b8; font-size: 12px;">
+                Transformando la atención clínica con tecnología.
+              </p>
+              <table width="100%" cellpadding="0" cellspacing="0">
+                <tr>
+                  <td align="center">
+                    <div style="height: 1px; width: 50px; background-color: #e2e8f0; margin-bottom: 20px;"></div>
+                  </td>
+                </tr>
+              </table>
+              <p style="margin: 0; color: #cbd5e1; font-size: 11px;">
+                Este correo fue enviado desde una dirección automática. Favor no responder.
+              </p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
+  `;
+}

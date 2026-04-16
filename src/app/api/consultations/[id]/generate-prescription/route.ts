@@ -382,11 +382,49 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 			if (documentXmlBefore) {
 				let xmlBefore = documentXmlBefore.asText();
 				
+				// Verificar si la plantilla tiene marcadores para receta
+				const recipePattern = /\{\{(?:recipe|receta|RECIPES|RECIPE|medicamento|instrucciones|instructions|indicaciones|INDICACIONES|indications)\}\}/gi;
+				const hasMarkers = recipePattern.test(xmlBefore);
+
+				// Si no tiene marcadores y el doctor mandó medicamentos nuevos, los inyectamos al final del body
+				if (!hasMarkers && data.recipe) {
+					console.log('[Generate Prescription API] No se encontraron marcadores en la plantilla estática. Intentando inyectar al final...');
+					const bodyEndMarker = '</w:body>';
+					const endOfBodyIndex = xmlBefore.lastIndexOf(bodyEndMarker);
+					
+					if (endOfBodyIndex !== -1) {
+						// Insertar un salto de párrafo y el marcador {{recipe}} antes del cierre del body
+						const injection = `
+							<w:p>
+								<w:pPr>
+									<w:pStyle w:val="Heading1"/>
+									<w:jc w:val="left"/>
+								</w:pPr>
+								<w:r>
+									<w:rPr>
+										<w:b/>
+										<w:sz w:val="24"/>
+									</w:rPr>
+									<w:t>PRESCRIPCIÓN ADICIONAL:</w:t>
+								</w:r>
+							</w:p>
+							<w:p>
+								<w:r>
+									<w:t>{{recipe}}</w:t>
+								</w:r>
+							</w:p>
+							<w:p>
+								<w:r>
+									<w:t>{{indicaciones}}</w:t>
+								</w:r>
+							</w:p>
+						`;
+						xmlBefore = xmlBefore.substring(0, endOfBodyIndex) + injection + xmlBefore.substring(endOfBodyIndex);
+					}
+				}
+
 				// Agregar un atributo único a los párrafos que contienen {{recipe}} o {{instrucciones}}
 				// Esto nos permitirá identificarlos exactamente después del renderizado
-				const recipePattern = /\{\{(?:recipe|receta|RECIPES|RECIPE|medicamento)\}\}/gi;
-				const instruccionesPattern = /\{\{(?:instrucciones|instructions)\}\}/gi;
-				
 				// Encontrar párrafos que contienen estas variables y agregarles un atributo único
 				xmlBefore = xmlBefore.replace(
 					/(<w:p[^>]*>)([\s\S]*?)\{\{(?:recipe|receta|RECIPES|RECIPE|medicamento)\}\}([\s\S]*?)(<\/w:p>)/gi,

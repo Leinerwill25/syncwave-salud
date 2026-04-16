@@ -36,8 +36,13 @@ export default async function RootLayout({ children }: { children: React.ReactNo
 	const nonce = headersList.get('x-nonce') || '';
 
 	return (
-		<html lang="es" className="overflow-x-hidden" style={{ colorScheme: 'light' }}>
-			<body nonce={nonce} className="antialiased overflow-x-hidden w-full max-w-full" style={{ backgroundColor: '#F5F7FA', color: '#2C3E50' }}>
+		<html lang="es" className="overflow-x-hidden" style={{ colorScheme: 'light' }} suppressHydrationWarning={true}>
+			<body 
+				nonce={nonce} 
+				className="antialiased overflow-x-hidden w-full max-w-full" 
+				style={{ backgroundColor: '#F5F7FA', color: '#2C3E50' }}
+				suppressHydrationWarning={true}
+			>
 				<QueryProvider>
 					{/* Navbar dinámico */}
 					<NavbarSwitcher />
