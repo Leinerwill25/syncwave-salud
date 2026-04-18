@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { useState, useEffect, Suspense, lazy } from 'react';
 import { Button } from '@/components/ui/button';
@@ -17,6 +17,8 @@ const DayAgenda = lazy(() => import('./components/DayAgenda'));
 const DayAppointments = lazy(() => import('./components/DayAppointments'));
 const PendingPaymentAlerts = lazy(() => import('./components/PendingPaymentAlerts'));
 const AppointmentForm = lazy(() => import('./components/AppointmentForm'));
+import ASHIRAGreeting from '@/components/medic/ashira-ai/ASHIRAGreeting';
+
 
 // Loading skeleton para componentes
 const ComponentSkeleton = ({ className = '' }: { className?: string }) => (
@@ -96,6 +98,10 @@ export default function MedicDashboardPage() {
 			<div>
 				<h1 className="text-2xl sm:text-3xl font-bold text-slate-900">Panel de Control</h1>
 				<p className="text-sm sm:text-base text-slate-600 mt-1">Indicadores clave de rendimiento y agenda diaria</p>
+			</div>
+
+			<div className="min-h-[140px]">
+				{userId && <ASHIRAGreeting doctorId={userId} />}
 			</div>
 
 			<Suspense fallback={<ComponentSkeleton className="h-48" />}>

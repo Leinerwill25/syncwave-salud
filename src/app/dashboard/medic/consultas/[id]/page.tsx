@@ -288,7 +288,15 @@ export default async function ConsultationDetail({ params }: Props) {
 								const images = vitalsObj.images;
 
 								if (initialPatientData || specialtyData || privateNotes || images) {
-									return <ConsultationDataDisplay vitals={c.vitals} initialPatientData={initialPatientData} specialtyData={specialtyData} privateNotes={privateNotes} images={images} />;
+									return <ConsultationDataDisplay 
+										vitals={c.vitals} 
+										initialPatientData={initialPatientData} 
+										specialtyData={specialtyData} 
+										privateNotes={privateNotes} 
+										images={images} 
+										patientId={c.patient_id}
+										doctorId={c.doctor_id}
+									/>;
 								}
 								return null;
 							})()}

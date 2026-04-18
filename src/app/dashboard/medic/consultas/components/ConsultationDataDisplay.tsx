@@ -10,9 +10,21 @@ interface ConsultationDataDisplayProps {
 	specialtyData?: any;
 	privateNotes?: string;
 	images?: any[];
+	patientId?: string;
+	doctorId?: string;
 }
 
-export default function ConsultationDataDisplay({ vitals, initialPatientData, specialtyData, privateNotes, images }: ConsultationDataDisplayProps) {
+import ASHIRADocButton from '@/components/medic/ashira-ai/ASHIRADocButton';
+
+export default function ConsultationDataDisplay({ 
+	vitals, 
+	initialPatientData, 
+	specialtyData, 
+	privateNotes, 
+	images,
+	patientId,
+	doctorId
+}: ConsultationDataDisplayProps) {
 	const vitalsObj = typeof vitals === 'string' ? JSON.parse(vitals) : vitals || {};
 
 	// Extract images from vitals if they exist
@@ -194,10 +206,17 @@ export default function ConsultationDataDisplay({ vitals, initialPatientData, sp
 										<ImgIcon size={32} className="text-slate-400" />
 									</div>
 								)}
-								<div className="p-2 bg-white">
-									<p className="text-xs text-slate-700 truncate" title={image.name}>
+								<div className="p-2 bg-white flex flex-col gap-2">
+									<p className="text-[10px] text-slate-500 truncate font-medium" title={image.name}>
 										{image.name || `Archivo ${index + 1}`}
 									</p>
+									{patientId && doctorId && (
+										<ASHIRADocButton 
+											fileId={image.url} 
+											patientId={patientId} 
+											doctorId={doctorId} 
+										/>
+									)}
 								</div>
 							</div>
 						))}

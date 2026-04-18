@@ -4,6 +4,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { FileText, Loader2, Stethoscope, Calendar, UserCheck, UserPlus, CheckCircle } from 'lucide-react';
 import { createSupabaseBrowserClient } from '@/app/adapters/client'; // lo dejé por si lo necesitas en otras partes
+import ASHIRAMemoryCard from '@/components/medic/ashira-ai/ASHIRAMemoryCard';
 import CurrencyDisplay from '@/components/CurrencyDisplay';
 import axios from 'axios';
 
@@ -692,6 +693,11 @@ export default function ConsultationForm() {
 					</div>
 				</div>
 			</Card>
+
+			{/* Memoria Clínica ASHIRA (condicional) */}
+			{patientId && (
+				<ASHIRAMemoryCard patientId={patientId} />
+			)}
 
 			{/* Session / patient picker o formulario de paciente no registrado */}
 			{patientType === 'registered' ? (
