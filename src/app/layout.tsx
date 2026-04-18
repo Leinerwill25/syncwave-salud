@@ -5,6 +5,7 @@ import NavbarSwitcher from '@/components/NavbarSwitcher';
 import ConditionalMain from '@/components/ConditionalMain';
 import { Toaster } from 'sonner';
 import QueryProvider from '@/providers/QueryProvider';
+import { Analytics } from '@vercel/analytics/next';
 
 export const metadata: Metadata = {
 	title: 'ASHIRA - Plataforma Integral de Salud Digital para Venezuela | Dra. Carwin Silva - Ginecóloga Especialista',
@@ -52,6 +53,9 @@ export default async function RootLayout({ children }: { children: React.ReactNo
 
 					{/* Toaster para notificaciones */}
 					<Toaster position="top-right" richColors />
+					
+					{/* Vercel Web Analytics */}
+					<Analytics />
 				</QueryProvider>
 			</body>
 		</html>

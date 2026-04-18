@@ -48,10 +48,6 @@ const nextConfig: NextConfig = {
 			},
 		];
 	},
-	// Configurar el root para Turbopack para evitar problemas de detección de workspace
-	turbopack: {
-		root: 'C:/Users/Dereck/Desktop/Proyectos Grandes/Clinica_Syncwave_MVP/my-app',
-	},
 };
 
 export default nextConfig;
