@@ -229,8 +229,8 @@ export default function DonutChart({
                   color: textColor,
                   border: `1px solid ${cardBorder}`,
                 }}
-                formatter={(value: number) => [
-                  new Intl.NumberFormat().format(value),
+                formatter={(value: any) => [
+                  new Intl.NumberFormat().format(Number(value || 0)),
                   "Ventas",
                 ]}
               />
