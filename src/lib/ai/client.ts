@@ -169,7 +169,7 @@ async function callGroq(
       { role: 'system', content: systemPrompt },
       { role: 'user', content: contentString },
     ],
-    model: 'llama3-8b-8192',
+    model: 'llama-3.3-70b-versatile',
     max_tokens: maxTokens,
     temperature: temperature,
     response_format: forceJSON ? { type: 'json_object' } : undefined,
