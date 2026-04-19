@@ -1,0 +1,15 @@
+services:
+  waha:
+    image: devlikeapro/waha
+    container_name: waha
+    restart: always
+    ports:
+      - "3001:3000"
+    environment:
+      - WHATSAPP_API_KEY=ashira_secret_key_2026
+      - WHATSAPP_DASHBOARD_USERNAME=admin
+      - WHATSAPP_DASHBOARD_PASSWORD=ashira2026
+      - WHATSAPP_HOOK_URL=http://192.168.10.4:3000/api/waha/webhook
+      - WHATSAPP_HOOK_EVENTS=message,session.status
+    volumes:
+      - ./waha_data:/root/.waha

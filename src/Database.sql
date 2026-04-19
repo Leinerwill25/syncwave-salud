@@ -154,6 +154,24 @@ CREATE TABLE public.admin_inventory_medications (
   CONSTRAINT admin_inventory_medications_created_by_fkey FOREIGN KEY (created_by) REFERENCES auth.users(id),
   CONSTRAINT admin_inventory_medications_updated_by_fkey FOREIGN KEY (updated_by) REFERENCES auth.users(id)
 );
+CREATE TABLE public.admin_inventory_movements (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  organization_id uuid NOT NULL,
+  item_id uuid NOT NULL,
+  item_type text NOT NULL CHECK (item_type = ANY (ARRAY['MATERIAL'::text, 'MEDICAMENTO'::text])),
+  type text NOT NULL CHECK (type = ANY (ARRAY['IN'::text, 'OUT'::text])),
+  reason text NOT NULL CHECK (reason = ANY (ARRAY['COMPRA'::text, 'ENTREGA'::text, 'AJUSTE'::text, 'DEVOLUCION'::text])),
+  quantity integer NOT NULL CHECK (quantity > 0),
+  unit_price numeric DEFAULT 0,
+  total_amount numeric DEFAULT 0,
+  supplier_name text,
+  recipient_name text,
+  notes text,
+  created_by uuid NOT NULL,
+  created_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT admin_inventory_movements_pkey PRIMARY KEY (id),
+  CONSTRAINT admin_inventory_movements_organization_id_fkey FOREIGN KEY (organization_id) REFERENCES public.organization(id)
+);
 CREATE TABLE public.ai_conversation (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
   patient_id uuid NOT NULL,
@@ -162,6 +180,50 @@ CREATE TABLE public.ai_conversation (
   updated_at timestamp with time zone NOT NULL DEFAULT now(),
   CONSTRAINT ai_conversation_pkey PRIMARY KEY (id),
   CONSTRAINT fk_aiconv_patient FOREIGN KEY (patient_id) REFERENCES public.patient(id)
+);
+CREATE TABLE public.ai_memory_cache (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  patient_id uuid NOT NULL UNIQUE,
+  history_hash character varying NOT NULL,
+  summary jsonb NOT NULL,
+  tokens_used integer,
+  generated_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT ai_memory_cache_pkey PRIMARY KEY (id),
+  CONSTRAINT fk_memory_cache_patient FOREIGN KEY (patient_id) REFERENCES public.patient(id)
+);
+CREATE TABLE public.ai_report_cache (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  file_hash character varying NOT NULL UNIQUE,
+  patient_id uuid NOT NULL,
+  analysis_result jsonb NOT NULL,
+  tokens_used integer,
+  model_used character varying,
+  created_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT ai_report_cache_pkey PRIMARY KEY (id),
+  CONSTRAINT fk_report_cache_patient FOREIGN KEY (patient_id) REFERENCES public.patient(id)
+);
+CREATE TABLE public.ai_usage_log (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  feature character varying NOT NULL,
+  tokens_in integer NOT NULL,
+  tokens_out integer NOT NULL,
+  model character varying,
+  source character varying,
+  doctor_id uuid,
+  patient_id uuid,
+  created_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT ai_usage_log_pkey PRIMARY KEY (id)
+);
+CREATE TABLE public.ai_voice_cache (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  doctor_id uuid NOT NULL,
+  date date NOT NULL,
+  greeting_text text NOT NULL,
+  audio_url text,
+  chars_used integer,
+  created_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT ai_voice_cache_pkey PRIMARY KEY (id),
+  CONSTRAINT fk_voice_cache_doctor FOREIGN KEY (doctor_id) REFERENCES public.users(id)
 );
 CREATE TABLE public.appointment (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
@@ -183,13 +245,36 @@ CREATE TABLE public.appointment (
   created_by_doctor_id uuid,
   office_id text,
   notes text,
+  wa_reminder_sent_at timestamp with time zone,
+  wa_confirmation_status text DEFAULT 'PENDING'::text,
+  wa_confirmed_at timestamp with time zone,
+  wa_conversation_id uuid,
   CONSTRAINT appointment_pkey PRIMARY KEY (id),
   CONSTRAINT appointment_created_by_role_user_fkey FOREIGN KEY (created_by_role_user_id) REFERENCES public.consultorio_role_users(id),
   CONSTRAINT appointment_created_by_doctor_id_fkey FOREIGN KEY (created_by_doctor_id) REFERENCES public.users(id),
   CONSTRAINT fk_appointment_patient FOREIGN KEY (patient_id) REFERENCES public.patient(id),
   CONSTRAINT fk_appointment_org FOREIGN KEY (organization_id) REFERENCES public.organization(id),
   CONSTRAINT fk_appointment_unregistered_patient FOREIGN KEY (unregistered_patient_id) REFERENCES public.unregisteredpatients(id),
-  CONSTRAINT fk_appointment_doctor FOREIGN KEY (doctor_id) REFERENCES public.users(id)
+  CONSTRAINT fk_appointment_doctor FOREIGN KEY (doctor_id) REFERENCES public.users(id),
+  CONSTRAINT appointment_wa_conversation_id_fkey FOREIGN KEY (wa_conversation_id) REFERENCES public.whatsapp_conversations(id)
+);
+CREATE TABLE public.ashira_kpis (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  recorded_date date NOT NULL DEFAULT CURRENT_DATE,
+  ashira_followers integer DEFAULT 0,
+  ashira_posts_count integer DEFAULT 0,
+  docguia_followers integer DEFAULT 0,
+  docsiapp_followers integer DEFAULT 0,
+  hipocrates_followers integer DEFAULT 0,
+  ashira_follower_delta integer DEFAULT 0,
+  top_post_likes integer DEFAULT 0,
+  top_post_views integer DEFAULT 0,
+  top_post_account text DEFAULT ''::text,
+  top_post_content text DEFAULT ''::text,
+  trending_hashtags jsonb DEFAULT '[]'::jsonb,
+  notes text DEFAULT ''::text,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT ashira_kpis_pkey PRIMARY KEY (id)
 );
 CREATE TABLE public.audit_log (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
@@ -486,6 +571,17 @@ CREATE TABLE public.doctor_schedule_config (
   CONSTRAINT doctor_schedule_config_doctor_fkey FOREIGN KEY (doctor_id) REFERENCES public.users(id),
   CONSTRAINT doctor_schedule_config_org_fkey FOREIGN KEY (organization_id) REFERENCES public.organization(id)
 );
+CREATE TABLE public.email_log (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  doctorId uuid NOT NULL,
+  sentAt timestamp without time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  recipient text NOT NULL,
+  type text NOT NULL,
+  consultationId uuid,
+  CONSTRAINT email_log_pkey PRIMARY KEY (id),
+  CONSTRAINT email_log_doctorId_fkey FOREIGN KEY (doctorId) REFERENCES public.users(id),
+  CONSTRAINT email_log_consultationId_fkey FOREIGN KEY (consultationId) REFERENCES public.consultation(id)
+);
 CREATE TABLE public.facturacion (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
   appointment_id uuid NOT NULL,
@@ -640,6 +736,31 @@ CREATE TABLE public.lab_upload_notification (
   CONSTRAINT lab_upload_notification_pkey PRIMARY KEY (id),
   CONSTRAINT lab_upload_notification_lab_result_id_fkey FOREIGN KEY (lab_result_id) REFERENCES public.lab_result_upload(id),
   CONSTRAINT lab_upload_notification_recipient_id_fkey FOREIGN KEY (recipient_id) REFERENCES public.users(id)
+);
+CREATE TABLE public.marketing_analysis (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  analysis_date date NOT NULL DEFAULT CURRENT_DATE,
+  snapshot_id uuid,
+  competitive_summary jsonb NOT NULL DEFAULT '{}'::jsonb,
+  strategy_recepcionista jsonb NOT NULL DEFAULT '[]'::jsonb,
+  strategy_medico_independiente jsonb NOT NULL DEFAULT '[]'::jsonb,
+  strategy_director_clinica jsonb NOT NULL DEFAULT '[]'::jsonb,
+  strategy_paciente jsonb NOT NULL DEFAULT '[]'::jsonb,
+  strategy_especialista jsonb NOT NULL DEFAULT '[]'::jsonb,
+  content_recommendations jsonb NOT NULL DEFAULT '[]'::jsonb,
+  content_insights jsonb NOT NULL DEFAULT '{}'::jsonb,
+  hashtag_strategy jsonb NOT NULL DEFAULT '{}'::jsonb,
+  changes_vs_previous jsonb NOT NULL DEFAULT '[]'::jsonb,
+  trend text DEFAULT 'estancado'::text CHECK (trend = ANY (ARRAY['mejorando'::text, 'estancado'::text, 'retrocediendo'::text])),
+  tokens_used integer DEFAULT 0,
+  analysis_cost_usd numeric DEFAULT 0,
+  model_version text DEFAULT 'claude-haiku-4-5'::text,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  comparison_analysis jsonb NOT NULL DEFAULT '{}'::jsonb,
+  segment_statuses jsonb NOT NULL DEFAULT '{}'::jsonb,
+  kpi_delta jsonb NOT NULL DEFAULT '{}'::jsonb,
+  CONSTRAINT marketing_analysis_pkey PRIMARY KEY (id),
+  CONSTRAINT marketing_analysis_snapshot_id_fkey FOREIGN KEY (snapshot_id) REFERENCES public.sonda_snapshots(id)
 );
 CREATE TABLE public.medic_profile (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
@@ -1018,6 +1139,7 @@ CREATE TABLE public.patient (
   emergency_contact_relation text,
   medical_history text,
   current_medications text,
+  is_active boolean DEFAULT true,
   CONSTRAINT patient_pkey PRIMARY KEY (id)
 );
 CREATE TABLE public.patient_attentions (
@@ -1313,6 +1435,19 @@ CREATE TABLE public.role_user_payment_methods (
   CONSTRAINT role_user_payment_methods_organization_id_fkey FOREIGN KEY (organization_id) REFERENCES public.organization(id),
   CONSTRAINT role_user_payment_methods_created_by_role_user_id_fkey FOREIGN KEY (created_by_role_user_id) REFERENCES public.consultorio_role_users(id)
 );
+CREATE TABLE public.sonda_snapshots (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  snapshot_date date NOT NULL DEFAULT CURRENT_DATE,
+  days_range integer NOT NULL DEFAULT 30,
+  accounts jsonb NOT NULL DEFAULT '[]'::jsonb,
+  metrics jsonb NOT NULL DEFAULT '{}'::jsonb,
+  posts jsonb NOT NULL DEFAULT '[]'::jsonb,
+  hashtags jsonb NOT NULL DEFAULT '[]'::jsonb,
+  related jsonb NOT NULL DEFAULT '[]'::jsonb,
+  api_status jsonb NOT NULL DEFAULT '{}'::jsonb,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT sonda_snapshots_pkey PRIMARY KEY (id)
+);
 CREATE TABLE public.specialist_patient_assignments (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
   organization_id uuid NOT NULL,
@@ -1519,6 +1654,7 @@ CREATE TABLE public.unregisteredpatients (
   emergency_contact_name text,
   emergency_contact_phone text,
   emergency_contact_relation text,
+  is_active boolean DEFAULT true,
   CONSTRAINT unregisteredpatients_pkey PRIMARY KEY (id),
   CONSTRAINT unregisteredpatients_migrated_to_patient_id_fkey FOREIGN KEY (migrated_to_patient_id) REFERENCES public.patient(id)
 );
@@ -1555,4 +1691,64 @@ CREATE TABLE public.users (
   CONSTRAINT users_pkey PRIMARY KEY (id),
   CONSTRAINT fk_user_organization FOREIGN KEY (organizationId) REFERENCES public.organization(id),
   CONSTRAINT fk_user_patientprofile FOREIGN KEY (patientProfileId) REFERENCES public.patient(id)
+);
+CREATE TABLE public.waha_sessions (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  organization_id uuid NOT NULL UNIQUE,
+  session_name text NOT NULL UNIQUE,
+  status text NOT NULL DEFAULT 'STOPPED'::text,
+  qr_code_base64 text,
+  qr_expires_at timestamp with time zone,
+  connected_phone text,
+  connected_at timestamp with time zone,
+  disconnected_at timestamp with time zone,
+  waha_webhook_secret text,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT waha_sessions_pkey PRIMARY KEY (id),
+  CONSTRAINT waha_sessions_organization_id_fkey FOREIGN KEY (organization_id) REFERENCES public.organization(id)
+);
+CREATE TABLE public.whatsapp_conversations (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  organization_id uuid NOT NULL,
+  patient_id uuid,
+  unregistered_patient_id uuid,
+  appointment_id uuid,
+  patient_phone text NOT NULL,
+  waha_chat_id text NOT NULL,
+  status text NOT NULL DEFAULT 'ACTIVE'::text,
+  context text NOT NULL DEFAULT 'REMINDER'::text,
+  last_outbound_at timestamp with time zone,
+  last_inbound_at timestamp with time zone,
+  taken_over_by uuid,
+  taken_over_at timestamp with time zone,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT whatsapp_conversations_pkey PRIMARY KEY (id),
+  CONSTRAINT whatsapp_conversations_organization_id_fkey FOREIGN KEY (organization_id) REFERENCES public.organization(id),
+  CONSTRAINT whatsapp_conversations_patient_id_fkey FOREIGN KEY (patient_id) REFERENCES public.patient(id),
+  CONSTRAINT whatsapp_conversations_unregistered_patient_id_fkey FOREIGN KEY (unregistered_patient_id) REFERENCES public.unregisteredpatients(id),
+  CONSTRAINT whatsapp_conversations_appointment_id_fkey FOREIGN KEY (appointment_id) REFERENCES public.appointment(id),
+  CONSTRAINT whatsapp_conversations_taken_over_by_fkey FOREIGN KEY (taken_over_by) REFERENCES public.consultorio_role_users(id)
+);
+CREATE TABLE public.whatsapp_messages (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  organization_id uuid NOT NULL,
+  conversation_id uuid NOT NULL,
+  appointment_id uuid,
+  waha_message_id text,
+  direction text NOT NULL,
+  from_number text NOT NULL,
+  to_number text NOT NULL,
+  body text NOT NULL,
+  message_type text NOT NULL DEFAULT 'REMINDER'::text,
+  delivery_status text DEFAULT 'QUEUED'::text,
+  patient_raw_reply text,
+  normalized_response text,
+  processed_at timestamp with time zone,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT whatsapp_messages_pkey PRIMARY KEY (id),
+  CONSTRAINT whatsapp_messages_organization_id_fkey FOREIGN KEY (organization_id) REFERENCES public.organization(id),
+  CONSTRAINT whatsapp_messages_conversation_id_fkey FOREIGN KEY (conversation_id) REFERENCES public.whatsapp_conversations(id),
+  CONSTRAINT whatsapp_messages_appointment_id_fkey FOREIGN KEY (appointment_id) REFERENCES public.appointment(id)
 );

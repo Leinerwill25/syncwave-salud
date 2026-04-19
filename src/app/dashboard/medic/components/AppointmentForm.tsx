@@ -504,18 +504,18 @@ export default function AppointmentForm() {
 		const currency = selectedServicesData[0]?.currency || selectedCombosData[0]?.currency || 'USD'; // Usar la moneda del primer servicio/combo
 
 		// Ajustar hora si es por orden de llegada o turno seleccionado
-		let finalScheduledAt = scheduledAt;
-        let notes = '';
-
+		let finalScheduledAt = '';
+        
         if (schedulingType === 'shift') {
-			// Si el input 'scheduledAt' es datetime-local, necesitamos construir la fecha correcta
-			// Vamos a asumir que 'scheduledAt' tiene la fecha del día elegido.
 			const datePart = scheduledAt.split('T')[0]; // YYYY-MM-DD
-			
-            // Construir fecha con hora fija del turno
-			finalScheduledAt = `${datePart}T${selectedShift === 'morning' ? '08:00' : '14:00'}`;
-            
-            // Agregar nota sobre el turno
+			finalScheduledAt = new Date(`${datePart}T${selectedShift === 'morning' ? '08:00:00' : '14:00:00'}`).toISOString();
+        } else {
+            // Convertir datetime-local (que no tiene zona horaria) a un objeto Date local y luego a ISO (UTC)
+            finalScheduledAt = new Date(scheduledAt).toISOString();
+        }
+
+        let notes = '';
+        if (schedulingType === 'shift') {
             notes = `Cita agendada por: ${selectedShift === 'morning' ? 'Turno Diurno (AM)' : 'Turno Vespertino (PM)'}`;
         }
 

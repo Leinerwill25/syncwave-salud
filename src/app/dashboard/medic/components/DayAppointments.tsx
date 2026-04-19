@@ -3,7 +3,8 @@
 import { useEffect, useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { motion } from 'framer-motion';
-import { User, Clock, CalendarX } from 'lucide-react';
+import { User, Clock, CalendarX, MessageCircle, Loader2 } from 'lucide-react';
+import { toast } from 'sonner';
 
 interface Appointment {
 	id: number;
@@ -15,6 +16,28 @@ interface Appointment {
 export default function DayAppointments({ selectedDate }: { selectedDate: Date }) {
 	const [appointments, setAppointments] = useState<Appointment[]>([]);
 	const [loading, setLoading] = useState(true);
+	const [sendingId, setSendingId] = useState<number | null>(null);
+
+	const sendWhatsApp = async (appointmentId: number) => {
+		setSendingId(appointmentId);
+		try {
+			const res = await fetch('/api/waha/send', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ appointmentId }),
+			});
+			const data = await res.json();
+			if (data.success) {
+				toast.success('Mensaje de WhatsApp enviado correctamente');
+			} else {
+				toast.error(data.error || 'Error al enviar mensaje');
+			}
+		} catch (err) {
+			toast.error('Error de conexión');
+		} finally {
+			setSendingId(null);
+		}
+	};
 
 	useEffect(() => {
 		if (!selectedDate) return;
@@ -71,12 +94,29 @@ export default function DayAppointments({ selectedDate }: { selectedDate: Date }
 							</div>
 						) : (
 							appointments.map((a) => (
-								<motion.div key={a.id} whileHover={{ scale: 1.01 }} className="group flex flex-col gap-1 p-2.5 sm:p-3 bg-gray-50 hover:bg-linear-to-r hover:from-violet-50 hover:to-indigo-50 border border-gray-100 hover:border-violet-100 rounded-lg sm:rounded-xl transition-all duration-300 shadow-sm">
-									<div className="flex items-center gap-2 sm:gap-3">
-										<div className="bg-linear-to-br from-violet-500 to-indigo-600 p-1.5 rounded-full text-white shrink-0 shadow-sm">
-											<User className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+								<motion.div key={a.id} whileHover={{ scale: 1.01 }} className="group flex flex-col gap-1 p-2.5 sm:p-3 bg-gray-50 hover:bg-linear-to-r hover:from-violet-50 hover:to-indigo-50 border border-gray-100 hover:border-violet-100 rounded-lg sm:rounded-xl transition-all duration-300 shadow-sm relative">
+									<div className="flex items-center justify-between gap-2">
+										<div className="flex items-center gap-2 sm:gap-3 overflow-hidden">
+											<div className="bg-linear-to-br from-violet-500 to-indigo-600 p-1.5 rounded-full text-white shrink-0 shadow-sm">
+												<User className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+											</div>
+											<p className="font-medium text-gray-800 text-xs sm:text-sm leading-tight group-hover:text-violet-700 transition truncate">{a.patient}</p>
 										</div>
-										<p className="font-medium text-gray-800 text-xs sm:text-sm leading-tight group-hover:text-violet-700 transition truncate">{a.patient}</p>
+										<button 
+											onClick={(e) => {
+												e.stopPropagation();
+												sendWhatsApp(a.id);
+											}}
+											disabled={sendingId === a.id}
+											className="p-1.5 rounded-lg bg-green-100 text-green-600 hover:bg-green-200 transition-colors disabled:opacity-50"
+											title="Enviar Recordatorio WhatsApp"
+										>
+											{sendingId === a.id ? (
+												<Loader2 className="w-3.5 h-3.5 animate-spin" />
+											) : (
+												<MessageCircle className="w-3.5 h-3.5" />
+											)}
+										</button>
 									</div>
 									<p className="text-[10px] sm:text-xs text-gray-500 flex items-center gap-1 ml-6 sm:ml-7">
 										<Clock className="w-3 h-3 text-violet-500" />
@@ -94,3 +134,5 @@ export default function DayAppointments({ selectedDate }: { selectedDate: Date }
 		</motion.div>
 	);
 }
+
+

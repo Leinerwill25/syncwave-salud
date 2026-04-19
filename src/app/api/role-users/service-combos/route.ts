@@ -52,12 +52,33 @@ async function getDoctorProfileForOrg(organizationId: string) {
 
 export async function GET(req: NextRequest) {
 	try {
-		const session = await getRoleUserSessionFromServer();
-		if (!session) {
+		const supabase = await createSupabaseServerClient();
+		let organizationId: string | null = null;
+		let roleUserId: string | null = null;
+
+		// 1. Intentar obtener sesión de RoleUser (Asistente/Recepción)
+		const roleSession = await getRoleUserSessionFromServer();
+		if (roleSession) {
+			organizationId = roleSession.organizationId;
+			roleUserId = roleSession.roleUserId;
+		} else {
+			// 2. Intentar obtener sesión de Usuario Estándar (Médico)
+			const { data: { user } } = await supabase.auth.getUser();
+			if (user) {
+				const { data: appUser } = await supabase
+					.from('users')
+					.select('organizationId')
+					.eq('authId', user.id)
+					.single();
+				organizationId = appUser?.organizationId || null;
+			}
+		}
+
+		if (!organizationId) {
 			return NextResponse.json({ error: 'No autenticado' }, { status: 401 });
 		}
 
-		const { doctorId, supabase } = await getDoctorProfileForOrg(session.organizationId);
+		const { doctorId } = await getDoctorProfileForOrg(organizationId);
 		if (!doctorId) {
 			return NextResponse.json({ success: true, combos: [] }, { status: 200 });
 		}
@@ -75,13 +96,17 @@ export async function GET(req: NextRequest) {
 
 		const combos = parseJsonArray(profile?.service_combos || []);
 
-		// Filtrar solo combos creados por este usuario (asistente de citas)
-		const userCombos = combos.filter((c: RawCombo) => c.createdBy === session.roleUserId);
+		// Si es un role-user, filtramos por los que él creó. 
+		// Si es el médico (admin), puede ver todos los activos.
+		const filteredCombos = combos.filter((c: RawCombo) => {
+			const isActive = c.is_active !== false;
+			if (roleUserId) {
+				return isActive && c.createdBy === roleUserId;
+			}
+			return isActive;
+		});
 
-		// Filtrar solo combos activos
-		const activeCombos = userCombos.filter((c: RawCombo) => c.is_active !== false);
-
-		return NextResponse.json({ success: true, combos: activeCombos || [] }, { status: 200 });
+		return NextResponse.json({ success: true, combos: filteredCombos || [] }, { status: 200 });
 	} catch (err: any) {
 		console.error('[Role User Service Combos API] Error en GET:', err);
 		return NextResponse.json({ error: err.message || 'Error interno' }, { status: 500 });

@@ -45,14 +45,21 @@ const fetcher = async (url: string) => {
 };
 
 export function useAppointments(selectedDate?: Date) {
-	const dateParam = selectedDate ? selectedDate.toISOString().split('T')[0] : new Date().toISOString().split('T')[0];
+	// Obtener YYYY-MM-DD en hora LOCAL para evitar que el calendario salte de día por UTC
+	const dateToUse = selectedDate || new Date();
+	const year = dateToUse.getFullYear();
+	const month = String(dateToUse.getMonth() + 1).padStart(2, '0');
+	const day = String(dateToUse.getDate()).padStart(2, '0');
+	const dateParam = `${year}-${month}-${day}`;
+	
 	const { isLiteMode } = useLiteMode();
 	
 	const url = `/api/dashboard/medic/appointments?date=${dateParam}${isLiteMode ? '&liteMode=true' : ''}`;
 	const { data, error, mutate, isLoading } = useSWR<Appointment[]>(url, fetcher, {
-		revalidateOnFocus: !isLiteMode, // No revalidar en focus si es liteMode
+		revalidateOnFocus: !isLiteMode, 
 		revalidateOnReconnect: true,
-		dedupingInterval: isLiteMode ? 60000 : 30000, // Más tiempo entre deduplicaciones en liteMode
+		refreshInterval: 10000, // Revalidar cada 10 segundos para capturar estados de WhatsApp
+		dedupingInterval: isLiteMode ? 60000 : 5000, 
 	});
 
 	// Crear nueva cita

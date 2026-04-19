@@ -4,7 +4,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { usePrefetchApiData } from '@/hooks/usePrefetchRoute';
-import { LayoutDashboard, CalendarDays, User, ClipboardList, FileText, ChevronRight, ChevronDown, Search, FileCheck, Users } from 'lucide-react';
+import { LayoutDashboard, CalendarDays, User, ClipboardList, FileText, ChevronRight, ChevronDown, Search, FileCheck, Users, MessageSquare } from 'lucide-react';
 import type { MedicConfig } from '@/types/medic-config';
 
 type IconComponent = React.ComponentType<React.SVGProps<SVGSVGElement>>;
@@ -69,6 +69,11 @@ const LINKS: LinkItem[] = [
 			{ href: '/dashboard/medic/lab-upload-link', label: 'Link de Carga' },
 			{ href: '/dashboard/medic/lab-results', label: 'Resultados Cargados' },
 		],
+	},
+	{
+		href: '/dashboard/medic/whatsapp',
+		label: 'WhatsApp',
+		icon: MessageSquare,
 	},
 ];
 

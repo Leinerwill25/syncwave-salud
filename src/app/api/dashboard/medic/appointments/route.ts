@@ -29,17 +29,15 @@ export async function GET(req: Request) {
 			return NextResponse.json({ error: 'Debe especificarse una fecha (YYYY-MM-DD).' }, { status: 400 });
 		}
 
-		// 🕐 1️⃣ Calcular rango de día local (sin convertir a UTC)
-		const localDate = new Date(`${date}T00:00:00`);
-		const startOfDay = new Date(localDate);
-		startOfDay.setHours(0, 0, 0, 0);
+		// 🕐 1️⃣ Calcular rango de día exacto respetando la zona horaria local
+		// Recibimos 'YYYY-MM-DD'
+		const startIso = `${date}T00:00:00.000Z`; // Usamos Z para indicar que el filtro es el rango absoluto del día
+		const endIso = `${date}T23:59:59.999Z`;
 
-		const endOfDay = new Date(localDate);
-		endOfDay.setHours(23, 59, 59, 999);
-
-		// 🕑 2️⃣ Convertir a formato compatible con Postgres timestamptz
-		const startIso = startOfDay.toISOString().replace('Z', '+00:00');
-		const endIso = endOfDay.toISOString().replace('Z', '+00:00');
+        // NOTA: Para timestamptz en Postgres, compararemos contra el inicio y fin del día
+        // con una lógica que asuma que el 'date' enviado ya es el día local del usuario.
+        const dbStart = `${date} 00:00:00-04`; // Asumimos Caracas UTC-4
+        const dbEnd = `${date} 23:59:59-04`;
 
 		// 2️⃣ Determinar filtros de seguridad según el rol del usuario
 		// REGLA CRÍTICA: Cada usuario solo puede ver datos de su propia organización/consultorio
@@ -145,8 +143,8 @@ export async function GET(req: Request) {
 		let query = supabase
 			.from('appointment')
 			.select(selectFields)
-			.gte('scheduled_at', startIso)
-			.lte('scheduled_at', endIso);
+			.gte('scheduled_at', dbStart)
+			.lte('scheduled_at', dbEnd);
 		
 		// En liteMode, solo limitar resultados pero mantener relaciones de pacientes
 		// NO usar optimizeSupabaseQuery aquí porque ya tenemos selectFields optimizado
@@ -413,6 +411,7 @@ export async function GET(req: Request) {
 				selected_service: selectedService,
 				referral_source: isLiteMode ? null : (cita.referral_source || null),
 				bookedBy,
+                organizationId: cita.organization_id // Necesario para componentes UI
 			};
 		});
 

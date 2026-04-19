@@ -62,3 +62,7 @@ n8n.sqlite*
 /filelist.txt
 /src/filelist.txt
 /lint_error.log
+
+# Temporary and local files
+scratch/
+*.png

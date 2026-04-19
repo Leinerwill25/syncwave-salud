@@ -4,15 +4,32 @@ import { getRoleUserSessionFromServer } from '@/lib/role-user-auth';
 
 export async function GET(req: NextRequest) {
 	try {
-		const session = await getRoleUserSessionFromServer();
-		if (!session) {
+        const supabase = await createSupabaseServerClient();
+		let organizationId: string | null = null;
+
+		// 1. Intentar obtener sesión de RoleUser
+		const roleSession = await getRoleUserSessionFromServer();
+		if (roleSession) {
+			organizationId = roleSession.organizationId;
+		} else {
+			// 2. Intentar obtener sesión de Usuario Estándar (Médico)
+			const { data: { user } } = await supabase.auth.getUser();
+			if (user) {
+				const { data: appUser } = await supabase
+					.from('users')
+					.select('organizationId')
+					.eq('authId', user.id)
+					.single();
+				organizationId = appUser?.organizationId || null;
+			}
+		}
+
+		if (!organizationId) {
 			return NextResponse.json({ error: 'No autenticado' }, { status: 401 });
 		}
 
-		const supabase = await createSupabaseServerClient();
-
-		// Obtener el perfil del consultorio (clinic_profile) para la organización del role-user
-		const { data: profile, error: profileError } = await supabase.from('clinic_profile').select('address_operational, address_fiscal, city_municipality, state_province, postal_code').eq('organization_id', session.organizationId).maybeSingle();
+		// Obtener el perfil del consultorio (clinic_profile) para la organización
+		const { data: profile, error: profileError } = await supabase.from('clinic_profile').select('address_operational, address_fiscal, city_municipality, state_province, postal_code').eq('organization_id', organizationId).maybeSingle();
 
 		if (profileError) {
 			console.error('[Role User Clinic Location API] Error obteniendo perfil:', profileError);
