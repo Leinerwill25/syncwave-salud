@@ -84,8 +84,20 @@ export async function GET() {
 
     return NextResponse.json(responseData);
   } catch (error: any) {
-    console.error('[WAHA GET Session] Error:', error);
-    return NextResponse.json({ error: error.message, success: false }, { status: 500 });
+    const errorMsg = error.response?.data?.message || error.message;
+    const isConnError = error.code === 'ECONNREFUSED' || error.code === 'ETIMEDOUT';
+    
+    console.error('[WAHA GET Session] Error:', {
+      message: errorMsg,
+      code: error.code,
+      url: process.env.WAHA_BASE_URL || process.env.WAHA_API_URL
+    });
+
+    return NextResponse.json({ 
+      error: isConnError ? 'No se pudo conectar con el servidor de WhatsApp. Verifique la URL de WAHA.' : errorMsg,
+      code: error.code,
+      success: false 
+    }, { status: 500 });
   }
 }
 
@@ -124,8 +136,20 @@ export async function POST() {
 
     return NextResponse.json({ success: true, session_name: sessionName });
   } catch (error: any) {
-    console.error('[WAHA POST Session] Error:', error);
-    return NextResponse.json({ error: error.message, success: false }, { status: 500 });
+    const errorMsg = error.response?.data?.message || error.message;
+    const isConnError = error.code === 'ECONNREFUSED' || error.code === 'ETIMEDOUT';
+
+    console.error('[WAHA POST Session] Error Crítico:', {
+      message: errorMsg,
+      code: error.code,
+      stack: error.stack
+    });
+
+    return NextResponse.json({ 
+      error: isConnError ? 'Error de conexión con el servidor WAHA en producción.' : errorMsg,
+      details: error.code,
+      success: false 
+    }, { status: 500 });
   }
 }
 

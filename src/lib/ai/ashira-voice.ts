@@ -90,10 +90,34 @@ async function getDoctorDailyAgenda(doctorId: string, date: string): Promise<Age
     .select('status, scheduled_at')
     .eq('doctor_id', doctorId)
     .gte('scheduled_at', `${date}T00:00:00Z`)
-    .lte('scheduled_at', `${date}T23:59:59Z`);
+    .lte('scheduled_at', `${date}T23:59:59Z`)
+    .order('scheduled_at', { ascending: true });
 
-  const confirmadas = appointments?.filter(a => a.status === 'SCHEDULED' || a.status === 'APROBADA').length || 0;
-  const pendientes = appointments?.filter(a => a.status === 'PENDIENTE').length || 0;
+  const confirmadas = appointments?.filter(a => 
+    !['CANCELADA', 'FALLIDA', 'RECHAZADA'].includes(a.status || '')
+  ).length || 0;
+  
+  const pendientes = appointments?.filter(a => 
+    a.status === 'PENDIENTE' || 
+    a.status === 'SIN_CONFIRMAR'
+  ).length || 0;
+
+  // Calcular horas reales
+  let primeraHora = '08:00';
+  let ultimaHora = '17:00';
+
+  if (appointments && appointments.length > 0) {
+    const formatTime = (iso: string) => {
+      try {
+        const d = new Date(iso);
+        // Ajustar a formato HH:MM (24h)
+        return d.getUTCHours().toString().padStart(2, '0') + ':' + 
+               d.getUTCMinutes().toString().padStart(2, '0');
+      } catch (e) { return '08:00'; }
+    };
+    primeraHora = formatTime(appointments[0].scheduled_at);
+    ultimaHora = formatTime(appointments[appointments.length - 1].scheduled_at);
+  }
 
   return {
     doctor_nombre: nameParts[0],
@@ -102,8 +126,8 @@ async function getDoctorDailyAgenda(doctorId: string, date: string): Promise<Age
     fecha: date,
     citas_confirmadas: confirmadas,
     citas_pendientes: pendientes,
-    primera_cita_hora: '08:00', // Mock
-    ultima_cita_hora: '17:00',  // Mock
+    primera_cita_hora: primeraHora,
+    ultima_cita_hora: ultimaHora,
     tiene_cirugias: false,
     alertas: []
   };

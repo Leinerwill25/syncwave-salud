@@ -112,7 +112,7 @@ export async function wahaStartSession(sessionName: string): Promise<void> {
       webhook: {
         url: webhookUrl,
         events: ['message', 'session.status', 'message.revoked'],
-        hmac: process.env.WAHA_API_KEY || 'ashira_secret_key_2026'
+        hmac: WAHA_API_KEY || 'ashira_secret_key_2026'
       }
     }
   };
@@ -152,12 +152,18 @@ export async function wahaStopSession(sessionName: string): Promise<void> {
  */
 export async function wahaGetQR(sessionName: string): Promise<string | null> {
   const effectiveName = getEffectiveSessionName(sessionName);
-  const path = `/api/${effectiveName}/auth/qr?format=image`;
+  const path = `/api/${effectiveName}/auth/qr`;
   try {
     const { data } = await wahaApi.get(path, {
-      responseType: 'arraybuffer',
+      headers: {
+        'Accept': 'application/json'
+      }
     });
-    return `data:image/png;base64,${Buffer.from(data).toString('base64')}`;
+    // Si WAHA devuelve { mimetype, data }
+    if (data && data.data) {
+      return `data:${data.mimetype || 'image/png'};base64,${data.data}`;
+    }
+    return null;
   } catch (err: any) {
     console.error(`[WAHA Client] Error obteniendo QR desde ${path}:`, err.response?.data || err.message);
     return null;
