@@ -98,7 +98,7 @@ export default function TodayConsultations() {
           *,
           patient:patient_id (id, firstName, lastName),
           unregistered_patient:unregistered_patient_id (id, first_name, last_name),
-          appointment:appointment_id (id, reason, scheduled_at)
+          appointment:appointment_id (id, reason, scheduled_at, status)
         `)
         .eq('doctor_id', userData.id)
         .gte('started_at', today.toISOString())
@@ -118,7 +118,7 @@ export default function TodayConsultations() {
       const transformedData = (data || []).map((item: any) => ({
         id: item.id,
         started_at: item.started_at,
-        status: item.status,
+        status: item.status || item.appointment?.status,
         chief_complaint: item.chief_complaint,
         patient: item.patient,
         unregistered_patient: item.unregistered_patient,
@@ -153,6 +153,10 @@ export default function TodayConsultations() {
       case 'cancelled':
       case 'cancelada':
         return 'bg-red-100 text-red-700 border-red-200';
+      case 'confirmada':
+      case 'confirmed':
+      case 'aprobada':
+        return 'bg-teal-100 text-teal-700 border-teal-200';
       default:
         return 'bg-gray-100 text-gray-700 border-gray-200';
     }
@@ -168,6 +172,11 @@ export default function TodayConsultations() {
         return 'Completada';
       case 'cancelled':
         return 'Cancelada';
+      case 'confirmada':
+      case 'confirmed':
+        return 'Confirmada';
+      case 'aprobada':
+        return 'Aprobada';
       default:
         return status || 'Sin estado';
     }
