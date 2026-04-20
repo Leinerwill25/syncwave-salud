@@ -1,7 +1,13 @@
 // src/lib/waha/client.ts
 import axios from 'axios';
 
-const WAHA_BASE_URL = process.env.WAHA_API_URL || process.env.WAHA_BASE_URL || 'http://localhost:3001';
+let WAHA_BASE_URL = process.env.WAHA_API_URL || process.env.WAHA_BASE_URL || 'http://localhost:3001';
+
+// Normalización de URL: asegurar que tenga protocolo
+if (WAHA_BASE_URL && !WAHA_BASE_URL.startsWith('http')) {
+  WAHA_BASE_URL = `https://${WAHA_BASE_URL}`;
+}
+
 const WAHA_API_KEY = process.env.WHATSAPP_API_KEY || process.env.WAHA_API_KEY || '';
 const WAHA_VERSION = process.env.WAHA_VERSION || 'CORE';
 
