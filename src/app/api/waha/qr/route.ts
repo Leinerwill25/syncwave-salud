@@ -15,7 +15,7 @@ export async function GET() {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const sessionName = getSessionName(user.organizationId);
+    const sessionName = getSessionName(organizationId);
 
     // Obtener QR de WAHA
     const qrBase64 = await wahaGetQR(sessionName);

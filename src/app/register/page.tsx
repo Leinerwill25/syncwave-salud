@@ -1,5 +1,6 @@
 // src/app/register/page.tsx
 import RegisterForm from '@/components/RegisterForm';
+import AshOnboarding from '@/components/AshOnboarding';
 import { HeartPulse } from 'lucide-react';
 
 export default function RegisterPage() {
@@ -16,6 +17,7 @@ export default function RegisterPage() {
 				</div>
 				<RegisterForm />
 			</div>
+			<AshOnboarding />
 		</main>
 	);
 }
