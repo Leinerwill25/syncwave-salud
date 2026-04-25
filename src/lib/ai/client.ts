@@ -13,7 +13,7 @@ const groq = GROQ_API_KEY ? new Groq({ apiKey: GROQ_API_KEY }) : null;
 export interface AIOptions {
   maxTokens?: number;
   temperature?: number;
-  feature: 'doc' | 'voice' | 'memory' | 'onboarding';
+  feature: 'doc' | 'voice' | 'memory' | 'onboarding' | 'dashboard';
   doctorId?: string;
   patientId?: string;
   forceJSON?: boolean;
@@ -189,7 +189,11 @@ async function callGroq(
  * Ahora es DINÁMICO para onboarding para evitar repeticiones absurdas.
  */
 function getMockResponse(feature: string, userContent: string = ''): AIResponse {
-  const input = userContent.toLowerCase();
+  // Si el contenido viene con historial, extraemos solo la última pregunta para la simulación
+  let input = userContent.toLowerCase();
+  if (input.includes('pregunta actual:')) {
+    input = input.split('pregunta actual:').pop() || input;
+  }
   
   // Lógica de simulación dinámica para Ash (Onboarding)
   if (feature === 'onboarding') {
@@ -205,6 +209,31 @@ function getMockResponse(feature: string, userContent: string = ''): AIResponse 
       mockText = "¡Bienvenido/a! Para los pacientes, ASHIRA es una plataforma 100% gratuita para siempre. Al registrarte con tu cédula, podremos vincular automáticamente cualquier historial médico previo que ya esté en nuestro sistema, asegurando que tus datos de salud estén siempre contigo. 🏥";
     } else if (input.includes('clínica') || input.includes('centro')) {
       mockText = "Para instituciones y clínicas, el registro requiere el nombre de la entidad y el número total de especialistas. El costo se ajusta según el volumen, variando entre €144 y €150 por especialista al mes. Esto incluye soporte prioritario y gestión de múltiples sedes. 🏢";
+    }
+
+    return {
+      text: mockText,
+      tokensIn: 0,
+      tokensOut: 0,
+      model: 'ashira-smart-mock'
+    };
+  }
+
+  // Lógica de simulación dinámica para Ash (Dashboard)
+  if (feature === 'dashboard') {
+    let mockText = "¡Hola! Soy tu asistente de Dashboard. Puedo ayudarte con la configuración de tu perfil, horarios, citas o la conexión de WhatsApp. ¿Qué módulo quieres revisar hoy? 😊";
+
+    // PRIORIDAD 1: Plantillas (Duda actual del usuario)
+    if (input.includes('plantilla') || input.includes('informe') || input.includes('receta') || input.includes('texto')) {
+      mockText = "La **Plantilla de Texto** es tu 'mapa' para la IA. Para que funcione perfecto, debes usar **variables entre llaves** como las que viste en la imagen:\n\n1) **Usa etiquetas:** Escribe cosas como `{{edad}}`, `{{motivo}}` o `{{diagnostico}}` dentro de tu estructura. \n\n2) **Extracción automática:** Al grabar el audio, la IA buscará esos datos y los pondrá justo donde están las llaves. \n\n3) **El Puente al Word:** Finalmente, todo ese texto ya procesado se pegará automáticamente en tu archivo **Word**, justo en el lugar donde hayas puesto el marcador `{{contenido}}`. ¡Es un flujo circular que te ahorra todo el trabajo pesado! 🚀";
+    } else if (input.includes('whatsapp') || input.includes('qr') || input.includes('conectar')) {
+      mockText = "Para conectar WhatsApp, ve al módulo 'WhatsApp' en el menú lateral. Haz click en 'Conectar' y escanea el código QR desde tu celular (Dispositivos vinculados). Una vez diga 'WORKING', podrás enviar recordatorios automáticos desde tu lista de citas. 📱";
+    } else if (input.includes('horario') || input.includes('turno') || input.includes('llegada')) {
+      mockText = "Configura tus horarios en 'Configuración' -> pestaña 'Horarios'. Puedes elegir entre 'Por Turnos' (hora exacta) o 'Orden de Llegada'. Recuerda que puedes definir horarios distintos si tienes varios consultorios. ⏰";
+    } else if (input.includes('perfil') || input.includes('licencia') || input.includes('firma')) {
+      mockText = "Tu Perfil Profesional es clave. Asegúrate de subir tu licencia médica, especialidad y firma digital. Sin la licencia verificada, algunas funciones del sistema estarán limitadas. 👨‍⚕️";
+    } else if (input.includes('cita') || input.includes('agendar') || input.includes('servicio')) {
+      mockText = "Para crear una cita, primero debes tener servicios creados en tu perfil. Luego, en el módulo 'Citas', selecciona al paciente, el servicio y el horario. ¡El sistema generará la factura automáticamente! 📅";
     }
 
     return {

@@ -9,6 +9,7 @@ import ProfileCompleteGuard from '@/components/medic/ProfileCompleteGuard';
 import { LiteModeProvider } from '@/contexts/LiteModeContext';
 
 import MedicDashboardShell from './components/MedicDashboardShell';
+import AshDashboard from '@/components/AshDashboard';
 
 // Usar renderizado dinámico solo cuando sea necesario
 export const dynamic = 'auto';
@@ -30,6 +31,9 @@ export default function MedicLayout({ children }: { children: React.ReactNode })
 					>
 						{children}
 					</MedicDashboardShell>
+
+          {/* Ash — Asistente de ayuda interno */}
+          <AshDashboard />
 				</LiteModeProvider>
 			</ProfileCompleteGuard>
 		</ServerDashboardGuard>
