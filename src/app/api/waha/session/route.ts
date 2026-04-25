@@ -1,6 +1,8 @@
 // src/app/api/waha/session/route.ts
 import { NextResponse } from 'next/server';
-import { getAuthenticatedUser } from '@/lib/auth-guards';
+import { 
+  getUnifiedOrganizationContext 
+} from '@/lib/auth-guards';
 import { supabaseAdmin } from '@/lib/supabase/admin';
 import { 
   wahaGetSession, 
@@ -9,6 +11,7 @@ import {
   wahaGetQR,
   getSessionName 
 } from '@/lib/waha/client';
+import { getRoleUserSessionFromServer, roleNameEquals } from '@/lib/role-user-auth';
 import crypto from 'crypto';
 
 /**
@@ -16,12 +19,12 @@ import crypto from 'crypto';
  */
 export async function GET() {
   try {
-    const user = await getAuthenticatedUser();
-    if (!user || !user.organizationId) {
+    const { organizationId } = await getUnifiedOrganizationContext();
+    if (!organizationId) {
       return NextResponse.json({ error: 'Unauthorized', success: false }, { status: 401 });
     }
 
-    const sessionName = getSessionName(user.organizationId);
+    const sessionName = getSessionName(organizationId);
     let sessionInfo;
 
     try {
@@ -31,7 +34,7 @@ export async function GET() {
       const { data: dbSession } = await supabaseAdmin
         .from('waha_sessions')
         .select('*')
-        .eq('organization_id', user.organizationId)
+        .eq('organization_id', organizationId)
         .maybeSingle();
       
       return NextResponse.json({ ...(dbSession || { status: 'STOPPED' }), success: true });
@@ -41,7 +44,7 @@ export async function GET() {
     const normalizedStatus = (sessionInfo.status || 'STOPPED').toUpperCase();
     
     const upsertData: any = {
-      organization_id: user.organizationId,
+      organization_id: organizationId,
       session_name: sessionName,
       status: normalizedStatus,
       connected_phone: sessionInfo.me?.id.split('@')[0] || null,
@@ -79,7 +82,7 @@ export async function GET() {
     console.log('[WAHA API Response]', {
       status: responseData.status,
       hasQr: !!responseData.qrCode,
-      orgId: user.organizationId
+      orgId: organizationId
     });
 
     return NextResponse.json(responseData);
@@ -106,12 +109,20 @@ export async function GET() {
  */
 export async function POST() {
   try {
-    const user = await getAuthenticatedUser();
-    if (!user || !user.organizationId) {
+    const { organizationId, type } = await getUnifiedOrganizationContext();
+    if (!organizationId) {
       return NextResponse.json({ error: 'Unauthorized', success: false }, { status: 401 });
     }
 
-    const sessionName = getSessionName(user.organizationId);
+    // Si es un usuario de rol, verificar que sea Asistente De Citas para permitir cambios
+    if (type === 'ROLE_USER') {
+      const roleSession = await getRoleUserSessionFromServer();
+      if (!roleSession || !roleNameEquals(roleSession.roleName, 'Asistente De Citas')) {
+        return NextResponse.json({ error: 'Solo el Asistente de Citas puede iniciar la sesión', success: false }, { status: 403 });
+      }
+    }
+
+    const sessionName = getSessionName(organizationId);
     
     // Iniciar en WAHA (esto es asíncrono en WAHA)
     await wahaStartSession(sessionName);
@@ -123,7 +134,7 @@ export async function POST() {
     const { error: dbError } = await supabaseAdmin
       .from('waha_sessions')
       .upsert({
-        organization_id: user.organizationId,
+        organization_id: organizationId,
         session_name: sessionName,
         status: 'STARTING',
         waha_webhook_secret: webhookSecret,
@@ -158,12 +169,20 @@ export async function POST() {
  */
 export async function DELETE() {
   try {
-    const user = await getAuthenticatedUser();
-    if (!user || !user.organizationId) {
+    const { organizationId, type } = await getUnifiedOrganizationContext();
+    if (!organizationId) {
       return NextResponse.json({ error: 'Unauthorized', success: false }, { status: 401 });
     }
 
-    const sessionName = getSessionName(user.organizationId);
+    // Si es un usuario de rol, verificar que sea Asistente De Citas para permitir cambios
+    if (type === 'ROLE_USER') {
+      const roleSession = await getRoleUserSessionFromServer();
+      if (!roleSession || !roleNameEquals(roleSession.roleName, 'Asistente De Citas')) {
+        return NextResponse.json({ error: 'Solo el Asistente de Citas puede detener la sesión', success: false }, { status: 403 });
+      }
+    }
+
+    const sessionName = getSessionName(organizationId);
 
     // Detener en WAHA (usamos logout: true para limpiar caché)
     try {
@@ -183,7 +202,7 @@ export async function DELETE() {
         disconnected_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       })
-      .eq('organization_id', user.organizationId);
+      .eq('organization_id', organizationId);
 
     return NextResponse.json({ success: true });
   } catch (error: any) {

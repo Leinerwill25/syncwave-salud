@@ -1,6 +1,6 @@
 // src/app/api/waha/qr/route.ts
 import { NextResponse } from 'next/server';
-import { getAuthenticatedUser } from '@/lib/auth-guards';
+import { getUnifiedOrganizationContext } from '@/lib/auth-guards';
 import { supabaseAdmin } from '@/lib/supabase/admin';
 import { wahaGetQR, getSessionName } from '@/lib/waha/client';
 
@@ -10,8 +10,8 @@ import { wahaGetQR, getSessionName } from '@/lib/waha/client';
  */
 export async function GET() {
   try {
-    const user = await getAuthenticatedUser();
-    if (!user || !user.organizationId) {
+    const { organizationId } = await getUnifiedOrganizationContext();
+    if (!organizationId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -31,7 +31,7 @@ export async function GET() {
           qr_expires_at: expiresAt,
           updated_at: new Date().toISOString(),
         })
-        .eq('organization_id', user.organizationId);
+        .eq('organization_id', organizationId);
 
       return NextResponse.json({ 
         qr: qrBase64,

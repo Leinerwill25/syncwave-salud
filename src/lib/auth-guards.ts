@@ -4,6 +4,7 @@
 import { cookies, headers } from 'next/headers';
 import { createSupabaseServerClient } from '@/app/adapters/server';
 import { NextResponse } from 'next/server';
+import { getRoleUserSessionFromServer } from './role-user-auth';
 
 export type UserRole = 'ADMIN' | 'MEDICO' | 'ENFERMERA' | 'ENFERMERO' | 'RECEPCION' | 'FARMACIA' | 'PACIENTE' | 'LABORATORIO' | 'ADMINISTRACION';
 
@@ -164,6 +165,25 @@ export async function getAuthenticatedUser(): Promise<AuthenticatedUser | null> 
 		console.error('[Auth Guard] Error catastrófico:', err);
 		return null;
 	}
+}
+
+/**
+ * Obtiene el contexto de organización unificado (soporta usuarios estándar y de rol)
+ */
+export async function getUnifiedOrganizationContext(): Promise<{ organizationId: string | null; type: 'USER' | 'ROLE_USER' | null }> {
+	// 1. Intentar usuario estándar
+	const standardUser = await getAuthenticatedUser();
+	if (standardUser?.organizationId) {
+		return { organizationId: standardUser.organizationId, type: 'USER' };
+	}
+
+	// 2. Intentar usuario de rol
+	const roleUser = await getRoleUserSessionFromServer();
+	if (roleUser?.organizationId) {
+		return { organizationId: roleUser.organizationId, type: 'ROLE_USER' };
+	}
+
+	return { organizationId: null, type: null };
 }
 
 interface CookieStore {
