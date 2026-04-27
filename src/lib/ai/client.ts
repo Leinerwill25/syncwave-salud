@@ -13,7 +13,7 @@ const groq = GROQ_API_KEY ? new Groq({ apiKey: GROQ_API_KEY }) : null;
 export interface AIOptions {
   maxTokens?: number;
   temperature?: number;
-  feature: 'doc' | 'voice' | 'memory' | 'onboarding' | 'dashboard';
+  feature: 'doc' | 'voice' | 'memory' | 'onboarding' | 'dashboard' | 'patient';
   doctorId?: string;
   patientId?: string;
   forceJSON?: boolean;
@@ -103,9 +103,9 @@ async function callGemini(
 ): Promise<AIResponse> {
   if (!genAI) throw new Error('Gemini API Key no detectada.');
 
-  // Usar alias resiliente gemini-flash-latest
+  // Usar modelo estable gemini-1.5-flash
   const model = genAI.getGenerativeModel({ 
-    model: 'gemini-flash-latest',
+    model: 'gemini-1.5-flash',
     systemInstruction: systemPrompt 
   });
 
@@ -136,7 +136,7 @@ async function callGemini(
     text,
     tokensIn: response.usageMetadata?.promptTokenCount || 0,
     tokensOut: response.usageMetadata?.candidatesTokenCount || 0,
-    model: 'gemini-flash-latest',
+    model: 'gemini-1.5-flash',
   };
 }
 
@@ -234,6 +234,28 @@ function getMockResponse(feature: string, userContent: string = ''): AIResponse 
       mockText = "Tu Perfil Profesional es clave. Asegúrate de subir tu licencia médica, especialidad y firma digital. Sin la licencia verificada, algunas funciones del sistema estarán limitadas. 👨‍⚕️";
     } else if (input.includes('cita') || input.includes('agendar') || input.includes('servicio')) {
       mockText = "Para crear una cita, primero debes tener servicios creados en tu perfil. Luego, en el módulo 'Citas', selecciona al paciente, el servicio y el horario. ¡El sistema generará la factura automáticamente! 📅";
+    }
+
+    return {
+      text: mockText,
+      tokensIn: 0,
+      tokensOut: 0,
+      model: 'ashira-smart-mock'
+    };
+  }
+
+  // Lógica de simulación dinámica para Ash (Paciente)
+  if (feature === 'patient') {
+    let mockText = "¡Hola! Soy Ash. Puedo ayudarte a encontrar especialistas, ver tus citas, recetas y resultados. ¿Qué necesitas revisar hoy? 😊";
+
+    if (input.includes('cita') || input.includes('agenda')) {
+      mockText = "He revisado tu agenda y tienes tus próximas citas registradas. Puedes ver los detalles haciendo click en el botón de 'Ver citas' que te mostraré a continuación.";
+    } else if (input.includes('receta') || input.includes('médicamento') || input.includes('pastilla')) {
+      mockText = "Claro, aquí tienes tus recetas médicas activas. Recuerda seguir las indicaciones de tu médico al pie de la letra.";
+    } else if (input.includes('especialista') || input.includes('médico') || input.includes('doctor')) {
+      mockText = "Puedo ayudarte a buscar el especialista que necesites. ¿Qué especialidad estás buscando hoy?";
+    } else if (input.includes('resultado') || input.includes('laboratorio') || input.includes('examen')) {
+      mockText = "Aquí tienes tus últimos resultados de laboratorio disponibles en la plataforma.";
     }
 
     return {
