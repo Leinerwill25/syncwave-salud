@@ -3,16 +3,10 @@
 // Página del dashboard del paciente para generar y ver su código QR de emergencia
 
 import { useState, useEffect } from 'react';
-import { QrCode, Download, RefreshCw, AlertCircle, CheckCircle, XCircle, Copy, Shield, CreditCard } from 'lucide-react';
+import { QrCode, Download, RefreshCw, CheckCircle, XCircle, Copy, Shield, CreditCard } from 'lucide-react';
 import { toast } from 'sonner';
+import { QRCodeSVG } from 'qrcode.react';
 import QREmergencyCard from './QREmergencyCard';
-
-// Función para generar URL del QR usando servicio público
-function generateQRCode(value: string, size: number = 256): string {
-	// Usaremos una URL de servicio QR público como fallback
-	// En producción, podrías usar una librería como qrcode
-	return `https://api.qrserver.com/v1/create-qr-code/?size=${size}x${size}&data=${encodeURIComponent(value)}`;
-}
 
 type QRData = {
 	token: string;
@@ -89,7 +83,9 @@ export default function QREmergencyPage() {
 			}
 
 			const data = await response.json();
-			setQrData({ ...qrData!, ...data });
+			// El API de POST podría no devolver el token/url si solo actualiza el estado
+			// Así que recargamos los datos completos para estar seguros
+			await loadData();
 			toast.success(enabled ? 'QR de emergencia habilitado' : 'QR de emergencia deshabilitado');
 		} catch (error: any) {
 			console.error('Error toggling QR:', error);
@@ -129,20 +125,6 @@ export default function QREmergencyPage() {
 		if (!qrData?.url) return;
 		navigator.clipboard.writeText(qrData.url);
 		toast.success('URL copiada al portapapeles');
-	};
-
-	const downloadQR = () => {
-		if (!qrData?.url) return;
-		const img = document.getElementById('qr-code-img') as HTMLImageElement;
-		if (!img || !img.src) return;
-
-		// Crear un enlace temporal para descargar la imagen
-		const a = document.createElement('a');
-		a.href = img.src;
-		a.download = `qr-emergencia-${qrData.token.substring(0, 8)}.png`;
-		document.body.appendChild(a);
-		a.click();
-		document.body.removeChild(a);
 	};
 
 	if (loading) {
@@ -214,23 +196,29 @@ export default function QREmergencyPage() {
 			<div className="bg-white rounded-xl shadow-md p-8">
 				<div className="max-w-2xl mx-auto">
 					<div className="flex flex-col md:flex-row gap-8 items-start">
-						{/* QR Code */}
+						{/* QR Code NATIVO (Sin dependencia externa) */}
 						<div className="flex-shrink-0">
-							<div className="bg-white p-4 rounded-lg border-2 border-slate-200 inline-block">
+							<div className="bg-white p-6 rounded-2xl border-2 border-slate-100 inline-block shadow-sm">
 								{qrData.enabled ? (
 									<div className="w-64 h-64 flex items-center justify-center">
-										<img
-											id="qr-code-img"
-											src={generateQRCode(qrData.url, 256)}
-											alt="Código QR de Emergencia"
-											className="w-full h-full object-contain"
+										<QRCodeSVG
+											value={qrData.url}
+											size={240}
+											level="H"
+											includeMargin={false}
+											imageSettings={{
+												src: "/3.png",
+												height: 45,
+												width: 45,
+												excavate: true,
+											}}
 										/>
 									</div>
 								) : (
-									<div className="w-64 h-64 bg-slate-100 flex items-center justify-center rounded-lg">
+									<div className="w-64 h-64 bg-slate-50 flex items-center justify-center rounded-xl border border-dashed border-slate-200">
 										<div className="text-center">
-											<XCircle className="w-16 h-16 text-slate-400 mx-auto mb-2" />
-											<p className="text-slate-500 text-sm">QR Deshabilitado</p>
+											<XCircle className="w-16 h-16 text-slate-300 mx-auto mb-2" />
+											<p className="text-slate-400 text-sm font-medium">QR Deshabilitado</p>
 										</div>
 									</div>
 								)}
@@ -238,30 +226,30 @@ export default function QREmergencyPage() {
 						</div>
 
 						{/* Información y acciones */}
-						<div className="flex-1 space-y-4">
+						<div className="flex-1 space-y-5">
 							<div>
 								<h2 className="text-lg font-semibold text-slate-900 mb-2">URL del QR</h2>
 								<div className="flex items-center gap-2 p-3 bg-slate-50 rounded-lg border border-slate-200">
-									<code className="flex-1 text-sm text-slate-700 break-all">{qrData.url}</code>
+									<code className="flex-1 text-xs text-slate-600 break-all">{qrData.url}</code>
 									<button
 										onClick={copyURL}
 										className="p-2 hover:bg-slate-200 rounded transition"
 										title="Copiar URL"
 									>
-										<Copy className="w-4 h-4 text-slate-600" />
+										<Copy className="w-4 h-4 text-slate-500" />
 									</button>
 								</div>
 							</div>
 
-							<div className="space-y-2">
+							<div className="space-y-3">
 								<button
 									onClick={() => toggleQR(!qrData.enabled)}
 									disabled={toggling}
-									className={`w-full px-4 py-3 rounded-lg font-medium transition flex items-center justify-center gap-2 ${
+									className={`w-full px-4 py-3 rounded-xl font-bold transition flex items-center justify-center gap-2 ${
 										qrData.enabled
 											? 'bg-red-600 hover:bg-red-700 text-white'
 											: 'bg-green-600 hover:bg-green-700 text-white'
-									} disabled:opacity-50 disabled:cursor-not-allowed`}
+									} disabled:opacity-50 shadow-lg shadow-black/5`}
 								>
 									{toggling ? (
 										<>
@@ -284,7 +272,7 @@ export default function QREmergencyPage() {
 								<button
 									onClick={regenerateToken}
 									disabled={regenerating || !qrData.enabled}
-									className="w-full px-4 py-3 rounded-lg font-medium transition flex items-center justify-center gap-2 bg-slate-600 hover:bg-slate-700 text-white disabled:opacity-50 disabled:cursor-not-allowed"
+									className="w-full px-4 py-3 rounded-xl font-bold transition flex items-center justify-center gap-2 bg-slate-800 hover:bg-slate-900 text-white disabled:opacity-50"
 								>
 									{regenerating ? (
 										<>
@@ -298,26 +286,14 @@ export default function QREmergencyPage() {
 										</>
 									)}
 								</button>
-
-								{qrData.enabled && (
-									<button
-										onClick={downloadQR}
-										className="w-full px-4 py-3 rounded-lg font-medium transition flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white"
-									>
-										<Download className="w-5 h-5" />
-										Descargar QR
-									</button>
-								)}
 							</div>
 
-							<div className="pt-4 border-t border-slate-200">
-								<h3 className="text-sm font-semibold text-slate-900 mb-2">Instrucciones</h3>
-								<ul className="text-sm text-slate-600 space-y-1 list-disc list-inside">
+							<div className="pt-4 border-t border-slate-100">
+								<h3 className="text-sm font-semibold text-slate-900 mb-2 uppercase tracking-wider text-[10px]">Instrucciones</h3>
+								<ul className="text-xs text-slate-500 space-y-1.5 list-disc list-inside">
 									<li>Habilita el QR para que funcione en emergencias</li>
-									<li>Guarda el código QR en tu teléfono o imprímelo</li>
 									<li>Lleva el QR contigo en caso de emergencias médicas</li>
 									<li>Los médicos pueden escanearlo para acceder a tu información crítica</li>
-									<li>Puedes deshabilitarlo o regenerarlo en cualquier momento</li>
 								</ul>
 							</div>
 						</div>
@@ -335,55 +311,13 @@ export default function QREmergencyPage() {
 						</h2>
 						<p className="text-slate-600">
 							Descarga tu tarjeta de emergencia médica personalizada para llevar en tu cartera o billetera.
-							Esta tarjeta contiene información crítica y un código QR que puede ser vital en caso de emergencia médica.
 						</p>
 					</div>
-					<div className="flex justify-center bg-slate-50 p-6 rounded-lg">
+					<div className="flex justify-center bg-slate-50 p-8 rounded-2xl border border-slate-100">
 						<QREmergencyCard patient={{ ...patientData, qrUrl: qrData.url }} />
-					</div>
-					<div className="mt-6 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg border border-blue-200">
-						<p className="text-sm text-blue-900 mb-2">
-							<strong>¿Cómo funciona?</strong>
-						</p>
-						<p className="text-sm text-blue-800">
-							Esta tarjeta contiene información médica esencial que los profesionales de salud pueden consultar 
-							rápidamente en caso de emergencia. Incluye datos críticos como tipo de sangre, alergias, contacto 
-							de emergencia y un código QR que proporciona acceso completo a tu historial médico. 
-							<strong className="block mt-2">Llévala siempre contigo en tu cartera o billetera.</strong>
-						</p>
 					</div>
 				</div>
 			)}
-
-			{/* Vista previa del contenido */}
-			<div className="bg-white rounded-xl shadow-md p-6">
-				<h2 className="text-lg font-semibold text-slate-900 mb-4">Vista Previa del Contenido</h2>
-				<div className="bg-slate-50 rounded-lg p-4 border border-slate-200">
-					<p className="text-sm text-slate-600 mb-3">
-						Los médicos verán la siguiente información al escanear tu QR:
-					</p>
-					<ul className="text-sm text-slate-700 space-y-1 list-disc list-inside">
-						<li>Información básica (nombre, edad, identificación, tipo de sangre)</li>
-						<li>Alergias conocidas (si aplica)</li>
-						<li>Medicaciones activas</li>
-						<li>Condiciones crónicas y discapacidades</li>
-						<li>Últimos signos vitales registrados</li>
-						<li>Resultados de laboratorio críticos</li>
-						<li>Última consulta médica</li>
-						<li>Contacto de emergencia</li>
-						<li>Directivas anticipadas (si aplica)</li>
-					</ul>
-					<a
-						href={qrData.url}
-						target="_blank"
-						rel="noopener noreferrer"
-						className="inline-flex items-center gap-2 mt-4 text-indigo-600 hover:text-indigo-700 text-sm font-medium"
-					>
-						Ver vista previa completa
-					</a>
-				</div>
-			</div>
 		</div>
 	);
 }
-
