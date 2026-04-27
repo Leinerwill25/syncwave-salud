@@ -5,7 +5,7 @@
 import { useState, useEffect } from 'react';
 import { QrCode, Download, RefreshCw, AlertCircle, CheckCircle, XCircle, Copy, Shield, CreditCard } from 'lucide-react';
 import { toast } from 'sonner';
-import EmergencyCard from '@/components/patient/EmergencyCard';
+import QREmergencyCard from './QREmergencyCard';
 
 // Función para generar URL del QR usando servicio público
 function generateQRCode(value: string, size: number = 256): string {
@@ -339,7 +339,7 @@ export default function QREmergencyPage() {
 						</p>
 					</div>
 					<div className="flex justify-center bg-slate-50 p-6 rounded-lg">
-						<EmergencyCard data={{ ...patientData, qrUrl: qrData.url }} />
+						<QREmergencyCard patient={{ ...patientData, qrUrl: qrData.url }} />
 					</div>
 					<div className="mt-6 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg border border-blue-200">
 						<p className="text-sm text-blue-900 mb-2">
