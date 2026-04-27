@@ -1,7 +1,10 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Settings, User, Mail, Phone, MapPin, Calendar, Lock, Bell, AlertCircle, Save } from 'lucide-react';
+import { 
+  Settings, User, Phone, MapPin, Calendar, Lock, Bell, AlertCircle, Save, 
+  Plus, X, HeartPulse, ShieldAlert 
+} from 'lucide-react';
 
 type PatientProfile = {
 	id: string;
@@ -12,6 +15,94 @@ type PatientProfile = {
 	gender: string | null;
 	phone: string | null;
 	address: string | null;
+	allergies?: string | null;
+	elderly_conditions?: string | null;
+};
+
+// Componente para manejar listas dinámicas (Alergias/Condiciones)
+interface ListInputProps {
+  label: string;
+  items: string[];
+  setItems: (items: string[]) => void;
+  placeholder: string;
+  icon: React.ReactNode;
+  colorClass: string;
+}
+
+const ListInput = ({ label, items, setItems, placeholder, icon, colorClass }: ListInputProps) => {
+  const [inputValue, setInputValue] = useState('');
+
+  const addItem = () => {
+    const trimmed = inputValue.trim();
+    if (trimmed && !items.includes(trimmed)) {
+      setItems([...items, trimmed]);
+      setInputValue('');
+    }
+  };
+
+  const removeItem = (index: number) => {
+    setItems(items.filter((_, i) => i !== index));
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      addItem();
+    }
+  };
+
+  return (
+    <div className="space-y-3">
+      <label className="flex items-center gap-2 text-sm font-black text-slate-700 uppercase tracking-wider">
+        {icon}
+        {label}
+      </label>
+      
+      <div className="flex flex-wrap gap-2 mb-2 min-h-[40px]">
+        {items.length === 0 ? (
+          <p className="text-xs text-slate-400 italic">No hay registros añadidos...</p>
+        ) : (
+          items.map((item, index) => (
+            <div 
+              key={index} 
+              className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-bold transition-all animate-in zoom-in-75 duration-300 ${colorClass}`}
+            >
+              {item.toUpperCase()}
+              <button onClick={() => removeItem(index)} className="hover:scale-125 transition-transform">
+                <X size={12} strokeWidth={3} />
+              </button>
+            </div>
+          ))
+        )}
+      </div>
+
+      <div className="relative group">
+        <input
+          type="text"
+          id={`list-input-${label.toLowerCase().replace(/\s+/g, '-')}`}
+          name={`medical-${label.toLowerCase().replace(/\s+/g, '-')}`}
+          value={inputValue}
+          onChange={(e) => setInputValue(e.target.value)}
+          onKeyDown={handleKeyDown}
+          onFocus={(e) => e.target.readOnly = false}
+          onBlur={(e) => e.target.readOnly = true}
+          readOnly
+          placeholder={placeholder}
+          autoComplete="new-password"
+          className="w-full pl-4 pr-12 py-3 bg-slate-50 border-2 border-slate-100 rounded-xl text-sm focus:border-indigo-500 focus:bg-white outline-none transition-all font-medium"
+        />
+        <button 
+          onClick={addItem}
+          className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors shadow-lg shadow-indigo-200"
+        >
+          <Plus size={16} />
+        </button>
+      </div>
+      <p className="text-[10px] text-slate-400 font-bold uppercase tracking-tight pl-1">
+        Presiona Enter para añadir a la lista
+      </p>
+    </div>
+  );
 };
 
 export default function ConfiguracionPage() {
@@ -26,14 +117,17 @@ export default function ConfiguracionPage() {
 		gender: '',
 		phone: '',
 		address: '',
-		allergies: '',
-		conditions: '',
 		notifications: {
 			email: true,
 			sms: false,
 			push: false,
 		},
 	});
+
+  // Estados separados para las listas interactivas
+  const [allergiesList, setAllergiesList] = useState<string[]>([]);
+  const [conditionsList, setConditionsList] = useState<string[]>([]);
+
 	const [passwordForm, setPasswordForm] = useState({
 		currentPassword: '',
 		newPassword: '',
@@ -65,14 +159,21 @@ export default function ConfiguracionPage() {
 				gender: data.gender || '',
 				phone: data.phone || '',
 				address: data.address || '',
-				allergies: '',
-				conditions: '',
 				notifications: {
 					email: true,
 					sms: false,
 					push: false,
 				},
 			});
+
+      // Procesar strings de la DB a arrays para el frontend
+      if (data.allergies) {
+        setAllergiesList(data.allergies.split(',').map((s: string) => s.trim()).filter(Boolean));
+      }
+      if (data.elderly_conditions) {
+        setConditionsList(data.elderly_conditions.split(',').map((s: string) => s.trim()).filter(Boolean));
+      }
+
 		} catch (err) {
 			console.error('Error:', err);
 		} finally {
@@ -86,11 +187,17 @@ export default function ConfiguracionPage() {
 			setError(null);
 			setSuccess(null);
 
+      const payload = {
+        ...formData,
+        allergies: allergiesList.join(', '),
+        elderly_conditions: conditionsList.join(', ')
+      };
+
 			const res = await fetch('/api/patient/profile', {
 				method: 'PATCH',
 				headers: { 'Content-Type': 'application/json' },
 				credentials: 'include',
-				body: JSON.stringify(formData),
+				body: JSON.stringify(payload),
 			});
 
 			if (!res.ok) {
@@ -98,7 +205,7 @@ export default function ConfiguracionPage() {
 				throw new Error(data.error || 'Error al guardar');
 			}
 
-			setSuccess('Perfil actualizado correctamente');
+			setSuccess('Perfil y datos médicos actualizados');
 			setTimeout(() => setSuccess(null), 3000);
 		} catch (err: any) {
 			setError(err.message || 'Error al guardar el perfil');
@@ -154,256 +261,216 @@ export default function ConfiguracionPage() {
 
 	if (loading) {
 		return (
-			<div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 p-3 sm:p-4 md:p-6">
-				<div className="max-w-7xl mx-auto">
-					<div className="animate-pulse space-y-3 sm:space-y-4 md:space-y-6">
-						<div className="h-6 sm:h-7 md:h-8 bg-gray-200 rounded w-1/2 sm:w-1/3"></div>
-						<div className="h-48 sm:h-56 md:h-64 bg-gray-200 rounded"></div>
-					</div>
-				</div>
+			<div className="min-h-screen bg-slate-50 flex items-center justify-center">
+				<div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
 			</div>
 		);
 	}
 
 	return (
-		<div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 p-3 sm:p-4 md:p-6">
-			<div className="max-w-7xl mx-auto space-y-3 sm:space-y-4 md:space-y-6">
+		<div className="min-h-screen bg-slate-50 p-3 sm:p-4 md:p-6 pb-20">
+			<div className="max-w-4xl mx-auto space-y-6">
 				{/* Header */}
-				<div className="bg-white rounded-xl sm:rounded-2xl shadow-lg p-4 sm:p-5 md:p-6">
-					<h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-900 mb-1 sm:mb-2 flex items-center gap-2 sm:gap-3">
-						<Settings className="w-5 h-5 sm:w-6 sm:h-6 md:w-8 md:h-8 text-indigo-600 flex-shrink-0" />
-						<span>Configuración</span>
+				<div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
+					<h1 className="text-2xl font-black text-slate-900 flex items-center gap-3">
+						<div className="p-2 bg-indigo-50 rounded-lg">
+              <Settings className="w-6 h-6 text-indigo-600" />
+            </div>
+						<span>Configuración de Perfil</span>
 					</h1>
-					<p className="text-xs sm:text-sm md:text-base text-gray-600">Gestiona tu perfil y preferencias</p>
+					<p className="text-slate-500 text-sm mt-1 ml-11">Gestiona tu identidad digital y datos médicos críticos</p>
 				</div>
 
-				{/* Mensajes */}
+				{/* Alertas */}
 				{error && (
-					<div className="bg-red-50 border border-red-200 rounded-lg sm:rounded-xl p-3 sm:p-4 flex items-center gap-2 sm:gap-3">
-						<AlertCircle className="w-4 h-4 sm:w-5 sm:h-5 text-red-600 flex-shrink-0" />
-						<span className="text-red-700 text-xs sm:text-sm md:text-base break-words">{error}</span>
+					<div className="bg-rose-50 border border-rose-100 rounded-xl p-4 flex items-center gap-3 animate-in fade-in slide-in-from-top-2">
+						<AlertCircle className="w-5 h-5 text-rose-600" />
+						<span className="text-rose-700 text-sm font-bold">{error}</span>
 					</div>
 				)}
 				{success && (
-					<div className="bg-green-50 border border-green-200 rounded-lg sm:rounded-xl p-3 sm:p-4 flex items-center gap-2 sm:gap-3">
-						<Save className="w-4 h-4 sm:w-5 sm:h-5 text-green-600 flex-shrink-0" />
-						<span className="text-green-700 text-xs sm:text-sm md:text-base break-words">{success}</span>
+					<div className="bg-emerald-50 border border-emerald-100 rounded-xl p-4 flex items-center gap-3 animate-in fade-in slide-in-from-top-2">
+						<Save className="w-5 h-5 text-emerald-600" />
+						<span className="text-emerald-700 text-sm font-bold">{success}</span>
 					</div>
 				)}
 
-				{/* Datos Personales */}
-				<div className="bg-white rounded-xl sm:rounded-2xl shadow-lg p-4 sm:p-5 md:p-6">
-					<h2 className="text-base sm:text-lg md:text-xl font-semibold text-gray-900 mb-3 sm:mb-4 flex items-center gap-2">
-						<User className="w-4 h-4 sm:w-5 sm:h-5 text-indigo-600 flex-shrink-0" />
-						<span>Datos Personales</span>
-					</h2>
-					<div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
-						<div>
-							<label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1.5 sm:mb-2">Nombre</label>
-							<input
-								type="text"
-								value={formData.firstName}
-								onChange={(e) => setFormData(prev => ({ ...prev, firstName: e.target.value }))}
-								className="w-full px-3 sm:px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm sm:text-base"
-							/>
-						</div>
-						<div>
-							<label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1.5 sm:mb-2">Apellido</label>
-							<input
-								type="text"
-								value={formData.lastName}
-								onChange={(e) => setFormData(prev => ({ ...prev, lastName: e.target.value }))}
-								className="w-full px-3 sm:px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm sm:text-base"
-							/>
-						</div>
-						<div>
-							<label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1.5 sm:mb-2">Identificación</label>
-							<input
-								type="text"
-								value={formData.identifier}
-								onChange={(e) => setFormData(prev => ({ ...prev, identifier: e.target.value }))}
-								className="w-full px-3 sm:px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm sm:text-base"
-							/>
-						</div>
-						<div>
-							<label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1.5 sm:mb-2">Fecha de Nacimiento</label>
-							<input
-								type="date"
-								value={formData.dob}
-								onChange={(e) => setFormData(prev => ({ ...prev, dob: e.target.value }))}
-								className="w-full px-3 sm:px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm sm:text-base"
-							/>
-						</div>
-						<div>
-							<label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1.5 sm:mb-2">Género</label>
-							<select
-								value={formData.gender}
-								onChange={(e) => setFormData(prev => ({ ...prev, gender: e.target.value }))}
-								className="w-full px-3 sm:px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm sm:text-base"
-							>
-								<option value="">Seleccionar</option>
-								<option value="M">Masculino</option>
-								<option value="F">Femenino</option>
-								<option value="O">Otro</option>
-							</select>
-						</div>
-						<div>
-							<label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1.5 sm:mb-2">Teléfono</label>
-							<input
-								type="tel"
-								value={formData.phone}
-								onChange={(e) => setFormData(prev => ({ ...prev, phone: e.target.value }))}
-								className="w-full px-3 sm:px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm sm:text-base"
-							/>
-						</div>
-						<div className="md:col-span-2">
-							<label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1.5 sm:mb-2">Dirección</label>
-							<input
-								type="text"
-								value={formData.address}
-								onChange={(e) => setFormData(prev => ({ ...prev, address: e.target.value }))}
-								className="w-full px-3 sm:px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm sm:text-base"
-							/>
-						</div>
-					</div>
-				</div>
+				<div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {/* Columna Izquierda: Datos Personales */}
+          <div className="md:col-span-2 space-y-6">
+            <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
+              <h2 className="text-lg font-black text-slate-900 mb-6 flex items-center gap-2">
+                <User className="w-5 h-5 text-indigo-600" />
+                Datos Personales
+              </h2>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1">Nombre</label>
+                  <input
+                    type="text"
+                    value={formData.firstName}
+                    onChange={(e) => setFormData(prev => ({ ...prev, firstName: e.target.value }))}
+                    className="w-full px-4 py-2.5 bg-slate-50 border border-slate-100 rounded-xl focus:border-indigo-500 outline-none transition-all text-sm font-medium"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1">Apellido</label>
+                  <input
+                    type="text"
+                    value={formData.lastName}
+                    onChange={(e) => setFormData(prev => ({ ...prev, lastName: e.target.value }))}
+                    className="w-full px-4 py-2.5 bg-slate-50 border border-slate-100 rounded-xl focus:border-indigo-500 outline-none transition-all text-sm font-medium"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1">Identificación / Cédula</label>
+                  <input
+                    type="text"
+                    value={formData.identifier}
+                    onChange={(e) => setFormData(prev => ({ ...prev, identifier: e.target.value }))}
+                    className="w-full px-4 py-2.5 bg-slate-50 border border-slate-100 rounded-xl focus:border-indigo-500 outline-none transition-all text-sm font-medium"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1">Nacimiento</label>
+                  <input
+                    type="date"
+                    value={formData.dob}
+                    onChange={(e) => setFormData(prev => ({ ...prev, dob: e.target.value }))}
+                    className="w-full px-4 py-2.5 bg-slate-50 border border-slate-100 rounded-xl focus:border-indigo-500 outline-none transition-all text-sm font-medium"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1">Género</label>
+                  <select
+                    value={formData.gender}
+                    onChange={(e) => setFormData(prev => ({ ...prev, gender: e.target.value }))}
+                    className="w-full px-4 py-2.5 bg-slate-50 border border-slate-100 rounded-xl focus:border-indigo-500 outline-none transition-all text-sm font-medium appearance-none"
+                  >
+                    <option value="">Seleccionar</option>
+                    <option value="M">Masculino</option>
+                    <option value="F">Femenino</option>
+                    <option value="O">Otro</option>
+                  </select>
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1">Teléfono</label>
+                  <input
+                    type="tel"
+                    value={formData.phone}
+                    onChange={(e) => setFormData(prev => ({ ...prev, phone: e.target.value }))}
+                    className="w-full px-4 py-2.5 bg-slate-50 border border-slate-100 rounded-xl focus:border-indigo-500 outline-none transition-all text-sm font-medium"
+                  />
+                </div>
+                <div className="sm:col-span-2 space-y-1.5">
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1">Dirección de Domicilio</label>
+                  <input
+                    type="text"
+                    value={formData.address}
+                    onChange={(e) => setFormData(prev => ({ ...prev, address: e.target.value }))}
+                    className="w-full px-4 py-2.5 bg-slate-50 border border-slate-100 rounded-xl focus:border-indigo-500 outline-none transition-all text-sm font-medium"
+                  />
+                </div>
+              </div>
+            </div>
 
-				{/* Alergias y Condiciones */}
-				<div className="bg-white rounded-xl sm:rounded-2xl shadow-lg p-4 sm:p-5 md:p-6">
-					<h2 className="text-base sm:text-lg md:text-xl font-semibold text-gray-900 mb-3 sm:mb-4 flex items-center gap-2">
-						<AlertCircle className="w-4 h-4 sm:w-5 sm:h-5 text-indigo-600 flex-shrink-0" />
-						<span>Alergias y Condiciones</span>
-					</h2>
-					<div className="space-y-3 sm:space-y-4">
-						<div>
-							<label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1.5 sm:mb-2">Alergias</label>
-							<textarea
-								value={formData.allergies}
-								onChange={(e) => setFormData(prev => ({ ...prev, allergies: e.target.value }))}
-								placeholder="Lista tus alergias separadas por comas..."
-								rows={3}
-								className="w-full px-3 sm:px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm sm:text-base resize-none"
-							/>
-						</div>
-						<div>
-							<label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1.5 sm:mb-2">Condiciones Médicas</label>
-							<textarea
-								value={formData.conditions}
-								onChange={(e) => setFormData(prev => ({ ...prev, conditions: e.target.value }))}
-								placeholder="Lista tus condiciones médicas..."
-								rows={3}
-								className="w-full px-3 sm:px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm sm:text-base resize-none"
-							/>
-						</div>
-					</div>
-				</div>
+            {/* SECCIÓN MÉDICA INTERACTIVA */}
+            <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 space-y-8">
+              <h2 className="text-lg font-black text-slate-900 flex items-center gap-2 border-b border-slate-50 pb-4">
+                <HeartPulse className="w-5 h-5 text-rose-500" />
+                Historial Médico Crítico
+              </h2>
+              
+              <ListInput 
+                label="Alergias Conocidas"
+                items={allergiesList}
+                setItems={setAllergiesList}
+                placeholder="Ej: Penicilina, Maní..."
+                icon={<ShieldAlert className="w-4 h-4 text-rose-500" />}
+                colorClass="bg-rose-50 text-rose-700 border border-rose-100"
+              />
 
-				{/* Notificaciones */}
-				<div className="bg-white rounded-xl sm:rounded-2xl shadow-lg p-4 sm:p-5 md:p-6">
-					<h2 className="text-base sm:text-lg md:text-xl font-semibold text-gray-900 mb-3 sm:mb-4 flex items-center gap-2">
-						<Bell className="w-4 h-4 sm:w-5 sm:h-5 text-indigo-600 flex-shrink-0" />
-						<span>Notificaciones</span>
-					</h2>
-					<div className="space-y-2 sm:space-y-3">
-						<label className="flex items-center justify-between p-2.5 sm:p-3 bg-gray-50 rounded-lg cursor-pointer">
-							<span className="text-gray-700 text-xs sm:text-sm md:text-base">Notificaciones por Email</span>
-							<input
-								type="checkbox"
-								checked={formData.notifications.email}
-								onChange={(e) =>
-									setFormData(prev => ({
-										...prev,
-										notifications: { ...prev.notifications, email: e.target.checked },
-									}))
-								}
-								className="w-4 h-4 text-indigo-600 rounded focus:ring-indigo-500 flex-shrink-0"
-							/>
-						</label>
-						<label className="flex items-center justify-between p-2.5 sm:p-3 bg-gray-50 rounded-lg cursor-pointer">
-							<span className="text-gray-700 text-xs sm:text-sm md:text-base">Notificaciones por SMS</span>
-							<input
-								type="checkbox"
-								checked={formData.notifications.sms}
-								onChange={(e) =>
-									setFormData(prev => ({
-										...prev,
-										notifications: { ...prev.notifications, sms: e.target.checked },
-									}))
-								}
-								className="w-4 h-4 text-indigo-600 rounded focus:ring-indigo-500 flex-shrink-0"
-							/>
-						</label>
-						<label className="flex items-center justify-between p-2.5 sm:p-3 bg-gray-50 rounded-lg cursor-pointer">
-							<span className="text-gray-700 text-xs sm:text-sm md:text-base">Notificaciones Push</span>
-							<input
-								type="checkbox"
-								checked={formData.notifications.push}
-								onChange={(e) =>
-									setFormData(prev => ({
-										...prev,
-										notifications: { ...prev.notifications, push: e.target.checked },
-									}))
-								}
-								className="w-4 h-4 text-indigo-600 rounded focus:ring-indigo-500 flex-shrink-0"
-							/>
-						</label>
-					</div>
-				</div>
+              <div className="h-px bg-slate-100" />
 
-				{/* Cambio de Contraseña */}
-				<div className="bg-white rounded-xl sm:rounded-2xl shadow-lg p-4 sm:p-5 md:p-6">
-					<h2 className="text-base sm:text-lg md:text-xl font-semibold text-gray-900 mb-3 sm:mb-4 flex items-center gap-2">
-						<Lock className="w-4 h-4 sm:w-5 sm:h-5 text-indigo-600 flex-shrink-0" />
-						<span>Cambiar Contraseña</span>
-					</h2>
-					<div className="space-y-3 sm:space-y-4">
-						<div>
-							<label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1.5 sm:mb-2">Contraseña Actual</label>
-							<input
-								type="password"
-								value={passwordForm.currentPassword}
-								onChange={(e) => setPasswordForm(prev => ({ ...prev, currentPassword: e.target.value }))}
-								className="w-full px-3 sm:px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm sm:text-base"
-							/>
-						</div>
-						<div>
-							<label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1.5 sm:mb-2">Nueva Contraseña</label>
-							<input
-								type="password"
-								value={passwordForm.newPassword}
-								onChange={(e) => setPasswordForm(prev => ({ ...prev, newPassword: e.target.value }))}
-								className="w-full px-3 sm:px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm sm:text-base"
-							/>
-						</div>
-						<div>
-							<label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1.5 sm:mb-2">Confirmar Nueva Contraseña</label>
-							<input
-								type="password"
-								value={passwordForm.confirmPassword}
-								onChange={(e) => setPasswordForm(prev => ({ ...prev, confirmPassword: e.target.value }))}
-								className="w-full px-3 sm:px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm sm:text-base"
-							/>
-						</div>
-						<button
-							onClick={handlePasswordChange}
-							disabled={saving}
-							className="w-full sm:w-auto px-4 sm:px-6 py-2 bg-indigo-600 text-white rounded-lg font-medium hover:bg-indigo-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm sm:text-base"
-						>
-							{saving ? 'Cambiando...' : 'Cambiar Contraseña'}
-						</button>
-					</div>
-				</div>
+              <ListInput 
+                label="Condiciones Médicas"
+                items={conditionsList}
+                setItems={setConditionsList}
+                placeholder="Ej: Diabetes Tipo 2, Asma..."
+                icon={<HeartPulse className="w-4 h-4 text-blue-500" />}
+                colorClass="bg-blue-50 text-blue-700 border border-blue-100"
+              />
+            </div>
+          </div>
 
-				{/* Botón Guardar */}
-				<div className="flex justify-end">
-					<button
-						onClick={handleSave}
-						disabled={saving}
-						className="w-full sm:w-auto px-6 sm:px-8 py-2.5 sm:py-3 bg-indigo-600 text-white rounded-lg font-semibold hover:bg-indigo-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 text-sm sm:text-base"
-					>
-						<Save className="w-4 h-4 sm:w-5 sm:h-5 flex-shrink-0" />
-						<span>{saving ? 'Guardando...' : 'Guardar Cambios'}</span>
-					</button>
+          {/* Columna Derecha: Seguridad y Notificaciones */}
+          <div className="space-y-6">
+            {/* Campo "Cebo" para Chrome - Evita que llene los campos médicos con el correo */}
+            <input type="text" style={{ display: 'none' }} aria-hidden="true" />
+            <input type="password" style={{ display: 'none' }} aria-hidden="true" />
+
+            <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
+              <h2 className="text-lg font-black text-slate-900 mb-6 flex items-center gap-2">
+                <Lock className="w-5 h-5 text-indigo-600" />
+                Seguridad
+              </h2>
+              <div className="space-y-4">
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1">Nueva Contraseña</label>
+                  <input
+                    type="password"
+                    value={passwordForm.newPassword}
+                    onChange={(e) => setPasswordForm(prev => ({ ...prev, newPassword: e.target.value }))}
+                    className="w-full px-4 py-2.5 bg-slate-50 border border-slate-100 rounded-xl focus:border-indigo-500 outline-none transition-all text-sm"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1">Confirmar</label>
+                  <input
+                    type="password"
+                    value={passwordForm.confirmPassword}
+                    onChange={(e) => setPasswordForm(prev => ({ ...prev, confirmPassword: e.target.value }))}
+                    className="w-full px-4 py-2.5 bg-slate-50 border border-slate-100 rounded-xl focus:border-indigo-500 outline-none transition-all text-sm"
+                  />
+                </div>
+                <button
+                  onClick={handlePasswordChange}
+                  disabled={saving}
+                  className="w-full py-3 bg-slate-900 text-white rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-slate-800 transition-all disabled:opacity-50 shadow-xl shadow-slate-200"
+                >
+                  {saving ? 'Cambiando...' : 'Actualizar Llave'}
+                </button>
+              </div>
+            </div>
+
+            <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
+              <h2 className="text-lg font-black text-slate-900 mb-6 flex items-center gap-2">
+                <Bell className="w-5 h-5 text-indigo-600" />
+                Canales
+              </h2>
+              <div className="space-y-3">
+                {['Email', 'SMS', 'WhatsApp'].map((canal) => (
+                  <label key={canal} className="flex items-center justify-between p-3 bg-slate-50 rounded-xl cursor-pointer hover:bg-slate-100 transition-colors">
+                    <span className="text-slate-700 text-xs font-bold uppercase tracking-tight">{canal}</span>
+                    <input type="checkbox" defaultChecked={canal === 'Email'} className="w-4 h-4 text-indigo-600 rounded-lg focus:ring-indigo-500 border-slate-300" />
+                  </label>
+                ))}
+              </div>
+            </div>
+
+            <button
+              onClick={handleSave}
+              disabled={saving}
+              className="w-full py-4 bg-indigo-600 text-white rounded-2xl font-black text-xs uppercase tracking-[0.2em] hover:bg-indigo-700 transition-all disabled:opacity-50 flex items-center justify-center gap-3 shadow-2xl shadow-indigo-100 group"
+            >
+              {saving ? (
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+              ) : (
+                <Save className="w-4 h-4 group-hover:scale-125 transition-transform" />
+              )}
+              <span>{saving ? 'Sincronizando...' : 'Guardar Todo'}</span>
+            </button>
+          </div>
 				</div>
 			</div>
 		</div>

@@ -21,6 +21,8 @@ export async function GET() {
 			gender: patient.patient.gender,
 			phone: patient.patient.phone,
 			address: patient.patient.address,
+			allergies: patient.patient.allergies,
+			elderly_conditions: patient.patient.elderly_conditions,
 		});
 	} catch (err: any) {
 		console.error('[Patient Profile API] Error:', err);
@@ -48,6 +50,8 @@ export async function PATCH(request: Request) {
 		if (body.gender !== undefined) updateData.gender = body.gender;
 		if (body.phone !== undefined) updateData.phone = body.phone;
 		if (body.address !== undefined) updateData.address = body.address;
+		if (body.allergies !== undefined) updateData.allergies = body.allergies;
+		if (body.elderly_conditions !== undefined) updateData.elderly_conditions = body.elderly_conditions;
 
 		const { error } = await supabase
 			.from('patient')

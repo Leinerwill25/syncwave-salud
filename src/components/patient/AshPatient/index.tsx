@@ -276,7 +276,6 @@ export default function AshPatient({ patientName = 'Paciente' }: { patientName?:
               onClick={() => setIsOpen(true)}
               className="w-16 h-16 rounded-full bg-gradient-to-tr from-emerald-500 via-teal-600 to-blue-600 shadow-[0_8px_32px_rgba(20,184,166,0.4)] flex items-center justify-center group"
             >
-              <div className="absolute inset-0 rounded-full bg-teal-400 animate-ping opacity-20 group-hover:opacity-40 transition-opacity"></div>
               <Sparkles className="text-white w-7 h-7" />
               {unread > 0 && (
                 <span className="absolute -top-1 -right-1 w-6 h-6 bg-rose-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center border-2 border-white">
