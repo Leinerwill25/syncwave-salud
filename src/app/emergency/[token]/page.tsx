@@ -22,6 +22,13 @@ export default async function EmergencyPage({ params }: Props) {
 	}
 
 	// 1. Inicializar Supabase directamente en el servidor
+	console.log('[Emergency Page] Iniciando consulta para token:', token, `(Largo: ${token.length})`);
+	
+	if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
+		console.error('[Emergency Page] ERROR: Faltan variables de entorno en el servidor');
+		notFound();
+	}
+
 	const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
 		auth: { persistSession: false }
 	});
@@ -37,12 +44,17 @@ export default async function EmergencyPage({ params }: Props) {
 				emergency_contact_name, emergency_contact_phone, emergency_contact_relationship,
 				advance_directives, emergency_qr_enabled
 			`)
-			.eq('emergency_qr_token', token)
+			.eq('emergency_qr_token', token.trim())
 			.eq('emergency_qr_enabled', true)
 			.single();
 
-		if (patientError || !patient) {
-			console.error('[Emergency Page] Patient not found or error:', patientError);
+		if (patientError) {
+			console.error('[Emergency Page] Supabase Error:', patientError.message, patientError.code);
+			notFound();
+		}
+
+		if (!patient) {
+			console.warn('[Emergency Page] No se encontró paciente habilitado para este token');
 			notFound();
 		}
 
