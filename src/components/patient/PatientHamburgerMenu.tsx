@@ -27,7 +27,7 @@ const LINKS: LinkItem[] = [
 		submenu: [
 			{ href: '/dashboard/patient/explore', label: 'Buscador Global' },
 			{ href: '/dashboard/patient/consultorio', label: 'Consultorios' },
-			{ href: '/dashboard/patient/clinics', label: 'Clínicas', comingSoon: true },
+			{ href: '/dashboard/patient/clinics', label: 'Clínicas' },
 			{ href: '/dashboard/patient/pharmacies', label: 'Farmacias', comingSoon: true },
 			{ href: '/dashboard/patient/labs', label: 'Laboratorios', comingSoon: true },
 		],

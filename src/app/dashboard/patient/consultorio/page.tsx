@@ -181,7 +181,6 @@ export default function ConsultoriosPage() {
 
 										{/* Contenido */}
 										<div className="p-4 sm:p-5 md:p-6">
-											{/* Nombre y especialidad */}
 											<div className="mb-3 sm:mb-4">
 												<h3 className="text-base sm:text-lg md:text-xl font-bold text-gray-900 mb-1.5 sm:mb-2 line-clamp-2 group-hover:text-purple-600 transition-colors">
 													{consultorio.name}
@@ -192,11 +191,34 @@ export default function ConsultoriosPage() {
 														<span className="truncate">Dr. {consultorio.doctor.name}</span>
 													</p>
 												)}
-												{consultorio.specialty && (
-													<div className="inline-flex items-center gap-1.5 sm:gap-2 px-2 sm:px-2.5 md:px-3 py-1 sm:py-1.5 bg-gradient-to-r from-purple-50 to-indigo-50 rounded-lg border border-purple-200">
-														<span className="text-xs sm:text-sm font-bold text-purple-700 truncate">{consultorio.specialty}</span>
-													</div>
-												)}
+												{(() => {
+													const specString = consultorio.specialty;
+													if (!specString) return null;
+													
+													let parsedSpecs: string[] = [];
+													try {
+														const parsed = JSON.parse(specString);
+														if (Array.isArray(parsed)) {
+															parsedSpecs = parsed.filter(s => typeof s === 'string');
+														} else if (typeof parsed === 'string') {
+															parsedSpecs = [parsed];
+														}
+													} catch (e) {
+														parsedSpecs = specString.split(',').map(s => s.trim());
+													}
+
+													if (parsedSpecs.length === 0) return null;
+
+													return (
+														<div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
+															{parsedSpecs.map((spec, idx) => (
+																<span key={idx} className="px-2 sm:px-2.5 md:px-3 py-1 sm:py-1.5 bg-gradient-to-r from-purple-50 to-indigo-50 rounded-lg border border-purple-200 text-xs sm:text-sm font-bold text-purple-700 truncate">
+																	{spec}
+																</span>
+															))}
+														</div>
+													);
+												})()}
 											</div>
 
 											{/* Información de contacto */}

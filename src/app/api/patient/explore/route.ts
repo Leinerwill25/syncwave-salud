@@ -175,23 +175,29 @@ export async function GET(request: Request) {
 			let orgQuery = supabase
 				.from('organization')
 				.select('id, name, type, contactEmail, phone, address')
-				.eq('type', 'CONSULTORIO')
-				.range(offset, offset + perPage - 1);
+				.eq('type', 'CONSULTORIO');
 
 			if (query) {
 				orgQuery = orgQuery.or(`name.ilike.%${query}%,address.ilike.%${query}%`);
 			}
 
-			const { data: organizations, error: orgsError } = await orgQuery;
+			orgQuery = orgQuery.range(offset, offset + perPage - 1);
+
+			let { data: organizations, error: orgsError } = await orgQuery;
 
 			if (orgsError) {
 				console.error('[Patient Explore API] Error al buscar organizaciones:', orgsError);
 			} else {
-				console.log(`[Patient Explore API] Organizaciones encontradas: ${organizations?.length || 0}`);
+				console.log(`[Patient Explore API] Organizaciones encontradas antes de filtro estricto: ${organizations?.length || 0}`);
+			}
+
+			// FILTRO ESTRICTO: Garantizar que SOLO aparezcan organizaciones con rol 'CONSULTORIO'
+			if (organizations) {
+				organizations = organizations.filter((org: any) => org.type === 'CONSULTORIO');
 			}
 
 			if (!organizations || organizations.length === 0) {
-				console.log('[Patient Explore API] No se encontraron organizaciones');
+				console.log('[Patient Explore API] No se encontraron organizaciones con rol CONSULTORIO');
 			} else {
 				// PASO 2: Obtener todos los IDs de organizaciones
 				const orgIds = organizations.map((org: any) => org.id);

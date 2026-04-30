@@ -5,6 +5,8 @@ import { createSupabaseServerClient } from '@/app/adapters/server';
 import { cookies } from 'next/headers';
 import { parseSpecialties } from '@/lib/safe-json-parse';
 
+import { createClient } from '@supabase/supabase-js';
+
 export async function GET(request: Request) {
 	try {
 		const patient = await getAuthenticatedPatient();
@@ -12,8 +14,11 @@ export async function GET(request: Request) {
 			return NextResponse.json({ error: 'No autenticado' }, { status: 401 });
 		}
 
-		const cookieStore = await cookies();
-		const supabase = await createSupabaseServerClient();
+		// Usamos el cliente admin para acceder al directorio público sin bloqueos de RLS
+		const supabaseAdmin = createClient(
+			process.env.NEXT_PUBLIC_SUPABASE_URL!,
+			process.env.SUPABASE_SERVICE_ROLE_KEY!
+		);
 
 		const url = new URL(request.url);
 		const page = parseInt(url.searchParams.get('page') || '1', 10);
@@ -22,7 +27,35 @@ export async function GET(request: Request) {
 		const specialty = url.searchParams.get('specialty');
 		const search = url.searchParams.get('search');
 
-		let query = supabase
+		// PASO 1: Obtener las organizaciones tipo CLINICA
+		let orgQuery = supabaseAdmin
+			.from('organization')
+			.select('id, name, type, contactEmail, phone, address')
+			.eq('type', 'CLINICA')
+			.range(offset, offset + perPage - 1);
+
+		if (search) {
+			orgQuery = orgQuery.or(`name.ilike.%${search}%,address.ilike.%${search}%`);
+		}
+
+		const { data: organizations, error: orgsError } = await orgQuery;
+
+		if (orgsError) {
+			console.error('[Patient Clinics API] Error al buscar organizaciones:', orgsError);
+			return NextResponse.json({ error: 'Error al obtener organizaciones de clínicas' }, { status: 500 });
+		}
+
+		if (!organizations || organizations.length === 0) {
+			return NextResponse.json({
+				data: [],
+				meta: { page, per_page: perPage, total: 0 },
+			});
+		}
+
+		const orgIds = organizations.map(org => org.id);
+
+		// PASO 2: Obtener los perfiles de clínica correspondientes
+		const { data: clinicProfiles, error: profilesError } = await supabaseAdmin
 			.from('clinic_profile')
 			.select(`
 				id,
@@ -37,30 +70,32 @@ export async function GET(request: Request) {
 				opening_hours,
 				website,
 				social_facebook,
-				social_instagram,
-				organization:organization_id (
-					id,
-					name,
-					type
-				)
+				social_instagram
 			`)
-			.range(offset, offset + perPage - 1);
+			.in('organization_id', orgIds);
 
-		if (search) {
-			query = query.or(`legal_name.ilike.%${search}%,trade_name.ilike.%${search}%`);
+		if (profilesError) {
+			console.error('[Patient Clinics API] Error al buscar perfiles:', profilesError);
 		}
 
-		const { data: clinics, error, count } = await query;
-
-		if (error) {
-			console.error('[Patient Clinics API] Error:', error);
-			return NextResponse.json({ error: 'Error al obtener clínicas' }, { status: 500 });
-		}
+		// Construir el resultado combinando la organización y el perfil
+		const clinicsData = organizations.map(org => {
+			const profile = clinicProfiles?.find(p => p.organization_id === org.id) || {};
+			return {
+				...profile,
+				organization_id: org.id,
+				organization: {
+					id: org.id,
+					name: org.name,
+					type: org.type
+				}
+			};
+		});
 
 		// Filtrar por especialidad si se proporciona
-		let filteredClinics = clinics || [];
-		if (specialty && clinics) {
-			filteredClinics = clinics.filter((clinic: any) => {
+		let finalClinics = clinicsData;
+		if (specialty) {
+			finalClinics = finalClinics.filter((clinic: any) => {
 				const specialties = parseSpecialties(clinic.specialties);
 				return specialties.some((s: any) => {
 					const specName = typeof s === 'string' ? s : s?.name || s?.specialty || '';
@@ -69,18 +104,12 @@ export async function GET(request: Request) {
 			});
 		}
 
-		// Asegurar que cada clínica tenga organization_id disponible
-		const clinicsWithOrgId = (filteredClinics || []).map((clinic: any) => ({
-			...clinic,
-			organization_id: clinic.organization_id || clinic.organization?.id,
-		}));
-
 		return NextResponse.json({
-			data: clinicsWithOrgId,
+			data: finalClinics,
 			meta: {
 				page,
 				per_page: perPage,
-				total: count || filteredClinics.length,
+				total: finalClinics.length,
 			},
 		});
 	} catch (err: any) {
