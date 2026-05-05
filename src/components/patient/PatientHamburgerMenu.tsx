@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { LayoutDashboard, CalendarDays, Building2, ShoppingBag, FlaskConical, Search, FileText, Pill, Receipt, MessageCircle, Settings, Users, Shield, ChevronRight, ChevronDown, Search as SearchIcon, Menu, X, Bell } from 'lucide-react';
+import { LayoutDashboard, CalendarDays, Building2, ShoppingBag, FlaskConical, Search, FileText, Pill, Receipt, MessageCircle, Settings, Users, Shield, ChevronRight, ChevronDown, Search as SearchIcon, Menu, X, Bell, HeartPulse } from 'lucide-react';
 
 type IconComponent = React.ComponentType<React.SVGProps<SVGSVGElement>>;
 
@@ -20,6 +20,11 @@ const LINKS: LinkItem[] = [
 		href: '/dashboard/patient',
 		label: 'Panel General',
 		icon: LayoutDashboard,
+	},
+	{
+		href: '/dashboard/patient/salud-plus',
+		label: 'ASHIRA Salud+',
+		icon: HeartPulse,
 	},
 	{
 		label: 'Explorar',
@@ -47,6 +52,11 @@ const LINKS: LinkItem[] = [
 		label: 'Resultados',
 		icon: FlaskConical,
 		comingSoon: true,
+	},
+	{
+		href: '/dashboard/patient/informes',
+		label: 'Mis Informes',
+		icon: FileText,
 	},
 	{
 		href: '/dashboard/patient/recetas',

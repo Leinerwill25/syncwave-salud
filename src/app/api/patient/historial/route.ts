@@ -249,6 +249,15 @@ export async function GET(request: Request) {
 		const { data: medicalRecords, error: recordsError } = medicalRecordsResult;
 		const { data: consultationsWithRecords } = consultationsWithRecordsResult;
 
+		// Verificar recompensa de ASHIRA Salud+ para Exportar PDF
+		const { data: activeRewards } = await supabase
+			.from('patient_reward_redemptions')
+			.select('reward_id, points_rewards_catalog(reward_type)')
+			.eq('patient_id', patient.patientId)
+			.eq('status', 'active');
+		
+		const hasPdfExportReward = activeRewards?.some((r: any) => r.points_rewards_catalog?.reward_type === 'pdf_export') || false;
+
 		// Crear mapa de medical_record_id a consultation_id
 		const recordToConsultationMap: Record<string, string> = {};
 		(consultationsWithRecords || []).forEach((c: ConsultationWithRecord) => {
@@ -341,6 +350,7 @@ export async function GET(request: Request) {
 		return NextResponse.json({
 			consultations: parsedConsultations,
 			medicalRecords: parsedRecords,
+			hasPdfExportReward,
 		}, {
 			headers: {
 				'Cache-Control': 'private, max-age=60', // Cache por 60 segundos

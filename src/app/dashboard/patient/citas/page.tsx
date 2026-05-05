@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Calendar, Clock, MapPin, User, X, RefreshCw, CheckCircle, XCircle } from 'lucide-react';
+import { Calendar, Clock, MapPin, User, X, RefreshCw, CheckCircle, XCircle, BellRing, Star } from 'lucide-react';
 import Link from 'next/link';
 import RescheduleModal from '@/components/patient/RescheduleModal';
 
@@ -30,6 +30,7 @@ export default function CitasPage() {
 	const [filter, setFilter] = useState<'all' | 'upcoming' | 'past'>('upcoming');
 	const [rescheduleModalOpen, setRescheduleModalOpen] = useState(false);
 	const [selectedAppointment, setSelectedAppointment] = useState<Appointment | null>(null);
+	const [rewards, setRewards] = useState({ hasExtendedReminders: false, hasWaitlistPriority: false });
 
 	useEffect(() => {
 		loadAppointments();
@@ -47,6 +48,9 @@ export default function CitasPage() {
 
 			const data = await res.json();
 			setAppointments(data.data || []);
+			if (data.rewards) {
+				setRewards(data.rewards);
+			}
 		} catch (err) {
 			console.error('Error:', err);
 		} finally {
@@ -128,6 +132,34 @@ export default function CitasPage() {
 						</Link>
 					</div>
 				</div>
+
+				{/* Banners de Recompensas ASHIRA Salud+ */}
+				{(rewards.hasExtendedReminders || rewards.hasWaitlistPriority) && (
+					<div className="flex flex-col sm:flex-row gap-3">
+						{rewards.hasWaitlistPriority && (
+							<div className="flex-1 bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-xl p-3 sm:p-4 flex items-center gap-3 shadow-sm">
+								<div className="p-2 bg-amber-100 rounded-lg text-amber-600">
+									<Star className="w-5 h-5" fill="currentColor" />
+								</div>
+								<div>
+									<h4 className="font-bold text-amber-900 text-sm">Prioridad VIP Activa</h4>
+									<p className="text-xs text-amber-700 mt-0.5">Tienes prioridad en la lista de espera para adelantar citas canceladas.</p>
+								</div>
+							</div>
+						)}
+						{rewards.hasExtendedReminders && (
+							<div className="flex-1 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-xl p-3 sm:p-4 flex items-center gap-3 shadow-sm">
+								<div className="p-2 bg-blue-100 rounded-lg text-blue-600">
+									<BellRing className="w-5 h-5" />
+								</div>
+								<div>
+									<h4 className="font-bold text-blue-900 text-sm">Recordatorios Extendidos</h4>
+									<p className="text-xs text-blue-700 mt-0.5">Recibirás alertas especiales 48h y 2h antes de tu cita.</p>
+								</div>
+							</div>
+						)}
+					</div>
+				)}
 
 				{/* Filtros */}
 				<div className="bg-white rounded-xl sm:rounded-2xl shadow-lg p-3 sm:p-4 md:p-5 lg:p-6">

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Users, Plus, X, Shield, AlertCircle, User, Calendar, Stethoscope } from 'lucide-react';
+import { Users, Plus, X, Shield, AlertCircle, User, Calendar, Stethoscope, Pill, Star, Activity } from 'lucide-react';
 import Link from 'next/link';
 
 type FamilyGroup = {
@@ -35,6 +35,9 @@ type FamilyData = {
 	members: FamilyMember[];
 	ownerConsultationCount?: number;
 	ownerId?: string;
+	hasFamilyDashboard?: boolean;
+	consolidatedAppointments?: any[];
+	consolidatedPrescriptions?: any[];
 };
 
 export default function FamilyPage() {
@@ -221,6 +224,105 @@ export default function FamilyPage() {
 						</div>
 					</div>
 				</div>
+
+				{/* Dashboard Unificado ASHIRA Salud+ */}
+				{familyData.hasFamilyDashboard && (
+					<div className="bg-gradient-to-br from-[#0f172a] via-[#1e1b4b] to-[#312e81] rounded-xl sm:rounded-2xl shadow-2xl p-4 sm:p-5 md:p-6 border border-indigo-500/30 text-white relative overflow-hidden">
+						<div className="absolute top-0 right-0 w-64 h-64 bg-indigo-500/10 rounded-full blur-3xl -mr-20 -mt-20 pointer-events-none"></div>
+						
+						<div className="flex items-center gap-3 mb-6 relative z-10">
+							<div className="p-2 bg-gradient-to-br from-[#7FFFD4] to-teal-400 rounded-lg text-slate-900 shadow-[0_0_15px_rgba(127,255,212,0.4)]">
+								<Star className="w-6 h-6" fill="currentColor" />
+							</div>
+							<div>
+								<h2 className="text-xl sm:text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-white to-indigo-200">
+									Dashboard Familiar Unificado
+								</h2>
+								<p className="text-xs sm:text-sm text-indigo-200/80">Vista consolidada de salud activada vía ASHIRA Salud+</p>
+							</div>
+						</div>
+
+						<div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 relative z-10">
+							{/* Próximas Citas Consolidadas */}
+							<div className="bg-white/5 backdrop-blur-md rounded-xl p-4 border border-white/10">
+								<h3 className="font-semibold text-indigo-100 mb-4 flex items-center gap-2 text-sm uppercase tracking-wider">
+									<Calendar className="w-4 h-4 text-[#7FFFD4]" />
+									Próximas Citas
+								</h3>
+								<div className="space-y-3">
+									{!familyData.consolidatedAppointments || familyData.consolidatedAppointments.length === 0 ? (
+										<p className="text-sm text-white/50 text-center py-4">No hay citas próximas en la familia.</p>
+									) : (
+										familyData.consolidatedAppointments.map((appt: any) => {
+											const member = familyData.members.find(m => m.patientId === appt.patient_id);
+											const name = member?.patient?.firstName ? `${member.patient.firstName} ${member.patient.lastName}` : 'Miembro';
+											const isOwner = appt.patient_id === familyData.ownerId;
+											return (
+												<div key={appt.id} className="flex flex-col p-3 rounded-lg bg-white/5 border border-white/5 hover:bg-white/10 transition-colors">
+													<div className="flex justify-between items-start mb-1">
+														<span className="text-sm font-bold text-white flex items-center gap-1.5">
+															<User className="w-3.5 h-3.5 text-indigo-300" />
+															{isOwner ? 'Tú' : name}
+														</span>
+														<span className="text-[10px] px-2 py-0.5 rounded bg-indigo-500/20 text-indigo-200 border border-indigo-500/30">
+															{appt.status}
+														</span>
+													</div>
+													<div className="text-xs text-white/70 mt-1">
+														{new Date(appt.scheduled_at).toLocaleDateString('es-ES', { weekday: 'short', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+													</div>
+													{appt.doctor && (
+														<div className="text-[10px] text-white/50 mt-1">Dr. {appt.doctor.name}</div>
+													)}
+												</div>
+											)
+										})
+									)}
+								</div>
+							</div>
+
+							{/* Recetas Activas Consolidadas */}
+							<div className="bg-white/5 backdrop-blur-md rounded-xl p-4 border border-white/10">
+								<h3 className="font-semibold text-indigo-100 mb-4 flex items-center gap-2 text-sm uppercase tracking-wider">
+									<Pill className="w-4 h-4 text-[#7FFFD4]" />
+									Recetas Activas
+								</h3>
+								<div className="space-y-3">
+									{!familyData.consolidatedPrescriptions || familyData.consolidatedPrescriptions.length === 0 ? (
+										<p className="text-sm text-white/50 text-center py-4">No hay recetas activas en la familia.</p>
+									) : (
+										familyData.consolidatedPrescriptions.map((presc: any) => {
+											// presc.consultation.patient_id is where the patient id is
+											const patientId = presc.consultation?.patient_id;
+											const member = familyData.members.find(m => m.patientId === patientId);
+											const name = member?.patient?.firstName ? `${member.patient.firstName} ${member.patient.lastName}` : 'Miembro';
+											const isOwner = patientId === familyData.ownerId;
+											return (
+												<div key={presc.id} className="flex flex-col p-3 rounded-lg bg-white/5 border border-white/5 hover:bg-white/10 transition-colors">
+													<div className="flex justify-between items-start mb-1">
+														<span className="text-sm font-bold text-white flex items-center gap-1.5">
+															<User className="w-3.5 h-3.5 text-indigo-300" />
+															{isOwner ? 'Tú' : name}
+														</span>
+														<span className="text-[10px] px-2 py-0.5 rounded bg-[#7FFFD4]/20 text-[#7FFFD4] border border-[#7FFFD4]/30">
+															ACTIVA
+														</span>
+													</div>
+													<div className="text-xs text-white/90 mt-1">
+														{presc.prescription_item && presc.prescription_item.map((item: any) => item.name).join(', ')}
+													</div>
+													{presc.valid_until && (
+														<div className="text-[10px] text-white/50 mt-1">Válida hasta: {new Date(presc.valid_until).toLocaleDateString('es-ES')}</div>
+													)}
+												</div>
+											)
+										})
+									)}
+								</div>
+							</div>
+						</div>
+					</div>
+				)}
 
 				{/* Miembros */}
 				<div className="bg-white rounded-xl sm:rounded-2xl shadow-lg p-4 sm:p-5 md:p-6">

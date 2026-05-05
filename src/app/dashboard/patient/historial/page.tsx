@@ -1,8 +1,9 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { FileText, User, Calendar, Stethoscope, Heart, Thermometer, Activity, Download, Pill, FileCheck, Image, File, Share2, Copy, Check } from 'lucide-react';
+import { FileText, User, Calendar, Stethoscope, Heart, Thermometer, Activity, Download, Pill, FileCheck, Image, File, Share2, Copy, Check, FileDown } from 'lucide-react';
 import { motion } from 'framer-motion';
+import jsPDF from 'jspdf';
 
 type PrescriptionItem = {
 	id: string;
@@ -60,6 +61,8 @@ export default function HistorialPage() {
 	const [sharing, setSharing] = useState<Set<string>>(new Set());
 	const [shareLinks, setShareLinks] = useState<Record<string, string>>({});
 	const [copied, setCopied] = useState<string | null>(null);
+	const [hasPdfExportReward, setHasPdfExportReward] = useState(false);
+	const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
 
 	useEffect(() => {
 		loadHistorial();
@@ -77,6 +80,7 @@ export default function HistorialPage() {
 			const data = await res.json();
 			setConsultations(data.consultations || []);
 			setMedicalRecords(data.medicalRecords || []);
+			setHasPdfExportReward(data.hasPdfExportReward || false);
 		} catch (err) {
 			console.error('Error:', err);
 		} finally {
@@ -141,6 +145,69 @@ export default function HistorialPage() {
 			setTimeout(() => setCopied(null), 2000);
 		} catch (err) {
 			alert('Error al copiar enlace');
+		}
+	};
+
+	const handleExportPDF = () => {
+		setIsGeneratingPdf(true);
+		try {
+			const doc = new jsPDF();
+			let yPosition = 20;
+			
+			// Header
+			doc.setFontSize(22);
+			doc.setTextColor(15, 23, 42); // slate-900
+			doc.text('Historial Médico Clínico', 20, yPosition);
+			yPosition += 10;
+			
+			doc.setFontSize(12);
+			doc.setTextColor(71, 85, 105); // slate-600
+			doc.text('Generado a través de ASHIRA Salud+', 20, yPosition);
+			yPosition += 15;
+
+			if (consultations.length === 0) {
+				doc.setFontSize(14);
+				doc.text('No hay consultas registradas.', 20, yPosition);
+			} else {
+				consultations.forEach((c, index) => {
+					if (yPosition > 270) {
+						doc.addPage();
+						yPosition = 20;
+					}
+
+					doc.setFontSize(16);
+					doc.setTextColor(15, 23, 42);
+					const dateStr = c.started_at ? new Date(c.started_at).toLocaleDateString('es-ES') : 'Fecha no disponible';
+					doc.text(`Consulta: ${dateStr}`, 20, yPosition);
+					yPosition += 8;
+
+					doc.setFontSize(11);
+					doc.setTextColor(71, 85, 105);
+					if (c.doctor) {
+						doc.text(`Médico: Dr. ${c.doctor.name || 'No especificado'}`, 20, yPosition);
+						yPosition += 6;
+					}
+
+					if (c.chief_complaint) {
+						doc.text(`Motivo: ${c.chief_complaint}`, 20, yPosition);
+						yPosition += 6;
+					}
+
+					if (c.diagnosis) {
+						doc.text(`Diagnóstico: ${c.diagnosis}`, 20, yPosition);
+						yPosition += 6;
+					}
+
+					yPosition += 5; // Spacing between consultations
+				});
+			}
+
+			doc.save('Historial_Clinico.pdf');
+		} catch (error) {
+			console.error('Error generando PDF', error);
+			alert('Ocurrió un error generando tu PDF. Inténtalo de nuevo.');
+		} finally {
+			setIsGeneratingPdf(false);
 		}
 	};
 
@@ -491,14 +558,31 @@ export default function HistorialPage() {
 		<div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 p-3 sm:p-4 md:p-6">
 			<div className="max-w-7xl mx-auto space-y-3 sm:space-y-4 md:space-y-6">
 				{/* Header */}
-				<div className="bg-white rounded-xl sm:rounded-2xl shadow-lg p-3 sm:p-4 md:p-5 lg:p-6 border border-slate-200">
-					<h1 className="text-lg sm:text-xl md:text-2xl lg:text-3xl font-bold text-slate-900 mb-1 sm:mb-2 flex items-center gap-2 sm:gap-3">
-						<FileText className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6 lg:w-8 lg:h-8 text-teal-600 flex-shrink-0" />
-						<span>Historial Médico</span>
-					</h1>
-					<p className="text-xs sm:text-sm md:text-base text-slate-600 leading-relaxed">
-						Consulta tu historial médico completo con todas las consultas, prescripciones y documentos adjuntos
-					</p>
+				<div className="bg-white rounded-xl sm:rounded-2xl shadow-lg p-3 sm:p-4 md:p-5 lg:p-6 border border-slate-200 flex flex-col md:flex-row md:items-center justify-between gap-4">
+					<div>
+						<h1 className="text-lg sm:text-xl md:text-2xl lg:text-3xl font-bold text-slate-900 mb-1 sm:mb-2 flex items-center gap-2 sm:gap-3">
+							<FileText className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6 lg:w-8 lg:h-8 text-teal-600 flex-shrink-0" />
+							<span>Historial Médico</span>
+						</h1>
+						<p className="text-xs sm:text-sm md:text-base text-slate-600 leading-relaxed">
+							Consulta tu historial médico completo con todas las consultas, prescripciones y documentos adjuntos
+						</p>
+					</div>
+
+					{hasPdfExportReward && (
+						<button
+							onClick={handleExportPDF}
+							disabled={isGeneratingPdf || consultations.length === 0}
+							className="flex items-center justify-center gap-2 px-4 py-2.5 bg-gradient-to-r from-teal-600 to-cyan-600 text-white font-bold rounded-xl shadow hover:from-teal-700 hover:to-cyan-700 transition-all disabled:opacity-50"
+						>
+							{isGeneratingPdf ? (
+								<div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+							) : (
+								<FileDown className="w-5 h-5" />
+							)}
+							<span>Exportar PDF</span>
+						</button>
+					)}
 				</div>
 
 				{/* Tabs */}

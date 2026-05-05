@@ -115,6 +115,43 @@ export async function GET() {
 				allMembers.push(...membersWithConsultationCount);
 			}
 
+			// Verificar recompensa ASHIRA Salud+
+			const { data: activeRewards } = await supabase
+				.from('patient_reward_redemptions')
+				.select('reward_id, points_rewards_catalog(reward_type)')
+				.eq('patient_id', patient.patientId)
+				.eq('status', 'active');
+			
+			const hasFamilyDashboard = activeRewards?.some((r: any) => r.points_rewards_catalog?.reward_type === 'family_dashboard') || false;
+
+			let consolidatedAppointments: any[] = [];
+			let consolidatedPrescriptions: any[] = [];
+
+			if (hasFamilyDashboard) {
+				const memberIds = allMembers.map(m => m.patientId);
+				
+				// Fetch upcoming appointments
+				const { data: appts } = await supabase
+					.from('appointment')
+					.select('id, patient_id, scheduled_at, status, reason, doctor:doctor_id(name)')
+					.in('patient_id', memberIds)
+					.gte('scheduled_at', new Date().toISOString())
+					.order('scheduled_at', { ascending: true })
+					.limit(10);
+				if (appts) consolidatedAppointments = appts;
+
+				// Fetch active prescriptions
+				// We need to fetch via consultation to get patient_id if prescription doesn't have it directly. 
+				// Wait, prescription is linked to consultation, which is linked to patient.
+				const { data: activePrescs } = await supabase
+					.from('prescription')
+					.select('id, valid_until, status, prescription_item(name), consultation!inner(patient_id, doctor:doctor_id(name))')
+					.in('consultation.patient_id', memberIds)
+					.eq('status', 'ACTIVE')
+					.limit(10);
+				if (activePrescs) consolidatedPrescriptions = activePrescs;
+			}
+
 			return NextResponse.json({
 				hasFamilyPlan: true,
 				hasGroup: true,
@@ -123,6 +160,9 @@ export async function GET() {
 				members: allMembers, // Incluye al dueño y todos los miembros
 				ownerConsultationCount: allMembers.find((m) => m.isOwner)?.consultationCount || 0,
 				ownerId: memberGroup?.ownerId || null,
+				hasFamilyDashboard,
+				consolidatedAppointments,
+				consolidatedPrescriptions,
 			});
 		}
 
@@ -195,6 +235,41 @@ export async function GET() {
 			allMembers.push(...membersWithConsultationCount);
 		}
 
+		// Verificar recompensa ASHIRA Salud+
+		const { data: activeRewards } = await supabase
+			.from('patient_reward_redemptions')
+			.select('reward_id, points_rewards_catalog(reward_type)')
+			.eq('patient_id', patient.patientId)
+			.eq('status', 'active');
+		
+		const hasFamilyDashboard = activeRewards?.some((r: any) => r.points_rewards_catalog?.reward_type === 'family_dashboard') || false;
+
+		let consolidatedAppointments: any[] = [];
+		let consolidatedPrescriptions: any[] = [];
+
+		if (hasFamilyDashboard) {
+			const memberIds = allMembers.map(m => m.patientId);
+			
+			// Fetch upcoming appointments
+			const { data: appts } = await supabase
+				.from('appointment')
+				.select('id, patient_id, scheduled_at, status, reason, doctor:doctor_id(name)')
+				.in('patient_id', memberIds)
+				.gte('scheduled_at', new Date().toISOString())
+				.order('scheduled_at', { ascending: true })
+				.limit(10);
+			if (appts) consolidatedAppointments = appts;
+
+			// Fetch active prescriptions
+			const { data: activePrescs } = await supabase
+				.from('prescription')
+				.select('id, valid_until, status, prescription_item(name), consultation!inner(patient_id, doctor:doctor_id(name))')
+				.in('consultation.patient_id', memberIds)
+				.eq('status', 'ACTIVE')
+				.limit(10);
+			if (activePrescs) consolidatedPrescriptions = activePrescs;
+		}
+
 		return NextResponse.json({
 			hasFamilyPlan: true,
 			hasGroup: true,
@@ -203,6 +278,9 @@ export async function GET() {
 			members: allMembers, // Incluye al dueño y todos los miembros
 			ownerConsultationCount: allMembers.find((m) => m.isOwner)?.consultationCount || 0,
 			ownerId: patient.patientId,
+			hasFamilyDashboard,
+			consolidatedAppointments,
+			consolidatedPrescriptions,
 		});
 	} catch (err: any) {
 		console.error('[Patient Family API] Error:', err);

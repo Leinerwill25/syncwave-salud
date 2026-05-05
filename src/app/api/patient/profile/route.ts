@@ -3,6 +3,7 @@ import { NextResponse } from 'next/server';
 import { getAuthenticatedPatient } from '@/lib/patient-auth';
 import { createSupabaseServerClient } from '@/app/adapters/server';
 import { cookies } from 'next/headers';
+import { supabaseAdmin } from '@/lib/supabase/admin';
 
 export async function GET() {
 	try {
@@ -10,6 +11,15 @@ export async function GET() {
 		if (!patient) {
 			return NextResponse.json({ error: 'No autenticado' }, { status: 401 });
 		}
+
+		// Check for Verified Badge
+		const { data: badgeData } = await supabaseAdmin
+			.from('patient_reward_redemptions')
+			.select('id, reward:points_rewards_catalog!inner(reward_type)')
+			.eq('patient_id', patient.authId)
+			.eq('status', 'active')
+			.eq('points_rewards_catalog.reward_type', 'verified_badge')
+			.maybeSingle();
 
 		return NextResponse.json({
 			id: patient.patient.id,
@@ -23,6 +33,7 @@ export async function GET() {
 			address: patient.patient.address,
 			allergies: patient.patient.allergies,
 			elderly_conditions: patient.patient.elderly_conditions,
+			hasVerifiedBadge: !!badgeData,
 		});
 	} catch (err: any) {
 		console.error('[Patient Profile API] Error:', err);

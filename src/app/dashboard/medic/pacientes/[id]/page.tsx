@@ -2,7 +2,7 @@
 import { format } from 'date-fns';
 import createSupabaseServerClient from '@/app/adapters/server';
 import Link from 'next/link';
-import { FileText, User, ArrowLeft, Plus } from 'lucide-react';
+import { FileText, User, ArrowLeft, Plus, BadgeCheck } from 'lucide-react';
 import { apiRequireRole } from '@/lib/auth-guards';
 import { cookies } from 'next/headers';
 import PatientHistoryClient from './PatientHistoryClient';
@@ -81,6 +81,15 @@ export default async function PatientHistory({ params }: Props) {
 			return <ErrorBox message={`No se encontró el paciente: ${patientError?.message ?? 'Paciente no encontrado.'}`} />;
 		}
 
+		// Verificar si el paciente tiene la recompensa "Badge Paciente Comprometido" (ASHIRA Salud+)
+		const { data: activeRewards } = await supabase
+			.from('patient_reward_redemptions')
+			.select('reward_id, points_rewards_catalog(reward_type)')
+			.eq('patient_id', id)
+			.eq('status', 'active');
+		
+		const hasVerifiedBadge = activeRewards?.some((r: any) => r.points_rewards_catalog?.reward_type === 'verified_badge') || false;
+
 		// Obtener consultas del paciente
 		// Si no tiene acceso completo, solo mostrar las consultas del médico actual
 		let consultationsQuery = supabase
@@ -121,7 +130,14 @@ export default async function PatientHistory({ params }: Props) {
 
 									<div className="text-right text-white/90">
 										<div className="text-xs uppercase tracking-wide">Paciente</div>
-										<div className="text-sm font-medium">{`${patient.firstName} ${patient.lastName}`}</div>
+										<div className="text-sm font-medium flex items-center justify-end gap-1">
+											{`${patient.firstName} ${patient.lastName}`}
+											{hasVerifiedBadge && (
+												<div title="Paciente Comprometido (ASHIRA Salud+)">
+													<BadgeCheck className="w-4 h-4 text-[#7FFFD4]" />
+												</div>
+											)}
+										</div>
 									</div>
 								</div>
 							</div>
@@ -171,7 +187,14 @@ export default async function PatientHistory({ params }: Props) {
 										<div className="w-12 h-12 rounded-full bg-teal-50  text-teal-700  flex items-center justify-center font-semibold">{patient.firstName?.[0] ?? 'P'}</div>
 										<div>
 											<div className="text-xs text-slate-500">Paciente</div>
-											<div className="font-medium">{`${patient.firstName} ${patient.lastName}`}</div>
+											<div className="font-medium flex items-center gap-1">
+												{`${patient.firstName} ${patient.lastName}`}
+												{hasVerifiedBadge && (
+													<div title="Paciente Comprometido (ASHIRA Salud+)">
+														<BadgeCheck className="w-4 h-4 text-green-500" />
+													</div>
+												)}
+											</div>
 										</div>
 									</div>
 
@@ -218,7 +241,14 @@ export default async function PatientHistory({ params }: Props) {
 
 								<div className="text-right text-white/90">
 									<div className="text-xs uppercase tracking-wide">Paciente</div>
-									<div className="text-sm font-medium">{`${patient.firstName} ${patient.lastName}`}</div>
+									<div className="text-sm font-medium flex items-center justify-end gap-1">
+										{`${patient.firstName} ${patient.lastName}`}
+										{hasVerifiedBadge && (
+											<div title="Paciente Comprometido (ASHIRA Salud+)">
+												<BadgeCheck className="w-4 h-4 text-[#7FFFD4]" />
+											</div>
+										)}
+									</div>
 								</div>
 							</div>
 						</div>
@@ -295,7 +325,14 @@ export default async function PatientHistory({ params }: Props) {
 
 									<div>
 										<div className="text-xs text-slate-500">Paciente</div>
-										<div className="font-medium">{`${patient.firstName} ${patient.lastName}`}</div>
+										<div className="font-medium flex items-center gap-1">
+											{`${patient.firstName} ${patient.lastName}`}
+											{hasVerifiedBadge && (
+												<div title="Paciente Comprometido (ASHIRA Salud+)">
+													<BadgeCheck className="w-4 h-4 text-green-500" />
+												</div>
+											)}
+										</div>
 									</div>
 								</div>
 

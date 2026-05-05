@@ -3,6 +3,7 @@ import { NextResponse } from 'next/server';
 import { getAuthenticatedPatient } from '@/lib/patient-auth';
 import { createSupabaseServerClient } from '@/app/adapters/server';
 import { cookies } from 'next/headers';
+import { awardPoints } from '@/lib/actions/points';
 
 export async function POST(request: Request) {
 	try {
@@ -125,6 +126,9 @@ export async function POST(request: Request) {
 				detail: addError.message 
 			}, { status: 500 });
 		}
+
+		// Otorgar puntos
+		await awardPoints(patient.authId, 'family_member_added');
 
 		return NextResponse.json({ 
 			success: true, 

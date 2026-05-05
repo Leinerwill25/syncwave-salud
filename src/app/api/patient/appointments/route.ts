@@ -52,6 +52,16 @@ export async function GET(request: Request) {
 
 		const { data: appointments, error } = await query;
 
+		// Verificar recompensas ASHIRA Salud+
+		const { data: activeRewards } = await supabase
+			.from('patient_reward_redemptions')
+			.select('reward_id, points_rewards_catalog(reward_type)')
+			.eq('patient_id', patient.patientId)
+			.eq('status', 'active');
+			
+		const hasExtendedReminders = activeRewards?.some((r: any) => r.points_rewards_catalog?.reward_type === 'extended_reminders') || false;
+		const hasWaitlistPriority = activeRewards?.some((r: any) => r.points_rewards_catalog?.reward_type === 'priority_waitlist') || false;
+
 		if (error) {
 			console.error('[Patient Appointments API] Error:', error);
 			console.error('[Patient Appointments API] Patient ID:', patient.patientId);
@@ -66,6 +76,10 @@ export async function GET(request: Request) {
 
 		return NextResponse.json({
 			data: appointments || [],
+			rewards: {
+				hasExtendedReminders,
+				hasWaitlistPriority
+			}
 		}, {
 			headers: {
 				'Cache-Control': 'private, max-age=30', // Cache por 30 segundos

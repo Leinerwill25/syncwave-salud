@@ -122,6 +122,7 @@ async function tryRestoreSessionFromCookies(supabase: any, cookieStore: any): Pr
 export async function getAuthenticatedPatient(): Promise<{
 	patientId: string;
 	userId: string;
+	authId: string;
 	patient: any;
 } | null> {
 	try {
@@ -219,6 +220,7 @@ export async function getAuthenticatedPatient(): Promise<{
 		return {
 			patientId: patient.id,
 			userId: appUser.id,
+			authId: user.id,
 			patient,
 		};
 	} catch (err: any) {

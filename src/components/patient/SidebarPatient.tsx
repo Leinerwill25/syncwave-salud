@@ -1,9 +1,9 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { LayoutDashboard, CalendarDays, Building2, ShoppingBag, FlaskConical, Search, FileText, Pill, Receipt, MessageCircle, Settings, Users, Shield, ChevronRight, ChevronDown, Search as SearchIcon, Bell, QrCode } from 'lucide-react';
+import { LayoutDashboard, CalendarDays, Building2, ShoppingBag, FlaskConical, Search, FileText, Pill, Receipt, MessageCircle, Settings, Users, Shield, ChevronRight, ChevronDown, Search as SearchIcon, Bell, QrCode, HeartPulse, ShieldCheck } from 'lucide-react';
 
 type IconComponent = React.ComponentType<React.SVGProps<SVGSVGElement>>;
 
@@ -20,6 +20,11 @@ const LINKS: LinkItem[] = [
 		href: '/dashboard/patient',
 		label: 'Panel General',
 		icon: LayoutDashboard,
+	},
+	{
+		href: '/dashboard/patient/salud-plus',
+		label: 'ASHIRA Salud+',
+		icon: HeartPulse,
 	},
 	{
 		label: 'Explorar',
@@ -50,6 +55,11 @@ const LINKS: LinkItem[] = [
 	{
 		href: '/dashboard/patient/resultados',
 		label: 'Otros Resultados',
+		icon: FileText,
+	},
+	{
+		href: '/dashboard/patient/informes',
+		label: 'Mis Informes',
 		icon: FileText,
 	},
 	{
@@ -96,6 +106,20 @@ const LINKS: LinkItem[] = [
 export default function SidebarPatient() {
 	const pathname = usePathname() ?? '/';
 	const [openMenus, setOpenMenus] = useState<string[]>([]);
+	const [hasBadge, setHasBadge] = useState<boolean>(false);
+
+	useEffect(() => {
+		const loadBadge = async () => {
+			try {
+				const res = await fetch('/api/patient/profile');
+				if (res.ok) {
+					const data = await res.json();
+					setHasBadge(data.hasVerifiedBadge || false);
+				}
+			} catch (err) {}
+		};
+		loadBadge();
+	}, []);
 
 	const toggleMenu = (label: string) => {
 		setOpenMenus((prev) => (prev.includes(label) ? prev.filter((m) => m !== label) : [...prev, label]));
@@ -229,8 +253,15 @@ export default function SidebarPatient() {
 					{/* Brand */}
 					<div className="flex items-center gap-2 sm:gap-3">
 						<div className="w-10 h-10 sm:w-12 sm:h-12 rounded-lg sm:rounded-xl bg-gradient-to-br from-indigo-600 to-purple-600 flex items-center justify-center text-white font-bold text-base sm:text-lg shadow-md ring-1 ring-white/20 flex-shrink-0">PT</div>
-						<div className="min-w-0">
-							<div className="text-xs sm:text-sm font-semibold text-slate-900 truncate">ASHIRA</div>
+						<div className="min-w-0 flex-1">
+							<div className="flex items-center gap-1.5">
+								<div className="text-xs sm:text-sm font-semibold text-slate-900 truncate">ASHIRA</div>
+								{hasBadge && (
+									<div className="flex items-center justify-center text-[#7FFFD4]" title="Paciente Destacado">
+										<ShieldCheck className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+									</div>
+								)}
+							</div>
 							<div className="text-[10px] sm:text-[12px] text-slate-500 truncate">Panel del Paciente</div>
 						</div>
 					</div>

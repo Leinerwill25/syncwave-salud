@@ -2,6 +2,7 @@ import SidebarPatient from '@/components/patient/SidebarPatient';
 import PatientHamburgerMenu from '@/components/patient/PatientHamburgerMenu';
 import ServerDashboardGuard from '@/components/auth/ServerDashboardGuard';
 import AshPatient from '@/components/patient/AshPatient';
+import PointsProvider from '@/app/dashboard/patient/components/points/PointsProvider';
 
 // Forzar renderizado dinámico ya que usa cookies para autenticación
 export const dynamic = 'force-dynamic';
@@ -27,6 +28,9 @@ export default function PatientLayout({
 				</div>
 
 				<AshPatient />
+				<PointsProvider>
+					<></>
+				</PointsProvider>
 			</div>
 		</ServerDashboardGuard>
 	);

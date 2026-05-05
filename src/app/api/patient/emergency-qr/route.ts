@@ -5,6 +5,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getAuthenticatedPatient } from '@/lib/patient-auth';
 import { createSupabaseServerClient } from '@/app/adapters/server';
 import { randomUUID } from 'crypto';
+import { awardPoints } from '@/lib/actions/points';
 
 /**
  * GET: Obtener el token QR de emergencia del paciente (genera uno si no existe)
@@ -99,6 +100,9 @@ export async function POST(req: NextRequest) {
 					return NextResponse.json({ error: 'Error al habilitar QR' }, { status: 500 });
 				}
 
+				// Sumar puntos por activar QR
+				await awardPoints(patient.authId, 'emergency_qr_activated');
+
 				return NextResponse.json({
 					success: true,
 					enabled: true,
@@ -117,6 +121,10 @@ export async function POST(req: NextRequest) {
 		if (updateError) {
 			console.error('[Emergency QR API] Error actualizando estado:', updateError);
 			return NextResponse.json({ error: 'Error al actualizar estado del QR' }, { status: 500 });
+		}
+
+		if (enabled) {
+			await awardPoints(patient.authId, 'emergency_qr_activated');
 		}
 
 		return NextResponse.json({ success: true, enabled });

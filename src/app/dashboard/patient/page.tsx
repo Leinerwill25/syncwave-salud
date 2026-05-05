@@ -1,9 +1,11 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Calendar, FileText, Pill, FlaskConical, Search, MapPin, Clock, Stethoscope, Building2, ShoppingBag, ChevronRight, Sparkles } from 'lucide-react';
+import { Calendar, FileText, Pill, FlaskConical, Search, MapPin, Clock, Stethoscope, Building2, ShoppingBag, ChevronRight, Sparkles, ShieldCheck } from 'lucide-react';
 import Link from 'next/link';
 import SafeCareBanner from '@/components/dashboard/patient/SafeCareBanner';
+import PendingSurveyBanner from './components/surveys/PendingSurveyBanner';
+import PointsWidget from './components/points/PointsWidget';
 
 type Appointment = {
 	id: string;
@@ -28,6 +30,7 @@ type QuickStats = {
 export default function PatientDashboardPage() {
 	const [loading, setLoading] = useState(true);
 	const [patientName, setPatientName] = useState<string>('');
+	const [hasBadge, setHasBadge] = useState<boolean>(false);
 	const [nextAppointment, setNextAppointment] = useState<Appointment | null>(null);
 	const [stats, setStats] = useState<QuickStats>({
 		upcomingAppointments: 0,
@@ -56,6 +59,7 @@ export default function PatientDashboardPage() {
 			if (patientRes.ok) {
 				const patientData = await patientRes.json();
 				setPatientName(patientData.name || 'Paciente');
+				setHasBadge(patientData.hasVerifiedBadge || false);
 			}
 
 			// Obtener próxima cita
@@ -135,11 +139,24 @@ export default function PatientDashboardPage() {
 
 	return (
 		<div className="space-y-3 sm:space-y-4 md:space-y-6">
+			{/* Banner de Encuesta Pendiente */}
+			<PendingSurveyBanner />
+
+			{/* Widget de Puntos ASHIRA Salud+ */}
+			<PointsWidget />
+
 			{/* Header */}
 			<div className="bg-white/90 backdrop-blur-md rounded-xl sm:rounded-2xl shadow-lg border border-white/20 p-4 sm:p-5 md:p-6 lg:p-8">
 				<div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4">
 					<div className="flex-1 min-w-0 w-full">
-						<h1 className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent mb-1 sm:mb-2 break-words leading-tight">Bienvenido, {patientName}</h1>
+						<div className="flex items-center gap-2 mb-1 sm:mb-2">
+							<h1 className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent break-words leading-tight">Bienvenido, {patientName}</h1>
+							{hasBadge && (
+								<div className="flex items-center justify-center p-1 bg-gradient-to-r from-teal-400 to-[#7FFFD4] rounded-full shadow-[0_0_10px_rgba(127,255,212,0.6)]" title="Paciente Destacado y Comprometido">
+									<ShieldCheck className="w-5 h-5 sm:w-6 sm:h-6 md:w-8 md:h-8 text-white" />
+								</div>
+							)}
+						</div>
 						<p className="text-gray-600 text-xs sm:text-sm md:text-base lg:text-lg">Gestiona tu salud de manera fácil y rápida</p>
 					</div>
 					<div className="hidden sm:flex items-center gap-2 text-xs sm:text-sm text-gray-500 whitespace-nowrap">
@@ -209,7 +226,7 @@ export default function PatientDashboardPage() {
 			)}
 
 			{/* Cards de Acción Rápida */}
-			<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 md:gap-6">
+			<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4 md:gap-6">
 				<Link href="/dashboard/patient/citas" className="group bg-white/90 backdrop-blur-sm rounded-xl shadow-lg p-3 sm:p-4 md:p-6 hover:shadow-2xl transition-all border border-white/20 hover:border-indigo-200 hover:-translate-y-1">
 					<div className="flex items-center justify-between mb-2 sm:mb-3 md:mb-4">
 						<div className="p-2 sm:p-2.5 md:p-3 bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg sm:rounded-xl group-hover:scale-110 transition-transform shadow-lg">
@@ -258,6 +275,16 @@ export default function PatientDashboardPage() {
 					<h3 className="text-sm sm:text-base md:text-lg font-bold text-gray-900 mb-0.5 sm:mb-1">Ver Resultados</h3>
 					<p className="text-[10px] sm:text-xs md:text-sm text-gray-600">Resultados de laboratorio - Próximamente</p>
 				</div>
+
+				<Link href="/dashboard/patient/informes" className="group bg-white/90 backdrop-blur-sm rounded-xl shadow-lg p-3 sm:p-4 md:p-6 hover:shadow-2xl transition-all border border-white/20 hover:border-teal-200 hover:-translate-y-1">
+					<div className="flex items-center justify-between mb-2 sm:mb-3 md:mb-4">
+						<div className="p-2 sm:p-2.5 md:p-3 bg-gradient-to-br from-teal-500 to-teal-600 rounded-lg sm:rounded-xl group-hover:scale-110 transition-transform shadow-lg">
+							<FileText className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6 text-white" />
+						</div>
+					</div>
+					<h3 className="text-sm sm:text-base md:text-lg font-bold text-gray-900 mb-0.5 sm:mb-1 group-hover:text-teal-600 transition-colors">Mis Informes</h3>
+					<p className="text-[10px] sm:text-xs md:text-sm text-gray-600">Documentos y estudios</p>
+				</Link>
 			</div>
 			
 			{/* Banner SafeCare 24/7 - Servicio Destacado */}
