@@ -267,6 +267,15 @@ export async function POST(
 			}
 		}
 
+		// --- SISTEMA DE PUNTOS ASHIRA SALUD+ ---
+		try {
+			const { awardPoints } = await import('@/lib/actions/points');
+			// Otorgar puntos por pagar factura desde el portal
+			await awardPoints(patient.authId, 'invoice_paid_online', id, 'facturacion');
+		} catch (pointsErr) {
+			console.error('[Patient Pay API] Error otorgando puntos:', pointsErr);
+		}
+
 		return NextResponse.json({
 			success: true,
 			message: 'Pago procesado correctamente',

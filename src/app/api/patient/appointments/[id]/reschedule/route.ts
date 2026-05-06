@@ -155,6 +155,20 @@ export async function POST(
 			}
 		}
 
+		// --- SISTEMA DE PUNTOS ASHIRA SALUD+ ---
+		try {
+			const { awardPoints } = await import('@/lib/actions/points');
+			const oldDate = new Date(appointment.scheduled_at);
+			const now = new Date();
+			const diffHours = (oldDate.getTime() - now.getTime()) / (1000 * 60 * 60);
+
+			if (diffHours >= 24) {
+				await awardPoints(patient.authId, 'appointment_rescheduled_early');
+			}
+		} catch (pointsErr) {
+			console.error('[Reschedule API] Error otorgando puntos:', pointsErr);
+		}
+
 		return NextResponse.json({
 			success: true,
 			message: 'Cita reagendada correctamente',

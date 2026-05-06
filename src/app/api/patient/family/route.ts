@@ -74,27 +74,20 @@ export async function GET() {
 						gender
 					)
 				`)
-				.eq('familyGroupId', membership.familyGroupId);
+				.eq('familyGroupId', membership.familyGroupId)
+				.neq('patientId', memberGroup?.ownerId || '');
 
-			// Construir lista completa incluyendo al dueño primero
+			// Construir lista de miembros (excluyendo al dueño ya que el frontend lo maneja aparte)
 			const allMembers: any[] = [];
+			let ownerConsultationCount = 0;
 			
-			// Agregar al dueño primero si existe
-			if (ownerData && !ownerError && memberGroup?.ownerId) {
-				const { count: ownerConsultationCount } = await supabase
+			// Obtener conteo de consultas del dueño
+			if (memberGroup?.ownerId) {
+				const { count } = await supabase
 					.from('consultation')
 					.select('*', { count: 'exact', head: true })
 					.eq('patient_id', memberGroup.ownerId);
-				
-				allMembers.push({
-					id: `owner-${ownerData.id}`,
-					patientId: ownerData.id,
-					roleInGroup: 'Dueño',
-					addedAt: null,
-					patient: ownerData,
-					isOwner: true,
-					consultationCount: ownerConsultationCount || 0,
-				});
+				ownerConsultationCount = count || 0;
 			}
 
 			// Obtener conteo de consultas para cada miembro y agregarlos
@@ -128,7 +121,8 @@ export async function GET() {
 			let consolidatedPrescriptions: any[] = [];
 
 			if (hasFamilyDashboard) {
-				const memberIds = allMembers.map(m => m.patientId);
+				const memberIds = [...allMembers.map(m => m.patientId)];
+				if (memberGroup?.ownerId) memberIds.push(memberGroup.ownerId);
 				
 				// Fetch upcoming appointments
 				const { data: appts } = await supabase
@@ -157,8 +151,8 @@ export async function GET() {
 				hasGroup: true,
 				isOwner: false,
 				group: memberGroup,
-				members: allMembers, // Incluye al dueño y todos los miembros
-				ownerConsultationCount: allMembers.find((m) => m.isOwner)?.consultationCount || 0,
+				members: allMembers, // Solo miembros reales
+				ownerConsultationCount,
 				ownerId: memberGroup?.ownerId || null,
 				hasFamilyDashboard,
 				consolidatedAppointments,
@@ -190,32 +184,23 @@ export async function GET() {
 					gender
 				)
 			`)
-			.eq('familyGroupId', familyGroup.id);
+			.eq('familyGroupId', familyGroup.id)
+			.neq('patientId', patient.patientId);
 
 		if (membersError) {
 			console.error('[Patient Family API] Error obteniendo miembros:', membersError);
 		}
 
-		// Construir lista completa incluyendo al dueño primero
+		// Construir lista de miembros (excluyendo al dueño)
 		const allMembers: any[] = [];
+		let ownerConsultationCount = 0;
 		
-		// Agregar al dueño primero si existe
-		if (ownerData && !ownerError) {
-			const { count: ownerConsultationCount } = await supabase
-				.from('consultation')
-				.select('*', { count: 'exact', head: true })
-				.eq('patient_id', patient.patientId);
-			
-			allMembers.push({
-				id: `owner-${ownerData.id}`,
-				patientId: ownerData.id,
-				roleInGroup: 'Dueño',
-				addedAt: null,
-				patient: ownerData,
-				isOwner: true,
-				consultationCount: ownerConsultationCount || 0,
-			});
-		}
+		// Obtener conteo de consultas del dueño
+		const { count: ownerCount } = await supabase
+			.from('consultation')
+			.select('*', { count: 'exact', head: true })
+			.eq('patient_id', patient.patientId);
+		ownerConsultationCount = ownerCount || 0;
 
 		// Obtener conteo de consultas para cada miembro y agregarlos
 		if (members && Array.isArray(members)) {
@@ -248,7 +233,7 @@ export async function GET() {
 		let consolidatedPrescriptions: any[] = [];
 
 		if (hasFamilyDashboard) {
-			const memberIds = allMembers.map(m => m.patientId);
+			const memberIds = [...allMembers.map(m => m.patientId), patient.patientId];
 			
 			// Fetch upcoming appointments
 			const { data: appts } = await supabase
@@ -275,8 +260,8 @@ export async function GET() {
 			hasGroup: true,
 			isOwner: true,
 			group: familyGroup,
-			members: allMembers, // Incluye al dueño y todos los miembros
-			ownerConsultationCount: allMembers.find((m) => m.isOwner)?.consultationCount || 0,
+			members: allMembers, // Solo miembros reales
+			ownerConsultationCount,
 			ownerId: patient.patientId,
 			hasFamilyDashboard,
 			consolidatedAppointments,

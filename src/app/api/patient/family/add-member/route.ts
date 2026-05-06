@@ -22,6 +22,10 @@ export async function POST(request: Request) {
 			return NextResponse.json({ error: 'patientId es requerido' }, { status: 400 });
 		}
 
+		if (patientId === patient.patientId) {
+			return NextResponse.json({ error: 'No puedes agregarte a ti mismo como miembro del grupo' }, { status: 400 });
+		}
+
 		// Verificar que el paciente es owner del grupo
 		const { data: familyGroup, error: groupError } = await supabase
 			.from('familygroup')

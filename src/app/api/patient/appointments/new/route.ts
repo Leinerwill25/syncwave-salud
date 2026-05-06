@@ -232,6 +232,22 @@ export async function POST(request: Request) {
 			});
 		}
 
+		// --- SISTEMA DE PUNTOS ASHIRA SALUD+ ---
+		try {
+			const { awardPoints } = await import('@/lib/actions/points');
+			// Verificar si es la primera cita del paciente para otorgar puntos
+			const { count: appointmentsCount } = await supabase
+				.from('appointment')
+				.select('id', { count: 'exact', head: true })
+				.eq('patient_id', finalPatientId);
+
+			if (appointmentsCount === 1) {
+				await awardPoints(patient.authId, 'first_appointment_booked');
+			}
+		} catch (pointsErr) {
+			console.error('[New Appointment API] Error otorgando puntos:', pointsErr);
+		}
+
 		return NextResponse.json({
 			success: true,
 			appointment,

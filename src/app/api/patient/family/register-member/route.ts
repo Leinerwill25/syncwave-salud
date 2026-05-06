@@ -129,6 +129,7 @@ export async function POST(request: Request) {
 
 		// Otorgar puntos
 		await awardPoints(patient.authId, 'family_member_added');
+		await awardPoints(patient.authId, 'family_member_profile_completed', newPatient.id, 'patient');
 
 		return NextResponse.json({ 
 			success: true, 

@@ -171,10 +171,63 @@ export async function PATCH(req: NextRequest, context: { params: Promise<{ id: s
 			.from('consultation')
 			.update(updatePayload)
 			.eq('id', id)
-			.select()
+			.select('*, patient:patient_id(firstName, lastName)')
 			.single();
 
 		if (error) throw error;
+
+		// --- SISTEMA DE PUNTOS ASHIRA SALUD+ ---
+		// Si se acaba de marcar como finalizada (tiene ended_at)
+		if (data.ended_at && data.patient_id) {
+			try {
+				const { awardPoints, checkAndAwardStreak } = await import('@/lib/actions/points');
+				
+				// 1. Obtener el authId del paciente (necesario para awardPoints)
+				const { data: userData } = await supabase
+					.from('users')
+					.select('authId')
+					.eq('patientProfileId', data.patient_id)
+					.maybeSingle();
+
+				if (userData?.authId) {
+					// 2. Otorgar puntos por asistir a la cita
+					await awardPoints(userData.authId, 'appointment_attended');
+					
+					// 3. Verificar rachas
+					await checkAndAwardStreak(userData.authId);
+
+					// 4. Verificar si es un miembro de grupo familiar para premiar al dueño
+					const { data: membership } = await supabase
+						.from('familygroupmember')
+						.select('familyGroupId')
+						.eq('patientId', data.patient_id)
+						.maybeSingle();
+
+					if (membership) {
+						const { data: group } = await supabase
+							.from('familygroup')
+							.select('ownerId')
+							.eq('id', membership.familyGroupId)
+							.maybeSingle();
+
+						if (group && group.ownerId && group.ownerId !== data.patient_id) {
+							// El paciente tiene un dueño (ej: hijo), premiar al dueño (padre/madre)
+							const { data: ownerUser } = await supabase
+								.from('users')
+								.select('authId')
+								.eq('patientProfileId', group.ownerId)
+								.maybeSingle();
+							
+							if (ownerUser?.authId) {
+								await awardPoints(ownerUser.authId, 'family_member_appointment_attended');
+							}
+						}
+					}
+				}
+			} catch (pointsErr) {
+				console.error('[Consultations API PATCH] Error otorgando puntos:', pointsErr);
+			}
+		}
 
 		return NextResponse.json({ message: 'Consulta actualizada correctamente', data }, { status: 200 });
 	} catch (err: any) {

@@ -50,7 +50,11 @@ export async function GET() {
       }
     }
 
-    return NextResponse.json(data || []);
+    return NextResponse.json(data || [], {
+      headers: {
+        'Cache-Control': 'private, max-age=60',
+      },
+    });
   } catch (err: any) {
     console.error('[Patient Lab Results API] Internal error:', err);
     return NextResponse.json({ error: 'Error interno', detail: err.message }, { status: 500 });

@@ -253,7 +253,7 @@ export async function GET(request: Request) {
 		const { data: activeRewards } = await supabase
 			.from('patient_reward_redemptions')
 			.select('reward_id, points_rewards_catalog(reward_type)')
-			.eq('patient_id', patient.patientId)
+			.eq('patient_id', patient.authId)
 			.eq('status', 'active');
 		
 		const hasPdfExportReward = activeRewards?.some((r: any) => r.points_rewards_catalog?.reward_type === 'pdf_export') || false;

@@ -667,11 +667,11 @@ export default function FamilySettingsPage() {
 							<div className="border-t border-gray-200 pt-4 sm:pt-5 md:pt-6">
 								<h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-3 sm:mb-4 flex items-center gap-1.5 sm:gap-2">
 									<Users className="w-4 h-4 sm:w-5 sm:h-5 text-indigo-600 flex-shrink-0" />
-									<span>Rol en el Grupo</span>
+									<span>Parentesco en el Grupo</span>
 								</h3>
 								<div>
 									<label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1.5 sm:mb-2">
-										Rol
+										Parentesco
 									</label>
 									<select
 										value={formData.roleInGroup}

@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { LayoutDashboard, CalendarDays, Building2, ShoppingBag, FlaskConical, Search, FileText, Pill, Receipt, MessageCircle, Settings, Users, Shield, ChevronRight, ChevronDown, Search as SearchIcon, Menu, X, Bell, HeartPulse } from 'lucide-react';
+import { LayoutDashboard, CalendarDays, Building2, ShoppingBag, FlaskConical, Search, FileText, Pill, Receipt, MessageCircle, Settings, Users, Shield, ChevronRight, ChevronDown, Search as SearchIcon, Menu, X, Bell, HeartPulse, QrCode, ShieldCheck } from 'lucide-react';
 
 type IconComponent = React.ComponentType<React.SVGProps<SVGSVGElement>>;
 
@@ -13,91 +13,88 @@ type LinkItem = {
 	icon?: IconComponent;
 	submenu?: LinkItem[];
 	comingSoon?: boolean;
+	type?: 'link' | 'header';
 };
 
-const LINKS: LinkItem[] = [
+const SECTIONS: { title?: string; items: LinkItem[] }[] = [
 	{
-		href: '/dashboard/patient',
-		label: 'Panel General',
-		icon: LayoutDashboard,
+		title: 'Principal',
+		items: [
+			{ href: '/dashboard/patient', label: 'Panel General', icon: LayoutDashboard },
+			{ href: '/dashboard/patient/salud-plus', label: 'ASHIRA Salud+', icon: HeartPulse },
+		]
 	},
 	{
-		href: '/dashboard/patient/salud-plus',
-		label: 'ASHIRA Salud+',
-		icon: HeartPulse,
+		title: 'Mi Atención',
+		items: [
+			{ href: '/dashboard/patient/citas', label: 'Mis Citas', icon: CalendarDays },
+			{ href: '/dashboard/patient/recetas', label: 'Recetas Médicas', icon: Pill },
+			{ href: '/dashboard/patient/recordatorios', label: 'Recordatorios', icon: Bell },
+		]
 	},
 	{
-		label: 'Explorar',
-		icon: Search,
-		submenu: [
-			{ href: '/dashboard/patient/explore', label: 'Buscador Global' },
-			{ href: '/dashboard/patient/consultorio', label: 'Consultorios' },
-			{ href: '/dashboard/patient/clinics', label: 'Clínicas' },
-			{ href: '/dashboard/patient/pharmacies', label: 'Farmacias', comingSoon: true },
-			{ href: '/dashboard/patient/labs', label: 'Laboratorios', comingSoon: true },
-		],
+		title: 'Expediente Digital',
+		items: [
+			{ href: '/dashboard/patient/historial', label: 'Mi Historial Médico', icon: FileText },
+			{ href: '/dashboard/patient/lab-resultados', label: 'Exámenes de Laboratorio', icon: FlaskConical },
+			{ href: '/dashboard/patient/resultados', label: 'Estudios e Imágenes', icon: FileText },
+			{ href: '/dashboard/patient/informes', label: 'Informes y Certificados', icon: FileText },
+		]
 	},
 	{
-		href: '/dashboard/patient/citas',
-		label: 'Mis Citas',
-		icon: CalendarDays,
+		title: 'Servicios y Seguridad',
+		items: [
+			{
+				label: 'Grupo Familiar',
+				icon: Users,
+				submenu: [
+					{ href: '/dashboard/patient/family', label: 'Mi Grupo' },
+					{ href: '/dashboard/patient/family/codes', label: 'Códigos de Acceso' },
+					{ href: '/dashboard/patient/family/settings', label: 'Registro Familiar' },
+				],
+			},
+			{ href: '/dashboard/patient/qr-urgente', label: 'QR de Emergencia', icon: QrCode },
+			{
+				label: 'Explorar',
+				icon: Search,
+				submenu: [
+					{ href: '/dashboard/patient/explore', label: 'Buscador Global' },
+					{ href: '/dashboard/patient/consultorio', label: 'Consultorios' },
+					{ href: '/dashboard/patient/clinics', label: 'Clínicas' },
+					{ href: '/dashboard/patient/pharmacies', label: 'Farmacias', comingSoon: true },
+					{ href: '/dashboard/patient/labs', label: 'Laboratorios', comingSoon: true },
+				],
+			},
+		]
 	},
 	{
-		href: '/dashboard/patient/historial',
-		label: 'Historial Médico',
-		icon: FileText,
-	},
-	{
-		href: '/dashboard/patient/resultados',
-		label: 'Resultados',
-		icon: FlaskConical,
-		comingSoon: true,
-	},
-	{
-		href: '/dashboard/patient/informes',
-		label: 'Mis Informes',
-		icon: FileText,
-	},
-	{
-		href: '/dashboard/patient/recetas',
-		label: 'Recetas',
-		icon: Pill,
-	},
-	{
-		href: '/dashboard/patient/recordatorios',
-		label: 'Recordatorios',
-		icon: Bell,
-	},
-	{
-		href: '/dashboard/patient/pagos',
-		label: 'Pagos',
-		icon: Receipt,
-	},
-	{
-		href: '/dashboard/patient/mensajes',
-		label: 'Mensajes',
-		icon: MessageCircle,
-	},
-	{
-		label: 'Grupo Familiar',
-		icon: Users,
-		submenu: [
-			{ href: '/dashboard/patient/family', label: 'Mi Grupo' },
-			{ href: '/dashboard/patient/family/codes', label: 'Códigos de Acceso' },
-			{ href: '/dashboard/patient/family/settings', label: 'Configuración' },
-		],
-	},
-	{
-		href: '/dashboard/patient/configuracion',
-		label: 'Configuración',
-		icon: Settings,
-	},
+		title: 'Administración',
+		items: [
+			{ href: '/dashboard/patient/mensajes', label: 'Mensajes', icon: MessageCircle },
+			{ href: '/dashboard/patient/pagos', label: 'Pagos y Facturas', icon: Receipt },
+			{ href: '/dashboard/patient/configuracion', label: 'Configuración', icon: Settings },
+		]
+	}
 ];
 
 export default function PatientHamburgerMenu() {
 	const pathname = usePathname() ?? '/';
 	const [isOpen, setIsOpen] = useState(false);
 	const [openMenus, setOpenMenus] = useState<string[]>([]);
+	const [hasBadge, setHasBadge] = useState<boolean>(false);
+
+	useEffect(() => {
+		const loadBadge = async () => {
+			try {
+				const res = await fetch('/api/patient/profile');
+				if (res.ok) {
+					const data = await res.json();
+					setHasBadge(data.hasVerifiedBadge || false);
+				}
+			} catch (err) {}
+		};
+		loadBadge();
+	}, []);
 
 	// Cerrar menú cuando cambia la ruta
 	useEffect(() => {
@@ -265,7 +262,14 @@ export default function PatientHamburgerMenu() {
 						<div className="flex items-center gap-3">
 							<div className="w-12 h-12 rounded-xl bg-gradient-to-br from-indigo-600 to-purple-600 flex items-center justify-center text-white font-bold text-lg shadow-md ring-1 ring-white/20">PT</div>
 							<div>
-								<div className="text-sm font-semibold text-slate-900">ASHIRA</div>
+								<div className="flex items-center gap-1.5">
+									<div className="text-sm font-semibold text-slate-900">ASHIRA</div>
+									{hasBadge && (
+										<div className="flex items-center justify-center text-[#7FFFD4]">
+											<ShieldCheck className="w-3.5 h-3.5" />
+										</div>
+									)}
+								</div>
 								<div className="text-[12px] text-slate-500">Panel del Paciente</div>
 							</div>
 						</div>
@@ -281,8 +285,19 @@ export default function PatientHamburgerMenu() {
 					</div>
 
 					{/* Navigation */}
-					<nav className="mt-1 flex-1" aria-label="Navegación principal">
-						<ul className="flex flex-col gap-1">{LINKS.map(renderLink)}</ul>
+					<nav className="mt-1 flex-1 flex flex-col gap-4 overflow-y-auto" aria-label="Navegación principal">
+						{SECTIONS.map((section, idx) => (
+							<div key={section.title || idx} className="flex flex-col gap-1">
+								{section.title && (
+									<h3 className="px-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">
+										{section.title}
+									</h3>
+								)}
+								<ul className="flex flex-col gap-1">
+									{section.items.map(renderLink)}
+								</ul>
+							</div>
+						))}
 					</nav>
 
 					{/* Footer */}

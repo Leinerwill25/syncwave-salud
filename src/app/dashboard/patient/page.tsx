@@ -54,55 +54,19 @@ export default function PatientDashboardPage() {
 		try {
 			setLoading(true);
 
-			// Obtener datos del paciente
-			const patientRes = await fetch('/api/patient/profile', { credentials: 'include' });
-			if (patientRes.ok) {
-				const patientData = await patientRes.json();
-				setPatientName(patientData.name || 'Paciente');
-				setHasBadge(patientData.hasVerifiedBadge || false);
+			// Petición única que trae todo lo necesario para el dashboard
+			const res = await fetch('/api/patient/dashboard-summary', { credentials: 'include' });
+			
+			if (res.ok) {
+				const data = await res.json();
+				setPatientName(data.profile?.name || 'Paciente');
+				setHasBadge(data.hasVerifiedBadge || false);
+				setNextAppointment(data.nextAppointment);
+				setStats(data.stats);
+			} else {
+				throw new Error('Error al obtener resumen del dashboard');
 			}
 
-			// Obtener próxima cita
-			const appointmentsRes = await fetch('/api/patient/appointments?status=upcoming&limit=1', {
-				credentials: 'include',
-			});
-			if (appointmentsRes.ok) {
-				const appointmentsData = await appointmentsRes.json();
-				if (appointmentsData.data && appointmentsData.data.length > 0) {
-					setNextAppointment(appointmentsData.data[0]);
-				}
-			}
-
-			// Obtener estadísticas con límites optimizados
-			const [prescriptionsRes, resultsRes, messagesRes] = await Promise.all([
-				fetch('/api/patient/recetas?status=active&limit=10', { credentials: 'include' }), 
-				fetch('/api/patient/resultados?limit=10', { credentials: 'include' }), 
-				fetch('/api/patient/messages?limit=10&limitMessages=3', { credentials: 'include' })
-			]);
-
-			if (prescriptionsRes.ok) {
-				const prescData = await prescriptionsRes.json();
-				setStats((prev) => ({ ...prev, activePrescriptions: prescData.data?.length || 0 }));
-			}
-
-			if (resultsRes.ok) {
-				const resultsData = await resultsRes.json();
-				setStats((prev) => ({ ...prev, pendingResults: resultsData.data?.length || 0 }));
-			}
-
-			if (messagesRes.ok) {
-				const messagesData = await messagesRes.json();
-				const unread = (messagesData.messages || []).filter((m: any) => !m.read).length;
-				setStats((prev) => ({ ...prev, unreadMessages: unread }));
-			}
-
-			const appointmentsCountRes = await fetch('/api/patient/appointments?status=upcoming', {
-				credentials: 'include',
-			});
-			if (appointmentsCountRes.ok) {
-				const appointmentsCountData = await appointmentsCountRes.json();
-				setStats((prev) => ({ ...prev, upcomingAppointments: appointmentsCountData.data?.length || 0 }));
-			}
 		} catch (err) {
 			console.error('Error cargando dashboard:', err);
 		} finally {
@@ -151,19 +115,30 @@ export default function PatientDashboardPage() {
 					<div className="flex-1 min-w-0 w-full">
 						<div className="flex items-center gap-2 mb-1 sm:mb-2">
 							<h1 className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent break-words leading-tight">Bienvenido, {patientName}</h1>
-							{hasBadge && (
-								<div className="flex items-center justify-center p-1 bg-gradient-to-r from-teal-400 to-[#7FFFD4] rounded-full shadow-[0_0_10px_rgba(127,255,212,0.6)]" title="Paciente Destacado y Comprometido">
-									<ShieldCheck className="w-5 h-5 sm:w-6 sm:h-6 md:w-8 md:h-8 text-white" />
-								</div>
-							)}
 						</div>
 						<p className="text-gray-600 text-xs sm:text-sm md:text-base lg:text-lg">Gestiona tu salud de manera fácil y rápida</p>
 					</div>
-					<div className="hidden sm:flex items-center gap-2 text-xs sm:text-sm text-gray-500 whitespace-nowrap">
-						<Clock className="w-3.5 h-3.5 sm:w-4 sm:h-4 flex-shrink-0" />
-						<span className="hidden md:inline">{new Date().toLocaleDateString('es-ES', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</span>
-						<span className="md:hidden">{new Date().toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
+					<div className="hidden sm:flex flex-col items-end gap-2 whitespace-nowrap">
+						{hasBadge && (
+							<div className="flex items-center gap-2 px-3 sm:px-4 py-1.5 sm:py-2 bg-gradient-to-r from-teal-50 to-[#7FFFD4]/10 border border-teal-200 rounded-full text-teal-700 shadow-sm animate-pulse-slow">
+								<ShieldCheck className="w-4 h-4 sm:w-5 sm:h-5" />
+								<span className="text-[10px] sm:text-xs font-bold uppercase tracking-wider">Paciente Destacado</span>
+							</div>
+						)}
+						<div className="flex items-center gap-2 text-[10px] sm:text-xs md:text-sm text-gray-500">
+							<Clock className="w-3.5 h-3.5 sm:w-4 sm:h-4 flex-shrink-0" />
+							<span className="hidden md:inline">{new Date().toLocaleDateString('es-ES', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</span>
+							<span className="md:hidden">{new Date().toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
+						</div>
 					</div>
+					
+					{/* Mobile version of the badge */}
+					{hasBadge && (
+						<div className="sm:hidden flex items-center gap-2 px-3 py-1 bg-teal-50 border border-teal-200 rounded-full text-teal-700 shadow-sm w-fit">
+							<ShieldCheck className="w-4 h-4" />
+							<span className="text-[10px] font-bold uppercase tracking-wider">Paciente Destacado</span>
+						</div>
+					)}
 				</div>
 			</div>
 

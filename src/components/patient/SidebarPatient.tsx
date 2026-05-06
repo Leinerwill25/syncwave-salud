@@ -13,94 +13,68 @@ type LinkItem = {
 	icon?: IconComponent;
 	submenu?: LinkItem[];
 	comingSoon?: boolean;
+	type?: 'link' | 'header';
 };
 
-const LINKS: LinkItem[] = [
+const SECTIONS: { title?: string; items: LinkItem[] }[] = [
 	{
-		href: '/dashboard/patient',
-		label: 'Panel General',
-		icon: LayoutDashboard,
+		title: 'Principal',
+		items: [
+			{ href: '/dashboard/patient', label: 'Panel General', icon: LayoutDashboard },
+			{ href: '/dashboard/patient/salud-plus', label: 'ASHIRA Salud+', icon: HeartPulse },
+		]
 	},
 	{
-		href: '/dashboard/patient/salud-plus',
-		label: 'ASHIRA Salud+',
-		icon: HeartPulse,
+		title: 'Mi Atención',
+		items: [
+			{ href: '/dashboard/patient/citas', label: 'Mis Citas', icon: CalendarDays },
+			{ href: '/dashboard/patient/recetas', label: 'Recetas Médicas', icon: Pill },
+			{ href: '/dashboard/patient/recordatorios', label: 'Recordatorios', icon: Bell },
+		]
 	},
 	{
-		label: 'Explorar',
-		icon: Search,
-		submenu: [
-			{ href: '/dashboard/patient/explore', label: 'Buscador Global' },
-			{ href: '/dashboard/patient/consultorio', label: 'Consultorios' },
-			{ href: '/dashboard/patient/clinics', label: 'Clínicas' },
-			{ href: '/dashboard/patient/pharmacies', label: 'Farmacias', comingSoon: true },
-			{ href: '/dashboard/patient/labs', label: 'Laboratorios', comingSoon: true },
-		],
+		title: 'Expediente Digital',
+		items: [
+			{ href: '/dashboard/patient/historial', label: 'Mi Historial Médico', icon: FileText },
+			{ href: '/dashboard/patient/lab-resultados', label: 'Exámenes de Laboratorio', icon: FlaskConical },
+			{ href: '/dashboard/patient/resultados', label: 'Estudios e Imágenes', icon: FileText },
+			{ href: '/dashboard/patient/informes', label: 'Informes y Certificados', icon: FileText },
+		]
 	},
 	{
-		href: '/dashboard/patient/citas',
-		label: 'Mis Citas',
-		icon: CalendarDays,
+		title: 'Servicios y Seguridad',
+		items: [
+			{
+				label: 'Grupo Familiar',
+				icon: Users,
+				submenu: [
+					{ href: '/dashboard/patient/family', label: 'Mi Grupo' },
+					{ href: '/dashboard/patient/family/codes', label: 'Códigos de Acceso' },
+					{ href: '/dashboard/patient/family/settings', label: 'Registro Familiar' },
+				],
+			},
+			{ href: '/dashboard/patient/qr-urgente', label: 'QR de Emergencia', icon: QrCode },
+			{
+				label: 'Explorar',
+				icon: Search,
+				submenu: [
+					{ href: '/dashboard/patient/explore', label: 'Buscador Global' },
+					{ href: '/dashboard/patient/consultorio', label: 'Consultorios' },
+					{ href: '/dashboard/patient/clinics', label: 'Clínicas' },
+					{ href: '/dashboard/patient/pharmacies', label: 'Farmacias', comingSoon: true },
+					{ href: '/dashboard/patient/labs', label: 'Laboratorios', comingSoon: true },
+				],
+			},
+		]
 	},
 	{
-		href: '/dashboard/patient/historial',
-		label: 'Historial Médico',
-		icon: FileText,
-	},
-	{
-		href: '/dashboard/patient/lab-resultados',
-		label: 'Resultados de Laboratorio',
-		icon: FlaskConical,
-	},
-	{
-		href: '/dashboard/patient/resultados',
-		label: 'Otros Resultados',
-		icon: FileText,
-	},
-	{
-		href: '/dashboard/patient/informes',
-		label: 'Mis Informes',
-		icon: FileText,
-	},
-	{
-		href: '/dashboard/patient/recetas',
-		label: 'Recetas',
-		icon: Pill,
-	},
-	{
-		href: '/dashboard/patient/recordatorios',
-		label: 'Recordatorios',
-		icon: Bell,
-	},
-	{
-		href: '/dashboard/patient/qr-urgente',
-		label: 'QR Urgente',
-		icon: QrCode,
-	},
-	{
-		href: '/dashboard/patient/pagos',
-		label: 'Pagos',
-		icon: Receipt,
-	},
-	{
-		href: '/dashboard/patient/mensajes',
-		label: 'Mensajes',
-		icon: MessageCircle,
-	},
-	{
-		label: 'Grupo Familiar',
-		icon: Users,
-		submenu: [
-			{ href: '/dashboard/patient/family', label: 'Mi Grupo' },
-			{ href: '/dashboard/patient/family/codes', label: 'Códigos de Acceso' },
-			{ href: '/dashboard/patient/family/settings', label: 'Configuración' },
-		],
-	},
-	{
-		href: '/dashboard/patient/configuracion',
-		label: 'Configuración',
-		icon: Settings,
-	},
+		title: 'Administración',
+		items: [
+			{ href: '/dashboard/patient/mensajes', label: 'Mensajes', icon: MessageCircle },
+			{ href: '/dashboard/patient/pagos', label: 'Pagos y Facturas', icon: Receipt },
+			{ href: '/dashboard/patient/configuracion', label: 'Configuración', icon: Settings },
+		]
+	}
 ];
 
 export default function SidebarPatient() {
@@ -273,8 +247,19 @@ export default function SidebarPatient() {
 					</div>
 
 					{/* Navigation */}
-					<nav className="mt-1" aria-label="Navegación principal">
-						<ul className="flex flex-col gap-0.5 sm:gap-1">{LINKS.map(renderLink)}</ul>
+					<nav className="mt-1 flex flex-col gap-4 overflow-y-auto max-h-[70vh] pr-1 custom-scrollbar" aria-label="Navegación principal">
+						{SECTIONS.map((section, idx) => (
+							<div key={section.title || idx} className="flex flex-col gap-1">
+								{section.title && (
+									<h3 className="px-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">
+										{section.title}
+									</h3>
+								)}
+								<ul className="flex flex-col gap-0.5 sm:gap-1">
+									{section.items.map(renderLink)}
+								</ul>
+							</div>
+						))}
 					</nav>
 
 					{/* Footer */}

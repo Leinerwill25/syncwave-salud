@@ -57,7 +57,8 @@ export async function createMedicalReport(payload: Omit<PatientMedicalReportInse
 
 	// Ashira Salud+: Award points
 	try {
-		await awardPoints(userData.user.id, 'medical_report_uploaded', data.id, 'patient_medical_reports');
+		const eventKey = data.report_type === 'laboratorio' ? 'lab_result_uploaded' : 'medical_report_uploaded';
+		await awardPoints(userData.user.id, eventKey, data.id, 'patient_medical_reports');
 	} catch (pointsError) {
 		console.error('[Points] Failed to award:', pointsError);
 	}
