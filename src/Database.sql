@@ -450,6 +450,28 @@ CREATE TABLE public.consultation_share_link (
   CONSTRAINT fk_share_link_consultation FOREIGN KEY (consultation_id) REFERENCES public.consultation(id),
   CONSTRAINT fk_share_link_patient FOREIGN KEY (patient_id) REFERENCES public.patient(id)
 );
+CREATE TABLE public.consultation_survey_responses (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  consultation_id uuid NOT NULL,
+  patient_id uuid NOT NULL,
+  survey_id uuid NOT NULL,
+  answers jsonb NOT NULL,
+  dismissed boolean DEFAULT false,
+  completed_at timestamp with time zone,
+  created_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT consultation_survey_responses_pkey PRIMARY KEY (id),
+  CONSTRAINT consultation_survey_responses_consultation_id_fkey FOREIGN KEY (consultation_id) REFERENCES public.consultation(id),
+  CONSTRAINT consultation_survey_responses_patient_id_fkey FOREIGN KEY (patient_id) REFERENCES auth.users(id),
+  CONSTRAINT consultation_survey_responses_survey_id_fkey FOREIGN KEY (survey_id) REFERENCES public.consultation_surveys(id)
+);
+CREATE TABLE public.consultation_surveys (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  version integer NOT NULL DEFAULT 1,
+  is_active boolean DEFAULT true,
+  questions jsonb NOT NULL,
+  created_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT consultation_surveys_pkey PRIMARY KEY (id)
+);
 CREATE TABLE public.consultorio_role_audit_log (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
   organization_id uuid NOT NULL,
@@ -1165,6 +1187,26 @@ CREATE TABLE public.patient_attentions (
   CONSTRAINT patient_attentions_specialist_id_fkey FOREIGN KEY (specialist_id) REFERENCES public.specialists(id),
   CONSTRAINT patient_attentions_linked_doc_fkey FOREIGN KEY (linked_document_id) REFERENCES public.clinical_documents(id)
 );
+CREATE TABLE public.patient_medical_reports (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  patient_id uuid NOT NULL,
+  consultation_id uuid,
+  title text NOT NULL,
+  description text,
+  report_type text NOT NULL CHECK (report_type = ANY (ARRAY['laboratorio'::text, 'imagen'::text, 'ecografia'::text, 'resonancia'::text, 'rayos_x'::text, 'tomografia'::text, 'electrocardiograma'::text, 'biopsia'::text, 'otro'::text])),
+  file_url text NOT NULL,
+  file_name text NOT NULL,
+  file_size bigint,
+  file_type text,
+  uploaded_by uuid,
+  is_shared_with_doctor boolean DEFAULT true,
+  created_at timestamp with time zone DEFAULT now(),
+  updated_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT patient_medical_reports_pkey PRIMARY KEY (id),
+  CONSTRAINT patient_medical_reports_patient_id_fkey FOREIGN KEY (patient_id) REFERENCES auth.users(id),
+  CONSTRAINT patient_medical_reports_consultation_id_fkey FOREIGN KEY (consultation_id) REFERENCES public.consultation(id),
+  CONSTRAINT patient_medical_reports_uploaded_by_fkey FOREIGN KEY (uploaded_by) REFERENCES auth.users(id)
+);
 CREATE TABLE public.patient_origin_records (
   origin_id uuid NOT NULL DEFAULT gen_random_uuid(),
   patient_id uuid,
@@ -1198,6 +1240,37 @@ CREATE TABLE public.patient_origin_records (
   CONSTRAINT patient_origin_records_updated_by_fkey FOREIGN KEY (updated_by) REFERENCES auth.users(id),
   CONSTRAINT patient_origin_records_patient_id_fkey FOREIGN KEY (patient_id) REFERENCES public.patient(id),
   CONSTRAINT patient_origin_records_unregistered_patient_id_fkey FOREIGN KEY (unregistered_patient_id) REFERENCES public.unregisteredpatients(id)
+);
+CREATE TABLE public.patient_points_daily_limits (
+  patient_id uuid NOT NULL,
+  event_category text NOT NULL,
+  event_date date NOT NULL DEFAULT CURRENT_DATE,
+  count integer NOT NULL DEFAULT 0,
+  CONSTRAINT patient_points_daily_limits_pkey PRIMARY KEY (patient_id, event_category, event_date),
+  CONSTRAINT patient_points_daily_limits_patient_id_fkey FOREIGN KEY (patient_id) REFERENCES auth.users(id)
+);
+CREATE TABLE public.patient_points_summary (
+  patient_id uuid NOT NULL,
+  total_earned integer NOT NULL DEFAULT 0,
+  total_spent integer NOT NULL DEFAULT 0,
+  current_balance integer DEFAULT (total_earned - total_spent),
+  current_level integer NOT NULL DEFAULT 1,
+  streak_count integer NOT NULL DEFAULT 0,
+  updated_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT patient_points_summary_pkey PRIMARY KEY (patient_id),
+  CONSTRAINT patient_points_summary_patient_id_fkey FOREIGN KEY (patient_id) REFERENCES auth.users(id)
+);
+CREATE TABLE public.patient_points_transactions (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  patient_id uuid NOT NULL,
+  event_type text NOT NULL,
+  points integer NOT NULL,
+  description text NOT NULL,
+  reference_id uuid,
+  reference_table text,
+  created_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT patient_points_transactions_pkey PRIMARY KEY (id),
+  CONSTRAINT patient_points_transactions_patient_id_fkey FOREIGN KEY (patient_id) REFERENCES auth.users(id)
 );
 CREATE TABLE public.patient_prior_treatments (
   treatment_id uuid NOT NULL DEFAULT gen_random_uuid(),
@@ -1235,6 +1308,19 @@ CREATE TABLE public.patient_prior_treatments (
   CONSTRAINT patient_prior_treatments_prescribed_at_org_id_fkey FOREIGN KEY (prescribed_at_org_id) REFERENCES public.organization(id),
   CONSTRAINT patient_prior_treatments_created_by_fkey FOREIGN KEY (created_by) REFERENCES auth.users(id),
   CONSTRAINT patient_prior_treatments_updated_by_fkey FOREIGN KEY (updated_by) REFERENCES auth.users(id)
+);
+CREATE TABLE public.patient_reward_redemptions (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  patient_id uuid NOT NULL,
+  reward_id uuid NOT NULL,
+  points_spent integer NOT NULL,
+  status text NOT NULL DEFAULT 'active'::text CHECK (status = ANY (ARRAY['active'::text, 'used'::text, 'expired'::text])),
+  activated_at timestamp with time zone DEFAULT now(),
+  expires_at timestamp with time zone,
+  created_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT patient_reward_redemptions_pkey PRIMARY KEY (id),
+  CONSTRAINT patient_reward_redemptions_patient_id_fkey FOREIGN KEY (patient_id) REFERENCES auth.users(id),
+  CONSTRAINT patient_reward_redemptions_reward_id_fkey FOREIGN KEY (reward_id) REFERENCES public.points_rewards_catalog(id)
 );
 CREATE TABLE public.patientaccesskey (
   patient_id uuid NOT NULL,
@@ -1332,6 +1418,18 @@ CREATE TABLE public.plan (
   createdAt timestamp with time zone NOT NULL DEFAULT now(),
   updatedAt timestamp with time zone NOT NULL DEFAULT now(),
   CONSTRAINT plan_pkey PRIMARY KEY (id)
+);
+CREATE TABLE public.points_rewards_catalog (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  name text NOT NULL,
+  description text NOT NULL,
+  cost_points integer NOT NULL,
+  reward_type text NOT NULL CHECK (reward_type = ANY (ARRAY['priority_waitlist'::text, 'extended_reminders'::text, 'pdf_export'::text, 'family_dashboard'::text, 'verified_badge'::text])),
+  min_level integer NOT NULL DEFAULT 1,
+  is_active boolean DEFAULT true,
+  icon text,
+  created_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT points_rewards_catalog_pkey PRIMARY KEY (id)
 );
 CREATE TABLE public.prescription (
   id uuid NOT NULL DEFAULT gen_random_uuid(),

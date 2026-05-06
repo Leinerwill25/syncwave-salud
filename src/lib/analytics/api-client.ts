@@ -138,4 +138,26 @@ export async function getActionTypeDistribution(
 ): Promise<any[]> {
   return await fetchAnalyticsData<any[]>('action-distribution', filters) || [];
 }
+export async function getNetworkStats(filters: AnalyticsFilters): Promise<{ organizations: number; patients: number; staff: number }> {
+  const data = await fetchAnalyticsData<any>('network-stats', filters);
+  return data || { organizations: 0, patients: 0, staff: 0 };
+}
 
+export async function getExtraStats(filters: AnalyticsFilters): Promise<any> {
+  const [unreg, evolution] = await Promise.all([
+    fetchAnalyticsData<any>('unregistered-stats', filters),
+    fetchAnalyticsData<any>('organization-evolution', filters)
+  ]);
+  
+  return { 
+    unregistered: unreg?.unregistered || { total: 0, recurring: 0 },
+    evolution: evolution || { chartData: [], organizations: [] }
+  };
+}
+
+export async function getOrganizations(): Promise<any[]> {
+  const data = await fetchAnalyticsData<any[]>('organizations', {
+    timeRange: { start: new Date(), end: new Date() } // Fechas dummy para cumplir el tipo
+  });
+  return data || [];
+}

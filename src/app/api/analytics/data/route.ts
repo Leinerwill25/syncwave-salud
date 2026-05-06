@@ -129,9 +129,9 @@ async function getLabResults(admin: any, startDate: string, endDate: string) {
 async function getPatientDemographics(admin: any, startDate: string, endDate: string) {
   const { data: patients, error } = await admin
     .from('patient')
-    .select('dob, gender, address, created_at')
-    .gte('created_at', startDate)
-    .lte('created_at', endDate);
+    .select('dob, gender, address, createdAt')
+    .gte('createdAt', startDate)
+    .lte('createdAt', endDate);
 
   if (error) throw error;
   const grouped = (patients || []).reduce((acc: any, item: any) => {
@@ -155,18 +155,27 @@ async function getPatientDemographics(admin: any, startDate: string, endDate: st
 }
 
 async function getPatientGrowth(admin: any, endDate: string) {
-  const { data: patients, error } = await admin.from('patient').select('created_at').lte('created_at', endDate);
+  const { data: patients, error } = await admin.from('patient').select('createdAt').lte('createdAt', endDate);
   if (error) throw error;
-  const monthly = (patients || []).reduce((acc: any, item: any) => {
-    const month = new Date(item.created_at).toLocaleDateString('es-ES', { year: 'numeric', month: 'short' });
-    acc[month] = (acc[month] || 0) + 1;
+  
+  // Agrupar por mes usando sortKey para ordenamiento correcto
+  const grouped = (patients || []).reduce((acc: any, item: any) => {
+    const date = new Date(item.createdAt);
+    const monthLabel = date.toLocaleDateString('es-ES', { year: 'numeric', month: 'short' });
+    const sortKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+    
+    if (!acc[sortKey]) acc[sortKey] = { month: monthLabel, count: 0, sortKey };
+    acc[sortKey].count++;
     return acc;
   }, {});
+
   let total = 0;
-  return Object.entries(monthly).sort((a, b) => new Date(a[0]).getTime() - new Date(b[0]).getTime()).map(([month, count]) => {
-    total += count as number;
-    return { month, new_patients: count as number, total_patients: total };
-  });
+  return Object.values(grouped)
+    .sort((a: any, b: any) => a.sortKey.localeCompare(b.sortKey))
+    .map((item: any) => {
+      total += item.count;
+      return { month: item.month, new_patients: item.count, total_patients: total };
+    });
 }
 
 async function getCommunicationMetrics(admin: any, startDate: string, endDate: string) {
@@ -233,68 +242,143 @@ async function getActionDistribution(admin: any, startDate: string, endDate: str
 }
 
 
-async function getAppointmentStats(admin: any, startDate: string, endDate: string) {
-  const { data: apps, error } = await admin.from('appointment').select('status, scheduled_at').gte('scheduled_at', startDate).lte('scheduled_at', endDate);
+async function getAppointmentStats(admin: any, filters: any) {
+  const { startDate, endDate, organizationId } = filters;
+  
+  let query = admin
+    .from('appointment')
+    .select('status, scheduled_at, organization(name)')
+    .gte('scheduled_at', startDate)
+    .lte('scheduled_at', endDate);
+
+  if (organizationId) {
+    query = query.eq('organization_id', organizationId);
+  }
+
+  const { data: apps, error } = await query;
+
   if (error) throw error;
+
   const grouped = (apps || []).reduce((acc: any, item: any) => {
-    const status = item.status || 'unknown';
-    acc[status] = (acc[status] || 0) + 1;
-    return acc;
-  }, {});
-  return grouped;
-}
-
-async function getTopDiagnoses(admin: any, startDate: string, endDate: string) {
-  const { data: consultations, error } = await admin
-    .from('consultation')
-    .select('diagnosis')
-    .not('diagnosis', 'is', null)
-    .gte('created_at', startDate)
-    .lte('created_at', endDate);
-
-  if (error) throw error;
-
-  const counts = (consultations || []).reduce((acc: any, item: any) => {
-    const diagnosis = item.diagnosis;
-    acc[diagnosis] = (acc[diagnosis] || 0) + 1;
-    return acc;
-  }, {});
-
-  const total = Object.values(counts).reduce((sum: number, count: any) => sum + count, 0);
-  return Object.entries(counts)
-    .map(([diagnosis, count]) => ({
-      diagnosis,
-      count: count as number,
-      percentage: total > 0 ? ((count as number) / total) * 100 : 0
-    }))
-    .sort((a, b) => b.count - a.count);
-}
-
-async function getRevenueData(admin: any, startDate: string, endDate: string) {
-  const { data: facturaciones, error } = await admin
-    .from('facturacion')
-    .select('total, currency, metodo_pago, fecha_emision, estado_pago')
-    .eq('estado_pago', 'pagado')
-    .gte('fecha_emision', startDate)
-    .lte('fecha_emision', endDate);
-
-  if (error) throw error;
-
-  const grouped = (facturaciones || []).reduce((acc: any, item: any) => {
-    const date = new Date(item.fecha_emision);
-    const period = date.toLocaleDateString('es-ES', { year: 'numeric', month: 'short' });
-    const currency = item.currency || 'USD';
-    const key = `${period}-${currency}`;
-    
-    if (!acc[key]) {
-      acc[key] = { total_revenue: 0, currency, payment_method: 'Varios', count: 0, period };
+    const orgName = item.organization?.name || 'Otros';
+    if (!acc[orgName]) {
+      acc[orgName] = { 
+        consultorio: orgName, 
+        completed: 0, 
+        cancelled: 0, 
+        scheduled: 0,
+        total: 0 
+      };
     }
-    acc[key].total_revenue += parseFloat(item.total || '0');
-    acc[key].count++;
+    
+    const status = item.status; // Usar el estatus directo de la DB
+    if (status === 'COMPLETADA') acc[orgName].completed++;
+    else if (status === 'CANCELADA') acc[orgName].cancelled++;
+    else acc[orgName].scheduled++;
+    
+    acc[orgName].total++;
     return acc;
   }, {});
 
-  return Object.values(grouped);
+  return Object.values(grouped).sort((a: any, b: any) => b.total - a.total);
+}
+
+async function getRevenueData(admin: any, filters: any) {
+  const { startDate, endDate, organizationId } = filters;
+  try {
+    let query = admin
+      .from('appointment')
+      .select(`
+        scheduled_at,
+        selected_service,
+        consultation!inner(id)
+      `)
+      .eq('status', 'COMPLETADA')
+      .gte('scheduled_at', startDate)
+      .lte('scheduled_at', endDate);
+
+    if (organizationId) {
+      query = query.eq('organization_id', organizationId);
+    }
+
+    const { data: appointments, error } = await query;
+
+    if (error) throw error;
+
+    const grouped = (appointments || []).reduce((acc: any, item: any) => {
+      const date = new Date(item.scheduled_at);
+      const monthLabel = date.toLocaleDateString('es-ES', { year: 'numeric', month: 'short' });
+      const sortKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+      
+      if (!acc[sortKey]) acc[sortKey] = { period: monthLabel, total_revenue: 0, sortKey };
+      
+      let price = 0;
+      const services = item.selected_service;
+      if (Array.isArray(services)) {
+        price = services.reduce((sum: number, s: any) => sum + (parseFloat(s.price) || 0), 0);
+      } else if (services && typeof services === 'object') {
+        price = parseFloat(services.price) || 0;
+      }
+      
+      acc[sortKey].total_revenue += price;
+      return acc;
+    }, {});
+
+    return Object.values(grouped).sort((a: any, b: any) => (a as any).sortKey.localeCompare((b as any).sortKey));
+  } catch (err) {
+    console.error('Error fetching revenue data:', err);
+    return [];
+  }
+}
+
+async function getTopDiagnoses(admin: any, filters: any) {
+  const { startDate, endDate, organizationId, specialty } = filters;
+  try {
+    let query = admin
+      .from('consultation')
+      .select('diagnosis, icd11_title, doctor_id')
+      .not('diagnosis', 'is', null)
+      .gte('created_at', startDate)
+      .lte('created_at', endDate);
+
+    if (organizationId) {
+      query = query.eq('organization_id', organizationId);
+    }
+
+    const { data: consultations, error } = await query;
+
+    // Si hay filtro por especialidad, necesitamos filtrar por el perfil del médico
+    let finalConsultations = consultations || [];
+    if (specialty && finalConsultations.length > 0) {
+      const doctorIds = [...new Set(finalConsultations.map((c: any) => c.doctor_id))];
+      const { data: doctors } = await admin
+        .from('medic_profile')
+        .select('user_id, specialty')
+        .in('user_id', doctorIds)
+        .eq('specialty', specialty);
+      
+      const specializedDoctorIds = new Set((doctors || []).map((d: any) => d.user_id));
+      finalConsultations = finalConsultations.filter((c: any) => specializedDoctorIds.has(c.doctor_id));
+    }
+
+    const counts = finalConsultations.reduce((acc: any, item: any) => {
+      const diagnosis = item.icd11_title || item.diagnosis;
+      acc[diagnosis] = (acc[diagnosis] || 0) + 1;
+      return acc;
+    }, {});
+
+    const total = Object.values(counts).reduce((sum: number, count: any) => sum + count, 0);
+    return Object.entries(counts)
+      .map(([diagnosis, count]) => ({
+        diagnosis,
+        count: count as number,
+        percentage: total > 0 ? ((count as number) / total) * 100 : 0
+      }))
+      .sort((a, b) => b.count - a.count);
+  } catch (err) {
+    console.error('Error fetching top diagnoses:', err);
+    return [];
+  }
 }
 
 async function getPatientCount(admin: any, startDate: string, endDate: string) {
@@ -360,6 +444,9 @@ export async function GET(request: NextRequest) {
     const type = searchParams.get('type');
     const startDate = searchParams.get('start');
     const endDate = searchParams.get('end');
+    const region = searchParams.get('region');
+    const specialty = searchParams.get('specialty');
+    const organizationId = searchParams.get('organizationId');
 
     if (!supabaseAdmin) {
       return NextResponse.json({ error: 'Supabase no configurado' }, { status: 500 });
@@ -369,19 +456,44 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Fechas requeridas' }, { status: 400 });
     }
 
+    const filters = { startDate, endDate, region, specialty, organizationId };
     let data = null;
 
     switch (type) {
+      case 'network-stats':
+        const [orgCount, patCount, staffCount] = await Promise.all([
+          supabaseAdmin.from('organization').select('*', { count: 'exact', head: true }),
+          supabaseAdmin.from('patient').select('*', { count: 'exact', head: true }),
+          supabaseAdmin.from('users').select('*', { count: 'exact', head: true })
+            .neq('role', 'PACIENTE') 
+        ]);
+        
+        data = {
+          organizations: orgCount.count || 0,
+          patients: patCount.count || 0,
+          staff: staffCount.count || 0
+        };
+        break;
+
+      case 'organizations':
+        const { data: orgs, error: orgError } = await supabaseAdmin
+          .from('organization')
+          .select('id, name')
+          .order('name');
+        if (orgError) throw orgError;
+        data = orgs;
+        break;
+
       case 'top-diagnoses':
-        data = await getTopDiagnoses(supabaseAdmin, startDate, endDate);
+        data = await getTopDiagnoses(supabaseAdmin, filters);
         break;
 
       case 'appointment-stats':
-        data = await getAppointmentStats(supabaseAdmin, startDate, endDate);
+        data = await getAppointmentStats(supabaseAdmin, filters);
         break;
 
       case 'revenue':
-        data = await getRevenueData(supabaseAdmin, startDate, endDate);
+        data = await getRevenueData(supabaseAdmin, filters);
         break;
 
       case 'patient-count':
@@ -429,6 +541,93 @@ export async function GET(request: NextRequest) {
 
       case 'action-distribution':
         data = await getActionDistribution(supabaseAdmin, startDate, endDate);
+        break;
+
+      case 'unregistered-stats':
+        let unregQuery = supabaseAdmin
+          .from('appointment')
+          .select('unregistered_patient_id')
+          .not('unregistered_patient_id', 'is', null)
+          .gte('scheduled_at', startDate)
+          .lte('scheduled_at', endDate);
+        
+        if (organizationId) {
+          unregQuery = unregQuery.eq('organization_id', organizationId);
+        }
+
+        const { data: unregApps, error: unregError } = await unregQuery;
+        if (unregError) throw unregError;
+
+        const activeUnregIds = [...new Set((unregApps || []).map((a: any) => a.unregistered_patient_id))];
+        const totalUnregistered = activeUnregIds.length;
+        
+        // Calcular recurrencia real: ¿Cuántos de estos IDs tienen 2 o más citas en total?
+        let recurringCount = 0;
+        if (activeUnregIds.length > 0) {
+          const { data: allHistory } = await supabaseAdmin
+            .from('appointment')
+            .select('unregistered_patient_id')
+            .in('unregistered_patient_id', activeUnregIds);
+          
+          const historyCounts = (allHistory || []).reduce((acc: any, item: any) => {
+            acc[item.unregistered_patient_id] = (acc[item.unregistered_patient_id] || 0) + 1;
+            return acc;
+          }, {});
+
+          recurringCount = Object.values(historyCounts).filter((count: any) => count >= 2).length;
+        }
+        
+        data = {
+          unregistered: {
+            total: totalUnregistered || 0,
+            recurring: recurringCount || 0
+          }
+        };
+        break;
+
+      case 'organization-evolution':
+        // Obtener todas las citas para calcular evolución por organización
+        const { data: orgAppts } = await supabaseAdmin
+          .from('appointment')
+          .select('scheduled_at, organization(name)')
+          .order('scheduled_at', { ascending: true });
+
+        const evolutionData: any = {};
+        const organizations = new Set<string>();
+        
+        // Agrupar por mes y organización usando sortKey
+        (orgAppts || []).forEach((app: any) => {
+          const orgName = app.organization?.name || 'Otros';
+          const date = new Date(app.scheduled_at);
+          const monthLabel = date.toLocaleDateString('es-ES', { year: 'numeric', month: 'short' });
+          const sortKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+          
+          organizations.add(orgName);
+
+          if (!evolutionData[sortKey]) {
+            evolutionData[sortKey] = { label: monthLabel, orgs: {} };
+          }
+          if (!evolutionData[sortKey].orgs[orgName]) evolutionData[sortKey].orgs[orgName] = 0;
+          evolutionData[sortKey].orgs[orgName]++;
+        });
+
+        // Convertir a formato Recharts y calcular acumulado (ordenado por sortKey)
+        const runningTotals: any = {};
+        organizations.forEach(name => runningTotals[name] = 0);
+
+        const sortedEntries = Object.entries(evolutionData).sort((a, b) => a[0].localeCompare(b[0]));
+
+        data = {
+          chartData: sortedEntries.map(([_, details]: [string, any]) => {
+            const entry: any = { month: details.label };
+            organizations.forEach(name => {
+              runningTotals[name] += (details.orgs[name] || 0);
+              entry[name] = runningTotals[name];
+            });
+            return entry;
+          }),
+          organizations: Array.from(organizations)
+        };
         break;
 
 
