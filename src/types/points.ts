@@ -13,7 +13,10 @@ export type PointTransactionType =
   | 'family_member_profile_completed'
   | 'family_member_appointment_attended'
   | 'streak_3_appointments'
-  | 'reward_redeemed';
+  | 'reward_redeemed'
+  | 'referral_stage1'
+  | 'referral_stage2'
+  | 'referral_welcome_bonus';
 
 export interface PointTransaction {
   id: string;

@@ -6,6 +6,8 @@ import Link from 'next/link';
 import SafeCareBanner from '@/components/dashboard/patient/SafeCareBanner';
 import PendingSurveyBanner from './components/surveys/PendingSurveyBanner';
 import PointsWidget from './components/points/PointsWidget';
+import ReferralWidget from './components/referrals/ReferralWidget';
+import SafecareWidget from './components/safecare/SafecareWidget';
 
 type Appointment = {
 	id: string;
@@ -30,6 +32,7 @@ type QuickStats = {
 export default function PatientDashboardPage() {
 	const [loading, setLoading] = useState(true);
 	const [patientName, setPatientName] = useState<string>('');
+	const [userId, setUserId] = useState<string>('');
 	const [hasBadge, setHasBadge] = useState<boolean>(false);
 	const [nextAppointment, setNextAppointment] = useState<Appointment | null>(null);
 	const [stats, setStats] = useState<QuickStats>({
@@ -60,6 +63,7 @@ export default function PatientDashboardPage() {
 			if (res.ok) {
 				const data = await res.json();
 				setPatientName(data.profile?.name || 'Paciente');
+				setUserId(data.profile?.id || '');
 				setHasBadge(data.hasVerifiedBadge || false);
 				setNextAppointment(data.nextAppointment);
 				setStats(data.stats);
@@ -102,14 +106,14 @@ export default function PatientDashboardPage() {
 	}
 
 	return (
-		<div className="space-y-3 sm:space-y-4 md:space-y-6">
+		<div className="space-y-4 sm:space-y-6 md:space-y-8">
 			{/* Banner de Encuesta Pendiente */}
 			<PendingSurveyBanner />
 
-			{/* Widget de Puntos ASHIRA Salud+ */}
+			{/* 1. Widget de Puntos ASHIRA Salud+ (Ahora al inicio y más fino) */}
 			<PointsWidget />
 
-			{/* Header */}
+			{/* 2. Header de Bienvenida (Ahora en segundo lugar) */}
 			<div className="bg-white/90 backdrop-blur-md rounded-xl sm:rounded-2xl shadow-lg border border-white/20 p-4 sm:p-5 md:p-6 lg:p-8">
 				<div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4">
 					<div className="flex-1 min-w-0 w-full">
@@ -131,18 +135,83 @@ export default function PatientDashboardPage() {
 							<span className="md:hidden">{new Date().toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
 						</div>
 					</div>
-					
-					{/* Mobile version of the badge */}
-					{hasBadge && (
-						<div className="sm:hidden flex items-center gap-2 px-3 py-1 bg-teal-50 border border-teal-200 rounded-full text-teal-700 shadow-sm w-fit">
-							<ShieldCheck className="w-4 h-4" />
-							<span className="text-[10px] font-bold uppercase tracking-wider">Paciente Destacado</span>
-						</div>
-					)}
 				</div>
 			</div>
 
-			{/* Próxima cita */}
+			{/* 3. Banner SafeCare 24/7 (Ahora debajo de la bienvenida) */}
+			<SafeCareBanner />
+
+			{/* 4. Cards de Acción Rápida (Reorganizadas) */}
+			<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4 md:gap-6">
+				{/* Ver Citas */}
+				<Link href="/dashboard/patient/citas" className="group bg-white/90 backdrop-blur-sm rounded-xl shadow-lg p-3 sm:p-4 md:p-6 hover:shadow-2xl transition-all border border-white/20 hover:border-indigo-200 hover:-translate-y-1">
+					<div className="flex items-center justify-between mb-2 sm:mb-3 md:mb-4">
+						<div className="p-2 sm:p-2.5 md:p-3 bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg sm:rounded-xl group-hover:scale-110 transition-transform shadow-lg">
+							<Calendar className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6 text-white" />
+						</div>
+						{stats.upcomingAppointments > 0 && <span className="px-1.5 sm:px-2 md:px-3 py-0.5 sm:py-1 bg-blue-600 text-white text-[9px] sm:text-[10px] md:text-xs font-bold rounded-full shadow-md">{stats.upcomingAppointments}</span>}
+					</div>
+					<h3 className="text-sm sm:text-base md:text-lg font-bold text-gray-900 mb-0.5 sm:mb-1 group-hover:text-blue-600 transition-colors">Ver Citas</h3>
+					<p className="text-[10px] sm:text-xs md:text-sm text-gray-600">Gestiona tus citas médicas</p>
+				</Link>
+
+				{/* Ver Historial */}
+				<Link href="/dashboard/patient/historial" className="group bg-white/90 backdrop-blur-sm rounded-xl shadow-lg p-3 sm:p-4 md:p-6 hover:shadow-2xl transition-all border border-white/20 hover:border-green-200 hover:-translate-y-1">
+					<div className="flex items-center justify-between mb-2 sm:mb-3 md:mb-4">
+						<div className="p-2 sm:p-2.5 md:p-3 bg-gradient-to-br from-green-500 to-green-600 rounded-lg sm:rounded-xl group-hover:scale-110 transition-transform shadow-lg">
+							<FileText className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6 text-white" />
+						</div>
+					</div>
+					<h3 className="text-sm sm:text-base md:text-lg font-bold text-gray-900 mb-0.5 sm:mb-1 group-hover:text-green-600 transition-colors">Ver Historial</h3>
+					<p className="text-[10px] sm:text-xs md:text-sm text-gray-600">Consulta tu historial médico</p>
+				</Link>
+
+				{/* Ver Recetas */}
+				<Link href="/dashboard/patient/recetas" className="group bg-white/90 backdrop-blur-sm rounded-xl shadow-lg p-3 sm:p-4 md:p-6 hover:shadow-2xl transition-all border border-white/20 hover:border-purple-200 hover:-translate-y-1">
+					<div className="flex items-center justify-between mb-2 sm:mb-3 md:mb-4">
+						<div className="p-2 sm:p-2.5 md:p-3 bg-gradient-to-br from-purple-500 to-purple-600 rounded-lg sm:rounded-xl group-hover:scale-110 transition-transform shadow-lg">
+							<Pill className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6 text-white" />
+						</div>
+						{stats.activePrescriptions > 0 && <span className="px-1.5 sm:px-2 md:px-3 py-0.5 sm:py-1 bg-purple-600 text-white text-[9px] sm:text-[10px] md:text-xs font-bold rounded-full shadow-md">{stats.activePrescriptions}</span>}
+					</div>
+					<h3 className="text-sm sm:text-base md:text-lg font-bold text-gray-900 mb-0.5 sm:mb-1 group-hover:text-purple-600 transition-colors">Ver Recetas</h3>
+					<p className="text-[10px] sm:text-xs md:text-sm text-gray-600">Tus recetas médicas activas</p>
+				</Link>
+
+				{/* Ver Resultados (Próximamente) */}
+				<div className="group bg-white/90 backdrop-blur-sm rounded-xl shadow-lg p-3 sm:p-4 md:p-6 border border-white/20 relative overflow-hidden cursor-not-allowed opacity-75">
+					<div className="absolute top-1.5 sm:top-2 md:top-3 right-1.5 sm:right-2 md:right-3">
+						<span className="px-1 sm:px-1.5 md:px-2 py-0.5 sm:py-1 bg-yellow-100 text-yellow-700 rounded-full text-[9px] sm:text-[10px] md:text-xs font-bold flex items-center gap-0.5 sm:gap-1">
+							<Sparkles className="w-2 h-2 sm:w-2.5 sm:h-2.5 md:w-3 md:h-3" />
+							<span className="hidden sm:inline">Próximamente</span>
+							<span className="sm:hidden">Próx.</span>
+						</span>
+					</div>
+					<div className="flex items-center justify-between mb-2 sm:mb-3 md:mb-4">
+						<div className="p-2 sm:p-2.5 md:p-3 bg-gradient-to-br from-yellow-500 to-yellow-600 rounded-lg sm:rounded-xl shadow-lg opacity-60">
+							<FlaskConical className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6 text-white" />
+						</div>
+					</div>
+					<h3 className="text-sm sm:text-base md:text-lg font-bold text-gray-900 mb-0.5 sm:mb-1">Ver Resultados</h3>
+					<p className="text-[10px] sm:text-xs md:text-sm text-gray-600">Resultados de laboratorio - Próximamente</p>
+				</div>
+
+				{/* Mis Informes */}
+				<Link href="/dashboard/patient/informes" className="group bg-white/90 backdrop-blur-sm rounded-xl shadow-lg p-3 sm:p-4 md:p-6 hover:shadow-2xl transition-all border border-white/20 hover:border-teal-200 hover:-translate-y-1">
+					<div className="flex items-center justify-between mb-2 sm:mb-3 md:mb-4">
+						<div className="p-2 sm:p-2.5 md:p-3 bg-gradient-to-br from-teal-500 to-teal-600 rounded-lg sm:rounded-xl group-hover:scale-110 transition-transform shadow-lg">
+							<FileText className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6 text-white" />
+						</div>
+					</div>
+					<h3 className="text-sm sm:text-base md:text-lg font-bold text-gray-900 mb-0.5 sm:mb-1 group-hover:text-teal-600 transition-colors">Mis Informes</h3>
+					<p className="text-[10px] sm:text-xs md:text-sm text-gray-600">Documentos y estudios</p>
+				</Link>
+			</div>
+
+			{/* 5. Banner de Referidos (Ahora al final) */}
+			{userId && <ReferralWidget userId={userId} />}
+			
+			{/* Próxima cita (Sección flotante informativa) */}
 			{nextAppointment && (
 				<div className="relative overflow-hidden bg-gradient-to-br from-indigo-600 via-purple-600 to-pink-600 rounded-xl sm:rounded-2xl shadow-2xl p-4 sm:p-5 md:p-6 lg:p-8 text-white">
 					<div className="absolute top-0 right-0 w-24 h-24 sm:w-32 sm:h-32 md:w-48 md:h-48 lg:w-64 lg:h-64 bg-white/10 rounded-full -mr-12 sm:-mr-16 md:-mr-24 lg:-mr-32 -mt-12 sm:-mt-16 md:-mt-24 lg:-mt-32 blur-3xl"></div>
@@ -190,7 +259,6 @@ export default function PatientDashboardPage() {
 										<p className="text-white/80 text-xs sm:text-sm md:text-base break-words">{nextAppointment.organization.name}</p>
 									</div>
 								)}
-								{nextAppointment.reason && <p className="text-white/70 mt-2 text-[10px] sm:text-xs md:text-sm bg-white/10 rounded-lg p-2 sm:p-2.5 inline-block break-words">Motivo: {nextAppointment.reason}</p>}
 							</div>
 						</div>
 						<Link href="/dashboard/patient/citas" className="w-full md:w-auto px-4 sm:px-5 md:px-6 py-2 sm:py-2.5 md:py-3 bg-white text-indigo-600 rounded-lg sm:rounded-xl font-semibold hover:bg-indigo-50 transition-all shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 text-center text-xs sm:text-sm md:text-base whitespace-nowrap">
@@ -199,140 +267,6 @@ export default function PatientDashboardPage() {
 					</div>
 				</div>
 			)}
-
-			{/* Cards de Acción Rápida */}
-			<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4 md:gap-6">
-				<Link href="/dashboard/patient/citas" className="group bg-white/90 backdrop-blur-sm rounded-xl shadow-lg p-3 sm:p-4 md:p-6 hover:shadow-2xl transition-all border border-white/20 hover:border-indigo-200 hover:-translate-y-1">
-					<div className="flex items-center justify-between mb-2 sm:mb-3 md:mb-4">
-						<div className="p-2 sm:p-2.5 md:p-3 bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg sm:rounded-xl group-hover:scale-110 transition-transform shadow-lg">
-							<Calendar className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6 text-white" />
-						</div>
-						{stats.upcomingAppointments > 0 && <span className="px-1.5 sm:px-2 md:px-3 py-0.5 sm:py-1 bg-blue-600 text-white text-[9px] sm:text-[10px] md:text-xs font-bold rounded-full shadow-md">{stats.upcomingAppointments}</span>}
-					</div>
-					<h3 className="text-sm sm:text-base md:text-lg font-bold text-gray-900 mb-0.5 sm:mb-1 group-hover:text-blue-600 transition-colors">Ver Citas</h3>
-					<p className="text-[10px] sm:text-xs md:text-sm text-gray-600">Gestiona tus citas médicas</p>
-				</Link>
-
-				<Link href="/dashboard/patient/historial" className="group bg-white/90 backdrop-blur-sm rounded-xl shadow-lg p-3 sm:p-4 md:p-6 hover:shadow-2xl transition-all border border-white/20 hover:border-green-200 hover:-translate-y-1">
-					<div className="flex items-center justify-between mb-2 sm:mb-3 md:mb-4">
-						<div className="p-2 sm:p-2.5 md:p-3 bg-gradient-to-br from-green-500 to-green-600 rounded-lg sm:rounded-xl group-hover:scale-110 transition-transform shadow-lg">
-							<FileText className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6 text-white" />
-						</div>
-					</div>
-					<h3 className="text-sm sm:text-base md:text-lg font-bold text-gray-900 mb-0.5 sm:mb-1 group-hover:text-green-600 transition-colors">Ver Historial</h3>
-					<p className="text-[10px] sm:text-xs md:text-sm text-gray-600">Consulta tu historial médico</p>
-				</Link>
-
-				<Link href="/dashboard/patient/recetas" className="group bg-white/90 backdrop-blur-sm rounded-xl shadow-lg p-3 sm:p-4 md:p-6 hover:shadow-2xl transition-all border border-white/20 hover:border-purple-200 hover:-translate-y-1">
-					<div className="flex items-center justify-between mb-2 sm:mb-3 md:mb-4">
-						<div className="p-2 sm:p-2.5 md:p-3 bg-gradient-to-br from-purple-500 to-purple-600 rounded-lg sm:rounded-xl group-hover:scale-110 transition-transform shadow-lg">
-							<Pill className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6 text-white" />
-						</div>
-						{stats.activePrescriptions > 0 && <span className="px-1.5 sm:px-2 md:px-3 py-0.5 sm:py-1 bg-purple-600 text-white text-[9px] sm:text-[10px] md:text-xs font-bold rounded-full shadow-md">{stats.activePrescriptions}</span>}
-					</div>
-					<h3 className="text-sm sm:text-base md:text-lg font-bold text-gray-900 mb-0.5 sm:mb-1 group-hover:text-purple-600 transition-colors">Ver Recetas</h3>
-					<p className="text-[10px] sm:text-xs md:text-sm text-gray-600">Tus recetas médicas activas</p>
-				</Link>
-
-				<div className="group bg-white/90 backdrop-blur-sm rounded-xl shadow-lg p-3 sm:p-4 md:p-6 border border-white/20 relative overflow-hidden cursor-not-allowed opacity-75">
-					<div className="absolute top-1.5 sm:top-2 md:top-3 right-1.5 sm:right-2 md:right-3">
-						<span className="px-1 sm:px-1.5 md:px-2 py-0.5 sm:py-1 bg-yellow-100 text-yellow-700 rounded-full text-[9px] sm:text-[10px] md:text-xs font-bold flex items-center gap-0.5 sm:gap-1">
-							<Sparkles className="w-2 h-2 sm:w-2.5 sm:h-2.5 md:w-3 md:h-3" />
-							<span className="hidden sm:inline">Próximamente</span>
-							<span className="sm:hidden">Próx.</span>
-						</span>
-					</div>
-					<div className="flex items-center justify-between mb-2 sm:mb-3 md:mb-4">
-						<div className="p-2 sm:p-2.5 md:p-3 bg-gradient-to-br from-yellow-500 to-yellow-600 rounded-lg sm:rounded-xl shadow-lg opacity-60">
-							<FlaskConical className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6 text-white" />
-						</div>
-					</div>
-					<h3 className="text-sm sm:text-base md:text-lg font-bold text-gray-900 mb-0.5 sm:mb-1">Ver Resultados</h3>
-					<p className="text-[10px] sm:text-xs md:text-sm text-gray-600">Resultados de laboratorio - Próximamente</p>
-				</div>
-
-				<Link href="/dashboard/patient/informes" className="group bg-white/90 backdrop-blur-sm rounded-xl shadow-lg p-3 sm:p-4 md:p-6 hover:shadow-2xl transition-all border border-white/20 hover:border-teal-200 hover:-translate-y-1">
-					<div className="flex items-center justify-between mb-2 sm:mb-3 md:mb-4">
-						<div className="p-2 sm:p-2.5 md:p-3 bg-gradient-to-br from-teal-500 to-teal-600 rounded-lg sm:rounded-xl group-hover:scale-110 transition-transform shadow-lg">
-							<FileText className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6 text-white" />
-						</div>
-					</div>
-					<h3 className="text-sm sm:text-base md:text-lg font-bold text-gray-900 mb-0.5 sm:mb-1 group-hover:text-teal-600 transition-colors">Mis Informes</h3>
-					<p className="text-[10px] sm:text-xs md:text-sm text-gray-600">Documentos y estudios</p>
-				</Link>
-			</div>
-			
-			{/* Banner SafeCare 24/7 - Servicio Destacado */}
-			<SafeCareBanner />
-
-			{/* Secciones destacadas */}
-			<div className="grid grid-cols-1 lg:grid-cols-3 gap-3 sm:gap-4 md:gap-6">
-				{/* Clínicas destacadas */}
-				<div className="lg:col-span-2 bg-white/90 backdrop-blur-sm rounded-xl sm:rounded-2xl shadow-xl border border-white/20 p-4 sm:p-5 md:p-6 lg:p-8 relative overflow-hidden">
-					<div className="absolute top-1.5 sm:top-2 md:top-4 right-1.5 sm:right-2 md:right-4">
-						<span className="px-1.5 sm:px-2 md:px-3 py-0.5 sm:py-1 bg-indigo-100 text-indigo-700 rounded-full text-[9px] sm:text-[10px] md:text-xs font-bold flex items-center gap-0.5 sm:gap-1">
-							<Sparkles className="w-2 h-2 sm:w-2.5 sm:h-2.5 md:w-3 md:h-3" />
-							<span className="hidden sm:inline">Próximamente</span>
-							<span className="sm:hidden">Próx.</span>
-						</span>
-					</div>
-					<div className="flex items-center gap-2 sm:gap-3 mb-3 sm:mb-4 md:mb-6">
-						<div className="p-1.5 sm:p-2 md:p-3 bg-indigo-100 rounded-lg sm:rounded-xl opacity-60 flex-shrink-0">
-							<Building2 className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6 text-indigo-600" />
-						</div>
-						<h2 className="text-base sm:text-lg md:text-xl lg:text-2xl font-bold text-gray-900">Clínicas Destacadas</h2>
-					</div>
-					<p className="text-xs sm:text-sm md:text-base text-gray-600 mb-3 sm:mb-4 md:mb-6 leading-relaxed">Estamos trabajando en integrar las mejores clínicas disponibles para ti con especialistas certificados. Esta funcionalidad estará disponible próximamente.</p>
-					<div className="inline-flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 md:px-6 py-1.5 sm:py-2 md:py-3 bg-gray-200 text-gray-500 rounded-lg sm:rounded-xl font-semibold cursor-not-allowed opacity-60 text-xs sm:text-sm md:text-base">
-						<Building2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 md:w-5 md:h-5" />
-						Próximamente
-					</div>
-				</div>
-
-				{/* Laboratorios */}
-				<div className="bg-white/90 backdrop-blur-sm rounded-xl sm:rounded-2xl shadow-xl border border-white/20 p-4 sm:p-5 md:p-6 lg:p-8 relative overflow-hidden">
-					<div className="absolute top-1.5 sm:top-2 md:top-4 right-1.5 sm:right-2 md:right-4">
-						<span className="px-1.5 sm:px-2 md:px-3 py-0.5 sm:py-1 bg-yellow-100 text-yellow-700 rounded-full text-[9px] sm:text-[10px] md:text-xs font-bold flex items-center gap-0.5 sm:gap-1">
-							<Sparkles className="w-2 h-2 sm:w-2.5 sm:h-2.5 md:w-3 md:h-3" />
-							<span className="hidden sm:inline">Próximamente</span>
-							<span className="sm:hidden">Próx.</span>
-						</span>
-					</div>
-					<div className="flex items-center gap-2 sm:gap-3 mb-3 sm:mb-4 md:mb-6">
-						<div className="p-1.5 sm:p-2 md:p-3 bg-yellow-100 rounded-lg sm:rounded-xl opacity-60 flex-shrink-0">
-							<FlaskConical className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6 text-yellow-600" />
-						</div>
-						<h2 className="text-sm sm:text-base md:text-lg lg:text-xl font-bold text-gray-900">Laboratorios</h2>
-					</div>
-					<p className="text-[10px] sm:text-xs md:text-sm text-gray-600 mb-3 sm:mb-4 md:mb-6 leading-relaxed">Estamos trabajando en integrar laboratorios con disponibilidad inmediata. Esta funcionalidad estará disponible próximamente.</p>
-					<div className="inline-flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 md:px-6 py-1.5 sm:py-2 md:py-3 bg-gray-200 text-gray-500 rounded-lg sm:rounded-xl font-semibold cursor-not-allowed opacity-60 w-full justify-center text-xs sm:text-sm md:text-base">
-						<FlaskConical className="w-3.5 h-3.5 sm:w-4 sm:h-4 md:w-5 md:h-5" />
-						Próximamente
-					</div>
-				</div>
-			</div>
-
-			{/* Farmacias afiliadas */}
-			<div className="bg-white/90 backdrop-blur-sm rounded-xl sm:rounded-2xl shadow-xl border border-white/20 p-4 sm:p-5 md:p-6 lg:p-8 relative overflow-hidden">
-				<div className="absolute top-1.5 sm:top-2 md:top-4 right-1.5 sm:right-2 md:right-4">
-					<span className="px-1.5 sm:px-2 md:px-3 py-0.5 sm:py-1 bg-green-100 text-green-700 rounded-full text-[9px] sm:text-[10px] md:text-xs font-bold flex items-center gap-0.5 sm:gap-1">
-						<Sparkles className="w-2 h-2 sm:w-2.5 sm:h-2.5 md:w-3 md:h-3" />
-						<span className="hidden sm:inline">Próximamente</span>
-						<span className="sm:hidden">Próx.</span>
-					</span>
-				</div>
-				<div className="flex items-center gap-2 sm:gap-3 mb-3 sm:mb-4 md:mb-6">
-					<div className="p-1.5 sm:p-2 md:p-3 bg-green-100 rounded-lg sm:rounded-xl opacity-60 flex-shrink-0">
-						<ShoppingBag className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6 text-green-600" />
-					</div>
-					<h2 className="text-base sm:text-lg md:text-xl lg:text-2xl font-bold text-gray-900">Farmacias Afiliadas</h2>
-				</div>
-				<p className="text-xs sm:text-sm md:text-base text-gray-600 mb-3 sm:mb-4 md:mb-6 leading-relaxed">Estamos trabajando en integrar farmacias disponibles para surtir tus recetas médicas con descuentos especiales. Esta funcionalidad estará disponible próximamente.</p>
-				<div className="inline-flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 md:px-6 py-1.5 sm:py-2 md:py-3 bg-gray-200 text-gray-500 rounded-lg sm:rounded-xl font-semibold cursor-not-allowed opacity-60 text-xs sm:text-sm md:text-base">
-					<ShoppingBag className="w-3.5 h-3.5 sm:w-4 sm:h-4 md:w-5 md:h-5" />
-					Próximamente
-				</div>
-			</div>
 		</div>
 	);
 }

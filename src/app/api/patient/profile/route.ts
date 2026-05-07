@@ -4,6 +4,7 @@ import { getAuthenticatedPatient } from '@/lib/patient-auth';
 import { createSupabaseServerClient } from '@/app/adapters/server';
 import { cookies } from 'next/headers';
 import { supabaseAdmin } from '@/lib/supabase/admin';
+import { checkAndAwardStage1 } from '@/lib/actions/referrals';
 
 export async function GET() {
 	try {
@@ -62,6 +63,9 @@ export async function PATCH(request: Request) {
 		if (body.phone !== undefined) updateData.phone = body.phone;
 		if (body.address !== undefined) updateData.address = body.address;
 		if (body.allergies !== undefined) updateData.allergies = body.allergies;
+		if (body.blood_type !== undefined) updateData.blood_type = body.blood_type;
+		if (body.emergency_contact_name !== undefined) updateData.emergency_contact_name = body.emergency_contact_name;
+		if (body.emergency_contact_phone !== undefined) updateData.emergency_contact_phone = body.emergency_contact_phone;
 		if (body.elderly_conditions !== undefined) updateData.elderly_conditions = body.elderly_conditions;
 
 		const { error } = await supabase
@@ -72,6 +76,29 @@ export async function PATCH(request: Request) {
 		if (error) {
 			console.error('[Patient Profile API PATCH] Error:', error);
 			return NextResponse.json({ error: 'Error al actualizar perfil', detail: error.message }, { status: 500 });
+		}
+
+		// ─── NUEVO: Verificar Completitud para Referidos (Etapa 1) ───
+		// Obtenemos el perfil actualizado para verificar todos los campos requeridos
+		const { data: fullProfile } = await supabaseAdmin
+			.from('patient')
+			.select('firstName, lastName, blood_type, allergies, emergency_contact_name, emergency_contact_phone')
+			.eq('id', patient.patientId)
+			.single();
+
+		if (fullProfile) {
+			const isComplete = 
+				fullProfile.firstName && 
+				fullProfile.lastName && 
+				fullProfile.blood_type && 
+				fullProfile.allergies && 
+				fullProfile.emergency_contact_name && 
+				fullProfile.emergency_contact_phone;
+
+			if (isComplete) {
+				// Esta función es idempotente dentro de patient_referrals (stage1_awarded)
+				await checkAndAwardStage1(patient.authId);
+			}
 		}
 
 		return NextResponse.json({ success: true, message: 'Perfil actualizado correctamente' });

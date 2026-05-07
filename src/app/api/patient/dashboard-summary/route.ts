@@ -75,6 +75,7 @@ export async function GET() {
 
 		return NextResponse.json({
 			profile: {
+				id: patient.authId,
 				name: patient.patient?.firstName + ' ' + (patient.patient?.lastName || ''),
 				hasVerifiedBadge: patient.patient?.hasVerifiedBadge || false,
 			},

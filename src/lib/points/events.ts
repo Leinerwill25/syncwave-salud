@@ -128,6 +128,32 @@ export const POINTS_EVENTS: Record<string, PointEventDefinition> = {
     once: false,
     category: 'streaks',
     dailyLimit: null
+  },
+  
+  // ─── REFERIDOS ───
+  REFERRAL_STAGE1: {
+    key: 'referral_stage1',
+    points: 30,
+    description: 'Tu referido completó su perfil en ASHIRA',
+    once: false,
+    category: 'referrals',
+    dailyLimit: null
+  },
+  REFERRAL_STAGE2: {
+    key: 'referral_stage2',
+    points: 120,
+    description: 'Tu referido completó su primer servicio médico',
+    once: false,
+    category: 'referrals',
+    dailyLimit: null
+  },
+  REFERRAL_WELCOME_BONUS: {
+    key: 'referral_welcome_bonus',
+    points: 75,
+    description: 'Bienvenido a ASHIRA — bonus por unirte por invitación',
+    once: true,
+    category: 'referrals',
+    dailyLimit: null
   }
 } as const;
 

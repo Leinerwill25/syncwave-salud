@@ -3,7 +3,7 @@ import { type NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
 
 // ===== CONFIGURACIÓN DE RUTAS =====
-const PUBLIC_ROUTES = ['/login', '/register', '/reset-password', '/api/auth', '/api/plans', '/api/register', '/api/organizations', '/api/public', '/api/role-users', '/'];
+const PUBLIC_ROUTES = ['/login', '/register', '/reset-password', '/safecare/login', '/api/auth', '/api/plans', '/api/register', '/api/organizations', '/api/public', '/api/role-users', '/'];
 
 const ROUTE_ROLE_MAP: Record<string, string[]> = {
 	'/dashboard/clinic': ['ADMIN', 'CLINICA'],
@@ -12,6 +12,7 @@ const ROUTE_ROLE_MAP: Record<string, string[]> = {
 	'/dashboard/patient': ['PACIENTE'],
 	'/dashboard/nurse': ['ENFERMERO', 'ENFERMERA', 'ADMIN'],
 	'/dashboard/administration': ['ADMINISTRACION'],
+	'/dashboard/safecare': ['SAFECARE', 'ADMIN', 'ADMINISTRACION'],
 };
 
 // ===== WHITELIST DE CORS =====
@@ -78,6 +79,9 @@ function getRoleRedirectPath(userRole: string, pathname: string): string | null 
 			break;
 		case 'ADMINISTRACION':
 			redirectPath = '/dashboard/administration';
+			break;
+		case 'SAFECARE':
+			redirectPath = '/dashboard/safecare';
 			break;
 	}
 	return !pathname.startsWith(redirectPath) ? redirectPath : null;

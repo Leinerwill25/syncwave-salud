@@ -13,9 +13,10 @@ export default function ConditionalMain({ children }: { children: React.ReactNod
 	const isLanding = pathname.startsWith('/landing') || pathname === '/';
 	const isLoginOrRegister = pathname.startsWith('/login') || pathname.startsWith('/register') || pathname.startsWith('/invite');
 	const isPublicConsultorio = pathname.startsWith('/c/');
+	const isSafecare = pathname.startsWith('/safecare');
 	
 	// No agregar padding a dashboards, landing pages, login, register, invites o páginas públicas de consultorios
-	const paddingClass = (isDashboard || isLanding || isLoginOrRegister || isPublicConsultorio) ? '' : 'pt-16';
+	const paddingClass = (isDashboard || isLanding || isLoginOrRegister || isPublicConsultorio || isSafecare) ? '' : 'pt-16';
 	
 	return (
 		<main className={`min-h-screen ${paddingClass} overflow-x-hidden w-full max-w-full`}>

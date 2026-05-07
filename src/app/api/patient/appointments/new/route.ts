@@ -235,6 +235,8 @@ export async function POST(request: Request) {
 		// --- SISTEMA DE PUNTOS ASHIRA SALUD+ ---
 		try {
 			const { awardPoints } = await import('@/lib/actions/points');
+			const { checkAndAwardStage2 } = await import('@/lib/actions/referrals');
+			
 			// Verificar si es la primera cita del paciente para otorgar puntos
 			const { count: appointmentsCount } = await supabase
 				.from('appointment')
@@ -243,6 +245,8 @@ export async function POST(request: Request) {
 
 			if (appointmentsCount === 1) {
 				await awardPoints(patient.authId, 'first_appointment_booked');
+				// Activar Etapa 2 de referidos
+				await checkAndAwardStage2(patient.authId);
 			}
 		} catch (pointsErr) {
 			console.error('[New Appointment API] Error otorgando puntos:', pointsErr);

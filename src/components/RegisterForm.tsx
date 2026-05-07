@@ -1,7 +1,7 @@
 // components/RegisterForm.tsx
 'use client';
 import React, { useEffect, useMemo, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import 'leaflet/dist/leaflet.css';
 
@@ -324,6 +324,8 @@ Quisiera una cotización personalizada.`;
 
 export default function RegisterForm(): React.ReactElement {
 	const router = useRouter();
+	const searchParams = useSearchParams();
+	const referralCodeFromUrl = searchParams.get('ref');
 
 	// Paso actual (1..4)
 	const [step, setStep] = useState<number>(1);
@@ -384,6 +386,9 @@ export default function RegisterForm(): React.ReactElement {
 	// Plan / Billing (nuevo)
 	const [patientPlan, setPatientPlan] = useState<PatientPlan>('individual'); // para pacientes: individual o family
 	const [billingPeriod, setBillingPeriod] = useState<BillingPeriod>('annual'); // default to annual (patients use annual)
+
+	// Referidos
+	const [referralCode, setReferralCode] = useState<string | null>(referralCodeFromUrl);
 
 	// UI
 	const [loading, setLoading] = useState(false);
@@ -694,6 +699,7 @@ export default function RegisterForm(): React.ReactElement {
 		try {
 			const payload: any = {
 				account: { fullName, email, password, role },
+				referralCode: referralCode || undefined,
 			};
 
 			// Solo incluir información de plan/pago si NO es paciente (pacientes son gratuitos)

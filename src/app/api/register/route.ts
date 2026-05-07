@@ -7,6 +7,7 @@ import bcrypt from 'bcryptjs';
 import { z } from 'zod';
 import { createNotification } from '@/lib/notifications';
 import { sendVerificationEmail } from '@/lib/resend-service';
+import { claimReferralOnRegister } from '@/lib/actions/referrals';
 
 const SUPABASE_URL = process.env.SUPABASE_URL ?? process.env.NEXT_PUBLIC_SUPABASE_URL ?? '';
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY ?? '';
@@ -35,7 +36,7 @@ const AccountSchema = z.object({
 	email: z.string().email().max(255),
 	fullName: z.string().min(1).max(100),
 	password: z.string().min(8).max(100),
-	role: z.enum(['ADMIN', 'MEDICO', 'ENFERMERA', 'ENFERMERO', 'RECEPCION', 'FARMACIA', 'PACIENTE', 'LABORATORIO', 'ADMINISTRACION']).optional(),
+	role: z.enum(['ADMIN', 'MEDICO', 'ENFERMERA', 'ENFERMERO', 'RECEPCION', 'FARMACIA', 'PACIENTE', 'LABORATORIO', 'ADMINISTRACION', 'SAFECARE']).optional(),
 });
 
 const OrganizationSchema = z.object({
@@ -92,12 +93,13 @@ const RegisterSchema = z.object({
 	patient: PatientSchema.nullable().optional(),
 	plan: PlanSchema.nullable().optional(),
 	selectedOrganizationId: z.string().uuid().nullable().optional(),
+	referralCode: z.string().nullable().optional(),
 });
 
 type RegisterBody = z.infer<typeof RegisterSchema>;
 
 /* ---------- Tipos locales ---------- */
-export const USER_ROLES = ['ADMIN', 'MEDICO', 'ENFERMERA', 'ENFERMERO', 'RECEPCION', 'FARMACIA', 'PACIENTE', 'LABORATORIO', 'ADMINISTRACION'] as const;
+export const USER_ROLES = ['ADMIN', 'MEDICO', 'ENFERMERA', 'ENFERMERO', 'RECEPCION', 'FARMACIA', 'PACIENTE', 'LABORATORIO', 'ADMINISTRACION', 'SAFECARE'] as const;
 export type UserRoleLocal = (typeof USER_ROLES)[number];
 
 const ORG_TYPES = ['CLINICA', 'HOSPITAL', 'CONSULTORIO', 'FARMACIA', 'LABORATORIO'] as const;
@@ -248,6 +250,16 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
         }
       } catch (emailErr) {
         console.error('[Register API] Unexpected error in email verification block:', emailErr);
+      }
+    }
+
+    // ─── NUEVO: Procesar Referido si aplica ───
+    if (val.data.referralCode && role === 'PACIENTE' && finalAuthId) {
+      try {
+        await claimReferralOnRegister(val.data.referralCode, finalAuthId);
+      } catch (refErr) {
+        console.error('[Register API] Error claiming referral:', refErr);
+        // No bloqueamos el registro si falla el vínculo del referido, pero lo logueamos
       }
     }
 

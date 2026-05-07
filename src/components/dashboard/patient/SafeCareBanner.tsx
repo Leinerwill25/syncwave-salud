@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
+import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Activity, 
@@ -176,12 +177,12 @@ export default function SafeCareBanner() {
                 </svg>
                 Solicitar atención ahora
               </motion.a>
-              <button 
-                onClick={fetchServices}
-                className="w-full sm:w-auto px-6 py-3 border border-white/20 hover:bg-white/10 text-white rounded-xl font-bold text-sm transition-all"
+              <Link 
+                href="/dashboard/patient/safecare"
+                className="w-full sm:w-auto px-6 py-3 border border-white/20 hover:bg-white/10 text-white rounded-xl font-bold text-sm transition-all text-center"
               >
-                Conocer más
-              </button>
+                Más Información
+              </Link>
             </div>
           </div>
 

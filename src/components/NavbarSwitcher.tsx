@@ -9,6 +9,9 @@ import DashboardNavBar from '@/components/DashboardNavBar';
 export default function NavbarSwitcher() {
 	const pathname = usePathname() ?? '/';
 	const isDashboard = pathname.startsWith('/dashboard');
+	const isSafecareLogin = pathname.startsWith('/safecare/login');
+
+	if (isSafecareLogin) return null;
 
 	return isDashboard ? <DashboardNavBar /> : <PublicNavBar />;
 }
