@@ -114,6 +114,7 @@
 		"three": "^0.180.0",
 		"uuid": "^13.0.0",
 		"vaul": "^1.1.2",
+		"web-push": "^3.6.7",
 		"xlsx": "^0.18.5",
 		"zod": "4.3.6"
 	},
@@ -129,6 +130,7 @@
 		"@types/react": "^19.0.0",
 		"@types/react-dom": "^19.0.0",
 		"@types/three": "^0.180.0",
+		"@types/web-push": "^3.6.4",
 		"autoprefixer": "^10.4.21",
 		"dotenv": "^17.3.1",
 		"eslint": "^9.38.0",

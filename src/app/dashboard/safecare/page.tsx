@@ -14,11 +14,16 @@ import {
   AlertCircle,
   MoreVertical,
   ExternalLink,
-  ChevronRight
+  ChevronRight,
+  Trash2,
+  Mail,
+  Stethoscope,
+  Pill,
+  Image as ImageIcon
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter } from 'next/navigation';
-import { getAllSafecareRequests, updateSafecareStatus, uploadSafecareDocument } from '@/lib/actions/safecare';
+import { getAllSafecareRequests, updateSafecareStatus, uploadSafecareDocument, deleteSafecareRequest } from '@/lib/actions/safecare';
 import { SafecareRequest } from '@/types/safecare';
 import { createSupabaseBrowserClient } from '@/app/adapters/client';
 
@@ -37,7 +42,9 @@ export default function SafecareStaffPage() {
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState<'all' | 'requested' | 'attended'>('all');
   const [selectedRequest, setSelectedRequest] = useState<SafecareRequest | null>(null);
+  const [requestToDelete, setRequestToDelete] = useState<SafecareRequest | null>(null);
   const [uploading, setUploading] = useState(false);
+  const [selectedDocType, setSelectedDocType] = useState<'informe_consulta' | 'receta' | 'imagen_radiologia'>('informe_consulta');
 
   useEffect(() => {
     async function checkAuth() {
@@ -82,6 +89,19 @@ export default function SafecareStaffPage() {
     if (res.success) loadRequests();
   };
 
+  const handleDelete = (req: SafecareRequest) => {
+    setRequestToDelete(req);
+  };
+
+  const confirmDelete = async () => {
+    if (!requestToDelete) return;
+    const res = await deleteSafecareRequest(requestToDelete.id);
+    if (res.success) {
+      setRequestToDelete(null);
+      loadRequests();
+    }
+  };
+
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!selectedRequest || !e.target.files?.[0]) return;
     setUploading(true);
@@ -92,8 +112,8 @@ export default function SafecareStaffPage() {
       const base64 = reader.result as string;
       const res = await uploadSafecareDocument(selectedRequest.id, selectedRequest.patient_id, {
         name: file.name,
-        type: 'medical_report',
-        url: base64 // En un caso real esto se subiría a storage y usaría la URL
+        type: selectedDocType,
+        url: base64
       });
       
       if (res.success) {
@@ -244,6 +264,22 @@ export default function SafecareStaffPage() {
                         <span>"{req.patient_notes}"</span>
                       </div>
                     )}
+
+                    {/* Contact Details */}
+                    <div className="pt-2 grid grid-cols-1 gap-2 border-t border-slate-50 mt-2">
+                      <div className="flex items-center gap-2 text-[10px] font-bold text-slate-500">
+                        <Phone className="w-3 h-3 text-indigo-400" />
+                        <span>Tel: {req.service_details?.contactInfo?.phone || 'No posee'}</span>
+                      </div>
+                      <div className="flex items-center gap-2 text-[10px] font-bold text-slate-500">
+                        <AlertCircle className="w-3 h-3 text-red-400" />
+                        <span>Contacto de emergencia: {req.service_details?.contactInfo?.emergency || 'No posee'}</span>
+                      </div>
+                      <div className="flex items-center gap-2 text-[10px] font-bold text-slate-500">
+                        <Mail className="w-3 h-3 text-indigo-400" />
+                        <span>Email: {req.service_details?.contactInfo?.email || 'No posee'}</span>
+                      </div>
+                    </div>
                   </div>
                 </div>
 
@@ -269,8 +305,12 @@ export default function SafecareStaffPage() {
                       Atendida Completamente
                     </div>
                   )}
-                  <button className="p-2.5 bg-white border border-slate-200 text-slate-400 hover:text-indigo-600 rounded-xl transition-colors">
-                    <MoreVertical className="w-4 h-4" />
+                  <button 
+                    onClick={() => handleDelete(req)}
+                    className="p-2.5 bg-white border border-slate-200 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition-all"
+                    title="Eliminar solicitud"
+                  >
+                    <Trash2 className="w-4 h-4" />
                   </button>
                 </div>
               </motion.div>
@@ -314,18 +354,43 @@ export default function SafecareStaffPage() {
                 <div className="w-16 h-16 bg-emerald-100 text-emerald-600 rounded-2xl flex items-center justify-center mx-auto mb-4">
                   <FileUp className="w-8 h-8" />
                 </div>
-                <h3 className="text-2xl font-black text-slate-900 tracking-tight">Subir Informe Médico</h3>
+                <h3 className="text-2xl font-black text-slate-900 tracking-tight">Cargar Documentación</h3>
                 <p className="text-slate-500 font-medium leading-relaxed">
                   Para el paciente <span className="text-indigo-600 font-bold">
                     {(selectedRequest as any).patient?.firstName} {(selectedRequest as any).patient?.lastName}
-                  </span>. 
-                  Esto cerrará la solicitud y otorgará los Pulsos correspondientes.
+                  </span>
                 </p>
               </div>
 
-              <div className="space-y-4">
+              {/* Category Selection */}
+              <div className="grid grid-cols-1 gap-3">
+                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest text-center mb-1">Selecciona el tipo de documento</p>
+                <div className="flex flex-col gap-2">
+                  {[
+                    { id: 'informe_consulta', label: 'Informe Médico', icon: Stethoscope },
+                    { id: 'receta', label: 'Prescripción Médica', icon: Pill },
+                    { id: 'imagen_radiologia', label: 'Imágenes / RX', icon: ImageIcon }
+                  ].map((type) => (
+                    <button
+                      key={type.id}
+                      onClick={() => setSelectedDocType(type.id as any)}
+                      className={`flex items-center gap-4 p-4 rounded-2xl border-2 transition-all ${
+                        selectedDocType === type.id 
+                        ? 'border-indigo-600 bg-indigo-50/50 text-indigo-700 shadow-sm' 
+                        : 'border-slate-100 bg-white text-slate-600 hover:border-slate-200'
+                      }`}
+                    >
+                      <type.icon className={`w-5 h-5 ${selectedDocType === type.id ? 'text-indigo-600' : 'text-slate-400'}`} />
+                      <span className="font-bold text-sm">{type.label}</span>
+                      {selectedDocType === type.id && <div className="ml-auto w-2 h-2 bg-indigo-600 rounded-full" />}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="space-y-4 pt-2">
                 <label className="block group cursor-pointer">
-                  <div className="border-2 border-dashed border-slate-200 rounded-3xl p-10 text-center group-hover:border-indigo-400 group-hover:bg-indigo-50/30 transition-all">
+                  <div className="border-2 border-dashed border-slate-200 rounded-3xl p-8 text-center group-hover:border-indigo-400 group-hover:bg-indigo-50/30 transition-all">
                     <input 
                       type="file" 
                       className="hidden" 
@@ -333,20 +398,65 @@ export default function SafecareStaffPage() {
                       accept=".pdf,.jpg,.png"
                       disabled={uploading}
                     />
-                    <FileUp className="w-10 h-10 text-slate-300 mx-auto mb-4 group-hover:text-indigo-500 group-hover:scale-110 transition-all" />
+                    <FileUp className="w-8 h-8 text-slate-300 mx-auto mb-3 group-hover:text-indigo-500 group-hover:scale-110 transition-all" />
                     <p className="text-sm font-bold text-slate-400 group-hover:text-indigo-600">
-                      {uploading ? 'Subiendo informe...' : 'Click para seleccionar archivo'}
+                      {uploading ? 'Subiendo archivo...' : 'Click para subir el archivo seleccionado'}
                     </p>
-                    <p className="text-[10px] text-slate-300 mt-2 uppercase tracking-widest font-black">PDF, PNG o JPG (Max 5MB)</p>
                   </div>
                 </label>
                 
                 <button 
                   onClick={() => setSelectedRequest(null)}
                   disabled={uploading}
+                  className="w-full py-2 text-slate-400 hover:text-slate-600 font-black text-[10px] uppercase tracking-widest transition-all"
+                >
+                  Cancelar
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+
+        {/* Delete Confirmation Modal */}
+        {requestToDelete && (
+          <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+            <motion.div 
+              initial={{ opacity: 0 }} 
+              animate={{ opacity: 1 }} 
+              exit={{ opacity: 0 }}
+              onClick={() => setRequestToDelete(null)}
+              className="absolute inset-0 bg-slate-950/60 backdrop-blur-sm"
+            />
+            
+            <motion.div 
+              initial={{ scale: 0.9, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.9, opacity: 0, y: 20 }}
+              className="relative bg-white w-full max-w-sm rounded-[2.5rem] shadow-2xl overflow-hidden p-8 text-center space-y-6"
+            >
+              <div className="w-20 h-20 bg-red-50 text-red-600 rounded-3xl flex items-center justify-center mx-auto">
+                <Trash2 className="w-10 h-10" />
+              </div>
+              
+              <div className="space-y-2">
+                <h3 className="text-xl font-black text-slate-900 tracking-tight">¿Eliminar Solicitud?</h3>
+                <p className="text-sm text-slate-500 font-medium leading-relaxed">
+                  Esta acción no se puede deshacer. Se borrará la solicitud de <span className="font-bold text-slate-700">{(requestToDelete as any).beneficiary?.firstName || (requestToDelete as any).patient?.firstName}</span>.
+                </p>
+              </div>
+
+              <div className="flex flex-col gap-3 pt-2">
+                <button 
+                  onClick={confirmDelete}
+                  className="w-full py-4 bg-red-600 hover:bg-red-700 text-white rounded-2xl font-black text-xs uppercase tracking-widest transition-all shadow-lg shadow-red-100"
+                >
+                  Sí, Eliminar Permanentemente
+                </button>
+                <button 
+                  onClick={() => setRequestToDelete(null)}
                   className="w-full py-4 text-slate-400 hover:text-slate-600 font-black text-xs uppercase tracking-widest transition-all"
                 >
-                  Cancelar Operación
+                  Cancelar
                 </button>
               </div>
             </motion.div>

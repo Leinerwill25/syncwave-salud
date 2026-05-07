@@ -37,6 +37,7 @@ export default function SafecarePage() {
   const [showModal, setShowModal] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState<SafecarePlanType | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [successData, setSuccessData] = useState<{ id: string, whatsappUrl: string } | null>(null);
 
   // Form State
@@ -53,26 +54,38 @@ export default function SafecarePage() {
       if (data?.user) {
         setUserId(data.user.id);
         
-        // 1. Get current patient profile
-        const { data: pData } = await supabase
-          .from('patient')
-          .select('id, firstName, lastName')
+        // 1. Get user record to find patientProfileId
+        const { data: userData } = await supabase
+          .from('users')
+          .select('patientProfileId')
           .eq('authId', data.user.id)
           .single();
         
-        if (pData) {
-          const patientInfo = { id: pData.id, name: `${pData.firstName} ${pData.lastName || ''}`.trim() };
-          setCurrentPatient(patientInfo);
-          setBeneficiaryId(pData.id); // Default to self
+        if (userData?.patientProfileId) {
+          // 2. Get patient profile
+          const { data: pData } = await supabase
+            .from('patient')
+            .select('id, firstName, lastName')
+            .eq('id', userData.patientProfileId)
+            .single();
+          
+          if (pData) {
+            const patientInfo = { id: pData.id, name: `${pData.firstName} ${pData.lastName || ''}`.trim() };
+            setCurrentPatient(patientInfo);
+            setBeneficiaryId(pData.id); // Default to self
 
-          // 2. Get family members
-          const family = await getPatientFamily(pData.id);
-          setFamilyMembers(family);
+            // 3. Get family members and filter out current patient
+            const family = await getPatientFamily(pData.id);
+            const filteredFamily = family.filter(m => m.id !== pData.id);
+            setFamilyMembers(filteredFamily);
+          }
         }
 
-        // 3. Get requests
-        const userRequests = await getPatientSafecareRequests(data.user.id);
-        setRequests(userRequests);
+        // 4. Get requests
+        if (userData?.patientProfileId) {
+          const userRequests = await getPatientSafecareRequests(userData.patientProfileId);
+          setRequests(userRequests);
+        }
       }
       setLoading(false);
     }
@@ -83,6 +96,7 @@ export default function SafecarePage() {
     setSelectedPlan(plan);
     setShowModal(true);
     setSuccessData(null);
+    setError(null);
   };
 
   const handleEmergencyWhatsApp = () => {
@@ -95,29 +109,42 @@ export default function SafecarePage() {
   };
 
   const handleSubmit = async () => {
-    if (!userId || !selectedPlan || !address || !currentPatient) return;
-    setSubmitting(true);
-    
-    const beneficiary = familyMembers.find(m => m.id === beneficiaryId) || currentPatient;
-
-    const res = await createSafecareRequest(userId, selectedPlan, {
-      zone,
-      address,
-      preferredDatetime: dateTime,
-      notes,
-      beneficiaryId: beneficiary.id,
-      beneficiaryName: beneficiary.name,
-      servicesSelected: selectedPlan === 'atencion_puntual' 
-        ? ['Consultas médicas domiciliarias', 'Toma de muestras de laboratorio (básicos)', 'Estudios de imagenología (Rx y ecos simples)'] 
-        : ['Consulta médica de evaluación', 'Exámenes de laboratorio previos', 'Primer cóctel de sueroterapia personalizado']
-    });
-
-    if (res.success && res.request && res.whatsappUrl) {
-      setSuccessData({ id: res.request.id, whatsappUrl: res.whatsappUrl });
-      const updated = await getPatientSafecareRequests(userId);
-      setRequests(updated);
+    if (!userId || !selectedPlan || !address || !currentPatient) {
+      setError('Por favor, completa la dirección de atención.');
+      return;
     }
-    setSubmitting(false);
+    
+    setSubmitting(true);
+    setError(null);
+    
+    try {
+      const beneficiary = familyMembers.find(m => m.id === beneficiaryId) || currentPatient;
+
+      const res = await createSafecareRequest(currentPatient.id, selectedPlan, {
+        zone,
+        address,
+        preferredDatetime: dateTime,
+        notes,
+        beneficiaryId: beneficiary.id,
+        beneficiaryName: beneficiary.name,
+        servicesSelected: selectedPlan === 'atencion_puntual' 
+          ? ['Consultas médicas domiciliarias', 'Toma de muestras de laboratorio (básicos)', 'Estudios de imagenología (Rx y ecos simples)'] 
+          : ['Consulta médica de evaluación', 'Exámenes de laboratorio previos', 'Primer cóctel de sueroterapia personalizado']
+      });
+
+      if (res.success && res.request && res.whatsappUrl) {
+        setSuccessData({ id: res.request.id, whatsappUrl: res.whatsappUrl });
+        const updated = await getPatientSafecareRequests(currentPatient.id);
+        setRequests(updated);
+      } else {
+        setError(res.error || 'Ocurrió un error al procesar tu solicitud. Verifica tu conexión e intenta de nuevo.');
+      }
+    } catch (err) {
+      console.error('Error submitting request:', err);
+      setError('Error crítico de conexión. Por favor, intenta más tarde.');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   if (loading) return (
@@ -493,6 +520,21 @@ export default function SafecarePage() {
                       Al generar la solicitud, un especialista de <strong>SafeCare</strong> se pondrá en contacto con el paciente para brindar más información y aclarar dudas antes de la atención clínica.
                     </p>
                   </div>
+                  <AnimatePresence>
+                    {error && (
+                      <motion.div 
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: 'auto' }}
+                        exit={{ opacity: 0, height: 0 }}
+                        className="p-4 bg-red-50 border border-red-100 rounded-2xl flex gap-3 overflow-hidden"
+                      >
+                        <AlertCircle className="w-5 h-5 text-red-600 shrink-0 mt-0.5" />
+                        <p className="text-[11px] text-red-900 font-bold leading-relaxed">
+                          {error}
+                        </p>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
 
                   <div className="flex flex-col md:flex-row items-center justify-between gap-6 pt-6 border-t border-slate-100">
                     <div className="flex items-start gap-3 max-w-xs">
@@ -503,12 +545,14 @@ export default function SafecarePage() {
                     </div>
                     <div className="flex items-center gap-3 w-full md:w-auto">
                       <button 
+                        type="button"
                         onClick={handleEmergencyWhatsApp}
                         className="px-6 py-4 bg-red-50 hover:bg-red-100 text-red-600 rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all"
                       >
                         Emergencia
                       </button>
                       <button 
+                        type="button"
                         onClick={handleSubmit}
                         disabled={submitting || !address}
                         className="flex-1 md:flex-none px-12 py-4 bg-slate-900 hover:bg-slate-800 text-white rounded-2xl font-black text-xs uppercase tracking-widest transition-all shadow-xl shadow-slate-200 disabled:opacity-50"

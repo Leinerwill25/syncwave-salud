@@ -6,6 +6,8 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { LogOut, User as UserIcon, ChevronDown, Settings } from 'lucide-react';
 import UserNotificationsBell from '@/components/notifications/UserNotificationsBell';
+import PushNotificationManager from '@/app/dashboard/components/PushNotificationManager';
+import PWATutorial from '@/app/dashboard/components/PWATutorial';
 import { createSupabaseBrowserClient } from '@/app/adapters/client'; // <--- singleton
 
 const supabaseClient = createSupabaseBrowserClient(); // solo una instancia
@@ -252,6 +254,8 @@ export default function DashboardNavBar(): React.ReactElement {
 
 					{/* Right: Notificaciones + Perfil */}
 					<div className="flex items-center gap-3">
+						<PushNotificationManager />
+
 						<div className="relative z-[60]">
 							<UserNotificationsBell user={user} role={user?.role} />
 						</div>
@@ -287,6 +291,7 @@ export default function DashboardNavBar(): React.ReactElement {
 					</div>
 				</div>
 			</div>
+      <PWATutorial />
 		</header>
 	);
 }

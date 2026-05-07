@@ -1130,6 +1130,8 @@ CREATE TABLE public.organization (
   inviteBaseUrl character varying,
   sede_count integer NOT NULL DEFAULT 1,
   is_custom_quote boolean NOT NULL DEFAULT false,
+  is_allied_partner boolean DEFAULT false,
+  partner_slug text UNIQUE,
   CONSTRAINT organization_pkey PRIMARY KEY (id),
   CONSTRAINT fk_organization_plan FOREIGN KEY (planId) REFERENCES public.plan(id)
 );
@@ -1308,6 +1310,24 @@ CREATE TABLE public.patient_prior_treatments (
   CONSTRAINT patient_prior_treatments_prescribed_at_org_id_fkey FOREIGN KEY (prescribed_at_org_id) REFERENCES public.organization(id),
   CONSTRAINT patient_prior_treatments_created_by_fkey FOREIGN KEY (created_by) REFERENCES auth.users(id),
   CONSTRAINT patient_prior_treatments_updated_by_fkey FOREIGN KEY (updated_by) REFERENCES auth.users(id)
+);
+CREATE TABLE public.patient_referrals (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  referrer_id uuid NOT NULL,
+  referred_id uuid,
+  referral_code text NOT NULL UNIQUE,
+  referral_link text NOT NULL,
+  status text NOT NULL DEFAULT 'pending'::text CHECK (status = ANY (ARRAY['pending'::text, 'registered'::text, 'profile_completed'::text, 'converted'::text])),
+  stage1_awarded boolean DEFAULT false,
+  stage2_awarded boolean DEFAULT false,
+  welcome_awarded boolean DEFAULT false,
+  referred_email text,
+  created_at timestamp with time zone DEFAULT now(),
+  registered_at timestamp with time zone,
+  converted_at timestamp with time zone,
+  CONSTRAINT patient_referrals_pkey PRIMARY KEY (id),
+  CONSTRAINT patient_referrals_referrer_id_fkey FOREIGN KEY (referrer_id) REFERENCES auth.users(id),
+  CONSTRAINT patient_referrals_referred_id_fkey FOREIGN KEY (referred_id) REFERENCES auth.users(id)
 );
 CREATE TABLE public.patient_reward_redemptions (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
@@ -1532,6 +1552,43 @@ CREATE TABLE public.role_user_payment_methods (
   CONSTRAINT role_user_payment_methods_pkey PRIMARY KEY (id),
   CONSTRAINT role_user_payment_methods_organization_id_fkey FOREIGN KEY (organization_id) REFERENCES public.organization(id),
   CONSTRAINT role_user_payment_methods_created_by_role_user_id_fkey FOREIGN KEY (created_by_role_user_id) REFERENCES public.consultorio_role_users(id)
+);
+CREATE TABLE public.safecare_documents (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  request_id uuid NOT NULL,
+  patient_id uuid NOT NULL,
+  document_type text NOT NULL CHECK (document_type = ANY (ARRAY['informe_consulta'::text, 'resultado_laboratorio'::text, 'imagen_radiologia'::text, 'receta'::text, 'otro'::text])),
+  file_url text NOT NULL,
+  file_name text NOT NULL,
+  file_size bigint,
+  uploaded_by uuid,
+  notes text,
+  created_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT safecare_documents_pkey PRIMARY KEY (id),
+  CONSTRAINT safecare_documents_request_id_fkey FOREIGN KEY (request_id) REFERENCES public.safecare_requests(id),
+  CONSTRAINT safecare_documents_patient_id_fkey FOREIGN KEY (patient_id) REFERENCES auth.users(id)
+);
+CREATE TABLE public.safecare_requests (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  patient_id uuid NOT NULL,
+  referral_id uuid,
+  plan_type text NOT NULL CHECK (plan_type = ANY (ARRAY['atencion_puntual'::text, 'revitalizacion_bienestar'::text])),
+  service_details jsonb,
+  patient_address text NOT NULL,
+  patient_zone text NOT NULL CHECK (patient_zone = ANY (ARRAY['caracas'::text, 'altos_mirandinos'::text, 'guarenas_guatire'::text])),
+  preferred_datetime timestamp with time zone,
+  patient_notes text,
+  whatsapp_sent boolean DEFAULT false,
+  whatsapp_sent_at timestamp with time zone,
+  status text NOT NULL DEFAULT 'requested'::text CHECK (status = ANY (ARRAY['requested'::text, 'contacted'::text, 'attended'::text, 'cancelled'::text])),
+  attended_at timestamp with time zone,
+  created_at timestamp with time zone DEFAULT now(),
+  updated_at timestamp with time zone DEFAULT now(),
+  beneficiary_id uuid,
+  CONSTRAINT safecare_requests_pkey PRIMARY KEY (id),
+  CONSTRAINT safecare_requests_patient_id_fkey FOREIGN KEY (patient_id) REFERENCES auth.users(id),
+  CONSTRAINT safecare_requests_referral_id_fkey FOREIGN KEY (referral_id) REFERENCES public.patient_referrals(id),
+  CONSTRAINT safecare_requests_beneficiary_id_fkey FOREIGN KEY (beneficiary_id) REFERENCES public.patient(id)
 );
 CREATE TABLE public.sonda_snapshots (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
