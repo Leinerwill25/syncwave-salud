@@ -484,6 +484,41 @@ export async function GET(request: NextRequest) {
         data = orgs;
         break;
 
+      case 'clinicas-detalle':
+        // 1. Obtener todas las clínicas
+        const { data: clinicas, error: clinError } = await supabaseAdmin
+          .from('organization')
+          .select('*')
+          .order('name');
+        
+        if (clinError) throw clinError;
+
+        // 2. Obtener todos los usuarios que pertenecen a alguna clínica
+        const { data: usuarios, error: userError } = await supabaseAdmin
+          .from('users')
+          .select('*')
+          .neq('role', 'PACIENTE'); // No queremos pacientes en el equipo corporativo
+
+        if (userError) throw userError;
+
+        // 3. Mapear el equipo a cada clínica
+        data = (clinicas || []).map((clinica: any) => {
+          const equipo = (usuarios || []).filter((u: any) => 
+            u.organizationId === clinica.id || u.organization_id === clinica.id
+          );
+          
+          return {
+            ...clinica,
+            equipo: equipo.map((u: any) => ({
+              id: u.id,
+              role: u.role,
+              email: u.email,
+              name: u.name || u.full_name || 'Miembro del equipo'
+            }))
+          };
+        });
+        break;
+
       case 'top-diagnoses':
         data = await getTopDiagnoses(supabaseAdmin, filters);
         break;
