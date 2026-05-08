@@ -181,7 +181,7 @@ export async function middleware(request: NextRequest) {
 
 	if (requiresAuth(pathname)) {
 		// Excepción para las APIs de Analytics: permitir si tiene la cookie de admin
-		if (pathname.startsWith('/api/analytics/data')) {
+		if (pathname.startsWith('/api/analytics/')) {
 			const adminSession = request.cookies.get('analytics-admin-session');
 			if (adminSession?.value) {
 				return response;
