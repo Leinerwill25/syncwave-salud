@@ -23,10 +23,12 @@ interface Props {
 	role?: string;
 }
 
+const supabaseClient = createSupabaseBrowserClient();
+
 export default function UserNotificationsBell({ user }: Props) {
 	const [notifications, setNotifications] = useState<NotificationItem[]>([]);
 	const [open, setOpen] = useState(false);
-	const supabase = createSupabaseBrowserClient();
+	const supabase = supabaseClient;
 
 	const channelRef = useRef<any | null>(null);
 	const mountedRef = useRef(false);
