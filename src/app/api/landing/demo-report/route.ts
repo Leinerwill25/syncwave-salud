@@ -2,11 +2,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { Groq } from 'groq-sdk';
 
-// Configuración del cliente Groq
-const groq = new Groq({
-    apiKey: process.env.API_GROQ || process.env.GROQ_API_KEY,
-});
-
 // Plantilla Genérica para la Demo
 const GENERIC_TEMPLATE = `
 INFORME MÉDICO DE CONSULTA
@@ -41,6 +36,10 @@ Especialista en [Especialidad]
 
 export async function POST(request: NextRequest) {
     try {
+        const groq = new Groq({
+            apiKey: process.env.API_GROQ || process.env.GROQ_API_KEY,
+        });
+
         const formData = await request.formData();
         const audioFile = formData.get('audio') as File;
 
