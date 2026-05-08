@@ -478,7 +478,7 @@ export async function GET(request: NextRequest) {
       case 'organizations':
         const { data: orgs, error: orgError } = await supabaseAdmin
           .from('organization')
-          .select('id, name')
+          .select('*')
           .order('name');
         if (orgError) throw orgError;
         data = orgs;
