@@ -14,11 +14,13 @@ import {
   MessageSquare,
   Shield,
   LogOut,
-  User
+  User,
+  Building2
 } from 'lucide-react';
 
 const menuItems = [
   { href: '/dashboard/analytics', label: 'Overview', icon: LayoutDashboard },
+  { href: '/dashboard/analytics/clinicas', label: 'Clínicas', icon: Building2 },
   { href: '/dashboard/analytics/epidemiologia', label: 'Epidemiología', icon: Activity },
   { href: '/dashboard/analytics/farmacia', label: 'Farmacia', icon: Pill },
   { href: '/dashboard/analytics/operaciones', label: 'Operaciones', icon: Calendar },
