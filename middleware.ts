@@ -180,8 +180,8 @@ export async function middleware(request: NextRequest) {
 	if (isPublicRoute(pathname)) return response;
 
 	if (requiresAuth(pathname)) {
-		// Excepción para el panel de Analytics: permitir si tiene la cookie de admin
-		if (pathname.startsWith('/dashboard/analytics')) {
+		// Excepción para las APIs de Analytics: permitir si tiene la cookie de admin
+		if (pathname.startsWith('/api/analytics/data')) {
 			const adminSession = request.cookies.get('analytics-admin-session');
 			if (adminSession?.value) {
 				return response;
