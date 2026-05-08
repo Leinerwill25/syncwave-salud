@@ -77,17 +77,8 @@ export async function POST(request: NextRequest) {
 			loginAt: new Date().toISOString()
 		};
 
-		// Guardar sesión en cookie
-		const cookieStore = await cookies();
-		cookieStore.set('analytics-admin-session', JSON.stringify(sessionData), {
-			httpOnly: true,
-			secure: process.env.NODE_ENV === 'production',
-			sameSite: 'lax',
-			maxAge: 60 * 60 * 24 * 7, // 7 días
-			path: '/',
-		});
-
-		return NextResponse.json({
+		// Crear la respuesta
+		const response = NextResponse.json({
 			success: true,
 			user: {
 				id: admin.id,
@@ -95,6 +86,17 @@ export async function POST(request: NextRequest) {
 				email: admin.email
 			},
 		});
+
+		// Guardar sesión en cookie a través de la respuesta
+		response.cookies.set('analytics-admin-session', JSON.stringify(sessionData), {
+			httpOnly: true,
+			secure: process.env.NODE_ENV === 'production',
+			sameSite: 'lax',
+			maxAge: 60 * 60 * 24 * 7, // 7 días
+			path: '/',
+		});
+
+		return response;
 	} catch (err) {
 		console.error('[Analytics Login] Error:', err);
 		const errorMessage = err instanceof Error ? err.message : 'Error interno';
