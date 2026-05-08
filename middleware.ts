@@ -3,7 +3,7 @@ import { type NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
 
 // ===== CONFIGURACIÓN DE RUTAS =====
-const PUBLIC_ROUTES = ['/login', '/register', '/reset-password', '/safecare/login', '/api/auth', '/api/plans', '/api/register', '/api/organizations', '/api/public', '/api/role-users', '/api/analytics/login', '/'];
+const PUBLIC_ROUTES = ['/login', '/register', '/reset-password', '/safecare/login', '/api/auth', '/api/plans', '/api/register', '/api/organizations', '/api/public', '/api/role-users', '/api/analytics/login', '/dashboard/analytics', '/'];
 
 const ROUTE_ROLE_MAP: Record<string, string[]> = {
 	'/dashboard/clinic': ['ADMIN', 'CLINICA'],
