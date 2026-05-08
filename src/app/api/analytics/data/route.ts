@@ -513,6 +513,7 @@ export async function GET(request: NextRequest) {
               id: u.id,
               role: u.role,
               email: u.email,
+              used: u.used,
               name: u.name || u.full_name || 'Miembro del equipo'
             }))
           };
@@ -673,6 +674,42 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ data });
   } catch (err) {
     console.error('[Analytics API] Error:', err);
+    return NextResponse.json({ error: 'Error interno del servidor' }, { status: 500 });
+  }
+}
+
+export async function POST(request: NextRequest) {
+  try {
+    const body = await request.json();
+    const { action, userId, used } = body;
+
+    if (!supabaseAdmin) {
+      return NextResponse.json({ error: 'Supabase no configurado' }, { status: 500 });
+    }
+
+    if (action === 'delete-user') {
+      const { error } = await supabaseAdmin
+        .from('users')
+        .delete()
+        .eq('id', userId);
+      
+      if (error) throw error;
+      return NextResponse.json({ success: true });
+    }
+
+    if (action === 'toggle-access') {
+      const { error } = await supabaseAdmin
+        .from('users')
+        .update({ used: used })
+        .eq('id', userId);
+      
+      if (error) throw error;
+      return NextResponse.json({ success: true });
+    }
+
+    return NextResponse.json({ error: 'Acción no válida' }, { status: 400 });
+  } catch (err) {
+    console.error('[Analytics API POST] Error:', err);
     return NextResponse.json({ error: 'Error interno del servidor' }, { status: 500 });
   }
 }
