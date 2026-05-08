@@ -180,6 +180,14 @@ export async function middleware(request: NextRequest) {
 	if (isPublicRoute(pathname)) return response;
 
 	if (requiresAuth(pathname)) {
+		// Excepción para el panel de Analytics: permitir si tiene la cookie de admin
+		if (pathname.startsWith('/dashboard/analytics')) {
+			const adminSession = request.cookies.get('analytics-admin-session');
+			if (adminSession?.value) {
+				return response;
+			}
+		}
+
 		if (!user) {
 			if (pathname.startsWith('/api')) {
 				return NextResponse.json({ error: 'No autenticado' }, { status: 401 });
