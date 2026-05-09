@@ -12,6 +12,9 @@ type BillingPeriod = 'monthly' | 'quarterly' | 'annual';
 
 type OrgItem = { id: string; name: string; inviteBaseUrl?: string | null; contactEmail?: string | null };
 
+// Componente de mapa para seleccionar ubicación (cargado dinámicamente para evitar SSR)
+const LocationMapPicker = dynamic<any>(() => import('@/components/LocationMapPicker'), { ssr: false });
+
 // -------------------------
 // Helper Functions (Outside component for stability and linting)
 // -------------------------
@@ -835,9 +838,6 @@ export default function RegisterForm(): React.ReactElement {
 			setErrorMsg(err?.message || 'Error inesperado');
 		}
 	}
-
-	// Componente de mapa para seleccionar ubicación (cargado dinámicamente para evitar SSR)
-	const LocationMapPicker = dynamic<any>(() => import('@/components/LocationMapPicker'), { ssr: false });
 
 	const StepIndicator = ({ current }: { current: number }) => {
 		const steps = role === 'PACIENTE' ? ['Cuenta', 'Paciente', 'Historia', 'Revisar'] : ['Cuenta', 'Organización', 'Plan', 'Revisar'];
@@ -1703,7 +1703,7 @@ export default function RegisterForm(): React.ReactElement {
 									<option value="AB-">AB-</option>
 									<option value="O+">O+</option>
 									<option value="O-">O-</option>
-									<option value="Desconocido">Desconocido</option>
+									<option value="DESC">Desconocido</option>
 								</select>
 								<p className="mt-1.5 text-xs text-slate-500">Esta información es importante para emergencias médicas</p>
 							</label>
@@ -1944,7 +1944,7 @@ export default function RegisterForm(): React.ReactElement {
 										<span className="font-semibold">Medicaciones:</span> {currentMedications || '—'}
 									</div>
 									<div className="text-xs sm:text-sm text-slate-700">
-										<span className="font-semibold">Tipo de Sangre:</span> {bloodType || '—'}
+										<span className="font-semibold">Tipo de Sangre:</span> {bloodType === 'DESC' ? 'Desconocido' : (bloodType || '—')}
 									</div>
 									<div className="text-xs sm:text-sm text-slate-700">
 										<span className="font-semibold">Discapacidad:</span> {hasDisability ? disability || 'Sí (sin descripción)' : 'No'}
