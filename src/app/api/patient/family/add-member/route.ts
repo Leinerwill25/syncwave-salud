@@ -4,6 +4,7 @@ import { getAuthenticatedPatient } from '@/lib/patient-auth';
 import { createSupabaseServerClient } from '@/app/adapters/server';
 import { cookies } from 'next/headers';
 import { awardPoints } from '@/lib/actions/points';
+import { z } from 'zod';
 
 export async function POST(request: Request) {
 	try {
@@ -20,6 +21,13 @@ export async function POST(request: Request) {
 
 		if (!patientId) {
 			return NextResponse.json({ error: 'patientId es requerido' }, { status: 400 });
+		}
+
+		// Validar que patientId sea un UUID válido
+		const uuidSchema = z.string().uuid();
+		const valUuid = uuidSchema.safeParse(patientId);
+		if (!valUuid.success) {
+			return NextResponse.json({ error: 'El ID del paciente no es un UUID válido. Debes ingresar el ID único del paciente.' }, { status: 400 });
 		}
 
 		if (patientId === patient.patientId) {
@@ -48,12 +56,17 @@ export async function POST(request: Request) {
 		}
 
 		// Verificar que el paciente no esté ya en el grupo
-		const { data: existingMember } = await supabase
+		const { data: existingMember, error: checkError } = await supabase
 			.from('familygroupmember')
 			.select('id')
 			.eq('familyGroupId', familyGroup.id)
 			.eq('patientId', patientId)
 			.maybeSingle();
+
+		if (checkError) {
+			console.error('[Add Family Member API] Error checking member:', checkError);
+			return NextResponse.json({ error: 'Error al verificar miembro', detail: checkError.message }, { status: 500 });
+		}
 
 		if (existingMember) {
 			return NextResponse.json({ error: 'El paciente ya está en el grupo' }, { status: 400 });
