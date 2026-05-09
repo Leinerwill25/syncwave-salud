@@ -501,21 +501,54 @@ export async function GET(request: NextRequest) {
 
         if (userError) throw userError;
 
-        // 3. Mapear el equipo a cada clínica
+        // 2.5 Obtener perfiles médicos para las especialidades
+        const { data: medicProfiles, error: medicError } = await supabaseAdmin
+          .from('medic_profile')
+          .select('doctor_id, private_specialty');
+
+        if (medicError) throw medicError;
+
+        // 2.6 Obtener suscripciones reales
+        const { data: subscriptions, error: subError } = await supabaseAdmin
+          .from('subscription')
+          .select('*');
+
+        if (subError) throw subError;
+
+        // 3. Mapear el equipo y suscripción a cada clínica
         data = (clinicas || []).map((clinica: any) => {
           const equipo = (usuarios || []).filter((u: any) => 
             u.organizationId === clinica.id || u.organization_id === clinica.id
           );
           
+          const suscripcion = (subscriptions || []).find((s: any) => s.organizationId === clinica.id);
+          
           return {
             ...clinica,
-            equipo: equipo.map((u: any) => ({
-              id: u.id,
-              role: u.role,
-              email: u.email,
-              used: u.used,
-              name: u.name || u.full_name || 'Miembro del equipo'
-            }))
+            subscriptionData: suscripcion, // Enviamos la suscripción real
+            equipo: equipo.map((u: any) => {
+              const profile = (medicProfiles || []).find((p: any) => p.doctor_id === u.id);
+              let specialty = profile ? profile.private_specialty : null;
+              
+              // Si es un array en formato string (ej: '["Ginecología","Obstetricia"]'), lo parseamos
+              if (specialty && specialty.startsWith('[')) {
+                try {
+                  const arr = JSON.parse(specialty);
+                  specialty = arr.join(', ');
+                } catch (e) {
+                  // ignorar si no es JSON válido
+                }
+              }
+
+              return {
+                id: u.id,
+                role: u.role,
+                email: u.email,
+                used: u.used,
+                name: u.name || u.full_name || 'Miembro del equipo',
+                specialty: specialty
+              };
+            })
           };
         });
         break;
@@ -704,6 +737,48 @@ export async function POST(request: NextRequest) {
         .eq('id', userId);
       
       if (error) throw error;
+      return NextResponse.json({ success: true });
+    }
+
+    if (action === 'manage-subscription') {
+      const { organizationId, isPaid } = body;
+      
+      const startDate = new Date().toISOString();
+      const endDate = new Date();
+      endDate.setDate(endDate.getDate() + 30); // 30 días de cobertura
+      
+      const { data: existing } = await supabaseAdmin
+        .from('subscription')
+        .select('id')
+        .eq('organizationId', organizationId)
+        .maybeSingle();
+        
+      if (existing) {
+        // Si ya existe, actualizamos
+        const { error } = await supabaseAdmin
+          .from('subscription')
+          .update({
+            endDate: isPaid ? endDate.toISOString() : null,
+            planSnapshot: { isPaid: isPaid }
+          })
+          .eq('organizationId', organizationId);
+          
+        if (error) throw error;
+      } else {
+        // Si no existe, creamos el registro
+        const { error } = await supabaseAdmin
+          .from('subscription')
+          .insert({
+            organizationId: organizationId,
+            status: 'TRIALING', // Usamos el valor que sabemos que existe
+            startDate: startDate,
+            endDate: isPaid ? endDate.toISOString() : null,
+            planSnapshot: { isPaid: isPaid }
+          });
+          
+        if (error) throw error;
+      }
+      
       return NextResponse.json({ success: true });
     }
 

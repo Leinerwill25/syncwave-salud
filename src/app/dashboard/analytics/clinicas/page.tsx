@@ -23,10 +23,52 @@ export default function ClinicasPage() {
   const [clinicas, setClinicas] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
-
+  const [modalOpen, setModalOpen] = useState(false);
+  const [userToDelete, setUserToDelete] = useState<string | null>(null);
+  const [subsModalOpen, setSubsModalOpen] = useState(false);
+  const [selectedClinica, setSelectedClinica] = useState<any>(null);
   useEffect(() => {
     loadClinicas();
   }, []);
+
+  const calculateDays = (dateString: string) => {
+    const start = new Date(dateString);
+    const now = new Date();
+    const diffTime = Math.abs(now.getTime() - start.getTime());
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    return diffDays;
+  };
+
+  const getSubscriptionStatus = (createdAt: string, subscriptionData: any) => {
+    const days = calculateDays(createdAt);
+    const isPaid = subscriptionData?.planSnapshot?.isPaid === true;
+    const endDate = subscriptionData?.endDate ? new Date(subscriptionData.endDate) : null;
+
+    // Si lleva menos de 15 días desde su creación, está en prueba
+    if (days <= 15) {
+      return { status: 'Prueba', color: 'bg-green-50 text-green-700', canManage: false, daysLeft: 15 - days };
+    }
+
+    // Si pagó y la suscripción no ha vencido
+    if (isPaid && endDate && endDate > new Date()) {
+      const diffTime = Math.abs(endDate.getTime() - new Date().getTime());
+      const daysLeft = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+      return { status: 'Activa', color: 'bg-emerald-50 text-emerald-700', canManage: true, daysLeft: daysLeft };
+    }
+
+    // Si no ha pagado o ya venció, entramos en mora basándonos en los días de creación
+    const daysDefault = days - 15;
+
+    if (daysDefault <= 2) {
+      return { status: 'Mora Temprana', color: 'bg-yellow-50 text-yellow-700', canManage: true, daysLeft: 2 - daysDefault };
+    }
+    if (daysDefault <= 5) {
+      return { status: 'Mora Tardía', color: 'bg-orange-50 text-orange-700', canManage: true, daysLeft: 5 - daysDefault };
+    }
+    
+    // Al 5to día de mora se suspende
+    return { status: 'Suspendida', color: 'bg-red-50 text-red-700', canManage: true, daysLeft: 0 };
+  };
 
   const loadClinicas = async () => {
     setLoading(true);
@@ -40,6 +82,24 @@ export default function ClinicasPage() {
       console.error('Error cargando clínicas:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleSaveSubscription = async (organizationId: string, isPaid: boolean) => {
+    try {
+      const response = await fetch('/api/analytics/data', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'manage-subscription', organizationId, isPaid })
+      });
+      const result = await response.json();
+      if (result.success) {
+        loadClinicas(); // Recargar datos de la base de datos
+        setSubsModalOpen(false);
+        setSelectedClinica(null);
+      }
+    } catch (error) {
+      console.error('Error saving subscription:', error);
     }
   };
 
@@ -72,9 +132,12 @@ export default function ClinicasPage() {
     }
   };
 
-  const handleDeleteUser = async (userId: string) => {
-    if (!confirm('¿Estás seguro de que deseas eliminar este usuario? Esta acción no se puede deshacer.')) return;
-    
+  const handleDeleteUser = (userId: string) => {
+    setUserToDelete(userId);
+    setModalOpen(true);
+  };
+
+  const executeDeleteUser = async (userId: string) => {
     setActionLoading(userId);
     try {
       const response = await fetch('/api/analytics/data', {
@@ -100,16 +163,16 @@ export default function ClinicasPage() {
     }
   };
 
-  const calculateDays = (dateString: string) => {
-    const start = new Date(dateString);
-    const now = new Date();
-    const diffTime = Math.abs(now.getTime() - start.getTime());
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    return diffDays;
-  };
 
   const totalClinicas = clinicas.length;
   const totalPersonal = clinicas.reduce((acc, clinica) => acc + (clinica.equipo?.length || 0), 0);
+  
+  const clinicasEnMora = clinicas.filter(c => {
+    const subStatus = getSubscriptionStatus(c.createdAt, c.subscriptionData);
+    return subStatus.status === 'Mora Temprana' || subStatus.status === 'Mora Tardía' || subStatus.status === 'Suspendida';
+  }).length;
+  
+  const porcentajeMora = totalClinicas > 0 ? ((clinicasEnMora / totalClinicas) * 100).toFixed(1) : '0.0';
 
   return (
     <div className="p-6 bg-gray-50 min-h-screen">
@@ -159,9 +222,11 @@ export default function ClinicasPage() {
             <div className="bg-white p-6 rounded-xl border border-gray-100 shadow-sm flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-gray-500">Alertas de Pago</p>
-                <h3 className="text-3xl font-bold text-red-600 mt-1">
-                  {clinicas.filter(c => calculateDays(c.createdAt) > 15).length}
-                </h3>
+                <div className="flex items-baseline gap-2 mt-1">
+                  <h3 className="text-3xl font-bold text-red-600">{clinicasEnMora}</h3>
+                  <span className="text-sm font-medium text-red-500">({porcentajeMora}%)</span>
+                </div>
+                <p className="text-xs text-gray-400 mt-1">En mora o suspendidas</p>
               </div>
               <div className="p-3 bg-red-50 rounded-full">
                 <AlertTriangle className="w-6 h-6 text-red-600" />
@@ -173,7 +238,8 @@ export default function ClinicasPage() {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
             {clinicas.map((clinica, index) => {
               const diasActiva = calculateDays(clinica.createdAt);
-              const isOverdue = diasActiva > 15;
+              const subStatus = getSubscriptionStatus(clinica.createdAt, clinica.subscriptionData);
+              const isSuspended = subStatus.status === 'Suspendida';
 
               return (
                 <motion.div
@@ -181,12 +247,22 @@ export default function ClinicasPage() {
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: index * 0.05 }}
-                  className={`bg-white rounded-2xl border ${isOverdue ? 'border-red-200' : 'border-gray-100'} shadow-sm hover:shadow-md transition-shadow overflow-hidden flex flex-col`}
+                  className={`bg-white rounded-2xl border ${
+                    subStatus.status === 'Suspendida' ? 'border-red-300' :
+                    subStatus.status === 'Mora Tardía' ? 'border-orange-200' :
+                    subStatus.status === 'Mora Temprana' ? 'border-yellow-200' :
+                    'border-gray-100'
+                  } shadow-sm hover:shadow-md transition-shadow overflow-hidden flex flex-col`}
                 >
                   {/* Cabecera de la Tarjeta */}
-                  <div className={`p-6 border-b border-gray-50 ${isOverdue ? 'bg-red-50/30' : 'bg-gradient-to-r from-white to-gray-50/50'}`}>
+                  <div className={`p-6 border-b border-gray-50 ${
+                    subStatus.status === 'Suspendida' ? 'bg-red-50/50' :
+                    subStatus.status === 'Mora Tardía' ? 'bg-orange-50/30' :
+                    subStatus.status === 'Mora Temprana' ? 'bg-yellow-50/30' :
+                    'bg-gradient-to-r from-white to-gray-50/50'
+                  }`}>
                     <div className="flex justify-between items-start mb-4">
-                      <div className="max-w-[70%]">
+                      <div className="max-w-[65%]">
                         <span className={`text-xs font-semibold uppercase tracking-wider px-2.5 py-1 rounded-full ${
                           clinica.type === 'CLINICA' ? 'bg-emerald-50 text-emerald-700' : 'bg-blue-50 text-blue-700'
                         }`}>
@@ -198,12 +274,17 @@ export default function ClinicasPage() {
                       </div>
                       
                       {/* Badge de Tiempo / Alerta */}
-                      <div className={`text-right ${isOverdue ? 'text-red-600' : 'text-gray-500'}`}>
-                        <div className={`text-sm font-bold flex items-center gap-1 justify-end ${isOverdue ? 'text-red-600' : 'text-green-600'}`}>
-                          {isOverdue && <AlertTriangle className="w-4 h-4" />}
-                          {diasActiva} días activa
+                      <div className="text-right">
+                        <div className="flex items-center gap-2 justify-end mb-1">
+                          <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${subStatus.color}`}>
+                            {subStatus.status}
+                          </span>
+                          <div className={`text-sm font-bold flex items-center gap-1 ${subStatus.status === 'Suspendida' ? 'text-red-600' : 'text-gray-900'}`}>
+                            {subStatus.status === 'Suspendida' && <AlertTriangle className="w-4 h-4" />}
+                            {diasActiva} días
+                          </div>
                         </div>
-                        <p className="text-xs mt-0.5">Reg: {new Date(clinica.createdAt).toLocaleDateString('es-ES')}</p>
+                        <p className="text-xs text-gray-500">Reg: {new Date(clinica.createdAt).toLocaleDateString('es-ES')}</p>
                       </div>
                     </div>
 
@@ -248,30 +329,40 @@ export default function ClinicasPage() {
                               </div>
                               <div className="truncate">
                                 <p className="text-sm font-medium text-gray-900 truncate">{miembro.name}</p>
-                                <span className={`text-xs font-semibold px-2 py-0.5 rounded ${
-                                  miembro.role === 'MEDICO' ? 'bg-blue-50 text-blue-700' :
-                                  miembro.role === 'ADMIN' || miembro.role === 'ADMINISTRACION' ? 'bg-emerald-50 text-emerald-700' :
-                                  'bg-purple-50 text-purple-700'
-                                }`}>
-                                  {miembro.role}
-                                </span>
+                                <div className="flex items-center gap-1.5 mt-0.5">
+                                  <span className={`text-xs font-semibold px-1.5 py-0.5 rounded ${
+                                    miembro.role === 'MEDICO' ? 'bg-blue-50 text-blue-700' :
+                                    miembro.role === 'ADMIN' || miembro.role === 'ADMINISTRACION' ? 'bg-emerald-50 text-emerald-700' :
+                                    'bg-purple-50 text-purple-700'
+                                  }`}>
+                                    {miembro.role}
+                                  </span>
+                                  {miembro.specialty && (
+                                    <span className="text-xs text-gray-500 truncate" title={miembro.specialty}>
+                                      • {miembro.specialty}
+                                    </span>
+                                  )}
+                                </div>
                               </div>
                             </div>
 
                             {/* Acciones */}
                             <div className="flex items-center gap-2">
                               {/* Botón Bloquear/Permitir */}
+                              {/* Botón Bloquear/Permitir */}
                               <button
                                 onClick={() => handleToggleAccess(miembro.id, miembro.used !== false)}
-                                disabled={actionLoading === miembro.id}
-                                title={miembro.used !== false ? "Bloquear Acceso" : "Permitir Acceso"}
+                                disabled={actionLoading === miembro.id || isSuspended}
+                                title={isSuspended ? "Suspendido por falta de pago" : (miembro.used !== false ? "Bloquear Acceso" : "Permitir Acceso")}
                                 className={`p-2 rounded-lg border transition-colors ${
-                                  miembro.used !== false
-                                    ? 'bg-white border-gray-200 text-gray-700 hover:bg-gray-50'
-                                    : 'bg-red-50 border-red-100 text-red-600 hover:bg-red-100'
+                                  isSuspended
+                                    ? 'bg-red-50 border-red-200 text-red-400 cursor-not-allowed'
+                                    : miembro.used !== false
+                                      ? 'bg-white border-gray-200 text-gray-700 hover:bg-gray-50'
+                                      : 'bg-red-50 border-red-100 text-red-600 hover:bg-red-100'
                                 }`}
                               >
-                                {miembro.used !== false ? <Unlock className="w-4 h-4" /> : <Lock className="w-4 h-4" />}
+                                {isSuspended ? <Lock className="w-4 h-4" /> : (miembro.used !== false ? <Unlock className="w-4 h-4" /> : <Lock className="w-4 h-4" />)}
                               </button>
 
                               {/* Botón Eliminar */}
@@ -295,7 +386,25 @@ export default function ClinicasPage() {
                   </div>
 
                   {/* Footer de la tarjeta */}
-                  <div className="p-4 bg-white border-t border-gray-50 flex justify-end">
+                  <div className="p-4 bg-white border-t border-gray-50 flex justify-between items-center">
+                    <div>
+                      {subStatus.canManage && (
+                        <button
+                          onClick={() => {
+                            setSelectedClinica(clinica);
+                            setSubsModalOpen(true);
+                          }}
+                          className={`text-sm font-medium px-3 py-1.5 rounded-lg border transition-colors ${
+                            subStatus.status === 'Suspendida' ? 'bg-red-50 border-red-100 text-red-600 hover:bg-red-100' :
+                            subStatus.status === 'Mora Tardía' ? 'bg-orange-50 border-orange-100 text-orange-600 hover:bg-orange-100' :
+                            subStatus.status === 'Mora Temprana' ? 'bg-yellow-50 border-yellow-100 text-yellow-600 hover:bg-yellow-100' :
+                            'bg-white border-gray-200 text-gray-700 hover:bg-gray-50'
+                          }`}
+                        >
+                          Gestionar Suscripción
+                        </button>
+                      )}
+                    </div>
                     <button className="text-sm font-medium text-blue-600 hover:text-blue-700 flex items-center gap-1 transition-colors">
                       Gestionar Clínica
                       <ArrowUpRight className="w-4 h-4" />
@@ -306,6 +415,109 @@ export default function ClinicasPage() {
             })}
           </div>
         </>
+      )}
+
+      {/* Modal de Confirmación para Eliminar */}
+      {modalOpen && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <motion.div 
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="bg-white p-6 rounded-xl border border-gray-100 shadow-lg max-w-md w-full mx-4"
+          >
+            <div className="flex items-center gap-3 mb-4 text-red-600">
+              <AlertTriangle className="w-6 h-6" />
+              <h3 className="text-lg font-bold text-gray-900">¿Estás seguro?</h3>
+            </div>
+            <p className="text-gray-500 text-sm mb-6">
+              Esta acción no se puede deshacer. El usuario será eliminado permanentemente de la plataforma.
+            </p>
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={() => {
+                  setModalOpen(false);
+                  setUserToDelete(null);
+                }}
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={() => {
+                  if (userToDelete) {
+                    executeDeleteUser(userToDelete);
+                  }
+                  setModalOpen(false);
+                  setUserToDelete(null);
+                }}
+                className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-lg hover:bg-red-700 transition-colors"
+              >
+                Aceptar
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      )}
+
+      {/* Modal de Gestión de Suscripción */}
+      {subsModalOpen && selectedClinica && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <motion.div 
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="bg-white p-6 rounded-xl border border-gray-100 shadow-lg max-w-md w-full mx-4"
+          >
+            <div className="flex items-center gap-3 mb-4 text-blue-600">
+              <ShieldCheck className="w-6 h-6" />
+              <h3 className="text-lg font-bold text-gray-900">Gestionar Suscripción</h3>
+            </div>
+            <div className="mb-6">
+              <p className="text-sm text-gray-500 mb-2">
+                Clínica: <span className="font-semibold text-gray-900">{selectedClinica.name}</span>
+              </p>
+              <p className="text-sm text-gray-500 mb-4">
+                Días activa: <span className="font-semibold text-gray-900">{calculateDays(selectedClinica.createdAt)} días</span>
+              </p>
+              
+              <div className="bg-gray-50 p-4 rounded-lg border border-gray-100">
+                <p className="text-sm font-medium text-gray-700 mb-2">Estado del Pago</p>
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => handleSaveSubscription(selectedClinica.id, true)}
+                    className={`flex-1 py-2 text-sm font-medium rounded-lg border transition-colors ${
+                      selectedClinica.subscriptionData?.planSnapshot?.isPaid === true
+                        ? 'bg-emerald-50 border-emerald-200 text-emerald-700'
+                        : 'bg-white border-gray-200 text-gray-700 hover:bg-gray-50'
+                    }`}
+                  >
+                    Pagado
+                  </button>
+                  <button
+                    onClick={() => handleSaveSubscription(selectedClinica.id, false)}
+                    className={`flex-1 py-2 text-sm font-medium rounded-lg border transition-colors ${
+                      selectedClinica.subscriptionData?.planSnapshot?.isPaid === false || selectedClinica.subscriptionData === undefined
+                        ? 'bg-red-50 border-red-200 text-red-700'
+                        : 'bg-white border-gray-200 text-gray-700 hover:bg-gray-50'
+                    }`}
+                  >
+                    No Pagado
+                  </button>
+                </div>
+              </div>
+            </div>
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={() => {
+                  setSubsModalOpen(false);
+                  setSelectedClinica(null);
+                }}
+                className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors w-full"
+              >
+                Cerrar y Aplicar
+              </button>
+            </div>
+          </motion.div>
+        </div>
       )}
     </div>
   );
