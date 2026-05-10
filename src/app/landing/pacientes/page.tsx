@@ -49,22 +49,22 @@ export default function PacientesLandingPage() {
 	const variants = {
 		fadeUp: {
 			hidden: { opacity: 0, y: 40 },
-			visible: { opacity: 1, y: 0, transition: { duration: 0.6, ease: [0.22, 1, 0.36, 1] } }
+			visible: { opacity: 1, y: 0, transition: { duration: 0.6 } }
 		},
 		fromLeft: {
 			hidden: { opacity: 0, x: -40 },
-			visible: { opacity: 1, x: 0, transition: { duration: 0.6, ease: [0.22, 1, 0.36, 1] } }
+			visible: { opacity: 1, x: 0, transition: { duration: 0.6 } }
 		},
 		fromRight: {
 			hidden: { opacity: 0, x: 40 },
-			visible: { opacity: 1, x: 0, transition: { duration: 0.6, ease: [0.22, 1, 0.36, 1] } }
+			visible: { opacity: 1, x: 0, transition: { duration: 0.6 } }
 		},
 		stagger: {
 			visible: { transition: { staggerChildren: 0.08 } }
 		},
 		scaleIn: {
 			hidden: { opacity: 0, scale: 0.85 },
-			visible: { opacity: 1, scale: 1, transition: { duration: 0.5, ease: [0.22, 1, 0.36, 1] } }
+			visible: { opacity: 1, scale: 1, transition: { duration: 0.5 } }
 		}
 	};
 
@@ -432,7 +432,7 @@ export default function PacientesLandingPage() {
 								initial={{ scaleX: 0 }}
 								whileInView={{ scaleX: 1 }}
 								viewport={{ once: true, margin: '-100px' }}
-								transition={{ duration: 1.2, ease: [0.22, 1, 0.36, 1] }}
+								transition={{ duration: 1.2 }}
 								className="absolute inset-0 origin-left bg-linear-to-r from-indigo-500 via-purple-500 to-pink-500"
 							/>
 						</div>
