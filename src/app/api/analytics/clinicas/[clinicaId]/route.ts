@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { cookies } from 'next/headers';
 import { getClinicaDetail, getWeekRange, getClinicaTrends, getClinicaLTVAndLoyalty } from '@/lib/analytics/queries';
 import createSupabaseServerClient from '@/app/adapters/server';
 
@@ -17,10 +18,30 @@ export async function GET(
   const { clinicaId } = await params;
   
   // Verificamos que el usuario esté autenticado en la plataforma
-  const supabase = await createSupabaseServerClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  
-  if (!user) {
+  const cookieStore = await cookies();
+  const sessionCookie = cookieStore.get('analytics-admin-session');
+  let isAuthenticated = false;
+
+  if (sessionCookie?.value) {
+    try {
+      const sessionData = JSON.parse(sessionCookie.value);
+      if (sessionData.adminId) {
+        isAuthenticated = true;
+      }
+    } catch (e) {
+      console.error('Error parsing session cookie:', e);
+    }
+  }
+
+  if (!isAuthenticated) {
+    const supabase = await createSupabaseServerClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      isAuthenticated = true;
+    }
+  }
+
+  if (!isAuthenticated) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 

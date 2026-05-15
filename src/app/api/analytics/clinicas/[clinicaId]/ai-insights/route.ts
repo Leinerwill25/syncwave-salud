@@ -3,6 +3,15 @@ import { NextRequest, NextResponse } from 'next/server';
 import { callAI } from '@/lib/ai/client';
 import { createSupabaseServerClient } from '@/app/adapters/server';
 import { getClinicaDetail, getClinicaLTVAndLoyalty } from '@/lib/analytics/queries';
+import { cookies } from 'next/headers';
+import { createClient } from '@supabase/supabase-js';
+
+const SUPABASE_URL = process.env.SUPABASE_URL ?? process.env.NEXT_PUBLIC_SUPABASE_URL ?? '';
+const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY ?? process.env.SUPABASE_KEY ?? '';
+
+const supabaseAdmin = SUPABASE_URL && SUPABASE_SERVICE_ROLE_KEY
+  ? createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, { auth: { persistSession: false } })
+  : null;
 
 export async function GET(
   req: NextRequest,
@@ -10,7 +19,32 @@ export async function GET(
 ) {
   try {
     const { clinicaId } = await params;
+    
+    const cookieStore = await cookies();
+    const sessionCookie = cookieStore.get('analytics-admin-session');
+    let useAdmin = false;
+
+    if (sessionCookie?.value) {
+      try {
+        const sessionData = JSON.parse(sessionCookie.value);
+        if (sessionData.adminId) {
+          useAdmin = true;
+        }
+      } catch (e) {}
+    }
+
     const supabase = await createSupabaseServerClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    
+    if (!useAdmin && !user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const clientToUse = useAdmin ? supabaseAdmin : supabase;
+    
+    if (!clientToUse) {
+      return NextResponse.json({ error: 'Supabase client not available' }, { status: 500 });
+    }
 
     // 1. Obtener rango de fechas (por defecto últimos 30 días)
     const url = new URL(req.url);
@@ -25,8 +59,8 @@ export async function GET(
     if (toStr) to = new Date(toStr);
 
     // 2. Obtener datos reales de la clínica
-    const detail = await getClinicaDetail(supabase, clinicaId, from, to);
-    const topPatients = await getClinicaLTVAndLoyalty(supabase, clinicaId);
+    const detail = await getClinicaDetail(clientToUse, clinicaId, from, to);
+    const topPatients = await getClinicaLTVAndLoyalty(clientToUse, clinicaId);
 
     const { metricas } = detail;
 
