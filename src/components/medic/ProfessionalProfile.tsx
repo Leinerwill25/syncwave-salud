@@ -6,11 +6,13 @@ import type { MedicConfig, MedicCredentials, MedicService, MedicServiceCombo, Cr
 import { PRIVATE_SPECIALTIES } from '@/lib/constants/specialties';
 import { uploadMedicFile, deleteMedicFile } from '@/lib/supabase/medic-storage';
 import { toast } from 'sonner';
+import { useGamification } from '@/hooks/useGamification';
 
 export default function ProfessionalProfile({ config, onUpdate }: { config: MedicConfig; onUpdate: () => void }) {
 	const [loading, setLoading] = useState(false);
 	const [success, setSuccess] = useState<string | null>(null);
 	const [error, setError] = useState<string | null>(null);
+	const { validateMission } = useGamification();
 
 	// Estados de carga para archivos
 	const [uploadingPhoto, setUploadingPhoto] = useState(false);
@@ -352,6 +354,7 @@ export default function ProfessionalProfile({ config, onUpdate }: { config: Medi
 			}
 
 			setSuccess('Configuración guardada correctamente');
+			validateMission('M2');
 			onUpdate();
 
 			// Disparar evento personalizado para notificar al sidebar que debe recargar

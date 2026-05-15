@@ -13,7 +13,7 @@ const groq = GROQ_API_KEY ? new Groq({ apiKey: GROQ_API_KEY }) : null;
 export interface AIOptions {
   maxTokens?: number;
   temperature?: number;
-  feature: 'doc' | 'voice' | 'memory' | 'onboarding' | 'dashboard' | 'patient';
+  feature: 'doc' | 'voice' | 'memory' | 'onboarding' | 'dashboard' | 'patient' | 'analytics';
   doctorId?: string;
   patientId?: string;
   forceJSON?: boolean;
@@ -278,7 +278,12 @@ function getMockResponse(feature: string, userContent: string = ''): AIResponse 
       diagnosticos_presuntivos: ["Anemia Ferropénica", "Ligera alteración hepática reactiva"],
       medicamentos_detectados: ["Hierro Aminoquelado", "Complejo B Vitamínico"],
       valores_criticos: ["Hb: 11.2 (Rango bajo: 12-16)", "GPT: 45 (Rango normal: 0-40)"]
-    })
+    }),
+    analytics: JSON.stringify([
+      "Considera activar recordatorios por WhatsApp los martes ya que detectamos una tasa alta de inasistencias ese día.",
+      "El costo de ausencias de esta semana representa un impacto significativo. Evalúa implementar políticas de confirmación previa de 24h.",
+      "Prioriza la atención de los pacientes TOP de tu ranking LTV para asegurar su retención y fidelidad (Score > 80)."
+    ])
   };
 
   return {

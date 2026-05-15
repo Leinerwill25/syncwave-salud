@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Loader2, MessageSquare, RefreshCw, Power, CheckCircle2, AlertCircle, QrCode } from 'lucide-react';
 import { toast } from 'sonner';
+import { useGamification } from '@/hooks/useGamification';
 
 interface WahaSession {
   status: 'PENDING' | 'STARTING' | 'SCAN_QR' | 'WORKING' | 'FAILED' | 'STOPPED';
@@ -16,6 +17,7 @@ export default function WhatsAppConfigPage() {
   const [session, setSession] = useState<WahaSession | null>(null);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
+  const { validateMission } = useGamification();
 
   const fetchStatus = useCallback(async () => {
     try {
@@ -39,6 +41,12 @@ export default function WhatsAppConfigPage() {
     }, 5000);
     return () => clearInterval(interval);
   }, [fetchStatus, session?.status]);
+
+  useEffect(() => {
+    if (session?.status === 'WORKING') {
+      validateMission('M7');
+    }
+  }, [session?.status, validateMission]);
 
   const handleStartSession = async () => {
     setActionLoading(true);

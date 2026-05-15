@@ -1,0 +1,114 @@
+# MEGAPROMPT PARA GENERACIÓN DE PÁGINA WEB NEXT.JS - FARMATUYA & ASHIRA
+
+Copia y pega el siguiente prompt en un modelo de IA avanzado (como Claude 3.5 Sonnet o GPT-4) para generar el código completo de la página web.
+
+---
+
+**[INICIO DEL PROMPT]**
+
+**Rol:** Eres un desarrollador Frontend Senior experto en React, Next.js (App Router), Tailwind CSS y Framer Motion, con un ojo excepcional para el diseño UI/UX premium, minimalista y corporativo.
+
+**Objetivo:** Crear una página web informativa y funcional para "FarmaTuya", una cadena de farmacias líder. La página debe ser elegante, limpia, altamente interactiva y totalmente responsive. Además, debe integrar conceptualmente a "ASHIRA" como la plataforma tecnológica aliada para la gestión de recetas y pedidos.
+
+---
+
+### 🎨 SISTEMA DE DISEÑO Y ESTÉTICA (CRÍTICO)
+
+- **Estilo:** Minimalista, limpio, elegante, corporativo y profesional. Evitar saturación. Uso generoso de espacios en blanco (Whitespace).
+- **Colores:**
+  - **Principal (Azul):** HSL o Hex que transmita confianza y salud (Ej: `#0D47A1` o `#1E88E5`). Usar para barras de navegación, títulos y botones principales.
+  - **Acento (Rojo):** Un rojo médico/emergencia elegante (Ej: `#D32F2F` o `#E53935`). Usar para llamados a la acción (CTAs) como "WhatsApp", "Delivery" y alertas.
+  - **Fondo:** Blanco puro (`#FFFFFF`) y grises muy tenues (`#F8F9FA`) para diferenciar secciones.
+- **Tipografía:** Moderna y limpia. Recomiendo "Outfit" o "Inter" de Google Fonts.
+- **Efectos:** Glassmorphism sutil en el Navbar, sombras suaves (shadow-sm/md), bordes redondeados modernos (rounded-2xl).
+
+---
+
+### 🧠 INTEGRACIÓN CON ASHIRA (LA CLAVE DE INNOVACIÓN)
+Idea una sección o banner destacado que explique la alianza:
+- **Concepto:** ASHIRA actúa como el intermediario digital y plataforma de telemedicina que conecta al paciente con FarmaTuya.
+- **Flujo:** El paciente recibe su receta digital en la app de ASHIRA -> Presiona "Pedir en FarmaTuya" -> FarmaTuya procesa y envía por Delivery.
+- **Texto sugerido:** "Impulsado por ASHIRA: Tu receta digital se convierte en tu pedido automático en FarmaTuya."
+
+---
+
+### 📄 ESTRUCTURA DE LA PÁGINA Y CONTENIDO
+
+#### 1. Header / Navbar
+- Logo de FarmaTuya (lado izquierdo).
+- Menú: Inicio, Nosotros, Productos, Sucursales, Contacto.
+- Botón CTA (Derecha): "Pedir por WhatsApp" (Color Rojo).
+- Efecto: Sticky con blur de fondo al hacer scroll.
+
+#### 2. Hero Section (Sección de Impacto)
+- **Fondo:** Una imagen profesional y abstracta de salud o farmacia moderna (ver prompts de imágenes abajo).
+- **Contenido:** Título grande y elegante: "Tu salud y bienestar, más cerca de ti". Subtítulo sobre la misión de FarmaTuya.
+- **Botones:** "Ver Sucursales" (Azul) y "Asistente ASHIRA" (Rojo/Transparente).
+- **Animación:** Entrada suave (fade-in up) de los textos.
+
+#### 3. ¿Quiénes Somos? (Identidad)
+- Layout de 2 columnas (Texto e Imagen).
+- **Contenido:** Explicar la Misión y la Propuesta de Valor (Proteger la salud de la familia, negocio de primera necesidad, excelencia en servicio).
+- Tarjetas flotantes pequeñas con iconos para "Calidad", "Disponibilidad" y "Atención 24h".
+
+#### 4. Productos y Servicios (Con Carrusel de Catálogos)
+- **Grid de Servicios:**
+  - Venta de medicamentos (Patente y Genéricos).
+  - Fórmulas Magistrales.
+  - Equipos Médicos (Tensiómetros, nebulizadores).
+  - Delivery 24/7.
+- **CARRUSEL DE CATÁLOGOS:** Un carrusel interactivo (puedes usar `embla-carousel-react` o similar) que muestre portadas de catálogos de productos (Ej: "Cuidado Infantil", "Hipertensión", "Primeros Auxilios"). Al hacer hover, se debe aplicar un efecto de zoom y mostrar un botón de "Ver Catálogo".
+
+#### 5. Sección Alianza ASHIRA (Intermediario Inteligente)
+- Un bloque con fondo azul oscuro o degradado elegante.
+- Explicar cómo ASHIRA facilita la obtención de medicamentos.
+- Gráfico simple o pasos: 1. Consulta en ASHIRA -> 2. Receta Digital -> 3. Despacho en FarmaTuya.
+
+#### 6. Sucursales y Horarios ("Ubícanos")
+- Una tabla o grid de tarjetas muy limpio y legible con las siguientes sedes:
+  - **Chacao:** Lun-Sáb: 07:00 am a 07:00 pm. Dom: 09:00 am a 05:00 pm.
+  - **Catia:** Lun-Sáb: 07:00 am a 07:00 pm. Dom: 08:00 am a 05:00 pm.
+  - **La Urbina:** Lun-Sáb: 07:00 am a 07:00 pm. Dom: 08:00 am a 05:00 pm.
+  - **El Cementerio:** Lun-Sáb: 07:00 am a 08:00 pm. Dom: 08:00 am a 05:00 pm.
+  - **Av. Baralt** y **Los Teques** (Indicar "Consultar disponibilidad").
+- Agregar etiqueta: "Sedes equipadas con acceso para sillas de ruedas".
+
+#### 7. Métodos de Pago
+- Iconos minimalistas para: Efectivo, Tarjeta de Débito, Divisas en Efectivo.
+
+#### 8. Footer (Contacto y Redes)
+- Datos de contacto: WhatsApp/Central: (0412) 313.8311. Correo: info@fresmex.com. Web: www.farmatuya.com.mx.
+- Links a Redes Sociales: Iconos de Instagram y TikTok.
+
+---
+
+### 🎬 ANIMACIONES Y EFECTOS (Framer Motion)
+- **Scroll Animations:** Todas las secciones deben aparecer con un efecto de fade-in y slide-up sutil a medida que el usuario baja.
+- **Hover Effects:** Los botones deben elevarse levemente o cambiar de color suavemente. Las tarjetas de sucursales y productos deben tener un borde brillante o sombra que aumente al pasar el mouse.
+- **Micro-interacciones:** Pequeños rebotes en los iconos al hacerles hover.
+
+---
+
+### 🖼️ PROMPTS PARA GENERACIÓN DE IMÁGENES (Para DALL-E 3 o Midjourney)
+Incluye estas descripciones en el código como comentarios o úsalas para generar las imágenes reales:
+
+1. **Para el Fondo del Hero:**
+   `"A wide shot of a futuristic, clean, and bright pharmacy interior, soft blue and white ambient lighting, blurred shelves with products in the background, a sense of trust and advanced healthcare, minimalist and corporate style, 8k, photorealistic --ar 16:9"`
+
+2. **Para la Sección de ASHIRA:**
+   `"A minimalist 3D isometric illustration of a smartphone showing a digital medical prescription, connecting with a glowing line to a pharmacy delivery box, clean white background, brand colors blue and red, corporate tech style --ar 1:1"`
+
+3. **Para las Portadas del Carrusel de Catálogos:**
+   `"Close up shot of various high-quality medical products, stethoscopes, pill bottles with clean labels, organic textures, arranged in a flat lay minimalist composition, studio lighting, soft shadows --ar 3:4"`
+
+---
+
+### 🛠️ REQUISITOS TÉCNICOS
+- Usa **Next.js 14+** o superior con App Router.
+- Usa **Lucide React** para los iconos.
+- Código limpio, componentes separados y bien comentados.
+- Responsive design perfecto (Mobile First).
+
+Por favor, genera el código completo para el archivo `page.tsx` y los componentes necesarios para lograr esta experiencia.
+
+**[FIN DEL PROMPT]**

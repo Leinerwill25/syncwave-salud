@@ -11,6 +11,7 @@ import { DollarSign, CheckCircle, AlertCircle, RefreshCw, Loader2, TrendingUp, G
 import { useCurrencyRate } from '@/hooks/useCurrencyRate';
 import CurrencyDisplay from '@/components/CurrencyDisplay';
 import { createClient } from '@supabase/supabase-js';
+import { useGamification } from '@/hooks/useGamification';
 
 const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!);
 
@@ -28,6 +29,7 @@ export default function CurrencyConfigPage() {
 	const [loading, setLoading] = useState(true);
 	const [saving, setSaving] = useState(false);
 	const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+	const { validateMission } = useGamification();
 	
 	// Obtener la tasa de la moneda preferida
 	const { rate, loading: rateLoading, error: rateError, refresh: refreshRate } = useCurrencyRate(preference || 'USD');
@@ -128,6 +130,7 @@ export default function CurrencyConfigPage() {
 
 			setPreference(newPreference);
 			setMessage({ type: 'success', text: 'Preferencia de moneda guardada correctamente' });
+			validateMission('M5');
 
 			// Guardar también en localStorage para acceso rápido
 			localStorage.setItem('currency_preference', newPreference);

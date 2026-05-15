@@ -128,6 +128,7 @@ export default function AshPatient({ patientName = 'Paciente' }: { patientName?:
   const [dynamicName, setDynamicName] = useState(patientName);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const [showVideo, setShowVideo] = useState(false);
 
   if (!pathname?.startsWith('/dashboard/patient')) return null;
 
@@ -236,6 +237,13 @@ export default function AshPatient({ patientName = 'Paciente' }: { patientName?:
       setMessages(prev => [...prev, {
         id: `a-${Date.now()}`, role: 'assistant', content: data.message, richContent
       }]);
+      
+      // Decidir si mostrar el video periódicamente (30% de probabilidad)
+      if (Math.random() < 0.3) {
+        setShowVideo(true);
+        setTimeout(() => setShowVideo(false), 15000); // Ocultar tras 15s
+      }
+      
       if (!isOpen) setUnread(n => n + 1);
     } catch {
       setMessages(prev => [...prev, { id: 'err', role: 'assistant', content: 'Lo siento, tuve un problema de conexión. ¿Podrías repetir?' }]);
@@ -374,6 +382,38 @@ export default function AshPatient({ patientName = 'Paciente' }: { patientName?:
                 </div>
               </>
             )}
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* ── Video de Ash (Heygen) ────────────────────────────────────────── */}
+      <AnimatePresence>
+        {showVideo && (
+          <motion.div
+            initial={{ opacity: 0, x: 20, scale: 0.95 }}
+            animate={{ opacity: 1, x: 0, scale: 1 }}
+            exit={{ opacity: 0, x: 20, scale: 0.95 }}
+            transition={{ type: 'spring', stiffness: 300, damping: 28 }}
+            className="fixed bottom-6 right-[380px] sm:right-[420px] z-[9999] w-[280px] sm:w-[320px] bg-white rounded-[2rem] shadow-[0_20px_50px_rgba(0,0,0,0.3)] border-2 border-emerald-200/50 overflow-hidden"
+          >
+            <div className="relative pt-[56.25%] overflow-hidden bg-black">
+              <iframe 
+                className="absolute left-0 w-full"
+                style={{ height: '120%', top: '-10%' }}
+                src="https://app.heygen.com/embeds/c2ea881b6b18436e91122d5e234c69d4?autoplay=1"
+                title="Video de Avatar IV" 
+                frameBorder="0" 
+                allow="encrypted-media; fullscreen;" 
+                allowFullScreen
+              />
+            </div>
+            <button 
+              onClick={() => setShowVideo(false)}
+              className="absolute top-2 right-2 p-1.5 bg-white/70 hover:bg-white rounded-full transition-colors shadow-sm"
+              aria-label="Cerrar video"
+            >
+              <X className="w-4 h-4 text-slate-700" />
+            </button>
           </motion.div>
         )}
       </AnimatePresence>

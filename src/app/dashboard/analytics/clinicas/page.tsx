@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
+import Link from 'next/link';
 import { 
   Building2, 
   User, 
@@ -405,10 +406,10 @@ export default function ClinicasPage() {
                         </button>
                       )}
                     </div>
-                    <button className="text-sm font-medium text-blue-600 hover:text-blue-700 flex items-center gap-1 transition-colors">
+                    <Link href={`/dashboard/analytics/clinicas/${clinica.id}`} className="text-sm font-medium text-blue-600 hover:text-blue-700 flex items-center gap-1 transition-colors">
                       Gestionar Clínica
                       <ArrowUpRight className="w-4 h-4" />
-                    </button>
+                    </Link>
                   </div>
                 </motion.div>
               );

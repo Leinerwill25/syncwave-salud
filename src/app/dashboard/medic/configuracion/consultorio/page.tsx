@@ -8,6 +8,7 @@ import { Save, Building2, AlertCircle, MapPin, Image, X, Camera, CheckCircle, Up
 import { Button } from '@/components/ui/button';
 import type { MedicConfig } from '@/types/medic-config';
 import LeafletMapPicker from '@/components/clinic/LeafletMapPicker';
+import { useGamification } from '@/hooks/useGamification';
 import PhotoUploader from '@/components/clinic/PhotoUploader';
 
 // Helper function to convert Supabase Storage path to public URL
@@ -80,9 +81,9 @@ export default function ConsultorioConfigPage() {
 	const [medicConfig, setMedicConfig] = useState<MedicConfig | null>(null);
 	const [profile, setProfile] = useState<ClinicProfile | null>(null);
 	
-	// Estado para múltiples consultorios
 	const [offices, setOffices] = useState<Array<{ id: string; name: string; location: any }>>([]);
 	const [selectedOfficeIndex, setSelectedOfficeIndex] = useState(0);
+	const { validateMission } = useGamification();
 	const [selectedOfficeId, setSelectedOfficeId] = useState<string | null>(null);
 	
 	const [formData, setFormData] = useState(initialFormData);
@@ -334,6 +335,11 @@ export default function ConsultorioConfigPage() {
 			
 			// Mostrar modal de éxito
 			setShowSuccessModal(true);
+			
+			// Validar misiones de gamificación
+			validateMission('M1');
+			validateMission('M3');
+			validateMission('M4');
 			
 			// Cerrar modal y recargar página después de 2.5 segundos
 			setTimeout(() => {

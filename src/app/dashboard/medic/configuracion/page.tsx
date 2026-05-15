@@ -16,10 +16,28 @@ export default function MedicConfigurationPage() {
 	const [loading, setLoading] = useState(true);
 	const [config, setConfig] = useState<MedicConfig | null>(null);
 	const [error, setError] = useState<string | null>(null);
+	const [gamificationStatus, setGamificationStatus] = useState<{
+		completed_missions: string[];
+		total_points: number;
+		current_level: number;
+	} | null>(null);
 
 	useEffect(() => {
 		loadConfig();
+		fetchGamification();
 	}, []);
+
+	const fetchGamification = async () => {
+		try {
+			const res = await fetch('/api/gamification/status');
+			if (res.ok) {
+				const data = await res.json();
+				setGamificationStatus(data);
+			}
+		} catch (err) {
+			console.warn('[Page] No se pudo cargar el estado de gamificación:', err);
+		}
+	};
 
 	const loadConfig = async () => {
 		try {
@@ -98,6 +116,10 @@ export default function MedicConfigurationPage() {
 		{ id: 'report', label: config.isAffiliated ? 'Informe Genérico (Solo lectura)' : 'Informe Genérico', icon: FileText },
 	];
 
+	const hasSchedules = config.config?.availability?.schedule && 
+		Object.values(config.config.availability.schedule).some((daySlots: any) => 
+			daySlots?.[0]?.enabled === true
+		);
 
 	return (
 		<div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-purple-50 p-4 sm:p-6">
@@ -143,6 +165,138 @@ export default function MedicConfigurationPage() {
 										Esta información es necesaria para validar que eres un especialista legalmente titulado.
 									</p>
 								</div>
+							</div>
+						</div>
+					</div>
+				)}
+
+				{/* Mensaje de Ash si el perfil está completo */}
+				{config.isProfileComplete && (
+					<div className="mb-6 p-5 bg-linear-to-br from-indigo-50 to-purple-50 border border-indigo-100 rounded-xl shadow-sm">
+						<div className="flex items-start gap-4">
+							<div className="shrink-0 w-12 h-12 rounded-full bg-linear-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-bold text-lg shadow-md">
+								Ash
+							</div>
+							<div className="flex-1">
+								{(() => {
+									const completed = gamificationStatus?.completed_missions || [];
+									
+									// Fallback local si el API no responde o no tiene datos
+									const isM2Complete = completed.includes('M2') || hasSchedules;
+									const isM1Complete = completed.includes('M1') || config.isProfileComplete;
+									
+									if (!isM1Complete) {
+										return (
+											<>
+												<h3 className="text-base font-bold text-indigo-900 mb-1">
+													¡Bienvenido a ASHIRA! 🚀
+												</h3>
+												<p className="text-sm text-indigo-700 leading-relaxed mb-3">
+													Para empezar, completa tu **Perfil Profesional**. Esto permitirá que los pacientes te reconozcan y que el sistema valide tus credenciales.
+												</p>
+												<div className="bg-white/80 backdrop-blur-xs rounded-lg p-3 border border-indigo-50">
+													<p className="text-xs font-semibold text-purple-700 uppercase mb-1">Próximo Paso:</p>
+													<p className="text-sm text-gray-700 font-medium">
+														Completa los campos requeridos en la pestaña "Perfil Profesional".
+													</p>
+												</div>
+											</>
+										);
+									}
+									
+									if (!isM2Complete) {
+										return (
+											<>
+												<h3 className="text-base font-bold text-indigo-900 mb-1">
+													¡En hora buena, has completado la primera etapa! 🎉
+												</h3>
+												<p className="text-sm text-indigo-700 leading-relaxed mb-3">
+													Ya has completado tu perfil profesional. ¡Excelente trabajo! Ahora te voy a seguir acompañando para indicarte los siguientes pasos.
+												</p>
+												<div className="bg-white/80 backdrop-blur-xs rounded-lg p-3 border border-indigo-50">
+													<p className="text-xs font-semibold text-purple-700 uppercase mb-1">Próximo Paso:</p>
+													<p className="text-sm text-gray-700 font-medium">
+														Configura tus <span className="text-indigo-600 font-bold">Horarios de Disponibilidad</span>. Ve a la pestaña "Horarios" arriba y define en qué días y horas atiendes.
+													</p>
+												</div>
+											</>
+										);
+									}
+									
+									if (!completed.includes('M3')) {
+										return (
+											<>
+												<h3 className="text-base font-bold text-indigo-900 mb-1">
+													¡Horarios configurados! 🕒
+												</h3>
+												<p className="text-sm text-indigo-700 leading-relaxed mb-3">
+													Vas por muy buen camino. Ahora debes configurar tu **Consultorio Privado** o la **Moneda** de cobro para poder emitir recetas y cobrar.
+												</p>
+												<div className="bg-white/80 backdrop-blur-xs rounded-lg p-3 border border-indigo-50">
+													<p className="text-xs font-semibold text-purple-700 uppercase mb-1">Próximo Paso:</p>
+													<p className="text-sm text-gray-700 font-medium">
+														Ve al módulo de <span className="text-indigo-600 font-bold">Consultorio Privado</span> o <span className="text-indigo-600 font-bold">Moneda</span> en el menú lateral.
+													</p>
+												</div>
+											</>
+										);
+									}
+									
+									if (!completed.includes('M4')) {
+										return (
+											<>
+												<h3 className="text-base font-bold text-indigo-900 mb-1">
+													¡Espacio de trabajo listo! 🏢
+												</h3>
+												<p className="text-sm text-indigo-700 leading-relaxed mb-3">
+													Ahora configura tu **Plantilla de Informe** para que puedas generar informes médicos rápidamente con IA.
+												</p>
+												<div className="bg-white/80 backdrop-blur-xs rounded-lg p-3 border border-indigo-50">
+													<p className="text-xs font-semibold text-purple-700 uppercase mb-1">Próximo Paso:</p>
+													<p className="text-sm text-gray-700 font-medium">
+														Ve al módulo de <span className="text-indigo-600 font-bold">Plantillas de Informe</span> en el menú lateral.
+													</p>
+												</div>
+											</>
+										);
+									}
+									
+									if (!completed.includes('M5')) {
+										return (
+											<>
+												<h3 className="text-base font-bold text-indigo-900 mb-1">
+													¡Casi listo! 📱
+												</h3>
+												<p className="text-sm text-indigo-700 leading-relaxed mb-3">
+													Por último, conecta tu **WhatsApp** para que tus pacientes reciban recordatorios automáticos de sus citas.
+												</p>
+												<div className="bg-white/80 backdrop-blur-xs rounded-lg p-3 border border-indigo-50">
+													<p className="text-xs font-semibold text-purple-700 uppercase mb-1">Próximo Paso:</p>
+													<p className="text-sm text-gray-700 font-medium">
+														Ve al módulo de <span className="text-indigo-600 font-bold">Integración WhatsApp</span> en el menú lateral.
+													</p>
+												</div>
+											</>
+										);
+									}
+									
+									return (
+										<>
+											<h3 className="text-base font-bold text-indigo-900 mb-1">
+												¡Felicidades! Has completado la hoja de ruta. 🏆
+											</h3>
+											<p className="text-sm text-indigo-700 leading-relaxed mb-3">
+												Has completado todas las misiones iniciales. Ya tienes tu consultorio digital 100% operativo y optimizado.
+											</p>
+											<div className="bg-white/80 backdrop-blur-xs rounded-lg p-3 border border-indigo-50">
+												<p className="text-xs font-semibold text-purple-700 uppercase mb-1">Estado:</p>
+												<p className="text-sm text-gray-700 font-medium">
+													¡Ya estás listo para atender a tus pacientes con todo el poder de ASHIRA!
+												</p>
+											</div>
+										</>
+									);
+								})()}
 							</div>
 						</div>
 					</div>

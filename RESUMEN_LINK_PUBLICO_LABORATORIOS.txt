@@ -1,0 +1,34 @@
+# Resumen de Funcionamiento: Link Público para Laboratorios
+
+Este documento resume cómo funciona el sistema de links públicos para la carga de resultados de laboratorio en los consultorios de la plataforma.
+
+## 1. Generación del Link (Por el Consultorio/Médico)
+- El médico o administrador del consultorio puede generar un link único desde su panel.
+- El sistema crea un token único (UUID) y lo asocia a la organización (consultorio).
+- Solo puede haber **un link activo a la vez** por consultorio. Si se genera uno nuevo, el anterior queda invalidado (is_active = false).
+- El link tiene el formato: `https://[dominio]/lab-upload/[token]`
+
+## 2. Acceso y Uso (Por el Laboratorio)
+- El consultorio comparte este link con los laboratorios aliados.
+- Al acceder al link, el personal del laboratorio ve un formulario público (no requiere login).
+- El formulario solicita:
+    - **Datos del Paciente:** Cédula/Identificación, nombres, correo y teléfono. El sistema puede buscar si el paciente ya está registrado.
+    - **Datos del Resultado:** Título, descripción, tipo de resultado y si es un caso crítico.
+    - **Datos del Especialista/Laboratorio:** Nombre del especialista, cédula, nombre del laboratorio, correo y teléfono.
+    - **Archivos:** Permite adjuntar los documentos del resultado (PDFs, imágenes, etc.).
+
+## 3. Procesamiento y Almacenamiento
+- Al enviar el formulario:
+    - Los archivos se suben a un bucket de Supabase Storage (`lab-results`) en una carpeta específica para la organización.
+    - Se crea un registro en la tabla `lab_result_upload` con estado inicial `pending`.
+    - Se guarda toda la información del laboratorio y del paciente (incluso si no está registrado en el sistema).
+
+## 4. Notificaciones y Flujo Posterior
+- El sistema detecta si hay una consulta asociada o si el paciente existe.
+- Se crean registros de notificación para:
+    - **El Médico:** Se le notifica vía email y en la app que hay un nuevo resultado pendiente de revisión.
+    - **El Paciente:** Si está registrado, se le notifica en la app y por correo. Si no está registrado, se le envía un correo con la información.
+- Un proceso en segundo plano (trigger o cron) se encarga de procesar estas notificaciones.
+
+---
+Generado automáticamente por Antigravity.

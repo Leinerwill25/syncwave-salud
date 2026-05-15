@@ -3,9 +3,11 @@
 import React, { useState, useEffect } from 'react';
 import { Upload, FileType, CheckCircle2, AlertCircle, Loader2, Download, Trash2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import { useGamification } from '@/hooks/useGamification';
 
 export default function PrescriptionTemplatePage() {
 	const router = useRouter();
+	const { validateMission } = useGamification();
 	const [file, setFile] = useState<File | null>(null);
 	const [uploading, setUploading] = useState(false);
 	const [error, setError] = useState<string | null>(null);
@@ -100,6 +102,7 @@ export default function PrescriptionTemplatePage() {
 			}
 
 			setSuccess('Plantilla cargada exitosamente');
+			validateMission('M8');
 			setFile(null);
 			await loadCurrentTemplate();
 
@@ -174,6 +177,7 @@ export default function PrescriptionTemplatePage() {
 			}
 
 			setSuccess('Plantilla de texto guardada exitosamente');
+			validateMission('M8');
 		} catch (err: any) {
 			setError(err.message || 'Error al guardar la plantilla de texto');
 		} finally {

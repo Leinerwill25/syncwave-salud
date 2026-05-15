@@ -1,0 +1,81 @@
+====================================================================
+MANUAL FUNCIONAL: MÓDULO DE ANALÍTICA DE CLÍNICAS (ASHIRA)
+====================================================================
+Ruta: /dashboard/analytics/clinicas/[clinicaId]
+
+Este documento detalla todas las funcionalidades, métricas y secciones
+disponibles dentro del panel detallado de análisis de una clínica
+específica en el sistema.
+
+====================================================================
+1. PANEL DE CONTROL SUPERIOR (HEADER)
+====================================================================
+- Navegación de Tiempo (Semanas): Permite viajar en el tiempo para ver 
+  la data exacta de "Hace 1 semana", "Hace 2 semanas", etc. Todos los 
+  datos en pantalla (excepto la pestaña de tendencias) reaccionan a esta 
+  semana seleccionada.
+- Exportar Informe: Genera una captura perfecta (en formato PNG) de 
+  todos los gráficos y datos visibles en ese momento, utilizando SVG 
+  para mantener colores corporativos e interactividad, ideal para enviar 
+  reportes a los gerentes de la clínica.
+
+====================================================================
+2. TARJETAS DE INDICADORES CLAVE (KPIs SUPERIORES)
+====================================================================
+Estas 4 métricas siempre están visibles para dar el contexto más
+importante a primera vista:
+1. Total Citas (Azul): Cantidad absoluta de citas gestionadas en el periodo.
+2. Ingresos Facturado (Esmeralda): Suma total de dinero recolectado de 
+   las citas que tienen estatus de "Completada/Realizada".
+3. Tasa de Asistencia (Violeta): Porcentaje de pacientes que sí llegaron 
+   a su cita (Citas Completadas / Total de Citas * 100).
+4. Nuevos Pacientes (Índigo): Número de pacientes que fueron ingresados 
+   por primera vez a la clínica en la semana seleccionada.
+
+====================================================================
+3. DESGLOSE DETALLADO (PESTAÑAS INFERIORES)
+====================================================================
+
+--- PESTAÑA A: RENDIMIENTO (Resumen Operativo) ---
+- Métricas de Asistencia: Barras de progreso visuales que separan las 
+  "Asistencias Exitosas" (verde) frente a las "Ausencias o Cancelaciones" (rojo).
+- Resumen Financiero: Una tarjeta con gradiente azul que consolida la 
+  tasa de éxito comercial y el ingreso total facturado de la semana.
+
+--- PESTAÑA B: AGENDA DE CITAS (Listado) ---
+- Tabla de Control: Muestra cronológicamente todas las citas programadas.
+- Columnas: Fecha/Hora exacta, Nombre del Paciente (incluyendo pacientes
+  "no registrados" o agendados manualmente para no mostrar "Desconocido")
+  y el Estado de la cita.
+- Estados Visuales: Etiquetas coloreadas semánticamente (Verde=Completada,
+  Rojo=Cancelada/No asistió, Azul=Otros estados).
+
+--- PESTAÑA C: DESGLOSE FINANCIERO (Revenue) ---
+- Tabla de Facturación: Filtra la agenda y muestra exclusivamente las
+  citas donde hubo un cobro real.
+- Auditoría: Detalla la fecha, qué paciente pagó y el monto exacto 
+  facturado. Al final incluye un bloque totalizador destacado en tonos 
+  esmeralda con el ingreso global del periodo.
+
+--- PESTAÑA D: TENDENCIAS Y COMPORTAMIENTO (Inteligencia de Negocios BI) ---
+*Nota: A diferencia de las otras pestañas, esta sección ignora la semana 
+actual y lee todo el histórico real (sin bloqueos de RLS) para armar 
+estrategias a largo plazo.*
+
+- Selector de Período: Cambia la data al vuelo entre 6 meses o 12 meses.
+- Volumen de Citas Mensual (Gráfico de Líneas): Ilustra el crecimiento
+  estacional. Línea principal azul (demanda total) vs Línea verde (éxito real).
+- Comportamiento por Semanas del Mes (Gráfico de Barras Índigo): 
+  Agrupa históricamente el mes en "Semanas del 1 al 5". Permite descubrir
+  si los pacientes de esta clínica asisten más a principios, quincena o fin de mes.
+- Servicios Más Solicitados (Barras Horizontales): Top 5 de los paquetes
+  o servicios médicos con mayor atracción comercial.
+- Fidelización de Pacientes: Contador exacto de la retención. "Frecuentes"
+  (más de 1 cita histórica) vs "1ª Vez" (pacientes únicos).
+- Días de Mayor Demanda (Barras de Progreso Horizontales): Identifica 
+  qué día de la semana (Lunes a Sábado) es el más concurrido históricamente.
+
+====================================================================
+Este módulo está diseñado siguiendo el estilo Minimalista Corporativo
+de ASHIRA, utilizando colores acentuados para facilitar la lectura de
+datos densos, priorizando siempre la accionabilidad de la información.

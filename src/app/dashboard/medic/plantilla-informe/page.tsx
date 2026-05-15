@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { Upload, FileType, CheckCircle2, AlertCircle, Loader2, Download, Trash2, Stethoscope, Heart, Baby } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import { useGamification } from '@/hooks/useGamification';
 
 type TemplateData = {
 	specialty: string;
@@ -37,6 +38,7 @@ export default function ReportTemplatePage() {
 	const [loading, setLoading] = useState(true);
 	const [error, setError] = useState<string | null>(null);
 	const [success, setSuccess] = useState<string | null>(null);
+	const { validateMission } = useGamification();
 	
 	// Datos de especialidades y plantillas
 	const [specialties, setSpecialties] = useState<{ specialty1: string | null; specialty2: string | null }>({ specialty1: null, specialty2: null });
@@ -279,6 +281,7 @@ export default function ReportTemplatePage() {
 			}
 
 			setSuccess(`Plantilla para ${targetSpecialty}${variant ? ` (${variant === 'trimestre1' ? 'Primer Trimestre' : 'Segundo y Tercer Trimestre'})` : ''} cargada exitosamente`);
+			validateMission('M6');
 			
 			// Limpiar el archivo seleccionado según el contexto
 			if (isObstetricia && variant) {
@@ -426,6 +429,7 @@ export default function ReportTemplatePage() {
 			}
 
 			setSuccess(`Plantilla de texto para ${targetSpecialty}${variant ? ` (${variant === 'trimestre1' ? 'Primer Trimestre' : 'Segundo y Tercer Trimestre'})` : ''} guardada exitosamente`);
+			validateMission('M6');
 			await loadCurrentTemplates();
 		} catch (err: any) {
 			setError(err.message || 'Error al guardar la plantilla de texto');
