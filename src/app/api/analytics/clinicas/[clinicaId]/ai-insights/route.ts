@@ -26,7 +26,11 @@ export async function GET(
 
     if (sessionCookie?.value) {
       try {
-        const sessionData = JSON.parse(sessionCookie.value);
+        let cookieValue = sessionCookie.value;
+        if (cookieValue.startsWith('%')) {
+          cookieValue = decodeURIComponent(cookieValue);
+        }
+        const sessionData = JSON.parse(cookieValue);
         if (sessionData.adminId) {
           useAdmin = true;
         }
