@@ -1,5 +1,6 @@
 // src/app/api/analytics/clinicas/[clinicaId]/ai-insights/route.ts
 import { NextRequest, NextResponse } from 'next/server';
+import crypto from 'crypto';
 import { callAI } from '@/lib/ai/client';
 import { createSupabaseServerClient } from '@/app/adapters/server';
 import { getClinicaDetail, getClinicaLTVAndLoyalty } from '@/lib/analytics/queries';
@@ -40,6 +41,23 @@ export async function GET(
     const supabase = await createSupabaseServerClient();
     const { data: { user } } = await supabase.auth.getUser();
     
+    // Permitir acceso con firma válida (Link Público Temporal)
+    const requestUrl = new URL(req.url);
+    const sig = requestUrl.searchParams.get('sig');
+    const expiresAt = requestUrl.searchParams.get('expiresAt');
+    
+    if (sig && expiresAt) {
+      const secret = SUPABASE_SERVICE_ROLE_KEY;
+      const expectedSig = crypto
+        .createHmac('sha256', secret)
+        .update(`${clinicaId}:${expiresAt}`)
+        .digest('hex');
+        
+      if (sig === expectedSig && Date.now() < parseInt(expiresAt, 10)) {
+        useAdmin = true;
+      }
+    }
+
     if (!useAdmin && !user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }

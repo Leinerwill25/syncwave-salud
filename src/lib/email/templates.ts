@@ -632,3 +632,116 @@ export function getRegistrationInviteTemplate(data: {
 	`;
 	return getBaseTemplate(content);
 }
+
+/**
+ * Template para aviso de creación de informe quincenal
+ */
+export function getReportProcessingTemplate(data: {
+	organizationName: string;
+	period: string;
+}): string {
+	const content = `
+		<h2 style="font-size: 24px; font-weight: 700; margin-bottom: 24px; text-align: center;">📊 Estamos preparando su Informe Quincenal</h2>
+		
+		<p>Hola,</p>
+		
+		<p>Le informamos que estamos procesando el informe de rendimiento gerencial para <strong>${data.organizationName}</strong> correspondiente al período <strong>${data.period}</strong>.</p>
+		
+		<p>Este informe incluirá un análisis detallado de:</p>
+		
+		<div style="margin: 24px 0;">
+			<div style="margin-bottom: 12px; display: flex; align-items: flex-start;">
+				<span style="color: #059669; margin-right: 12px;">✓</span>
+				<span>Rendimiento y Agenda de Citas.</span>
+			</div>
+			<div style="margin-bottom: 12px; display: flex; align-items: flex-start;">
+				<span style="color: #059669; margin-right: 12px;">✓</span>
+				<span>Desglose Financiero.</span>
+			</div>
+			<div style="margin-bottom: 12px; display: flex; align-items: flex-start;">
+				<span style="color: #059669; margin-right: 12px;">✓</span>
+				<span>Tendencias y Comportamiento.</span>
+			</div>
+			<div style="display: flex; align-items: flex-start;">
+				<span style="color: #059669; margin-right: 12px;">✓</span>
+				<span>Recomendaciones Gerenciales generadas por IA.</span>
+			</div>
+		</div>
+
+		<p>Le notificaremos tan pronto como el informe esté listo para su descarga.</p>
+		
+		<p style="font-size: 14px; color: #64748b; text-align: center;">
+			Gracias por confiar en ASHIRA para la gestión de su institución.
+		</p>
+	`;
+	return getBaseTemplate(content);
+}
+
+/**
+ * Template para envío de informe quincenal listo
+ */
+export function getReportReadyTemplate(data: {
+	organizationName: string;
+	period: string;
+	downloadUrl: string;
+	buttonText?: string;
+}): string {
+	const content = `
+		<h2 style="font-size: 24px; font-weight: 700; margin-bottom: 24px; text-align: center;">📥 Su Informe Quincenal está Listo</h2>
+		
+		<p>Hola,</p>
+		
+		<p>El informe de rendimiento gerencial para <strong>${data.organizationName}</strong> correspondiente al período <strong>${data.period}</strong> ya está disponible.</p>
+		
+		<div class="info-box">
+			<div class="info-item">
+				<span class="info-label">Organización</span>
+				<span class="info-value">${data.organizationName}</span>
+			</div>
+			<div class="info-item">
+				<span class="info-label">Período</span>
+				<span class="info-value">${data.period}</span>
+			</div>
+		</div>
+
+		<div style="text-align: center; margin: 32px 0;">
+			<a href="${data.downloadUrl}" class="button">${data.buttonText || 'Descargar Reporte Gerencial'}</a>
+		</div>
+
+		<p>Este reporte contiene información crítica para la toma de decisiones, incluyendo comparativas con la semana anterior y recomendaciones estratégicas.</p>
+		
+		<p style="font-size: 14px; color: #64748b; text-align: center;">
+			Le recomendamos revisar este informe a la brevedad.
+		</p>
+	`;
+	return getBaseTemplate(content);
+}
+
+/**
+ * Template para recordatorio de revisión de informe
+ */
+export function getReportReminderTemplate(data: {
+	organizationName: string;
+	period: string;
+	downloadUrl: string;
+}): string {
+	const content = `
+		<h2 style="font-size: 24px; font-weight: 700; margin-bottom: 24px; text-align: center;">🔔 Recordatorio: Revise su Informe Quincenal</h2>
+		
+		<p>Hola,</p>
+		
+		<p>Este es un recordatorio para que revise el informe de rendimiento gerencial de <strong>${data.organizationName}</strong> correspondiente al período <strong>${data.period}</strong>.</p>
+		
+		<p>Es importante que esté al tanto de las métricas y recomendaciones para optimizar la gestión de su clínica.</p>
+
+		<div style="text-align: center; margin: 32px 0;">
+			<a href="${data.downloadUrl}" class="button">Descargar reporte</a>
+		</div>
+
+		<p style="font-size: 14px; color: #64748b; text-align: center;">
+			Si ya revisó el informe, puede ignorar este mensaje.
+		</p>
+	`;
+	return getBaseTemplate(content);
+}
+

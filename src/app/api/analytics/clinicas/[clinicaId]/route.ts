@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import crypto from 'crypto';
 import { createClient } from '@supabase/supabase-js';
 import { cookies } from 'next/headers';
 import { getClinicaDetail, getWeekRange, getClinicaTrends, getClinicaLTVAndLoyalty } from '@/lib/analytics/queries';
@@ -34,6 +35,23 @@ export async function GET(
       }
     } catch (e) {
       console.error('Error parsing session cookie:', e);
+    }
+  }
+
+  // Permitir acceso con firma válida (Link Público Temporal)
+  const requestUrl = new URL(req.url);
+  const sig = requestUrl.searchParams.get('sig');
+  const expiresAt = requestUrl.searchParams.get('expiresAt');
+  
+  if (sig && expiresAt) {
+    const secret = SUPABASE_SERVICE_ROLE_KEY;
+    const expectedSig = crypto
+      .createHmac('sha256', secret)
+      .update(`${clinicaId}:${expiresAt}`)
+      .digest('hex');
+      
+    if (sig === expectedSig && Date.now() < parseInt(expiresAt, 10)) {
+      isAuthenticated = true;
     }
   }
 

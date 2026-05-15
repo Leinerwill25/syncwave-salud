@@ -1,11 +1,11 @@
 'use client';
 
-import React, { useEffect, useState, use } from 'react';
-import { useRouter } from 'next/navigation';
+import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
-  ArrowLeft, ChevronLeft, ChevronRight, Calendar, TrendingUp, Users, CalendarCheck, 
-  UserPlus, Download, Loader2, Activity, CreditCard, AlertTriangle, Brain
+  Calendar, TrendingUp, Users, CalendarCheck, 
+  UserPlus, Download, Loader2, Activity, CreditCard, AlertTriangle, Brain,
+  ChevronLeft, ChevronRight
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { getWeekRange } from '@/lib/analytics/queries';
@@ -13,17 +13,19 @@ import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
-import { toPng } from 'html-to-image';
 import { generateBiweeklyReportPDF } from '@/lib/pdf/pdf-generator';
 import { 
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer,
-  BarChart, Bar, PieChart, Pie, Cell, Legend
+  BarChart, Bar
 } from 'recharts';
 
-export default function CorporateClinicaDetailAnalytics({ params }: { params: Promise<{ clinicaId: string }> }) {
-  const router = useRouter();
-  const clinicaId = use(params).clinicaId;
+interface PublicReportClientProps {
+  clinicaId: string;
+  expiresAt: string;
+  sig: string;
+}
 
+export default function PublicReportClient({ clinicaId, expiresAt, sig }: PublicReportClientProps) {
   const [weeksAgo, setWeeksAgo] = useState(0);
   const [data, setData] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -46,7 +48,7 @@ export default function CorporateClinicaDetailAnalytics({ params }: { params: Pr
 
   useEffect(() => {
     setIsLoading(true);
-    fetch(`/api/analytics/clinicas/${clinicaId}?week=${weeksAgo}`)
+    fetch(`/api/analytics/clinicas/${clinicaId}?week=${weeksAgo}&expiresAt=${expiresAt}&sig=${sig}`)
       .then(res => res.json())
       .then(d => {
         setData(d);
@@ -55,11 +57,11 @@ export default function CorporateClinicaDetailAnalytics({ params }: { params: Pr
       .catch(err => {
         console.error(err);
       });
-  }, [clinicaId, weeksAgo]);
+  }, [clinicaId, weeksAgo, expiresAt, sig]);
 
   useEffect(() => {
     setIsLoadingLtv(true);
-    fetch(`/api/analytics/clinicas/${clinicaId}?type=ltv`)
+    fetch(`/api/analytics/clinicas/${clinicaId}?type=ltv&expiresAt=${expiresAt}&sig=${sig}`)
       .then(res => res.json())
       .then(d => {
         setLtvData(d);
@@ -69,11 +71,11 @@ export default function CorporateClinicaDetailAnalytics({ params }: { params: Pr
         console.error(err);
         setIsLoadingLtv(false);
       });
-  }, [clinicaId]);
+  }, [clinicaId, expiresAt, sig]);
 
   useEffect(() => {
     setIsLoadingAi(true);
-    fetch(`/api/analytics/clinicas/${clinicaId}/ai-insights`)
+    fetch(`/api/analytics/clinicas/${clinicaId}/ai-insights?expiresAt=${expiresAt}&sig=${sig}`)
       .then(res => res.json())
       .then(d => {
         if (d.success) setAiRecommendations(d.recommendations);
@@ -83,11 +85,11 @@ export default function CorporateClinicaDetailAnalytics({ params }: { params: Pr
         console.error(err);
         setIsLoadingAi(false);
       });
-  }, [clinicaId]);
+  }, [clinicaId, expiresAt, sig]);
 
   useEffect(() => {
     setIsLoadingTrends(true);
-    fetch(`/api/analytics/clinicas/${clinicaId}?type=trends&months=${trendMonths}`)
+    fetch(`/api/analytics/clinicas/${clinicaId}?type=trends&months=${trendMonths}&expiresAt=${expiresAt}&sig=${sig}`)
       .then(res => res.json())
       .then(d => {
         setTrendsData(d);
@@ -97,7 +99,7 @@ export default function CorporateClinicaDetailAnalytics({ params }: { params: Pr
         console.error(err);
         setIsLoadingTrends(false);
       });
-  }, [clinicaId, trendMonths]);
+  }, [clinicaId, trendMonths, expiresAt, sig]);
 
   const handleCapture = async () => {
     setCapturing(true);
@@ -182,23 +184,19 @@ export default function CorporateClinicaDetailAnalytics({ params }: { params: Pr
   const currencySymbol = m.baseCurrency === 'EUR' ? '€' : m.baseCurrency === 'VES' ? 'Bs.' : '$';
 
   return (
-    <div className="min-h-screen bg-white p-4 sm:p-8 font-sans selection:bg-slate-100 selection:text-slate-900 pb-24 text-slate-800">
+    <div className="min-h-screen bg-white p-4 sm:pt-4 sm:px-8 font-sans selection:bg-slate-100 selection:text-slate-900 pb-24 text-slate-800">
       <div className="max-w-7xl mx-auto space-y-6">
         
         {/* Header Section */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 pb-6 border-b border-slate-100">
-          <div className="flex items-center gap-4">
-            <Button variant="outline" size="icon" onClick={() => router.push('/dashboard/analytics/clinicas')} className="rounded-md hover:bg-slate-50 border-slate-200">
-              <ArrowLeft className="w-4 h-4 text-slate-600" />
-            </Button>
-            <div>
-              <h1 className="text-2xl font-bold text-slate-900 tracking-tight">
-                Análisis de Rendimiento
-              </h1>
-              <div className="flex items-center gap-2 mt-1 text-sm text-slate-500">
-                <Calendar className="w-4 h-4" /> 
-                <span>{weekLabel}</span>
-              </div>
+          <div>
+            <h1 className="text-2xl font-bold text-slate-900 tracking-tight">
+              Análisis de Rendimiento
+            </h1>
+            <div className="flex items-center gap-2 mt-1 text-sm text-slate-500">
+              <Calendar className="w-4 h-4" /> 
+              <span>{weekLabel}</span>
+              <Badge variant="outline" className="ml-2 text-amber-600 border-amber-200 bg-amber-50">Acceso Temporal (3h)</Badge>
             </div>
           </div>
 
@@ -278,7 +276,6 @@ export default function CorporateClinicaDetailAnalytics({ params }: { params: Pr
               </div>
             </motion.div>
 
-            {/* Card 5: Costo de Ausencias */}
             <motion.div variants={itemVariants} className="bg-white p-5 rounded-lg border-l-4 border-l-red-500 border-y border-r border-slate-200 shadow-sm hover:shadow transition-all">
               <div className="flex items-center justify-between mb-3">
                 <h3 className="text-sm font-medium text-slate-500">Costo de Ausencias</h3>
@@ -293,7 +290,6 @@ export default function CorporateClinicaDetailAnalytics({ params }: { params: Pr
               <p className="text-xs text-slate-400 mt-1">Potencial perdido esta semana</p>
             </motion.div>
 
-            {/* Card 6: Índice de Salud */}
             <motion.div variants={itemVariants} className="bg-gradient-to-br from-amber-50 to-white p-5 rounded-lg border-l-4 border-l-amber-500 border-y border-r border-amber-100 shadow-sm hover:shadow transition-all">
               <div className="flex items-center justify-between mb-3">
                 <h3 className="text-sm font-medium text-amber-700">Índice de Salud</h3>
@@ -685,7 +681,6 @@ export default function CorporateClinicaDetailAnalytics({ params }: { params: Pr
                           <div className="bg-white border border-slate-200 p-5 rounded-lg">
                             <h4 className="text-sm font-semibold text-slate-800 mb-4">Días de Mayor Demanda</h4>
                             <div className="space-y-3">
-                              {/* Simple horizontal bars representing heatmap totals by day */}
                               {['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'].map(day => {
                                 const totalDay = (trendsData.heatmap || []).filter((h:any) => h.day === day).reduce((sum:number, h:any) => sum + h.count, 0);
                                 const maxDay = Math.max(...['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'].map(d => 

@@ -29,6 +29,7 @@ export interface EmailOptions {
 	from?: string;
 	replyTo?: string;
 	tags?: Array<{ name: string; value: string }>;
+	attachments?: Array<{ filename: string; content: string | Buffer }>;
 }
 
 /**
@@ -51,6 +52,7 @@ export async function sendEmail(options: EmailOptions): Promise<{ success: boole
 			text: options.text,
 			replyTo: options.replyTo,
 			tags: options.tags,
+			attachments: options.attachments,
 		});
 
 		if (error) {
