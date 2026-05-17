@@ -12,17 +12,20 @@ export async function GET(request: NextRequest) {
     let groupStr = searchParams.get('group');
     const isTest = searchParams.get('test') === 'true';
     
-    // Si no se pasa grupo, lo detectamos por la hora
+    // Si no se pasa grupo, lo detectamos por la hora UTC del servidor
+    // Mapeo (local UTC-4 -> UTC):
+    // - 12:00 PM local = 16:00 UTC -> Grupo 1
+    // - 01:00 PM local = 17:00 UTC -> Grupo 2
+    // - 02:00 PM local = 18:00 UTC -> Grupo 3
     if (!groupStr && !isTest) {
-      const currentHour = new Date().getHours(); // Ojo: Esto usa la hora del servidor (usualmente UTC)
-      // Mapeo: 12/17 -> Grupo 1, 13/18 -> Grupo 2, 14/19 -> Grupo 3
-      if (currentHour === 12 || currentHour === 17) groupStr = '1';
-      else if (currentHour === 13 || currentHour === 18) groupStr = '2';
-      else if (currentHour === 14 || currentHour === 19) groupStr = '3';
+      const currentHour = new Date().getHours(); // Obtiene la hora en UTC
+      if (currentHour === 16) groupStr = '1';
+      else if (currentHour === 17) groupStr = '2';
+      else if (currentHour === 18) groupStr = '3';
       else {
         return NextResponse.json({ 
           success: true, 
-          message: `Hora actual (${currentHour}) no corresponde a ningún grupo de envío automático.` 
+          message: `Hora actual del servidor (${currentHour} UTC / ${currentHour - 4} local) no corresponde a ningún grupo de envío automático.` 
         });
       }
     }
