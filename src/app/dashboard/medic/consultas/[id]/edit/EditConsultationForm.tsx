@@ -881,9 +881,22 @@ export default function EditConsultationForm({
 			const data = await res.json();
 			if (!res.ok) throw new Error(data.error || 'Error al generar informe');
 			
-			setReportUrl(data.url);
+			const finalUrl = data.report_url || data.url || null;
+			setReportUrl(finalUrl);
 			setReportSuccess('Informe generado con éxito');
 			toast.success('Informe generado con éxito');
+
+			// Descargar automáticamente si se obtuvo la URL
+			if (finalUrl) {
+				const link = document.createElement('a');
+				link.href = finalUrl;
+				link.target = '_blank';
+				link.rel = 'noopener noreferrer';
+				link.download = `informe-medico-${initial.id}.docx`;
+				document.body.appendChild(link);
+				link.click();
+				document.body.removeChild(link);
+			}
 		} catch (error: any) {
 			setReportError(error.message || 'Error al generar el informe');
 			toast.error('Error al generar el informe: ' + error.message);
