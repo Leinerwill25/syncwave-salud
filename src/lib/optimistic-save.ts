@@ -7,6 +7,7 @@ export interface SaveOperation {
 	id: string;
 	type: 'consultation' | 'prescription' | 'order' | 'report' | 'other';
 	endpoint: string;
+	method?: 'POST' | 'PATCH' | 'PUT';
 	data: any;
 	timestamp: number;
 	retries?: number;
@@ -93,7 +94,7 @@ class OptimisticSaveQueue {
 			const timeoutId = setTimeout(() => controller.abort(), 20000); // 20 segundos timeout
 
 			const response = await fetch(operation.endpoint, {
-				method: 'POST',
+				method: operation.method || 'POST',
 				headers: {
 					'Content-Type': 'application/json',
 				},
@@ -186,12 +187,14 @@ export function useOptimisticSave() {
 		endpoint: string,
 		data: any,
 		onSuccess?: (result: any) => void,
-		onError?: (error: Error) => void
+		onError?: (error: Error) => void,
+		method?: 'POST' | 'PATCH' | 'PUT'
 	): Promise<{ success: boolean; operationId: string }> => {
 		// Agregar a la cola para guardado en background
 		const operationId = optimisticSaveQueue.add({
 			type,
 			endpoint,
+			method: method || 'POST',
 			data,
 		});
 
@@ -202,7 +205,7 @@ export function useOptimisticSave() {
 				const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 segundos para guardado inmediato
 
 				const response = await fetch(endpoint, {
-					method: 'POST',
+					method: method || 'POST',
 					headers: {
 						'Content-Type': 'application/json',
 					},

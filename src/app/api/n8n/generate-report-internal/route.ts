@@ -1292,23 +1292,6 @@ export async function POST(request: NextRequest) {
 			throw new Error(`Error al renderizar plantilla: ${renderError.message}`);
 		}
 
-		// Aplicar formato
-		try {
-			const zip = doc.getZip();
-			const documentXml = zip.files['word/document.xml'];
-			if (documentXml) {
-				let xmlContent = documentXml.asText();
-				const selectedFont = fontFamily; // Usar la fuente consolidada
-				xmlContent = xmlContent.replace(/<w:sz\s+w:val="\d+"/g, '<w:sz w:val="18"');
-				xmlContent = xmlContent.replace(/(<w:rPr[^>]*>)(?![^<]*<w:sz)/g, '$1<w:sz w:val="18"/>');
-				xmlContent = xmlContent.replace(/<w:rFonts[^>]*>/g, `<w:rFonts w:ascii="${selectedFont}" w:hAnsi="${selectedFont}" w:cs="${selectedFont}"/>`);
-				xmlContent = xmlContent.replace(/(<w:rPr[^>]*>)(?![^<]*<w:rFonts)/g, `$1<w:rFonts w:ascii="${selectedFont}" w:hAnsi="${selectedFont}" w:cs="${selectedFont}"/>`);
-				zip.file('word/document.xml', xmlContent);
-			}
-		} catch (formatError) {
-			console.warn('Error aplicando formato:', formatError);
-		}
-
 		// Generar documento
 		const generatedBuffer = doc.getZip().generate({
 			type: 'nodebuffer',

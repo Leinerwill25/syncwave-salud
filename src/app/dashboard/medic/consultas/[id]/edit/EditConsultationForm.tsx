@@ -640,7 +640,7 @@ export default function EditConsultationForm({
 		};
 
 		try {
-			await saveOptimistically('consultation', `/api/medic/consultations/${initial.id}`, payload);
+			await saveOptimistically('consultation', `/api/consultations/${initial.id}`, payload, undefined, undefined, 'PATCH');
 			
 			// Update patient data if available
 			if (patient) {
@@ -692,7 +692,10 @@ export default function EditConsultationForm({
 			await saveOptimistically(
 				'consultation',
 				`/api/consultations/${initial.id}`,
-				payload
+				payload,
+				undefined,
+				undefined,
+				'PATCH'
 			);
 			toast.success('Informe guardado en la base de datos');
 		} catch (error: any) {
