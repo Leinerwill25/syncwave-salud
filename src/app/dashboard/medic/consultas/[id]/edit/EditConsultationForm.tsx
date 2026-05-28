@@ -736,6 +736,7 @@ export default function EditConsultationForm({
 			'jabon_intimo': includedSections.includes('plan') ? (intimateSoap || '---') : '',
 			'probioticos': includedSections.includes('plan') ? (probiotics || '---') : '',
 			'vitaminas': includedSections.includes('plan') ? (vitamins || '---') : '',
+			'tratamiento_infeccion': includedSections.includes('plan') ? (treatmentInfection || '---') : '',
 			'paciente_nombre': `${patientFirstName} ${patientLastName}`,
 			'paciente_edad': patientAge || 'N/A',
 			'fecha_actual': new Date().toLocaleDateString(),
@@ -886,12 +887,10 @@ export default function EditConsultationForm({
 			setReportSuccess('Informe generado con éxito');
 			toast.success('Informe generado con éxito');
 
-			// Descargar automáticamente si se obtuvo la URL
+			// Descargar automáticamente si se obtuvo la URL (sin target='_blank' para evitar bloqueadores de popups)
 			if (finalUrl) {
 				const link = document.createElement('a');
 				link.href = finalUrl;
-				link.target = '_blank';
-				link.rel = 'noopener noreferrer';
 				link.download = `informe-medico-${initial.id}.docx`;
 				document.body.appendChild(link);
 				link.click();
