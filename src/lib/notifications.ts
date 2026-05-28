@@ -1,8 +1,7 @@
 // lib/notifications.ts
 // Helper para crear notificaciones y enviar emails automáticamente
 
-import { createSupabaseServerClient } from '@/app/adapters/server';
-import { cookies } from 'next/headers';
+import { supabaseAdmin } from '@/lib/supabase/admin';
 import { sendNotificationEmail } from './email';
 
 export interface CreateNotificationOptions {
@@ -25,11 +24,8 @@ export async function createNotification(options: CreateNotificationOptions): Pr
 	error?: string;
 }> {
 	try {
-		const cookieStore = await cookies();
-		const supabase = await createSupabaseServerClient();
-
-		// Crear notificación en la base de datos
-		const { data: notification, error: notifError } = await supabase
+		// Crear notificación en la base de datos usando supabaseAdmin para evitar bloqueos de RLS
+		const { data: notification, error: notifError } = await supabaseAdmin
 			.from('notification')
 			.insert({
 				userId: options.userId || null,
@@ -57,7 +53,7 @@ export async function createNotification(options: CreateNotificationOptions): Pr
 				const userTableVariants = ['users', 'user', '"user"'];
 				for (const tableName of userTableVariants) {
 					try {
-						const { data, error: userError } = await supabase
+						const { data, error: userError } = await supabaseAdmin
 							.from(tableName)
 							.select('email, role')
 							.eq('id', options.userId)

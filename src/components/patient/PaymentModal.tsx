@@ -64,12 +64,46 @@ export default function PaymentModal({ isOpen, onClose, factura, onPaymentSucces
 	const [paymentReference, setPaymentReference] = useState<string>('');
 	const [screenshotFile, setScreenshotFile] = useState<File | null>(null);
 
+	const [bancaribeActive, setBancaribeActive] = useState(false);
+	const [bancaribeOrgId, setBancaribeOrgId] = useState('');
+	const [c2pPhone, setC2pPhone] = useState('');
+	const [c2pBanco, setC2pBanco] = useState('');
+	const [c2pCedula, setC2pCedula] = useState('');
+	const [c2pCedulaPref, setC2pCedulaPref] = useState('V');
+
 	// Cargar métodos de pago del doctor cuando se abre el modal
 	useEffect(() => {
 		if (isOpen && factura) {
 			const doctorId = factura.doctor_id || factura.appointment?.doctor?.id;
 			if (doctorId) {
 				loadDoctorPaymentMethods(doctorId);
+
+				// Verificar si tiene Bancaribe activo
+				fetch(`/api/patient/pagos/bancaribe-active?doctorId=${doctorId}`)
+					.then((r) => r.json())
+					.then((data) => {
+						if (data.active) {
+							setBancaribeActive(true);
+							setBancaribeOrgId(data.organizationId);
+						}
+					})
+					.catch((err) => console.error(err));
+
+				// Cargar datos de perfil del paciente para prellenar campos de C2P
+				fetch('/api/patient/profile')
+					.then((r) => r.json())
+					.then((data) => {
+						if (data) {
+							if (data.phone) setC2pPhone(data.phone);
+							if (data.identifier) {
+								const cleanId = data.identifier.replace(/^[VEve]-?/, '');
+								setC2pCedula(cleanId);
+								const pref = data.identifier.toUpperCase().startsWith('E') ? 'E' : 'V';
+								setC2pCedulaPref(pref);
+							}
+						}
+					})
+					.catch((err) => console.error(err));
 			}
 		}
 	}, [isOpen, factura]);
@@ -136,6 +170,68 @@ export default function PaymentModal({ isOpen, onClose, factura, onPaymentSucces
 			return;
 		}
 
+		if (selectedMethod === 'BANCARIBE_C2P') {
+			setProcessing(true);
+			setError(null);
+			try {
+				const cleanedPhone = c2pPhone.replace(/\D/g, '');
+				const fullCedula = `${c2pCedulaPref}${c2pCedula.replace(/\D/g, '')}`;
+				const concepto = factura.appointment?.reason || `Consulta médica - Factura #${factura.id.slice(0, 8)}`;
+
+				// 1. Iniciar cobro C2P
+				const res = await fetch(`/api/bancaribe/cobro-c2p`, {
+					method: 'POST',
+					headers: {
+						'Content-Type': 'application/json',
+					},
+					body: JSON.stringify({
+						organizationId: bancaribeOrgId,
+						monto: factura.total,
+						telefonoPaciente: cleanedPhone,
+						bancoPaciente: c2pBanco,
+						cedulaPaciente: fullCedula,
+						conceptoCita: concepto,
+						appointmentId: factura.appointment?.id,
+					}),
+				});
+
+				const data = await res.json();
+				if (!res.ok) {
+					throw new Error(data.error || 'Error al iniciar cobro C2P');
+				}
+
+				// 2. Simular pago en background para demo
+				try {
+					await fetch(`/api/bancaribe/demo/simular-pago`, {
+						method: 'POST',
+						headers: {
+							'Content-Type': 'application/json',
+						},
+						body: JSON.stringify({
+							monto: factura.total,
+							telefonoPaciente: cleanedPhone,
+							organizationId: bancaribeOrgId,
+							appointmentId: factura.appointment?.id,
+						}),
+					});
+				} catch (simError) {
+					console.warn('Simulation webhook fetch failed:', simError);
+				}
+
+				setSuccess(true);
+				setTimeout(() => {
+					onPaymentSuccess();
+					handleClose();
+				}, 2000);
+			} catch (err: any) {
+				console.error(err);
+				setError(err.message || 'Error procesando cobro C2P');
+			} finally {
+				setProcessing(false);
+			}
+			return;
+		}
+
 		// Validar que si es pago móvil, se haya subido la captura y el número de referencia
 		if (selectedMethod === 'PAGO_MOVIL') {
 			if (!paymentScreenshot) {
@@ -197,6 +293,10 @@ export default function PaymentModal({ isOpen, onClose, factura, onPaymentSucces
 		setPaymentReference('');
 		setScreenshotFile(null);
 		setDoctorPaymentMethods([]);
+		setC2pPhone('');
+		setC2pBanco('');
+		setC2pCedula('');
+		setC2pCedulaPref('V');
 		onClose();
 	};
 
@@ -418,7 +518,10 @@ export default function PaymentModal({ isOpen, onClose, factura, onPaymentSucces
 												Método de Pago
 											</label>
 											<div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
-												{paymentMethods.map((method) => {
+												{[
+													...(bancaribeActive ? [{ value: 'BANCARIBE_C2P', label: 'Bancaribe C2P', icon: Smartphone }] : []),
+													...paymentMethods
+												].map((method) => {
 													const Icon = method.icon;
 													const isSelected = selectedMethod === method.value;
 													// Deshabilitar pago móvil si el doctor no lo tiene configurado
@@ -460,6 +563,93 @@ export default function PaymentModal({ isOpen, onClose, factura, onPaymentSucces
 													);
 												})}
 											</div>
+
+											{/* Campos para Bancaribe C2P */}
+											{selectedMethod === 'BANCARIBE_C2P' && (
+												<motion.div
+													initial={{ opacity: 0, height: 0 }}
+													animate={{ opacity: 1, height: 'auto' }}
+													className="mt-4 sm:mt-6 space-y-3 sm:space-y-4 pt-3 sm:pt-4 border-t border-gray-200"
+												>
+													<div className="bg-amber-50 border border-amber-200 rounded-xl p-3.5 text-xs space-y-2">
+														<div className="flex items-center gap-2">
+															<span className="text-sm">🧪</span>
+															<span className="font-bold text-amber-900 uppercase tracking-wider">Modo Sandbox Bancaribe Activo</span>
+														</div>
+														<p className="text-slate-600 leading-relaxed">
+															Para probar la conciliación del pago con tu cita en este entorno local de desarrollo:
+														</p>
+														<ul className="list-disc pl-4 space-y-1 text-slate-600">
+															<li>Ingresa o mantén el teléfono registrado en tu perfil de paciente (<strong>{c2pPhone || 'ej. 04126111969'}</strong>).</li>
+															<li>La cédula y banco emisor pueden ser ficticios (p. ej. Banco de Venezuela).</li>
+															<li>Al dar click en <strong>Confirmar Pago</strong>, se simulará la transacción exitosa en Bancaribe y el webhook confirmará la cita automáticamente en segundos.</li>
+														</ul>
+													</div>
+
+													<div>
+														<label className="block text-xs sm:text-sm font-semibold text-gray-900 mb-1.5 sm:mb-2">
+															Cédula del Pagador <span className="text-red-500">*</span>
+														</label>
+														<div className="flex gap-1.5">
+															<select
+																value={c2pCedulaPref}
+																onChange={(e) => setC2pCedulaPref(e.target.value)}
+																className="px-2 py-2 text-sm rounded-lg border border-gray-300 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+																disabled={processing}
+															>
+																<option value="V">V</option>
+																<option value="E">E</option>
+															</select>
+															<input
+																type="text"
+																value={c2pCedula}
+																onChange={(e) => setC2pCedula(e.target.value)}
+																placeholder="12345678"
+																disabled={processing}
+																className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm sm:text-base"
+																required
+															/>
+														</div>
+													</div>
+
+													<div>
+														<label className="block text-xs sm:text-sm font-semibold text-gray-900 mb-1.5 sm:mb-2">
+															Banco Emisor <span className="text-red-500">*</span>
+														</label>
+														<select
+															value={c2pBanco}
+															onChange={(e) => setC2pBanco(e.target.value)}
+															className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm sm:text-base"
+															disabled={processing}
+															required
+														>
+															<option value="">Selecciona tu banco</option>
+															<option value="0102">Banco de Venezuela</option>
+															<option value="0105">Banco Mercantil</option>
+															<option value="0108">BBVA Provincial</option>
+															<option value="0114">Bancaribe</option>
+															<option value="0134">Banesco</option>
+															<option value="0172">Bancamiga</option>
+															<option value="0191">BNC</option>
+														</select>
+													</div>
+
+													<div>
+														<label className="block text-xs sm:text-sm font-semibold text-gray-900 mb-1.5 sm:mb-2">
+															Teléfono del Pagador <span className="text-red-500">*</span>
+														</label>
+														<input
+															type="text"
+															value={c2pPhone}
+															onChange={(e) => setC2pPhone(e.target.value)}
+															placeholder="04123456789"
+															disabled={processing}
+															className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm sm:text-base"
+															required
+														/>
+													</div>
+												</motion.div>
+											)}
 
 											{/* Campos adicionales para Pago Móvil */}
 											{selectedMethod === 'PAGO_MOVIL' && (
@@ -563,7 +753,8 @@ export default function PaymentModal({ isOpen, onClose, factura, onPaymentSucces
 													processing || 
 													!isAppointmentConfirmed ||
 													!selectedMethod || 
-													(selectedMethod === 'PAGO_MOVIL' && (!paymentScreenshot || !paymentReference.trim()))
+													(selectedMethod === 'PAGO_MOVIL' && (!paymentScreenshot || !paymentReference.trim())) ||
+													(selectedMethod === 'BANCARIBE_C2P' && (!c2pPhone || !c2pBanco || !c2pCedula))
 												}
 												className="w-full sm:flex-1 px-4 sm:px-6 py-2 sm:py-3 bg-gradient-to-r from-teal-600 to-cyan-600 text-white rounded-lg font-semibold hover:from-teal-700 hover:to-cyan-700 transition-all shadow-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 text-sm sm:text-base"
 											>

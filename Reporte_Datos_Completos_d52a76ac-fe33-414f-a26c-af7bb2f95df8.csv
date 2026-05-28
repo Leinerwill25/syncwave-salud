@@ -1,0 +1,62 @@
+Seccion,Métrica / Campo,Valor Actual,Valor Anterior,Variación
+KPIs,Total Citas,42,53,-11
+KPIs,Confirmadas,33,48,-15
+KPIs,No Asistió,7,5,2
+KPIs,Ingresos,2710,3495,-785
+KPIs,Pacientes Nuevos,32,46,-14
+
+Fidelización,Pacientes Recurrentes,18,,
+Fidelización,Pacientes Únicos,260,,
+
+Tendencias,Mes,Citas,,
+
+Servicios,Servicio,Citas,,
+Servicios Mas Solicitados,Consulta completa,90,,
+Servicios Mas Solicitados,Consulta Obstétrica Sucesiva,44,,
+Servicios Mas Solicitados,Solo Consulta,31,,
+Servicios Mas Solicitados,Consulta completa - Sabados,19,,
+Servicios Mas Solicitados,Consulta + eco transvaginal,18,,
+
+Agenda,Fecha,Paciente,Estado,Precio
+Agenda,30/4/2026,Stephanie Mendoza,COMPLETADA,65
+Agenda,30/4/2026,Camila Mendoza,COMPLETADA,65
+Agenda,30/4/2026,Fabiana Águilar,CANCELADA,0
+Agenda,4/5/2026,Mariana Reis,COMPLETADA,500
+Agenda,5/5/2026,Estefani  Vergara,COMPLETADA,65
+Agenda,5/5/2026,Francis  Perez,CANCELADA,0
+Agenda,5/5/2026,Arantxa  Hurtado,COMPLETADA,65
+Agenda,5/5/2026,MICHELL CORDERO,COMPLETADA,30
+Agenda,5/5/2026,Beatriz  Revette,COMPLETADA,140
+Agenda,6/5/2026,Marbeth Velasquez,CANCELADA,0
+Agenda,6/5/2026,Yacxamara Abreu,COMPLETADA,65
+Agenda,6/5/2026,Maria Arruebarrena,COMPLETADA,65
+Agenda,6/5/2026,Francis  Pérez,COMPLETADA,50
+Agenda,6/5/2026,Daniela Gómez,COMPLETADA,40
+Agenda,6/5/2026,Leidy Chiro,REAGENDADA,0
+Agenda,7/5/2026,Maricarmen  Guilarte,COMPLETADA,50
+Agenda,7/5/2026,Leoneska Laguna,COMPLETADA,50
+Agenda,7/5/2026,Dairene  Alcala,COMPLETADA,30
+Agenda,7/5/2026,Karolyn Pérez,COMPLETADA,50
+Agenda,7/5/2026,Marbeth Velasquez,COMPLETADA,65
+Agenda,7/5/2026,Oriana  Villarreal,CANCELADA,0
+Agenda,8/5/2026,Jessica Selgrad,COMPLETADA,200
+Agenda,9/5/2026,Cesar  Montilla,COMPLETADA,220
+Agenda,9/5/2026,Jacqueline  Choez,COMPLETADA,70
+Agenda,9/5/2026,Maybis  Flores,COMPLETADA,70
+Agenda,9/5/2026,Zaida Garnier,COMPLETADA,50
+Agenda,9/5/2026,Sofia Requena,COMPLETADA,65
+Agenda,11/5/2026,Leidy Chiro,NO ASISTIÓ,0
+Agenda,11/5/2026,María Fernanda  Morales,COMPLETADA,35
+Agenda,11/5/2026,Leinys Peñuela,COMPLETADA,30
+Agenda,11/5/2026,victoria Romero,COMPLETADA,50
+Agenda,12/5/2026,YORLAURY CORDERO,COMPLETADA,50
+Agenda,13/5/2026,Yuliany Salcedo,COMPLETADA,55
+Agenda,13/5/2026,Mary  Yuncosa,COMPLETADA,65
+Agenda,13/5/2026,Jairi  Villarroel,COMPLETADA,55
+Agenda,13/5/2026,Maikelis Aguilar,COMPLETADA,140
+Agenda,13/5/2026,Yorselis Urdaneta,NO ASISTIÓ,0
+Agenda,14/5/2026,Sillisk Rivas,COMPLETADA,65
+Agenda,14/5/2026,Reina Azuaje,COMPLETADA,55
+Agenda,14/5/2026,Génesis  Hurtado,COMPLETADA,40
+Agenda,15/5/2026,victoria Romero,CANCELADA,0
+Agenda,15/5/2026,Stephanie Suarez  Suarez,SCHEDULED,0

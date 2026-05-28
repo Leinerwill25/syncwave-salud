@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Calendar, FileText, Pill, FlaskConical, Search, MapPin, Clock, Stethoscope, Building2, ShoppingBag, ChevronRight, Sparkles, ShieldCheck } from 'lucide-react';
+import { Calendar, FileText, Pill, FlaskConical, Search, MapPin, Clock, Stethoscope, Building2, ShoppingBag, ChevronRight, Sparkles, ShieldCheck, Receipt } from 'lucide-react';
 import Link from 'next/link';
 import SafeCareBanner from '@/components/dashboard/patient/SafeCareBanner';
 import PendingSurveyBanner from './components/surveys/PendingSurveyBanner';
@@ -142,7 +142,7 @@ export default function PatientDashboardPage() {
 			<SafeCareBanner />
 
 			{/* 4. Cards de Acción Rápida (Reorganizadas) */}
-			<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4 md:gap-6">
+			<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3 sm:gap-4 md:gap-6">
 				{/* Ver Citas */}
 				<Link href="/dashboard/patient/citas" className="group bg-white/90 backdrop-blur-sm rounded-xl shadow-lg p-3 sm:p-4 md:p-6 hover:shadow-2xl transition-all border border-white/20 hover:border-indigo-200 hover:-translate-y-1">
 					<div className="flex items-center justify-between mb-2 sm:mb-3 md:mb-4">
@@ -205,6 +205,17 @@ export default function PatientDashboardPage() {
 					</div>
 					<h3 className="text-sm sm:text-base md:text-lg font-bold text-gray-900 mb-0.5 sm:mb-1 group-hover:text-teal-600 transition-colors">Mis Informes</h3>
 					<p className="text-[10px] sm:text-xs md:text-sm text-gray-600">Documentos y estudios</p>
+				</Link>
+
+				{/* Pagos y Facturas */}
+				<Link href="/dashboard/patient/pagos" className="group bg-white/90 backdrop-blur-sm rounded-xl shadow-lg p-3 sm:p-4 md:p-6 hover:shadow-2xl transition-all border border-white/20 hover:border-emerald-200 hover:-translate-y-1">
+					<div className="flex items-center justify-between mb-2 sm:mb-3 md:mb-4">
+						<div className="p-2 sm:p-2.5 md:p-3 bg-gradient-to-br from-emerald-500 to-teal-500 rounded-lg sm:rounded-xl group-hover:scale-110 transition-transform shadow-lg">
+							<Receipt className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6 text-white" />
+						</div>
+					</div>
+					<h3 className="text-sm sm:text-base md:text-lg font-bold text-gray-900 mb-0.5 sm:mb-1 group-hover:text-emerald-600 transition-colors">Pagos y Facturas</h3>
+					<p className="text-[10px] sm:text-xs md:text-sm text-gray-600">Ver y pagar tus facturas</p>
 				</Link>
 			</div>
 

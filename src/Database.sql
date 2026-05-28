@@ -249,6 +249,10 @@ CREATE TABLE public.appointment (
   wa_confirmation_status text DEFAULT 'PENDING'::text,
   wa_confirmed_at timestamp with time zone,
   wa_conversation_id uuid,
+  payment_status text NOT NULL DEFAULT 'pending'::text,
+  payment_reference text,
+  payment_amount numeric,
+  payment_verified_at timestamp with time zone,
   CONSTRAINT appointment_pkey PRIMARY KEY (id),
   CONSTRAINT appointment_created_by_role_user_fkey FOREIGN KEY (created_by_role_user_id) REFERENCES public.consultorio_role_users(id),
   CONSTRAINT appointment_created_by_doctor_id_fkey FOREIGN KEY (created_by_doctor_id) REFERENCES public.users(id),
@@ -291,6 +295,44 @@ CREATE TABLE public.audit_log (
   user_agent text,
   created_at timestamp with time zone NOT NULL DEFAULT now(),
   CONSTRAINT audit_log_pkey PRIMARY KEY (id)
+);
+CREATE TABLE public.bancaribe_config (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  organization_id uuid NOT NULL UNIQUE,
+  rif text NOT NULL,
+  cuenta_bancaribe text,
+  telefono_comercio text,
+  hash_cliente text,
+  notificaciones_activas boolean NOT NULL DEFAULT false,
+  webhook_configurado boolean NOT NULL DEFAULT false,
+  is_sandbox boolean NOT NULL DEFAULT true,
+  createdAt timestamp with time zone NOT NULL DEFAULT now(),
+  updatedAt timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT bancaribe_config_pkey PRIMARY KEY (id),
+  CONSTRAINT bancaribe_config_organization_id_fkey FOREIGN KEY (organization_id) REFERENCES public.organization(id)
+);
+CREATE TABLE public.bancaribe_pagos (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  organization_id uuid NOT NULL,
+  amount numeric NOT NULL,
+  currency_code text NOT NULL DEFAULT 'VES'::text,
+  bank_name text,
+  client_phone text,
+  commerce_phone text,
+  creditor_account text,
+  debtor_account text,
+  debtor_id text,
+  destiny_bank_reference text,
+  origin_bank_code text,
+  origin_bank_reference text,
+  payment_type text,
+  transaction_date text,
+  transaction_time text,
+  appointment_id uuid,
+  status text NOT NULL DEFAULT 'received'::text,
+  createdAt timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT bancaribe_pagos_pkey PRIMARY KEY (id),
+  CONSTRAINT bancaribe_pagos_organization_id_fkey FOREIGN KEY (organization_id) REFERENCES public.organization(id)
 );
 CREATE TABLE public.clinic_profile (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
@@ -563,6 +605,18 @@ CREATE TABLE public.cross_org_access_permissions (
   CONSTRAINT cross_org_access_permissions_last_updated_by_fkey FOREIGN KEY (last_updated_by) REFERENCES auth.users(id),
   CONSTRAINT cross_org_access_permissions_created_by_fkey FOREIGN KEY (created_by) REFERENCES auth.users(id),
   CONSTRAINT cross_org_access_permissions_updated_by_fkey FOREIGN KEY (updated_by) REFERENCES auth.users(id)
+);
+CREATE TABLE public.doctor_gamification (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  doctor_id uuid NOT NULL UNIQUE,
+  total_points integer NOT NULL DEFAULT 0,
+  current_level integer NOT NULL DEFAULT 1,
+  completed_missions ARRAY NOT NULL DEFAULT '{}'::text[],
+  unlocked_modules ARRAY NOT NULL DEFAULT '{dashboard,configuracion}'::text[],
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT doctor_gamification_pkey PRIMARY KEY (id),
+  CONSTRAINT doctor_gamification_doctor_id_fkey FOREIGN KEY (doctor_id) REFERENCES auth.users(id)
 );
 CREATE TABLE public.doctor_private_notes (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
@@ -1439,6 +1493,19 @@ CREATE TABLE public.plan (
   updatedAt timestamp with time zone NOT NULL DEFAULT now(),
   CONSTRAINT plan_pkey PRIMARY KEY (id)
 );
+CREATE TABLE public.plantilla_informe (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  doctor_id uuid NOT NULL,
+  especialidad text,
+  trimestre text,
+  word_template_url text,
+  word_filename text,
+  texto_estructura text,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT plantilla_informe_pkey PRIMARY KEY (id),
+  CONSTRAINT plantilla_informe_doctor_id_fkey FOREIGN KEY (doctor_id) REFERENCES auth.users(id)
+);
 CREATE TABLE public.points_rewards_catalog (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
   name text NOT NULL,
@@ -1586,9 +1653,9 @@ CREATE TABLE public.safecare_requests (
   updated_at timestamp with time zone DEFAULT now(),
   beneficiary_id uuid,
   CONSTRAINT safecare_requests_pkey PRIMARY KEY (id),
-  CONSTRAINT safecare_requests_patient_id_fkey FOREIGN KEY (patient_id) REFERENCES auth.users(id),
   CONSTRAINT safecare_requests_referral_id_fkey FOREIGN KEY (referral_id) REFERENCES public.patient_referrals(id),
-  CONSTRAINT safecare_requests_beneficiary_id_fkey FOREIGN KEY (beneficiary_id) REFERENCES public.patient(id)
+  CONSTRAINT safecare_requests_beneficiary_id_fkey FOREIGN KEY (beneficiary_id) REFERENCES public.patient(id),
+  CONSTRAINT safecare_requests_patient_id_fkey FOREIGN KEY (patient_id) REFERENCES public.patient(id)
 );
 CREATE TABLE public.sonda_snapshots (
   id uuid NOT NULL DEFAULT gen_random_uuid(),

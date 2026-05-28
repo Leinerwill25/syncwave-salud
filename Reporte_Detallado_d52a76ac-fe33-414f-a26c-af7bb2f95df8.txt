@@ -1,0 +1,316 @@
+INFORME DETALLADO DE RENDIMIENTO Y MÉTRICAS
+==================================================
+Organización: Consultorio Dra Lisangela Utrera
+ID de la Clínica: d52a76ac-fe33-414f-a26c-af7bb2f95df8
+Fecha de Generación: 15/5/2026, 12:57:04
+Período Analizado: Desde 30/4/2026 hasta 15/5/2026 (Últimos 15 días)
+Período de Comparación: Desde 15/4/2026 hasta 30/4/2026 (15 días anteriores)
+==================================================
+
+1. RESUMEN DE RENDIMIENTO Y KPIS PRINCIPALES
+--------------------------------------------------
+Métrica: Total de Citas Registradas
+- En los últimos 15 días se registraron 42 citas.
+- En los 15 días anteriores se registraron 53 citas.
+- Esto representa una variación de -11 citas.
+
+Métrica: Citas Confirmadas
+- En los últimos 15 días se confirmaron 33 citas.
+- En los 15 días anteriores se confirmaron 48 citas.
+- Esto representa una variación de -15 citas.
+
+Métrica: Pacientes que No Asistieron (Ausencias)
+- En los últimos 15 días, 7 pacientes no asistieron a su cita.
+- En los 15 días anteriores, 5 pacientes no asistieron.
+- Esto representa una variación de 2 pacientes.
+
+Métrica: Ingresos Generados
+- En los últimos 15 días se generaron 2710 EUR en ingresos.
+- En los 15 días anteriores se generaron 3495 EUR.
+- Esto representa una variación de -785 EUR.
+
+Métrica: Pacientes Nuevos Captados
+- En los últimos 15 días se captaron 32 nuevos pacientes.
+- En los 15 días anteriores se captaron 46 nuevos pacientes.
+- Esto representa una variación de -14 pacientes.
+
+2. DESGLOSE DE LA AGENDA DE CITAS (Últimos 15 días)
+--------------------------------------------------
+A continuación se detallan todas las citas registradas en el período analizado:
+
+Cita número 1:
+- Fecha y Hora: 30/04/2026, 14:00
+- Paciente: Stephanie Mendoza
+- Estado de la cita: COMPLETADA
+- Precio del servicio: 65 EUR
+
+Cita número 2:
+- Fecha y Hora: 30/04/2026, 14:00
+- Paciente: Camila Mendoza
+- Estado de la cita: COMPLETADA
+- Precio del servicio: 65 EUR
+
+Cita número 3:
+- Fecha y Hora: 30/04/2026, 14:00
+- Paciente: Fabiana Águilar
+- Estado de la cita: CANCELADA
+- Precio del servicio: 0 EUR
+
+Cita número 4:
+- Fecha y Hora: 04/05/2026, 14:00
+- Paciente: Mariana Reis
+- Estado de la cita: COMPLETADA
+- Precio del servicio: 500 EUR
+
+Cita número 5:
+- Fecha y Hora: 05/05/2026, 08:00
+- Paciente: Estefani  Vergara
+- Estado de la cita: COMPLETADA
+- Precio del servicio: 65 EUR
+
+Cita número 6:
+- Fecha y Hora: 05/05/2026, 08:00
+- Paciente: Francis  Perez
+- Estado de la cita: CANCELADA
+- Precio del servicio: 0 EUR
+
+Cita número 7:
+- Fecha y Hora: 05/05/2026, 08:00
+- Paciente: Arantxa  Hurtado
+- Estado de la cita: COMPLETADA
+- Precio del servicio: 65 EUR
+
+Cita número 8:
+- Fecha y Hora: 05/05/2026, 08:00
+- Paciente: MICHELL CORDERO
+- Estado de la cita: COMPLETADA
+- Precio del servicio: 30 EUR
+
+Cita número 9:
+- Fecha y Hora: 05/05/2026, 08:00
+- Paciente: Beatriz  Revette
+- Estado de la cita: COMPLETADA
+- Precio del servicio: 140 EUR
+
+Cita número 10:
+- Fecha y Hora: 06/05/2026, 08:00
+- Paciente: Marbeth Velasquez
+- Estado de la cita: CANCELADA
+- Precio del servicio: 0 EUR
+
+Cita número 11:
+- Fecha y Hora: 06/05/2026, 08:00
+- Paciente: Yacxamara Abreu
+- Estado de la cita: COMPLETADA
+- Precio del servicio: 65 EUR
+
+Cita número 12:
+- Fecha y Hora: 06/05/2026, 08:00
+- Paciente: Maria Arruebarrena
+- Estado de la cita: COMPLETADA
+- Precio del servicio: 65 EUR
+
+Cita número 13:
+- Fecha y Hora: 06/05/2026, 14:00
+- Paciente: Francis  Pérez
+- Estado de la cita: COMPLETADA
+- Precio del servicio: 50 EUR
+
+Cita número 14:
+- Fecha y Hora: 06/05/2026, 14:00
+- Paciente: Daniela Gómez
+- Estado de la cita: COMPLETADA
+- Precio del servicio: 40 EUR
+
+Cita número 15:
+- Fecha y Hora: 06/05/2026, 14:00
+- Paciente: Leidy Chiro
+- Estado de la cita: REAGENDADA
+- Precio del servicio: 0 EUR
+
+Cita número 16:
+- Fecha y Hora: 07/05/2026, 08:00
+- Paciente: Maricarmen  Guilarte
+- Estado de la cita: COMPLETADA
+- Precio del servicio: 50 EUR
+
+Cita número 17:
+- Fecha y Hora: 07/05/2026, 08:00
+- Paciente: Leoneska Laguna
+- Estado de la cita: COMPLETADA
+- Precio del servicio: 50 EUR
+
+Cita número 18:
+- Fecha y Hora: 07/05/2026, 08:00
+- Paciente: Dairene  Alcala
+- Estado de la cita: COMPLETADA
+- Precio del servicio: 30 EUR
+
+Cita número 19:
+- Fecha y Hora: 07/05/2026, 08:00
+- Paciente: Karolyn Pérez
+- Estado de la cita: COMPLETADA
+- Precio del servicio: 50 EUR
+
+Cita número 20:
+- Fecha y Hora: 07/05/2026, 08:01
+- Paciente: Marbeth Velasquez
+- Estado de la cita: COMPLETADA
+- Precio del servicio: 65 EUR
+
+Cita número 21:
+- Fecha y Hora: 07/05/2026, 14:00
+- Paciente: Oriana  Villarreal
+- Estado de la cita: CANCELADA
+- Precio del servicio: 0 EUR
+
+Cita número 22:
+- Fecha y Hora: 08/05/2026, 14:00
+- Paciente: Jessica Selgrad
+- Estado de la cita: COMPLETADA
+- Precio del servicio: 200 EUR
+
+Cita número 23:
+- Fecha y Hora: 09/05/2026, 08:00
+- Paciente: Cesar  Montilla
+- Estado de la cita: COMPLETADA
+- Precio del servicio: 220 EUR
+
+Cita número 24:
+- Fecha y Hora: 09/05/2026, 08:00
+- Paciente: Jacqueline  Choez
+- Estado de la cita: COMPLETADA
+- Precio del servicio: 70 EUR
+
+Cita número 25:
+- Fecha y Hora: 09/05/2026, 08:00
+- Paciente: Maybis  Flores
+- Estado de la cita: COMPLETADA
+- Precio del servicio: 70 EUR
+
+Cita número 26:
+- Fecha y Hora: 09/05/2026, 08:00
+- Paciente: Zaida Garnier
+- Estado de la cita: COMPLETADA
+- Precio del servicio: 50 EUR
+
+Cita número 27:
+- Fecha y Hora: 09/05/2026, 14:00
+- Paciente: Sofia Requena
+- Estado de la cita: COMPLETADA
+- Precio del servicio: 65 EUR
+
+Cita número 28:
+- Fecha y Hora: 11/05/2026, 14:00
+- Paciente: Leidy Chiro
+- Estado de la cita: NO ASISTIÓ
+- Precio del servicio: 0 EUR
+
+Cita número 29:
+- Fecha y Hora: 11/05/2026, 14:00
+- Paciente: María Fernanda  Morales
+- Estado de la cita: COMPLETADA
+- Precio del servicio: 35 EUR
+
+Cita número 30:
+- Fecha y Hora: 11/05/2026, 14:00
+- Paciente: Leinys Peñuela
+- Estado de la cita: COMPLETADA
+- Precio del servicio: 30 EUR
+
+Cita número 31:
+- Fecha y Hora: 11/05/2026, 14:00
+- Paciente: victoria Romero
+- Estado de la cita: COMPLETADA
+- Precio del servicio: 50 EUR
+
+Cita número 32:
+- Fecha y Hora: 12/05/2026, 14:00
+- Paciente: YORLAURY CORDERO
+- Estado de la cita: COMPLETADA
+- Precio del servicio: 50 EUR
+
+Cita número 33:
+- Fecha y Hora: 13/05/2026, 08:00
+- Paciente: Yuliany Salcedo
+- Estado de la cita: COMPLETADA
+- Precio del servicio: 55 EUR
+
+Cita número 34:
+- Fecha y Hora: 13/05/2026, 08:00
+- Paciente: Mary  Yuncosa
+- Estado de la cita: COMPLETADA
+- Precio del servicio: 65 EUR
+
+Cita número 35:
+- Fecha y Hora: 13/05/2026, 14:00
+- Paciente: Jairi  Villarroel
+- Estado de la cita: COMPLETADA
+- Precio del servicio: 55 EUR
+
+Cita número 36:
+- Fecha y Hora: 13/05/2026, 14:00
+- Paciente: Maikelis Aguilar
+- Estado de la cita: COMPLETADA
+- Precio del servicio: 140 EUR
+
+Cita número 37:
+- Fecha y Hora: 13/05/2026, 14:00
+- Paciente: Yorselis Urdaneta
+- Estado de la cita: NO ASISTIÓ
+- Precio del servicio: 0 EUR
+
+Cita número 38:
+- Fecha y Hora: 14/05/2026, 08:00
+- Paciente: Sillisk Rivas
+- Estado de la cita: COMPLETADA
+- Precio del servicio: 65 EUR
+
+Cita número 39:
+- Fecha y Hora: 14/05/2026, 14:00
+- Paciente: Reina Azuaje
+- Estado de la cita: COMPLETADA
+- Precio del servicio: 55 EUR
+
+Cita número 40:
+- Fecha y Hora: 14/05/2026, 14:00
+- Paciente: Génesis  Hurtado
+- Estado de la cita: COMPLETADA
+- Precio del servicio: 40 EUR
+
+Cita número 41:
+- Fecha y Hora: 15/05/2026, 04:00
+- Paciente: victoria Romero
+- Estado de la cita: CANCELADA
+- Precio del servicio: 0 EUR
+
+Cita número 42:
+- Fecha y Hora: 15/05/2026, 10:00
+- Paciente: Stephanie Suarez  Suarez
+- Estado de la cita: SCHEDULED
+- Precio del servicio: 0 EUR
+
+3. TENDENCIAS Y COMPORTAMIENTO (Histórico de 6 meses)
+--------------------------------------------------
+Volumen de Citas Mensual:
+- No hay datos históricos de volumen mensual disponibles.
+
+Servicios Más Solicitados:
+- El servicio "Consulta completa" tuvo un total de 90 citas.
+- El servicio "Consulta Obstétrica Sucesiva" tuvo un total de 44 citas.
+- El servicio "Solo Consulta" tuvo un total de 31 citas.
+- El servicio "Consulta completa - Sabados" tuvo un total de 19 citas.
+- El servicio "Consulta + eco transvaginal" tuvo un total de 18 citas.
+
+Días de Mayor Demanda (Distribución de citas por día de la semana):
+- El día Miércoles se registraron un total de 64 citas.
+- El día Lunes se registraron un total de 48 citas.
+- El día Jueves se registraron un total de 62 citas.
+- El día Viernes se registraron un total de 28 citas.
+- El día Martes se registraron un total de 50 citas.
+- El día Sábado se registraron un total de 40 citas.
+- El día Domingo se registraron un total de 2 citas.
+
+4. FIDELIZACIÓN DE PACIENTES
+--------------------------------------------------
+- No hay datos de fidelización disponibles.

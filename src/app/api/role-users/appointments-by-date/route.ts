@@ -162,28 +162,31 @@ export async function GET(req: NextRequest) {
 					if (typeof apt.selected_service === 'string') {
 						// Intentar parsear como JSON
 						selectedService = JSON.parse(apt.selected_service);
-					} else if (Array.isArray(apt.selected_service)) {
-						// Ya es un array
-						selectedService = apt.selected_service;
-					} else if (typeof apt.selected_service === 'object') {
-						// Ya es un objeto
+					} else {
 						selectedService = apt.selected_service;
 					}
 					
-					// Si selectedService es un array con múltiples servicios, tomar el primero o combinarlos
-					if (Array.isArray(selectedService) && selectedService.length > 0) {
-						// Si hay múltiples servicios, usar el primero o crear un objeto combinado
-						if (selectedService.length === 1) {
-							selectedService = selectedService[0];
-						} else {
-							// Múltiples servicios: crear objeto con nombre combinado
-							const names = selectedService.map((s: any) => s?.name || s).filter(Boolean);
-							selectedService = {
-								name: names.join(', '),
-								description: 'Múltiples servicios',
-								services_included: selectedService
+					if (Array.isArray(selectedService)) {
+						selectedService = selectedService.map((item: any) => {
+							if (typeof item === 'string') {
+								return { name: item, currency: 'EUR' };
+							}
+							return {
+								id: item?.id,
+								name: item?.name || 'Servicio',
+								description: item?.description,
+								price: item?.price !== undefined && item?.price !== null ? Number(item.price) : undefined,
+								currency: item?.currency || 'EUR',
+								type: item?.type
 							};
-						}
+						});
+					} else if (typeof selectedService === 'object' && selectedService !== null) {
+						selectedService = {
+							name: selectedService.name || 'Servicio',
+							description: selectedService.description,
+							price: selectedService.price !== undefined && selectedService.price !== null ? Number(selectedService.price) : undefined,
+							currency: selectedService.currency || 'EUR',
+						};
 					}
 				} catch (e) {
 					console.warn('[Appointments API] Error parseando selected_service:', e, 'Raw value:', apt.selected_service);

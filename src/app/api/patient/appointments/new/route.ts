@@ -2,6 +2,7 @@
 import { NextResponse } from 'next/server';
 import { getAuthenticatedPatient } from '@/lib/patient-auth';
 import { createSupabaseServerClient } from '@/app/adapters/server';
+import { supabaseAdmin } from '@/lib/supabase/admin';
 import { cookies } from 'next/headers';
 import { createNotification } from '@/lib/notifications';
 
@@ -36,7 +37,7 @@ export async function POST(request: Request) {
 
 		// Verificar disponibilidad
 		const dateStr = appointmentDate.toISOString().split('T')[0];
-		const { data: existingAppointments } = await supabase
+		const { data: existingAppointments } = await supabaseAdmin
 			.from('appointment')
 			.select('scheduled_at, duration_minutes')
 			.eq('doctor_id', doctor_id)
@@ -111,7 +112,7 @@ export async function POST(request: Request) {
 			booked_by_patient_id: bookedByPatientIdString, // Siempre establecer para identificar origen (convertir a string)
 		};
 
-		const { data: appointment, error: appointmentError } = await supabase
+		const { data: appointment, error: appointmentError } = await supabaseAdmin
 			.from('appointment')
 			.insert(appointmentData)
 			.select()
@@ -142,7 +143,7 @@ export async function POST(request: Request) {
 		const impuestos = 0; // No se aplican impuestos en el área de salud
 		const total = subtotal; // Total igual al subtotal sin impuestos
 
-		const { data: facturacion, error: facturacionError } = await supabase
+		const { data: facturacion, error: facturacionError } = await supabaseAdmin
 			.from('facturacion')
 			.insert({
 				appointment_id: appointment.id,
@@ -238,7 +239,7 @@ export async function POST(request: Request) {
 			const { checkAndAwardStage2 } = await import('@/lib/actions/referrals');
 			
 			// Verificar si es la primera cita del paciente para otorgar puntos
-			const { count: appointmentsCount } = await supabase
+			const { count: appointmentsCount } = await supabaseAdmin
 				.from('appointment')
 				.select('id', { count: 'exact', head: true })
 				.eq('patient_id', finalPatientId);

@@ -1,6 +1,7 @@
 // app/api/appointments/list/route.ts
 import { NextResponse } from 'next/server';
 import createSupabaseServerClient from '@/app/adapters/server';
+import { supabaseAdmin } from '@/lib/supabase/admin';
 import { apiRequireRole } from '@/lib/auth-guards';
 import { optimizeSupabaseQuery, getLiteSelectFields } from '@/lib/lite-mode-utils';
 import { getApiResponseHeaders } from '@/lib/api-cache-utils';
@@ -140,7 +141,7 @@ export async function GET(req: Request) {
 					phone
 				)`;
 
-		let query = supabase
+		let query = supabaseAdmin
 			.from('appointment')
 			.select(selectFields)
 			.gte('scheduled_at', dbStart)
@@ -350,7 +351,7 @@ export async function GET(req: Request) {
 			}
 
 			// Parsear selected_service solo si no es liteMode
-			let selectedService: { name: string; description?: string; price?: number; currency?: string } | null = null;
+			let selectedService: any = null;
 			if (!isLiteMode && cita.selected_service) {
 				try {
 					let serviceData: any = cita.selected_service;
@@ -361,11 +362,26 @@ export async function GET(req: Request) {
 							serviceData = { name: serviceData };
 						}
 					}
-					if (typeof serviceData === 'object' && serviceData !== null) {
+					
+					if (Array.isArray(serviceData)) {
+						selectedService = serviceData.map((item: any) => {
+							if (typeof item === 'string') {
+								return { name: item, currency: 'USD' };
+							}
+							return {
+								id: item?.id,
+								name: item?.name || 'Servicio',
+								description: item?.description,
+								price: item?.price !== undefined && item?.price !== null ? Number(item.price) : undefined,
+								currency: item?.currency || 'USD',
+								type: item?.type
+							};
+						});
+					} else if (typeof serviceData === 'object' && serviceData !== null) {
 						selectedService = {
 							name: serviceData.name || 'Servicio',
 							description: serviceData.description,
-							price: serviceData.price || serviceData.price === 0 ? Number(serviceData.price) : undefined,
+							price: serviceData.price !== undefined && serviceData.price !== null ? Number(serviceData.price) : undefined,
 							currency: serviceData.currency || 'USD',
 						};
 					}

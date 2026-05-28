@@ -4,7 +4,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { usePrefetchApiData } from '@/hooks/usePrefetchRoute';
-import { LayoutDashboard, CalendarDays, User, ClipboardList, FileText, ChevronRight, ChevronDown, Search, FileCheck, Users, MessageSquare } from 'lucide-react';
+import { LayoutDashboard, CalendarDays, User, ClipboardList, FileText, ChevronRight, ChevronDown, Search, FileCheck, Users, MessageSquare, CreditCard } from 'lucide-react';
 import type { MedicConfig } from '@/types/medic-config';
 
 type IconComponent = React.ComponentType<React.SVGProps<SVGSVGElement>>;
@@ -74,6 +74,12 @@ const LINKS: LinkItem[] = [
 		href: '/dashboard/medic/whatsapp',
 		label: 'WhatsApp',
 		icon: MessageSquare,
+	},
+	{
+		href: '/dashboard/medic/pagos/bancaribe',
+		label: 'Finanzas Bancaribe',
+		icon: CreditCard,
+		showOnlyForOrgType: 'CONSULTORIO',
 	},
 ];
 
@@ -165,6 +171,12 @@ export default function MedicSidebar() {
 	const renderLink = (link: LinkItem) => {
 		const isActive = !!link.href && isPathActive(link.href);
 		const isComing = !!link.comingSoon;
+
+		// Filtrar por tipo de organización si está especificado
+		if (link.showOnlyForOrgType) {
+			if (loadingConfig) return null;
+			if (medicConfig?.organizationType !== link.showOnlyForOrgType) return null;
+		}
 
 		// Si el perfil no está completo, solo mostrar Configuración
 		if (!loadingConfig && medicConfig && !medicConfig.isProfileComplete) {

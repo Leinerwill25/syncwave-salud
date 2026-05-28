@@ -128,6 +128,29 @@ async function sendOneReminder(app: any, sessionName: string) {
   const fechaStr = format(scheduledDate, "eeee dd 'de' MMMM", { locale: es });
   const horaStr = format(scheduledDate, 'hh:mm a');
 
+  // Determinar texto de servicios para WhatsApp
+  let serviciosText = 'Consulta Médica';
+  if (app.selected_service) {
+    let serviceData = app.selected_service;
+    if (typeof serviceData === 'string') {
+      try {
+        serviceData = JSON.parse(serviceData);
+      } catch {
+        // es texto plano
+      }
+    }
+    
+    if (Array.isArray(serviceData)) {
+      serviciosText = serviceData.map((s: any) => s?.name || s).filter(Boolean).join(', ') || 'Consulta Médica';
+    } else if (typeof serviceData === 'object' && serviceData !== null) {
+      serviciosText = serviceData.name || serviceData.label || 'Consulta Médica';
+    } else if (typeof serviceData === 'string') {
+      serviciosText = serviceData;
+    }
+  } else if (app.reason) {
+    serviciosText = app.reason;
+  }
+
   // Reemplazo de tags
   const finalMessage = template
     .replace(/{NOMBRE_PACIENTE}/g, patientName)
@@ -135,7 +158,7 @@ async function sendOneReminder(app: any, sessionName: string) {
     .replace(/{HORA}/g, horaStr)
     .replace(/{NOMBRE_DOCTORA}/g, doctorName)
     .replace(/{CLÍNICA}/g, clinicName)
-    .replace(/{SERVICIOS}/g, app.selected_service?.name || app.selected_service?.label || app.reason || 'Consulta Médica');
+    .replace(/{SERVICIOS}/g, serviciosText);
 
   const chatId = phoneToWahaChatId(rawPhone);
   
