@@ -1944,7 +1944,12 @@ export default function EditConsultationForm({
 						fullWidth={currentSection === 'report'}
 						onNext={() => {
 							const next = sectionOrder[sectionOrder.indexOf(currentSection) + 1];
-							if (next) { setCompletedSections(prev => new Set(prev).add(currentSection)); setCurrentSection(next); }
+							if (next) { 
+								setCompletedSections(prev => new Set(prev).add(currentSection)); 
+								setCurrentSection(next); 
+							} else {
+								handleSave();
+							}
 						}}
 						onBack={() => {
 							const prev = sectionOrder[sectionOrder.indexOf(currentSection) - 1];

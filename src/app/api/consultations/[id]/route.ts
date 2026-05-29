@@ -138,6 +138,7 @@ export async function PATCH(req: NextRequest, context: { params: Promise<{ id: s
 			icd11_title: body.icd11_title ?? undefined,
 			notes: body.notes ?? undefined,
 			vitals: body.vitals ?? undefined,
+			report_url: body.report_url ?? undefined,
 			started_at: body.started_at ? new Date(body.started_at).toISOString() : undefined,
 			ended_at: body.ended_at ? new Date(body.ended_at).toISOString() : undefined,
 			updated_at: new Date().toISOString(),
