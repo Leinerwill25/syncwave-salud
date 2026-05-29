@@ -137,29 +137,86 @@ type ConsultationShape = {
 };
 
 // Componentes Reutilizables Pequeños
-const QuickValueChip = ({ label, options, currentValue, onSelect }: { label: string, options: string[], currentValue: string, onSelect: (val: string) => void }) => (
-	<div className="flex flex-col gap-2">
-		<span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider flex items-center gap-1">
-			<ChevronRight size={10} className="text-teal-500" /> {label}
-		</span>
-		<div className="flex flex-wrap gap-2">
-			{options.map(opt => (
+const QuickValueChip = ({ label, options, currentValue, onSelect }: { label: string, options: string[], currentValue: string, onSelect: (val: string) => void }) => {
+	const isPredefined = options.includes(currentValue);
+	
+	const [showOtherInput, setShowOtherInput] = useState(!isPredefined && currentValue !== '');
+	const [customValue, setCustomValue] = useState(!isPredefined ? currentValue : '');
+
+	useEffect(() => {
+		const isPredef = options.includes(currentValue);
+		if (isPredef) {
+			setShowOtherInput(false);
+		} else if (currentValue !== '') {
+			setShowOtherInput(true);
+			setCustomValue(currentValue);
+		}
+	}, [currentValue, options]);
+
+	const handlePredefinedSelect = (opt: string) => {
+		setShowOtherInput(false);
+		onSelect(opt);
+	};
+
+	const handleOtherClick = () => {
+		setShowOtherInput(true);
+		onSelect(customValue || '');
+	};
+
+	const handleCustomValueChange = (val: string) => {
+		setCustomValue(val);
+		onSelect(val);
+	};
+
+	return (
+		<div className="flex flex-col gap-2">
+			<span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider flex items-center gap-1">
+				<ChevronRight size={10} className="text-teal-500" /> {label}
+			</span>
+			<div className="flex flex-wrap gap-2">
+				{options.map(opt => {
+					const isSelected = !showOtherInput && currentValue === opt;
+					return (
+						<button
+							key={opt}
+							type="button"
+							onClick={() => handlePredefinedSelect(opt)}
+							className={`px-3 py-1 text-xs rounded-full border transition-all ${
+								isSelected 
+									? 'bg-teal-500 border-teal-500 text-white shadow-md scale-105' 
+									: 'bg-white border-slate-200 text-slate-600 hover:border-teal-300 hover:bg-teal-50'
+							}`}
+						>
+							{opt}
+						</button>
+					);
+				})}
+				
 				<button
-					key={opt}
 					type="button"
-					onClick={() => onSelect(opt)}
+					onClick={handleOtherClick}
 					className={`px-3 py-1 text-xs rounded-full border transition-all ${
-						currentValue === opt 
-							? 'bg-teal-500 border-teal-500 text-white shadow-md scale-105' 
-							: 'bg-white border-slate-200 text-slate-600 hover:border-teal-300 hover:bg-teal-50'
+						showOtherInput 
+							? 'bg-teal-500 border-teal-500 text-white shadow-md scale-105 font-bold' 
+							: 'bg-slate-100 border-slate-300 text-slate-600 hover:border-teal-300 hover:bg-teal-50'
 					}`}
 				>
-					{opt}
+					OTRA
 				</button>
-			))}
+			</div>
+
+			{showOtherInput && (
+				<input
+					type="text"
+					value={customValue}
+					onChange={(e) => handleCustomValueChange(e.target.value)}
+					placeholder={`Escribe la opción personalizada para ${label}...`}
+					className="mt-1 px-3 py-1.5 text-xs rounded-lg border border-teal-300 bg-teal-50/30 text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-200 focus:bg-white w-full transition-all"
+				/>
+			)}
 		</div>
-	</div>
-);
+	);
+};
 
 export default function EditConsultationForm({ 
 	initial, 
