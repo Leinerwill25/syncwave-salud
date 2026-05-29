@@ -5,6 +5,7 @@ import NavbarSwitcher from '@/components/NavbarSwitcher';
 import ConditionalMain from '@/components/ConditionalMain';
 import { Toaster } from 'sonner';
 import QueryProvider from '@/providers/QueryProvider';
+import SessionKeeper from '@/components/SessionKeeper';
 
 export const metadata: Metadata = {
 	title: 'ASHIRA - Plataforma Integral de Salud Digital para Venezuela | Dra. Carwin Silva - Ginecóloga Especialista',
@@ -44,6 +45,9 @@ export default async function RootLayout({ children }: { children: React.ReactNo
 				suppressHydrationWarning={true}
 			>
 				<QueryProvider>
+					{/* Sincronización automática de sesión en segundo plano */}
+					<SessionKeeper />
+
 					{/* Navbar dinámico */}
 					<NavbarSwitcher />
 
