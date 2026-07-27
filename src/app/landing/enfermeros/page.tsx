@@ -15,6 +15,7 @@ import {
   WifiOff, Minus, Plus, ShieldCheck
 } from 'lucide-react';
 import Head from 'next/head';
+import { enfermeroPricing, ASHIRA_WHATSAPP } from '@/config/ashira-content';
 
 // --- SEO & Schema Components ---
 const SEOMetadata = () => (
@@ -570,11 +571,11 @@ const Pricing = () => {
                         {
                             name: "Plan Profesional",
                             desc: "Ideal para enfermeros independientes.",
-                            price: billingCycle === 'annual' ? 14 : 20, 
+                            price: billingCycle === 'annual' ? enfermeroPricing.profesional.annualPerMonthUsd : enfermeroPricing.profesional.monthlyUsd, 
                             isFree: false,
                             badge: "Por tiempo limitado",
                             features: [
-                                "Hasta 30 pacientes activos/mes",
+                                `Hasta ${enfermeroPricing.profesional.patientCapMonthly} pacientes activos/mes`,
                                 "Triaje y signos vitales digitales",
                                 "MAR (Control de medicamentos)",
                                 "Reportes PDF de turno ilimitados",
@@ -588,7 +589,9 @@ const Pricing = () => {
                         {
                             name: "Plan Clínico",
                             desc: "Para instituciones y equipos coordinados.",
-                            price: billingCycle === 'annual' ? "130 + 14" : "130 + 20",
+                            price: billingCycle === 'annual'
+                              ? `${enfermeroPricing.clinico.adminBaseUsd} + ${enfermeroPricing.clinico.perSpecialistAnnualUsd}`
+                              : `${enfermeroPricing.clinico.adminBaseUsd} + ${enfermeroPricing.clinico.perSpecialistMonthlyUsd}`,
                             isFree: false,
                             badge: "Más Popular",
                             features: [
@@ -619,7 +622,7 @@ const Pricing = () => {
                             </div>
                             <div className="mb-8">
                                 <div className="flex items-baseline gap-1">
-                                    <span className="text-5xl font-extrabold text-slate-900 tracking-tighter">{plan.isFree ? 'FREE' : `€${plan.price}`}</span>
+                                    <span className="text-5xl font-extrabold text-slate-900 tracking-tighter">{plan.isFree ? 'FREE' : `$${plan.price}`}</span>
                                     {!plan.isFree && <span className="text-slate-400 font-bold text-sm">/especialista/mes</span>}
                                 </div>
                                 {plan.badge && !plan.popular && (
@@ -728,16 +731,16 @@ const Footer = () => {
                         <div className="space-y-6">
                             <h4 className="font-bold text-slate-900 text-sm uppercase tracking-widest">Compañía</h4>
                             <ul className="space-y-4 text-sm font-medium text-slate-500">
-                                <li><Link href="#" className="hover:text-purple-600 transition-colors">Nosotros</Link></li>
-                                <li><Link href="#" className="hover:text-purple-600 transition-colors">Contacto</Link></li>
-                                <li><Link href="#" className="hover:text-purple-600 transition-colors">Blog</Link></li>
+                                <li><Link href="/" className="hover:text-purple-600 transition-colors">Inicio ASHIRA</Link></li>
+                                <li><Link href="/landing/consultorios" className="hover:text-purple-600 transition-colors">Para consultorios</Link></li>
+                                <li><Link href="/landing/clinicas" className="hover:text-purple-600 transition-colors">Para clínicas</Link></li>
                             </ul>
                         </div>
                         <div className="space-y-6">
                             <h4 className="font-bold text-slate-900 text-sm uppercase tracking-widest">Legales</h4>
                             <ul className="space-y-4 text-sm font-medium text-slate-500">
-                                <li><Link href="#" className="hover:text-purple-600 transition-colors">Privacidad</Link></li>
-                                <li><Link href="#" className="hover:text-purple-600 transition-colors">Términos</Link></li>
+                                <li><Link href="/politicas-privacidad" className="hover:text-purple-600 transition-colors">Privacidad</Link></li>
+                                <li><a href="https://wa.me/584124885623" target="_blank" rel="noopener noreferrer" className="hover:text-purple-600 transition-colors">Contacto WhatsApp</a></li>
                             </ul>
                         </div>
                     </div>

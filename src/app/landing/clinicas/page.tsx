@@ -18,6 +18,7 @@ import { VoiceDemo } from './VoiceDemo';
 import { MultiSedeCalculator } from './MultiSedeCalculator';
 import { MultiSedeExplainer } from './MultiSedeExplainer';
 import ClinicasDomiciliariasSection from './ClinicasDomiciliariasSection';
+import { clinicaPricing, billingDiscounts, ASHIRA_WHATSAPP } from '@/config/ashira-content';
 
 // --- SEO & Schema Components ---
 const SEOMetadata = () => (
@@ -47,7 +48,7 @@ const SchemaJSON = () => {
         "offers": {
             "@type": "AggregateOffer",
             "lowPrice": "56",
-            "priceCurrency": "EUR"
+            "priceCurrency": "USD"
         },
          "aggregateRating": {
             "@type": "AggregateRating",
@@ -609,19 +610,13 @@ export default function ClinicasLandingPage() {
                         </div>
 
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 lg:items-end">
-                            {[
-                                { name: "Starter", tier: "Grupos Pequeños", range: "2–10 Especialistas", price: 20, limit: "1.500", highlight: false },
-                                { name: "Clínica", tier: "Centros Medianos", range: "11–30 Especialistas", price: 18, limit: "5.000", highlight: true },
-                                { name: "Pro", tier: "Clínicas Tipo B", range: "31–80 Especialistas", price: 16, limit: "15.000", highlight: false },
-                                { name: "Enterprise", tier: "Grandes Inst.", range: "81–200 Especialistas", price: 14, limit: "40.000", highlight: false },
-                            ].map((plan, i) => {
-                                const basePrice = plan.price;
-                                const discount = billingCycle === 'quarterly' ? 0.9 : billingCycle === 'annual' ? 0.7 : 1;
-                                const finalPrice = Math.round(basePrice * discount);
+                            {clinicaPricing.tiers.map((plan, i) => {
+                                const discount = 1 - billingDiscounts[billingCycle as keyof typeof billingDiscounts];
+                                const finalPrice = Math.round(plan.perSpecialistMonthlyUsd * discount);
 
                                 return (
                                     <motion.div 
-                                        key={i}
+                                        key={plan.name}
                                         initial={{ opacity: 0, y: 30 }}
                                         whileInView={{ opacity: 1, y: 0 }}
                                         transition={{ delay: i * 0.1 }}
@@ -638,16 +633,16 @@ export default function ClinicasLandingPage() {
                                         </div>
                                         <div className="mb-6">
                                             <div className="flex items-end gap-1">
-                                                <span className="text-3xl font-bold text-slate-900">€{finalPrice}</span>
+                                                <span className="text-3xl font-bold text-slate-900">${finalPrice}</span>
                                                 <span className="text-xs text-slate-500 mb-1">/esp./mes</span>
                                             </div>
                                             <div className="text-xs text-purple-600 mt-1 font-medium">{plan.range}</div>
-                                            <div className="text-[10px] text-slate-400 mt-1">* + $130 Acceso Administrativo Base</div>
+                                            <div className="text-[10px] text-slate-400 mt-1">* + ${clinicaPricing.adminBaseUsd} Acceso Administrativo Base</div>
                                         </div>
                                         <div className="space-y-3 mb-6 flex-1">
                                             <div className="flex items-center gap-2 text-xs text-slate-500">
                                                 <Users className="w-3 h-3 text-slate-400" />
-                                                <span>Hasta <strong>{plan.limit}</strong> pacientes</span>
+                                                <span>Hasta <strong>{plan.patientLimit}</strong> pacientes</span>
                                             </div>
                                             <div className="flex items-center gap-2 text-xs text-slate-500">
                                                 <CheckCircle2 className="w-3 h-3 text-slate-400" />
@@ -673,7 +668,7 @@ export default function ClinicasLandingPage() {
                                 </div>
                                 <h3 className="text-lg font-bold text-white mb-2">Personalizado</h3>
                                 <p className="text-xs text-slate-300 mb-6">Para instituciones de 200+ especialistas.</p>
-                                <a href="https://wa.me/584124885623" target="_blank" className="w-full py-3 border border-white/20 hover:bg-white/10 rounded-lg text-sm font-bold text-white transition-all">
+                                <a href={ASHIRA_WHATSAPP} target="_blank" rel="noopener noreferrer" className="w-full py-3 border border-white/20 hover:bg-white/10 rounded-lg text-sm font-bold text-white transition-all">
                                     Contactar
                                 </a>
                             </motion.div>
@@ -704,12 +699,12 @@ export default function ClinicasLandingPage() {
                                             </tr>
                                             <tr>
                                                 <td className="px-6 py-4 font-bold text-slate-900">2ª – 4ª Sede</td>
-                                                <td className="px-6 py-4 font-medium">+€45 <span className="text-slate-400 text-xs text-normal">/sede/mes</span></td>
+                                                <td className="px-6 py-4 font-medium">+${clinicaPricing.multiSede.seats2to4Usd} <span className="text-slate-400 text-xs text-normal">/sede/mes</span></td>
                                                 <td className="px-6 py-4 text-slate-600">Agenda, staff y caja propia</td>
                                             </tr>
                                             <tr>
                                                 <td className="px-6 py-4 font-bold text-slate-900">5ª – 10ª Sede</td>
-                                                <td className="px-6 py-4 font-medium">+€30 <span className="text-slate-400 text-xs text-normal">/sede/mes</span></td>
+                                                <td className="px-6 py-4 font-medium">+${clinicaPricing.multiSede.seats5to10Usd} <span className="text-slate-400 text-xs text-normal">/sede/mes</span></td>
                                                 <td className="px-6 py-4 text-slate-600">Todo lo anterior + descuento volumen</td>
                                             </tr>
                                             <tr>
@@ -825,7 +820,7 @@ export default function ClinicasLandingPage() {
                             {[
                                 { q: "¿Se mezcla la información de mis pacientes entre médicos?", a: "No. El sistema tiene 'silos' de privacidad por defecto. Un médico solo ve sus pacientes, a menos que el director o el paciente autoricen una interconsulta compartida." },
                                 { q: "¿Qué pasa si se va el internet en la clínica?", a: "ASHIRA es ligera y funciona con datos móviles básicos. Además, los datos se guardan en tiempo real, así que nunca pierdes información si se corta la conexión." },
-                                { q: "¿Cómo se calcula el precio si mi clínica tiene varias sedes?", a: "El plan base se determina por el total de especialistas en todas tus sedes sumadas. Por ejemplo: si tienes 60 especialistas en Sede A y 30 en Sede B, el total es 90 → Plan Enterprise. Luego, la primera sede es gratis y cada sede adicional tiene un costo fijo mensual (€45 para sedes 2–4, €30 para sedes 5–10). Usa nuestra calculadora arriba para ver tu precio exacto." },
+                                { q: "¿Cómo se calcula el precio si mi clínica tiene varias sedes?", a: `El plan base se determina por el total de especialistas en todas tus sedes sumadas. Por ejemplo: si tienes 60 especialistas en Sede A y 30 en Sede B, el total es 90 → Plan Enterprise. Luego, la primera sede es gratis y cada sede adicional tiene un costo fijo mensual ($${clinicaPricing.multiSede.seats2to4Usd} para sedes 2–4, $${clinicaPricing.multiSede.seats5to10Usd} para sedes 5–10). Usa nuestra calculadora arriba para ver tu precio exacto.` },
                                 { q: "¿Cada sede puede tener su propia agenda, precios y personal?", a: "Sí, completamente. Cada sede se configura de forma independiente: horarios, modalidad de atención (turnos o llegada), métodos de pago, staff asignado y página pública propia. Todo se gestiona desde un único panel central para el director médico." },
                                 { q: "¿Qué pasa si en una sede no hay cupo para un paciente?", a: "ASHIRA activa automáticamente el Smart Switching: si un paciente intenta agendar en una sede sin disponibilidad, el sistema detecta cupo en otra sede del mismo especialista ese mismo día y le ofrece el cambio con un solo clic." },
                                 { q: "¿Puedo tener múltiples sedes?", a: "Sí, es nativo. Puedes asignar médicos y horarios específicos a cada sede (Ej: Dr. Pérez está Lunes en Sede A y Martes en Sede B)." },

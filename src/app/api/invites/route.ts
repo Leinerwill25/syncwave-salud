@@ -175,7 +175,7 @@ export async function POST(req: Request) {
 
 		// Security: Only allow specific roles to create invites
 		const userRole = (dbUser.role || '').toUpperCase();
-		const allowedRoles = ['ADMIN', 'MEDICO', 'RECEPCION', 'RECEPCIONISTA', 'ADMINISTRACION'];
+		const allowedRoles = ['ADMIN', 'MEDICO', 'RECEPCION', 'RECEPCIONISTA', 'ADMINISTRACION', 'FARMACIA'];
 		if (!allowedRoles.includes(userRole)) {
 			console.warn(`[Invites API] Unauthorized invite attempt by role: ${userRole}`);
 			return NextResponse.json({ error: 'Unauthorized: insufficient privileges to create invites' }, { status: 403 });

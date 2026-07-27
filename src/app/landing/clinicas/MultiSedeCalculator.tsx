@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Building2, Users, Calculator, ArrowRight, Wallet, CheckCircle2, AlertCircle } from 'lucide-react';
+import { clinicaPricing, consultorioPricing, billingDiscounts } from '@/config/ashira-content';
 
 export function MultiSedeCalculator() {
     const [specialists, setSpecialists] = useState(15);
@@ -16,56 +17,46 @@ export function MultiSedeCalculator() {
 
     // --- Logic ---
     const getBasePlan = (count: number) => {
-        if (count <= 1) return { name: "Individual", price: 49.00, tier: "Consultorios" }; // Edge case
-        if (count <= 10) return { name: "Starter", price: 20.00, tier: "Grupos Pequeños" };
-        if (count <= 30) return { name: "Clínica", price: 18.00, tier: "Centros Medianos" };
-        if (count <= 80) return { name: "Pro", price: 16.00, tier: "Clínicas Tipo B" };
-        if (count <= 200) return { name: "Enterprise", price: 14.00, tier: "Grandes Inst." };
+        if (count <= 1) return { name: "Individual", price: consultorioPricing.monthlyUsd, tier: "Consultorios" };
+        const tier = clinicaPricing.tiers.find((t) => {
+            if (t.name === 'Starter') return count <= 10;
+            if (t.name === 'Clínica') return count <= 30;
+            if (t.name === 'Pro') return count <= 80;
+            if (t.name === 'Enterprise') return count <= 200;
+            return false;
+        });
+        if (tier) return { name: tier.name, price: tier.perSpecialistMonthlyUsd, tier: tier.tier };
         return { name: "Personalizado", price: 0, tier: "Corporativo" };
     };
 
     const calculateTotal = () => {
         const plan = getBasePlan(specialists);
         
-        // Base Admin Cost
-        const adminBaseCost = specialists > 1 && plan.name !== "Personalizado" ? 130 : 0;
+        const adminBaseCost = specialists > 1 && plan.name !== "Personalizado" ? clinicaPricing.adminBaseUsd : 0;
 
-        // Specialist Cost
         let specialistCost = specialists * plan.price;
-        if (plan.name === "Personalizado") specialistCost = 0; // Handled separately
+        if (plan.name === "Personalizado") specialistCost = 0;
 
-        // Branch Cost
         let branchCost = 0;
         let chargeableBranches = 0;
         
         if (branches > 1) {
-            // First branch is free.
-            // Branches 2-4 cost 45
-            // Branches 5-10 cost 30
-            // 11+ is Custom
-            
             const extraBranches = branches - 1;
+            const tier1Branches = Math.min(extraBranches, 3);
+            const tier2Branches = Math.min(Math.max(extraBranches - 3, 0), 6);
             
-            const tier1Branches = Math.min(extraBranches, 3); // 2, 3, 4 (3 branches max at this tier)
-            const tier2Branches = Math.min(Math.max(extraBranches - 3, 0), 6); // 5, 6, 7, 8, 9, 10 (6 branches max)
-            
-            branchCost += tier1Branches * 45;
-            branchCost += tier2Branches * 30;
+            branchCost += tier1Branches * clinicaPricing.multiSede.seats2to4Usd;
+            branchCost += tier2Branches * clinicaPricing.multiSede.seats5to10Usd;
             chargeableBranches = tier1Branches + tier2Branches;
         }
 
-        // Cycle Discount applies ONLY to the specialist fee according to pricing rules
-        let discountMultiplier = 1;
-        if (billingCycle === 'quarterly') discountMultiplier = 0.9;
-        if (billingCycle === 'annual') discountMultiplier = 0.7;
+        const discountMultiplier = 1 - billingDiscounts[billingCycle];
 
         let discountedSpecialistCost = specialistCost * discountMultiplier;
 
-        const totalMonthly_NoDiscount = adminBaseCost + specialistCost + branchCost;
         const totalMonthly_WithDiscount = adminBaseCost + discountedSpecialistCost + (branchCost * discountMultiplier);
 
-        // Savings Reference
-        const individualCost = specialists * 49; // Reference price
+        const individualCost = specialists * consultorioPricing.monthlyUsd;
         const monthlySavings = Math.max(0, individualCost - totalMonthly_WithDiscount);
 
         return {
@@ -83,11 +74,10 @@ export function MultiSedeCalculator() {
 
     const data = calculateTotal();
 
-    // WhatsApp Message Generator
     const waMessage = `Hola, me interesa ASHIRA para mi clínica.
 📊 Total de especialistas: ${specialists}
 🏢 Número de sedes: ${branches}
-💰 Estimado mensual: €${Math.round(data.totalMonthly)}/mes (${billingCycle})
+💰 Estimado mensual: $${Math.round(data.totalMonthly)}/mes (${billingCycle})
 📅 Ciclo preferido: ${billingCycle === 'annual' ? 'Anual' : billingCycle === 'quarterly' ? 'Trimestral' : 'Mensual'}
 ¿Pueden darme más información y agendar una demo?`;
 
@@ -222,7 +212,7 @@ export function MultiSedeCalculator() {
                                         <div className="text-2xl font-bold text-slate-900">{data.basePlan.name}</div>
                                     </div>
                                     <div className="bg-purple-100 text-purple-700 font-bold px-4 py-2 rounded-lg text-sm border border-purple-200">
-                                        €{data.basePlan.price} /esp
+                                        ${data.basePlan.price} /esp
                                     </div>
                                 </div>
 
@@ -230,7 +220,7 @@ export function MultiSedeCalculator() {
                                 <div className="space-y-4 mb-8 text-sm">
                                     <div className="flex justify-between items-center pb-2 border-b border-slate-200">
                                         <span className="text-slate-600">Base ({specialists} especialistas)</span>
-                                        <span className="font-semibold text-slate-900">€{Math.round(data.baseCostMonthly).toLocaleString()} <span className="text-xs text-slate-400 font-normal">/mes</span></span>
+                                        <span className="font-semibold text-slate-900">${Math.round(data.baseCostMonthly).toLocaleString()} <span className="text-xs text-slate-400 font-normal">/mes</span></span>
                                     </div>
                                     
                                     <div className="flex justify-between items-center pb-2 border-b border-slate-200">
@@ -239,7 +229,7 @@ export function MultiSedeCalculator() {
                                             {data.chargeableBranches > 0 && <span className="bg-indigo-100 text-indigo-700 px-1.5 py-0.5 rounded text-[10px] font-bold">x{data.chargeableBranches}</span>}
                                         </span>
                                         <span className="font-semibold text-slate-900">
-                                            {data.branchCostMonthly > 0 ? `€${data.branchCostMonthly}` : 'Incluido'} 
+                                            {data.branchCostMonthly > 0 ? `$${data.branchCostMonthly}` : 'Incluido'} 
                                             {data.branchCostMonthly > 0 && <span className="text-xs text-slate-400 font-normal"> /mes</span>}
                                         </span>
                                     </div>
@@ -257,11 +247,11 @@ export function MultiSedeCalculator() {
                                     <div className="flex justify-between items-end mb-2">
                                         <span className="text-lg font-bold text-slate-700">Estimado Mensual</span>
                                         <span className="text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-purple-600 to-indigo-600">
-                                            €{Math.round(data.totalMonthly).toLocaleString()}
+                                            ${Math.round(data.totalMonthly).toLocaleString()}
                                         </span>
                                     </div>
                                     <p className="text-right text-xs text-slate-400">
-                                        Facturado {billingCycle === 'monthly' ? 'mensualmente' : billingCycle === 'quarterly' ? `cada 3 meses (€${Math.round(data.totalPeriod).toLocaleString()})` : `anualmente (€${Math.round(data.totalPeriod).toLocaleString()})`}
+                                        Facturado {billingCycle === 'monthly' ? 'mensualmente' : billingCycle === 'quarterly' ? `cada 3 meses ($${Math.round(data.totalPeriod).toLocaleString()})` : `anualmente ($${Math.round(data.totalPeriod).toLocaleString()})`}
                                     </p>
                                 </div>
 
@@ -275,10 +265,10 @@ export function MultiSedeCalculator() {
                                     </div>
                                     <div className="flex justify-between items-end">
                                         <div className="text-xs text-slate-500">
-                                            Si pagaran por separado: <span className="line-through">€{data.individualCost.toLocaleString()}</span>
+                                            Si pagaran por separado: <span className="line-through">${data.individualCost.toLocaleString()}</span>
                                         </div>
                                         <div className="text-emerald-600 font-bold text-lg">
-                                            Ahorras €{Math.round(data.monthlySavings).toLocaleString()}/mes
+                                            Ahorras ${Math.round(data.monthlySavings).toLocaleString()}/mes
                                         </div>
                                     </div>
                                     {/* Progress Bar */}

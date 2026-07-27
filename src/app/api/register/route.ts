@@ -296,6 +296,85 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       }
     }
 
+    // ─── NUEVO: Crear perfil y configuración para Farmacia si aplica ───
+    if (role === 'FARMACIA' && orgRec && organization) {
+      // 1. Crear clinic_profile básico para compatibilidad con búsquedas existentes de pacientes
+      const { error: profileErr } = await admin.from('clinic_profile').insert({
+        organization_id: orgRec.id,
+        legal_name: organization.orgName,
+        trade_name: organization.orgName,
+        address_operational: organization.orgAddress,
+        phone_mobile: organization.orgPhone,
+        contact_email: account.email,
+        legal_rif: organization.licenseNumber
+      });
+      if (profileErr) {
+        console.error('[Register API] Error creating pharmacy clinic_profile:', profileErr);
+      }
+
+      // 2. Crear pharmacy_site_config por defecto
+      const baseSlug = organization.orgName
+        .toLowerCase()
+        .normalize('NFD').replace(/[\u0300-\u036f]/g, '') // Quitar acentos
+        .replace(/[^a-z0-9]+/g, '-') // Reemplazar no alfanuméricos por guiones
+        .replace(/(^-|-$)+/g, ''); // Limpiar guiones
+
+      let slug = baseSlug || 'farmacia';
+      let unique = false;
+      let attempts = 0;
+      while (!unique && attempts < 5) {
+        const { data: existing } = await admin
+          .from('pharmacy_site_config')
+          .select('slug')
+          .eq('slug', slug)
+          .maybeSingle();
+        if (!existing) {
+          unique = true;
+        } else {
+          attempts++;
+          slug = `${baseSlug}-${Math.floor(Math.random() * 1000)}`;
+        }
+      }
+
+      const { error: configErr } = await admin.from('pharmacy_site_config').insert({
+        org_id: orgRec.id,
+        template_id: 'farmatuya',
+        slug,
+        whatsapp_number: organization.orgPhone || '',
+        is_published: false,
+        color_primary: '#10b981',
+        color_secondary: '#059669',
+        color_accent: '#34d399',
+        content: {
+          hero: {
+            title: `Bienvenido a ${organization.orgName}`,
+            subtitle: 'Tu farmacia de confianza'
+          },
+          mision: 'Brindar el mejor servicio y calidad en medicamentos.',
+          vision: 'Ser la farmacia líder en atención digital y dispensación.',
+          contacto: {
+            email: account.email,
+            phone: organization.orgPhone || ''
+          }
+        }
+      });
+      if (configErr) {
+        console.error('[Register API] Error creating pharmacy_site_config:', configErr);
+      }
+
+      // 3. Crear sede principal en pharmacy_locations
+      const { error: locationErr } = await admin.from('pharmacy_locations').insert({
+        org_id: orgRec.id,
+        name: 'Sede Principal',
+        address: organization.orgAddress,
+        lat: (organization as any).locationLat || null,
+        lng: (organization as any).locationLng || null,
+        is_active: true
+      });
+      if (locationErr) {
+        console.error('[Register API] Error creating pharmacy main location:', locationErr);
+      }
+    }
 
     // 4. Post-creation (Migration)
     if (unregId && patRec) await migrateData(admin, unregId, patRec.id);

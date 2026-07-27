@@ -1,27 +1,64 @@
 // app/layout.tsx
 import type { Metadata } from 'next';
+import { Sora, DM_Sans, Space_Grotesk, JetBrains_Mono } from 'next/font/google';
+import { headers } from 'next/headers';
 import '../../public/globals.css';
 import NavbarSwitcher from '@/components/NavbarSwitcher';
 import ConditionalMain from '@/components/ConditionalMain';
 import { Toaster } from 'sonner';
 import QueryProvider from '@/providers/QueryProvider';
 import SessionKeeper from '@/components/SessionKeeper';
+import { buildPageMetadata, organizationSoftwareJsonLd, faqPageJsonLd } from '@/lib/seo';
+import { companyFaqs } from '@/config/ashira-content';
+
+const sora = Sora({
+	subsets: ['latin'],
+	weight: ['600', '700', '800'],
+	variable: '--font-display',
+	display: 'swap',
+});
+
+const dmSans = DM_Sans({
+	subsets: ['latin'],
+	weight: ['400', '500', '600'],
+	variable: '--font-body',
+	display: 'swap',
+});
+
+const spaceGrotesk = Space_Grotesk({
+	subsets: ['latin'],
+	weight: ['500', '600', '700'],
+	variable: '--font-stats',
+	display: 'swap',
+});
+
+const jetbrainsMono = JetBrains_Mono({
+	subsets: ['latin'],
+	weight: ['400', '500'],
+	variable: '--font-mono',
+	display: 'swap',
+});
+
+const jsonLd = {
+	'@context': 'https://schema.org',
+	'@graph': [
+		organizationSoftwareJsonLd(),
+		faqPageJsonLd(companyFaqs),
+		{
+			'@type': 'Person',
+			name: 'Dra. Carwin Silva',
+			jobTitle: 'Ginecóloga Especialista — Embajadora Oficial ASHIRA',
+			description:
+				'Doctora Carwin Silva, ginecóloga especialista en ginecología regenerativa, funcional y estética en Venezuela.',
+			image: 'https://ashira.click/consultorios/dracarwin/IMG_5189.JPG',
+			knowsAbout: ['Ginecología', 'Ginecología Regenerativa', 'Ginecología Funcional', 'Ginecología Estética', 'Salud Femenina'],
+			worksFor: { '@type': 'Organization', name: 'ASHIRA', url: 'https://ashira.click' },
+		},
+	],
+};
 
 export const metadata: Metadata = {
-	title: 'ASHIRA - Plataforma Integral de Salud Digital para Venezuela | Dra. Carwin Silva - Ginecóloga Especialista',
-	description: 'ASHIRA es la plataforma tecnológica líder que conecta consultorios privados, clínicas, farmacias y laboratorios en Venezuela. Dra. Carwin Silva, ginecóloga especialista en ginecología regenerativa, funcional y estética, embajadora oficial. Gestión integral de pacientes, historial médico digital, citas online, recetas electrónicas y resultados de laboratorio. Transforma tu práctica médica con tecnología de vanguardia.',
-	keywords: 'ASHIRA, plataforma salud digital Venezuela, gestión médica digital, historial médico electrónico, citas médicas online, recetas electrónicas, laboratorios clínicos Venezuela, farmacias digitales, telemedicina Venezuela, software médico, sistema gestión clínica, plataforma médica integral, salud digital Venezuela, consultorios médicos digitales, clínicas digitales, Dra. Carwin Silva, Doctora Carwin Silva, Ginecóloga Venezuela, Ginecólogo Venezuela, Ginecología Caracas, Ginecología Estética, Ginecología Regenerativa, Ginecología Funcional, Consulta Ginecológica, Salud Femenina, Medicina Funcional Ginecología, Ginecólogo Especialista Venezuela',
-	openGraph: {
-		title: 'ASHIRA - Plataforma Integral de Salud Digital | Dra. Carwin Silva - Ginecóloga Especialista',
-		description: 'Conecta consultorios, clínicas, farmacias y laboratorios en un ecosistema unificado de salud digital. Dra. Carwin Silva, ginecóloga especialista en Venezuela, embajadora oficial de ASHIRA.',
-		type: 'website',
-		locale: 'es_VE',
-	},
-	twitter: {
-		card: 'summary_large_image',
-		title: 'ASHIRA - Plataforma Integral de Salud Digital | Dra. Carwin Silva',
-		description: 'Transforma tu práctica médica con la plataforma tecnológica más completa del sector salud. Ginecóloga especialista Dra. Carwin Silva, embajadora oficial.',
-	},
+	...buildPageMetadata('home'),
 	manifest: '/manifest.json',
 	icons: {
 		icon: '/icon.png',
@@ -30,31 +67,23 @@ export const metadata: Metadata = {
 	},
 };
 
-import { headers } from 'next/headers';
-
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
 	const headersList = await headers();
 	const nonce = headersList.get('x-nonce') || '';
 
 	return (
-		<html lang="es" className="overflow-x-hidden" style={{ colorScheme: 'light' }} suppressHydrationWarning={true}>
+		<html lang="es" className={`${sora.variable} ${dmSans.variable} ${spaceGrotesk.variable} ${jetbrainsMono.variable} overflow-x-hidden`} style={{ colorScheme: 'light' }} suppressHydrationWarning={true}>
 			<body 
 				nonce={nonce} 
-				className="antialiased overflow-x-hidden w-full max-w-full" 
-				style={{ backgroundColor: '#F5F7FA', color: '#2C3E50' }}
+				className="antialiased overflow-x-hidden w-full max-w-full font-body" 
+				style={{ backgroundColor: '#FFFFFF', color: '#0F2133' }}
 				suppressHydrationWarning={true}
 			>
+				<script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
 				<QueryProvider>
-					{/* Sincronización automática de sesión en segundo plano */}
 					<SessionKeeper />
-
-					{/* Navbar dinámico */}
 					<NavbarSwitcher />
-
-					{/* Main con padding condicional */}
 					<ConditionalMain>{children}</ConditionalMain>
-
-					{/* Toaster para notificaciones */}
 					<Toaster position="top-right" richColors />
 				</QueryProvider>
 			</body>

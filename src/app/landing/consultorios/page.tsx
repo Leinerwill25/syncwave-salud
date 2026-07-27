@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import Head from 'next/head';
 import { VoiceDemo } from './VoiceDemo';
+import { consultorioPricing } from '@/config/ashira-content';
 
 // --- SEO & Schema Components ---
 const SEOMetadata = () => (
@@ -42,8 +43,8 @@ const SchemaJSON = () => {
         "description": "Plataforma integral de salud digital para consultorios médicos privados.",
         "offers": {
             "@type": "Offer",
-            "price": "70",
-            "priceCurrency": "EUR"
+            "price": "35",
+            "priceCurrency": "USD"
         },
         "aggregateRating": {
             "@type": "AggregateRating",
@@ -152,15 +153,21 @@ export default function ConsultoriosLandingPage() {
 
                         {/* Desktop Nav */}
                         <nav className="hidden md:flex items-center gap-8">
-                            {['Funcionalidades', 'Testimonios', 'Precios', 'FAQ'].map((item) => (
-                                <Link 
-                                    key={item} 
-                                    href={`#${item.toLowerCase()}`}
-                                    className="text-sm font-medium text-slate-600 hover:text-teal-600 transition-colors"
-                                >
-                                    {item}
-                                </Link>
-                            ))}
+                            <Link href="#funcionalidades" className="text-sm font-medium text-slate-600 hover:text-teal-600 transition-colors">
+                                Funcionalidades
+                            </Link>
+                            <Link href="#testimonios" className="text-sm font-medium text-slate-600 hover:text-teal-600 transition-colors">
+                                Testimonios
+                            </Link>
+                            <Link href="#precios" className="text-sm font-medium text-slate-600 hover:text-teal-600 transition-colors">
+                                Precios
+                            </Link>
+                            <Link href="#faq" className="text-sm font-medium text-slate-600 hover:text-teal-600 transition-colors">
+                                FAQ
+                            </Link>
+                            <Link href="/landing/clinicas" className="text-sm font-medium text-slate-600 hover:text-teal-600 transition-colors">
+                                ¿Diriges una clínica?
+                            </Link>
                         </nav>
 
                         {/* CTAs Desktop */}
@@ -962,51 +969,27 @@ export default function ConsultoriosLandingPage() {
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-7xl mx-auto">
                             {[
                                 { 
-                                    name: "Mensual", 
-                                    price: "49", 
+                                    name: consultorioPricing.cycles.monthly.label, 
+                                    price: String(consultorioPricing.cycles.monthly.perMonth), 
                                     period: "/mes", 
-                                    desc: "Facturado mensualmente", 
-                                    feats: [
-                                        "Historia Clínica Digital 24/7",
-                                        "Agenda con Recordatorios WhatsApp",
-                                        "Recetas en PDF y Consulta Sucesiva",
-                                        "Facturación Básica (USD/Bs)",
-                                        "Rol: Asistente (Recepción, Pago, Triaje)",
-                                        "Rol: Recepción (Flujo y Caja Chica)",
-                                        "App Móvil (Próximamente)"
-                                    ] 
+                                    desc: consultorioPricing.cycles.monthly.desc, 
+                                    feats: [...consultorioPricing.featuresMonthly],
                                 },
                                 { 
-                                    name: "Trimestral", 
-                                    price: "44.10", 
+                                    name: consultorioPricing.cycles.quarterly.label, 
+                                    price: String(consultorioPricing.cycles.quarterly.perMonth), 
                                     period: "/mes", 
-                                    desc: "Ahorra 10% (Pago único de €132.30)", 
+                                    desc: consultorioPricing.cycles.quarterly.desc, 
                                     popular: true,
-                                    feats: [
-                                        "Historia Clínica Digital 24/7",
-                                        "Agenda con Recordatorios WhatsApp",
-                                        "Recetas en PDF y Consulta Sucesiva",
-                                        "Facturación Básica (USD/Bs)",
-                                        "Rol: Asistente (Recepción, Pago, Triaje)",
-                                        "Rol: Recepción (Flujo y Caja Chica)",
-                                        "Migración de Datos Gratis",
-                                        "Soporte Prioritario VIP"
-                                    ]
+                                    feats: [...consultorioPricing.featuresQuarterly],
                                 },
                                 { 
-                                    name: "Anual", 
-                                    price: "34.30", 
+                                    name: consultorioPricing.cycles.annual.label, 
+                                    price: String(consultorioPricing.cycles.annual.perMonth), 
                                     period: "/mes", 
-                                    desc: "Ahorra 30% (Mejor Inversión)", 
+                                    desc: consultorioPricing.cycles.annual.desc, 
                                     bestValue: true,
-                                    feats: [
-                                        "TODO lo del plan Trimestral",
-                                        "Ahorras €176.40 al año",
-                                        "Configuración Asistida (Zoom)",
-                                        "Capacitación a Personal",
-                                        "Auditoría Anual de Datos",
-                                        "Prioridad en Nuevas Funciones"
-                                    ] 
+                                    feats: [...consultorioPricing.featuresAnnual],
                                 },
                             ].map((plan, i) => (
                                 <motion.div 
@@ -1023,7 +1006,7 @@ export default function ConsultoriosLandingPage() {
                                     <div className="mb-6 text-center border-b border-slate-100 pb-6">
                                         <h3 className="text-xl font-bold text-slate-900 mb-2">{plan.name}</h3>
                                         <div className="flex items-center justify-center gap-1 mb-2">
-                                            <span className="text-5xl font-extrabold text-slate-900 tracking-tight">€{plan.price}</span>
+                                            <span className="text-5xl font-extrabold text-slate-900 tracking-tight">${plan.price}</span>
                                             <span className="text-slate-500 font-medium self-end mb-2">{plan.period}</span>
                                         </div>
                                         <p className={`text-sm font-medium ${plan.bestValue ? 'text-green-600' : 'text-slate-500'}`}>{plan.desc}</p>

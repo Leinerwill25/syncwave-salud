@@ -413,6 +413,10 @@ export default function RegisterForm(): React.ReactElement {
 			setOrgType('CONSULTORIO');
 			setSpecialistCount(1);
 			setDisplaySpecialistCount('1');
+		} else if (role === 'FARMACIA') {
+			setOrgType('FARMACIA');
+			setSpecialistCount(1);
+			setDisplaySpecialistCount('1');
 		}
 		// si cambia a otro role, no forzamos nada (el usuario puede editar el número)
 		// además, al cambiar role reiniciamos plan/billing a valores por defecto razonables
@@ -488,6 +492,7 @@ export default function RegisterForm(): React.ReactElement {
 				return patientPlan === 'individual' ? { slug: 'paciente-individual', label: 'Paciente — Individual', price: 1.08, quarterlyPrice: 2.92, annualPrice: 9.07 } : { slug: 'paciente-family', label: 'Paciente — Plan Familiar', price: 2.50, quarterlyPrice: 6.75, annualPrice: 21.00 };
 			}
 			if (role === 'ENFERMERO') return { slug: 'enfermero-independiente', label: 'Enfermería Independiente', price: 20.00, quarterlyPrice: 54.00, annualPrice: 168.00 };
+			if (role === 'FARMACIA') return { slug: 'farmacia-standard', label: 'Plan Farmacia Standard', price: 30.00, quarterlyPrice: 81.00, annualPrice: 252.00 };
 			return { slug: 'clinic-starter', label: 'Starter (2–10 esp.)', price: 150.00, quarterlyPrice: 405.00, annualPrice: 1260.00 }; // Fallback assuming admin $130 + $20 (1 esp)
 		}
 
@@ -520,13 +525,27 @@ export default function RegisterForm(): React.ReactElement {
 			return { slug: 'enfermero-independiente', label: 'Enfermería Independiente', price: 20.00, quarterlyPrice: 54.00, annualPrice: 168.00 };
 		}
 
+		if (role === 'FARMACIA') {
+			const pharmacyPlan = plans.find((p) => p.slug === 'farmacia-standard');
+			if (pharmacyPlan) {
+				return {
+					slug: pharmacyPlan.slug,
+					label: pharmacyPlan.name,
+					price: pharmacyPlan.monthlyPrice,
+					quarterlyPrice: pharmacyPlan.quarterlyPrice,
+					annualPrice: pharmacyPlan.annualPrice,
+				};
+			}
+			return { slug: 'farmacia-standard', label: 'Plan Farmacia Standard', price: 30.00, quarterlyPrice: 81.00, annualPrice: 252.00 };
+		}
+
 		if (role === 'PACIENTE') {
 			// Pacientes tienen la plataforma gratuita, no hay plan de pago
 			return { slug: 'paciente-gratis', label: 'Plan Gratuito', price: 0, quarterlyPrice: null, annualPrice: null };
 		}
 
 		// Para organizaciones (no médicos ni pacientes), buscar plan según número de especialistas
-		if (role === 'ADMIN' || role === 'FARMACIA' || role === 'LABORATORIO') {
+		if (role === 'ADMIN' || role === 'LABORATORIO') {
 			const orgPlan = plans.find((p) => (p.minSpecialists === 0 || p.minSpecialists <= specialistCount) && (p.maxSpecialists === 0 || p.maxSpecialists >= specialistCount));
 			if (orgPlan) {
 				return {
@@ -758,10 +777,12 @@ export default function RegisterForm(): React.ReactElement {
 					orgName: role === 'ENFERMERO' && !orgName ? `Atención Independiente - ${fullName}` : orgName,
 					orgType,
 					specialistCount,
-					sedeCount: numericSedeCount, // Add sedeCount
+					sedeCount: numericSedeCount,
 					orgPhone,
 					orgAddress,
-					licenseNumber: role === 'ENFERMERO' ? licenseNumber : undefined,
+					licenseNumber: (role === 'ENFERMERO' || role === 'FARMACIA') ? licenseNumber : undefined,
+					locationLat: (role === 'FARMACIA' || role === 'ADMIN') ? locationLat : undefined,
+					locationLng: (role === 'FARMACIA' || role === 'ADMIN') ? locationLng : undefined,
 				};
 			}
 
@@ -778,8 +799,8 @@ export default function RegisterForm(): React.ReactElement {
 				return;
 			}
 
-			// Guardar datos de pago pendiente si es MEDICO o ADMIN (independientemente de verificación de email)
-			if ((role === 'MEDICO' || role === 'ADMIN') && data?.organizationId && data?.userId && billingPreview) {
+			// Guardar datos de pago pendiente si es MEDICO, ADMIN o FARMACIA (independientemente de verificación de email)
+			if ((role === 'MEDICO' || role === 'ADMIN' || role === 'FARMACIA') && data?.organizationId && data?.userId && billingPreview) {
 				// Guardar datos en localStorage para la página de pago (se usará después del login)
 				localStorage.setItem('pendingPayment_organizationId', data.organizationId);
 				localStorage.setItem('pendingPayment_userId', data.userId);
@@ -796,7 +817,7 @@ export default function RegisterForm(): React.ReactElement {
 					successMessage += '\n\n¡Bienvenido de nuevo! Se encontró un historial médico previo asociado a tu cédula. Al iniciar sesión, podrás acceder a todas tus consultas anteriores.';
 				}
 				// Si hay pago pendiente, agregar mensaje
-				if ((role === 'MEDICO' || role === 'ADMIN') && data?.organizationId && billingPreview) {
+				if ((role === 'MEDICO' || role === 'ADMIN' || role === 'FARMACIA') && data?.organizationId && billingPreview) {
 					successMessage += '\n\nDespués de verificar tu email e iniciar sesión, serás redirigido para completar el pago de tu suscripción.';
 				}
 				setSuccessMsg(successMessage);
@@ -812,8 +833,8 @@ export default function RegisterForm(): React.ReactElement {
 				}
 				setSuccessMsg(successMessage);
 
-				// Si es MEDICO o ADMIN (no PACIENTE)
-				if ((role === 'MEDICO' || role === 'ADMIN')) {
+				// Si es MEDICO, ADMIN o FARMACIA (no PACIENTE)
+				if ((role === 'MEDICO' || role === 'ADMIN' || role === 'FARMACIA')) {
 					if (data?.requiresQuote) {
 						// Custom Quote Flow
 						localStorage.setItem('pendingQuote_organizationId', data.organizationId);
@@ -1112,8 +1133,8 @@ export default function RegisterForm(): React.ReactElement {
 										value={role}
 										onChange={(e) => {
 											const newRole = e.target.value as Role;
-											// Permitir MEDICO, PACIENTE, ADMIN y ENFERMERO
-											const allowedRoles: Role[] = ['MEDICO', 'PACIENTE', 'ADMIN', 'ENFERMERO'];
+											// Permitir MEDICO, PACIENTE, ADMIN, ENFERMERO y FARMACIA
+											const allowedRoles: Role[] = ['MEDICO', 'PACIENTE', 'ADMIN', 'ENFERMERO', 'FARMACIA'];
 											if (!allowedRoles.includes(newRole)) {
 												return;
 											}
@@ -1132,8 +1153,8 @@ export default function RegisterForm(): React.ReactElement {
 										<option value="ADMIN">
 											Clínica / Centro Médico
 										</option>
-										<option value="FARMACIA" disabled>
-											Farmacia (Próximamente)
+										<option value="FARMACIA">
+											Farmacia
 										</option>
 										<option value="LABORATORIO" disabled>
 											Laboratorio (Próximamente)
@@ -1147,7 +1168,7 @@ export default function RegisterForm(): React.ReactElement {
 											<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
 										</svg>
 										<p className="text-xs text-blue-800 leading-relaxed">
-											<strong>Nota:</strong> Actualmente el registro está disponible para <strong>Consultorios Privados</strong>, <strong>Clínicas</strong> y <strong>Pacientes</strong>. El registro para Farmacias y Laboratorios estará disponible próximamente.
+											<strong>Nota:</strong> Actualmente el registro está disponible para <strong>Consultorios Privados</strong>, <strong>Clínicas</strong>, <strong>Enfermeros</strong>, <strong>Farmacias</strong> y <strong>Pacientes</strong>. El registro para Laboratorios estará disponible próximamente.
 										</p>
 									</div>
 								</div>
@@ -1207,10 +1228,10 @@ export default function RegisterForm(): React.ReactElement {
 												<svg className="w-4 h-4 text-teal-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 													<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
 												</svg>
-												Nombre de la organización / consultorio
+												{role === 'FARMACIA' ? 'Nombre comercial de la farmacia' : 'Nombre de la organización / consultorio'}
 											</span>
 										</span>
-										<input value={orgName} onChange={(e) => setOrgName(e.target.value)} className={inputClass} placeholder="Ej: Clínica Santa Rosa (o tu consultorio)" required />
+										<input value={orgName} onChange={(e) => setOrgName(e.target.value)} className={inputClass} placeholder={role === 'FARMACIA' ? 'Ej: Farmacia FarmaTuya' : 'Ej: Clínica Santa Rosa (o tu consultorio)'} required />
 									</label>
 
 									<label className="block group">
@@ -1222,13 +1243,13 @@ export default function RegisterForm(): React.ReactElement {
 												Tipo de organización
 											</span>
 										</span>
-										{/* Si role === 'MEDICO' este select queda deshabilitado y orgType ya estará forzado a 'CONSULTORIO' */}
-										<select value={orgType} onChange={(e) => setOrgType(e.target.value as OrgType)} className={selectClass} disabled={role === 'MEDICO'}>
+										{/* Si es MEDICO o FARMACIA este select queda deshabilitado */}
+										<select value={orgType} onChange={(e) => setOrgType(e.target.value as OrgType)} className={selectClass} disabled={role === 'MEDICO' || role === 'FARMACIA'}>
 											<option value="CONSULTORIO">Consultorio Privado</option>
 											<option value="HOSPITAL">Hospital</option>
 											<option value="CLINICA">Clínica</option>
-											<option value="FARMACIA" disabled>
-												Farmacia (Próximamente)
+											<option value="FARMACIA">
+												Farmacia
 											</option>
 											<option value="LABORATORIO" disabled>
 												Laboratorio (Próximamente)
@@ -1238,19 +1259,21 @@ export default function RegisterForm(): React.ReactElement {
 								</>
 							)}
 
-							{/* Si es MEDICO o ENFERMERO no pedimos número de especialistas (es 1 por defecto); para otros roles sí */}
-							{(role === 'MEDICO' || role === 'ENFERMERO') ? (
+							{/* Si es MEDICO, ENFERMERO o FARMACIA no pedimos número de especialistas (es 1 por defecto); para otros roles sí */}
+							{(role === 'MEDICO' || role === 'ENFERMERO' || role === 'FARMACIA') ? (
 								<div className="md:col-span-1">
 									<span className={labelClass}>
 										<span className="inline-flex items-center gap-2">
 											<svg className="w-4 h-4 text-teal-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 												<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
 											</svg>
-											Especialistas
+											{role === 'FARMACIA' ? 'Tipo de Cuenta' : 'Especialistas'}
 										</span>
 									</span>
-									<div className="mt-2 px-4 py-3.5 border-2 border-slate-200 rounded-xl bg-slate-50 text-slate-700 font-medium">{role === 'ENFERMERO' ? 'Enfermero Independiente' : 'Usuario individual — 1 especialista'}</div>
-									{role === 'ENFERMERO' && (
+									<div className="mt-2 px-4 py-3.5 border-2 border-slate-200 rounded-xl bg-slate-50 text-slate-700 font-medium">
+										{role === 'ENFERMERO' ? 'Enfermero Independiente' : role === 'FARMACIA' ? 'Cuenta de Farmacia' : 'Usuario individual — 1 especialista'}
+									</div>
+									{(role === 'ENFERMERO' || role === 'FARMACIA') && (
 										<div className="mt-4">
 											<label className="block group">
 												<span className={labelClass}>
@@ -1258,10 +1281,10 @@ export default function RegisterForm(): React.ReactElement {
 														<svg className="w-4 h-4 text-teal-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 															<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
 														</svg>
-														Número de Licencia / Matricula
+														{role === 'FARMACIA' ? 'RIF de la Farmacia' : 'Número de Licencia / Matricula'}
 													</span>
 												</span>
-												<input value={licenseNumber} onChange={(e) => setLicenseNumber(e.target.value)} className={inputClass} placeholder="Ej: MPPS-12345" required />
+												<input value={licenseNumber} onChange={(e) => setLicenseNumber(e.target.value)} className={inputClass} placeholder={role === 'FARMACIA' ? 'Ej: J-12345678-9' : 'Ej: MPPS-12345'} required />
 											</label>
 										</div>
 									)}
@@ -1349,18 +1372,44 @@ export default function RegisterForm(): React.ReactElement {
 								<input value={orgPhone} onChange={(e) => setOrgPhone(e.target.value)} className={inputClass} placeholder="+58 412 0000000" />
 							</label>
 
-							<label className={`${role === 'ENFERMERO' ? '' : 'md:col-span-2'} block group`}>
-								<span className={labelClass}>
-									<span className="inline-flex items-center gap-2">
-										<svg className="w-4 h-4 text-teal-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-											<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-											<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-										</svg>
-										Dirección
+							{role === 'FARMACIA' ? (
+								<label className="md:col-span-2 block group">
+									<span className={labelClass}>
+										<span className="inline-flex items-center gap-2">
+											<svg className="w-4 h-4 text-teal-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+												<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+												<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+											</svg>
+											Ubicación y Dirección de Sede Principal
+										</span>
 									</span>
-								</span>
-								<input value={orgAddress} onChange={(e) => setOrgAddress(e.target.value)} className={inputClass} placeholder="Calle, ciudad, estado" />
-							</label>
+									<p className="mt-1 mb-3 text-xs text-slate-600">Haz clic en el mapa para ubicar la farmacia. La dirección se actualizará sola.</p>
+									<LocationMapPicker
+										lat={locationLat}
+										lng={locationLng}
+										address={orgAddress}
+										onLocationSelect={(lat: number, lng: number) => {
+											setLocationLat(lat);
+											setLocationLng(lng);
+										}}
+										onAddressChange={(addr: string) => setOrgAddress(addr)}
+										inputClass={inputClass}
+									/>
+								</label>
+							) : (
+								<label className={`${role === 'ENFERMERO' ? '' : 'md:col-span-2'} block group`}>
+									<span className={labelClass}>
+										<span className="inline-flex items-center gap-2">
+											<svg className="w-4 h-4 text-teal-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+												<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+												<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+											</svg>
+											Dirección
+										</span>
+									</span>
+									<input value={orgAddress} onChange={(e) => setOrgAddress(e.target.value)} className={inputClass} placeholder="Calle, ciudad, estado" />
+								</label>
+							)}
 						</div>
 
 						<div className="mt-6 p-5 sm:p-6 rounded-xl bg-gradient-to-br from-emerald-50 to-teal-50 border border-emerald-200 shadow-sm animate-in slide-in-from-bottom duration-500">
@@ -1790,18 +1839,20 @@ export default function RegisterForm(): React.ReactElement {
 							</div>
 						</div>
 
-						{role === 'MEDICO' || role === 'ENFERMERO' ? (
+						{role === 'MEDICO' || role === 'ENFERMERO' || role === 'FARMACIA' ? (
 							<div className="p-4 sm:p-6 rounded-2xl border-2 border-emerald-600 bg-white shadow-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
 								<div className="flex-1">
 									<div className="inline-flex items-center gap-2 bg-emerald-100 text-emerald-800 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider mb-2">
 										Plan Recomendado
 									</div>
 									<h4 className="text-lg sm:text-xl font-bold text-slate-900">
-										{role === 'MEDICO' ? 'Plan Médico — Usuario individual' : 'Plan Enfermería Independiente'}
+										{role === 'MEDICO' ? 'Plan Médico — Usuario individual' : role === 'FARMACIA' ? 'Plan Módulo de Farmacia' : 'Plan Enfermería Independiente'}
 									</h4>
 									<p className="text-sm text-slate-600 mt-1">
 										{role === 'MEDICO' 
 											? 'Acceso total a la plataforma para médicos independientes con consultorio propio.' 
+											: role === 'FARMACIA'
+											? 'Acceso al módulo de catálogo, sucursales con GPS, constructor de sitio web y botón de WhatsApp.'
 											: 'Plan diseñado exclusivamente para profesionales de enfermería en el ejercicio independiente.'}
 									</p>
 								</div>

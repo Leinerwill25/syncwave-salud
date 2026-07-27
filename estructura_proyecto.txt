@@ -1,0 +1,1800 @@
+================================================================================
+ESTRUCTURA DE ARCHIVOS Y COMPONENTES - CLINICA SYNCWAVE MVP (ASHIRA)
+================================================================================
+Fecha de generación: 8/6/2026, 10:59:53 p. m.
+Ruta del proyecto: c:\Users\Dereck\Desktop\Proyectos_Grandes\Clinica_Syncwave_MVP\my-app
+
+Este documento contiene la estructura completa del proyecto desde el flujo de 
+registro (register), inicio de sesión (login), hasta los módulos y componentes
+de los distintos paneles (Médico, Clínica, Paciente, Enfermero, etc.).
+
+--------------------------------------------------------------------------------
+GUÍA RÁPIDA DE FLUJO DE TRABAJO Y ARQUITECTURA
+--------------------------------------------------------------------------------
+
+1. REGISTRO E INGRESO (Autenticación):
+   ├── src/app/register/        # Rutas de Next.js para registro de usuarios
+   ├── src/components/RegisterForm.tsx # Componente multi-paso de registro
+   ├── src/app/login/           # Ruta de Next.js para inicio de sesión
+   ├── src/components/LoginForm.tsx    # Componente de formulario de Login
+   └── src/components/SessionKeeper.tsx # Mantiene la sesión del servidor sincronizada 
+                                       # con el cliente cada 5 minutos.
+
+2. MIDDLEWARE DE SEGURIDAD (Control de acceso y roles):
+   └── middleware.ts            # Controla los CORS, CSP y redirecciona a cada usuario
+                                 # a su dashboard correspondiente según su ROL.
+
+3. PANELES DE USUARIO (Dashboards):
+   ├── src/app/dashboard/clinic/        # Panel Clínica / Administrador
+   ├── src/app/dashboard/medic/         # Panel Médico (Consultas, recetas, etc.)
+   ├── src/app/dashboard/patient/       # Panel Paciente (Historial, citas, descargas)
+   ├── src/app/dashboard/nurse/         # Panel Enfermería (Kardex, vitales, MAR)
+   └── src/app/dashboard/administration/# Panel Administración e Inventarios
+
+4. APIS Y CONTROLADORES (Server-side):
+   └── src/app/api/             # Endpoints backend de la aplicación
+
+================================================================================
+ÁRBOL COMPLETO DE ARCHIVOS (src/ y raíz)
+================================================================================
+my-app/
+├── migrations/
+│   ├── 20260418_ashira_ai_system.sql
+│   ├── 20260507_push_notifications.sql
+│   ├── 20260507_referrals_safecare.sql
+│   ├── 20260510_medic_gamification.sql
+│   ├── 20260511_fix_gamification_rls.sql
+│   ├── 20260524_bancaribe_integration.sql
+│   ├── 20260529_fix_consultation_survey_trigger.sql
+│   ├── README_FIX_CONSULTATION_PATIENT.md
+│   ├── add_adjustment_fields_to_facturacion.sql
+│   ├── add_appointment_origin_fields.sql
+│   ├── add_colposcopy_image_and_details.sql
+│   ├── add_created_by_role_user_to_appointment.sql
+│   ├── add_currency_preference_to_user.sql
+│   ├── add_family_group_booking_to_appointment.sql
+│   ├── add_has_cashea_to_clinic_profile.sql
+│   ├── add_icd11_to_consultation.sql
+│   ├── add_lite_mode_to_medic_profile.sql
+│   ├── add_medical_fields_to_patient.sql
+│   ├── add_medical_record_for_reports.sql
+│   ├── add_multi_sede_fields.sql
+│   ├── add_notes_to_appointment.sql
+│   ├── add_org_policy_report_templates.sql
+│   ├── add_password_to_role_users.sql
+│   ├── add_patient_emergency_qr_fields.sql
+│   ├── add_prescription_template_fields.sql
+│   ├── add_prescription_url_field.sql
+│   ├── add_profession_to_patient_tables.sql
+│   ├── add_recipe_text_to_prescription.sql
+│   ├── add_referral_source_to_appointment.sql
+│   ├── add_report_font_family_to_medic_profile.sql
+│   ├── add_report_template_fields_to_medic_profile.sql
+│   ├── add_report_template_text_to_medic_profile.sql
+│   ├── add_report_templates_by_specialty.sql
+│   ├── add_report_url_to_consultation.sql
+│   ├── add_service_combos_to_medic_profile.sql
+│   ├── add_template_text_to_medical_report_templates.sql
+│   ├── add_treatment_plan_to_prescription.sql
+│   ├── add_unregistered_patient_id_to_appointment.sql
+│   ├── add_unregistered_patient_id_to_facturacion.sql
+│   ├── add_unregistered_patient_id_to_patient.sql
+│   ├── add_unregistered_patient_id_to_prescription.sql
+│   ├── add_unregistered_patient_to_successive_consultations.sql
+│   ├── add_whatsapp_config_to_medic_profile.sql
+│   ├── add_whatsapp_number_to_role_users.sql
+│   ├── allow_multiple_users_same_email_different_roles.sql
+│   ├── check_and_fix_public_clinic_rls.sql
+│   ├── check_and_fix_url.sql
+│   ├── check_specific_policies.sql
+│   ├── check_user_rls_policies.sql
+│   ├── colposcopy_data_structure.md
+│   ├── colposcopy_report_variables.md
+│   ├── complete_rls_policies_final.sql
+│   ├── complete_user_registration_dra_lisangela.sql
+│   ├── create_consultation_email_queue_table.sql
+│   ├── create_consultation_files_table.sql
+│   ├── create_consultation_ratings_table.sql
+│   ├── create_consultation_share_links.sql
+│   ├── create_consultorio_roles_system.sql
+│   ├── create_doctor_private_notes.sql
+│   ├── create_doctor_private_notes_supabase.sql
+│   ├── create_logos_bucket.sql
+│   ├── create_medical_report_templates.sql
+│   ├── create_medical_reports_and_surveys.sql
+│   ├── create_medication_reminders.sql
+│   ├── create_points_system.sql
+│   ├── create_prescription_storage_buckets.sql
+│   ├── create_private_messages_table.sql
+│   ├── create_recipes_module.sql
+│   ├── create_role_user_payment_methods.sql
+│   ├── create_subscription_payments_table.sql
+│   ├── create_successive_consultation_table.sql
+│   ├── create_successive_consultations_table.sql
+│   ├── create_successive_consultations_table_final.sql
+│   ├── diagnose_bucket_issue.sql
+│   ├── diagnose_file_urls.sql
+│   ├── enable_realtime_trigger_private_messages.sql
+│   ├── enable_rls_all_tables.sql
+│   ├── ensure_consultation_patient_id_nullable.sql
+│   ├── find_and_fix_notification_references.sql
+│   ├── find_notification_references.sql
+│   ├── fix_all_notification_references.sql
+│   ├── fix_all_user_references_complete.sql
+│   ├── fix_all_user_to_users_plural.sql
+│   ├── fix_appointment_fk_aggressive.sql
+│   ├── fix_appointment_rls_user_reference.sql
+│   ├── fix_appointment_trigger_users_plural.sql
+│   ├── fix_appointment_user_foreign_key.sql
+│   ├── fix_clinic_rls_recursion.sql
+│   ├── fix_clinic_rls_recursion_ultra_simple.sql
+│   ├── fix_clinic_rls_roles.sql
+│   ├── fix_clinica_role_users.sql
+│   ├── fix_consultation_files_paths.sql
+│   ├── fix_consultation_patient_id_nullable.sql
+│   ├── fix_consultations_unregistered_patient_id.sql
+│   ├── fix_current_file.sql
+│   ├── fix_existing_consultations_patient_ids.sql
+│   ├── fix_fn_notify_user_insert.sql
+│   ├── fix_handle_appointment_confirmed_function.sql
+│   ├── fix_invite_rls_public.sql
+│   ├── fix_medic_profile_rls.sql
+│   ├── fix_medic_profile_rls_for_role_users.sql
+│   ├── fix_notification_complete_final.sql
+│   ├── fix_notification_in_functions_and_triggers.sql
+│   ├── fix_notification_rls_only.sql
+│   ├── fix_notification_rls_simple.sql
+│   ├── fix_patient_dashboard_rls.sql
+│   ├── fix_patient_user_rls.sql
+│   ├── fix_report_templates_by_specialty.sql
+│   ├── fix_report_templates_rls.sql
+│   ├── fix_report_templates_rls_policies.sql
+│   ├── fix_report_templates_specialty_keys.sql
+│   ├── fix_rls_policies_after_rename.sql
+│   ├── fix_rls_policies_complete.sql
+│   ├── fix_specific_public_page_appointment.sql
+│   ├── fix_unregistered_patient_appointments.sql
+│   ├── fix_unregistered_patient_appointments_aggressive.sql
+│   ├── fix_user_rls_policies.sql
+│   ├── modify_lab_result_patient_id.sql
+│   ├── modify_task_patient_id.sql
+│   ├── performance_indexes.sql
+│   ├── rename_tables_to_lowercase.sql
+│   ├── restore_ginecologia_template.sql
+│   ├── restore_template_text.sql
+│   ├── revert_and_fix_public_page_appointments.sql
+│   ├── sync_consultation_patient_from_appointment.sql
+│   ├── trigger_sync_consultation_from_appointment.sql
+│   ├── update_all_rls_policy_references.sql
+│   ├── update_clinic_photos_bucket_policy.sql
+│   ├── update_clinic_plans.sql
+│   ├── update_recepcion_permissions.sql
+│   ├── update_report_templates_bucket_limit.sql
+│   ├── validate_and_add_facturacion_fields.sql
+│   ├── verify_consultation_files_urls.sql
+│   ├── verify_report_templates_policies.sql
+│   └── view_fn_notify_user_insert.sql
+├── prisma/
+├── public/
+│   ├── clinicas/
+│   │   └── safecare/
+│   ├── consultorios/
+│   │   ├── dracarwin/
+│   │   └── dralisangela/
+│   ├── referencia/
+│   ├── globals.css
+│   ├── manifest.json
+│   └── sw.js
+├── scripts/
+│   ├── confirm-user.ts
+│   ├── delete-user.ts
+│   ├── diagnose.ts
+│   ├── generate-admin-hash.js
+│   ├── inspect-schema.ts
+│   ├── list_groq_models.js
+│   ├── run-qr-migration.js
+│   ├── setup-n8n-workflow.js
+│   ├── test-admin-login.js
+│   └── verify-superadmin.js
+├── src/
+│   ├── app/
+│   │   ├── adapters/
+│   │   │   ├── admin.ts
+│   │   │   ├── client.ts
+│   │   │   └── server.ts
+│   │   ├── api/
+│   │   │   ├── administration/
+│   │   │   │   ├── appointments/
+│   │   │   │   │   ├── [id]/
+│   │   │   │   │   │   ├── approve/
+│   │   │   │   │   │   │   └── route.ts
+│   │   │   │   │   │   └── route.ts
+│   │   │   │   │   └── route.ts
+│   │   │   │   ├── assignments/
+│   │   │   │   │   ├── inventory/
+│   │   │   │   │   │   └── route.ts
+│   │   │   │   │   └── specialists/
+│   │   │   │   │       └── route.ts
+│   │   │   │   ├── consultations/
+│   │   │   │   │   ├── [id]/
+│   │   │   │   │   │   └── route.ts
+│   │   │   │   │   └── route.ts
+│   │   │   │   ├── documents/
+│   │   │   │   │   ├── [id]/
+│   │   │   │   │   │   └── route.ts
+│   │   │   │   │   └── route.ts
+│   │   │   │   ├── inventory/
+│   │   │   │   │   ├── materials/
+│   │   │   │   │   │   ├── [id]/
+│   │   │   │   │   │   │   └── route.ts
+│   │   │   │   │   │   └── route.ts
+│   │   │   │   │   ├── medications/
+│   │   │   │   │   │   ├── [id]/
+│   │   │   │   │   │   │   └── route.ts
+│   │   │   │   │   │   └── route.ts
+│   │   │   │   │   └── movements/
+│   │   │   │   │       └── route.ts
+│   │   │   │   ├── patients/
+│   │   │   │   │   ├── [id]/
+│   │   │   │   │   │   ├── full-history/
+│   │   │   │   │   │   │   └── route.ts
+│   │   │   │   │   │   └── route.ts
+│   │   │   │   │   ├── attentions/
+│   │   │   │   │   │   └── route.ts
+│   │   │   │   │   └── route.ts
+│   │   │   │   ├── services/
+│   │   │   │   │   ├── [id]/
+│   │   │   │   │   │   └── route.ts
+│   │   │   │   │   └── route.ts
+│   │   │   │   ├── settings/
+│   │   │   │   │   └── route.ts
+│   │   │   │   ├── specialists/
+│   │   │   │   │   ├── [id]/
+│   │   │   │   │   │   ├── validate-inpres/
+│   │   │   │   │   │   │   └── route.ts
+│   │   │   │   │   │   └── route.ts
+│   │   │   │   │   └── route.ts
+│   │   │   │   └── stats/
+│   │   │   │       └── route.ts
+│   │   │   ├── ai/
+│   │   │   │   ├── analyze-report/
+│   │   │   │   │   └── route.ts
+│   │   │   │   ├── patient-summary/
+│   │   │   │   │   └── route.ts
+│   │   │   │   └── voice-greeting/
+│   │   │   │       └── route.ts
+│   │   │   ├── analytics/
+│   │   │   │   ├── clinicas/
+│   │   │   │   │   └── [clinicaId]/
+│   │   │   │   │       ├── ai-insights/
+│   │   │   │   │       │   └── route.ts
+│   │   │   │   │       └── route.ts
+│   │   │   │   ├── login/
+│   │   │   │   │   └── route.ts
+│   │   │   │   ├── report-pdf/
+│   │   │   │   │   └── route.ts
+│   │   │   │   └── user/
+│   │   │   │       └── route.ts
+│   │   │   ├── appointments/
+│   │   │   │   ├── indicators/
+│   │   │   │   │   └── route.ts
+│   │   │   │   └── route.ts
+│   │   │   ├── ash-dashboard/
+│   │   │   │   └── route.ts
+│   │   │   ├── ash-onboarding/
+│   │   │   │   └── route.ts
+│   │   │   ├── ash-patient/
+│   │   │   │   └── route.ts
+│   │   │   ├── auth/
+│   │   │   │   ├── change-password/
+│   │   │   │   │   └── route.ts
+│   │   │   │   ├── clear-session/
+│   │   │   │   │   └── route.ts
+│   │   │   │   ├── disable-2fa/
+│   │   │   │   │   └── route.ts
+│   │   │   │   ├── enable-2fa/
+│   │   │   │   │   └── route.ts
+│   │   │   │   ├── login-multiple-users/
+│   │   │   │   │   └── route.ts
+│   │   │   │   ├── me/
+│   │   │   │   │   └── route.ts
+│   │   │   │   ├── met/
+│   │   │   │   │   └── route.ts
+│   │   │   │   ├── profile/
+│   │   │   │   │   └── route.ts
+│   │   │   │   └── set-session/
+│   │   │   │       └── route.ts  # Endpoint de API para sincronizar sesión del cliente a cookies del servidor
+│   │   │   ├── bancaribe/
+│   │   │   │   ├── cobro-c2p/
+│   │   │   │   │   └── route.ts
+│   │   │   │   ├── config/
+│   │   │   │   │   └── route.ts
+│   │   │   │   ├── demo/
+│   │   │   │   │   └── simular-pago/
+│   │   │   │   │       └── route.ts
+│   │   │   │   ├── extracto/
+│   │   │   │   │   └── route.ts
+│   │   │   │   ├── movimientos/
+│   │   │   │   │   └── route.ts
+│   │   │   │   ├── operaciones/
+│   │   │   │   │   └── route.ts
+│   │   │   │   ├── operaciones-historico/
+│   │   │   │   │   └── route.ts
+│   │   │   │   ├── pago-personas/
+│   │   │   │   │   └── route.ts
+│   │   │   │   ├── pagos-hoy/
+│   │   │   │   │   └── route.ts
+│   │   │   │   ├── saldo/
+│   │   │   │   │   └── route.ts
+│   │   │   │   ├── transferencia/
+│   │   │   │   │   └── route.ts
+│   │   │   │   └── webhook/
+│   │   │   │       └── route.ts
+│   │   │   ├── batch/
+│   │   │   │   └── route.ts
+│   │   │   ├── check-service-key/
+│   │   │   ├── clinic/
+│   │   │   │   ├── assignments/
+│   │   │   │   │   └── route.ts
+│   │   │   │   ├── patients/
+│   │   │   │   │   └── unregistered/
+│   │   │   │   │       └── route.ts
+│   │   │   │   ├── profile/
+│   │   │   │   │   └── route.ts
+│   │   │   │   ├── upload-photo/
+│   │   │   │   │   └── route.ts
+│   │   │   │   └── route.ts
+│   │   │   ├── clinic-profile/
+│   │   │   │   └── route.ts
+│   │   │   ├── consultations/
+│   │   │   │   ├── [id]/
+│   │   │   │   │   ├── approve-attendance/
+│   │   │   │   │   │   └── route.ts
+│   │   │   │   │   ├── generate-audio-content/
+│   │   │   │   │   │   └── route.ts
+│   │   │   │   │   ├── generate-prescription/
+│   │   │   │   │   │   └── route.ts
+│   │   │   │   │   ├── generate-report/
+│   │   │   │   │   │   └── route.ts
+│   │   │   │   │   ├── generate-report-content/
+│   │   │   │   │   │   └── route.ts
+│   │   │   │   │   ├── generate-report-from-audio/
+│   │   │   │   │   │   └── route.ts
+│   │   │   │   │   ├── patient/
+│   │   │   │   │   │   └── route.ts
+│   │   │   │   │   ├── prescription-items/
+│   │   │   │   │   │   └── route.ts
+│   │   │   │   │   ├── private-notes/
+│   │   │   │   │   │   └── route.ts
+│   │   │   │   │   ├── save-prescription/
+│   │   │   │   │   │   └── route.ts
+│   │   │   │   │   ├── save-report/
+│   │   │   │   │   │   └── route.ts
+│   │   │   │   │   └── route.ts
+│   │   │   │   ├── check-patient/
+│   │   │   │   │   └── route.ts
+│   │   │   │   ├── patient/
+│   │   │   │   │   └── [patientId]/
+│   │   │   │   │       └── route.ts
+│   │   │   │   ├── ratings/
+│   │   │   │   │   └── route.ts
+│   │   │   │   ├── upload-image/
+│   │   │   │   │   └── route.ts
+│   │   │   │   ├── upload-report/
+│   │   │   │   │   └── route.ts
+│   │   │   │   └── route.ts
+│   │   │   ├── cron/
+│   │   │   │   ├── check-pending-payments/
+│   │   │   │   │   └── route.ts
+│   │   │   │   ├── morning-voice/
+│   │   │   │   │   └── route.ts
+│   │   │   │   ├── safecare-followup/
+│   │   │   │   │   └── route.ts
+│   │   │   │   ├── send-biweekly-reports/
+│   │   │   │   │   └── route.ts
+│   │   │   │   ├── send-consultation-emails/
+│   │   │   │   │   └── route.ts
+│   │   │   │   ├── update-currency-rate/
+│   │   │   │   │   └── route.ts
+│   │   │   │   └── wa-reminders/
+│   │   │   │       └── route.ts
+│   │   │   ├── currency/
+│   │   │   │   ├── available/
+│   │   │   │   │   └── route.ts
+│   │   │   │   ├── rate/
+│   │   │   │   │   └── route.ts
+│   │   │   │   └── update-daily/
+│   │   │   │       └── route.ts
+│   │   │   ├── currency-rate/
+│   │   │   │   └── route.ts
+│   │   │   ├── dashboard/
+│   │   │   │   └── medic/
+│   │   │   │       ├── appointments/
+│   │   │   │       │   ├── [id]/
+│   │   │   │       │   │   └── route.ts
+│   │   │   │       │   ├── new/
+│   │   │   │       │   │   └── route.ts
+│   │   │   │       │   └── route.ts
+│   │   │   │       ├── consulta-sucesiva/
+│   │   │   │       │   ├── [id]/
+│   │   │   │       │   │   └── route.ts
+│   │   │   │       │   └── route.ts
+│   │   │   │       ├── kpis/
+│   │   │   │       │   └── route.ts
+│   │   │   │       └── schedule-config/
+│   │   │   │           └── route.ts
+│   │   │   ├── debug/
+│   │   │   │   ├── db/
+│   │   │   │   ├── historial/
+│   │   │   │   └── session/
+│   │   │   │       └── route.ts
+│   │   │   ├── debug-db/
+│   │   │   │   └── route.ts
+│   │   │   ├── debug-db-rls/
+│   │   │   ├── doctor/
+│   │   │   │   └── patient/
+│   │   │   │       └── [id]/
+│   │   │   │           └── medical-records/
+│   │   │   │               └── route.ts
+│   │   │   ├── emergency/
+│   │   │   │   └── [token]/
+│   │   │   │       └── route.ts
+│   │   │   ├── facturacion/
+│   │   │   │   ├── [id]/
+│   │   │   │   │   └── route.ts
+│   │   │   │   └── route.ts
+│   │   │   ├── gamification/
+│   │   │   │   ├── status/
+│   │   │   │   │   └── route.ts
+│   │   │   │   └── validate/
+│   │   │   │       └── route.ts
+│   │   │   ├── groq/
+│   │   │   │   └── transcribe/
+│   │   │   │       └── route.ts
+│   │   │   ├── icd11/
+│   │   │   │   └── search/
+│   │   │   │       └── route.ts
+│   │   │   ├── invites/
+│   │   │   │   ├── assign-batch/
+│   │   │   │   │   └── route.ts
+│   │   │   │   ├── created/
+│   │   │   │   │   └── route.ts
+│   │   │   │   ├── resend/
+│   │   │   │   │   └── route.ts
+│   │   │   │   ├── send/
+│   │   │   │   │   └── route.ts
+│   │   │   │   └── route.ts
+│   │   │   ├── landing/
+│   │   │   │   └── demo-report/
+│   │   │   │       └── route.ts
+│   │   │   ├── medic/
+│   │   │   │   ├── alerts/
+│   │   │   │   │   └── route.ts
+│   │   │   │   ├── config/
+│   │   │   │   │   └── route.ts
+│   │   │   │   ├── generic-report-config/
+│   │   │   │   │   └── route.ts
+│   │   │   │   ├── lab-results/
+│   │   │   │   │   ├── [id]/
+│   │   │   │   │   │   ├── approve/
+│   │   │   │   │   │   │   └── route.ts
+│   │   │   │   │   │   └── reject/
+│   │   │   │   │   │       └── route.ts
+│   │   │   │   │   └── route.ts
+│   │   │   │   ├── lab-upload-link/
+│   │   │   │   │   └── route.ts
+│   │   │   │   ├── labs/
+│   │   │   │   │   ├── [id]/
+│   │   │   │   │   │   └── route.ts
+│   │   │   │   │   └── route.ts
+│   │   │   │   ├── messages/
+│   │   │   │   │   ├── [id]/
+│   │   │   │   │   │   └── route.ts
+│   │   │   │   │   ├── send/
+│   │   │   │   │   │   └── route.ts
+│   │   │   │   │   └── route.ts
+│   │   │   │   ├── orders/
+│   │   │   │   │   ├── [id]/
+│   │   │   │   │   │   └── route.ts
+│   │   │   │   │   ├── active-patients/
+│   │   │   │   │   │   └── route.ts
+│   │   │   │   │   ├── patient-consultations/
+│   │   │   │   │   │   └── route.ts
+│   │   │   │   │   └── route.ts
+│   │   │   │   ├── pacientes-frecuentes/
+│   │   │   │   │   ├── extract/
+│   │   │   │   │   │   └── route.ts
+│   │   │   │   │   ├── list/
+│   │   │   │   │   │   └── route.ts
+│   │   │   │   │   └── save/
+│   │   │   │   │       └── route.ts
+│   │   │   │   ├── pagos/
+│   │   │   │   │   ├── [id]/
+│   │   │   │   │   │   └── verificar/
+│   │   │   │   │   │       └── route.ts
+│   │   │   │   │   ├── efectuados/
+│   │   │   │   │   │   └── route.ts
+│   │   │   │   │   └── pendientes/
+│   │   │   │   │       └── route.ts
+│   │   │   │   ├── patients-with-consultations/
+│   │   │   │   │   └── route.ts
+│   │   │   │   ├── pending-payment-alerts/
+│   │   │   │   │   └── route.ts
+│   │   │   │   ├── prescription-template/
+│   │   │   │   │   └── route.ts
+│   │   │   │   ├── prescription-templates/
+│   │   │   │   │   └── route.ts
+│   │   │   │   ├── prescriptions/
+│   │   │   │   │   ├── [id]/
+│   │   │   │   │   │   └── sync-ai/
+│   │   │   │   │   │       └── route.ts
+│   │   │   │   │   └── route.ts
+│   │   │   │   ├── profile/
+│   │   │   │   │   └── route.ts
+│   │   │   │   ├── report-template/
+│   │   │   │   │   └── route.ts
+│   │   │   │   ├── reportes/
+│   │   │   │   │   └── route.ts
+│   │   │   │   ├── roles/
+│   │   │   │   │   ├── [id]/
+│   │   │   │   │   │   ├── users/
+│   │   │   │   │   │   │   ├── [userId]/
+│   │   │   │   │   │   │   │   └── route.ts
+│   │   │   │   │   │   │   └── route.ts
+│   │   │   │   │   │   └── route.ts
+│   │   │   │   │   ├── audit-log/
+│   │   │   │   │   │   └── route.ts
+│   │   │   │   │   └── route.ts
+│   │   │   │   ├── send-clinical-email/
+│   │   │   │   │   └── route.ts
+│   │   │   │   ├── services/
+│   │   │   │   │   └── route.ts
+│   │   │   │   └── tasks/
+│   │   │   │       ├── [id]/
+│   │   │   │       │   └── route.ts
+│   │   │   │       └── route.ts
+│   │   │   ├── medical-access/
+│   │   │   │   ├── check/
+│   │   │   │   │   └── route.ts
+│   │   │   │   ├── grant/
+│   │   │   │   │   └── route.ts
+│   │   │   │   └── validate/
+│   │   │   │       └── route.ts
+│   │   │   ├── messaging/
+│   │   │   │   ├── conversations/
+│   │   │   │   │   └── route.ts
+│   │   │   │   ├── messages/
+│   │   │   │   │   └── [userId]/
+│   │   │   │   │       └── route.ts
+│   │   │   │   ├── read/
+│   │   │   │   │   └── route.ts
+│   │   │   │   ├── send/
+│   │   │   │   │   └── route.ts
+│   │   │   │   └── users/
+│   │   │   │       └── route.ts
+│   │   │   ├── n8n/
+│   │   │   │   ├── analyze-template/
+│   │   │   │   │   └── route.ts
+│   │   │   │   ├── callback/
+│   │   │   │   │   └── report-generated/
+│   │   │   │   │       └── route.ts
+│   │   │   │   └── generate-report-internal/
+│   │   │   │       └── route.ts
+│   │   │   ├── notifications/
+│   │   │   │   ├── mark-read/
+│   │   │   │   │   └── route.ts
+│   │   │   │   ├── send-lab-result-notifications/
+│   │   │   │   │   └── route.ts
+│   │   │   │   └── route.ts
+│   │   │   ├── nurse/
+│   │   │   │   ├── kardex/
+│   │   │   │   │   └── audio-to-note/
+│   │   │   │   │       └── route.ts
+│   │   │   │   ├── patient-summary/
+│   │   │   │   │   └── route.ts
+│   │   │   │   ├── search-patients/
+│   │   │   │   │   └── route.ts
+│   │   │   │   ├── shift-report/
+│   │   │   │   │   └── route.ts
+│   │   │   │   └── verify-license/
+│   │   │   │       └── route.ts
+│   │   │   ├── organizations/
+│   │   │   │   └── route.ts
+│   │   │   ├── patient/
+│   │   │   │   ├── access-code/
+│   │   │   │   │   ├── validate/
+│   │   │   │   │   │   └── route.ts
+│   │   │   │   │   └── route.ts
+│   │   │   │   ├── advice/
+│   │   │   │   │   └── route.ts
+│   │   │   │   ├── appointments/
+│   │   │   │   │   ├── [id]/
+│   │   │   │   │   │   ├── cancel/
+│   │   │   │   │   │   │   └── route.ts
+│   │   │   │   │   │   ├── confirm/
+│   │   │   │   │   │   │   └── route.ts
+│   │   │   │   │   │   └── reschedule/
+│   │   │   │   │   │       └── route.ts
+│   │   │   │   │   ├── available/
+│   │   │   │   │   │   └── route.ts
+│   │   │   │   │   ├── available-days/
+│   │   │   │   │   │   └── route.ts
+│   │   │   │   │   ├── new/
+│   │   │   │   │   │   └── route.ts
+│   │   │   │   │   └── route.ts
+│   │   │   │   ├── card-data/
+│   │   │   │   │   └── route.ts
+│   │   │   │   ├── clinics/
+│   │   │   │   │   ├── [id]/
+│   │   │   │   │   │   └── route.ts
+│   │   │   │   │   └── route.ts
+│   │   │   │   ├── consultations/
+│   │   │   │   │   ├── [id]/
+│   │   │   │   │   │   └── share/
+│   │   │   │   │   │       └── route.ts
+│   │   │   │   │   └── route.ts
+│   │   │   │   ├── consultorio/
+│   │   │   │   │   └── [id]/
+│   │   │   │   │       └── route.ts
+│   │   │   │   ├── dashboard-summary/
+│   │   │   │   │   └── route.ts
+│   │   │   │   ├── emergency-info/
+│   │   │   │   │   └── route.ts
+│   │   │   │   ├── emergency-qr/
+│   │   │   │   │   └── route.ts
+│   │   │   │   ├── explore/
+│   │   │   │   │   └── route.ts
+│   │   │   │   ├── family/
+│   │   │   │   │   ├── add-member/
+│   │   │   │   │   │   └── route.ts
+│   │   │   │   │   ├── member/
+│   │   │   │   │   │   └── [id]/
+│   │   │   │   │   │       └── route.ts
+│   │   │   │   │   ├── members/
+│   │   │   │   │   │   └── route.ts
+│   │   │   │   │   ├── register-member/
+│   │   │   │   │   │   └── route.ts
+│   │   │   │   │   ├── remove-member/
+│   │   │   │   │   │   └── route.ts
+│   │   │   │   │   ├── settings/
+│   │   │   │   │   │   └── route.ts
+│   │   │   │   │   └── route.ts
+│   │   │   │   ├── historial/
+│   │   │   │   │   └── route.ts
+│   │   │   │   ├── lab-results/
+│   │   │   │   │   └── route.ts
+│   │   │   │   ├── labs/
+│   │   │   │   │   ├── [id]/
+│   │   │   │   │   │   └── route.ts
+│   │   │   │   │   └── route.ts
+│   │   │   │   ├── medical-access/
+│   │   │   │   │   ├── grants/
+│   │   │   │   │   │   └── route.ts
+│   │   │   │   │   └── revoke/
+│   │   │   │   │       └── route.ts
+│   │   │   │   ├── medication-reminders/
+│   │   │   │   │   ├── take/
+│   │   │   │   │   │   └── route.ts
+│   │   │   │   │   └── route.ts
+│   │   │   │   ├── messages/
+│   │   │   │   │   ├── available-doctors/
+│   │   │   │   │   │   └── route.ts
+│   │   │   │   │   ├── conversation/
+│   │   │   │   │   │   └── route.ts
+│   │   │   │   │   └── route.ts
+│   │   │   │   ├── pagos/
+│   │   │   │   │   ├── [id]/
+│   │   │   │   │   │   └── pay/
+│   │   │   │   │   │       └── route.ts
+│   │   │   │   │   ├── bancaribe-active/
+│   │   │   │   │   │   └── route.ts
+│   │   │   │   │   ├── doctor-payment-methods/
+│   │   │   │   │   │   └── route.ts
+│   │   │   │   │   └── route.ts
+│   │   │   │   ├── pharmacies/
+│   │   │   │   │   ├── [id]/
+│   │   │   │   │   │   └── route.ts
+│   │   │   │   │   └── route.ts
+│   │   │   │   ├── profile/
+│   │   │   │   │   └── route.ts
+│   │   │   │   ├── recetas/
+│   │   │   │   │   └── route.ts
+│   │   │   │   ├── resultados/
+│   │   │   │   │   ├── upload/
+│   │   │   │   │   │   └── route.ts
+│   │   │   │   │   └── route.ts
+│   │   │   │   └── safecare/
+│   │   │   │       └── services/
+│   │   │   │           └── route.ts
+│   │   │   ├── patients/
+│   │   │   │   ├── [id]/
+│   │   │   │   │   └── route.ts
+│   │   │   │   ├── search/
+│   │   │   │   │   └── route.ts
+│   │   │   │   └── route.ts
+│   │   │   ├── plans/
+│   │   │   │   └── route.ts
+│   │   │   ├── prescriptions/
+│   │   │   │   └── route.ts
+│   │   │   ├── public/
+│   │   │   │   ├── appointments/
+│   │   │   │   │   ├── availability/
+│   │   │   │   │   │   └── route.ts
+│   │   │   │   │   └── new/
+│   │   │   │   │       └── route.ts
+│   │   │   │   ├── lab-upload/
+│   │   │   │   │   └── [token]/
+│   │   │   │   │       ├── search-patient/
+│   │   │   │   │       │   └── route.ts
+│   │   │   │   │       ├── submit/
+│   │   │   │   │       │   └── route.ts
+│   │   │   │   │       └── validate/
+│   │   │   │   │           └── route.ts
+│   │   │   │   └── unregistered-patients/
+│   │   │   │       └── route.ts
+│   │   │   ├── register/
+│   │   │   │   ├── check-identifier/
+│   │   │   │   │   └── route.ts
+│   │   │   │   └── route.ts
+│   │   │   ├── register-from-invite/
+│   │   │   │   └── route.ts
+│   │   │   ├── role-users/
+│   │   │   │   ├── appointments/
+│   │   │   │   │   ├── [id]/
+│   │   │   │   │   │   └── route.ts
+│   │   │   │   │   ├── reports/
+│   │   │   │   │   │   └── route.ts
+│   │   │   │   │   ├── service-stats/
+│   │   │   │   │   │   └── route.ts
+│   │   │   │   │   ├── statistics/
+│   │   │   │   │   │   └── route.ts
+│   │   │   │   │   └── route.ts
+│   │   │   │   ├── appointments-by-date/
+│   │   │   │   │   └── route.ts
+│   │   │   │   ├── check/
+│   │   │   │   │   └── route.ts
+│   │   │   │   ├── clinic-location/
+│   │   │   │   │   └── route.ts
+│   │   │   │   ├── consultations/
+│   │   │   │   │   └── route.ts
+│   │   │   │   ├── login/
+│   │   │   │   │   └── route.ts
+│   │   │   │   ├── patients/
+│   │   │   │   │   ├── [id]/
+│   │   │   │   │   │   └── route.ts
+│   │   │   │   │   └── route.ts
+│   │   │   │   ├── payment-methods/
+│   │   │   │   │   ├── [id]/
+│   │   │   │   │   │   └── route.ts
+│   │   │   │   │   └── route.ts
+│   │   │   │   ├── service-combos/
+│   │   │   │   │   ├── [id]/
+│   │   │   │   │   │   └── route.ts
+│   │   │   │   │   └── route.ts
+│   │   │   │   ├── services/
+│   │   │   │   │   ├── [id]/
+│   │   │   │   │   │   └── route.ts
+│   │   │   │   │   └── route.ts
+│   │   │   │   └── whatsapp-config/
+│   │   │   │       └── route.ts
+│   │   │   ├── share/
+│   │   │   │   └── history/
+│   │   │   │       ├── [token]/
+│   │   │   │       │   └── route.ts
+│   │   │   │       └── route.ts
+│   │   │   ├── specialists/
+│   │   │   │   └── route.ts
+│   │   │   ├── storage/
+│   │   │   │   ├── check-bucket-limit/
+│   │   │   │   │   └── route.ts
+│   │   │   │   └── verify-bucket/
+│   │   │   │       └── route.ts
+│   │   │   ├── subscription-payments/
+│   │   │   │   └── route.ts
+│   │   │   ├── successive-consultations/
+│   │   │   │   ├── [id]/
+│   │   │   │   │   └── route.ts
+│   │   │   │   ├── available-consultations/
+│   │   │   │   │   └── route.ts
+│   │   │   │   ├── upload-file/
+│   │   │   │   │   └── route.ts
+│   │   │   │   └── route.ts
+│   │   │   ├── unregistered-patients/
+│   │   │   │   └── route.ts
+│   │   │   └── waha/
+│   │   │       ├── qr/
+│   │   │       │   └── route.ts
+│   │   │       ├── send/
+│   │   │       │   └── route.ts
+│   │   │       ├── session/
+│   │   │       │   └── route.ts
+│   │   │       └── webhook/
+│   │   │           └── route.ts
+│   │   ├── auth/
+│   │   │   └── confirm-email/
+│   │   │       ├── layout.tsx
+│   │   │       └── page.tsx
+│   │   ├── c/
+│   │   │   └── [id]/
+│   │   │       └── page.tsx
+│   │   ├── dashboard/
+│   │   │   ├── administration/  # Módulos y vistas para ADMINISTRACIÓN (Inventario, facturación)
+│   │   │   │   ├── ai-usage/  # Módulos y vistas para ADMINISTRACIÓN (Inventario, facturación)
+│   │   │   │   │   └── page.tsx  # Módulos y vistas para ADMINISTRACIÓN (Inventario, facturación)
+│   │   │   │   ├── appointments/  # Módulos y vistas para ADMINISTRACIÓN (Inventario, facturación)
+│   │   │   │   │   └── page.tsx  # Módulos y vistas para ADMINISTRACIÓN (Inventario, facturación)
+│   │   │   │   ├── consultations/  # Módulos y vistas para ADMINISTRACIÓN (Inventario, facturación)
+│   │   │   │   │   ├── [id]/  # Módulos y vistas para ADMINISTRACIÓN (Inventario, facturación)
+│   │   │   │   │   │   └── page.tsx  # Módulos y vistas para ADMINISTRACIÓN (Inventario, facturación)
+│   │   │   │   │   └── page.tsx  # Módulos y vistas para ADMINISTRACIÓN (Inventario, facturación)
+│   │   │   │   ├── documents/  # Módulos y vistas para ADMINISTRACIÓN (Inventario, facturación)
+│   │   │   │   │   ├── new/  # Módulos y vistas para ADMINISTRACIÓN (Inventario, facturación)
+│   │   │   │   │   │   └── page.tsx  # Módulos y vistas para ADMINISTRACIÓN (Inventario, facturación)
+│   │   │   │   │   └── page.tsx  # Módulos y vistas para ADMINISTRACIÓN (Inventario, facturación)
+│   │   │   │   ├── inventory/  # Módulos y vistas para ADMINISTRACIÓN (Inventario, facturación)
+│   │   │   │   │   ├── [type]/  # Módulos y vistas para ADMINISTRACIÓN (Inventario, facturación)
+│   │   │   │   │   │   └── [id]/  # Módulos y vistas para ADMINISTRACIÓN (Inventario, facturación)
+│   │   │   │   │   │       └── edit/  # Módulos y vistas para ADMINISTRACIÓN (Inventario, facturación)
+│   │   │   │   │   │           └── page.tsx  # Módulos y vistas para ADMINISTRACIÓN (Inventario, facturación)
+│   │   │   │   │   ├── _components/  # Módulos y vistas para ADMINISTRACIÓN (Inventario, facturación)
+│   │   │   │   │   │   └── InventoryMovementForm.tsx  # Módulos y vistas para ADMINISTRACIÓN (Inventario, facturación)
+│   │   │   │   │   ├── assignments/  # Módulos y vistas para ADMINISTRACIÓN (Inventario, facturación)
+│   │   │   │   │   │   └── page.tsx  # Módulos y vistas para ADMINISTRACIÓN (Inventario, facturación)
+│   │   │   │   │   ├── delivery/  # Módulos y vistas para ADMINISTRACIÓN (Inventario, facturación)
+│   │   │   │   │   │   └── page.tsx  # Módulos y vistas para ADMINISTRACIÓN (Inventario, facturación)
+│   │   │   │   │   ├── new/  # Módulos y vistas para ADMINISTRACIÓN (Inventario, facturación)
+│   │   │   │   │   │   └── page.tsx  # Módulos y vistas para ADMINISTRACIÓN (Inventario, facturación)
+│   │   │   │   │   ├── purchase/  # Módulos y vistas para ADMINISTRACIÓN (Inventario, facturación)
+│   │   │   │   │   │   └── page.tsx  # Módulos y vistas para ADMINISTRACIÓN (Inventario, facturación)
+│   │   │   │   │   └── page.tsx  # Módulos y vistas para ADMINISTRACIÓN (Inventario, facturación)
+│   │   │   │   ├── patients/  # Módulos y vistas para ADMINISTRACIÓN (Inventario, facturación)
+│   │   │   │   │   ├── [id]/  # Módulos y vistas para ADMINISTRACIÓN (Inventario, facturación)
+│   │   │   │   │   │   ├── edit/  # Módulos y vistas para ADMINISTRACIÓN (Inventario, facturación)
+│   │   │   │   │   │   │   └── page.tsx  # Módulos y vistas para ADMINISTRACIÓN (Inventario, facturación)
+│   │   │   │   │   │   ├── history/  # Módulos y vistas para ADMINISTRACIÓN (Inventario, facturación)
+│   │   │   │   │   │   │   └── page.tsx  # Módulos y vistas para ADMINISTRACIÓN (Inventario, facturación)
+│   │   │   │   │   │   └── page.tsx  # Módulos y vistas para ADMINISTRACIÓN (Inventario, facturación)
+│   │   │   │   │   ├── new/  # Módulos y vistas para ADMINISTRACIÓN (Inventario, facturación)
+│   │   │   │   │   │   └── page.tsx  # Módulos y vistas para ADMINISTRACIÓN (Inventario, facturación)
+│   │   │   │   │   └── page.tsx  # Módulos y vistas para ADMINISTRACIÓN (Inventario, facturación)
+│   │   │   │   ├── reminders/  # Módulos y vistas para ADMINISTRACIÓN (Inventario, facturación)
+│   │   │   │   │   └── page.tsx  # Módulos y vistas para ADMINISTRACIÓN (Inventario, facturación)
+│   │   │   │   ├── services/  # Módulos y vistas para ADMINISTRACIÓN (Inventario, facturación)
+│   │   │   │   │   └── page.tsx  # Módulos y vistas para ADMINISTRACIÓN (Inventario, facturación)
+│   │   │   │   ├── settings/  # Módulos y vistas para ADMINISTRACIÓN (Inventario, facturación)
+│   │   │   │   │   └── page.tsx  # Módulos y vistas para ADMINISTRACIÓN (Inventario, facturación)
+│   │   │   │   ├── specialists/  # Módulos y vistas para ADMINISTRACIÓN (Inventario, facturación)
+│   │   │   │   │   ├── [id]/  # Módulos y vistas para ADMINISTRACIÓN (Inventario, facturación)
+│   │   │   │   │   │   └── edit/  # Módulos y vistas para ADMINISTRACIÓN (Inventario, facturación)
+│   │   │   │   │   │       └── page.tsx  # Módulos y vistas para ADMINISTRACIÓN (Inventario, facturación)
+│   │   │   │   │   ├── new/  # Módulos y vistas para ADMINISTRACIÓN (Inventario, facturación)
+│   │   │   │   │   │   └── page.tsx  # Módulos y vistas para ADMINISTRACIÓN (Inventario, facturación)
+│   │   │   │   │   └── page.tsx  # Módulos y vistas para ADMINISTRACIÓN (Inventario, facturación)
+│   │   │   │   ├── layout.tsx  # Módulos y vistas para ADMINISTRACIÓN (Inventario, facturación)
+│   │   │   │   ├── loading.tsx  # Módulos y vistas para ADMINISTRACIÓN (Inventario, facturación)
+│   │   │   │   └── page.tsx  # Módulos y vistas para ADMINISTRACIÓN (Inventario, facturación)
+│   │   │   ├── analytics/
+│   │   │   │   ├── auditoria/
+│   │   │   │   │   └── page.tsx
+│   │   │   │   ├── clinicas/
+│   │   │   │   │   ├── [clinicaId]/
+│   │   │   │   │   │   └── page.tsx
+│   │   │   │   │   └── page.tsx
+│   │   │   │   ├── comunicacion/
+│   │   │   │   │   └── page.tsx
+│   │   │   │   ├── epidemiologia/
+│   │   │   │   │   └── page.tsx
+│   │   │   │   ├── farmacia/
+│   │   │   │   │   └── page.tsx
+│   │   │   │   ├── financiero/
+│   │   │   │   │   └── page.tsx
+│   │   │   │   ├── laboratorio/
+│   │   │   │   │   └── page.tsx
+│   │   │   │   ├── operaciones/
+│   │   │   │   │   └── page.tsx
+│   │   │   │   ├── pacientes/
+│   │   │   │   │   └── page.tsx
+│   │   │   │   ├── layout.tsx
+│   │   │   │   └── page.tsx
+│   │   │   ├── clinic/  # Módulos y vistas para el rol CLÍNICA / ADMIN
+│   │   │   │   ├── analytics/  # Módulos y vistas para el rol CLÍNICA / ADMIN
+│   │   │   │   │   ├── comparison/  # Módulos y vistas para el rol CLÍNICA / ADMIN
+│   │   │   │   │   │   └── page.tsx  # Módulos y vistas para el rol CLÍNICA / ADMIN
+│   │   │   │   │   ├── consultations/  # Módulos y vistas para el rol CLÍNICA / ADMIN
+│   │   │   │   │   │   └── page.tsx  # Módulos y vistas para el rol CLÍNICA / ADMIN
+│   │   │   │   │   ├── diagnoses/  # Módulos y vistas para el rol CLÍNICA / ADMIN
+│   │   │   │   │   │   └── page.tsx  # Módulos y vistas para el rol CLÍNICA / ADMIN
+│   │   │   │   │   ├── followup/  # Módulos y vistas para el rol CLÍNICA / ADMIN
+│   │   │   │   │   │   └── page.tsx  # Módulos y vistas para el rol CLÍNICA / ADMIN
+│   │   │   │   │   ├── kpis/  # Módulos y vistas para el rol CLÍNICA / ADMIN
+│   │   │   │   │   │   └── page.tsx  # Módulos y vistas para el rol CLÍNICA / ADMIN
+│   │   │   │   │   ├── reports/  # Módulos y vistas para el rol CLÍNICA / ADMIN
+│   │   │   │   │   │   └── page.tsx  # Módulos y vistas para el rol CLÍNICA / ADMIN
+│   │   │   │   │   └── specialists/  # Módulos y vistas para el rol CLÍNICA / ADMIN
+│   │   │   │   │       ├── [id]/  # Módulos y vistas para el rol CLÍNICA / ADMIN
+│   │   │   │   │       │   └── page.tsx  # Módulos y vistas para el rol CLÍNICA / ADMIN
+│   │   │   │   │       └── page.tsx  # Módulos y vistas para el rol CLÍNICA / ADMIN
+│   │   │   │   ├── care-coordination/  # Módulos y vistas para el rol CLÍNICA / ADMIN
+│   │   │   │   │   └── page.tsx  # Módulos y vistas para el rol CLÍNICA / ADMIN
+│   │   │   │   ├── incomes/  # Módulos y vistas para el rol CLÍNICA / ADMIN
+│   │   │   │   │   └── page.tsx  # Módulos y vistas para el rol CLÍNICA / ADMIN
+│   │   │   │   ├── invites/  # Módulos y vistas para el rol CLÍNICA / ADMIN
+│   │   │   │   │   └── page.tsx  # Módulos y vistas para el rol CLÍNICA / ADMIN
+│   │   │   │   ├── patients/  # Módulos y vistas para el rol CLÍNICA / ADMIN
+│   │   │   │   │   ├── [id]/  # Módulos y vistas para el rol CLÍNICA / ADMIN
+│   │   │   │   │   │   └── page.tsx  # Módulos y vistas para el rol CLÍNICA / ADMIN
+│   │   │   │   │   ├── new/  # Módulos y vistas para el rol CLÍNICA / ADMIN
+│   │   │   │   │   │   └── page.tsx  # Módulos y vistas para el rol CLÍNICA / ADMIN
+│   │   │   │   │   └── page.tsx  # Módulos y vistas para el rol CLÍNICA / ADMIN
+│   │   │   │   ├── profile/  # Módulos y vistas para el rol CLÍNICA / ADMIN
+│   │   │   │   │   └── page.tsx  # Módulos y vistas para el rol CLÍNICA / ADMIN
+│   │   │   │   ├── settings/  # Módulos y vistas para el rol CLÍNICA / ADMIN
+│   │   │   │   │   ├── currency/  # Módulos y vistas para el rol CLÍNICA / ADMIN
+│   │   │   │   │   │   └── page.tsx  # Módulos y vistas para el rol CLÍNICA / ADMIN
+│   │   │   │   │   └── page.tsx  # Módulos y vistas para el rol CLÍNICA / ADMIN
+│   │   │   │   ├── specialists/  # Módulos y vistas para el rol CLÍNICA / ADMIN
+│   │   │   │   │   └── page.tsx  # Módulos y vistas para el rol CLÍNICA / ADMIN
+│   │   │   │   ├── layout.tsx  # Módulos y vistas para el rol CLÍNICA / ADMIN
+│   │   │   │   └── page.tsx  # Módulos y vistas para el rol CLÍNICA / ADMIN
+│   │   │   ├── components/
+│   │   │   │   ├── AddServiceModal.tsx
+│   │   │   │   ├── PWATutorial.tsx
+│   │   │   │   └── PushNotificationManager.tsx
+│   │   │   ├── medic/  # Módulos y vistas para el rol MÉDICO (Consultas, recetas, etc)
+│   │   │   │   ├── citas/  # Módulos y vistas para el rol MÉDICO (Consultas, recetas, etc)
+│   │   │   │   │   ├── AppointmentList.tsx  # Módulos y vistas para el rol MÉDICO (Consultas, recetas, etc)
+│   │   │   │   │   ├── AppointmentModal.tsx  # Módulos y vistas para el rol MÉDICO (Consultas, recetas, etc)
+│   │   │   │   │   ├── RescheduleModal.tsx  # Módulos y vistas para el rol MÉDICO (Consultas, recetas, etc)
+│   │   │   │   │   └── page.tsx  # Módulos y vistas para el rol MÉDICO (Consultas, recetas, etc)
+│   │   │   │   ├── components/  # Módulos y vistas para el rol MÉDICO (Consultas, recetas, etc)
+│   │   │   │   │   ├── AppointmentForm.tsx  # Módulos y vistas para el rol MÉDICO (Consultas, recetas, etc)
+│   │   │   │   │   ├── CopyButton.tsx  # Módulos y vistas para el rol MÉDICO (Consultas, recetas, etc)
+│   │   │   │   │   ├── DayAgenda.tsx  # Módulos y vistas para el rol MÉDICO (Consultas, recetas, etc)
+│   │   │   │   │   ├── DayAppointments.tsx  # Módulos y vistas para el rol MÉDICO (Consultas, recetas, etc)
+│   │   │   │   │   ├── GamificationPanel.tsx  # Módulos y vistas para el rol MÉDICO (Consultas, recetas, etc)
+│   │   │   │   │   ├── KPISection.tsx  # Módulos y vistas para el rol MÉDICO (Consultas, recetas, etc)
+│   │   │   │   │   ├── MedicAdvancedToolsSidebar.tsx  # Módulos y vistas para el rol MÉDICO (Consultas, recetas, etc)
+│   │   │   │   │   ├── MedicDashboardShell.tsx  # Módulos y vistas para el rol MÉDICO (Consultas, recetas, etc)
+│   │   │   │   │   ├── MedicSidebar.tsx  # Módulos y vistas para el rol MÉDICO (Consultas, recetas, etc)
+│   │   │   │   │   ├── OnboardingWelcomeOverlay.tsx  # Módulos y vistas para el rol MÉDICO (Consultas, recetas, etc)
+│   │   │   │   │   ├── PendingPaymentAlerts.tsx  # Módulos y vistas para el rol MÉDICO (Consultas, recetas, etc)
+│   │   │   │   │   ├── QuickFacts.tsx  # Módulos y vistas para el rol MÉDICO (Consultas, recetas, etc)
+│   │   │   │   │   └── TodayConsultations.tsx  # Módulos y vistas para el rol MÉDICO (Consultas, recetas, etc)
+│   │   │   │   ├── configuracion/  # Módulos y vistas para el rol MÉDICO (Consultas, recetas, etc)
+│   │   │   │   │   ├── consultorio/  # Módulos y vistas para el rol MÉDICO (Consultas, recetas, etc)
+│   │   │   │   │   │   └── page.tsx  # Módulos y vistas para el rol MÉDICO (Consultas, recetas, etc)
+│   │   │   │   │   ├── moneda/  # Módulos y vistas para el rol MÉDICO (Consultas, recetas, etc)
+│   │   │   │   │   │   └── page.tsx  # Módulos y vistas para el rol MÉDICO (Consultas, recetas, etc)
+│   │   │   │   │   ├── roles/  # Módulos y vistas para el rol MÉDICO (Consultas, recetas, etc)
+│   │   │   │   │   │   └── page.tsx  # Módulos y vistas para el rol MÉDICO (Consultas, recetas, etc)
+│   │   │   │   │   └── page.tsx  # Módulos y vistas para el rol MÉDICO (Consultas, recetas, etc)
+│   │   │   │   ├── consulta-sucesiva/  # Módulos y vistas para el rol MÉDICO (Consultas, recetas, etc)
+│   │   │   │   │   ├── [id]/  # Módulos y vistas para el rol MÉDICO (Consultas, recetas, etc)
+│   │   │   │   │   │   └── page.tsx  # Módulos y vistas para el rol MÉDICO (Consultas, recetas, etc)
+│   │   │   │   │   ├── new/  # Módulos y vistas para el rol MÉDICO (Consultas, recetas, etc)
+│   │   │   │   │   │   └── page.tsx  # Módulos y vistas para el rol MÉDICO (Consultas, recetas, etc)
+│   │   │   │   │   ├── SuccessiveConsultationForm.tsx  # Módulos y vistas para el rol MÉDICO (Consultas, recetas, etc)
+│   │   │   │   │   └── page.tsx  # Módulos y vistas para el rol MÉDICO (Consultas, recetas, etc)
+│   │   │   │   ├── consultas/  # Módulos y vistas para el rol MÉDICO (Consultas, recetas, etc)
+│   │   │   │   │   ├── [id]/  # Módulos y vistas para el rol MÉDICO (Consultas, recetas, etc)
+│   │   │   │   │   │   ├── components/  # Módulos y vistas para el rol MÉDICO (Consultas, recetas, etc)
+│   │   │   │   │   │   │   ├── ApproveAttendanceButton.tsx  # Módulos y vistas para el rol MÉDICO (Consultas, recetas, etc)
+│   │   │   │   │   │   │   ├── PatientHistoryLink.tsx  # Módulos y vistas para el rol MÉDICO (Consultas, recetas, etc)
+│   │   │   │   │   │   │   └── PatientSelector.tsx  # Módulos y vistas para el rol MÉDICO (Consultas, recetas, etc)
+│   │   │   │   │   │   ├── edit/  # Módulos y vistas para el rol MÉDICO (Consultas, recetas, etc)
+│   │   │   │   │   │   │   ├── EditConsultationForm.tsx  # Módulos y vistas para el rol MÉDICO (Consultas, recetas, etc)
+│   │   │   │   │   │   │   └── page.tsx  # Módulos y vistas para el rol MÉDICO (Consultas, recetas, etc)
+│   │   │   │   │   │   ├── pago/  # Módulos y vistas para el rol MÉDICO (Consultas, recetas, etc)
+│   │   │   │   │   │   │   ├── PaymentForm.tsx  # Módulos y vistas para el rol MÉDICO (Consultas, recetas, etc)
+│   │   │   │   │   │   │   └── page.tsx  # Módulos y vistas para el rol MÉDICO (Consultas, recetas, etc)
+│   │   │   │   │   │   ├── prescription/  # Módulos y vistas para el rol MÉDICO (Consultas, recetas, etc)
+│   │   │   │   │   │   │   ├── PrescriptionForm.tsx  # Módulos y vistas para el rol MÉDICO (Consultas, recetas, etc)
+│   │   │   │   │   │   │   └── page.tsx  # Módulos y vistas para el rol MÉDICO (Consultas, recetas, etc)
+│   │   │   │   │   │   └── page.tsx  # Módulos y vistas para el rol MÉDICO (Consultas, recetas, etc)
+│   │   │   │   │   ├── components/  # Módulos y vistas para el rol MÉDICO (Consultas, recetas, etc)
+│   │   │   │   │   │   ├── Odontogram/  # Módulos y vistas para el rol MÉDICO (Consultas, recetas, etc)
+│   │   │   │   │   │   │   └── Odontogram.tsx  # Módulos y vistas para el rol MÉDICO (Consultas, recetas, etc)
+│   │   │   │   │   │   ├── SpecialtyForms/  # Módulos y vistas para el rol MÉDICO (Consultas, recetas, etc)
+│   │   │   │   │   │   │   ├── CardioForm.tsx  # Módulos y vistas para el rol MÉDICO (Consultas, recetas, etc)
+│   │   │   │   │   │   │   ├── EndocrinoForm.tsx  # Módulos y vistas para el rol MÉDICO (Consultas, recetas, etc)
+│   │   │   │   │   │   │   ├── GeneralForm.tsx  # Módulos y vistas para el rol MÉDICO (Consultas, recetas, etc)
+│   │   │   │   │   │   │   ├── GineForm.tsx  # Módulos y vistas para el rol MÉDICO (Consultas, recetas, etc)
+│   │   │   │   │   │   │   ├── NeuroForm.tsx  # Módulos y vistas para el rol MÉDICO (Consultas, recetas, etc)
+│   │   │   │   │   │   │   ├── OdontoForm.tsx  # Módulos y vistas para el rol MÉDICO (Consultas, recetas, etc)
+│   │   │   │   │   │   │   ├── OftalmoForm.tsx  # Módulos y vistas para el rol MÉDICO (Consultas, recetas, etc)
+│   │   │   │   │   │   │   ├── PediaForm.tsx  # Módulos y vistas para el rol MÉDICO (Consultas, recetas, etc)
+│   │   │   │   │   │   │   └── PsiquiatriaForm.tsx  # Módulos y vistas para el rol MÉDICO (Consultas, recetas, etc)
+│   │   │   │   │   │   ├── ConsultationContentPane.tsx  # Módulos y vistas para el rol MÉDICO (Consultas, recetas, etc)
+│   │   │   │   │   │   ├── ConsultationDataDisplay.tsx  # Módulos y vistas para el rol MÉDICO (Consultas, recetas, etc)
+│   │   │   │   │   │   ├── ConsultationFormWrapper.tsx  # Módulos y vistas para el rol MÉDICO (Consultas, recetas, etc)
+│   │   │   │   │   │   ├── ConsultationImageUploader.tsx  # Módulos y vistas para el rol MÉDICO (Consultas, recetas, etc)
+│   │   │   │   │   │   ├── ConsultationSidebar.tsx  # Módulos y vistas para el rol MÉDICO (Consultas, recetas, etc)
+│   │   │   │   │   │   ├── InitialPatientForm.tsx  # Módulos y vistas para el rol MÉDICO (Consultas, recetas, etc)
+│   │   │   │   │   │   ├── PediatricDosingCalculator.tsx  # Módulos y vistas para el rol MÉDICO (Consultas, recetas, etc)
+│   │   │   │   │   │   ├── QuickValueChip.tsx  # Módulos y vistas para el rol MÉDICO (Consultas, recetas, etc)
+│   │   │   │   │   │   └── ReportPreviewPane.tsx  # Módulos y vistas para el rol MÉDICO (Consultas, recetas, etc)
+│   │   │   │   │   ├── new/  # Módulos y vistas para el rol MÉDICO (Consultas, recetas, etc)
+│   │   │   │   │   │   ├── ConsultationForm.tsx  # Módulos y vistas para el rol MÉDICO (Consultas, recetas, etc)
+│   │   │   │   │   │   ├── page.tsx  # Módulos y vistas para el rol MÉDICO (Consultas, recetas, etc)
+│   │   │   │   │   │   └── useOptimisticConsultation.ts  # Módulos y vistas para el rol MÉDICO (Consultas, recetas, etc)
+│   │   │   │   │   └── page.tsx  # Módulos y vistas para el rol MÉDICO (Consultas, recetas, etc)
+│   │   │   │   ├── lab-results/  # Módulos y vistas para el rol MÉDICO (Consultas, recetas, etc)
+│   │   │   │   │   └── page.tsx  # Módulos y vistas para el rol MÉDICO (Consultas, recetas, etc)
+│   │   │   │   ├── lab-upload-link/  # Módulos y vistas para el rol MÉDICO (Consultas, recetas, etc)
+│   │   │   │   │   └── page.tsx  # Módulos y vistas para el rol MÉDICO (Consultas, recetas, etc)
+│   │   │   │   ├── mensajeria/  # Módulos y vistas para el rol MÉDICO (Consultas, recetas, etc)
+│   │   │   │   │   └── page.tsx  # Módulos y vistas para el rol MÉDICO (Consultas, recetas, etc)
+│   │   │   │   ├── mensajes/  # Módulos y vistas para el rol MÉDICO (Consultas, recetas, etc)
+│   │   │   │   │   ├── [id]/  # Módulos y vistas para el rol MÉDICO (Consultas, recetas, etc)
+│   │   │   │   │   │   └── page.tsx  # Módulos y vistas para el rol MÉDICO (Consultas, recetas, etc)
+│   │   │   │   │   └── page.tsx  # Módulos y vistas para el rol MÉDICO (Consultas, recetas, etc)
+│   │   │   │   ├── ordenes/  # Módulos y vistas para el rol MÉDICO (Consultas, recetas, etc)
+│   │   │   │   │   ├── [id]/  # Módulos y vistas para el rol MÉDICO (Consultas, recetas, etc)
+│   │   │   │   │   │   └── page.tsx  # Módulos y vistas para el rol MÉDICO (Consultas, recetas, etc)
+│   │   │   │   │   ├── new/  # Módulos y vistas para el rol MÉDICO (Consultas, recetas, etc)
+│   │   │   │   │   │   └── page.tsx  # Módulos y vistas para el rol MÉDICO (Consultas, recetas, etc)
+│   │   │   │   │   └── page.tsx  # Módulos y vistas para el rol MÉDICO (Consultas, recetas, etc)
+│   │   │   │   ├── pacientes/  # Módulos y vistas para el rol MÉDICO (Consultas, recetas, etc)
+│   │   │   │   │   ├── [id]/  # Módulos y vistas para el rol MÉDICO (Consultas, recetas, etc)
+│   │   │   │   │   │   ├── historial/  # Módulos y vistas para el rol MÉDICO (Consultas, recetas, etc)
+│   │   │   │   │   │   │   └── page.tsx  # Módulos y vistas para el rol MÉDICO (Consultas, recetas, etc)
+│   │   │   │   │   │   ├── AccessCodeModal.tsx  # Módulos y vistas para el rol MÉDICO (Consultas, recetas, etc)
+│   │   │   │   │   │   ├── PatientHistoryClient.tsx  # Módulos y vistas para el rol MÉDICO (Consultas, recetas, etc)
+│   │   │   │   │   │   └── page.tsx  # Módulos y vistas para el rol MÉDICO (Consultas, recetas, etc)
+│   │   │   │   │   └── page.tsx  # Módulos y vistas para el rol MÉDICO (Consultas, recetas, etc)
+│   │   │   │   ├── pacientes-frecuentes/  # Módulos y vistas para el rol MÉDICO (Consultas, recetas, etc)
+│   │   │   │   │   └── page.tsx  # Módulos y vistas para el rol MÉDICO (Consultas, recetas, etc)
+│   │   │   │   ├── pagos/  # Módulos y vistas para el rol MÉDICO (Consultas, recetas, etc)
+│   │   │   │   │   ├── bancaribe/  # Módulos y vistas para el rol MÉDICO (Consultas, recetas, etc)
+│   │   │   │   │   │   └── page.tsx  # Módulos y vistas para el rol MÉDICO (Consultas, recetas, etc)
+│   │   │   │   │   └── verificar/  # Módulos y vistas para el rol MÉDICO (Consultas, recetas, etc)
+│   │   │   │   │       └── page.tsx  # Módulos y vistas para el rol MÉDICO (Consultas, recetas, etc)
+│   │   │   │   ├── plantilla-informe/  # Módulos y vistas para el rol MÉDICO (Consultas, recetas, etc)
+│   │   │   │   │   └── page.tsx  # Módulos y vistas para el rol MÉDICO (Consultas, recetas, etc)
+│   │   │   │   ├── plantilla-receta/  # Módulos y vistas para el rol MÉDICO (Consultas, recetas, etc)
+│   │   │   │   │   └── page.tsx  # Módulos y vistas para el rol MÉDICO (Consultas, recetas, etc)
+│   │   │   │   ├── plantillas/  # Módulos y vistas para el rol MÉDICO (Consultas, recetas, etc)
+│   │   │   │   │   └── page.tsx  # Módulos y vistas para el rol MÉDICO (Consultas, recetas, etc)
+│   │   │   │   ├── recetas/  # Módulos y vistas para el rol MÉDICO (Consultas, recetas, etc)
+│   │   │   │   │   └── page.tsx  # Módulos y vistas para el rol MÉDICO (Consultas, recetas, etc)
+│   │   │   │   ├── reportes/  # Módulos y vistas para el rol MÉDICO (Consultas, recetas, etc)
+│   │   │   │   │   └── page.tsx  # Módulos y vistas para el rol MÉDICO (Consultas, recetas, etc)
+│   │   │   │   ├── resultados/  # Módulos y vistas para el rol MÉDICO (Consultas, recetas, etc)
+│   │   │   │   │   ├── [id]/  # Módulos y vistas para el rol MÉDICO (Consultas, recetas, etc)
+│   │   │   │   │   │   └── page.tsx  # Módulos y vistas para el rol MÉDICO (Consultas, recetas, etc)
+│   │   │   │   │   └── page.tsx  # Módulos y vistas para el rol MÉDICO (Consultas, recetas, etc)
+│   │   │   │   ├── tareas/  # Módulos y vistas para el rol MÉDICO (Consultas, recetas, etc)
+│   │   │   │   │   ├── [id]/  # Módulos y vistas para el rol MÉDICO (Consultas, recetas, etc)
+│   │   │   │   │   │   └── page.tsx  # Módulos y vistas para el rol MÉDICO (Consultas, recetas, etc)
+│   │   │   │   │   ├── new/  # Módulos y vistas para el rol MÉDICO (Consultas, recetas, etc)
+│   │   │   │   │   │   └── page.tsx  # Módulos y vistas para el rol MÉDICO (Consultas, recetas, etc)
+│   │   │   │   │   └── page.tsx  # Módulos y vistas para el rol MÉDICO (Consultas, recetas, etc)
+│   │   │   │   ├── whatsapp/  # Módulos y vistas para el rol MÉDICO (Consultas, recetas, etc)
+│   │   │   │   │   └── page.tsx  # Módulos y vistas para el rol MÉDICO (Consultas, recetas, etc)
+│   │   │   │   ├── layout.tsx  # Módulos y vistas para el rol MÉDICO (Consultas, recetas, etc)
+│   │   │   │   ├── loading.tsx  # Módulos y vistas para el rol MÉDICO (Consultas, recetas, etc)
+│   │   │   │   └── page.tsx  # Módulos y vistas para el rol MÉDICO (Consultas, recetas, etc)
+│   │   │   ├── nurse/  # Módulos y vistas para el rol ENFERMERO/A
+│   │   │   │   ├── independent/  # Módulos y vistas para el rol ENFERMERO/A
+│   │   │   │   │   ├── doctors/  # Módulos y vistas para el rol ENFERMERO/A
+│   │   │   │   │   │   └── page.tsx  # Módulos y vistas para el rol ENFERMERO/A
+│   │   │   │   │   ├── history/  # Módulos y vistas para el rol ENFERMERO/A
+│   │   │   │   │   │   ├── new/  # Módulos y vistas para el rol ENFERMERO/A
+│   │   │   │   │   │   │   └── page.tsx  # Módulos y vistas para el rol ENFERMERO/A
+│   │   │   │   │   │   └── page.tsx  # Módulos y vistas para el rol ENFERMERO/A
+│   │   │   │   │   ├── patients/  # Módulos y vistas para el rol ENFERMERO/A
+│   │   │   │   │   │   ├── new/  # Módulos y vistas para el rol ENFERMERO/A
+│   │   │   │   │   │   │   └── page.tsx  # Módulos y vistas para el rol ENFERMERO/A
+│   │   │   │   │   │   └── page.tsx  # Módulos y vistas para el rol ENFERMERO/A
+│   │   │   │   │   ├── reports/  # Módulos y vistas para el rol ENFERMERO/A
+│   │   │   │   │   │   └── page.tsx  # Módulos y vistas para el rol ENFERMERO/A
+│   │   │   │   │   ├── settings/  # Módulos y vistas para el rol ENFERMERO/A
+│   │   │   │   │   │   └── page.tsx  # Módulos y vistas para el rol ENFERMERO/A
+│   │   │   │   │   ├── layout.tsx  # Módulos y vistas para el rol ENFERMERO/A
+│   │   │   │   │   └── page.tsx  # Módulos y vistas para el rol ENFERMERO/A
+│   │   │   │   ├── inventory/  # Módulos y vistas para el rol ENFERMERO/A
+│   │   │   │   │   └── page.tsx  # Módulos y vistas para el rol ENFERMERO/A
+│   │   │   │   ├── observation/  # Módulos y vistas para el rol ENFERMERO/A
+│   │   │   │   │   └── page.tsx  # Módulos y vistas para el rol ENFERMERO/A
+│   │   │   │   ├── patient/  # Módulos y vistas para el rol ENFERMERO/A
+│   │   │   │   │   └── [id]/  # Módulos y vistas para el rol ENFERMERO/A
+│   │   │   │   │       ├── mar/  # Módulos y vistas para el rol ENFERMERO/A
+│   │   │   │   │       │   └── page.tsx  # Módulos y vistas para el rol ENFERMERO/A
+│   │   │   │   │       ├── notes/  # Módulos y vistas para el rol ENFERMERO/A
+│   │   │   │   │       │   └── page.tsx  # Módulos y vistas para el rol ENFERMERO/A
+│   │   │   │   │       ├── procedures/  # Módulos y vistas para el rol ENFERMERO/A
+│   │   │   │   │       │   └── page.tsx  # Módulos y vistas para el rol ENFERMERO/A
+│   │   │   │   │       ├── vitals/  # Módulos y vistas para el rol ENFERMERO/A
+│   │   │   │   │       │   └── page.tsx  # Módulos y vistas para el rol ENFERMERO/A
+│   │   │   │   │       ├── layout.tsx  # Módulos y vistas para el rol ENFERMERO/A
+│   │   │   │   │       └── page.tsx  # Módulos y vistas para el rol ENFERMERO/A
+│   │   │   │   ├── queue/  # Módulos y vistas para el rol ENFERMERO/A
+│   │   │   │   │   └── page.tsx  # Módulos y vistas para el rol ENFERMERO/A
+│   │   │   │   ├── reports/  # Módulos y vistas para el rol ENFERMERO/A
+│   │   │   │   │   ├── new/  # Módulos y vistas para el rol ENFERMERO/A
+│   │   │   │   │   │   └── page.tsx  # Módulos y vistas para el rol ENFERMERO/A
+│   │   │   │   │   └── page.tsx  # Módulos y vistas para el rol ENFERMERO/A
+│   │   │   │   ├── settings/  # Módulos y vistas para el rol ENFERMERO/A
+│   │   │   │   │   └── page.tsx  # Módulos y vistas para el rol ENFERMERO/A
+│   │   │   │   ├── layout.tsx  # Módulos y vistas para el rol ENFERMERO/A
+│   │   │   │   ├── loading.tsx  # Módulos y vistas para el rol ENFERMERO/A
+│   │   │   │   └── page.tsx  # Módulos y vistas para el rol ENFERMERO/A
+│   │   │   ├── patient/  # Módulos y vistas para el rol PACIENTE (Historial, citas, recetas)
+│   │   │   │   ├── citas/  # Módulos y vistas para el rol PACIENTE (Historial, citas, recetas)
+│   │   │   │   │   ├── new/  # Módulos y vistas para el rol PACIENTE (Historial, citas, recetas)
+│   │   │   │   │   │   └── page.tsx  # Módulos y vistas para el rol PACIENTE (Historial, citas, recetas)
+│   │   │   │   │   └── page.tsx  # Módulos y vistas para el rol PACIENTE (Historial, citas, recetas)
+│   │   │   │   ├── clinics/  # Módulos y vistas para el rol PACIENTE (Historial, citas, recetas)
+│   │   │   │   │   ├── [id]/  # Módulos y vistas para el rol PACIENTE (Historial, citas, recetas)
+│   │   │   │   │   │   └── page.tsx  # Módulos y vistas para el rol PACIENTE (Historial, citas, recetas)
+│   │   │   │   │   └── page.tsx  # Módulos y vistas para el rol PACIENTE (Historial, citas, recetas)
+│   │   │   │   ├── components/  # Módulos y vistas para el rol PACIENTE (Historial, citas, recetas)
+│   │   │   │   │   ├── medical-reports/  # Módulos y vistas para el rol PACIENTE (Historial, citas, recetas)
+│   │   │   │   │   │   ├── MedicalReportCard.tsx  # Módulos y vistas para el rol PACIENTE (Historial, citas, recetas)
+│   │   │   │   │   │   ├── ReportPreviewModal.tsx  # Módulos y vistas para el rol PACIENTE (Historial, citas, recetas)
+│   │   │   │   │   │   └── UploadReportModal.tsx  # Módulos y vistas para el rol PACIENTE (Historial, citas, recetas)
+│   │   │   │   │   ├── points/  # Módulos y vistas para el rol PACIENTE (Historial, citas, recetas)
+│   │   │   │   │   │   ├── HowToEarnList.tsx  # Módulos y vistas para el rol PACIENTE (Historial, citas, recetas)
+│   │   │   │   │   │   ├── LevelCard.tsx  # Módulos y vistas para el rol PACIENTE (Historial, citas, recetas)
+│   │   │   │   │   │   ├── PointsHistory.tsx  # Módulos y vistas para el rol PACIENTE (Historial, citas, recetas)
+│   │   │   │   │   │   ├── PointsProvider.tsx  # Módulos y vistas para el rol PACIENTE (Historial, citas, recetas)
+│   │   │   │   │   │   ├── PointsToast.tsx  # Módulos y vistas para el rol PACIENTE (Historial, citas, recetas)
+│   │   │   │   │   │   ├── PointsWidget.tsx  # Módulos y vistas para el rol PACIENTE (Historial, citas, recetas)
+│   │   │   │   │   │   ├── RedeemModal.tsx  # Módulos y vistas para el rol PACIENTE (Historial, citas, recetas)
+│   │   │   │   │   │   └── RewardsCatalog.tsx  # Módulos y vistas para el rol PACIENTE (Historial, citas, recetas)
+│   │   │   │   │   ├── referrals/  # Módulos y vistas para el rol PACIENTE (Historial, citas, recetas)
+│   │   │   │   │   │   └── ReferralWidget.tsx  # Módulos y vistas para el rol PACIENTE (Historial, citas, recetas)
+│   │   │   │   │   ├── safecare/  # Módulos y vistas para el rol PACIENTE (Historial, citas, recetas)
+│   │   │   │   │   │   └── SafecareWidget.tsx  # Módulos y vistas para el rol PACIENTE (Historial, citas, recetas)
+│   │   │   │   │   └── surveys/  # Módulos y vistas para el rol PACIENTE (Historial, citas, recetas)
+│   │   │   │   │       ├── PendingSurveyBanner.tsx  # Módulos y vistas para el rol PACIENTE (Historial, citas, recetas)
+│   │   │   │   │       ├── SurveyModal.tsx  # Módulos y vistas para el rol PACIENTE (Historial, citas, recetas)
+│   │   │   │   │       └── SurveyQuestion.tsx  # Módulos y vistas para el rol PACIENTE (Historial, citas, recetas)
+│   │   │   │   ├── configuracion/  # Módulos y vistas para el rol PACIENTE (Historial, citas, recetas)
+│   │   │   │   │   └── page.tsx  # Módulos y vistas para el rol PACIENTE (Historial, citas, recetas)
+│   │   │   │   ├── consultorio/  # Módulos y vistas para el rol PACIENTE (Historial, citas, recetas)
+│   │   │   │   │   ├── [id]/  # Módulos y vistas para el rol PACIENTE (Historial, citas, recetas)
+│   │   │   │   │   │   └── page.tsx  # Módulos y vistas para el rol PACIENTE (Historial, citas, recetas)
+│   │   │   │   │   └── page.tsx  # Módulos y vistas para el rol PACIENTE (Historial, citas, recetas)
+│   │   │   │   ├── explore/  # Módulos y vistas para el rol PACIENTE (Historial, citas, recetas)
+│   │   │   │   │   └── page.tsx  # Módulos y vistas para el rol PACIENTE (Historial, citas, recetas)
+│   │   │   │   ├── family/  # Módulos y vistas para el rol PACIENTE (Historial, citas, recetas)
+│   │   │   │   │   ├── codes/  # Módulos y vistas para el rol PACIENTE (Historial, citas, recetas)
+│   │   │   │   │   │   └── page.tsx  # Módulos y vistas para el rol PACIENTE (Historial, citas, recetas)
+│   │   │   │   │   ├── members/  # Módulos y vistas para el rol PACIENTE (Historial, citas, recetas)
+│   │   │   │   │   │   └── [id]/  # Módulos y vistas para el rol PACIENTE (Historial, citas, recetas)
+│   │   │   │   │   │       └── page.tsx  # Módulos y vistas para el rol PACIENTE (Historial, citas, recetas)
+│   │   │   │   │   ├── settings/  # Módulos y vistas para el rol PACIENTE (Historial, citas, recetas)
+│   │   │   │   │   │   └── page.tsx  # Módulos y vistas para el rol PACIENTE (Historial, citas, recetas)
+│   │   │   │   │   └── page.tsx  # Módulos y vistas para el rol PACIENTE (Historial, citas, recetas)
+│   │   │   │   ├── historial/  # Módulos y vistas para el rol PACIENTE (Historial, citas, recetas)
+│   │   │   │   │   └── page.tsx  # Módulos y vistas para el rol PACIENTE (Historial, citas, recetas)
+│   │   │   │   ├── informes/  # Módulos y vistas para el rol PACIENTE (Historial, citas, recetas)
+│   │   │   │   │   └── page.tsx  # Módulos y vistas para el rol PACIENTE (Historial, citas, recetas)
+│   │   │   │   ├── lab-resultados/  # Módulos y vistas para el rol PACIENTE (Historial, citas, recetas)
+│   │   │   │   │   └── page.tsx  # Módulos y vistas para el rol PACIENTE (Historial, citas, recetas)
+│   │   │   │   ├── labs/  # Módulos y vistas para el rol PACIENTE (Historial, citas, recetas)
+│   │   │   │   │   ├── [id]/  # Módulos y vistas para el rol PACIENTE (Historial, citas, recetas)
+│   │   │   │   │   │   └── page.tsx  # Módulos y vistas para el rol PACIENTE (Historial, citas, recetas)
+│   │   │   │   │   └── page.tsx  # Módulos y vistas para el rol PACIENTE (Historial, citas, recetas)
+│   │   │   │   ├── mensajes/  # Módulos y vistas para el rol PACIENTE (Historial, citas, recetas)
+│   │   │   │   │   └── page.tsx  # Módulos y vistas para el rol PACIENTE (Historial, citas, recetas)
+│   │   │   │   ├── pagos/  # Módulos y vistas para el rol PACIENTE (Historial, citas, recetas)
+│   │   │   │   │   └── page.tsx  # Módulos y vistas para el rol PACIENTE (Historial, citas, recetas)
+│   │   │   │   ├── pharmacies/  # Módulos y vistas para el rol PACIENTE (Historial, citas, recetas)
+│   │   │   │   │   ├── [id]/  # Módulos y vistas para el rol PACIENTE (Historial, citas, recetas)
+│   │   │   │   │   │   └── page.tsx  # Módulos y vistas para el rol PACIENTE (Historial, citas, recetas)
+│   │   │   │   │   └── page.tsx  # Módulos y vistas para el rol PACIENTE (Historial, citas, recetas)
+│   │   │   │   ├── qr-urgente/  # Módulos y vistas para el rol PACIENTE (Historial, citas, recetas)
+│   │   │   │   │   ├── QRDownloadButton.tsx  # Módulos y vistas para el rol PACIENTE (Historial, citas, recetas)
+│   │   │   │   │   ├── QREmergencyCard.tsx  # Módulos y vistas para el rol PACIENTE (Historial, citas, recetas)
+│   │   │   │   │   └── page.tsx  # Módulos y vistas para el rol PACIENTE (Historial, citas, recetas)
+│   │   │   │   ├── recetas/  # Módulos y vistas para el rol PACIENTE (Historial, citas, recetas)
+│   │   │   │   │   └── page.tsx  # Módulos y vistas para el rol PACIENTE (Historial, citas, recetas)
+│   │   │   │   ├── recordatorios/  # Módulos y vistas para el rol PACIENTE (Historial, citas, recetas)
+│   │   │   │   │   └── page.tsx  # Módulos y vistas para el rol PACIENTE (Historial, citas, recetas)
+│   │   │   │   ├── referidos/  # Módulos y vistas para el rol PACIENTE (Historial, citas, recetas)
+│   │   │   │   │   └── page.tsx  # Módulos y vistas para el rol PACIENTE (Historial, citas, recetas)
+│   │   │   │   ├── resultados/  # Módulos y vistas para el rol PACIENTE (Historial, citas, recetas)
+│   │   │   │   │   └── page.tsx  # Módulos y vistas para el rol PACIENTE (Historial, citas, recetas)
+│   │   │   │   ├── safecare/  # Módulos y vistas para el rol PACIENTE (Historial, citas, recetas)
+│   │   │   │   │   └── page.tsx  # Módulos y vistas para el rol PACIENTE (Historial, citas, recetas)
+│   │   │   │   ├── salud-plus/  # Módulos y vistas para el rol PACIENTE (Historial, citas, recetas)
+│   │   │   │   │   └── page.tsx  # Módulos y vistas para el rol PACIENTE (Historial, citas, recetas)
+│   │   │   │   ├── layout.tsx  # Módulos y vistas para el rol PACIENTE (Historial, citas, recetas)
+│   │   │   │   ├── loading.tsx  # Módulos y vistas para el rol PACIENTE (Historial, citas, recetas)
+│   │   │   │   └── page.tsx  # Módulos y vistas para el rol PACIENTE (Historial, citas, recetas)
+│   │   │   ├── role-user/
+│   │   │   │   ├── citas/
+│   │   │   │   │   ├── AppointmentFormForAssistant.tsx
+│   │   │   │   │   ├── AppointmentListForRoleUser.tsx
+│   │   │   │   │   ├── EditAppointmentModal.tsx
+│   │   │   │   │   ├── ReceptionAppointmentModal.tsx
+│   │   │   │   │   ├── RescheduleModal.tsx
+│   │   │   │   │   └── page.tsx
+│   │   │   │   ├── components/
+│   │   │   │   │   └── RoleUserSidebar.tsx
+│   │   │   │   ├── consultas/
+│   │   │   │   │   ├── new/
+│   │   │   │   │   │   ├── ConsultationForm.tsx
+│   │   │   │   │   │   └── page.tsx
+│   │   │   │   │   ├── EditConsultationModal.tsx
+│   │   │   │   │   └── page.tsx
+│   │   │   │   ├── estadisticas-citas/
+│   │   │   │   │   └── page.tsx
+│   │   │   │   ├── estadisticas-servicios/
+│   │   │   │   │   └── page.tsx
+│   │   │   │   ├── mensajeria/
+│   │   │   │   │   └── page.tsx
+│   │   │   │   ├── mensajes/
+│   │   │   │   │   └── page.tsx
+│   │   │   │   ├── metodos-pago/
+│   │   │   │   │   └── page.tsx
+│   │   │   │   ├── mis-citas/
+│   │   │   │   │   └── page.tsx
+│   │   │   │   ├── ordenes/
+│   │   │   │   │   ├── new/
+│   │   │   │   │   │   └── page.tsx
+│   │   │   │   │   └── page.tsx
+│   │   │   │   ├── origen-citas/
+│   │   │   │   │   └── page.tsx
+│   │   │   │   ├── pacientes/
+│   │   │   │   │   └── page.tsx
+│   │   │   │   ├── recetas/
+│   │   │   │   │   └── page.tsx
+│   │   │   │   ├── reportes/
+│   │   │   │   │   └── page.tsx
+│   │   │   │   ├── reportes-citas/
+│   │   │   │   │   └── page.tsx
+│   │   │   │   ├── resultados/
+│   │   │   │   │   └── page.tsx
+│   │   │   │   ├── servicios/
+│   │   │   │   │   └── page.tsx
+│   │   │   │   ├── tareas/
+│   │   │   │   │   └── page.tsx
+│   │   │   │   ├── whatsapp/
+│   │   │   │   │   └── page.tsx
+│   │   │   │   ├── layout.tsx
+│   │   │   │   ├── loading.tsx
+│   │   │   │   └── page.tsx
+│   │   │   ├── safecare/  # Módulos y vistas de soporte para SAFECARE
+│   │   │   │   └── page.tsx  # Módulos y vistas de soporte para SAFECARE
+│   │   │   └── page.tsx
+│   │   ├── emergency/
+│   │   │   └── [token]/
+│   │   │       └── page.tsx
+│   │   ├── hooks/
+│   │   │   ├── useAppointmentIndicators.ts
+│   │   │   ├── useAppointments.ts
+│   │   │   └── useAppointmentsForRoleUser.ts
+│   │   ├── invite/
+│   │   │   └── [token]/
+│   │   │       └── page.tsx
+│   │   ├── lab-upload/
+│   │   │   └── [token]/
+│   │   │       ├── components/
+│   │   │       │   ├── PatientSearch.tsx
+│   │   │       │   ├── SuccessMessage.tsx
+│   │   │       │   └── UploadForm.tsx
+│   │   │       └── page.tsx
+│   │   ├── landing/
+│   │   │   ├── clinicas/
+│   │   │   │   ├── ClinicasDomiciliariasSection.tsx
+│   │   │   │   ├── MultiSedeCalculator.tsx
+│   │   │   │   ├── MultiSedeExplainer.tsx
+│   │   │   │   ├── VoiceDemo.tsx
+│   │   │   │   └── page.tsx
+│   │   │   ├── consultorios/
+│   │   │   │   ├── VoiceDemo.tsx
+│   │   │   │   └── page.tsx
+│   │   │   ├── enfermeros/
+│   │   │   │   └── page.tsx
+│   │   │   ├── farmacias/
+│   │   │   │   └── page.tsx
+│   │   │   ├── laboratorios/
+│   │   │   │   └── page.tsx
+│   │   │   └── pacientes/
+│   │   │       └── page.tsx
+│   │   ├── login/
+│   │   │   ├── analytics/
+│   │   │   │   └── page.tsx
+│   │   │   ├── role-user/
+│   │   │   │   └── page.tsx
+│   │   │   └── page.tsx
+│   │   ├── politicas-privacidad/
+│   │   │   ├── layout.tsx
+│   │   │   └── page.tsx
+│   │   ├── public-report/
+│   │   │   ├── PublicReportClient.tsx
+│   │   │   └── page.tsx
+│   │   ├── rate-consultation/
+│   │   │   └── page.tsx
+│   │   ├── register/
+│   │   │   ├── nurse/
+│   │   │   │   ├── affiliated/
+│   │   │   │   │   └── page.tsx
+│   │   │   │   └── page.tsx
+│   │   │   ├── payment/
+│   │   │   │   ├── layout.tsx
+│   │   │   │   └── page.tsx
+│   │   │   ├── quote-pending/
+│   │   │   │   └── page.tsx
+│   │   │   ├── layout.tsx
+│   │   │   └── page.tsx
+│   │   ├── reset-password/
+│   │   │   └── page.tsx
+│   │   ├── safecare/
+│   │   │   └── login/
+│   │   │       └── page.tsx
+│   │   ├── share/
+│   │   │   ├── consultation/
+│   │   │   │   └── [token]/
+│   │   │   │       └── page.tsx
+│   │   │   └── history/
+│   │   │       └── [token]/
+│   │   │           └── page.tsx
+│   │   ├── layout.tsx  # Diseño raíz global, importa SessionKeeper y proveedores de contexto
+│   │   └── page.tsx  # Página de inicio (Landing page principal de ASHIRA)
+│   ├── components/
+│   │   ├── AshDashboard/
+│   │   │   └── index.tsx
+│   │   ├── AshOnboarding/
+│   │   │   └── index.tsx
+│   │   ├── administration/
+│   │   │   ├── AdministrationSidebar.tsx
+│   │   │   └── MobileBottomNav.tsx
+│   │   ├── analytics/
+│   │   │   ├── auth/
+│   │   │   │   └── AnalyticsAuthGuard.tsx
+│   │   │   ├── cards/
+│   │   │   │   ├── AlertCard.tsx
+│   │   │   │   ├── MetricCard.tsx
+│   │   │   │   └── TrendCard.tsx
+│   │   │   ├── charts/
+│   │   │   │   ├── BarChartComponent.tsx
+│   │   │   │   ├── DemographicsRanking.tsx
+│   │   │   │   ├── EpidemiologyRanking.tsx
+│   │   │   │   ├── HeatmapComponent.tsx
+│   │   │   │   ├── LineChartComponent.tsx
+│   │   │   │   ├── MapComponent.tsx
+│   │   │   │   └── PieChartComponent.tsx
+│   │   │   ├── layout/
+│   │   │   │   ├── AnalyticsSidebar.tsx
+│   │   │   │   └── FilterBar.tsx
+│   │   │   ├── tables/
+│   │   │   │   ├── DataTable.tsx
+│   │   │   │   └── ExportableTable.tsx
+│   │   │   ├── AnalyticsChart.tsx
+│   │   │   ├── DownloadButton.tsx
+│   │   │   └── KPICard.tsx
+│   │   ├── auth/
+│   │   │   ├── DashboardGuard.tsx
+│   │   │   └── ServerDashboardGuard.tsx
+│   │   ├── bancaribe/
+│   │   │   ├── BancaribeSetupCard.tsx
+│   │   │   ├── CobrarPacienteC2P.tsx
+│   │   │   ├── DashboardFinanciero.tsx
+│   │   │   ├── ExtractoBancario.tsx
+│   │   │   ├── PagoAPersonas.tsx
+│   │   │   ├── PagoVerificadoBadge.tsx
+│   │   │   ├── SaldoDisponible.tsx
+│   │   │   ├── TasaBCV.tsx
+│   │   │   ├── TransferenciaInmediata.tsx
+│   │   │   └── UltimosMovimientos.tsx
+│   │   ├── clinic/
+│   │   │   ├── care/  # Componentes reutilizables para el panel clínica
+│   │   │   │   ├── CareTeamConnector.tsx  # Componentes reutilizables para el panel clínica
+│   │   │   │   └── PatientTeamGrid.tsx  # Componentes reutilizables para el panel clínica
+│   │   │   ├── CurrencyFloatingWidget.tsx  # Componentes reutilizables para el panel clínica
+│   │   │   ├── GoogleMapPicker.tsx  # Componentes reutilizables para el panel clínica
+│   │   │   ├── LeafletMapPicker.tsx  # Componentes reutilizables para el panel clínica
+│   │   │   ├── LeafletMapViewer.tsx  # Componentes reutilizables para el panel clínica
+│   │   │   ├── LeafletMapViewerClient.tsx  # Componentes reutilizables para el panel clínica
+│   │   │   ├── MapComponent.tsx  # Componentes reutilizables para el panel clínica
+│   │   │   └── PhotoUploader.tsx  # Componentes reutilizables para el panel clínica
+│   │   ├── consultorio/
+│   │   │   ├── AppointmentBookingModal.tsx
+│   │   │   └── ConsultorioPublicPage.tsx
+│   │   ├── dashboard/
+│   │   │   └── patient/
+│   │   │       └── SafeCareBanner.tsx
+│   │   ├── emergency/
+│   │   │   └── EmergencyView.tsx
+│   │   ├── medic/
+│   │   │   ├── ashira-ai/  # Componentes reutilizables para el panel médico
+│   │   │   │   ├── ASHIRADocButton.tsx  # Componentes reutilizables para el panel médico
+│   │   │   │   ├── ASHIRAGreeting.tsx  # Componentes reutilizables para el panel médico
+│   │   │   │   └── ASHIRAMemoryCard.tsx  # Componentes reutilizables para el panel médico
+│   │   │   ├── consultations/  # Componentes reutilizables para el panel médico
+│   │   │   │   └── obstetrics/  # Componentes reutilizables para el panel médico
+│   │   │   │       ├── ObstetricsT1.tsx  # Componentes reutilizables para el panel médico
+│   │   │   │       └── ObstetricsT2T3.tsx  # Componentes reutilizables para el panel médico
+│   │   │   ├── AlertsButton.tsx  # Componentes reutilizables para el panel médico
+│   │   │   ├── AlertsModal.tsx  # Componentes reutilizables para el panel médico
+│   │   │   ├── AudioRecorderButton.tsx  # Componentes reutilizables para el panel médico
+│   │   │   ├── AvailabilitySchedule.tsx  # Componentes reutilizables para el panel médico
+│   │   │   ├── DoctorPrivateNotesModal.tsx  # Componentes reutilizables para el panel médico
+│   │   │   ├── GenericReportConfig.tsx  # Componentes reutilizables para el panel médico
+│   │   │   ├── MedicHamburgerMenu.tsx  # Componentes reutilizables para el panel médico
+│   │   │   ├── NotificationPreferences.tsx  # Componentes reutilizables para el panel médico
+│   │   │   ├── PaymentsModal.tsx  # Componentes reutilizables para el panel médico
+│   │   │   ├── PrescriptionForm.tsx  # Componentes reutilizables para el panel médico
+│   │   │   ├── ProfessionalProfile.tsx  # Componentes reutilizables para el panel médico
+│   │   │   ├── ProfileCompleteGuard.tsx  # Componentes reutilizables para el panel médico
+│   │   │   ├── PublicLinkModal.tsx  # Componentes reutilizables para el panel médico
+│   │   │   └── SecuritySettings.tsx  # Componentes reutilizables para el panel médico
+│   │   ├── notifications/
+│   │   │   └── UserNotificationsBell.tsx
+│   │   ├── nurse/
+│   │   │   ├── auth/  # Componentes reutilizables para el panel enfermería
+│   │   │   │   ├── affiliated/  # Componentes reutilizables para el panel enfermería
+│   │   │   │   │   ├── NurseAffiliationConfirmation.tsx  # Componentes reutilizables para el panel enfermería
+│   │   │   │   │   ├── NursePendingApprovalScreen.tsx  # Componentes reutilizables para el panel enfermería
+│   │   │   │   │   └── OrganizationCodeVerifier.tsx  # Componentes reutilizables para el panel enfermería
+│   │   │   │   ├── LicenseUpload.tsx  # Componentes reutilizables para el panel enfermería
+│   │   │   │   ├── NurseIndependentScopeForm.tsx  # Componentes reutilizables para el panel enfermería
+│   │   │   │   ├── NursePersonalDataForm.tsx  # Componentes reutilizables para el panel enfermería
+│   │   │   │   ├── NurseProfessionalDataForm.tsx  # Componentes reutilizables para el panel enfermería
+│   │   │   │   ├── NurseRegisterStepper.tsx  # Componentes reutilizables para el panel enfermería
+│   │   │   │   └── NurseRegisterSummary.tsx  # Componentes reutilizables para el panel enfermería
+│   │   │   ├── clinical/  # Componentes reutilizables para el panel enfermería
+│   │   │   │   ├── MedicationKardex.tsx  # Componentes reutilizables para el panel enfermería
+│   │   │   │   ├── PatientMARTab.tsx  # Componentes reutilizables para el panel enfermería
+│   │   │   │   ├── PatientNotesTab.tsx  # Componentes reutilizables para el panel enfermería
+│   │   │   │   ├── PatientOriginForm.tsx  # Componentes reutilizables para el panel enfermería
+│   │   │   │   ├── PatientProceduresTab.tsx  # Componentes reutilizables para el panel enfermería
+│   │   │   │   ├── PatientSummaryTab.tsx  # Componentes reutilizables para el panel enfermería
+│   │   │   │   ├── PriorTreatmentForm.tsx  # Componentes reutilizables para el panel enfermería
+│   │   │   │   ├── QueueTable.tsx  # Componentes reutilizables para el panel enfermería
+│   │   │   │   └── VitalSignsForm.tsx  # Componentes reutilizables para el panel enfermería
+│   │   │   ├── dashboard/  # Componentes reutilizables para el panel enfermería
+│   │   │   │   └── NurseAffiliatedDashboard.tsx  # Componentes reutilizables para el panel enfermería
+│   │   │   ├── layout/  # Componentes reutilizables para el panel enfermería
+│   │   │   │   ├── NurseAlertPanel.tsx  # Componentes reutilizables para el panel enfermería
+│   │   │   │   ├── NurseSidebar.tsx  # Componentes reutilizables para el panel enfermería
+│   │   │   │   └── NurseTopBar.tsx  # Componentes reutilizables para el panel enfermería
+│   │   │   ├── observation/  # Componentes reutilizables para el panel enfermería
+│   │   │   │   └── BedsGrid.tsx  # Componentes reutilizables para el panel enfermería
+│   │   │   ├── reports/  # Componentes reutilizables para el panel enfermería
+│   │   │   │   └── ShiftReportForm.tsx  # Componentes reutilizables para el panel enfermería
+│   │   │   ├── NurseGlobalReminders.tsx  # Componentes reutilizables para el panel enfermería
+│   │   │   └── PatientSearchModal.tsx  # Componentes reutilizables para el panel enfermería
+│   │   ├── patient/
+│   │   │   ├── AshPatient/  # Componentes reutilizables para el panel paciente
+│   │   │   │   └── index.tsx  # Componentes reutilizables para el panel paciente
+│   │   │   ├── Chat.tsx  # Componentes reutilizables para el panel paciente
+│   │   │   ├── EmergencyCard.tsx  # Componentes reutilizables para el panel paciente
+│   │   │   ├── PatientHamburgerMenu.tsx  # Componentes reutilizables para el panel paciente
+│   │   │   ├── PaymentModal.tsx  # Componentes reutilizables para el panel paciente
+│   │   │   ├── RescheduleModal.tsx  # Componentes reutilizables para el panel paciente
+│   │   │   └── SidebarPatient.tsx  # Componentes reutilizables para el panel paciente
+│   │   ├── role-user/
+│   │   │   ├── CurrencyRateWidget.tsx
+│   │   │   ├── RoleUserAuthGuard.tsx
+│   │   │   └── RoleUserHamburgerMenu.tsx
+│   │   ├── share/
+│   │   │   └── ConsultationShareView.tsx
+│   │   ├── shared/
+│   │   │   ├── AvatarInitials.tsx
+│   │   │   ├── DataTable.tsx
+│   │   │   ├── EmptyState.tsx
+│   │   │   ├── SectionHeader.tsx
+│   │   │   └── StatCard.tsx
+│   │   ├── ui/
+│   │   │   ├── AlertModal.tsx
+│   │   │   ├── PageTransition.tsx
+│   │   │   ├── accordion.tsx
+│   │   │   ├── alert-dialog.tsx
+│   │   │   ├── alert.tsx
+│   │   │   ├── aspect-ratio.tsx
+│   │   │   ├── avatar.tsx
+│   │   │   ├── badge.tsx
+│   │   │   ├── button.tsx
+│   │   │   ├── calendar.tsx
+│   │   │   ├── card.tsx
+│   │   │   ├── carousel.tsx
+│   │   │   ├── checkbox.tsx
+│   │   │   ├── collapsible.tsx
+│   │   │   ├── dialog.tsx
+│   │   │   ├── donut-chart.tsx
+│   │   │   ├── drawer.tsx
+│   │   │   ├── hover-card.tsx
+│   │   │   ├── input-otp.tsx
+│   │   │   ├── input.tsx
+│   │   │   ├── kpi-card.tsx
+│   │   │   ├── label.tsx
+│   │   │   ├── navigation-menu.tsx
+│   │   │   ├── popover.tsx
+│   │   │   ├── progress.tsx
+│   │   │   ├── radio-group.tsx
+│   │   │   ├── scroll-area.tsx
+│   │   │   ├── select.tsx
+│   │   │   ├── separator.tsx
+│   │   │   ├── sheet.tsx
+│   │   │   ├── skeleton.tsx
+│   │   │   ├── slider.tsx
+│   │   │   ├── stacked-bar-chart.tsx
+│   │   │   ├── switch.tsx
+│   │   │   ├── table.tsx
+│   │   │   ├── tabs.tsx
+│   │   │   ├── textarea.tsx
+│   │   │   ├── toggle-group.tsx
+│   │   │   ├── toggle.tsx
+│   │   │   ├── tooltip.tsx
+│   │   │   └── top-clients-card.tsx
+│   │   ├── Ballpit.tsx
+│   │   ├── ClinicProfileComponent.tsx
+│   │   ├── ClinicSidebar.tsx
+│   │   ├── ClinicStats.tsx
+│   │   ├── ConditionalMain.tsx
+│   │   ├── CurrencyDisplay.tsx
+│   │   ├── DashboardNavBar.tsx
+│   │   ├── ICD11Search.tsx
+│   │   ├── InviteList.tsx
+│   │   ├── InviteListPage.tsx
+│   │   ├── InviteRegisterClient.tsx
+│   │   ├── LocationMapPicker.tsx
+│   │   ├── LoginForm.tsx  # Formulario de inicio de sesión con autenticación Supabase
+│   │   ├── NavBar.tsx
+│   │   ├── NavbarSwitcher.tsx
+│   │   ├── PatientsGrid.tsx
+│   │   ├── PatientsList.tsx
+│   │   ├── PlanCard.tsx
+│   │   ├── RegisterForm.tsx  # Formulario de registro principal multilpaso con validación Zod
+│   │   ├── SessionKeeper.tsx  # Mantiene la sesión activa en segundo plano actualizando tokens y cookies
+│   │   ├── SpecialistsInvitesList.tsx
+│   │   ├── SpecialistsTable.tsx
+│   │   ├── SubscriptionPaymentForm.tsx
+│   │   └── Text.tsx
+│   ├── context/
+│   │   └── NurseContext.tsx
+│   ├── contexts/
+│   │   └── LiteModeContext.tsx
+│   ├── files/
+│   │   ├── README.md
+│   │   ├── index.tsx
+│   │   ├── page.tsx
+│   │   └── route.ts
+│   ├── files2/
+│   │   ├── README.md
+│   │   ├── index.tsx
+│   │   └── route.ts
+│   ├── files3/
+│   │   ├── README.md
+│   │   ├── index.tsx
+│   │   └── route.ts
+│   ├── hooks/
+│   │   ├── nurse/
+│   │   │   └── useNurseContext.ts
+│   │   ├── useCurrencyExchangeRate.ts
+│   │   ├── useCurrencyPreference.ts
+│   │   ├── useCurrencyRate.ts
+│   │   ├── useDebounce.ts
+│   │   ├── useGamification.ts
+│   │   ├── useNetworkAware.ts
+│   │   ├── useNetworkAwareQuery.ts
+│   │   ├── useOptimisticMutation.ts
+│   │   ├── usePrefetch.ts
+│   │   ├── usePrefetchRoute.ts
+│   │   └── useSessionCache.ts
+│   ├── lib/
+│   │   ├── actions/
+│   │   │   ├── analytics.ts
+│   │   │   ├── family.ts
+│   │   │   ├── invites.ts
+│   │   │   ├── medical-reports.ts
+│   │   │   ├── notifications.ts
+│   │   │   ├── points.ts
+│   │   │   ├── referrals.ts
+│   │   │   ├── safecare.ts
+│   │   │   └── surveys.ts
+│   │   ├── ai/
+│   │   │   ├── ashira-doc.ts
+│   │   │   ├── ashira-memory.ts
+│   │   │   ├── ashira-voice.ts
+│   │   │   └── client.ts
+│   │   ├── analytics/
+│   │   │   ├── queries/
+│   │   │   │   ├── audit.ts
+│   │   │   │   ├── communication.ts
+│   │   │   │   ├── epidemiology.ts
+│   │   │   │   ├── financial.ts
+│   │   │   │   ├── laboratory.ts
+│   │   │   │   ├── operations.ts
+│   │   │   │   ├── patients.ts
+│   │   │   │   └── pharmacy.ts
+│   │   │   ├── types/
+│   │   │   │   └── analytics.types.ts
+│   │   │   ├── utils/
+│   │   │   │   ├── data-processing.ts
+│   │   │   │   ├── export.ts
+│   │   │   │   └── formatters.ts
+│   │   │   ├── api-client.ts
+│   │   │   ├── queries.ts
+│   │   │   └── supabase-analytics.ts
+│   │   ├── auth/
+│   │   │   ├── nurse-auth-server.ts
+│   │   │   └── nurse-redirect.ts
+│   │   ├── bancaribe/
+│   │   │   ├── client.ts
+│   │   │   ├── mock-data.ts
+│   │   │   └── types.ts
+│   │   ├── constants/
+│   │   │   └── specialties.ts
+│   │   ├── email/
+│   │   │   ├── index.ts
+│   │   │   ├── resend.ts
+│   │   │   └── templates.ts
+│   │   ├── gamification/
+│   │   │   └── validations.ts
+│   │   ├── pdf/
+│   │   │   └── pdf-generator.ts
+│   │   ├── points/
+│   │   │   ├── events.ts
+│   │   │   ├── levels.ts
+│   │   │   └── rewards-helpers.ts
+│   │   ├── reports/
+│   │   │   └── generateGenericReport.ts
+│   │   ├── schemas/
+│   │   │   ├── adminPatientSchema.ts
+│   │   │   ├── appointmentSchema.ts
+│   │   │   ├── assignmentSchema.ts
+│   │   │   ├── documentSchema.ts
+│   │   │   ├── inventoryMovementSchema.ts
+│   │   │   ├── inventorySchema.ts
+│   │   │   ├── serviceSchema.ts
+│   │   │   ├── specialistSchema.ts
+│   │   │   └── unregisteredPatientSchema.ts
+│   │   ├── services/
+│   │   │   └── NurseSyncService.ts
+│   │   ├── supabase/
+│   │   │   ├── admin.ts
+│   │   │   ├── medic-storage.ts
+│   │   │   ├── nurse-doctors.service.ts
+│   │   │   ├── nurse-server.service.ts
+│   │   │   └── nurse.service.ts
+│   │   ├── utils/
+│   │   │   └── nurse-report-generator.ts
+│   │   ├── waha/
+│   │   │   ├── __tests__/
+│   │   │   │   └── response-normalizer.test.ts
+│   │   │   ├── client.ts
+│   │   │   └── response-normalizer.ts
+│   │   ├── api-cache-utils.ts
+│   │   ├── api-helpers.ts
+│   │   ├── auth-guards.ts
+│   │   ├── auth.ts
+│   │   ├── clinic-auth.ts
+│   │   ├── consultorio-role-audit.ts
+│   │   ├── currency-utils.ts
+│   │   ├── db.ts
+│   │   ├── debounced-save.ts
+│   │   ├── docx-parser.ts
+│   │   ├── docx-section-parser.ts
+│   │   ├── email-service.ts
+│   │   ├── format.ts
+│   │   ├── image-compression.ts
+│   │   ├── lite-mode-utils.ts
+│   │   ├── mailer.ts
+│   │   ├── n8n-report-workflow.md
+│   │   ├── notifications-engine.ts
+│   │   ├── notifications.ts
+│   │   ├── optimistic-save.ts
+│   │   ├── patient-auth.ts
+│   │   ├── prisma.ts
+│   │   ├── rates-client.ts
+│   │   ├── resend-service.ts
+│   │   ├── role-user-auth-client.ts
+│   │   ├── role-user-auth.ts
+│   │   ├── safe-json-parse.ts
+│   │   ├── server-notifications.ts
+│   │   ├── utils.ts
+│   │   └── zod.ts
+│   ├── migrations/
+│   │   ├── 20260316_create_clinical_documents.sql
+│   │   ├── 20260317_create_shared_links.sql
+│   │   ├── 20260318_add_is_active_to_patients.sql
+│   │   ├── 20260318_inventory_transactions.sql
+│   │   ├── 20260318_update_inventory_rls.sql
+│   │   ├── 20260318_update_inventory_rls_v2.sql
+│   │   ├── add_office_id_to_appointment.sql
+│   │   ├── add_office_id_to_clinic_profile.sql
+│   │   └── doctor_schedule_config_migration.sql
+│   ├── providers/
+│   │   └── QueryProvider.tsx
+│   ├── schemas/
+│   │   └── nurse/
+│   │       ├── mar.schema.ts
+│   │       ├── origin.schema.ts
+│   │       ├── register.schema.ts
+│   │       └── vital-signs.schema.ts
+│   ├── types/
+│   │   ├── generic-report.ts
+│   │   ├── medic-config.ts
+│   │   ├── medical-reports.ts
+│   │   ├── nurse.types.ts
+│   │   ├── points.ts
+│   │   ├── referrals.ts
+│   │   ├── safecare.ts
+│   │   └── surveys.ts
+│   ├── Database.sql
+│   ├── clinic_care_team_schema.sql
+│   ├── lab_results_upload_schema.sql
+│   ├── nurse_kardex_notes_schema.sql
+│   ├── nurse_modules_tables.sql
+│   └── nurse_panel_v1.1.sql
+├── ALERTS_SYSTEM.md
+├── ANALISIS_IA_ASHIRA.md
+├── CONFIGURACION_CREDENCIALES_GROQ_N8N.md
+├── CONFIGURACION_N8N_AUDIO_INFORMES.md
+├── CONFIGURACION_N8N_CLOUD.md
+├── CONFIGURACION_N8N_CLOUD_SIN_NGROK.md
+├── CONFIGURACION_SUPABASE_EMAIL.md
+├── CRON_JOBS_SETUP.md
+├── DEBUG_QR_404.md
+├── DEPURACION_N8N_RESPUESTA_VACIA.md
+├── DIAGNOSTICO_INFORME_VACIO.md
+├── EJECUTAR_MIGRACION.md
+├── GUIA_CREAR_BUCKET_SUPABASE.md
+├── GUIA_N8N_SIN_PREMIUM.md
+├── GUIA_PASO_A_PASO_N8N.md
+├── HOW_TO_CHECK_BUCKET.md
+├── IMPLEMENTACION_AUDIO_INFORMES.md
+├── IMPLEMENTACION_QR_EMERGENCIA.md
+├── INSTRUCCIONES_MIGRACION_QR.md
+├── INSTRUCCIONES_SUPERADMIN.md
+├── N8N.json
+├── N8N_SETUP.md
+├── OPTIMIZACIONES_AVANZADAS.md
+├── OPTIMIZACIONES_CACHE_AVANZADAS.md
+├── OPTIMIZACIONES_RENDIMIENTO.md
+├── README.md
+├── REALTIME_SETUP.md
+├── RESEND_SETUP.md
+├── Reporte_Datos_d52a76ac-fe33-414f-a26c-af7bb2f95df8.md
+├── SERVICIOS_PAGOS_ASHIRA.md
+├── SOLUCION_INFORME_VACIO.md
+├── SOLUCION_RESPUESTA_VACIA.md
+├── VARIABLES_ENTORNO_PRODUCCION.md
+├── VARIABLES_PLANTILLA_RECETA.md
+├── add_payment_methods_to_medic_profile.sql
+├── add_selected_service_to_appointment.sql
+├── appointment_rows.sql
+├── check_duplicates.js
+├── clinic_profile_location_photos.sql
+├── consultation_rows.sql
+├── docker-compose.yml
+├── fix_invites_safecare.sql
+├── list-plans.ts
+├── medic_profile_table.sql
+├── medical_access_grant_table.sql
+├── middleware.ts  # Middleware de Next.js: Controla seguridad, CSP, CORS y redirección por rol
+├── n8n-workflow-generate-report-DEBUG.json
+├── n8n-workflow-generate-report-FINAL.json
+├── n8n-workflow-generate-report-fixed.json
+├── n8n-workflow-generate-report.json
+├── n8n.config.example.json
+├── n8n.config.json
+├── next-env.d.ts
+├── next.config.ts
+├── package.json
+├── patient_access_key_table.sql
+├── query_org.js
+├── remove_dark_classes.js
+├── resumen_modulos_pacientes.md
+├── scratch_check.js
+├── scratch_check_env.js
+├── scratch_gen_vapid.js
+├── scratch_generate_csv_report.ts
+├── scratch_generate_report_data.ts
+├── scratch_generate_txt_report.ts
+├── scratch_inspect_org.js
+├── scratch_inspect_org.ts
+├── scratch_send_missed_report.ts
+├── scratch_test_cron.ts
+├── scratch_test_send.ts
+├── tailwind.config.js
+├── tsconfig.json
+├── update-enum.js
+├── update_plans.sql
+└── vercel.json

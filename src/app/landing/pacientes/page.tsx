@@ -626,7 +626,7 @@ export default function PacientesLandingPage() {
 							Cuida la Salud de tu Familia
 						</h2>
 						<p className="text-lg text-slate-500 max-w-2xl mx-auto">
-							Grupos Familiares — Gestiona la salud de hasta 4 miembros desde una sola cuenta.
+							Grupos Familiares — Gestiona la salud de hasta 5 miembros desde una sola cuenta.
 						</p>
 					</motion.div>
 
