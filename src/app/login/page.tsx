@@ -69,15 +69,11 @@ export default function RegisterPage() {
 
 	return (
 		<main className="flex min-h-screen items-center justify-center bg-white sm:rounded-3xl p-3 sm:p-6 w-full max-w-full overflow-x-hidden">
-			{/* --- Fondo Ballpit: fixed para cubrir todo el viewport, oculto en móviles --- */}
+			{/* Fondo Ballpit solo desktop; el wrapper no monta WebGL en móvil */}
 			<div id="ballpit-bg" ref={bgRef} className="hidden md:block fixed inset-0 z-0" aria-hidden="true">
-				{/* contenedor directo full-screen */}
 				<div className="absolute inset-0 w-full h-full">
 					<BallpitClientWrapper />
 				</div>
-
-				{/* overlay sutil */}
-				{/* <div className="absolute inset-0 pointer-events-none bg-gradient-to-b from-transparent to-black/5" /> */}
 			</div>
 
 			{/* --- Formulario --- */}

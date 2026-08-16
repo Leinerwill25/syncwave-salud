@@ -245,7 +245,7 @@ export default function LoginFormAdvanced(): React.ReactElement {
 						console.log('[LoginForm] Login exitoso con endpoint múltiple, dbUser:', loginData.dbUser);
 					} else {
 						console.warn('[LoginForm] Respuesta OK pero sin datos válidos:', loginData);
-						error = { message: 'Invalid login credentials' };
+						error = { message: 'No se pudo iniciar sesión. Intenta de nuevo.' };
 					}
 				} else {
 					// Intentar parsear como JSON, si falla obtener como texto
@@ -261,7 +261,12 @@ export default function LoginFormAdvanced(): React.ReactElement {
 					
 					if (!error) {
 						console.error('[LoginForm] Error en endpoint:', errorData);
-						error = { message: errorData.error || 'Invalid login credentials' };
+						const raw = String(errorData?.error || '');
+						const friendly =
+							raw === 'Invalid login credentials'
+								? 'Email o contraseña incorrectos'
+								: raw || `No se pudo iniciar sesión (${loginResponse.status})`;
+						error = { message: friendly };
 					}
 				}
 			} catch (fetchError) {

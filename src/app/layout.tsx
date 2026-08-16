@@ -79,7 +79,11 @@ export default async function RootLayout({ children }: { children: React.ReactNo
 				style={{ backgroundColor: '#FFFFFF', color: '#0F2133' }}
 				suppressHydrationWarning={true}
 			>
-				<script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
+				<script
+					nonce={nonce}
+					type="application/ld+json"
+					dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+				/>
 				<QueryProvider>
 					<SessionKeeper />
 					<NavbarSwitcher />

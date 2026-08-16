@@ -2,14 +2,12 @@
 import { type NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
 
-// ===== CONFIGURACIÓN DE RUTAS =====
-// Rutas 100% públicas: no deben invocar Supabase (evita 504 MIDDLEWARE_INVOCATION_TIMEOUT en móvil).
-const PUBLIC_ROUTES = [
+/**
+ * Marketing / estáticos: NUNCA llamar a Supabase aquí (evita 504 en redes móviles).
+ * Auth pages y APIs públicas sí pasan por middleware de headers, pero sin getUser.
+ */
+const MARKETING_PUBLIC_ROUTES = [
 	'/',
-	'/login',
-	'/register',
-	'/reset-password',
-	'/safecare/login',
 	'/landing',
 	'/farmacia',
 	'/politicas-privacidad',
@@ -21,16 +19,25 @@ const PUBLIC_ROUTES = [
 	'/robots.txt',
 	'/sitemap.xml',
 	'/manifest.json',
+	'/api/landing',
+	'/api/public',
+];
+
+const AUTH_PUBLIC_ROUTES = [
+	'/login',
+	'/register',
+	'/reset-password',
+	'/safecare/login',
 	'/api/auth',
 	'/api/plans',
 	'/api/register',
 	'/api/organizations',
-	'/api/public',
 	'/api/role-users',
 	'/api/analytics/login',
-	'/api/landing',
 	'/dashboard/analytics',
 ];
+
+const PUBLIC_ROUTES = [...MARKETING_PUBLIC_ROUTES, ...AUTH_PUBLIC_ROUTES];
 
 const ROUTE_ROLE_MAP: Record<string, string[]> = {
 	'/dashboard/clinic': ['ADMIN', 'CLINICA'],
@@ -56,15 +63,21 @@ if (process.env.NODE_ENV === 'development') {
 }
 
 const SENSITIVE_ROUTES = ['/api/', '/dashboard', '/patients', '/login', '/admin', '/billing'];
-
-/** Timeout corto: Edge Middleware de Vercel no puede colgarse esperando a Supabase. */
 const SUPABASE_FETCH_TIMEOUT_MS = 4_000;
 
-function isPublicRoute(pathname: string): boolean {
-	return PUBLIC_ROUTES.some((route) => {
+function pathMatches(pathname: string, routes: string[]): boolean {
+	return routes.some((route) => {
 		if (route === '/') return pathname === '/';
 		return pathname === route || pathname.startsWith(route + '/');
 	});
+}
+
+function isPublicRoute(pathname: string): boolean {
+	return pathMatches(pathname, PUBLIC_ROUTES);
+}
+
+function isMarketingPublicRoute(pathname: string): boolean {
+	return pathMatches(pathname, MARKETING_PUBLIC_ROUTES);
 }
 
 function requiresAuth(pathname: string): boolean {
@@ -117,11 +130,12 @@ function getRoleRedirectPath(userRole: string, pathname: string): string | null 
 function applySecurityHeaders(response: NextResponse, nonce: string, pathname: string, origin: string | null) {
 	const csp = [
 		"default-src 'self'",
-		`script-src 'self' 'nonce-${nonce}' https://*.supabase.co https://www.googletagmanager.com https://*.vercel-scripts.com`,
+		`script-src 'self' 'nonce-${nonce}' 'strict-dynamic' https://*.supabase.co https://www.googletagmanager.com https://*.vercel-scripts.com`,
 		"style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
 		"img-src 'self' blob: data: https://*.supabase.co https://*.ashira.click https://www.googletagmanager.com https://*.vercel-scripts.com https://*.tile.openstreetmap.org",
 		"font-src 'self' https://fonts.gstatic.com",
 		"connect-src 'self' https://*.supabase.co https://*.ashira.click https://api.groq.com https://nominatim.openstreetmap.org https://www.google-analytics.com https://analytics.google.com",
+		"worker-src 'self' blob:",
 		"frame-src 'self' https://www.youtube.com https://youtube.com",
 		"frame-ancestors 'none'",
 		"base-uri 'self'",
@@ -163,7 +177,6 @@ function createTimedFetch(timeoutMs: number): typeof fetch {
 			callerSignal && typeof AbortSignal.any === 'function'
 				? AbortSignal.any([callerSignal, timeoutSignal])
 				: timeoutSignal;
-
 		return fetch(input, { ...init, signal });
 	};
 }
@@ -195,30 +208,31 @@ export async function middleware(request: NextRequest) {
 
 	applySecurityHeaders(response, nonce, pathname, origin);
 
-	// Rutas públicas / marketing: salir YA sin tocar Supabase.
-	// Esto evita 504 en redes móviles lentas al abrir ashira.click.
-	if (isPublicRoute(pathname) || !requiresAuth(pathname)) {
+	// Home / landings / assets públicos: salir sin Supabase (fix del 504 móvil).
+	if (isMarketingPublicRoute(pathname) || !requiresAuth(pathname)) {
 		return response;
 	}
 
-	const supabase = createServerClient(
-		process.env.NEXT_PUBLIC_SUPABASE_URL!,
-		process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-		{
-			cookies: {
-				getAll: () => request.cookies.getAll(),
-				setAll: (cookiesToSet) => {
-					cookiesToSet.forEach(({ name, value, options }) => {
-						request.cookies.set(name, value);
-						response.cookies.set(name, value, { ...options, maxAge: 3153600000 });
-					});
-				},
+	const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+	const supabaseAnon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+	if (!supabaseUrl || !supabaseAnon) {
+		return response;
+	}
+
+	const supabase = createServerClient(supabaseUrl, supabaseAnon, {
+		cookies: {
+			getAll: () => request.cookies.getAll(),
+			setAll: (cookiesToSet) => {
+				cookiesToSet.forEach(({ name, value, options }) => {
+					request.cookies.set(name, value);
+					response.cookies.set(name, value, options);
+				});
 			},
-			global: {
-				fetch: createTimedFetch(SUPABASE_FETCH_TIMEOUT_MS),
-			},
-		}
-	);
+		},
+		global: {
+			fetch: createTimedFetch(SUPABASE_FETCH_TIMEOUT_MS),
+		},
+	});
 
 	if (pathname.startsWith('/api/analytics/')) {
 		const adminSession = request.cookies.get('analytics-admin-session');
@@ -232,7 +246,6 @@ export async function middleware(request: NextRequest) {
 		const { data } = await supabase.auth.getUser();
 		user = data.user;
 	} catch {
-		// Timeout / red: fallar cerrado en rutas protegidas.
 		user = null;
 	}
 
@@ -245,18 +258,20 @@ export async function middleware(request: NextRequest) {
 		return NextResponse.redirect(loginUrl);
 	}
 
-	// Preferir rol en metadata (sin query DB). Si hace falta, consultar users con el mismo timeout de fetch.
-	let userRole: string | undefined = typeof user.user_metadata?.role === 'string' ? user.user_metadata.role : undefined;
-
-	if (!userRole) {
-		try {
-			const { data: appUsers } = await supabase.from('users').select('role').eq('authId', user.id);
-			if (appUsers && appUsers.length > 0) {
-				userRole = appUsers.find((u) => u.role !== 'PACIENTE')?.role || appUsers[0].role;
-			}
-		} catch {
-			userRole = undefined;
+	// Misma lógica previa: metadata + tabla users (con timeout de fetch).
+	let userRole: string | undefined;
+	try {
+		const { data: appUsers } = await supabase.from('users').select('role').eq('authId', user.id);
+		if (appUsers && appUsers.length > 0) {
+			const metaRole = user.user_metadata?.role;
+			userRole = metaRole
+				? appUsers.find((u) => u.role === metaRole)?.role || appUsers[0].role
+				: appUsers.find((u) => u.role !== 'PACIENTE')?.role || appUsers[0].role;
+		} else if (typeof user.user_metadata?.role === 'string') {
+			userRole = user.user_metadata.role;
 		}
+	} catch {
+		userRole = typeof user.user_metadata?.role === 'string' ? user.user_metadata.role : undefined;
 	}
 
 	if (!userRole) {
@@ -277,6 +292,10 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
 	matcher: [
-		'/((?!_next/static|_next/image|favicon.ico|icon.png|apple-icon.png|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|txt|xml|json|woff2?)$).*)',
+		/*
+		 * Volvemos al matcher original (+ iconos).
+		 * No excluir .json/.xml de forma agresiva: puede interferir con rutas de la app.
+		 */
+		'/((?!_next/static|_next/image|favicon.ico|icon.png|apple-icon.png|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
 	],
 };
