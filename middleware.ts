@@ -3,7 +3,34 @@ import { type NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
 
 // ===== CONFIGURACIÓN DE RUTAS =====
-const PUBLIC_ROUTES = ['/login', '/register', '/reset-password', '/safecare/login', '/api/auth', '/api/plans', '/api/register', '/api/organizations', '/api/public', '/api/role-users', '/api/analytics/login', '/dashboard/analytics', '/'];
+// Rutas 100% públicas: no deben invocar Supabase (evita 504 MIDDLEWARE_INVOCATION_TIMEOUT en móvil).
+const PUBLIC_ROUTES = [
+	'/',
+	'/login',
+	'/register',
+	'/reset-password',
+	'/safecare/login',
+	'/landing',
+	'/farmacia',
+	'/politicas-privacidad',
+	'/public-report',
+	'/share',
+	'/emergency',
+	'/rate-consultation',
+	'/lab-upload',
+	'/robots.txt',
+	'/sitemap.xml',
+	'/manifest.json',
+	'/api/auth',
+	'/api/plans',
+	'/api/register',
+	'/api/organizations',
+	'/api/public',
+	'/api/role-users',
+	'/api/analytics/login',
+	'/api/landing',
+	'/dashboard/analytics',
+];
 
 const ROUTE_ROLE_MAP: Record<string, string[]> = {
 	'/dashboard/clinic': ['ADMIN', 'CLINICA'],
@@ -15,7 +42,6 @@ const ROUTE_ROLE_MAP: Record<string, string[]> = {
 	'/dashboard/safecare': ['SAFECARE', 'ADMIN', 'ADMINISTRACION'],
 };
 
-// ===== WHITELIST DE CORS =====
 const ALLOWED_ORIGINS = new Set([
 	'https://ashira.click',
 	'https://www.ashira.click',
@@ -29,10 +55,11 @@ if (process.env.NODE_ENV === 'development') {
 	ALLOWED_ORIGINS.add('http://localhost:3001');
 }
 
-// ===== RUTAS SENSIBLES (cache restrictivo) =====
 const SENSITIVE_ROUTES = ['/api/', '/dashboard', '/patients', '/login', '/admin', '/billing'];
 
-// ===== FUNCIONES AUXILIARES =====
+/** Timeout corto: Edge Middleware de Vercel no puede colgarse esperando a Supabase. */
+const SUPABASE_FETCH_TIMEOUT_MS = 4_000;
+
 function isPublicRoute(pathname: string): boolean {
 	return PUBLIC_ROUTES.some((route) => {
 		if (route === '/') return pathname === '/';
@@ -87,52 +114,7 @@ function getRoleRedirectPath(userRole: string, pathname: string): string | null 
 	return !pathname.startsWith(redirectPath) ? redirectPath : null;
 }
 
-// ===== MIDDLEWARE PRINCIPAL =====
-export async function middleware(request: NextRequest) {
-	const nonce = Buffer.from(crypto.randomUUID()).toString('base64');
-	const { pathname } = request.nextUrl;
-	const origin = request.headers.get('origin');
-
-	// 1. Manejar Preflight de CORS (OPTIONS)
-	if (request.method === 'OPTIONS') {
-		const preflightResponse = new NextResponse(null, { status: 204 });
-		if (origin && ALLOWED_ORIGINS.has(origin)) {
-			preflightResponse.headers.set('Access-Control-Allow-Origin', origin);
-			preflightResponse.headers.set('Access-Control-Allow-Credentials', 'true');
-			preflightResponse.headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS');
-			preflightResponse.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With');
-			preflightResponse.headers.set('Access-Control-Max-Age', '86400');
-			preflightResponse.headers.set('Vary', 'Origin');
-		}
-		return preflightResponse;
-	}
-
-	// 2. Base de la respuesta con Nonce en Request Headers (para Server Components)
-	const requestHeaders = new Headers(request.headers);
-	requestHeaders.set('x-nonce', nonce);
-
-	let response = NextResponse.next({
-		request: { headers: requestHeaders },
-	});
-
-	// 3. Inicializar Supabase Client (Sync cookies)
-	const supabase = createServerClient(
-		process.env.NEXT_PUBLIC_SUPABASE_URL!,
-		process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-		{
-			cookies: {
-				getAll: () => request.cookies.getAll(),
-				setAll: (cookiesToSet) => {
-					cookiesToSet.forEach(({ name, value, options }) => {
-						request.cookies.set(name, value);
-						response.cookies.set(name, value, { ...options, maxAge: 3153600000 });
-					});
-				},
-			},
-		}
-	);
-
-	// 4. Cabeceras de Seguridad Globales (CSP, HSTS, etc.)
+function applySecurityHeaders(response: NextResponse, nonce: string, pathname: string, origin: string | null) {
 	const csp = [
 		"default-src 'self'",
 		`script-src 'self' 'nonce-${nonce}' https://*.supabase.co https://www.googletagmanager.com https://*.vercel-scripts.com`,
@@ -154,9 +136,8 @@ export async function middleware(request: NextRequest) {
 	response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
 	response.headers.set('Permissions-Policy', 'camera=(self), microphone=(self), geolocation=(), payment=()');
 	response.headers.set('Strict-Transport-Security', 'max-age=63072000; includeSubDomains; preload');
-	response.headers.set('Server', ''); // Ofuscación de servidor
+	response.headers.set('Server', '');
 
-	// 5. Aplicar CORS Dinámico (Whitelist)
 	if (origin && ALLOWED_ORIGINS.has(origin)) {
 		response.headers.set('Access-Control-Allow-Origin', origin);
 		response.headers.set('Access-Control-Allow-Credentials', 'true');
@@ -166,61 +147,129 @@ export async function middleware(request: NextRequest) {
 		response.headers.set('Vary', 'Origin');
 	}
 
-	// 6. Cache restrictivo para ePHI
 	const isSensitive = SENSITIVE_ROUTES.some((route) => pathname.startsWith(route));
 	if (isSensitive) {
 		response.headers.set('Cache-Control', 'no-cache, no-store, must-revalidate, private');
 		response.headers.set('Pragma', 'no-cache');
 		response.headers.set('Expires', '0');
 	}
+}
 
-	// 7. Autenticación y Autorización
-	const { data: { user } } = await supabase.auth.getUser();
+function createTimedFetch(timeoutMs: number): typeof fetch {
+	return (input, init) => {
+		const timeoutSignal = AbortSignal.timeout(timeoutMs);
+		const callerSignal = init?.signal;
+		const signal =
+			callerSignal && typeof AbortSignal.any === 'function'
+				? AbortSignal.any([callerSignal, timeoutSignal])
+				: timeoutSignal;
 
-	if (isPublicRoute(pathname)) return response;
+		return fetch(input, { ...init, signal });
+	};
+}
 
-	if (requiresAuth(pathname)) {
-		// Excepción para las APIs de Analytics: permitir si tiene la cookie de admin
-		if (pathname.startsWith('/api/analytics/')) {
-			const adminSession = request.cookies.get('analytics-admin-session');
-			if (adminSession?.value) {
-				return response;
+export async function middleware(request: NextRequest) {
+	const nonce = Buffer.from(crypto.randomUUID()).toString('base64');
+	const { pathname } = request.nextUrl;
+	const origin = request.headers.get('origin');
+
+	if (request.method === 'OPTIONS') {
+		const preflightResponse = new NextResponse(null, { status: 204 });
+		if (origin && ALLOWED_ORIGINS.has(origin)) {
+			preflightResponse.headers.set('Access-Control-Allow-Origin', origin);
+			preflightResponse.headers.set('Access-Control-Allow-Credentials', 'true');
+			preflightResponse.headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS');
+			preflightResponse.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With');
+			preflightResponse.headers.set('Access-Control-Max-Age', '86400');
+			preflightResponse.headers.set('Vary', 'Origin');
+		}
+		return preflightResponse;
+	}
+
+	const requestHeaders = new Headers(request.headers);
+	requestHeaders.set('x-nonce', nonce);
+
+	let response = NextResponse.next({
+		request: { headers: requestHeaders },
+	});
+
+	applySecurityHeaders(response, nonce, pathname, origin);
+
+	// Rutas públicas / marketing: salir YA sin tocar Supabase.
+	// Esto evita 504 en redes móviles lentas al abrir ashira.click.
+	if (isPublicRoute(pathname) || !requiresAuth(pathname)) {
+		return response;
+	}
+
+	const supabase = createServerClient(
+		process.env.NEXT_PUBLIC_SUPABASE_URL!,
+		process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+		{
+			cookies: {
+				getAll: () => request.cookies.getAll(),
+				setAll: (cookiesToSet) => {
+					cookiesToSet.forEach(({ name, value, options }) => {
+						request.cookies.set(name, value);
+						response.cookies.set(name, value, { ...options, maxAge: 3153600000 });
+					});
+				},
+			},
+			global: {
+				fetch: createTimedFetch(SUPABASE_FETCH_TIMEOUT_MS),
+			},
+		}
+	);
+
+	if (pathname.startsWith('/api/analytics/')) {
+		const adminSession = request.cookies.get('analytics-admin-session');
+		if (adminSession?.value) {
+			return response;
+		}
+	}
+
+	let user: { id: string; user_metadata?: Record<string, unknown> } | null = null;
+	try {
+		const { data } = await supabase.auth.getUser();
+		user = data.user;
+	} catch {
+		// Timeout / red: fallar cerrado en rutas protegidas.
+		user = null;
+	}
+
+	if (!user) {
+		if (pathname.startsWith('/api')) {
+			return NextResponse.json({ error: 'No autenticado' }, { status: 401 });
+		}
+		const loginUrl = new URL('/login', request.url);
+		loginUrl.searchParams.set('redirect', pathname);
+		return NextResponse.redirect(loginUrl);
+	}
+
+	// Preferir rol en metadata (sin query DB). Si hace falta, consultar users con el mismo timeout de fetch.
+	let userRole: string | undefined = typeof user.user_metadata?.role === 'string' ? user.user_metadata.role : undefined;
+
+	if (!userRole) {
+		try {
+			const { data: appUsers } = await supabase.from('users').select('role').eq('authId', user.id);
+			if (appUsers && appUsers.length > 0) {
+				userRole = appUsers.find((u) => u.role !== 'PACIENTE')?.role || appUsers[0].role;
 			}
+		} catch {
+			userRole = undefined;
 		}
+	}
 
-		if (!user) {
-			if (pathname.startsWith('/api')) {
-				return NextResponse.json({ error: 'No autenticado' }, { status: 401 });
-			}
-			const loginUrl = new URL('/login', request.url);
-			loginUrl.searchParams.set('redirect', pathname);
-			return NextResponse.redirect(loginUrl);
+	if (!userRole) {
+		if (pathname.startsWith('/api')) {
+			return NextResponse.json({ error: 'Usuario sin rol asignado' }, { status: 403 });
 		}
+		return NextResponse.redirect(new URL('/login', request.url));
+	}
 
-		// Obtener rol del usuario
-		const { data: appUsers } = await supabase.from('users').select('role').eq('authId', user.id);
-		let userRole: string | undefined;
-		
-		if (appUsers && appUsers.length > 0) {
-			const metaRole = user.user_metadata?.role;
-			userRole = metaRole ? (appUsers.find(u => u.role === metaRole)?.role || appUsers[0].role) : (appUsers.find(u => u.role !== 'PACIENTE')?.role || appUsers[0].role);
-		} else if (user.user_metadata?.role) {
-			userRole = user.user_metadata.role;
-		}
-
-		if (!userRole) {
-			if (pathname.startsWith('/api')) {
-				return NextResponse.json({ error: 'Usuario sin rol asignado' }, { status: 403 });
-			}
-			return NextResponse.redirect(new URL('/login', request.url));
-		}
-
-		// Verificar autorización por ruta
-		const allowedRoles = getAllowedRolesForRoute(pathname);
-		if (allowedRoles && !allowedRoles.includes(userRole)) {
-			const redirectPath = getRoleRedirectPath(userRole, pathname);
-			if (redirectPath) return NextResponse.redirect(new URL(redirectPath, request.url));
-		}
+	const allowedRoles = getAllowedRolesForRoute(pathname);
+	if (allowedRoles && !allowedRoles.includes(userRole)) {
+		const redirectPath = getRoleRedirectPath(userRole, pathname);
+		if (redirectPath) return NextResponse.redirect(new URL(redirectPath, request.url));
 	}
 
 	return response;
@@ -228,6 +277,6 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
 	matcher: [
-		'/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
+		'/((?!_next/static|_next/image|favicon.ico|icon.png|apple-icon.png|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|txt|xml|json|woff2?)$).*)',
 	],
 };
